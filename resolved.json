@@ -1,315 +1,207 @@
 {
-  "generated_at": "2026-08-15T07:17:26.675Z",
+  "generated_at": "2026-08-16T07:23:59.482Z",
   "resolved": [
     {
-      "id": "being-an-engineer--tony-kelbert-authenticity-engineering-and-the",
-      "show": "Being an Engineer",
-      "title": "Tony Kelbert | Authenticity, Engineering, and the Business of Manufacturing",
-      "apple_collection_id": 1508222292,
-      "apple_track_id": 1000783290820,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/tony-kelbert-authenticity-engineering-and-the/id1508222292?i=1000783290820&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 72,
-      "duration_sec": 4314,
-      "audio_url": "https://www.buzzsprout.com/995575/episodes/19636492-tony-kelbert-authenticity-engineering-and-the-business-of-manufacturing.mp3",
+      "id": "stuff-you-should-know--selects-the-manhattan-grid",
+      "show": "Stuff You Should Know",
+      "title": "Selects: The Manhattan Grid",
+      "apple_collection_id": 278981407,
+      "apple_track_id": 1000783424141,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/selects-the-manhattan-grid/id278981407?i=1000783424141&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 48,
+      "duration_sec": 2852,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/54a718a4-c91c-499f-87d9-b4a500dd7695/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 51796692,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
+      "audio_bytes": 45668401,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
+        "science/materials",
+        "history/technology"
       ],
       "explicit": false,
-      "_description": "Send us Fan Mail Tony Kelbert is a mechanical engineer, manufacturing strategist, and Chief Burrito Officer at AeroGrowth, an organization focused on helping precision manufacturers pursue and win the right aerospace and defense work. Drawing on experience from both the OEM and supplier sides of the industry, Tony helps manufacturers better understand positioning, quoting, customer relationships, and the realities of selling into complex aerospace supply chains. Tony began his engineering career"
+      "_description": "Ever wanted to know more about how the Manhattan grid was made? Well this is your chance. Find out all about it in this classic episode. See omnystudio.com/listener for privacy information."
     },
     {
-      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1616",
-      "show": "Engines of Our Ingenuity",
-      "title": "The Engines of Our Ingenuity 1616: Ivan Polzunov",
-      "apple_collection_id": 121493645,
-      "apple_track_id": 1000783407929,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1616-ivan-polzunov/id121493645?i=1000783407929&uo=4",
-      "release_date": "2026-08-15",
-      "duration_min": 4,
-      "duration_sec": 226,
-      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260815.mp3?srcid=apple-podcasts",
+      "id": "the-ancients--how-slavery-built-the-roman-empire",
+      "show": "The Ancients",
+      "title": "How Slavery Built the Roman Empire",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000783298761,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-slavery-built-the-roman-empire/id1520403988?i=1000783298761&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 67,
+      "duration_sec": 4046,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a7ef10204592ab24908b6dc/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=1ftQlPCnsZh-ixM8NKo0YfuWIadY7lN5c2uJ7aGSEBU",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 1810884,
+      "audio_bytes": 64737697,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "explicit": false,
+      "_description": "Was the Roman Empire really made by conquest? Or was it powered by something much darker? For centuries, millions of enslaved people sacrificed their lives and their labour on the altar of Roman progress, an integral cog in the grinding imperial machine. And so today on The Ancients, Tristan Hughes is joined by Dr Emma Southon, author of Servus: How Slavery Made The Roman World to bring their overlooked stories back into the limelight. From the mines and farms to the households of the imperial e"
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1617",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1617: Connections",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000783555764,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1617-connections/id121493645?i=1000783555764&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 4,
+      "duration_sec": 229,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260816.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1830110,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
       "topics": [
         "history/technology"
       ],
       "explicit": false,
-      "_description": "Episode: 1616 Ivan Polzunov and early Russian steam engines. Today, the steam engine comes to Russia."
+      "_description": "Episode: 1617 Reflections on the dicey question of cause and effect in history. Today, the connections problem."
     },
     {
-      "id": "this-week-in-startups--what-we-ll-learn-from-anthropic",
-      "show": "This Week in Startups",
-      "title": "What we'll learn from Anthropic's $2-$3T IPO | E2325",
-      "apple_collection_id": 315114957,
-      "apple_track_id": 1000783387312,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/what-well-learn-from-anthropics-%242-%243t-ipo-e2325/id315114957?i=1000783387312&uo=4",
-      "release_date": "2026-08-15",
-      "duration_min": 80,
-      "duration_sec": 4816,
-      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/4a885955-6823-4b22-a3e1-a526c25516a5/EP_2325_AUDIO.mp3?dest-id=5500155",
+      "id": "founders--429-bob-dylan-s-autobiography",
+      "show": "Founders",
+      "title": "#429 Bob Dylan's Autobiography",
+      "apple_collection_id": 1141877104,
+      "apple_track_id": 1000783536703,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/429-bob-dylans-autobiography/id1141877104?i=1000783536703&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 60,
+      "duration_sec": 3604,
+      "audio_url": "https://traffic.megaphone.fm/DSLLC5681377545.mp3",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 118590187,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/bf/ce/23/bfce2354-2548-00f0-d795-a34404946a6b/mza_10222213905677371023.jpg/600x600bb.jpg",
+      "audio_bytes": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ed/71/4f/ed714f67-f095-a4ef-f38e-d8c02300666a/mza_11432355988627368701.jpg/600x600bb.jpg",
       "topics": [
         "business/startups"
       ],
       "explicit": false,
-      "_description": "This Week In Startups is made possible by: PayPal Open https://paypalopen.com CLA https://claconnect.com/withyou Odoo https://Odoo.com/twist Today's show: *Anthropic is likely headed for the largest IPO in history. A reported 2-3 trillion October debut would blow past SpaceX's recent record. Jason breaks down why the. numbers matter less than what they'll reveal about the entire AI economy. Then, chats with a pair of founders: one who's selling subscription water filtration systems that will kee"
+      "_description": "What I learned from rereading Bob Dylan's autobiography. Made possible by: Ramp: ⁠⁠https://ramp.com⁠⁠ Applovin: ⁠⁠https://www.applovin.com Vanta: ⁠⁠https://vanta.com/founders"
     },
     {
-      "id": "bad-friends--new-episode-on-patreon-today",
-      "show": "Bad Friends",
-      "title": "New Episode on Patreon Today",
-      "apple_collection_id": 1496265971,
-      "apple_track_id": 1000783340665,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/new-episode-on-patreon-today/id1496265971?i=1000783340665&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 5,
-      "duration_sec": 291,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/pfx.vpixl.com/u8u9X/mgln.ai/e/1118/arttrk.com/p/YMH00/clrtpod.com/m/traffic.megaphone.fm/YMH9273726576.mp3",
+      "id": "twenty-minute-vc--20growth-how-to-build-a-100m",
+      "show": "The Twenty Minute VC (20VC)",
+      "title": "20Growth: How to Build a $100M Growth Engine: Lessons from Wispr Flow and Superhuman | Why You Should Do Paid Ads Today and How To Do Them | How to Build the Best Referral Programs and How to Crush UGC with Matt Swulinski",
+      "apple_collection_id": 958230465,
+      "apple_track_id": 1000783416666,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/20growth-how-to-build-a-%24100m-growth-engine-lessons/id958230465?i=1000783416666&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 79,
+      "duration_sec": 4721,
+      "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/20Growth__Matt_Swulinski__Zeta_Labs.mp3?dest-id=240976",
       "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/26/c8/b026c805-1a24-55ea-cff3-d0329d2338ce/mza_11376115143280052758.jpeg/600x600bb.jpg",
+      "audio_bytes": 75522409,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/4a/f9/cb4af9a2-5857-c3f1-30d4-14395af9a14f/mza_11350890235230424535.jpeg/600x600bb.jpg",
       "topics": [
-        "comedy/casual-hangs"
+        "business/startups"
       ],
       "explicit": true,
-      "_description": "For more exclusive content and ad-free early episodes go to https://www.patreon.com/c/badfriends Learn more about your ad choices. Visit megaphone.fm/adchoices"
+      "_description": "Matt Swulinski is one of the best growth leaders in AI. He is currently Head of Growth at Viktor, the Accel-backed AI coworker. Previously, he was Head of Growth at Wispr Flow, where he was marketing hire #1 and built the growth function from pre-launch to millions of users. Matt also built the AI-powered marketing OS that automated 100 newsletter sponsorships a month and enabled a lean team to scale dramatically faster. Before Wispr Flow, Matt worked in growth at Superhuman. AGENDA: 00:00 Why S"
     },
     {
-      "id": "planet-money--you-bet-your-life-insurance",
-      "show": "Planet Money",
-      "title": "You bet your life insurance",
-      "apple_collection_id": 290783428,
-      "apple_track_id": 1000783364262,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/you-bet-your-life-insurance/id290783428?i=1000783364262&uo=4",
-      "release_date": "2026-08-14",
+      "id": "the-race-f1-podcast--driving-style-secrets-we-answer-your",
+      "show": "The Race F1 Podcast",
+      "title": "Driving Style Secrets: We answer your questions about five 21st century greats",
+      "apple_collection_id": 1495557562,
+      "apple_track_id": 1000783423663,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/driving-style-secrets-we-answer-your-questions-about/id1495557562?i=1000783423663&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 62,
+      "duration_sec": 3708,
+      "audio_url": "https://sphinx.acast.com/p/open/s/6819ae2bf30c20bff775e8a1/e/6a7adf6fbc454115866a11fe/media.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 89037361,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/40/7b/8c/407b8cbe-cd34-d818-ff69-a11bc1d6c690/mza_9877600709441097500.jpeg/600x600bb.jpg",
+      "topics": [
+        "automotive/racing"
+      ],
+      "explicit": false,
+      "_description": "As a bonus in the feed, we're bringing you our Driving Style Secrets Q&amp;A episode. Driving Style Secrets is a podcast series available exclusively in The Race Members' Club on Patreon . In Season 3, which finished recently, Edd Straw and Mark Hughes took a deep dive into the driving techniques of five of F1's 21st century greats: Fernando Alonso, Kimi Raikkonen, Jenson Button, Sebastian Vettel and Nico Rosberg - and here they answer questions from the Race Members' Club about each of them! Ed"
+    },
+    {
+      "id": "masters-of-scale--pioneers-of-ai-why-ai-conversations",
+      "show": "Masters of Scale",
+      "title": "Pioneers of AI:  Why AI conversations are always one-sided",
+      "apple_collection_id": 1227971746,
+      "apple_track_id": 1000783423297,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pioneers-of-ai-why-ai-conversations-are-always-one-sided/id1227971746?i=1000783423297&uo=4",
+      "release_date": "2026-08-15",
       "duration_min": 39,
-      "duration_sec": 2323,
-      "audio_url": "https://tracking.swap.fm/track/XvDEoI11TR00olTUO8US/prfx.byspotify.com/e/play.podtrac.com/npr-510289/npr.simplecastaudio.com/43b5acee-463e-4612-95ad-d2596d9dd337/episodes/e643843c-4f2c-43dc-89fc-64f70e7ff656/audio/128/default.mp3?awCollectionId=43b5acee-463e-4612-95ad-d2596d9dd337&awEpisodeId=e643843c-4f2c-43dc-89fc-64f70e7ff656&feed=hvWWWzRv&t=podcast&e=nx-s1-5885879&p=510289&d=2323&size=37172958",
+      "duration_sec": 2359,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/prfx.byspotify.com/e/pscrb.fm/rss/p/tracking.swap.fm/track/7G0M4p2bOLP0mP50O3CD/rss.art19.com/episodes/8cb0ebfc-d742-465b-ba62-e26ddaabfeb6.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 37172958,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/df/53/85df5334-0fae-28a9-2bc4-b97b81061d0e/mza_10839245066228881011.jpg/600x600bb.jpg",
+      "audio_bytes": 37760104,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/13/4b/81/134b8173-d713-cbb2-2d3b-4a8692bd87c0/mza_996010941061703843.jpeg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "business/founders"
       ],
       "explicit": false,
-      "_description": "Some of the biggest firms on Wall Street are, at this very moment, waiting for thousands of strangers to die to reap their returns. Because there’s a market for life insurance policies. And it’s legal. You don’t have to actually die to get some of your life insurance money. Thanks to a secondary market for life insurance policies, you might be able to claw back money from beyond the grave. You just sell your policy to an investor. So when you die, the payout goes to them, instead of your family "
+      "_description": "Is it possible for us to ever wholeheartedly trust a machine the way we would a human? According to Charles Duhigg, Pulitzer Prize-winning journalist and New York Times bestselling author of The Power of Habit and Supercommunicators: How to Unlock the Secret Language of Connection, the answer is no. And that’s what stops us from being able to emotionally connect with AI chatbots. In this episode of Pioneers of AI, host Rana el Kaliouby and Duhigg dissect what's really happening when people confi"
     },
     {
-      "id": "freakonomics-radio--the-case-of-the-4-million",
-      "show": "Freakonomics Radio",
-      "title": "The Case of the $4 Million Gold Coffin (Update)",
-      "apple_collection_id": 354668519,
-      "apple_track_id": 1000783191891,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-case-of-the-%244-million-gold-coffin-update/id354668519?i=1000783191891&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 54,
-      "duration_sec": 3250,
-      "audio_url": "https://mgln.ai/e/2/pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/2be48404-a43c-4fa8-a32c-760a3216272e/episodes/c2c4eb51-e7bc-4cc0-87b6-5c2a2d7339b5/audio/128/default.mp3?aid=rss_feed&awCollectionId=2be48404-a43c-4fa8-a32c-760a3216272e&awEpisodeId=c2c4eb51-e7bc-4cc0-87b6-5c2a2d7339b5&feed=Y8lFbOT4",
+      "id": "common-descent--episode-250-camels",
+      "show": "The Common Descent Podcast",
+      "title": "Episode 250 - Camels",
+      "apple_collection_id": 1207586509,
+      "apple_track_id": 1000783536278,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-250-camels/id1207586509?i=1000783536278&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 142,
+      "duration_sec": 8507,
+      "audio_url": "https://mcdn.podbean.com/mf/web/3pwci6gpgxnqwaqm/Episode_250_Camels.mp3",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 52009001,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
+      "audio_bytes": 204190970,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/2d/ad/58/2dad5885-6566-fdd4-6b52-f87b69af3688/mza_3078482384516892224.png/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "nature/paleontology"
       ],
       "explicit": false,
-      "_description": "How did a freshly looted Egyptian antiquity end up in the Metropolitan Museum of Art? Why did it take Kim Kardashian to crack the case? And how much of what you see in any museum is stolen? (Part 1 of “ Stealing Art Is Easy. Giving It Back Is Hard ,” first published in 2023.) SOURCES: Andrea Bayer , deputy director of collections and administration at the Metropolitan Museum of Art. Matthew Bogdanos , assistant district attorney in the Manhattan District Attorney's Office and chief of the Antiqu"
+      "_description": "Large, herbivorous mammals come in many shapes and sizes, but few are as famously unusual as camels. This episode, we explore the surprising adaptations of Old World and New World camelids, from the dromedaries of Middle Eastern deserts to the llamas of the Andean highlands. Then, we take a tour through their fossil record to investigate the many forms this family took on the way to our modern diversity. In the news: stomach stones, aquatic reptiles, tiny dinosaurs, and a Poop Explosion. Time Ma"
     },
     {
-      "id": "the-cinematography-podcast--michael-bauman-on-building-horror-for",
-      "show": "The Cinematography Podcast",
-      "title": "Michael Bauman on building horror for Monster: The Ed Gein Story",
-      "apple_collection_id": 812436884,
-      "apple_track_id": 1000783364134,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/michael-bauman-on-building-horror-for-monster-the-ed/id812436884?i=1000783364134&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 71,
-      "duration_sec": 4272,
-      "audio_url": "https://media.blubrry.com/cine/content.blubrry.com/cine/Michael_Bauman_ep_369.mp3",
+      "id": "casefile--case-348-toyah-cordingley",
+      "show": "Casefile True Crime",
+      "title": "Case 348: Toyah Cordingley",
+      "apple_collection_id": 998568017,
+      "apple_track_id": 1000781038037,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/case-348-toyah-cordingley/id998568017?i=1000781038037&uo=4",
+      "release_date": "2026-08-15",
+      "duration_min": 88,
+      "duration_sec": 5277,
+      "audio_url": "https://sphinx.acast.com/p/open/s/679acff465f74095106abfaa/e/6a802a95ff328abd84d44c12/media.mp3",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 5242880,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/48/06/54/48065404-97a9-b8be-c4ac-cca360291f66/mza_13428131324207435940.jpg/600x600bb.jpg",
+      "audio_bytes": 126993086,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
       "topics": [
-        "craft/photography",
-        "craft/filmmaking"
+        "true-crime"
       ],
       "explicit": true,
-      "_description": "DP Michael Bauman, ASC on shooting Monster: The Ed Gein Story, building a visual language with period lenses, and lighting with just reflectors and flashlights. Podcast highlights include: -How Michael built a distinct visual language for each era with lensing shifting from period to period. Color and texture gave the digital image a weathered, film-period feel. -Lighting the Emmy-nominated Episode 6 sequence almost entirely with reflected and practical light. Rather than lighting the set conven"
+      "_description": "*** Content warnings: Violence against women, femicide *** When 24-year-old Toyah Cordingley went missing while walking her dog, her loved ones quickly launched a search at Wangetti Beach near Cairns, where she was last seen. In the early morning hours of October 22 2018, Toyah’s father Troy Cordingley made a devastating discovery: his daughter had been murdered and buried in the sand, at a place where she’d always felt safe. The search for Toyah’s killer gripped Far North Queensland, but the an"
     },
     {
-      "id": "radiolab--nigel-and-the-real-gannet",
-      "show": "Radiolab",
-      "title": "Nigel and the Real Gannet",
-      "apple_collection_id": 152249110,
-      "apple_track_id": 1000783322179,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/nigel-and-the-real-gannet/id152249110?i=1000783322179&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 26,
-      "duration_sec": 1554,
-      "audio_url": "https://pscrb.fm/rss/p/mgln.ai/e/14/prfx.byspotify.com/e/dts.podtrac.com/pts/redirect.mp3/waaa.wnyc.org/758af4c0-a2c3-47ec-a2d8-05f41bfbde51/episodes/0ccc6b22-d811-4685-bc09-7d2b45e3127d/audio/128/default.mp3?aid=rss_feed&awCollectionId=758af4c0-a2c3-47ec-a2d8-05f41bfbde51&awEpisodeId=0ccc6b22-d811-4685-bc09-7d2b45e3127d&feed=EmVW7VGp",
+      "id": "wow-in-the-world--wewow-on-the-weekend-popsicle-stick",
+      "show": "Wow in the World",
+      "title": "WeWow on the Weekend: Popsicle Stick Sculptures, Ducks, and Bread!",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000783562108,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/wewow-on-the-weekend-popsicle-stick-sculptures-ducks/id1233834541?i=1000783562108&uo=4",
+      "release_date": "2026-08-16",
+      "duration_min": 11,
+      "duration_sec": 653,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/0d635c16-fd84-4bf7-a2c0-6e142bd39ecd.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
       "audio_type": "audio/mpeg",
-      "audio_bytes": 24874188,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2b/b2/4d/2bb24d28-f3bb-916f-6bf3-9e125ba5219b/mza_4476298389845914795.jpg/600x600bb.jpg",
+      "audio_bytes": 10464026,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/2c/e0/40/2ce04033-0a89-a9a2-a797-0fa9af40febe/mza_11095829479482076608.jpeg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "kids-family/education"
       ],
       "explicit": false,
-      "_description": "In 2016, Chris Bell, a ranger with New Zealand’s Department of Conservation, was the sole human inhabitant of a small island off the west coast of the country, called Mana Island. He was there to take care of the island’s fragile and recovering ecosystem, including a colony of Australasian Gannets at the top of a high cliff overlooking the sea. But there was one catch. All but one of these striking seabirds were fake, made of concrete and paint. This week on Radiolab, producer Annie McEwen tells"
-    },
-    {
-      "id": "history-of-wwii-podcast--episode-646-guadalcanal-all-or-nothing",
-      "show": "The History of WWII Podcast",
-      "title": "Episode 646-Guadalcanal: All Or Nothing",
-      "apple_collection_id": 493253759,
-      "apple_track_id": 1000783306807,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-646-guadalcanal-all-or-nothing/id493253759?i=1000783306807&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 19,
-      "duration_sec": 1114,
-      "audio_url": "https://pdst.fm/e/chtbl.com/track/95538/swap.fm/track/JhoQDAATtO1l0y8tdKNa/rss.pdrl.fm/eb4bb2/tracking.swap.fm/track/YfZO4tERxneauNcW9Fgn/mgln.ai/e/211/traffic.megaphone.fm/ARML3066669068.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bb/fa/9a/bbfa9a3d-9cb1-a452-fc74-c8ebab7bac9a/mza_13831910833290623732.jpg/600x600bb.jpg",
-      "topics": [
-        "history/military-modern"
-      ],
-      "explicit": false,
-      "_description": "With the latest Japanese defeat or near run American victory, both sides decide to up the ante, sending massive reinforcements.&nbsp; Want to go beyond the battlefield with The History of WWII Podcast? Dive deeper into the war with exclusive bonus episodes, expert interviews, and commercial-free listening for just $5/month! Every penny supports the show and keeps the history coming. https://worldwariipodcast.net/members/ Donations are always welcome and help keep the History of WWII Podcast free"
-    },
-    {
-      "id": "amicus-dahlia-lithwick--becoming-justice-gorsuch-1-man-with",
-      "show": "Amicus With Dahlia Lithwick | Law, justice, and the courts",
-      "title": "Becoming Justice Gorsuch | 1. Man With a Plan",
-      "apple_collection_id": 928790786,
-      "apple_track_id": 1000782823954,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/becoming-justice-gorsuch-1-man-with-a-plan/id928790786?i=1000782823954&uo=4",
-      "release_date": "2026-08-15",
-      "duration_min": 40,
-      "duration_sec": 2395,
-      "audio_url": "https://sphinx.acast.com/p/open/s/695ea2381c1db1c5bdf7c59b/e/6a7ba195b8e79c154d017d26/media.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 95808972,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/52/9b/e8529b7b-21fe-9692-48fd-7696d23a8807/mza_17089514366859568033.jpeg/600x600bb.jpg",
-      "topics": [
-        "society/law"
-      ],
-      "explicit": false,
-      "_description": "Our friends over at the Slate podcast Slow Burn are good at taking events that we think are settled history, then unlocking a new understanding of those stories through interviews, archives, and fresh analysis. They’ve reexamined Supreme Court history several times in recent years, including a new season about Neil Gorsuch we’re featuring on Amicus for the next three weeks. Becoming Justice Gorsuch explores the early years of Donald Trump’s first high-court appointee and his precedent-shattering"
-    },
-    {
-      "id": "happier-gretchen-rubin--more-happier-take-better-care-of",
-      "show": "Happier with Gretchen Rubin",
-      "title": "More Happier: Take Better Care of Yourself—Treat Yourself Like a Toddler, Dog, Teenager, and Professor",
-      "apple_collection_id": 969519520,
-      "apple_track_id": 1000782029742,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/more-happier-take-better-care-of-yourself-treat/id969519520?i=1000782029742&uo=4",
-      "release_date": "2026-08-15",
-      "duration_min": 33,
-      "duration_sec": 1991,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME9807893536.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/5a/00/0e/5a000e1a-c09e-bb4f-b54f-59a3a0fe834b/mza_288780918127767714.jpeg/600x600bb.jpg",
-      "topics": [
-        "education/self-improvement"
-      ],
-      "explicit": false,
-      "_description": "We revisit one of our favorite happiness ideas: Treat Yourself Like a _____. Over the years, we've explored many variations on this theme, including treating yourself like a toddler, a dog, a teenager, and a professor. Sometimes it's easier to recognize what we need when we imagine we're taking care of someone else. Revisited Highlights: Episode 7: Treat Yourself Like a Toddler Episode 243: Treat Yourself Like a Dog Episode 438: Treat Yourself Like a Teenager Episode 467: Treat Yourself Like a P"
-    },
-    {
-      "id": "handsome--pretty-little-episode-104",
-      "show": "Handsome",
-      "title": "Pretty Little Episode #104",
-      "apple_collection_id": 1702258458,
-      "apple_track_id": 1000783272311,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pretty-little-episode-104/id1702258458?i=1000783272311&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 24,
-      "duration_sec": 1421,
-      "audio_url": "https://s.gum.fm/s-64da7e573d833e9c418c5266/mgln.ai/e/209/pscrb.fm/rss/p/prfx.byspotify.com/e/clrtpod.com/m/rss.art19.com/episodes/7bfe229f-59a5-46cb-8492-a46d5407a730.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 22742831,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e1/96/1b/e1961bc1-eae4-b488-3b0f-abdc52f06568/mza_18244201912816466457.jpeg/600x600bb.jpg",
-      "topics": [
-        "comedy/casual-hangs"
-      ],
-      "explicit": true,
-      "_description": "Fortune and Tig finally break Handsome's silence on the Bucee's beaver lawsuit and much more on today's beaver-tastic Pretty Little Episode! Handsome is hosted by Tig Notaro, Mae Martin, and Fortune Feimster Submit your questions to speakpipe.com/handsomepod Follow us on social media @handsomepod Merch at handsomepod.com Watch Handsome on YouTube This is a Headgum podcast. Follow Headgum on Twitter , Instagram , and Tiktok . Advertise on Handsome via Gumball.fm . See Privacy Policy at https://ar"
-    },
-    {
-      "id": "kill-tony--kt-behind-the-tape-msg-night",
-      "show": "KILL TONY",
-      "title": "KT Behind the Tape: MSG Night 1",
-      "apple_collection_id": 1042361179,
-      "apple_track_id": 1000783389187,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/kt-behind-the-tape-msg-night-1/id1042361179?i=1000783389187&uo=4",
-      "release_date": "2026-08-15",
-      "duration_min": 71,
-      "duration_sec": 4245,
-      "audio_url": "https://clrtpod.com/m/pscrb.fm/rss/p/rsv.simplecastaudio.com/5c11d3b8-db1c-4d5c-86b2-2ac6921d6852/episodes/ec83093d-4d7a-445a-bf71-1c7af5c74ec3/audio/128/default.mp3?aid=rss_feed&awCollectionId=5c11d3b8-db1c-4d5c-86b2-2ac6921d6852&awEpisodeId=ec83093d-4d7a-445a-bf71-1c7af5c74ec3&feed=JZSQrle9",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 67926863,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a0/ad/df/a0addf99-adce-5a42-a138-81d9f8e4562e/mza_8301528492532104652.jpg/600x600bb.jpg",
-      "topics": [
-        "comedy/stand-up"
-      ],
-      "explicit": true,
-      "_description": "An exclusive, behind the scenes look from 2026 KT MSG Night One with guests Adam Ray and Jim Norton Adam Ray, Jim Norton, Pat O'Neill, Ari Matti, David Lucas, Dedrick Flynn, Mike Finoia, D Madness, Michael A. Gonzales, Jon Deas, Matthew Muehling, Grooveline Horns, Joe White, Troy Conrad, Tony Hinchcliffe, Brian Redban - RECORDED – 08/07/2026 Watch Kill Tony and other exclusive content, ad free! Plus tons of perks. Get Kill Tony + for $5/month now at https://killtony.supercast.com/ Hosted by Simp"
-    },
-    {
-      "id": "unexplained--unexplained-s09e30-come-hear-what-we",
-      "show": "Unexplained",
-      "title": "Unexplained S09E30: Come, Hear What We Have to Say (Pt.2 of 2)",
-      "apple_collection_id": 1078112813,
-      "apple_track_id": 1000783311196,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/unexplained-s09e30-come-hear-what-we-have-to-say-pt-2-of-2/id1078112813?i=1000783311196&uo=4",
-      "release_date": "2026-08-14",
-      "duration_min": 35,
-      "duration_sec": 2089,
-      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/4be3ef45-824a-44b3-b437-b038010038fc/41b74cde-43b5-4aa7-8c60-b4a600a9e5f2/audio.mp3?utm_source=Podcast&in_playlist=3eb75c81-5ed8-4148-bb7b-b03801003947",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": 33454696,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
-      "topics": [
-        "paranormal"
-      ],
-      "explicit": false,
-      "_description": "The second and final part of Unexplained S09E30: Come, Hear What We Have to Say (The Scole Experiment). In October of 1993, the living members of the Scole Experiment Group had supposedly made contact with one spirit, but that was just the beginning.&nbsp; And what incredible sights they had to show them... Written by Neil McRobert and Richard MacLean Smith Watch/follow at youtube.com/@unexplainedpod , tiktok.com/@unexplainedpodcast , X @unexplainedpod , facebook.com/unexplainedpodcast , bsky.ap"
-    },
-    {
-      "id": "welcome-to-night-vale--292-collectibles-1999",
-      "show": "Welcome to Night Vale",
-      "title": "292 - Collectibles (1999)",
-      "apple_collection_id": 536258179,
-      "apple_track_id": 1000783406562,
-      "apple_episode_url": "https://podcasts.apple.com/us/podcast/292-collectibles-1999/id536258179?i=1000783406562&uo=4",
-      "release_date": "2026-08-15",
-      "duration_min": 31,
-      "duration_sec": 1855,
-      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/mgln.ai/e/495/pscrb.fm/rss/p/tracking.swap.fm/track/bwUd3PHC9DH3VTlBXDTt/traffic.megaphone.fm/SBP1133758777.mp3",
-      "audio_type": "audio/mpeg",
-      "audio_bytes": null,
-      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/e8/9e/4c/e89e4c80-d0f5-2364-c605-9427d89a5ef8/mza_4087082037828265952.jpg/600x600bb.jpg",
-      "topics": [
-        "fiction",
-        "fiction/drama"
-      ],
-      "explicit": false,
-      "_description": "From the archive (1999): There's a great new webpage on the World Wide Web Weather: \"Candy Cigarettes\" by Calvin Pineda and the Antacids⁠⁠ The voice of Leonard Burton is James Urbaniak Original episode art by Jessica Hayworth Episode transcripts Order Night Vale's signature fragrance, Mostly Void Partially Stars, from Sucreabeille Pre-order THE NUDGE by Joseph Fink Listen to UNLICENSED⁠⁠ by Joseph Fink & Jeffrey Cranor. Only on Audible Welcome to Night Vale Roleplaying Game Subscribe to the Nigh"
+      "_description": "What do popsicle stick Eiffel Towers and ducks have in common? This episode of WeWow, the bonkerballs variety show for kids and families from the creators of Wow in the World, has all of that and more. Dennis and Reggie are back with another weekend full of laughs, listener love, and a duck digestion encore episode that'll have the whole family talking all over again. Whether you're a longtime Wowzer or just tuning in, WeWow on the Weekend is the kind of family variety podcast that makes every c"
     }
   ],
-  "dropped": [
-    {
-      "show": "Wow in the World",
-      "title": "WeWow on the Weekend: Dennis's Least Favorite Things... Mosquitoes and Stinky Socks!",
-      "reason": "no trackId match"
-    }
-  ]
+  "dropped": []
 }
