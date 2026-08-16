@@ -217,8 +217,11 @@ owns the charcoal aisle. A future batch needs a source that explains the machine
 ## 4. Per-segment rule compliance (tiers P and B)
 
 - **L1/L2 floors.** Every segment ≥ 50.3 s. Role floors: four `quote` segments
-  (57.1 / 51.2 / 58.6 / 50.3 s) clear 30 s; every `explanation` clears 60 s
-  (shortest is TRA-3 at 68.1 s); both `exchange` segments clear 75 s.
+  (57.1 / 51.2 / 58.6 / 50.3 s) clear 30 s; every `explanation` clears 60 s;
+  both `exchange` segments clear 75 s. **The shortest `explanation` is TRA-3 at
+  68.1 s *in the running order*** — across the whole pool of 36 it is MOSS-G at
+  67.0 s, which §7 holds back. The distinction matters because
+  `check-forays.mjs` can only evaluate L2/L3 for segments a Foray plays.
 - **L3 ceilings.** Longest is JERK-1 at 237.9 s against the `exchange` maximum
   of 480 s. No `quote` exceeds 90 s.
 - **L4 soft maximum.** **Nothing exceeds 240 s**, so no `long_reason` and no
@@ -425,7 +428,10 @@ Two readings are available and the rule text does not choose:
 
 - **Pairwise / max-over-min** (what is implemented): a triple violates if
   `max/min ≤ 1.2`. **No triple in this ordering violates**, and the tightest is
-  ARG-5/ARG-6/ARG-7 at +32 %.
+  **MOSS-2/MOSS-3/SM-1 at 1.2945 (+29.5 %)** — corrected 2026-08-16, having
+  previously named ARG-5/ARG-6/ARG-7, which is 1.3204 (+32.0 %) and therefore
+  *further* from violating, not closer. `check-forays.test.mjs` now pins the
+  tightest triple so the prose cannot drift again.
 - **Deviation from the triple's mean**: a triple violates if all three sit within
   ±20 % of their own mean. **Three triples violate**: MOSS-2/MOSS-3/SM-1
   (97.9/126.7/101.8, worst deviation 16.5 %), ARG-1/ARG-2/ARG-3

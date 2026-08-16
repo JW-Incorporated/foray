@@ -258,7 +258,8 @@ export function checkForays(files) {
 
     if (foray.kind !== "deep-dive") E(`\`kind\` must be "deep-dive" (#134); got ${JSON.stringify(foray.kind)}`);
     if (foray.status !== "draft" && foray.status !== "published") E('`status` must be "draft" or "published"');
-    if (typeof foray.title !== "string" || !foray.title) E("`title` must be a non-empty string");
+    /* `title` is deliberately not checked here — the copy loop below already
+     * rejects a missing one, and checking it twice reported it twice. */
     if (typeof foray.topic !== "string" || !foray.topic) E("`topic` must be a non-empty string");
     else if (taxonomyNodes.size && !taxonomyNodes.has(foray.topic)) E(`\`topic\` "${foray.topic}" is not a data/taxonomy.json node`);
 
@@ -333,7 +334,17 @@ export function checkForays(files) {
 
       played.push({ ...item, seg, role, duration: seg.end_sec - seg.start_sec });
     }
-    if (!itemsOk || played.length === 0) continue;
+    /* An unresolvable item used to skip every ordering rule for the whole
+     * Foray and leave `report.forays` empty, so one bad segment_id hid D1, D5,
+     * M3, M4 and the audio check behind it — and any caller reading
+     * `report.forays[0]` got `undefined`. CI was still red, but the output was
+     * useless for fixing anything. Now the unresolvable items are dropped, the
+     * rest is judged, and the fact that the verdicts are partial is said out
+     * loud rather than inferred from a missing line. */
+    if (played.length === 0) { E("no resolvable segment items"); continue; }
+    if (!itemsOk) {
+      W(`${foray.items.length - played.length} item(s) did not resolve; every rule below is judged on the ${played.length} that did, so these verdicts are partial`);
+    }
 
     /* ---- derived */
     const durations = played.map((p) => p.duration);
@@ -358,7 +369,20 @@ export function checkForays(files) {
       if (blocks.join("|") !== declared.join("|")) E(`slot blocks play as ${blocks.join(" -> ")} but \`slots\` declares ${declared.join(" -> ")}`);
     }
 
-    /* ---- D1: rolling cut budget */
+    /* ---- D1: rolling cut budget
+     *
+     * TODO(bridges): `starts` is the TAPE timeline — the cumulative sum of
+     * segment durations. The rule is about the listener's 600 s window, and
+     * today the two are the same thing because narration items contribute 0 s
+     * and none exist. The moment a bridge is authored with a duration, every
+     * start after it shifts later in playback and this becomes strictly
+     * conservative: it will report more starts per window than the listener
+     * hears, so it can fail a Foray that is actually fine. Fix it by summing
+     * bridge durations into `starts` when the narration record gains one; the
+     * warning below is here so that day is noticed rather than discovered. */
+    if (foray.items.some((i) => i?.type === "narration")) {
+      W("D1 is computed on the tape timeline; narration items contribute 0 s, so the budget is measured against a shorter clock than the listener's");
+    }
     const budget = d1Budget(runtime);
     const worst = maxStartsInWindow(starts);
     if (worst.count > budget) {
@@ -370,15 +394,30 @@ export function checkForays(files) {
       );
     }
 
-    /* ---- D2: at most 2 consecutive segments under 60 s, and the next >= 150 s */
-    for (let i = 0; i + 1 < durations.length; i++) {
-      if (durations[i] < 60 && durations[i + 1] < 60) {
-        if (durations[i + 2] !== undefined && durations[i + 2] < 60) {
-          E(`D2 FAIL: three consecutive segments under 60 s at ${played[i].label ?? played[i].segment_id}`);
-        } else if (durations[i + 2] !== undefined && durations[i + 2] < 150) {
-          E(`D2 FAIL: two consecutive segments under 60 s must be followed by one >= 150 s; got ${durations[i + 2].toFixed(1)} s`);
+    /* ---- D2: at most 2 consecutive segments under 60 s, and the next >= 150 s
+     *
+     * Walked as RUNS, not as a sliding pair. A pair-wise loop reports a run of
+     * three twice (once from each overlapping pair) and — the real bug — cannot
+     * fire at all when the two short segments are the LAST two, because it
+     * reaches for a recovery segment that does not exist. A Foray that ends on
+     * two 50-second segments breaks the rule exactly as much as one that
+     * continues into a third; there is simply no segment left to recover. */
+    for (let i = 0; i < durations.length; ) {
+      if (durations[i] >= 60) { i++; continue; }
+      let j = i;
+      while (j < durations.length && durations[j] < 60) j++;
+      const runLength = j - i;
+      const name = played[i].label ?? played[i].segment_id;
+      if (runLength > 2) {
+        E(`D2 FAIL: ${runLength} consecutive segments under 60 s starting at ${name}`);
+      } else if (runLength === 2) {
+        if (j >= durations.length) {
+          E(`D2 FAIL: the Foray ends on two consecutive segments under 60 s (${name} onward); the rule requires a following segment of at least 150 s, and there is none`);
+        } else if (durations[j] < 150) {
+          E(`D2 FAIL: two consecutive segments under 60 s at ${name} are followed by ${durations[j].toFixed(1)} s, under the 150 s recovery floor`);
         }
       }
+      i = j;
     }
 
     /* ---- L2/L3/L4: per-role duration bounds, checkable at last (see above) */
@@ -387,8 +426,20 @@ export function checkForays(files) {
       const name = p.label ?? p.segment_id;
       if (p.duration < ROLE_FLOOR_SEC[p.role]) E(`L2 FAIL: ${name} is ${p.duration.toFixed(1)} s, under the ${ROLE_FLOOR_SEC[p.role]} s floor for \`${p.role}\``);
       if (p.duration > ROLE_MAX_SEC[p.role]) E(`L3 FAIL: ${name} is ${p.duration.toFixed(1)} s, over the ${ROLE_MAX_SEC[p.role]} s maximum for \`${p.role}\``);
-      if (p.duration > L4_SOFT_MAX_SEC && !(p.seg.needs_review === true && p.seg.long_reason)) {
-        E(`L4 FAIL: ${name} is ${p.duration.toFixed(1)} s, past the ${L4_SOFT_MAX_SEC} s soft maximum, without \`needs_review\` and a \`long_reason\``);
+      /* L4 is a burden-of-proof flip, not a ceiling: past 240 s a segment must
+       * say WHY. The escape hatch has to be reachable or the rule is silently a
+       * hard reject — and `long_reason` is one of §9's *proposed* additive
+       * fields, so `merge-segments.mjs` does not write it today. It is
+       * therefore accepted from the Foray item as well, the same interim home
+       * `role` uses, and the segment's own value wins the day it exists. */
+      const longReason = p.seg.long_reason ?? p.long_reason ?? null;
+      const flagged = p.seg.needs_review === true || p.needs_review === true;
+      if (p.duration > L4_SOFT_MAX_SEC && !(flagged && longReason)) {
+        E(
+          `L4 FAIL: ${name} is ${p.duration.toFixed(1)} s, past the ${L4_SOFT_MAX_SEC} s soft maximum, ` +
+            `without \`needs_review: true\` and a \`long_reason\`. Neither field is in the segment schema yet ` +
+            `(§9 proposes them), so set both on the Foray item until it is.`
+        );
       }
     }
 
@@ -502,6 +553,10 @@ const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fil
 if (invokedDirectly) {
   const json = process.argv.includes("--json");
   const rootFlag = process.argv.indexOf("--root");
+  if (rootFlag >= 0 && !process.argv[rootFlag + 1]) {
+    console.error("--root needs a directory");
+    process.exit(2);
+  }
   const root = rootFlag >= 0 ? process.argv[rootFlag + 1] : REPO_ROOT;
   const { errors, warnings, report } = checkForays(loadFiles(root));
   if (json) {

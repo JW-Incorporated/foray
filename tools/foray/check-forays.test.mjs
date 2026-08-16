@@ -19,6 +19,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import copyRules from "../../backend/src/copy/rules.js";
 import {
   checkForays,
   loadFiles,
@@ -29,6 +30,7 @@ import {
   D1_WINDOW_SEC,
 } from "./check-forays.mjs";
 
+const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
 const CLI = path.join(HERE, "check-forays.mjs");
@@ -297,6 +299,23 @@ test("d5Triples mean-deviation is the stricter reading, and is warn-only", () =>
   assert.equal(warnings.filter((w) => /mean-deviation/.test(w)).length, 3, "the three §5 names");
 });
 
+test("the tightest pairwise triple is MOSS-2/MOSS-3/SM-1, not ARG-5/6/7", () => {
+  // §5 named ARG-5/6/7 at +32 % as the closest call; it is 1.3204 and
+  // MOSS-2/MOSS-3/SM-1 is 1.2945, so the doc had the wrong triple. Corrected
+  // there and pinned here, because an unpinned number is what drifted.
+  const durations = foray0(files).items.map((i) => durationOf(files, i.segment_id));
+  let tightest = { ratio: Infinity, at: -1 };
+  for (let i = 0; i + 2 < durations.length; i++) {
+    const t = durations.slice(i, i + 3);
+    const ratio = Math.max(...t) / Math.min(...t);
+    if (ratio < tightest.ratio) tightest = { ratio, at: i };
+  }
+  const names = foray0(files).items.slice(tightest.at, tightest.at + 3).map((i) => i.label);
+  assert.deepEqual(names, ["MOSS-2", "MOSS-3", "SM-1"]);
+  assert.equal(tightest.ratio.toFixed(4), "1.2945");
+  assert.ok(tightest.ratio > 1.2, "and it still clears the rule");
+});
+
 test("D5's IQR clause holds at the documented 57.8 s", () => {
   assert.equal(checkForays(files).report.forays[0].d5_iqr_sec, 57.81);
 });
@@ -323,8 +342,25 @@ test("D5 FAILS when every segment is the same length (IQR floor)", () => {
 /* ------------------------------------------------------------- D2/D3/D4/M */
 
 test("L2/L3 hold for every played segment, per §4's role table", () => {
-  const errors = checkForays(files).errors;
-  assert.deepEqual(errors.filter((e) => /L[234] FAIL/.test(e)), []);
+  // Computed directly rather than filtered out of the error list: a test that
+  // filters an array another test already asserts is empty cannot fail on its
+  // own, and reads as coverage it does not have.
+  const floors = { quote: 30, explanation: 60, exchange: 75, narrative: 120 };
+  const maxes = { quote: 90, explanation: 360, exchange: 480, narrative: 480 };
+  for (const item of foray0(files).items) {
+    const d = durationOf(files, item.segment_id);
+    assert.ok(d >= floors[item.role], `${item.label} (${item.role}) is ${d} s, under ${floors[item.role]}`);
+    assert.ok(d <= maxes[item.role], `${item.label} (${item.role}) is ${d} s, over ${maxes[item.role]}`);
+  }
+});
+
+test("no played segment passes L4's 240 s soft maximum", () => {
+  // JERK-1 at 237.93 s is the closest, and §4 says it was cut 2 s under the
+  // line deliberately. Pinned, because L4's escape hatch below is the part
+  // that is easy to get wrong.
+  const longest = Math.max(...foray0(files).items.map((i) => durationOf(files, i.segment_id)));
+  assert.ok(longest <= 240, `longest is ${longest} s`);
+  assert.equal(longest, 237.93);
 });
 
 test("L2 FAILS when an `exchange` drops under its 75 s floor", () => {
@@ -350,6 +386,31 @@ test("L4 FAILS on a segment over 240 s with no long_reason", () => {
   assert.match(errorsFor(f).join("\n"), /L4 FAIL: JERK-1/);
 });
 
+test("L4's escape hatch is reachable — needs_review + long_reason clears it", () => {
+  /* The whole point of L4 is a burden-of-proof flip: past 240 s, SAY WHY.
+   * An escape hatch that cannot be satisfied turns it into a silent hard cap.
+   * `long_reason` is one of §9's proposed additive fields and
+   * merge-segments.mjs does not write it, so the checker also accepts it from
+   * the Foray item — and this test is what proves that path actually works. */
+  const f = clone();
+  const seg = f.segments.segments.find((s) => s.id === "moreish-jerk-jamaica#266");
+  seg.end_sec = seg.start_sec + 250;
+  delete foray0(f).runtime_sec;
+  const item = foray0(f).items.find((i) => i.label === "JERK-1");
+  item.needs_review = true;
+  item.long_reason = "One continuous three-community answer; every cut lands mid-claim.";
+  assert.deepEqual(errorsFor(f).filter((e) => /L4/.test(e)), []);
+});
+
+test("L4's escape hatch needs BOTH fields, not either", () => {
+  const f = clone();
+  const seg = f.segments.segments.find((s) => s.id === "moreish-jerk-jamaica#266");
+  seg.end_sec = seg.start_sec + 250;
+  delete foray0(f).runtime_sec;
+  foray0(f).items.find((i) => i.label === "JERK-1").long_reason = "reason but no flag";
+  assert.match(errorsFor(f).join("\n"), /L4 FAIL: JERK-1/);
+});
+
 test("D3 FAILS when the mean segment duration drops under 90 s", () => {
   const f = clone();
   for (const s of f.segments.segments) s.end_sec = s.start_sec + 70;
@@ -357,10 +418,68 @@ test("D3 FAILS when the mean segment duration drops under 90 s", () => {
   assert.match(errorsFor(f).join("\n"), /D3 FAIL/);
 });
 
-test("D4 FAILS when too many segments are marked `quote`", () => {
+test("D2 FAILS when two sub-60 s segments are followed by a short one", () => {
+  // No segment in the real Foray but TAV-2 (51.2 s) is under 60 s, so D2 is
+  // never exercised by the committed data. Without this test the rule is dead
+  // code — and its trailing-pair bug lived behind exactly that gap.
+  const f = clone();
+  const shrink = (label, sec) => {
+    const id = foray0(f).items.find((i) => i.label === label).segment_id;
+    const s = f.segments.segments.find((x) => x.id === id);
+    s.end_sec = s.start_sec + sec;
+  };
+  shrink("MED-1", 55);
+  shrink("MED-2", 55);
+  shrink("GRID-4", 100); // the recovery segment, under the 150 s floor
+  delete foray0(f).runtime_sec;
+  assert.match(errorsFor(f).join("\n"), /D2 FAIL: two consecutive segments under 60 s at MED-1 are followed by 100\.0 s/);
+});
+
+test("D2 FAILS when the Foray ENDS on two sub-60 s segments", () => {
+  // The trailing-pair case: a pairwise loop reaches for a recovery segment
+  // that does not exist and silently passes. There is no segment left to
+  // recover, which is the violation, not an exemption.
+  const f = clone();
+  for (const label of ["TRA-2", "TRA-3"]) {
+    const id = foray0(f).items.find((i) => i.label === label).segment_id;
+    const s = f.segments.segments.find((x) => x.id === id);
+    s.end_sec = s.start_sec + 55;
+  }
+  delete foray0(f).runtime_sec;
+  assert.match(errorsFor(f).join("\n"), /D2 FAIL: the Foray ends on two consecutive segments under 60 s/);
+});
+
+test("D2 reports a run of three once, not once per overlapping pair", () => {
+  const f = clone();
+  for (const label of ["MED-1", "MED-2", "GRID-4"]) {
+    const id = foray0(f).items.find((i) => i.label === label).segment_id;
+    const s = f.segments.segments.find((x) => x.id === id);
+    s.end_sec = s.start_sec + 55;
+  }
+  delete foray0(f).runtime_sec;
+  const d2 = errorsFor(f).filter((e) => /D2 FAIL/.test(e));
+  assert.equal(d2.length, 1, d2.join("\n"));
+  assert.match(d2[0], /3 consecutive segments under 60 s starting at MED-1/);
+});
+
+test("D4 FAILS on the 20 % share clause", () => {
   const f = clone();
   for (const i of foray0(f).items) i.role = "quote";
-  assert.match(errorsFor(f).join("\n"), /D4 FAIL/);
+  assert.match(errorsFor(f).join("\n"), /D4 FAIL: 32\/32 segments are `quote`/);
+});
+
+test("D4 FAILS on the adjacency clause alone, under the 20 % share", () => {
+  /* Three adjacent quotes out of 32 is 9.4 % — legal by share, illegal by
+   * adjacency. Without this the share clause masks the adjacency loop, and
+   * deleting the loop entirely left the suite green. */
+  const f = clone();
+  for (const label of ["MED-1", "MED-2", "GRID-4"]) {
+    foray0(f).items.find((i) => i.label === label).role = "quote";
+  }
+  const d4 = errorsFor(f).filter((e) => /D4 FAIL/.test(e));
+  assert.equal(d4.length, 1, d4.join("\n"));
+  assert.match(d4[0], /3 adjacent `quote` segments/);
+  assert.doesNotMatch(d4[0], /% cap/, "the share clause must not be what fired");
 });
 
 test("an out-of-enum role is rejected (L6)", () => {
@@ -511,11 +630,17 @@ test("no segment runs past the end of its episode", () => {
 /* ------------------------------------------------------------------- copy */
 
 test("the Foray's own copy obeys the shared copy rules", () => {
-  // Publisher episode titles are quoted fact and deliberately not gated; what
-  // is gated is what we wrote — title, summary and the slot headings a UI
-  // renders. Same BANNED list as backend/test/copyRules.test.ts.
-  const { errors } = checkForays(files);
-  assert.deepEqual(errors.filter((e) => /banned|word limit|over the/.test(e)), []);
+  // Applied directly against the same BANNED list backend/test/copyRules.test.ts
+  // uses, rather than filtered out of an error array another test already
+  // asserts is empty. Publisher episode titles are quoted fact and are
+  // deliberately not gated; what is gated is what we wrote.
+  const f = foray0(files);
+  const ours = [f.title, f.summary, ...f.slots.map((s) => s.title)];
+  for (const text of ours) {
+    assert.ok(text, "a copy field is empty");
+    assert.ok(wordCount(text) <= MAX_WHY_LINE_WORDS, `${wordCount(text)} words: "${text}"`);
+    for (const rx of BANNED) assert.doesNotMatch(text, rx, `banned ${rx} in "${text}"`);
+  }
 });
 
 test("a banned phrase in the summary is rejected", () => {
