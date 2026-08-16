@@ -1,4 +1,5 @@
-# Auto-merge bot CONTENT PRs once their required checks pass.
+# Auto-merge bot CONTENT PRs once their required checks pass — and, when it
+# does not, say plainly why.
 #
 # Why this exists (2026-07-24): content PRs used to sit open awaiting a human
 # merge, and in Swift2 the cloud agents babysat them with hourly self-check-in
@@ -27,6 +28,37 @@
 #   - Label a PR `hold` or `founder-decision` to stop that one.
 #   - Set repo variable AUTOMERGE_FREEZE to halt ALL of it instantly, with no
 #     PR and no deploy needed. This is the kill switch for a runaway army.
+#
+# ── WHAT CHANGED ON 2026-08-16, AND WHY ──────────────────────────────────────
+#
+# 1. THE JOB IS NO LONGER CALLED `enable-automerge`. PR #175 reported a GREEN
+#    check named `enable-automerge` while auto-merge was never armed — the name
+#    promised an action and delivered a job status, which is worse than no check
+#    at all because it reads as reassurance. The job is now `automerge-decision`
+#    and its FIRST line of output is ARMED or NOT ARMED, with the reason.
+#    Renaming a check is a visible event: `enable-automerge` will show as a
+#    stale/absent context on any PR opened before this lands. It is not in
+#    `protect-main`'s required list, so nothing is blocked by its disappearance.
+#
+# 2. THE POLICY MOVED OUT OF THIS FILE. The allow/deny lists and the matcher are
+#    now `tools/ci/path-policy.mjs`, with a real test suite. They used to be two
+#    heredocs and a hand-rolled `case`-glob loop that nothing could unit-test,
+#    and — because they lived inside this job — they governed only what Actions
+#    does. Two PRs were merged from a laptop with `gh pr merge` and a founder
+#    token and walked straight past the deny-list. `.github/workflows/
+#    path-policy.yml` now evaluates the same policy as a status check on every
+#    PR; see its header for the honest limit of what that buys.
+#
+# 3. THIS JOB NOW CHECKS OUT CODE — AND IT MUST BE THE BASE, NEVER THE HEAD.
+#    The previous version noted, correctly, that it contained no `actions/
+#    checkout` and therefore never executed PR-authored code while holding a
+#    `contents: write` + `pull-requests: write` token. Calling a module means
+#    checking something out, so it checks out `base.sha` — the tip of `main`
+#    that the PR targets — with a sparse checkout of `tools/ci` and no persisted
+#    credentials. A PR CANNOT influence the policy that judges it: to change the
+#    policy you must first merge a change to `tools/ci/`, which is a DENIED path
+#    and therefore needs a human. That deny entry is what makes this safe;
+#    do not remove it.
 
 name: automerge-nightly
 
@@ -37,139 +69,87 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write # labels are an issues-API resource
 
 concurrency:
   group: automerge-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  enable-automerge:
+  # The check name a reader sees. "decision", not "enable": green means a
+  # decision was reached and recorded, not that anything will merge.
+  automerge-decision:
+    # The fork clause is new (2026-08-16): every write below needs a write
+    # token and a `pull_request` from a fork gets a read-only one, so this job
+    # could only ever have failed on one. Skipping says "not applicable"; the
+    # red job it replaces said "CI is broken".
     if: >-
       github.event.pull_request.draft == false &&
-      github.event.pull_request.base.ref == 'main'
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    # NOTE: no actions/checkout anywhere in this job. It only calls `gh`
-    # against the API and never executes PR-authored code.
     steps:
-      - name: Decide and enable
+      # BASE, not head. See point 3 in the header — this is the whole reason it
+      # is safe for this job to run code at all.
+      - name: Check out the policy from main (never from the PR)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: tools/ci
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Gather PR facts
+        id: facts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
-          FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
         run: |
           set -euo pipefail
+          # REST + --paginate, NOT `gh pr view --json files`: that one is a
+          # single GraphQL page capped at 100 files, so a large PR would report
+          # a truncated list and this job could arm on a diff whose 101st file
+          # is `.github/workflows/ci.yml`. Truncation that fails OPEN is the one
+          # failure mode a path allowlist cannot survive.
+          gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' > changed-files.txt
+          gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name'  > pr-labels.txt
+          echo "changed files: $(wc -l < changed-files.txt)"
 
-          if [ -n "${FREEZE:-}" ] && [ "$FREEZE" != "false" ] && [ "$FREEZE" != "0" ]; then
-            echo "AUTOMERGE_FREEZE is set (\"$FREEZE\") — not enabling auto-merge."
-            exit 0
-          fi
+      - name: Decide
+        id: decide
+        env:
+          FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
+          PR: ${{ github.event.pull_request.number }}
+        # Exits 0 whether or not it arms: "not armed" is a decision, and a red
+        # check here would be indistinguishable from CI actually failing.
+        run: |
+          node tools/ci/path-policy.mjs decide \
+            --files-from changed-files.txt \
+            --labels-from pr-labels.txt \
+            --freeze "${FREEZE:-}" \
+            --pr "$PR" \
+            --base main \
+            --summary "$GITHUB_STEP_SUMMARY" \
+            --github-output "$GITHUB_OUTPUT"
 
-          # DENIED wins over ALLOWED and is checked first.
-          #
-          # These are the files that DEFINE the gates, the operating rules, or
-          # the deploy. A bot that can auto-merge a change to its own checks has
-          # no checks: one PR widens the allowlist, weakens a required job, or
-          # rewrites the standing instructions every future session reads, and
-          # every downstream guarantee is gone. Same reasoning as keeping the
-          # Claude_Code_Remote connector off every routine but the auditor.
-          #
-          # .github/ and .claude/ are not in ALLOWED either — they are listed
-          # here so that carelessly widening ALLOWED later cannot expose them.
-          DENIED_PREFIXES='
-          .github/
-          .claude/
-          CLAUDE.md
-          docs/DECISIONS.md
-          docs/adr/
-          docs/roles.md
-          docs/agents/routine-invariants.md
-          backend/src/config/
-          '
+      - name: Enable auto-merge
+        if: steps.decide.outputs.armed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: gh pr merge "$PR" --repo "$REPO" --squash --auto --delete-branch
 
-          # Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
-          #   T1 data/         generated content; covered by the data invariants
-          #                    in ci.yml (refs, dupes, taxonomy, audio scheme,
-          #                    tokened-URL leaks, DAI flags) + copy rules
-          #   T2 docs/         low blast radius; governance paths denied above
-          #   T3 player/ tools/ test/   covered by node --test suites in ci.yml
-          #   T4 app.js styles.css search-engine.js
-          #                    covered by test/app-security.test.js (esc/safeUrl
-          #                    behaviour + CSP/href static invariants) and
-          #                    node --check. See that file's header for what
-          #                    this coverage does NOT include.
-          #   T2 STATE.md      the cross-session announcement board. Added
-          #                    2026-08-13 (PR #167 raised it): CLAUDE.md tells
-          #                    every session to announce its workstream there,
-          #                    but STATE.md was in NEITHER list, so obeying that
-          #                    instruction guaranteed a founder merge every
-          #                    time — friction pointing the wrong way. It is a
-          #                    coordination doc, not a gate definition: nothing
-          #                    reads it to decide anything, so a wrong entry
-          #                    misinforms the next session and cannot weaken a
-          #                    check. Same blast radius as docs/, which is why
-          #                    it sits in T2.
-          # backend/ is deliberately absent: its suite is strong, but nothing
-          # has asked for agent-authored backend PRs to land unread yet.
-          #
-          # BEFORE ADDING ANYTHING HERE: DENIED_PREFIXES above is checked first
-          # and wins, so widening this list cannot expose a denied path. What it
-          # CAN do is let a file land unread whose contents change behaviour.
-          # The test is not "is it low risk?" but "if a bot wrote something
-          # false here, would any gate, instruction or deploy behave
-          # differently?" If yes, it belongs in DENIED, not here.
-          ALLOWED_PREFIXES='
-          data/
-          docs/
-          player/
-          tools/
-          test/
-          app.js
-          styles.css
-          search-engine.js
-          STATE.md
-          '
-
-          labels=$(gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name')
-          for blocker in hold founder-decision; do
-            if grep -qx "$blocker" <<<"$labels"; then
-              echo "PR #$PR carries the '$blocker' label — leaving it for a human."
-              exit 0
-            fi
-          done
-
-          files=$(gh pr view "$PR" --repo "$REPO" --json files --jq '.files[].path')
-          if [ -z "$files" ]; then
-            echo "No files reported for PR #$PR — refusing to auto-merge."
-            exit 0
-          fi
-
-          while IFS= read -r f; do
-            [ -z "$f" ] && continue
-
-            # Denied first — it overrides the allowlist unconditionally.
-            while IFS= read -r prefix; do
-              [ -z "$prefix" ] && continue
-              case "$f" in
-                "$prefix"*)
-                  echo "PR #$PR touches protected path '$f' — leaving it for a human."
-                  exit 0
-                  ;;
-              esac
-            done <<<"$(echo "$DENIED_PREFIXES" | tr -d ' ')"
-
-            ok=0
-            while IFS= read -r prefix; do
-              [ -z "$prefix" ] && continue
-              case "$f" in
-                "$prefix"*) ok=1; break ;;
-              esac
-            done <<<"$(echo "$ALLOWED_PREFIXES" | tr -d ' ')"
-            if [ "$ok" -eq 0 ]; then
-              echo "PR #$PR touches non-allowlisted path '$f' — leaving it for a human."
-              exit 0
-            fi
-          done <<<"$files"
-
-          echo "PR #$PR is content-only and unlabelled for hold — enabling auto-merge."
-          gh pr merge "$PR" --repo "$REPO" --squash --auto --delete-branch
+      # NOTE: the `needs-founder` queue label is deliberately NOT written here,
+      # even though `steps.decide.outputs.needs_founder` says exactly what it
+      # should be. `pr-hygiene.yml` is its single writer.
+      #
+      # Two writers would oscillate. This job cannot see mergeability, so it
+      # would queue a CONFLICTING PR to a founder; pr-hygiene deliberately does
+      # not (a conflict needs the author, not an approval) and would remove the
+      # label again. Each write fires a `labeled`/`unlabeled` event, which this
+      # workflow listens to, so the pair would trade the label back and forth
+      # for several runs before settling — noise, and a queue that reads
+      # differently depending on which workflow ran last. One writer, one truth.
+      # The output above stays because it is genuinely useful in the log.

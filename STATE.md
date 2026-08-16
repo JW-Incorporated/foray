@@ -7,6 +7,26 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### merge mechanics — near-zero founder merges (2026-08-16, one PR, no follow-up)
+
+- **What:** `ci/zero-founder-merges`. The path allow/deny policy moves out of
+  `.github/workflows/automerge-nightly.yml` into `tools/ci/path-policy.mjs`
+  (tested), `backend/test/` is allowlisted while `backend/src/` and `tools/ci/`
+  are denied, `enable-automerge` is renamed `automerge-decision` and now reports
+  ARMED / NOT ARMED with the reason, a new `pr-hygiene` workflow auto-updates
+  behind PRs and labels + comments-once on conflicts, and `HUMAN-ACTIONS.md`
+  now exists as the batched "waiting on you" list.
+- **Owned files:** `.github/workflows/*`, `tools/ci/path-policy*`,
+  `tools/ci/pr-triage*`, `HUMAN-ACTIONS.md`.
+- **Shared files it touches:** `test/suite-integrity.test.js` (two new floors),
+  `docs/roles.md` (merge-authority section), this file.
+- **Heads-up:** `HUMAN-ACTIONS.md` is now auto-merge-allowlisted, so filing an
+  owner action no longer costs a founder merge. The generated block in it is
+  owned by `node tools/ci/pr-triage.mjs waiting --write` — do not hand-edit
+  between its markers.
+- **Status:** PR open, not merged. `path-policy` ships report-only; making it
+  block is Wyatt's call (HUMAN-ACTIONS.md #1).
+
 ### transcription — self-hosted ASR feasibility (Wyatt's Claude, started 2026-08-11)
 
 - **What:** the T-packages of epic #115 — can we transcribe episodes ourselves,

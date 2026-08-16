@@ -4,6 +4,17 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Added 2026-08-16, and it is load-bearing rather than a convenience.
+  # `.github/workflows/pr-hygiene.yml` updates PR branches that have fallen
+  # behind `main`. That changes the PR's head SHA, and `protect-main`'s required
+  # checks (`backend`, `data-and-site`) are matched against THAT SHA — but a
+  # push made with the automatic GITHUB_TOKEN does not create a workflow run
+  # (GitHub's anti-recursion rule), so the updated PR would sit forever at
+  # "Expected — waiting for status to be reported". `workflow_dispatch` is one
+  # of the two documented exceptions to that rule, so pr-hygiene dispatches this
+  # workflow on the PR's head branch and the required checks report on the new
+  # SHA. Removing this trigger would silently strand every auto-updated PR.
+  workflow_dispatch: {}
 
 jobs:
   backend:

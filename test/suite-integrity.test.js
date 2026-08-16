@@ -59,6 +59,8 @@ const FLOORS = {
   "test/app-security.test.js": 18,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
+  "tools/ci/path-policy.test.mjs": 75,
+  "tools/ci/pr-triage.test.mjs": 64,
   "tools/ci/run-suites.test.mjs": 36,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,

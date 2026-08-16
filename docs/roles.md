@@ -69,3 +69,46 @@ CI/CD config, or release process — those stay Wyatt's final call per the
 not discussed with Wyatt first. Wyatt should review this section and the
 corresponding `CLAUDE.md` change and confirm he's fine with it — until then,
 treat it as provisional.
+
+## What actually requires a founder to merge (updated 2026-08-16)
+
+The section above is about *authority*: whose call it is. This one is about
+*mechanism*: what still lands on a human's desk after the machinery has done
+everything it can. Wyatt approved this mechanism and the `.github/` changes it
+needed — "Yes, make all those changes and merge the associated PRs."
+
+**One rule, one implementation.** The allow/deny path lists live in
+`tools/ci/path-policy.mjs` with a test suite. They used to be two heredocs
+inside `.github/workflows/automerge-nightly.yml`, which meant they governed only
+what GitHub Actions did — on 2026-08-16 two PRs were merged from a laptop with
+`gh pr merge` and a founder token and went past them, because on that route
+there was nothing to go past. The same module now backs both the auto-merge
+decision and a `path-policy` status check that reports on every PR.
+
+**A PR merges without a founder when** every changed path is in
+`ALLOWED_PREFIXES` (`data/`, `docs/`, `player/`, `tools/`, `test/`,
+`backend/test/`, `app.js`, `styles.css`, `search-engine.js`, `STATE.md`,
+`HUMAN-ACTIONS.md`), it carries neither `hold` nor `founder-decision`, and
+`AUTOMERGE_FREEZE` is unset. Required checks still gate it: nothing red merges.
+
+**A PR needs a founder when** it touches a governed path
+(`.github/`, `.claude/`, `CLAUDE.md`, `docs/DECISIONS.md`, `docs/adr/`,
+**this file**, `docs/agents/routine-invariants.md`, `backend/src/`, `tools/ci/`)
+or a path in neither list. Those PRs are labelled `needs-founder`
+automatically and collect in `HUMAN-ACTIONS.md`, so the residue is one batched
+glance rather than something anyone has to notice.
+
+**`backend/test/` is on the merge-without-a-founder side, `backend/src/` is
+explicitly on the other.** A test-only backend change cannot break production:
+a wrong assertion turns the required `backend` check red and the PR cannot
+merge at all. The blast radius is a red build, not a bad deploy.
+
+**Once `path-policy` is enforcing** (HUMAN-ACTIONS.md #1 — Wyatt's call, not
+done yet), touching a governed path becomes a founder **approval** — apply the
+`founder-approved` label — rather than a founder **merge**. Be clear-eyed about
+that trade: it is a guardrail against accidents and a record of intent, not a
+wall. Both founders have admin and admin can override a required check, and the
+check is satisfied by a label that anything with repo write access can apply.
+It buys visibility and one consistent rule across both merge routes. A signal an
+agent genuinely cannot produce would need CODEOWNERS review from a
+founders-only team; that is a separate decision.
