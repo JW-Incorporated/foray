@@ -78,6 +78,23 @@ description and a sample of its recent episodes.
      show's *actual* content (not just its genre) fits that node. Don't
      pad the list — 1–4 nodes is typical; a narrowly-focused show may
      genuinely have just one.
+   - **Prefer the most specific node that the evidence supports, and emit
+     its parent alongside it.** A bare top-level branch is the right
+     answer only for a show that genuinely ranges across its whole branch
+     (Science Friday really is `science`). It is the wrong answer when a
+     child node fits: before the 2026-08 taxonomy review, 374 shows sat on
+     `food` while its two children held 21 between them, which made every
+     one of those shows invisible to a listener who had turned up
+     "Grilling & barbecue" specifically. Emitting `food/grilling-bbq` at
+     0.8 **and** `food` at 0.5 is better than `food` alone; the parent
+     keeps branch-level matching working, the child is what makes the
+     interest slider fire. If a child node exists that you would have
+     invented for this show, use it.
+   - **Do not invent a node to get more specific.** If no child fits,
+     `food` alone is correct and honest — say so in the rationale. The
+     merge step rejects the whole show on an unknown id
+     (`tools/classify/merge-results.mjs`), so a guessed node costs more
+     than a coarse one.
    - **Weigh the Tier-0 prior, don't defer to it.** It's a genre-derived
      guess that is often too coarse (this is the whole reason this
      pipeline exists — see Science Friday above). If the description and

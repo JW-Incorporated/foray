@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "notes": "Two-level interest taxonomy per 03_CURATION_SPEC. Custom nodes anchor to Apple Podcasts standard categories (the industry taxonomy) for interop; weights are user-editable. depth is a per-episode attribute, not a taxonomy dimension (see docs/research/curation-practices.md).",
+  "notes": "Two-level interest taxonomy per 03_CURATION_SPEC. Node ids are stable identifiers: data/discover.json, data/session.json, data/segments.json, data/personas.json, data/semantic-index.json, data/ladders.json and data/genre-taxonomy-map.json all key off them, and CI plus tools/segments/merge-segments.mjs reject any topic that is not a node here. Additions are cheap; renames and removals are not — see docs/research/taxonomy-review-2026-08.md. apple_anchor is an OPTIONAL interop hint used to pre-filter candidate feeds before classification, not the taxonomy's skeleton: Apple has no category for engineering, philosophy-as-discipline, mathematics beyond Science, food beyond Arts > Food, or boxing/MMA, and several of its categories (Documentary, Personal Journals, Courses, How To, After Shows, Improv, the three Music subcategories) sort by format rather than subject. A null anchor therefore records a real gap in Apple's tree, not a missing value. depth is a per-episode attribute, not a taxonomy dimension (see docs/research/curation-practices.md).",
   "nodes": [
     {
       "id": "engineering",
@@ -159,7 +159,7 @@
       "id": "aviation",
       "parent": null,
       "label": "Aviation",
-      "apple_anchor": null,
+      "apple_anchor": "Leisure > Aviation",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -168,7 +168,7 @@
       "id": "aviation/accidents",
       "parent": "aviation",
       "label": "Accidents",
-      "apple_anchor": null,
+      "apple_anchor": "Leisure > Aviation",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -195,7 +195,7 @@
       "id": "food",
       "parent": null,
       "label": "Food",
-      "apple_anchor": null,
+      "apple_anchor": "Arts > Food",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -204,7 +204,7 @@
       "id": "food/cooking-science",
       "parent": "food",
       "label": "Cooking Science",
-      "apple_anchor": null,
+      "apple_anchor": "Arts > Food",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -231,7 +231,7 @@
       "id": "math",
       "parent": null,
       "label": "Math",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Mathematics",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -240,7 +240,7 @@
       "id": "math/puzzles",
       "parent": "math",
       "label": "Puzzles",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Mathematics",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -249,7 +249,7 @@
       "id": "medicine",
       "parent": null,
       "label": "Medicine",
-      "apple_anchor": null,
+      "apple_anchor": "Health & Fitness > Medicine",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -258,7 +258,7 @@
       "id": "medicine/biology",
       "parent": "medicine",
       "label": "Biology",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Life Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -267,7 +267,7 @@
       "id": "music",
       "parent": null,
       "label": "Music",
-      "apple_anchor": null,
+      "apple_anchor": "Music",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -276,7 +276,7 @@
       "id": "music/theory-production",
       "parent": "music",
       "label": "Theory Production",
-      "apple_anchor": null,
+      "apple_anchor": "Music > Music Commentary",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -285,7 +285,7 @@
       "id": "nature",
       "parent": null,
       "label": "Nature",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Nature",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -294,7 +294,7 @@
       "id": "nature/animal-cognition",
       "parent": "nature",
       "label": "Animal Cognition",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Life Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -303,7 +303,7 @@
       "id": "nature/ocean-science",
       "parent": "nature",
       "label": "Ocean Science",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Earth Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -312,7 +312,7 @@
       "id": "sports",
       "parent": null,
       "label": "Sports",
-      "apple_anchor": null,
+      "apple_anchor": "Sports",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -321,7 +321,7 @@
       "id": "sports/biomechanics",
       "parent": "sports",
       "label": "Biomechanics",
-      "apple_anchor": null,
+      "apple_anchor": "Sports",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -330,7 +330,7 @@
       "id": "space",
       "parent": null,
       "label": "Space",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Astronomy",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -339,7 +339,7 @@
       "id": "space/rockets",
       "parent": "space",
       "label": "Rockets",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Astronomy",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -348,7 +348,7 @@
       "id": "computing",
       "parent": null,
       "label": "Computing",
-      "apple_anchor": null,
+      "apple_anchor": "Technology",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -357,7 +357,7 @@
       "id": "computing/history",
       "parent": "computing",
       "label": "History",
-      "apple_anchor": null,
+      "apple_anchor": "Technology",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -366,7 +366,7 @@
       "id": "economics",
       "parent": null,
       "label": "Economics",
-      "apple_anchor": null,
+      "apple_anchor": "Business",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -375,7 +375,7 @@
       "id": "economics/markets",
       "parent": "economics",
       "label": "Markets",
-      "apple_anchor": null,
+      "apple_anchor": "Business > Investing",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -384,7 +384,7 @@
       "id": "psychology",
       "parent": null,
       "label": "Psychology",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Social Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -393,7 +393,7 @@
       "id": "psychology/decision-making",
       "parent": "psychology",
       "label": "Decision Making",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Social Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -402,7 +402,7 @@
       "id": "nature/earth-science",
       "parent": "nature",
       "label": "Earth Science",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Earth Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -411,7 +411,7 @@
       "id": "engineering/disasters",
       "parent": "engineering",
       "label": "Disasters",
-      "apple_anchor": null,
+      "apple_anchor": "Technology",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -420,7 +420,7 @@
       "id": "automotive",
       "parent": null,
       "label": "Automotive",
-      "apple_anchor": null,
+      "apple_anchor": "Leisure > Automotive",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -429,7 +429,7 @@
       "id": "automotive/racing",
       "parent": "automotive",
       "label": "Racing",
-      "apple_anchor": null,
+      "apple_anchor": "Leisure > Automotive",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -438,7 +438,7 @@
       "id": "engineering/energy-grid",
       "parent": "engineering",
       "label": "Energy Grid",
-      "apple_anchor": null,
+      "apple_anchor": "Technology",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -447,7 +447,7 @@
       "id": "philosophy",
       "parent": null,
       "label": "Philosophy",
-      "apple_anchor": null,
+      "apple_anchor": "Society & Culture > Philosophy",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -456,7 +456,7 @@
       "id": "philosophy/ideas",
       "parent": "philosophy",
       "label": "Ideas",
-      "apple_anchor": null,
+      "apple_anchor": "Society & Culture > Philosophy",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -465,7 +465,7 @@
       "id": "craft/photography",
       "parent": "craft",
       "label": "Photography",
-      "apple_anchor": null,
+      "apple_anchor": "Arts > Visual Arts",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -474,7 +474,7 @@
       "id": "craft/filmmaking",
       "parent": "craft",
       "label": "Filmmaking",
-      "apple_anchor": null,
+      "apple_anchor": "TV & Film",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -483,7 +483,7 @@
       "id": "science/storytelling",
       "parent": "science",
       "label": "Storytelling",
-      "apple_anchor": null,
+      "apple_anchor": "Society & Culture > Documentary",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -492,7 +492,7 @@
       "id": "business/founders",
       "parent": "business",
       "label": "Founders",
-      "apple_anchor": null,
+      "apple_anchor": "Business > Entrepreneurship",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -501,7 +501,7 @@
       "id": "history/military-modern",
       "parent": "history",
       "label": "Military Modern",
-      "apple_anchor": null,
+      "apple_anchor": "History",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -528,7 +528,7 @@
       "id": "science/chemistry",
       "parent": "science",
       "label": "Chemistry",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Chemistry",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -537,7 +537,7 @@
       "id": "adventure",
       "parent": null,
       "label": "Adventure",
-      "apple_anchor": null,
+      "apple_anchor": "Sports > Wilderness",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -546,7 +546,7 @@
       "id": "adventure/exploration",
       "parent": "adventure",
       "label": "Exploration",
-      "apple_anchor": null,
+      "apple_anchor": "Sports > Wilderness",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -555,7 +555,7 @@
       "id": "gaming",
       "parent": null,
       "label": "Gaming",
-      "apple_anchor": null,
+      "apple_anchor": "Leisure > Video Games",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -564,7 +564,7 @@
       "id": "gaming/design",
       "parent": "gaming",
       "label": "Design",
-      "apple_anchor": null,
+      "apple_anchor": "Leisure > Video Games",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -573,7 +573,7 @@
       "id": "medicine/neuroscience",
       "parent": "medicine",
       "label": "Neuroscience",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Life Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -582,7 +582,7 @@
       "id": "society",
       "parent": null,
       "label": "Society",
-      "apple_anchor": null,
+      "apple_anchor": "Society & Culture",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -591,7 +591,7 @@
       "id": "society/law",
       "parent": "society",
       "label": "Law",
-      "apple_anchor": null,
+      "apple_anchor": "Society & Culture",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -600,7 +600,7 @@
       "id": "food/fermentation",
       "parent": "food",
       "label": "Fermentation",
-      "apple_anchor": null,
+      "apple_anchor": "Arts > Food",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -609,7 +609,7 @@
       "id": "nature/paleontology",
       "parent": "nature",
       "label": "Paleontology",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Natural Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -618,7 +618,7 @@
       "id": "history/archaeology",
       "parent": "history",
       "label": "Archaeology",
-      "apple_anchor": null,
+      "apple_anchor": "History",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -627,7 +627,7 @@
       "id": "nature/weather",
       "parent": "nature",
       "label": "Weather",
-      "apple_anchor": null,
+      "apple_anchor": "Science > Earth Sciences",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -636,7 +636,7 @@
       "id": "culture",
       "parent": null,
       "label": "Culture",
-      "apple_anchor": null,
+      "apple_anchor": "Arts",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -645,7 +645,7 @@
       "id": "culture/mythology",
       "parent": "culture",
       "label": "Mythology",
-      "apple_anchor": null,
+      "apple_anchor": "Society & Culture",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -654,7 +654,7 @@
       "id": "culture/art",
       "parent": "culture",
       "label": "Art",
-      "apple_anchor": null,
+      "apple_anchor": "Arts > Visual Arts",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -663,7 +663,7 @@
       "id": "music/classical",
       "parent": "music",
       "label": "Classical",
-      "apple_anchor": null,
+      "apple_anchor": "Music > Music Commentary",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -672,7 +672,7 @@
       "id": "sports/endurance",
       "parent": "sports",
       "label": "Endurance",
-      "apple_anchor": null,
+      "apple_anchor": "Sports > Running",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -708,7 +708,7 @@
       "id": "craft/woodworking",
       "parent": "craft",
       "label": "Woodworking",
-      "apple_anchor": null,
+      "apple_anchor": "Leisure > Crafts",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -717,7 +717,7 @@
       "id": "engineering/ai-robotics",
       "parent": "engineering",
       "label": "Ai Robotics",
-      "apple_anchor": null,
+      "apple_anchor": "Technology",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
@@ -1338,10 +1338,415 @@
       "id": "culture/pop-culture",
       "parent": "culture",
       "label": "Pop Culture",
-      "apple_anchor": null,
+      "apple_anchor": "Society & Culture",
       "weight": 0.5,
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
+    },
+    {
+      "id": "food/grilling-bbq",
+      "parent": "food",
+      "label": "Grilling & barbecue",
+      "apple_anchor": "Arts > Food",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "food/food-history",
+      "parent": "food",
+      "label": "Food history & foodways",
+      "apple_anchor": "Arts > Food",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "food/drinks",
+      "parent": "food",
+      "label": "Coffee, tea & drinks",
+      "apple_anchor": "Arts > Food",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "food/baking",
+      "parent": "food",
+      "label": "Baking & pastry",
+      "apple_anchor": "Arts > Food",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "food/restaurants-chefs",
+      "parent": "food",
+      "label": "Restaurants & chefs",
+      "apple_anchor": "Arts > Food",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "food/cuisines",
+      "parent": "food",
+      "label": "World cuisines",
+      "apple_anchor": "Arts > Food",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "true-crime/investigative",
+      "parent": "true-crime",
+      "label": "Investigative & reported",
+      "apple_anchor": "True Crime",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "true-crime/cold-cases",
+      "parent": "true-crime",
+      "label": "Cold cases & missing persons",
+      "apple_anchor": "True Crime",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "true-crime/justice-forensics",
+      "parent": "true-crime",
+      "label": "Courts, forensics & wrongful convictions",
+      "apple_anchor": "True Crime",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "true-crime/fraud-cults",
+      "parent": "true-crime",
+      "label": "Fraud, scams & cults",
+      "apple_anchor": "True Crime",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "hobbies/collecting",
+      "parent": "hobbies",
+      "label": "Collecting",
+      "apple_anchor": "Leisure > Hobbies",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "hobbies/gardening",
+      "parent": "hobbies",
+      "label": "Gardening & beekeeping",
+      "apple_anchor": "Leisure > Home & Garden",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "hobbies/outdoors",
+      "parent": "hobbies",
+      "label": "Hunting, fishing & outdoors",
+      "apple_anchor": "Leisure > Hobbies",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "hobbies/genealogy",
+      "parent": "hobbies",
+      "label": "Genealogy & family history",
+      "apple_anchor": "Leisure > Hobbies",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "relationships/dating",
+      "parent": "relationships",
+      "label": "Dating",
+      "apple_anchor": "Society & Culture > Relationships",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "relationships/marriage-partnership",
+      "parent": "relationships",
+      "label": "Marriage & partnership",
+      "apple_anchor": "Society & Culture > Relationships",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "relationships/intimacy",
+      "parent": "relationships",
+      "label": "Intimacy",
+      "apple_anchor": "Health & Fitness > Sexuality",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "travel/destinations",
+      "parent": "travel",
+      "label": "Destinations & guides",
+      "apple_anchor": "Society & Culture > Places & Travel",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "travel/theme-parks",
+      "parent": "travel",
+      "label": "Theme parks & attractions",
+      "apple_anchor": "Leisure > Hobbies",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "travel/outdoors-parks",
+      "parent": "travel",
+      "label": "Parks & the outdoors",
+      "apple_anchor": "Society & Culture > Places & Travel",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "personal-journals/narrative-storytelling",
+      "parent": "personal-journals",
+      "label": "Narrative storytelling",
+      "apple_anchor": "Society & Culture > Personal Journals",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "personal-journals/oral-history",
+      "parent": "personal-journals",
+      "label": "Oral history & witness accounts",
+      "apple_anchor": "History",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "paranormal/ghosts-hauntings",
+      "parent": "paranormal",
+      "label": "Ghosts & hauntings",
+      "apple_anchor": null,
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "paranormal/cryptids-folklore",
+      "parent": "paranormal",
+      "label": "Cryptids & folklore",
+      "apple_anchor": null,
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "paranormal/conspiracies",
+      "parent": "paranormal",
+      "label": "Conspiracies & the unexplained",
+      "apple_anchor": null,
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "music/jazz",
+      "parent": "music",
+      "label": "Jazz",
+      "apple_anchor": null,
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "music/hip-hop",
+      "parent": "music",
+      "label": "Hip-hop & rap",
+      "apple_anchor": null,
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "music/pop-global",
+      "parent": "music",
+      "label": "Pop & global music",
+      "apple_anchor": null,
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "music/music-history",
+      "parent": "music",
+      "label": "Music history",
+      "apple_anchor": "Music > Music History",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "computing/cybersecurity",
+      "parent": "computing",
+      "label": "Cybersecurity",
+      "apple_anchor": "Technology",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "computing/software-engineering",
+      "parent": "computing",
+      "label": "Software engineering",
+      "apple_anchor": "Technology",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "computing/internet-culture",
+      "parent": "computing",
+      "label": "Internet culture",
+      "apple_anchor": "Technology",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "gaming/esports",
+      "parent": "gaming",
+      "label": "Esports",
+      "apple_anchor": "Leisure > Video Games",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "gaming/tabletop",
+      "parent": "gaming",
+      "label": "Board games & tabletop",
+      "apple_anchor": "Leisure > Games",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "gaming/game-history",
+      "parent": "gaming",
+      "label": "Video game history",
+      "apple_anchor": "Leisure > Video Games",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "sports/combat-sports",
+      "parent": "sports",
+      "label": "Combat sports",
+      "apple_anchor": null,
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "society/immigration-diaspora",
+      "parent": "society",
+      "label": "Immigration & diaspora",
+      "apple_anchor": "Society & Culture",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "society/lgbtq",
+      "parent": "society",
+      "label": "LGBTQ+ life & culture",
+      "apple_anchor": "Society & Culture",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "economics/crypto",
+      "parent": "economics",
+      "label": "Cryptocurrency & digital assets",
+      "apple_anchor": "Business > Investing",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "health/meditation",
+      "parent": "health",
+      "label": "Meditation & mindfulness",
+      "apple_anchor": "Health & Fitness > Mental Health",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "space/astronomy",
+      "parent": "space",
+      "label": "Astronomy",
+      "apple_anchor": "Science > Astronomy",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "automotive/ev-future",
+      "parent": "automotive",
+      "label": "Electric & future vehicles",
+      "apple_anchor": "Leisure > Automotive",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "aviation/flight-history",
+      "parent": "aviation",
+      "label": "Flight & aviation history",
+      "apple_anchor": "Leisure > Aviation",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "philosophy/ethics",
+      "parent": "philosophy",
+      "label": "Ethics & moral philosophy",
+      "apple_anchor": "Society & Culture > Philosophy",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
+    },
+    {
+      "id": "history/social-history",
+      "parent": "history",
+      "label": "Social & everyday history",
+      "apple_anchor": "History",
+      "weight": 0.5,
+      "confidence": 0.4,
+      "last_evidence_at": "2026-08-15"
     }
   ],
   "episode_attributes": {
