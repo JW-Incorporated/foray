@@ -90,18 +90,30 @@ const OUT_POINT_ARM_LEAD_SEC = 0.5;
 /** Browsers clamp nested timeouts to ~4 ms; asking for less just burns wakeups. */
 const OUT_POINT_MIN_TIMER_MS = 4;
 
+/** How long an in-place seek into an already-loaded source may take to settle
+    before we give up and let the manager degrade. Generous — a range request
+    into the middle of a podcast normally settles in well under a second, and
+    the cost of being wrong in the impatient direction is dropping a segment
+    that would have played. The cost of having no deadline at all is a player
+    that never recovers, which is strictly worse. See _seekWithinLoadedSource. */
+const SAME_SOURCE_SEEK_TIMEOUT_MS = 10_000;
+
 export class HtmlAudioBackend {
   /**
    * @param {object} [opts]
    * @param {HTMLAudioElement} [opts.element] injected for tests
    * @param {Function} [opts.telemetry]
+   * @param {number} [opts.seekTimeoutMs] deadline for an in-place seek into an
+   *   already-loaded source. Injected only so the stall case is testable in
+   *   milliseconds instead of ten seconds.
    */
-  constructor({ element = null, telemetry = null } = {}) {
+  constructor({ element = null, telemetry = null, seekTimeoutMs = SAME_SOURCE_SEEK_TIMEOUT_MS } = {}) {
     const el = element ?? (typeof Audio !== "undefined" ? new Audio() : null);
     if (!el) throw new Error("HtmlAudioBackend requires an <audio> element");
 
     this.el = el;
     this._telemetry = telemetry;
+    this._seekTimeoutMs = seekTimeoutMs;
     this.onItemEnded = null;
     this.onError = null;
 
@@ -379,29 +391,59 @@ export class HtmlAudioBackend {
    * Resolves on the same condition the full load does — playhead near the
    * offset AND ready to produce audio — so the manager's ordering guarantee
    * (nothing audible until the asset is at the right position) survives the
-   * shortcut. Never rejects: the source is already known good, and a seek that
-   * cannot settle is a stall, which `play()` and the out-point watch already
-   * survive.
+   * shortcut.
+   *
+   * IT MUST ALWAYS SETTLE, and that is the whole reason for the error listener
+   * and the deadline. Seeking into an unbuffered region drops `readyState`
+   * below HAVE_FUTURE_DATA, so this waits for a refill — and a refill that
+   * never arrives is the ordinary network-stall shape, where browsers fire
+   * `stalled`/`suspend` and **never** `error`. A promise that never settles
+   * leaves `_loadItem` awaiting forever, the state machine stuck in
+   * `loadingItem` with no recovery, and these two listeners leaked; a much
+   * later `canplay` could then resolve the zombie and dispatch a stale
+   * `itemLoaded` for an item the player left minutes ago. Rejecting instead
+   * hands the problem to the manager's existing degrade path (corner case
+   * #6/#10), which is what every other load failure already uses.
    */
   _seekWithinLoadedSource(startOffset) {
     const el = this.el;
     const target = typeof startOffset === "number" && Number.isFinite(startOffset) && startOffset > 0
       ? startOffset : 0;
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       let settled = false;
+      let timer = null;
       const near = () => Math.abs(el.currentTime - target) <= 1 && el.readyState >= READY_ENOUGH;
+      const cleanup = () => {
+        el.removeEventListener("seeked", onProgress);
+        el.removeEventListener("canplay", onProgress);
+        el.removeEventListener("error", onErr);
+        if (timer != null) clearTimeout(timer);
+      };
       const done = () => {
         if (settled) return;
         settled = true;
-        el.removeEventListener("seeked", onProgress);
-        el.removeEventListener("canplay", onProgress);
+        cleanup();
         resolve();
       };
+      const fail = (msg) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error(msg));
+      };
       const onProgress = () => { if (near()) done(); };
+      const onErr = () => fail(`in-place seek to ${Math.round(target)}s failed (code ${el.error?.code ?? "?"})`);
 
       el.addEventListener("seeked", onProgress);
       el.addEventListener("canplay", onProgress);
+      el.addEventListener("error", onErr);
+      timer = setTimeout(
+        () => fail(`in-place seek to ${Math.round(target)}s did not settle within ${this._seekTimeoutMs}ms`),
+        this._seekTimeoutMs
+      );
+      if (typeof timer?.unref === "function") timer.unref();
+
       try { el.currentTime = target; } catch (_) { /* not seekable yet; events will settle it */ }
       if (near()) done();
     });

@@ -443,6 +443,25 @@ test("reaching an out-point advances exactly like the file running out", async (
   assert.ok(backend.calls.includes("outPoint:90"), "the next slice arms its own boundary");
 });
 
+test("an out-point end and a natural end produce identical backend calls", async () => {
+  // The property the whole design rests on: reusing `itemEnded` means nothing
+  // downstream can behave differently. Asserted where it can actually fail —
+  // the reducer has no reason field to branch on (its own suite covers that),
+  // so the only place a divergence could hide is here.
+  const run = async (reason) => {
+    const { m, backend } = make();
+    await m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 20, end_sec: 90 })]), { resolveItem });
+    backend.calls.length = 0;
+    await backend.onItemEnded(reason);
+    return { calls: backend.calls.slice(), state: m.state.type, at: m._currentItem().id };
+  };
+  const outPoint = await run("outPoint");
+  const natural = await run("natural");
+  assert.deepStrictEqual(outPoint.calls, natural.calls);
+  assert.equal(outPoint.state, natural.state);
+  assert.equal(outPoint.at, natural.at);
+});
+
 test("an out-point on the last segment ends the session, with no chaining", async () => {
   const { m, backend, log } = make();
   await m.playForay(foray([fseg()]), { resolveItem });
@@ -597,6 +616,39 @@ test("an unbounded queue still works on a backend with no out-point watch", asyn
   await m.play(0);
   assert.equal(m.state.type, "playing");
   assert.ok(backend.calls.includes("play"));
+});
+
+test("a bounded item reaching a blind backend by any other route refuses too", async () => {
+  // setQueueFromForay's throw is bypassed by loadQueue() and by
+  // restoreColdLaunchState() — a cold-launch restore of a Foray is exactly that
+  // path. A `_perform` case that only logs would emit the warning and then let
+  // `startPlayback` run anyway, which is the outcome the warning claims to
+  // prevent, so the refusal has to throw.
+  const { m, backend } = make({ backendClass: OutPointBlindBackend });
+  m.loadQueue([{ id: "f#0", kind: "episode", audio_url: "x", start_sec: 100, end_sec: 210 }]);
+  await m.play(0);
+  assert.equal(m.state.type, "idle", "must degrade, not play");
+  assert.ok(!backend.calls.includes("play"), `must never start audio it cannot stop: ${backend.calls}`);
+});
+
+test("cold-launch restore of a Foray on a blind backend makes no sound either", async () => {
+  const { m, backend } = make({ backendClass: OutPointBlindBackend });
+  await m.restoreColdLaunchState({
+    items: [{ id: "f#0", kind: "episode", audio_url: "x", start_sec: 100, end_sec: 210 }],
+    index: 0, autoplay: true,
+  });
+  assert.ok(!backend.calls.includes("play"));
+});
+
+test("an item with a start but nothing to stop at is not a segment", async () => {
+  // One definition of bounded, so this takes the ordinary saved-position path
+  // rather than silently losing its resume point to a half-formed in-point.
+  const { m, backend, saved } = make();
+  saved.set("a", { seconds: 1800 });
+  m.loadQueue([{ id: "a", kind: "episode", audio_url: "x", start_sec: 640 }]);
+  await m.play(0);
+  assert.ok(backend.calls.includes("load:a@1800"), `got ${backend.calls}`);
+  assert.ok(!backend.calls.some((c) => c.startsWith("outPoint:")));
 });
 
 /* ---------- reporting ---------- */

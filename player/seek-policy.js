@@ -175,16 +175,34 @@ export function seekPrecision(item, ctx = {}) {
   // ADR-0008's pad. Sits between rungs 3 and 4: it does not locate anything,
   // it accepts a bounded displacement and covers it on the stop.
   if (allowAdPad && typeof adPadSec === "number" && Number.isFinite(adPadSec) && adPadSec > 0) {
-    if (adPadSec <= AD_PAD_CEILING_SEC) {
+    if (adPadSec > AD_PAD_CEILING_SEC) {
       return {
-        precision: PADDED,
-        padSec: adPadSec,
-        reason: `PADDABLE: ${Math.round(adPadSec)}s pad within the ${AD_PAD_CEILING_SEC}s ceiling (ADR-0008)`,
+        precision: APPROXIMATE,
+        reason: `LOCATE-REQUIRED: ${Math.round(adPadSec)}s pad exceeds the ${AD_PAD_CEILING_SEC}s ceiling (ADR-0008)`,
       };
     }
+    // THE PAD IS A BOUND, AND A BOUND CAN BE EXCEEDED. `observed - recorded` is
+    // this copy's own ad load when the reference is the publisher's ad-free
+    // timeline, which is exactly the quantity the pad claims to bound. If this
+    // copy carries more than the pad, ADR-0008's own arithmetic says the stop
+    // lands early and the payload is truncated by the shortfall — so the pad
+    // has failed on this copy and the honest answer is a skip. Without this
+    // check a 60s pad would wave through a 28-minute displacement, which is
+    // the bad cut ADR-0007's ladder exists to refuse.
+    if (typeof observedDuration === "number" && Number.isFinite(observedDuration) &&
+        typeof recordedDuration === "number" && Number.isFinite(recordedDuration)) {
+      const load = Math.abs(observedDuration - recordedDuration);
+      if (load > adPadSec) {
+        return {
+          precision: APPROXIMATE,
+          reason: `this copy carries ${Math.round(load)}s of ad load, beyond the ${Math.round(adPadSec)}s the pad bounds (ADR-0008)`,
+        };
+      }
+    }
     return {
-      precision: APPROXIMATE,
-      reason: `LOCATE-REQUIRED: ${Math.round(adPadSec)}s pad exceeds the ${AD_PAD_CEILING_SEC}s ceiling (ADR-0008)`,
+      precision: PADDED,
+      padSec: adPadSec,
+      reason: `PADDABLE: ${Math.round(adPadSec)}s pad within the ${AD_PAD_CEILING_SEC}s ceiling (ADR-0008)`,
     };
   }
 

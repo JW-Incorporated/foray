@@ -232,6 +232,29 @@ test("an opted-in pad within the ceiling is padded — playable, never exact", (
     "a padded segment opens on run-up and closes on tail — that is not exact");
 });
 
+test("a pad cannot cover a drift larger than itself", () => {
+  // The pad is a BOUND, and a bound can be exceeded. `observed - recorded` is
+  // this copy's own ad load, which is exactly what the pad claims to bound; if
+  // this copy carries more, ADR-0008's own arithmetic says the stop lands early
+  // and the payload is truncated. Waving it through would let a 60s pad excuse
+  // a 28-minute displacement.
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2501 + 1699,
+    adPadSec: 60, allowAdPad: true,
+  });
+  assert.equal(r.precision, APPROXIMATE);
+  assert.match(r.reason, /1699s of ad load, beyond the 60s the pad bounds/);
+});
+
+test("a pad that does cover this copy's ad load still pads", () => {
+  const r = seekPrecision(stitched, {
+    source: FOREIGN, recordedDuration: 2501, observedDuration: 2501 + 66,
+    adPadSec: 100, allowAdPad: true,
+  });
+  assert.equal(r.precision, PADDED);
+  assert.equal(r.padSec, 100);
+});
+
 test("a pad over the ceiling is LOCATE-REQUIRED", () => {
   const r = seekPrecision(stitched, {
     source: FOREIGN, adPadSec: AD_PAD_CEILING_SEC + 1, allowAdPad: true,

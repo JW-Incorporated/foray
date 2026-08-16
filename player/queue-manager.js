@@ -157,7 +157,7 @@ export class PlayerQueueManager {
    */
   setQueueFromForay(foray, opts = {}) {
     const report = buildForayQueue(foray, opts);
-    const bounded = report.items.filter((i) => typeof i.end_sec === "number");
+    const bounded = report.items.filter((i) => boundsOf(i));
     if (bounded.length && !this._outPointCapable) {
       // Loud, and before anything is audible. Silently playing each segment to
       // the end of its whole episode is the one outcome worse than not playing.
@@ -322,11 +322,19 @@ export class PlayerQueueManager {
         return this._emit(`seek.rejected: ${effect.reason}`);
 
       case "setOutPoint":
-        // Capability was asserted at queue-build time, so reaching this on an
-        // incapable backend means a queue arrived some other way. Refuse
-        // audibly rather than playing the whole episode.
+        // setQueueFromForay asserts the capability, but loadQueue() and
+        // restoreColdLaunchState() reach the queue without going through it —
+        // a cold-launch restore of a Foray is exactly that path. So this has to
+        // be a real refusal. THROWING is the refusal: `_perform` runs inside a
+        // loop over the effect list, so a bare `return` here would emit the
+        // telemetry and then let `startPlayback` run anyway, which is precisely
+        // the "plays the whole episode" outcome the message claims to prevent.
+        // The throw lands in `_loadItem`'s catch -> E.error -> idle + pause.
         if (!this._outPointCapable) {
-          return this._emit(`outPoint.unsupportedBackend: cannot stop at ${Math.round(effect.seconds)}s`);
+          throw new Error(
+            `backend has no setOutPoint(); cannot stop at ${Math.round(effect.seconds)}s, ` +
+            "refusing rather than playing the whole episode"
+          );
         }
         return this.backend.setOutPoint(effect.seconds);
 
@@ -369,12 +377,7 @@ export class PlayerQueueManager {
     // A segment's in-point OVERRIDES any saved position, always (#65 §4).
     // Resuming to where the listener last left this episode would drop them
     // outside the segment entirely — usually into a different story.
-    const bounds = itemBounds({ startSec: item.start_sec, endSec: item.end_sec });
-    // Two distinct notions of "where we are", conflated in the Swift:
-    //   currentIndex  what is actually LOADED — savePosition writes against it
-    //   _targetIndex  where a skip is HEADING, before the load resolves
-    // Keeping them apart is what lets a fast double-skip advance two items
-    // while still saving the outgoing episode's playhead against the right id.
+    const bounds = boundsOf(item);
     this._targetIndex = null;
     // Bounds beat `forced` too, and that is the point of putting them first:
     // skipToPrevious means "restart this item", and for a segment the start of
@@ -402,10 +405,7 @@ export class PlayerQueueManager {
     // outgoing item. currentIndex tracks what is actually loaded, never what we
     // intend to load.
     const idx = this.queue.findIndex((i) => i.id === item.id);
-    if (idx >= 0) {
-      this.currentIndex = idx;
-      if (this._targetIndex === idx) this._targetIndex = null; // arrived
-    }
+    if (idx >= 0) this.currentIndex = idx;
 
     try {
       await this.backend.load(item, { startOffset });
@@ -459,12 +459,17 @@ export class PlayerQueueManager {
   }
 
   /** Leave a segment we refused, without ever making it audible. The state is
-      still `loadingItem`, and `skipToNext` from there replaces the in-flight
-      target rather than stacking a second load — the same path a fast double-
+      still `loadingItem` — nothing has been started, because `itemLoaded` was
+      never dispatched — and `skipToNext` from there replaces the in-flight
+      target rather than stacking a second load, the same path a fast double-
       skip uses. With nothing left it lands on `ended`, so a Foray whose every
-      segment fails the ladder terminates instead of looping. */
+      segment fails the ladder terminates instead of looping.
+
+      Deliberately no direct `backend.pause()`: the reducer owns every
+      transition (see the file header), and nothing is audible here anyway —
+      `load()` stops the element, and every route into this point has already
+      paused or ended. */
   async _skipUnplayableSegment() {
-    this.backend.pause();
     const next = this._nextItem(this._cursor(), false);
     if (next) this._targetIndex = next.index;
     await this._handle(E.skipToNext(next ? refOf(next.item) : null));
@@ -569,7 +574,7 @@ export class PlayerQueueManager {
     // synthetic (`foray#3`) so the position would never be read back for the
     // episode, and `_loadItem` ignores saved positions for bounded items
     // anyway. Writing one is pure localStorage litter plus a cp_events row.
-    if (typeof item.end_sec === "number") return;
+    if (boundsOf(item)) return;
     const seconds = this.backend.currentTime;
     if (typeof seconds !== "number" || !Number.isFinite(seconds)) return;
     this.positionStore.save(item.id, seconds, { duration: this.backend.duration ?? null });
@@ -580,10 +585,18 @@ export class PlayerQueueManager {
   }
 }
 
+/** Is this queue item a bounded slice, and if so which one? The single
+    definition lives in the reducer (`itemBounds`) so the capability check, the
+    in-point, the out-point and position persistence cannot drift apart on a
+    malformed item. */
+function boundsOf(item) {
+  return itemBounds({ startSec: item?.start_sec, endSec: item?.end_sec });
+}
+
 /** Queue items are plain catalogue-shaped objects; the reducer only needs
     identity, kind, and (for a segment) the slice it occupies. */
 function refOf(item) {
-  return itemRef(item.id, item.kind ?? "episode", { startSec: item.start_sec, endSec: item.end_sec });
+  return itemRef(item.id, item.kind ?? "episode", boundsOf(item));
 }
 
 /** Test-only: forget the live instance without disposing a real one. */

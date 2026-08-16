@@ -39,7 +39,7 @@
 */
 
 import {
-  seekPrecision, FOREIGN, APPROXIMATE, AD_PAD_CEILING_SEC,
+  seekPrecision, FOREIGN, EXACT, AD_PAD_CEILING_SEC,
 } from "./seek-policy.js";
 
 /** Foray item types, as authored in the ladder document (#65's schema). */
@@ -168,7 +168,12 @@ export function buildForayQueue(foray, opts = {}) {
       isLocalFile, source: FOREIGN,
       adPadSec: padSec ?? undefined, allowAdPad,
     });
-    const needsDriftCheck = provisional.precision === APPROXIMATE;
+    // `!== EXACT`, not `=== APPROXIMATE`. A PADDED segment must ALSO be gated
+    // at load: the pad is a bound on the displacement, and whether this copy
+    // stays inside it is a question only the observed duration can answer.
+    // Reading this as "padded means settled" is how a 60s pad ends up waving
+    // through a 28-minute drift.
+    const needsDriftCheck = provisional.precision !== EXACT;
     if (needsDriftCheck && !isNum(raw.reference_duration_sec)) {
       return drop(
         "DAI segment with no reference_duration_sec — ADR-0007's duration rung cannot be " +

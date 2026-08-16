@@ -287,9 +287,28 @@ test("testSkipToPreviousWithNoTargetRestartsCurrentItemInPlace", () => {
 });
 
 test("testSkipToNextWithNoTargetEndsQueue", () => {
+  // Changed in #111: this used to return `ended` with telemetry alone, which
+  // left the element playing on while the state said the session was over.
+  // Reachable the moment a queue has a short last item — i.e. a Foray.
   const [state, effects] = reduce(S.playing(episodeA), E.skipToNext(null));
   assert.deepStrictEqual(state, S.ended());
-  assert.deepStrictEqual(effects, [F.emitTelemetry("skip.next.queueExhausted")]);
+  assert.deepStrictEqual(effects, [
+    F.savePosition(),
+    F.pausePlayback(),
+    F.emitTelemetry("skip.next.queueExhausted"),
+  ]);
+});
+
+test("skipping past the end of a queue stops the audio, from every audible state", () => {
+  for (const state of [S.playing(episodeA), S.transitioning(episodeA, episodeB)]) {
+    const [, effects] = reduce(state, E.skipToNext(null));
+    assert.ok(effects.some((e) => e.type === "pausePlayback"), `${state.type} must stop the element`);
+  }
+  // ...and emits nothing to pause when nothing was audible.
+  for (const state of [S.idle(), S.ended(), S.loadingItem(episodeA, null), S.interrupted(episodeA, false)]) {
+    const [, effects] = reduce(state, E.skipToNext(null));
+    assert.ok(!effects.some((e) => e.type === "pausePlayback"), state.type);
+  }
 });
 
 test("testSkipFromIdleActsLikeFreshPlay", () => {
@@ -445,16 +464,24 @@ const segment2 = itemRef("foray#1", EPISODE, { startSec: 400, endSec: 512 });
 const sameEpFirst = itemRef("ep-x", EPISODE, { startSec: 10, endSec: 60 });
 const sameEpSecond = itemRef("ep-x", EPISODE, { startSec: 60, endSec: 140 });
 
-test("itemBounds keeps a real forward slice and drops anything else", () => {
+test("itemBounds is the ONE definition of bounded: a real forward slice, or null", () => {
+  // Three call sites used to each decide what "bounded" meant and disagreed for
+  // exactly the malformed items that most need consistency — an item could
+  // count as bounded for the capability check, arm no out-point, and lose its
+  // saved position, all at once.
   assert.deepStrictEqual(itemBounds({ startSec: 10, endSec: 60 }), { startSec: 10, endSec: 60 });
+  assert.deepStrictEqual(itemBounds({ startSec: -5, endSec: 60 }), { startSec: 0, endSec: 60 });
   assert.equal(itemBounds(null), null);
   assert.equal(itemBounds({}), null, "an unbounded item has no bounds object at all");
   assert.equal(itemBounds({ startSec: 0, endSec: undefined }), null);
+  // A start with nothing to stop at is not a slice — it must not steal the
+  // saved-position path from an ordinary item.
+  assert.equal(itemBounds({ startSec: 640 }), null);
   // An end that is not after the start would arm a boundary nothing can cross.
-  assert.deepStrictEqual(itemBounds({ startSec: 60, endSec: 60 }), { startSec: 60, endSec: null });
-  assert.deepStrictEqual(itemBounds({ startSec: 60, endSec: 10 }), { startSec: 60, endSec: null });
-  assert.deepStrictEqual(itemBounds({ startSec: 60, endSec: NaN }), { startSec: 60, endSec: null });
-  assert.deepStrictEqual(itemBounds({ startSec: -5, endSec: 60 }), { startSec: 0, endSec: 60 });
+  assert.equal(itemBounds({ startSec: 60, endSec: 60 }), null);
+  assert.equal(itemBounds({ startSec: 60, endSec: 10 }), null);
+  assert.equal(itemBounds({ startSec: 60, endSec: NaN }), null);
+  assert.equal(itemBounds({ startSec: 60, endSec: Infinity }), null);
 });
 
 test("a bounded item arms its out-point on itemLoaded, before anything is audible", () => {
@@ -478,15 +505,18 @@ test("the out-point is armed AFTER the in-point seek, never against 0:00", () =>
     ["restoreRate", "seekTo", "setOutPoint", "startPlayback"]);
 });
 
-test("reaching an out-point is indistinguishable from the file ending", () => {
-  // The reducer must not be able to tell. That is the entire reason the
-  // backend reports a normal end instead of a new event.
-  const playing = S.playing(segment1);
-  const natural = reduce(playing, E.itemEnded(segment2, false));
-  const outPoint = reduce(playing, E.itemEnded(segment2, false));
-  assert.deepStrictEqual(natural, outPoint);
-  assert.deepStrictEqual(natural[0], S.loadingItem(segment2, segment1));
-  assert.deepStrictEqual(natural[1], [F.loadItem(segment2)]);
+test("the reducer has no way to be told an end was an out-point", () => {
+  // The property, stated where it can actually fail: `itemEnded` carries only
+  // what plays next and whether a bridge comes first. There is no reason field
+  // to branch on, so no future edit here can make a segment's end diverge from
+  // a file's end. (The manager keeps the reason for telemetry; its own suite
+  // asserts the two produce identical backend calls.)
+  const ended = E.itemEnded(segment2, false);
+  assert.deepStrictEqual(Object.keys(ended).sort(), ["bridged", "next", "type"]);
+
+  const [state, effects] = reduce(S.playing(segment1), ended);
+  assert.deepStrictEqual(state, S.loadingItem(segment2, segment1));
+  assert.deepStrictEqual(effects, [F.loadItem(segment2)]);
 });
 
 test("an out-point on the last segment ends the session, with no chaining", () => {

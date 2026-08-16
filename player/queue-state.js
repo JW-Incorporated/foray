@@ -83,20 +83,30 @@ function finiteNonNegative(n) {
 /**
  * The slice of the SOURCE audio an item occupies, in that audio's own seconds.
  *
- * `endSec` is dropped rather than trusted when it does not describe a real
- * forward slice. That is defensive, not lenient: a bounded item whose end is
- * junk would otherwise arm a boundary the playhead can never cross, and the
- * failure would look like "the player ignored my out-point" at runtime instead
- * of "this Foray is malformed" at build time. `player/foray-queue.js` rejects
- * such a segment loudly, which is where the complaint belongs.
+ * THE ONE DEFINITION OF "BOUNDED", used by the reducer, the manager and the
+ * Foray builder alike. Bounds exist only for a real forward slice: a usable
+ * `endSec` greater than `startSec`. Everything else — no end, a junk end, an
+ * end at or before the start, or a bare `start_sec` with nothing to stop at —
+ * is an ordinary unbounded item and gets ordinary unbounded treatment.
+ *
+ * Collapsing all of that into one predicate is deliberate. An earlier draft let
+ * three call sites each decide what "bounded" meant (`item.end_sec` being a
+ * number, versus `bounds` being truthy, versus `bounds.endSec` being set) and
+ * they disagreed for exactly the malformed items that most need consistency:
+ * an item could count as bounded for the backend-capability check, arm no
+ * out-point, and silently lose its saved position, all at once.
+ *
+ * Junk is dropped rather than trusted because arming a boundary the playhead
+ * can never cross fails at runtime as "the player ignored my out-point", when
+ * it is really "this Foray is malformed". `player/foray-queue.js` rejects such
+ * a segment loudly at build time, which is where the complaint belongs.
  */
 export function itemBounds(bounds) {
   if (!bounds) return null;
   const startSec = finiteNonNegative(bounds.startSec) ?? 0;
   const rawEnd = finiteNonNegative(bounds.endSec);
-  const endSec = rawEnd != null && rawEnd > startSec ? rawEnd : null;
-  if (startSec === 0 && endSec == null) return null; // an unbounded item
-  return Object.freeze({ startSec, endSec });
+  if (rawEnd == null || rawEnd <= startSec) return null;
+  return Object.freeze({ startSec, endSec: rawEnd });
 }
 
 /** A minimal, opaque reference to a queue item. The reducer needs nothing
@@ -221,7 +231,7 @@ function describe(state) {
     ambiguous the moment two items share a source. */
 function name(ref) {
   const b = ref?.bounds;
-  if (!b || b.endSec == null) return ref?.id;
+  if (!b) return ref?.id;
   return `${ref.id}[${Math.round(b.startSec)}-${Math.round(b.endSec)}]`;
 }
 
@@ -345,8 +355,7 @@ function handleItemLoaded(state) {
       // applied (it rode on the load, or on the pendingSeek above), so the
       // backend can decide from a settled playhead whether the boundary is
       // still ahead of us. Arming before the seek would arm against 0:00.
-      const endSec = state.target.bounds?.endSec;
-      if (typeof endSec === "number") effects.push(F.setOutPoint(endSec));
+      if (state.target.bounds) effects.push(F.setOutPoint(state.target.bounds.endSec));
       effects.push(F.startPlayback());
       return [S.playing(state.target), effects];
     }
@@ -503,7 +512,14 @@ function handleSkip(state, target, direction) {
         F.emitTelemetry("skip.previous.restartInPlace"),
       ]];
     }
-    return [S.ended(), [F.emitTelemetry(`skip.${direction}.queueExhausted`)]];
+    // Queue genuinely exhausted. STOP WHAT IS AUDIBLE — this used to return
+    // `ended` with telemetry alone, which left the element playing on while the
+    // state said the session was over. It was always wrong; a Foray makes it
+    // reachable, because a short last segment is exactly where someone presses
+    // skip. (#111 review.)
+    const audible = state.type === "playing" || state.type === "transitioning";
+    const done = F.emitTelemetry(`skip.${direction}.queueExhausted`);
+    return [S.ended(), audible ? [F.savePosition(), F.pausePlayback(), done] : [done]];
   }
 
   switch (state.type) {

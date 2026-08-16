@@ -387,10 +387,14 @@ class TickingAudio {
   removeAttribute(a) { this.calls.push(`removeAttribute:${a}`); this.src = ""; }
 }
 
-const ticking = (opts) => {
+const ticking = (opts = {}) => {
   const el = new TickingAudio(opts);
   const log = [];
-  const b = new HtmlAudioBackend({ element: el, telemetry: (m) => log.push(m) });
+  // A short seek deadline so the stall case costs milliseconds, not the ten
+  // real seconds the shipped default allows a slow CDN.
+  const b = new HtmlAudioBackend({
+    element: el, telemetry: (m) => log.push(m), seekTimeoutMs: opts.seekTimeoutMs ?? 200,
+  });
   const ends = [];
   b.onItemEnded = (reason) => ends.push(reason ?? "natural");
   return { el, b, log, ends };
@@ -578,6 +582,67 @@ test("the same source is a seek, not a refetch", async () => {
   assert.equal(el.currentTime, 400, "just a seek to the next in-point");
   assert.equal(b.currentItem.id, "seg-2", "and the backend knows which item it is on");
   assert.ok(log.some((m) => /load\.sameSource/.test(m)));
+});
+
+test("an in-place seek that never settles rejects rather than wedging the player", async () => {
+  // Seeking into an unbuffered region drops readyState below HAVE_FUTURE_DATA,
+  // and a refill that never arrives is the ordinary stall shape: browsers fire
+  // `stalled`/`suspend` and NEVER `error`. With no deadline the promise stays
+  // pending forever, `_loadItem` awaits forever, and the state machine sits in
+  // loadingItem with two leaked listeners and no recovery.
+  const { el, b } = ticking();
+  await b.load(item("seg-1", "https://cdn.example/one.mp3"), { startOffset: 100 });
+  el.readyState = 1; // the seek target is not buffered
+  const before = el.listeners.get("seeked").size;
+
+  await assert.rejects(
+    () => b.load(item("seg-2", "https://cdn.example/one.mp3"), { startOffset: 4000 }),
+    /did not settle/
+  );
+  assert.equal(el.listeners.get("seeked").size, before, "and it leaks no listeners on the way out");
+});
+
+test("a media error during an in-place seek rejects, so the degrade path runs", async () => {
+  const { el, b } = ticking();
+  await b.load(item("seg-1", "https://cdn.example/one.mp3"), { startOffset: 100 });
+  el.readyState = 1;
+  const p = b.load(item("seg-2", "https://cdn.example/one.mp3"), { startOffset: 4000 });
+  el.error = { code: 2 };
+  el._fire("error");
+  await assert.rejects(() => p, /in-place seek to 4000s failed/);
+});
+
+test("consecutive same-episode slices may run BACKWARDS through the episode", async () => {
+  // Nothing requires a Foray's slices to be in episode order — a later segment
+  // can sit earlier in the file. The in-place seek must go backwards and the
+  // boundary must re-arm behind the old one.
+  const { el, b, ends } = ticking();
+  await b.load(item("seg-1", "https://cdn.example/one.mp3"), { startOffset: 900 });
+  b.setOutPoint(900.4);
+  b.play();
+  assert.equal(await waitForEnd(ends, 3000), "outPoint");
+
+  await b.load(item("seg-2", "https://cdn.example/one.mp3"), { startOffset: 100 });
+  assert.equal(el.currentTime, 100, "seeks backwards within the buffered source");
+  b.setOutPoint(100.4);
+  b.play();
+  const deadline = now() + 3000;
+  while (ends.length < 2 && now() < deadline) await sleep(5);
+  assert.deepStrictEqual(ends, ["outPoint", "outPoint"]);
+  assert.ok(el.currentTime >= 100.4 && el.currentTime < 101);
+});
+
+test("arming while paused works: the boundary takes effect once play starts", async () => {
+  // setOutPoint runs before startPlayback, so nothing can be scheduled yet.
+  // The `playing` event is what arms the fine watch.
+  const { b, ends } = ticking();
+  await b.load(item("seg"), { startOffset: 100 });
+  b.setOutPoint(100.4);
+  assert.equal(b.outPoint, 100.4);
+  await sleep(120);
+  assert.deepStrictEqual(ends, [], "nothing fires while paused");
+  b.play();
+  assert.equal(await waitForEnd(ends, 3000), "outPoint");
 });
 
 test("a different source still reloads", async () => {

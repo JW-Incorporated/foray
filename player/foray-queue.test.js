@@ -213,6 +213,15 @@ test("a pad exactly at the ceiling is admitted — the test is <=, per ADR-0008"
   assert.equal(items[0].ad_pad_applied_sec, AD_PAD_CEILING_SEC);
 });
 
+test("a padded segment is still gated at load — the pad does not settle it", () => {
+  // `needs_drift_check` must be true for PADDED as well as APPROXIMATE. Reading
+  // "padded" as "settled" is how a 60s pad ends up waving a 28-minute drift
+  // through to playback, which is the bad cut the ladder exists to refuse.
+  const { items } = build([daiSeg({ ad_pad_sec: 100 })], { allowAdPad: true });
+  assert.equal(items[0].needs_drift_check, true);
+  assert.equal(items[0].ad_pad_sec, 100, "and the gate is given the pad to check against");
+});
+
 test("a padded segment says out loud what the listener will hear", () => {
   const { warnings } = build([daiSeg({ ad_pad_sec: 100 })], { allowAdPad: true });
   assert.match(warnings[0], /extended by a 100s ad pad/);
