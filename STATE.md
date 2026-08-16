@@ -7,6 +7,28 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Foray data layer — the running order becomes data (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/foray-data`, issues #182 and #134. Foray #1's 32-segment
+  running order moves out of the markdown table in
+  `docs/curation/grilling-foray.md` §2 and into **`data/forays.json`**
+  (`kind: deep-dive`, ordered `items`, segment ids not inlined timestamps). The
+  nine source episodes get **`data/segment-sources.json`** so a segment's
+  timestamps resolve to audio — deliberately NOT `data/discover.json`, which is
+  machine-owned and is the recommendation pool. `tools/foray/check-forays.mjs`
+  makes the tier-A ordering rules (D1, D2, D3, D4, D5, M3, M4) fail CI.
+- **Owned directories:** `tools/foray/`. **Owned files:** `data/forays.json`,
+  `data/segment-sources.json`.
+- **Shared files it touches:** `test/suite-integrity.test.js` (one new floor,
+  in its own final commit so a rebase is trivial),
+  `docs/curation/grilling-foray.md`, this file. **Nothing under `player/`.**
+- **Heads-up for the player/UI track:** `data/forays.json` is `status: "draft"`
+  and must not be surfaced until a founder flips it, same rule as ladders.
+  Neither new file is fetched by `app.js` yet, and `snapshot()`'s whitelist
+  drops anything it does not name — see the PR body for the short list of what
+  a client still has to add.
+- **Related:** #128, #133, #111, #65.
+
 ### merge mechanics — near-zero founder merges (2026-08-16, one PR, no follow-up)
 
 - **What:** `ci/zero-founder-merges`. The path allow/deny policy moves out of

@@ -74,6 +74,13 @@ takes 16.5 % of its own episode (JERK-1, 237.9 s of a 24-minute episode). The
 episode-share column is the Foray total and is recorded because it matters at
 assembly time, where the binding rule is M4 (§5).
 
+Every one of these nine is now registered in `data/segment-sources.json` with
+its publisher enclosure URL, feed, byte length and true duration, which is what
+lets a segment's `start_sec` resolve to audio. All nine were re-verified on
+2026-08-16 with a 2-byte ranged GET (`tools/foray/verify-source-audio.mjs`):
+HTTP 206 on all nine, ad-free ratio 1.0000 on eight and 1.0001 on
+`bbqc-moss-school`.
+
 Two `item_id`s are worth pinning down: `bbqc-moss-school` and
 `bbqc-traeger-history` reuse the ids the transcription workstream already put on
 the ASR files. The rest follow the `<show-slug>-<episode-slug>` shape
@@ -82,6 +89,14 @@ the ASR files. The rest follow the `<show-slug>-<episode-slug>` shape
 ---
 
 ## 2. The running order
+
+**This table is no longer the only copy.** It is migrated verbatim into
+`data/forays.json` (`forays[0].items`, in order), where each entry carries the
+`segment_id`, the label used here and its arc slot — so the `ORI-1` →
+`origin-stories-cooking-human#147` mapping is recorded rather than re-derivable
+only by matching durations. `tools/foray/check-forays.test.mjs` re-derives it
+anyway on every CI run and fails if the two disagree, which is what stops this
+table and the data drifting apart.
 
 Times are cumulative **tape** positions; real playback shifts later by the
 narration bridge at each cut. Every claim in the right-hand column is inside its
@@ -211,10 +226,12 @@ owns the charcoal aisle. A future batch needs a source that explains the machine
   under the line rather than 2 s over it.
 - **L5 relative cap.** Largest share of a source episode by a single segment is
   16.5 % (JERK-1). All 27 new segments are inside 20 %.
-- **L6 roles.** All four values used are in the proposed enum. As in batch 1,
-  **`role` is not part of the schema `merge-segments.mjs` writes**, so the role
-  column in §2 is the only record of it and L2/L3/D4 are not re-checkable from
-  the committed file.
+- **L6 roles.** All four values used are in the proposed enum. **`role` is still
+  not part of the schema `merge-segments.mjs` writes** — but it is now recorded
+  on each `data/forays.json` item, so for the 32 segments in the running order
+  **L2, L3, L4 and D4 are machine-checked** by `tools/foray/check-forays.mjs`
+  after all. The four pool segments held out of the Foray (§7) still have no
+  committed role, and for those the §2 column remains the only record.
 - **B1 median.** **96.6 s** across the 27 segments this batch authored (the pool
   of 36 is 100.6 s; the 32 in the running order are 102.1 s). All three sit inside
   the 75–180 s target band.
@@ -339,9 +356,13 @@ as played.
 ## 5. The global cut-frequency rules — checked against the assembled sequence
 
 These are the tier-A rules from `segment-length-rules.md` §9. They are properties
-of *this ordering*, not of the pool, and no machine in the repo checks them yet
-(issue #182). The Foray is 61:13, which puts it in the **45–120 minute band, so
-N = 6** starts per rolling 600 s.
+of *this ordering*, not of the pool. **They are now machine-checked** — the
+running order lives in `data/forays.json` and `tools/foray/check-forays.mjs`
+evaluates D1, D2, D3, D4, D5, M3 and M4 against it on every CI run (#182 closed).
+Every number in the table below was reproduced by that checker; where the
+checker and this prose disagreed, the disagreement is named rather than
+smoothed over (see D1 below). The Foray is 61:13, which puts it in the
+**45–120 minute band, so N = 6** starts per rolling 600 s.
 
 | Rule | Requirement | Measured | Verdict |
 |---|---|---|---|
@@ -355,6 +376,14 @@ N = 6** starts per rolling 600 s.
 | M4 | ≤ 25 % of segments **and** runtime from one `item_id` | worst is `bbqrn-argentina-open-fire` at **21.9 % of segments, 21.1 % of runtime** | pass |
 | L7 | payback: `duration ≥ 4 × (bridge + 1) + 4` | the shortest segment is 51.2 s, which permits a bridge up to 10.8 s, above the spec's 8 s cap, so **every segment satisfies L7 whatever the bridges say** | pass by construction |
 | X1/X2/M5/M6 | seam marking and attribution | no bridge records exist yet | deferred |
+
+**One correction from the checker: "the tightest run of six spanning 620.5 s"
+counts gaps, not starts.** 620.5 s is `start[i] → start[i+6]`, which bounds
+*seven* starts. The rule's own text is about starts inside a window, and by that
+count the committed order's worst window holds **6**, exactly the budget. The
+verdict is unchanged; the phrasing was one off, and
+`tools/foray/check-forays.test.mjs` now pins both numbers so they cannot drift
+apart again.
 
 ### D1 passes, and here is what it cost
 
@@ -405,6 +434,17 @@ Two readings are available and the rule text does not choose:
 
 This is the same class of ambiguity batch 1 reported for the IQR's quartile
 definition, and it is reported the same way rather than resolved in our favour.
+
+**The gate now picks one: pairwise.** "Within ±20 % of *each other*" is a
+statement about the members of the triple, and the mean is a fourth quantity the
+rule never mentions — reading it in makes the rule strictly stronger than its
+own words. It is also the reading that serves the rule's purpose, since
+97.9 / 126.7 / 101.8 s is not a metronomic run. `check-forays.mjs` still
+computes the mean-deviation reading and prints the three triples below as
+warnings, so nothing here is quietly resolved away; it just does not block a
+merge. Full argument in `tools/foray/README.md`. Likewise the IQR is fixed at
+**R-7** (NumPy's, R's and Excel `QUARTILE.INC`'s default), because that is the
+definition anyone recomputing the number would reach for by accident.
 
 **One of the four it was originally four, and the reordering that fixed D1 also
 fixed the only one that was genuinely breakable.** ORI-3/GRID-1/MED-1 violated
@@ -672,20 +712,30 @@ papering over:
   segment, and slot 5 lost its shortest segment to the cut budget (§5). `docs/curation/catalogue-broadening.md` §4 already establishes that
   four of those have no usable source at any transcription budget; Korean had one
   and it turned out not to be about food-on-fire.
-- **The role field is lost at merge.** As in batch 1, L2/L3/D4 cannot be
-  re-checked from `data/segments.json` by anyone reading it later. §2 is the only
-  record.
+- **The role field is still lost at merge**, so `data/segments.json` alone
+  cannot answer L2/L3/D4. It is now carried on each `data/forays.json` item as
+  an interim home and checked there, which covers the 32 segments in this Foray
+  but not the four held back in §7 — and it means a second Foray reusing a
+  segment has to restate the role. The real fix is the additive `role` field
+  §9 of the length rules proposes; `check-forays.mjs` already prefers the
+  segment's own value and errors if the two disagree, so that day is a deletion.
 - **`data/segments.json`'s `notes` field still names only batch 1.** The merge
   script rewrites `built_at` and the whole `provenance` block on every write —
   `provenance.last_batch_id` is now `seg-2026-08-16-grilling-foray-b` — but it
   carries `notes` through untouched and has no flag to update it, and the file
   must not be hand-edited. The note says the file was *first* populated by the
   hearth batch, which remains true, and now under-describes what follows.
-- **The running order exists only in this document.** `data/segments.json` is a
-  pool sorted by `item_id` then `start_sec`, so nothing in the data expresses the
-  listening sequence — which means **no machine can check D1, D2, D4, D5, M3 or
-  M4**, the six rules §5 reports on, and the numbers there rest on a throwaway
-  script rather than on committed machinery. Tracked as issue **#182**.
+- ~~**The running order exists only in this document.**~~ **Fixed (#182).** The
+  order is now `data/forays.json` → `forays[0].items`, an ordered list of
+  `segment_id`s carrying the `ORI-1` / `GRID-3` labels §2 uses, so the mapping
+  between this document and the pool no longer has to be re-derived. D1, D2, D3,
+  D4, D5, M3 and M4 are checked by `tools/foray/check-forays.mjs` on every CI
+  run, and `tools/foray/check-forays.test.mjs` proves each one goes red by
+  breaking it. The nine source episodes are registered in
+  `data/segment-sources.json`, so a segment's timestamps now resolve to audio.
+  **What is still not machine-checked:** L7, M5, M6, X1 and X2, all of which
+  need bridge records that do not exist yet, and the per-segment S0/S1/S2
+  judgements, which were never mechanical.
 - **Nothing here has been heard.** Every number in this document is a property of
   timestamps and transcripts. The first person to listen to this end to end will
   find things no rule caught — and per `segment-length-rules.md` §10, that
