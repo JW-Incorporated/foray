@@ -95,7 +95,43 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
+      # See automerge-nightly.yml § the bootstrap case. The policy runs from the
+      # default branch, so on the PR that introduces it there is nothing to run.
+      - name: Is the policy installed on the default branch?
+        id: policy
+        run: |
+          if [ -f tools/ci/path-policy.mjs ]; then
+            echo "installed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "installed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: No policy to apply
+        if: steps.policy.outputs.installed != 'true'
+        env:
+          ENFORCE: ${{ vars.PATH_POLICY_ENFORCE }}
+        # Enforcing means "no PR merges without this verdict". A missing policy
+        # is then a failure, not a pass — a gate that cannot run has not been
+        # satisfied. Report-only, it is a loud green, which is what lets the PR
+        # that INSTALLS the policy land.
+        run: |
+          set -uo pipefail
+          {
+            echo "## path-policy: NOT EVALUATED"
+            echo ""
+            echo "\`tools/ci/path-policy.mjs\` is not on the default branch, so no verdict"
+            echo "was reached. This is expected exactly once — on the PR that introduces it."
+          } >> "$GITHUB_STEP_SUMMARY"
+          case "$(printf '%s' "${ENFORCE:-}" | tr '[:upper:]' '[:lower:]')" in
+            ""|false|0|no|off)
+              echo "path-policy: NOT EVALUATED (report-only, so not failing the job)" ;;
+            *)
+              echo "path-policy is enforcing but its policy module is missing — failing." >&2
+              exit 1 ;;
+          esac
+
       - name: Gather PR facts
+        if: steps.policy.outputs.installed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
@@ -121,6 +157,7 @@ jobs:
           fi
 
       - name: Evaluate
+        if: steps.policy.outputs.installed == 'true'
         env:
           ENFORCE: ${{ vars.PATH_POLICY_ENFORCE }}
           PR: ${{ github.event.pull_request.number }}

@@ -105,7 +105,21 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
+      # See automerge-nightly.yml the bootstrap case. The triage module runs
+      # from the default branch, so on the PR that introduces it there is
+      # nothing to run and every step below must stand down rather than go red.
+      - name: Is the triage module installed on the default branch?
+        id: policy
+        run: |
+          if [ -f tools/ci/pr-triage.mjs ]; then
+            echo "installed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "installed=false" >> "$GITHUB_OUTPUT"
+            echo "tools/ci/pr-triage.mjs is not on the default branch yet - standing down."
+          fi
+
       - name: Gather open PRs
+        if: steps.policy.outputs.installed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -150,6 +164,7 @@ jobs:
           echo "gathered $(jq length prs.json) PR(s)"
 
       - name: Plan
+        if: steps.policy.outputs.installed == 'true'
         env:
           FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
           REPO: ${{ github.repository }}
@@ -177,6 +192,7 @@ jobs:
       # system uses. `gh label create` on an existing label is an error, hence
       # the `|| true` — that is the idempotence.
       - name: Ensure the labels exist
+        if: steps.policy.outputs.installed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -194,6 +210,7 @@ jobs:
           exit 0
 
       - name: Execute
+        if: steps.policy.outputs.installed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

@@ -118,7 +118,25 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
+      # THE BOOTSTRAP CASE, and the general "somebody deleted it" case.
+      # We deliberately run the policy from the default branch, so on the PR
+      # that INTRODUCES the policy — and on any PR opened while it is absent
+      # from `main` — there is nothing to run. Without this the step below dies
+      # with MODULE_NOT_FOUND and the check goes red for a reason that has
+      # nothing to do with the PR. Fail-safe: no policy means nothing is armed,
+      # and the disarm step still runs.
+      - name: Is the policy installed on the default branch?
+        id: policy
+        run: |
+          if [ -f tools/ci/path-policy.mjs ]; then
+            echo "installed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "installed=false" >> "$GITHUB_OUTPUT"
+            echo "tools/ci/path-policy.mjs is not on the default branch yet."
+          fi
+
       - name: Gather PR facts
+        if: steps.policy.outputs.installed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
@@ -148,8 +166,24 @@ jobs:
           fi
           echo "changed files: $actual of $expected"
 
+      - name: No policy to apply
+        if: steps.policy.outputs.installed != 'true'
+        run: |
+          {
+            echo "## automerge-decision: NOT ARMED"
+            echo ""
+            echo "**\`tools/ci/path-policy.mjs\` is not on the default branch, so there is"
+            echo "no policy to apply and nothing will be armed.**"
+            echo ""
+            echo "Expected exactly once — on the PR that introduces the policy."
+            echo "Anywhere else it means the module was deleted from the default branch,"
+            echo "which is a real problem: read it as \"the gate is missing\", not \"the gate passed\"."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "NOT ARMED: no policy module on the default branch."
+
       - name: Decide
         id: decide
+        if: steps.policy.outputs.installed == 'true'
         env:
           FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
           PR: ${{ github.event.pull_request.number }}
