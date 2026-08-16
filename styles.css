@@ -562,16 +562,31 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   padding: 10px 0 12px;
   margin-bottom: 8px;
 }
+/* The strip is a scrubber: a click anywhere on it is a position in the hour,
+   and each bar is one segment, sized by its share of the runtime. */
 .fy-strip { display: flex; gap: 2px; width: 100%; height: 10px; cursor: pointer; }
 .fy-seg {
   flex-basis: 0;
   border-radius: 2px;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  transition: background 0.25s, opacity 0.25s;
+  overflow: hidden;
+  transition: border-color 0.25s, opacity 0.25s;
 }
-.fy-seg.is-played { background: var(--text-dim); border-color: var(--text-dim); }
-.fy-seg.is-playing { background: var(--accent); border-color: var(--accent); }
+/* The bar the listener is inside fills left to right as it plays; the bars
+   behind them are full and the ones ahead are empty. The width is written as a
+   DOM property in app.js, never as a style attribute — CSP `style-src 'self'`.
+   No transition on width: this moves 4x a second and an easing curve would
+   lag the audio. */
+.fy-seg-fill { display: block; height: 100%; width: 0; background: var(--text-dim); }
+.fy-seg.is-played { border-color: var(--text-dim); }
+.fy-seg.is-playing { border-color: var(--accent); }
+.fy-seg.is-playing .fy-seg-fill { background: var(--accent); }
+/* The 2.0 s seam beat between two unbridged segments: the strip holds still at
+   a boundary and the next bar has not started filling. Said quietly on purpose
+   — the silence is the message, and a bar flashing over the top of it would be
+   competing with the thing it is trying to explain. */
+.fy-strip.is-seam .fy-seg.is-playing { border-color: var(--text-dim); }
 .fy-times {
   display: flex; justify-content: space-between;
   font-size: 0.72rem; color: var(--text-dim);

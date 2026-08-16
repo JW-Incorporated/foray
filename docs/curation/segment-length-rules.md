@@ -1012,6 +1012,15 @@ Four notes for whoever writes `docs/agents/runner-prompts/segment-batch.md`
   unbridged same-episode seam than `04_VOICE_AUDIO_SPEC.md` specifies around TTS
   items. That is deliberate (different job: marking an edit vs joining audio) but
   it is a spec change and needs Wyatt, since it touches the player.
+  **Status, 2026-08-16: it now touches the player.** `player/seam-gap.js` ships
+  §6b's 2.0 s at every unbridged segment-to-segment seam — as a gap *between*
+  two loads, never as silence added to anybody's audio — and it applies to
+  cross-episode seams as well as same-episode ones, because Foray #1 has no
+  narration and X1's "cross-episode always carries narration" has nothing to
+  carry yet. `04_VOICE_AUDIO_SPEC.md` line 12 is unchanged and still says 0.5 s,
+  so the two documents still disagree on their face. **That reconciliation is
+  still undecided and is filed as `HUMAN-ACTIONS.md` #3.** Do not read this
+  paragraph as it having been made.
 - **Loudness normalisation across segments.** §6b uses it as an argument for
   narration at seams. It is not a substitute for the real work, which is
   unassigned.

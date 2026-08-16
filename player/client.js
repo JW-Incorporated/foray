@@ -188,6 +188,21 @@ function isPlaying() {
   return manager?.state?.type === "playing";
 }
 
+/** Is the Foray RUNNING, as a listener would say it?
+ *
+ *  Wider than `isPlaying()` by exactly one state: the 2.0 s seam beat between
+ *  two unbridged segments (`player/seam-gap.js`). Structurally that is
+ *  `loadingItem`, so `isPlaying()` is false — but nobody has pressed anything,
+ *  the Foray is advancing on its own, and the only sane meaning for the main
+ *  button during those two seconds is STOP.
+ *
+ *  Every play/pause control goes through this. The first draft changed the
+ *  Foray page's LABEL to "❚❚ Pause" during a beat while `forayToggle` still
+ *  branched on `isPlaying()` — so the button said Pause and started audio. */
+function isRunning() {
+  return isPlaying() || manager?.inSeamGap === true;
+}
+
 /** Where we are, in the Foray's own seconds. The playhead only counts when the
     segment we are showing is the one actually loaded; mid-jump, the honest
     answer is that segment's start. */
@@ -261,6 +276,12 @@ function forayStateSnapshot() {
     index: foray.index,
     loading: manager?.state?.type === "loadingItem",
     playing: isPlaying(),
+    /* The 2.0 s seam beat between two unbridged segments (player/seam-gap.js).
+       Structurally this is `loadingItem` too, but calling it "Loading…" on the
+       page would be the app apologising for a silence it chose on purpose —
+       and it is the one state where pressing the main button has to mean
+       "stop", not "start". */
+    gap: manager?.inSeamGap === true,
     ended: manager?.state?.type === "ended",
     elapsedSec: forayPosition(),
     totalSec: foray.resolved.totalSec,
@@ -318,11 +339,14 @@ function persistForayProgress({ force = false } = {}) {
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
-  const glyph = isPlaying() ? "❚❚" : "▶";
+  // A seam beat reads as playing everywhere, or the mini bar shows "▶" while
+  // the Foray page shows "❚❚ Pause" for the same two seconds.
+  const running = isRunning();
+  const glyph = running ? "❚❚" : "▶";
   ui.playBtn.textContent = glyph;
   ui.bigPlay.textContent = glyph;
-  ui.playBtn.setAttribute("aria-label", isPlaying() ? "Pause" : "Play");
-  ui.bigPlay.setAttribute("aria-label", isPlaying() ? "Pause" : "Play");
+  ui.playBtn.setAttribute("aria-label", running ? "Pause" : "Play");
+  ui.bigPlay.setAttribute("aria-label", running ? "Pause" : "Play");
 
   // In a Foray the clock is the Foray's, not the source episode's: 31 minutes
   // into somebody else's podcast is not a position this listener recognises.
@@ -396,7 +420,7 @@ function setNowPlaying(item, why) {
 
 function bind() {
   const toggle = async () => {
-    if (isPlaying()) await manager.pause();
+    if (isRunning()) await manager.pause();
     else await manager.resume();
     render();
     // A pause may be the last thing that ever happens on this page load, so it
@@ -502,6 +526,13 @@ function ensureBooted() {
     backend,
     positionStore: positions,
     strategy: SINGLE_ITEM,
+    /* A seam beat produces NO media events — the element is paused for the
+       whole 2 s, so `timeupdate` has stopped and neither `play` nor `pause`
+       fires. Without this hook the page keeps whatever frame it had when the
+       out-point landed (which says "Loading…") and the `gap` flag never
+       reaches it at all, so the beat is invisible and the main button still
+       means "start". This is the only repaint during a beat, at both edges. */
+    onSeamGapChange: () => render(),
     telemetry: (m) => {
       if (!/error|rejected|skipped/i.test(m)) return;
       console.warn("[player]", m);
@@ -577,6 +608,14 @@ const ForayPlayer = {
 
   fmtClock,
   fmtSpan,
+
+  /** Which segment `elapsedSec` lands in, and how far into it — re-exported so
+      the page paints the strip's fill with exactly the maths `foraySeek` uses
+      to interpret a click on that same strip. A second implementation in
+      app.js would be a scrubber whose bar and whose destination disagree. */
+  segmentAt(playable, elapsedSec) {
+    return segmentAtElapsed(playable, elapsedSec);
+  },
 
   /**
    * Play a resolved Foray from `startIndex`, or from a position in the Foray's
@@ -707,7 +746,7 @@ const ForayPlayer = {
   /** Play/pause the Foray without rebuilding it. */
   async forayToggle() {
     if (!foray) return;
-    if (isPlaying()) await manager.pause();
+    if (isRunning()) await manager.pause();
     else await manager.resume();
     render();
     // The page's own pause is the one a listener actually uses; it gets the same

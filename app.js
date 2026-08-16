@@ -1187,7 +1187,7 @@ async function renderForay(id) {
           <button type="button" class="fy-restart" id="fy-restart">Start over</button>
         </div>` : ""}
         <div class="fy-strip" id="fy-strip">${r.playable.map((_, i) =>
-          `<span class="fy-seg" data-seg="${i}"></span>`).join("")}</div>
+          `<span class="fy-seg" data-seg="${i}"><i class="fy-seg-fill"></i></span>`).join("")}</div>
         <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
         <div class="fy-controls">
           <button type="button" class="fy-btn" id="fy-prev" aria-label="Previous segment">‹‹</button>
@@ -1222,9 +1222,75 @@ function sizeForayStrip(r) {
   r.playable.forEach((item, i) => {
     const seg = strip.children[i];
     if (!seg) return;
-    const end = item.authored_end_sec ?? item.end_sec;
-    seg.style.flexGrow = String(Math.max(1, Math.round(end - item.start_sec)));
+    seg.style.flexGrow = String(Math.max(1, Math.round(segLenOf(item))));
   });
+}
+
+/* A queue item's authored length. `r.playable` is the PLAYER queue, not the
+   running-order entries, so it carries bounds rather than a `duration_sec` —
+   and its end is `authored_end_sec` where an ADR-0008 ad pad extended the stop,
+   because the pad is tolerance, not content. This is the same length
+   `player/foray-resolve.js` measures the Foray's clock in, which is what keeps
+   the bar's width, the bar's fill and a click's destination in agreement. */
+function segLenOf(item) {
+  // `isNum`, not `??`: `??` passes NaN straight through, so an
+  // `authored_end_sec: NaN` would measure 0 here and its real length in
+  // foray-resolve.js — the exact drift this shared helper exists to prevent.
+  const num = (n) => typeof n === "number" && Number.isFinite(n);
+  const end = num(item?.authored_end_sec) ? item.authored_end_sec : item?.end_sec;
+  const start = item?.start_sec;
+  return num(start) && num(end) && end > start ? end - start : 0;
+}
+
+/* Where in the WHOLE Foray a click on the strip landed, in seconds, or null
+   when the geometry cannot answer (no pointer coordinates, a strip with no
+   width yet). Null is a real answer here, not a failure — the caller falls back
+   to the segment that was hit, which is what the strip did before it could
+   scrub. Gap widths between the bars are counted as playable time; at 32 bars
+   across a phone that is a fraction of a second, and pretending otherwise would
+   need a per-bar measurement for no audible gain. */
+function stripElapsedAt(e, r) {
+  const strip = $("#fy-strip");
+  if (!strip || typeof strip.getBoundingClientRect !== "function") return null;
+  const rect = strip.getBoundingClientRect();
+  const x = e && typeof e.clientX === "number" ? e.clientX : null;
+  if (x == null || !rect || !(rect.width > 0)) return null;
+  const frac = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
+  return frac * r.totalSec;
+}
+
+/* The fill inside the bar the listener is currently inside — the one thing on
+   this page that has to move continuously, and the reason it is painted above
+   `paintForay`'s segment-change guard.
+
+   It also makes the seam beat visible: for the 2.0 s between two segments the
+   fill sits still at a boundary, so the pause you hear is a pause you can see.
+
+   Which bar to fill comes from the CLOCK, not from the caller's index: the two
+   agree (`forayPosition()` reports a segment's start until that segment is the
+   one actually loaded), and deriving it from the same `segmentAtElapsed` the
+   scrubber uses is what stops the bar and the click destination from drifting
+   apart. `started` is only a gate — with nothing played and nothing stored,
+   every bar stays empty rather than filling the first one to 0%.
+
+   Widths are DOM properties, never style attributes (CSP `style-src 'self'`). */
+function paintSegFill(started, elapsedSec) {
+  const strip = $("#fy-strip");
+  const player = window.ForayPlayer;
+  if (!strip || !state.foray || !started) return;
+  if (typeof player?.segmentAt !== "function") return;
+  const at = player.segmentAt(state.foray.playable, elapsedSec);
+  if (!at) return;
+  const fill = fillOf(strip, at.index);
+  if (!fill) return;
+  const len = segLenOf(state.foray.playable[at.index]);
+  const pct = len > 0 ? Math.max(0, Math.min(100, (at.into / len) * 100)) : 0;
+  fill.style.width = `${pct}%`;
+}
+
+function fillOf(strip, i) {
+  const seg = strip.children ? strip.children[i] : null;
+  return seg && seg.children ? seg.children[0] : null;
 }
 
 const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
@@ -1280,12 +1346,35 @@ function bindForayTransport(r, player, resume = null) {
     });
   });
 
+  /* The strip is a scrubber, not 32 buttons.
+
+     It looked like a scrubber from the day it shipped — a proportional bar of
+     the whole hour — and behaved like a row of jump targets, snapping to the
+     head of whichever segment you hit. Thirty-two minutes in, "back a bit" is
+     the gesture people make, and there was no way to make it: `foraySeek` was
+     implemented and tested in player/client.js and nothing on the page called
+     it. Now the position under the pointer is the position you get, cold or
+     playing, using the same `startElapsedSec` path the resume banner uses.
+
+     The exact-segment jump did not go away — it is the running-order rows,
+     which are also the keyboard-reachable half of this control. */
   $("#fy-strip").addEventListener("click", async (e) => {
+    /* Position FIRST, and only then look for a bar. The strip is 32 bars with a
+       2px gap between each, which is roughly a fifth of its width — requiring a
+       `[data-seg]` hit before reading the coordinate made every one of those
+       gaps a dead zone, and "a click anywhere on it is a position in the hour"
+       has to be true or the control is lying. */
+    const at = stripElapsedAt(e, r);
+    if (at != null) {
+      if (playerHasForay(r)) return player.foraySeek(at);
+      return player.playForay(r, { startElapsedSec: at, onChange });
+    }
+    // No coordinate to work from (a synthetic or assistive click). Fall back to
+    // the bar that was hit, which is what the strip did before it could scrub.
     const seg = e.target.closest("[data-seg]");
     if (!seg) return;
     const index = Number(seg.dataset.seg);
-    if (playerHasForay(r)) await player.forayJump(index);
-    else await start(index);
+    return playerHasForay(r) ? player.forayJump(index) : start(index);
   });
 
   /* Re-entering the page mid-Foray must paint the segment that is actually
@@ -1324,6 +1413,13 @@ function paintForay(s) {
   const now = $("#fy-now");
   if (now && window.ForayPlayer) now.textContent = window.ForayPlayer.fmtClock(elapsed);
 
+  /* Everything before this index is behind the listener. While something is
+     playing that is the live segment; before anything has started it is the
+     stored resume point, so a page opened cold shows the hour already half
+     ticked off instead of pretending it was never touched. */
+  const mark = s.index >= 0 ? s.index : (resume?.index ?? -1);
+  paintSegFill(mark >= 0, elapsed);
+
   // The offer only means anything while stopped; once it is playing, the
   // transport IS the progress and a second "jump back in" is noise.
   const banner = $("#fy-resume");
@@ -1333,11 +1429,20 @@ function paintForay(s) {
   if (playBtn) {
     // Three different "not playing" states, and they mean different things:
     // paused mid-segment, never started but with a stored position, and cold.
+    //
+    // A seam beat is a FOURTH, and it reads as playing: the Foray is running,
+    // it is between two segments on purpose, and the button has to mean "stop"
+    // for the two seconds the silence lasts. Labelling those two seconds
+    // "Loading…" would be the app apologising for its own edit.
+    const running = s.playing || s.gap;
     const started = s.index >= 0 || elapsed > 0;
-    const label = s.playing ? "❚❚ Pause" : (s.loading ? "Loading…" : (started ? "▶ Resume" : "▶ Play"));
+    const label = running ? "❚❚ Pause" : (s.loading ? "Loading…" : (started ? "▶ Resume" : "▶ Play"));
     playBtn.textContent = label;
-    playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
+    playBtn.setAttribute("aria-label", running ? "Pause" : "Play");
   }
+  // The beat, for CSS: the strip holds still at a boundary for 2.0 s and this
+  // is how a stylesheet can say so without the page inventing new copy.
+  $("#fy-strip")?.classList.toggle("is-seam", Boolean(s.gap));
 
   // The player's own words are telemetry, not copy. Say the one thing a
   // listener can act on, and keep the detail in the console.
@@ -1353,12 +1458,6 @@ function paintForay(s) {
   if (state.forayPainted === s.index) return;
   state.forayPainted = s.index;
 
-  /* Everything before this index is behind the listener. While something is
-     playing that is the live segment; before anything has started it is the
-     stored resume point, so a page opened cold shows the hour already half
-     ticked off instead of pretending it was never touched. */
-  const mark = s.index >= 0 ? s.index : (resume?.index ?? -1);
-
   $("#view").querySelectorAll("[data-fy]").forEach(row => {
     const i = Number(row.dataset.fy);
     row.classList.toggle("is-playing", i === s.index);
@@ -1369,6 +1468,14 @@ function paintForay(s) {
     [...strip.children].forEach((seg, i) => {
       seg.classList.toggle("is-playing", i === s.index);
       seg.classList.toggle("is-played", mark >= 0 && i < mark);
+      // A bar the listener has passed is full; one they have not reached is
+      // empty. The bar they are INSIDE is left alone — paintSegFill already
+      // set it this same tick, and clobbering it here would drop the fill to
+      // zero for a quarter of a second at every segment change.
+      if (mark >= 0 && i !== mark) {
+        const fill = fillOf(strip, i);
+        if (fill) fill.style.width = i < mark ? "100%" : "0%";
+      }
     });
   }
 }

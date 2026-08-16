@@ -47,14 +47,52 @@
    backend watches the playhead, and when the boundary lands the backend
    reports the same `onItemEnded` a finished file reports. `_handleBackendItem-
    Ended` below cannot tell the difference, and that is the design.
+
+   ── 10. The seam beat (`player/seam-gap.js`) ──────────────────────────────
+   An unbridged segment-to-segment seam gets 2.0 s of silence before the next
+   segment becomes audible. The RULE lives in seam-gap.js; the CLOCK lives here,
+   for the same reason the 15 s position timer does — the reducer models no
+   timers, and adding a `gapping` state would buy nothing the deadline below
+   does not already give us. `queue-state.js` is unchanged by this feature.
+
+   Two properties worth stating, because both are easy to get wrong:
+
+     THE GAP IS NOT AUDIO. Nothing is appended to, padded onto or re-encoded
+     into an episode file. The beat is wall clock between the out-point pausing
+     the element and `startPlayback` running. Product principle 3 holds by
+     construction: we never touch the bytes.
+
+     THE GAP ABSORBS THE LOAD, it does not follow it. The deadline is stamped
+     the instant the out-point fires, and the next item's `backend.load()` runs
+     IMMEDIATELY — inside the beat. Only the dispatch of `itemLoaded` (which is
+     what arms the out-point and starts playback) waits out the remainder. So
+     total silence is `max(gap, load)`, never `gap + load`. Ordering it the
+     other way is the difference between a graceful beat and a stall, and on a
+     cold CDN it is the difference between 2 s and 5 s.
 */
 
 import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
 import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
 import { seekPrecision, FOREIGN, APPROXIMATE } from "./seek-policy.js";
 import { buildForayQueue } from "./foray-queue.js";
+import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
 
 const POSITION_INTERVAL_MS = 15_000;
+
+/** Wall clock for the seam beat. Injected so the suite drives the beat by hand
+    instead of sleeping: a test that asserts "2 s elapsed" is a test that goes
+    red when the box is busy, and this repo has already paid for that once
+    (#195, `player/html-audio-backend.test.js` under a transcription queue).
+    `schedule` returns its own cancel, so nothing here has to track timer ids. */
+const REAL_SCHEDULER = Object.freeze({
+  nowMs: () => Date.now(),
+  // Never unref'd: something awaits this. See LOAD_SETTLE_TIMEOUT_MS in
+  // html-audio-backend.js for the CI failure that lesson came from.
+  schedule: (ms, fn) => {
+    const t = setTimeout(fn, ms);
+    return () => clearTimeout(t);
+  },
+});
 
 /** Exactly one manager for the app's lifetime. Together with the reducer's own
     double-entry guard this is the two-layer defence against corner case #19
@@ -70,8 +108,16 @@ export class PlayerQueueManager {
    * @param {object}   [opts.strategy]     see queue-strategy.js; default SINGLE_ITEM
    * @param {Function} [opts.telemetry]    (message) => void
    * @param {boolean}  [opts.allowMultiple] test-only escape hatch
+   * @param {number}   [opts.seamGapSec]   length of the unbridged-seam beat
+   * @param {object}   [opts.scheduler]    `{ nowMs(), schedule(ms, fn) -> cancel }`
+   * @param {Function} [opts.onSeamGapChange] (inGap: boolean) => void — fires
+   *   when a beat starts and when it ends. A surface needs this because a beat
+   *   produces no media events to repaint on.
    */
-  constructor({ backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false } = {}) {
+  constructor({
+    backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false,
+    seamGapSec: gapSec = SEAM_GAP_SEC, scheduler = REAL_SCHEDULER, onSeamGapChange = null,
+  } = {}) {
     if (!backend) throw new Error("PlayerQueueManager requires a backend");
     if (liveInstance && !allowMultiple) {
       throw new Error(
@@ -85,6 +131,13 @@ export class PlayerQueueManager {
     this.positionStore = positionStore;
     this.strategy = assertStrategy(strategy);
     this._telemetry = telemetry;
+    // Passed straight through, deliberately un-sanitised: `seam-gap.js` already
+    // owns what a nonsense length means (it collapses to no beat), and a second
+    // policy here — the first draft quietly turned a negative into 2.0 — would
+    // be two answers to one question.
+    this.seamGapSec = gapSec;
+    this._scheduler = scheduler ?? REAL_SCHEDULER;
+    this._onSeamGapChange = typeof onSeamGapChange === "function" ? onSeamGapChange : null;
 
     this.state = S.idle();
     this.queue = [];
@@ -106,6 +159,25 @@ export class PlayerQueueManager {
     /** Set by setQueueFromForay; consulted by the load-time ladder. */
     this._forayOptions = { isLocalFile: false, allowAdPad: false };
 
+    /* ---- the seam beat (see §10 in the header) ----
+       `_gapUntil` is an ABSOLUTE deadline, stamped when the out-point fires,
+       not a duration counted from when the load happens to finish. That one
+       choice is what makes the load run inside the beat instead of after it,
+       and it is also why skipping an unplayable segment mid-beat consumes the
+       remainder rather than restarting it. */
+    this._gapUntil = null;
+    /** Resolves the parked wait. Non-null exactly while one exists. */
+    this._gapFinish = null;
+    /** Stops the beat's timer without resolving anything. */
+    this._gapStopTimer = null;
+    /** The beat was cut and its wait is parked, awaiting `_releaseSeamGap`. */
+    this._gapCut = false;
+    /** Bumped on every load. A wait that returns to find this changed is a
+        wait whose item has been superseded — by a skip, a jump, or the ladder
+        — and it must not dispatch `itemLoaded` for an item nobody is on.
+        WHEN it is compared is the load-bearing part; see `_transport`. */
+    this._loadSeq = 0;
+
     /** A backend with no out-point watch cannot play a Foray at all — it would
         run each segment to the end of its whole episode. Recorded once here so
         the refusal below can name the cause instead of the symptom. */
@@ -119,7 +191,11 @@ export class PlayerQueueManager {
 
   dispose() {
     this._stopTimer();
+    // `_disposed` first: the released wait's continuation then hits `_handle`'s
+    // disposed guard instead of dispatching into a torn-down player.
     this._disposed = true;
+    this._cutSeamGap("dispose");
+    this._releaseSeamGap();
     if (liveInstance === this) liveInstance = null;
     if (typeof this.backend.release === "function") this.backend.release();
   }
@@ -188,29 +264,78 @@ export class PlayerQueueManager {
     return report;
   }
 
-  /* ---------- transport ---------- */
+  /* ---------- transport ----------
+
+     EVERY entry point below cuts a running seam beat, and that is one rule
+     rather than five special cases: the beat exists to mark an edit the
+     listener did not ask for, so the moment they touch the transport it has
+     nothing left to say.
+
+     They all go through `_transport`, and that is not decoration — see the
+     comment on it. Calling `_cutSeamGap` directly from a transport method is
+     the bug it exists to prevent. */
+
+  /**
+   * Run a transport action that must end any running seam beat first.
+   *
+   * The beat's clock stops immediately, but the load that was waiting on it is
+   * PARKED and only released once `run()` has finished.
+   *
+   * That ordering is the whole point, and getting it wrong is subtle enough to
+   * be worth spelling out. When a beat is cut, the waiting `_loadItem` has to
+   * answer one question: "am I still the load this player is on?" It answers by
+   * comparing `_loadSeq`. But a transport action cuts the beat BEFORE it issues
+   * its own replacement load, so at cut time `_loadSeq` has not moved yet and
+   * the answer is always a stale yes — the abandoned wait then dispatches
+   * `itemLoaded` into the middle of the new action's effect loop, arming an
+   * out-point that the replacement `load()` immediately clears (the backend
+   * contract) and starting playback before the replacement has any audio. The
+   * segment then runs to the end of the whole source episode with no boundary
+   * at all, which `_perform`'s setOutPoint refusal calls the one outcome worse
+   * than not playing.
+   *
+   * Deferring the comparison by a microtask is NOT enough: `skipToPrevious`
+   * emits `savePosition` and `pausePlayback` before `loadItem`, so its bump is
+   * two awaits away. Parking until `run()` returns needs no counting — by then
+   * the action has issued whatever load it was going to issue, so `_loadSeq`
+   * simply tells the truth. Observed, not predicted (product principle 2).
+   */
+  async _transport(why, run) {
+    this._cutSeamGap(why);
+    try {
+      return await run();
+    } finally {
+      this._releaseSeamGap();
+    }
+  }
 
   async play(index = 0) {
     const item = this.queue[index];
     if (!item) return this._emit(`play.ignored.noItemAt=${index}`);
-    this.currentIndex = index;
-    await this._handle(E.play(refOf(item)));
+    return this._transport("play", () => {
+      this.currentIndex = index;
+      return this._handle(E.play(refOf(item)));
+    });
   }
 
   async resume() {
     const item = this._currentItem();
     if (!item) return this._emit("resume.ignored.noCurrentItem");
-    await this._handle(E.play(refOf(item)));
+    return this._transport("resume", () => this._handle(E.play(refOf(item))));
   }
 
   /** Pause is modelled as an interruption, matching the Swift. This slightly
       overloads `interrupted`'s telemetry meaning but keeps "why are we paused"
       as a single code path — see the note in PlayerQueueState.swift. */
   async pause() {
-    await this._handle(E.interruptionBegan());
+    return this._transport("pause", () => this._handle(E.interruptionBegan()));
   }
 
   async skipToNext() {
+    return this._transport("skipToNext", () => this._skipToNext());
+  }
+
+  async _skipToNext() {
     const next = this._nextItem(this._cursor(), true);
     if (next) this._targetIndex = next.index;
     // currentIndex is NOT advanced here. The reducer's skip emits savePosition
@@ -229,27 +354,31 @@ export class PlayerQueueManager {
       "prevTrack = restart item / previous"; true previous-item behaviour is
       flagged there as an undecided taste call and is not decided here. */
   async skipToPrevious() {
-    // "Restart" must mean zero. Without this the reducer's savePosition fires
-    // first, stores the current playhead, and the reload then resumes to the
-    // exact spot the user just asked to leave.
-    this._forceNextOffset = 0;
-    await this._handle(E.skipToPrevious(null));
+    return this._transport("skipToPrevious", () => {
+      // "Restart" must mean zero. Without this the reducer's savePosition fires
+      // first, stores the current playhead, and the reload then resumes to the
+      // exact spot the user just asked to leave.
+      this._forceNextOffset = 0;
+      return this._handle(E.skipToPrevious(null));
+    });
   }
 
   async stop() {
-    await this._handle(E.stop());
+    await this._transport("stop", () => this._handle(E.stop()));
     this._stopTimer();
   }
 
   /** @param {object} [opts] `{ precise }` — decided by seek-policy.js (#30),
       never by this manager. */
   async seek(seconds, opts = {}) {
-    await this._handle(E.seek(seconds, Boolean(opts.precise)));
+    return this._transport("seek", () => this._handle(E.seek(seconds, Boolean(opts.precise))));
   }
 
   /* ---------- interruptions and routes ---------- */
 
-  async interruptionBegan() { await this._handle(E.interruptionBegan()); }
+  async interruptionBegan() {
+    return this._transport("interruption", () => this._handle(E.interruptionBegan()));
+  }
   async interruptionEnded(shouldResume) { await this._handle(E.interruptionEnded(Boolean(shouldResume))); }
 
   /** Corner case #13. The reducer never auto-resumes; that policy lives here.
@@ -257,7 +386,16 @@ export class PlayerQueueManager {
       — otherwise plugging in headphones would blast audio unasked. */
   async routeChanged({ oldDeviceUnavailable, routeName = null, isCarRoute = false }) {
     if (isCarRoute && routeName) this._knownCarRoutes.add(routeName);
-    await this._handle(E.routeChanged(Boolean(oldDeviceUnavailable)));
+    // Losing the output device mid-beat is not the beat's business to finish:
+    // the next thing that happens is a pause, and a beat that outlived it would
+    // start audio into a dead route the moment the timer fired. A route
+    // BECOMING available cannot interrupt a beat — that path only acts on an
+    // `interrupted` state — so it needs no cut and takes the plain call.
+    if (oldDeviceUnavailable) {
+      await this._transport("routeLost", () => this._handle(E.routeChanged(true)));
+    } else {
+      await this._handle(E.routeChanged(false));
+    }
 
     if (!oldDeviceUnavailable && routeName && this._knownCarRoutes.has(routeName)) {
       const item = this._currentItem();
@@ -358,8 +496,17 @@ export class PlayerQueueManager {
   }
 
   async _loadItem(ref) {
+    /* Claim this load. A wait that comes back to find this changed has been
+       superseded and must not start audio for an item nobody is on — see
+       `_transport` for why the comparison cannot be made any earlier. */
+    const seq = ++this._loadSeq;
     const item = this._itemFor(ref);
-    if (!item) return this._handle(E.error(`loadItem: unknown ref ${ref.id}`));
+    if (!item) {
+      // Above the try, so the catch's cut does not cover it — drop the deadline
+      // here or it outlives the seam that armed it.
+      this._endSeamGap("unknownRef");
+      return this._handle(E.error(`loadItem: unknown ref ${ref.id}`));
+    }
     // Resume offset rides on the LOAD, exactly as the Swift does
     // (`backend.load(url:startOffset:)`) — not as a seek afterwards.
     //
@@ -418,10 +565,152 @@ export class PlayerQueueManager {
         return this._skipUnplayableSegment();
       }
       if (gate.note) this._emit(`foray.segment.${item.id}: ${gate.note}`);
+      /* The seam beat is spent HERE, between a loaded-and-positioned asset and
+         the `itemLoaded` that arms the out-point and starts it. Everything
+         expensive already happened, so the remaining silence is the beat and
+         nothing else. A load that FAILED never reaches this line — an error
+         must not wait two seconds to be reported. */
+      if (!(await this._awaitSeamGap(seq))) {
+        return this._emit(`seam.gap.superseded ${item.id} — a newer load owns the player`);
+      }
       await this._handle(E.itemLoaded());
     } catch (err) {
+      // Drop the deadline with the item it belonged to. `_awaitSeamGap` is the
+      // only other place that clears it and this path never reaches it, so
+      // without this a failed seam leaves a live deadline that the NEXT load —
+      // possibly a cold-launch restore, which touches no transport method —
+      // would sit out for up to two seconds for no reason.
+      this._endSeamGap("loadFailed");
       await this._handle(E.error(`loadItem(${ref.id}) failed: ${err?.message ?? err}`));
     }
+  }
+
+  /* ---------- the seam beat ---------- */
+
+  /** Milliseconds still owed at this seam. Zero when no beat is running. */
+  get seamGapRemainingMs() {
+    if (this._gapUntil == null) return 0;
+    return Math.max(0, this._gapUntil - this._scheduler.nowMs());
+  }
+
+  /** True from the moment a seam is armed until the beat is spent or cut —
+      which includes the load happening inside it, because that load is silence
+      the listener is already hearing as part of the beat.
+
+      The surface reads this so it can say "a beat is running" instead of
+      "Loading…", and so the main button means STOP for those two seconds
+      rather than START. `_gapUntil` is the single source of truth: every path
+      that ends a beat nulls it. */
+  get inSeamGap() {
+    return this._gapUntil != null;
+  }
+
+  /** The one writer of `_gapUntil`, so the "a beat started / ended" hook can
+      never disagree with the flag the surface reads. */
+  _setGapDeadline(untilMs) {
+    const was = this._gapUntil != null;
+    this._gapUntil = untilMs;
+    if (was !== (untilMs != null) && this._onSeamGapChange) {
+      // The page has no media event to repaint on during a beat — the element
+      // is paused and `timeupdate` has stopped — so without this the UI sits on
+      // its last frame for the whole 2 s and the `gap` flag never reaches it.
+      try { this._onSeamGapChange(untilMs != null); } catch (_) { /* a surface must never break the player */ }
+    }
+  }
+
+  /**
+   * Decide whether this transition is a seam, and if so stamp the deadline.
+   * Called at the moment the out-point (or a natural end) fires, which is the
+   * only moment that makes the beat absorb the load rather than follow it.
+   */
+  _armSeamGap(from, to, bridged) {
+    const seam = { from, to, bridged, cause: AUTO_ADVANCE, gapSec: this.seamGapSec };
+    const sec = seamGapSec(seam);
+    if (sec <= 0) return;
+    this._setGapDeadline(this._scheduler.nowMs() + sec * 1000);
+    this._emit(`seam.gap.armed ${describeSeam(seam)}`);
+  }
+
+  /**
+   * Hold the remainder of the beat, then say whether this load still owns the
+   * player.
+   *
+   * Three ways out, and the reducer — not this method — decides what each one
+   * means, which is why none of them needs a new state:
+   *
+   *   1. the timer runs out. `itemLoaded` in `loadingItem`: the out-point is
+   *      armed and the segment starts. The ordinary case.
+   *   2. a transport action cut the beat and issued no replacement load. A
+   *      pause left us `interrupted` and a stop left us `idle`, and the reducer
+   *      ignores a stray `itemLoaded` in both — so the beat ends and NOTHING
+   *      becomes audible, which is exactly what pause has to mean. A seek left
+   *      us in `loadingItem` with a `pendingSeek`, so `itemLoaded` applies the
+   *      seek and starts playback there: scrubbing ends the beat early. This is
+   *      why a cut must not abandon by itself — a scrub that abandoned would
+   *      strand the player in `loadingItem` with nothing left to start it.
+   *   3. a newer load claimed `_loadSeq` — a skip, a row tap, or the ADR-0007
+   *      ladder walking past an unplayable segment. This returns false and the
+   *      caller abandons quietly; the newer load is already carrying the queue.
+   *
+   * 2 and 3 are told apart by WHEN the comparison happens, not by a flag the
+   * caller sets: `_transport` releases a parked wait only after the action's
+   * own effects are done, so `_loadSeq` has already moved if it was going to.
+   */
+  _awaitSeamGap(seq) {
+    const ms = this.seamGapRemainingMs;
+    if (ms <= 0) {
+      this._setGapDeadline(null);
+      return Promise.resolve(this._loadSeq === seq);
+    }
+    this._emit(`seam.gap.hold ${Math.round(ms)}ms`);
+    return new Promise((resolve) => {
+      let settled = false;
+      // Idempotent, and it stops its own timer, so the timer path and the
+      // release path are one function. Assigned BEFORE the timer is scheduled:
+      // a scheduler that fires synchronously would otherwise have `finish`
+      // clear the field and the next line put it straight back.
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (this._gapStopTimer) this._gapStopTimer();
+        this._gapStopTimer = null;
+        this._gapFinish = null;
+        this._gapCut = false;
+        this._setGapDeadline(null);
+        resolve(this._loadSeq === seq);
+      };
+      this._gapFinish = finish;
+      this._gapCut = false;
+      this._gapStopTimer = this._scheduler.schedule(ms, finish);
+    });
+  }
+
+  /** Stop a running beat's clock and forget its deadline, so the NEXT load does
+      not inherit it. The waiting load is left PARKED rather than released —
+      `_releaseSeamGap` finishes the job. Safe when no beat is running. */
+  _cutSeamGap(why) {
+    this._setGapDeadline(null);
+    if (this._gapFinish == null || this._gapCut) return;
+    this._gapCut = true;
+    if (this._gapStopTimer) this._gapStopTimer();
+    this._gapStopTimer = null;
+    this._emit(`seam.gap.cut.${why}`);
+  }
+
+  /** Let a parked wait go, now that the action which cut it has finished its
+      own effects and `_loadSeq` tells the truth. See `_transport`. */
+  _releaseSeamGap() {
+    if (this._gapFinish && this._gapCut) this._gapFinish();
+  }
+
+  /** Cut and release in one go, for the internal paths that end a seam without
+      being a transport action — a load that failed, a queue that ran out, a ref
+      that does not resolve. None of them has a wait parked (they all run before
+      `_awaitSeamGap`, or after it has already resolved), so this is belt and
+      braces: it guarantees no path can leave one parked forever. */
+  _endSeamGap(why) {
+    this._cutSeamGap(why);
+    this._releaseSeamGap();
   }
 
   /**
@@ -472,6 +761,11 @@ export class PlayerQueueManager {
   async _skipUnplayableSegment() {
     const next = this._nextItem(this._cursor(), false);
     if (next) this._targetIndex = next.index;
+    // With something left, the deadline is deliberately kept: the refusal
+    // happened INSIDE the beat, so the replacement segment spends what remains
+    // of it rather than starting a second one. With nothing left there is no
+    // load coming to spend it, so drop it — see the note in the catch above.
+    else this._endSeamGap("queueExhausted");
     await this._handle(E.skipToNext(next ? refOf(next.item) : null));
   }
 
@@ -520,8 +814,15 @@ export class PlayerQueueManager {
     }
     if (this.state.type === "playing") {
       const next = this._nextItem(this._cursor(), false);
+      // Nothing follows: the Foray is over and a beat before silence is just
+      // silence. Same for the state above — a bridge already marks its seam.
       if (!next) return this._handle(E.itemEnded(null, false));
-      return this._handle(E.itemEnded(refOf(next.item), next.item.kind === TTS));
+      const bridged = next.item.kind === TTS;
+      // Stamp the deadline BEFORE dispatching: `itemEnded` runs the next
+      // `loadItem` synchronously down this same call, and the whole point is
+      // for that load to happen inside the beat.
+      this._armSeamGap(this._currentItem(), next.item, bridged);
+      return this._handle(E.itemEnded(refOf(next.item), bridged));
     }
     return this._emit(`backend.itemEnded.ignored.state=${this.state.type}`);
   }

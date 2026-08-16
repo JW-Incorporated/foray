@@ -821,6 +821,24 @@ test("back-to-back slices of one episode each stop at their own boundary", async
    call in the middle. It is the test that would catch a wiring mistake none of
    the layers can see on its own. */
 
+/** Wait until `id` is not merely LOADED but audible.
+ *
+ *  These two used to be the same instant and are not any more: an unbridged
+ *  seam holds a beat between the load and `startPlayback`, and the manager
+ *  moves `currentIndex` at the load. Polling on the item alone therefore
+ *  returns mid-silence, and anything the test then does — a phone call, in the
+ *  case below — happens to a player that is between segments rather than
+ *  inside one. Poll-until-condition, never a sleep: a green run costs whatever
+ *  the box actually needed and no more. */
+async function waitForPlaying(m, id) {
+  const deadline = now() + END_BUDGET_MS;
+  while (now() < deadline) {
+    if (m.state.type === "playing" && m._currentItem()?.id === id) return true;
+    await sleep(5);
+  }
+  return false;
+}
+
 test("integration: a three-segment Foray plays every slice and stops", async () => {
   __resetInstanceForTests();
   const el = new TickingAudio();
@@ -829,6 +847,14 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   const m = new PlayerQueueManager({
     backend,
     positionStore: { save: (id, s) => saved.set(id, { seconds: s }), load: (id) => saved.get(id) ?? null },
+    /* A real 2.0 s beat twice over would add four seconds of sleeping to this
+       suite for no extra coverage — the beat's LENGTH is a constant pinned in
+       player/seam-gap.test.js and its behaviour is driven by a fake clock in
+       player/queue-manager.test.js. What is only testable here is that the
+       DEFAULT scheduler (a real setTimeout) actually fires, so the beat stays
+       real and is merely short. Everything below waits on a condition, so this
+       number is not load-bearing either. */
+    seamGapSec: 0.05,
   });
   // A stale position on the shared episode must never win over an in-point.
   saved.set("ep-a", { seconds: 3000 });
@@ -847,11 +873,10 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   assert.deepStrictEqual(report.skipped, []);
   assert.equal(el.currentTime >= 100 && el.currentTime < 101, true, "opened at the first in-point, not at 3000");
 
-  // Slice 1 -> slice 2: same episode, so a seek rather than a refetch.
+  // Slice 1 -> slice 2: same episode, so a seek rather than a refetch — with
+  // the seam beat in between, which is silence and not a second load.
   const loadsBefore = el.calls.filter((c) => c === "load").length;
-  let deadline = now() + END_BUDGET_MS;
-  while (m._currentItem()?.id !== "f1#1" && now() < deadline) await sleep(5);
-  assert.equal(m._currentItem().id, "f1#1");
+  assert.ok(await waitForPlaying(m, "f1#1"), `never reached slice 2 (state ${m.state.type})`);
   assert.equal(el.calls.filter((c) => c === "load").length, loadsBefore,
     "two slices of one episode must not refetch it");
   assert.ok(el.currentTime >= 300 && el.currentTime < 301, `second in-point, got ${el.currentTime}`);
@@ -864,14 +889,12 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   assert.ok(el.currentTime >= pausedAt - 0.05, `resumed at ${el.currentTime}, was at ${pausedAt}`);
 
   // Slice 2 -> slice 3: different episode, so a real load.
-  deadline = now() + END_BUDGET_MS;
-  while (m._currentItem()?.id !== "f1#2" && now() < deadline) await sleep(5);
-  assert.equal(m._currentItem().id, "f1#2");
+  assert.ok(await waitForPlaying(m, "f1#2"), `never reached slice 3 (state ${m.state.type})`);
   assert.equal(el.src, "https://cdn.example/b.mp3");
   assert.ok(el.currentTime >= 50 && el.currentTime < 51);
 
   // ...and the Foray ends rather than rolling into anything.
-  deadline = now() + END_BUDGET_MS;
+  let deadline = now() + END_BUDGET_MS;
   while (m.state.type !== "ended" && now() < deadline) await sleep(5);
   assert.equal(m.state.type, "ended");
   assert.equal(el.paused, true);

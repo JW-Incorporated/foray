@@ -34,6 +34,7 @@ import {
   forayElapsed, segmentAtElapsed, fmtClock,
 } from "./foray-resolve.js";
 import { ForayProgressStore, resumePoint } from "./foray-progress.js";
+import { SEAM_GAP_SEC } from "./seam-gap.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -109,11 +110,51 @@ class FakeStorage {
   removeItem(k) { this.map.delete(k); }
 }
 
+/* The seam beat's clock, driven by hand. Foray #1 is unbridged end to end, so
+   EVERY one of its 31 transitions now holds 2.0 s — and a suite that ran 32
+   real beats would sit here for a minute and be at the mercy of a busy box
+   (#195). INSTANT arms, holds and releases the beat exactly as production does,
+   in zero wall clock; `manualScheduler` is for the two tests that are about the
+   beat itself. */
+const INSTANT_SCHEDULER = {
+  nowMs: () => 0,
+  // queueMicrotask, not a synchronous call: a scheduler that fires inside
+  // schedule() is not setTimeout semantics, and it made every pre-existing
+  // test blind to the beat's async ordering. This is still zero wall clock.
+  schedule: (_ms, fn) => { let dead = false; queueMicrotask(() => { if (!dead) fn(); }); return () => { dead = true; }; },
+};
+
+function manualScheduler() {
+  let now = 0;
+  const pending = [];
+  return {
+    nowMs: () => now,
+    schedule(ms, fn) {
+      const entry = { at: now + ms, fn, dead: false };
+      pending.push(entry);
+      return () => { entry.dead = true; };
+    },
+    async advance(ms) {
+      now += ms;
+      for (const entry of [...pending]) {
+        if (entry.dead || entry.at > now) continue;
+        entry.dead = true;
+        entry.fn();
+      }
+      await new Promise((r) => setImmediate(r));
+    },
+    get live() { return pending.filter((e) => !e.dead).length; },
+  };
+}
+
 function make(opts = {}) {
   __resetInstanceForTests();
   const backend = new FakeBackend(opts);
   const log = [];
-  const m = new PlayerQueueManager({ backend, telemetry: (t) => log.push(t) });
+  const m = new PlayerQueueManager({
+    backend, telemetry: (t) => log.push(t),
+    scheduler: opts.scheduler ?? INSTANT_SCHEDULER,
+  });
   return { m, backend, log };
 }
 
@@ -211,6 +252,56 @@ test("every segment is loaded at its own in-point, never at 0:00", async () => {
 
   const offsets = backend.calls.filter((c) => c.startsWith("load:")).map((c) => Number(c.split("@")[1]));
   assert.deepEqual(offsets, r.playable.map((i) => round(i.start_sec)));
+});
+
+test("every one of Foray #1's 31 seams holds a beat, and neither end of it does", async () => {
+  /* This is the founder-facing claim, measured against the shipped document:
+     Foray #1 has no narration, so all 31 transitions are unbridged and every
+     one of them gets 2.0 s of silence. Pressing play does not, and the end of
+     the Foray does not. The clock is driven by hand — no sleeping, so this
+     costs nothing on a busy box. */
+  const r = realResolve();
+  const scheduler = manualScheduler();
+  const { m, backend } = make({ scheduler });
+  await startForay(m, r);
+  assert.equal(m.inSeamGap, false, "the first segment must be instant");
+
+  let beats = 0;
+  for (let i = 0; i < 32; i++) {
+    const settled = backend.reachOutPoint();
+    await new Promise((res) => setImmediate(res));
+    const last = i === 31;
+    assert.equal(m.inSeamGap, !last, `seam after segment ${i + 1}`);
+    if (!last) {
+      beats += 1;
+      assert.equal(m.seamGapRemainingMs, 2000, `seam ${i + 1} is not 2.0 s`);
+      // Loaded and positioned already: the beat is absorbing the fetch.
+      assert.ok(backend.loads().includes(r.playable[i + 1].id), "the next segment loads inside the beat");
+      await scheduler.advance(2000);
+    }
+    await settled;
+  }
+
+  assert.equal(beats, 31, "31 transitions, 31 beats");
+  assert.equal(m.state.type, "ended");
+  assert.equal(backend.calls.filter((c) => c === "play").length, 32, "the beats cost no segments");
+  assert.equal(scheduler.live, 0, "no beat timer outlived the Foray");
+});
+
+test("the beats cost about a minute of a 61-minute Foray, and cost no audio at all", async () => {
+  /* A number a founder can weigh, computed from the SHIPPED constant rather
+     than from a copy of it — hard-coding 2.0 here made this assertion unable
+     to fail if the beat were shortened, lengthened or removed, which is the
+     one thing it is here to notice. */
+  const r = realResolve();
+  const seams = r.playable.length - 1;
+  const costSec = seams * SEAM_GAP_SEC;
+  assert.equal(seams, 31);
+  assert.equal(costSec, 62);
+  assert.ok(costSec / r.totalSec < 0.02, `the beats are ${(100 * costSec / r.totalSec).toFixed(1)}% of the runtime`);
+  // ...and nothing was appended to anybody's file to produce them: every load
+  // is still the publisher's own enclosure URL (product principle 3).
+  assert.ok(r.playable.every((i) => /^https:\/\//.test(i.audio_url)), "still the publishers' own files");
 });
 
 test("consecutive segments of the SAME episode are two loads, not one", async () => {
@@ -572,11 +663,18 @@ class StubEl {
   }
   /** How many handlers are bound — the thing the inert build had zero of. */
   listeners(type = "click") { return (this._on.get(type) ?? []).length; }
-  /** Fire a click. `target` models event delegation (the strip reads e.target). */
-  async click(target = this) {
-    const ev = { preventDefault() {}, stopPropagation() {}, target };
+  /** Fire a click. `target` models event delegation (the strip reads e.target),
+      `clientX` models the pointer position (the strip reads that too, now that
+      it is a scrubber). Omitting clientX is a real case, not a shortcut: a
+      synthetic or assistive click has no coordinates and the strip must still
+      do something sensible. */
+  async click(target = this, clientX = undefined) {
+    const ev = { preventDefault() {}, stopPropagation() {}, target, clientX };
     for (const fn of [...(this._on.get("click") ?? [])]) await fn(ev);
   }
+  /** Geometry, so the strip can be scrubbed. A 320px-wide strip at x=0 keeps
+      the arithmetic in the test readable: clientX IS the percentage times 3.2. */
+  getBoundingClientRect() { return { left: 0, width: this._width ?? 320, top: 0, height: 10 }; }
   setAttribute(k, v) { this.attributes[k] = String(v); }
   getAttribute(k) { return this.attributes[k] ?? null; }
   removeAttribute(k) { delete this.attributes[k]; }
@@ -599,7 +697,13 @@ class StubDom {
 
     const playable = resolved.entries.filter((e) => e.playable);
     this.rows = playable.map((e) => new StubEl(this, { className: "fy-jump", attrs: { fy: String(e.queueIndex) } }));
-    this.segs = playable.map((_, i) => new StubEl(this, { className: "fy-seg", attrs: { seg: String(i) } }));
+    // Each bar carries the fill element the markup gives it, so a test can read
+    // back the width app.js wrote rather than trusting that it wrote one.
+    this.segs = playable.map((_, i) => {
+      const seg = new StubEl(this, { className: "fy-seg", attrs: { seg: String(i) } });
+      seg.children = [new StubEl(this, { className: "fy-seg-fill" })];
+      return seg;
+    });
     this.thumbs = [];
     for (const e of resolved.entries) {
       if (!e.segment_id || !e.topic) continue;
@@ -692,6 +796,11 @@ function fakeBridge(resolved, { resume = null } = {}) {
     },
     listForays: () => [{ id: resolved.id, title: resolved.title, status: "draft" }],
     fmtClock, fmtSpan: (s) => `${Math.round(s)}s`,
+    // The REAL resolver, not a stub: the strip's fill and the strip's seek
+    // destination have to be computed by one function or the bar lies about
+    // where a click will land.
+    segmentAt: (playable, elapsedSec) => segmentAtElapsed(playable, elapsedSec),
+    foraySeek: (sec) => { calls.push({ name: "foraySeek", args: [sec] }); },
     forayResume: () => resume,
     forayResumeList: () => (resume ? [{ id: resolved.id, title: resolved.title, percent: 32, label: "42 min left", finished: false }] : []),
     clearForayResume: record("clearForayResume"),
@@ -836,7 +945,124 @@ test("next, previous, a row and the strip each reach the player", async () => {
   assert.ok(names.includes("forayNext"), names.join(","));
   assert.ok(names.includes("forayPrevious"), names.join(","));
   const jumps = bridge.calls.filter((c) => c.name === "forayJump").map((c) => c.args[0]);
-  assert.deepEqual(jumps, [20, 7], "a row and a strip cell must both jump to their own segment");
+  // A click with no coordinates — synthetic, or from assistive tech — cannot be
+  // a position, so both the row and the strip fall back to the exact segment.
+  assert.deepEqual(jumps, [20, 7], "a row and a coordinate-less strip click both jump to their own segment");
+});
+
+/* ---------- the strip is a scrubber (docs/ux/foray-mockup.jsx §Scrubber) ----
+
+   It always LOOKED like one — a proportional bar of the whole hour — and
+   behaved like 32 jump targets. `foraySeek` existed, was tested, and nothing
+   on the page called it. The stub strip is 320px wide from x=0, so clientX is
+   the percentage times 3.2. */
+
+test("clicking a quarter of the way along the strip seeks to a quarter of the Foray", async () => {
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  bridge.lastOnChange()({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: 5, totalSec: resolved.totalSec, error: null });
+
+  await dom.el("fy-strip").click(dom.segs[0], 80);   // 80 / 320 = 25%
+  const seeks = bridge.calls.filter((c) => c.name === "foraySeek");
+  assert.equal(seeks.length, 1, `expected a seek, got ${bridge.calls.map((c) => c.name)}`);
+  assert.ok(Math.abs(seeks[0].args[0] - resolved.totalSec * 0.25) < 1, `landed at ${seeks[0].args[0]}`);
+  assert.equal(bridge.calls.filter((c) => c.name === "forayJump").length, 0, "a position is not a segment snap");
+});
+
+test("the 2px gaps between the bars are live scrubber, not dead zones", async () => {
+  // A fifth of the strip's width is the gaps between its 32 bars. Requiring a
+  // `[data-seg]` hit before reading the coordinate made every one of them do
+  // nothing at all, while the control still looked like a continuous bar.
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  bridge.lastOnChange()({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: 5, totalSec: resolved.totalSec, error: null });
+
+  // target is the strip itself — a click that landed between two bars.
+  await dom.el("fy-strip").click(dom.el("fy-strip"), 160);
+  const seeks = bridge.calls.filter((c) => c.name === "foraySeek");
+  assert.equal(seeks.length, 1, `a click in a gap did nothing: ${bridge.calls.map((c) => c.name)}`);
+  assert.ok(Math.abs(seeks[0].args[0] - resolved.totalSec * 0.5) < 1);
+});
+
+test("scrubbing a Foray that has not started begins it AT that position, not at the top", async () => {
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-strip").click(dom.segs[15], 240);  // 240 / 320 = 75%
+
+  const started = bridge.calls.filter((c) => c.name === "playForay");
+  assert.equal(started.length, 1, `expected one playForay, got ${bridge.calls.map((c) => c.name)}`);
+  const opts = started[0].args[1];
+  assert.ok(Math.abs(opts.startElapsedSec - resolved.totalSec * 0.75) < 1, `startElapsedSec was ${opts.startElapsedSec}`);
+  assert.equal(typeof opts.onChange, "function", "a cold scrub still has to be able to repaint the page");
+});
+
+test("a scrub past either end of the strip clamps instead of leaving the Foray", async () => {
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-strip").click(dom.segs[0], -50);
+  await dom.el("fy-strip").click(dom.segs[31], 9999);
+  const at = bridge.calls.filter((c) => c.name === "playForay").map((c) => c.args[1].startElapsedSec);
+  assert.equal(at.length, 2);
+  assert.equal(at[0], 0);
+  assert.ok(Math.abs(at[1] - resolved.totalSec) < 1, `clamped to ${at[1]}`);
+});
+
+/* ---------- the strip's fill, and the seam beat you can see ---------- */
+
+/** A queue item's authored length, and where it starts in the Foray's clock.
+    Kept here rather than imported so a change to app.js's own arithmetic has
+    to agree with an independent statement of the same rule. */
+const segLen = (item) => (item.authored_end_sec ?? item.end_sec) - item.start_sec;
+const segStart = (r, i) => r.playable.slice(0, i).reduce((t, it) => t + segLen(it), 0);
+
+test("the bar the listener is inside fills as it plays; the ones behind it are full", async () => {
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+
+  // Halfway through segment 3 (0-indexed 2). `playable` is the player QUEUE, so
+  // a segment's length is its bounds, not a `duration_sec` field.
+  const halfway = segStart(resolved, 2) + segLen(resolved.playable[2]) / 2;
+  onChange({ forayId: FORAY_ID, index: 2, playing: true, loading: false, ended: false, elapsedSec: halfway, totalSec: resolved.totalSec, error: null });
+
+  const width = (i) => dom.segs[i].children[0].style.width;
+  assert.equal(width(0), "100%", "a segment already heard is a full bar");
+  assert.equal(width(1), "100%");
+  assert.match(width(2), /^5[01](\.\d+)?%$/, `the live bar should be about half full, got ${width(2)}`);
+  assert.equal(width(3), "0%", "a segment not reached yet is an empty bar");
+});
+
+test("the live bar keeps moving between segment changes — it is painted above the paint guard", async () => {
+  // `paintForay` short-circuits when the segment index has not changed, which
+  // is what keeps 32 rows from churning at 4 Hz. Anything continuous has to be
+  // written before that return, and the fill is the first such thing.
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  const dur = segLen(resolved.playable[0]);
+  const width = () => dom.segs[0].children[0].style.width;
+
+  onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: dur * 0.25, totalSec: resolved.totalSec, error: null });
+  const quarter = width();
+  onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: dur * 0.75, totalSec: resolved.totalSec, error: null });
+  assert.notEqual(width(), quarter, "the fill froze on the second tick — it is below the paint guard");
+  assert.match(width(), /^7[456](\.\d+)?%$/, `got ${width()}`);
+});
+
+test("during a seam beat the page says Pause, not Loading — the silence is deliberate", async () => {
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  const base = { forayId: FORAY_ID, index: 4, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null };
+
+  // Structurally a load, but a beat: `gap` is what tells the two apart.
+  onChange({ ...base, playing: false, loading: true, gap: true });
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
+  assert.equal(dom.el("fy-play").getAttribute("aria-label"), "Pause");
+  assert.ok(dom.el("fy-strip").classList.contains("is-seam"), "the strip should mark the beat");
+
+  // A real load, with no beat, still says so.
+  onChange({ ...base, playing: false, loading: true, gap: false });
+  assert.equal(dom.el("fy-play").textContent, "Loading…");
+  assert.equal(dom.el("fy-strip").classList.contains("is-seam"), false);
 });
 
 test("a thumbs-up records a vote — the binder that actually threw", async () => {
