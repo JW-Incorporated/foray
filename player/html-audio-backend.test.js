@@ -390,10 +390,11 @@ class TickingAudio {
 const ticking = (opts = {}) => {
   const el = new TickingAudio(opts);
   const log = [];
-  // A short seek deadline so the stall case costs milliseconds, not the ten
-  // real seconds the shipped default allows a slow CDN.
+  // A short load deadline so the stall cases cost milliseconds, not the ten
+  // real seconds the shipped default allows a slow CDN. The deadline itself is
+  // ref'd in production and here — that is the point of the tests below.
   const b = new HtmlAudioBackend({
-    element: el, telemetry: (m) => log.push(m), seekTimeoutMs: opts.seekTimeoutMs ?? 200,
+    element: el, telemetry: (m) => log.push(m), loadTimeoutMs: opts.loadTimeoutMs ?? 200,
   });
   const ends = [];
   b.onItemEnded = (reason) => ends.push(reason ?? "natural");
@@ -610,6 +611,45 @@ test("a media error during an in-place seek rejects, so the degrade path runs", 
   el.error = { code: 2 };
   el._fire("error");
   await assert.rejects(() => p, /in-place seek to 4000s failed/);
+});
+
+test("a first load that stalls without erroring also degrades rather than hanging", async () => {
+  // Same hole as the in-place path, in the path a Foray's FIRST segment takes.
+  // A fetch that stops without failing fires `stalled`/`suspend` and then
+  // nothing — no `canplay`, no `error` — so only a deadline gets us out.
+  const el = new TickingAudio();
+  el.load = function () { this.calls.push("load"); this.currentSrc = this.src; }; // never settles
+  const b = new HtmlAudioBackend({ element: el, loadTimeoutMs: 150 });
+  await assert.rejects(() => b.load(item("seg")), /load of seg did not settle within 150ms/);
+});
+
+test("every deadline is ref'd, so it fires whether or not anything else is running", async () => {
+  // THE CI FAILURE ON THIS PR. An unref'd timer only runs if something else
+  // keeps the event loop alive, so a recovery deadline that is unref'd is not a
+  // recovery at all — it depends on unrelated activity elsewhere in the
+  // process. Node 24's test runner happened to hold the loop open and Node 22's
+  // did not, which is the entire difference between green locally and a hung
+  // suite in CI. This asserts the property directly rather than hoping a
+  // version difference shows up again.
+  const el = new TickingAudio();
+  el.load = function () { this.calls.push("load"); };
+  const b = new HtmlAudioBackend({ element: el, loadTimeoutMs: 60 });
+  const armed = [];
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms) => {
+    const t = realSetTimeout(fn, ms);
+    armed.push(t);
+    return t;
+  };
+  try {
+    await assert.rejects(() => b.load(item("seg")), /did not settle/);
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+  assert.ok(armed.length >= 1, "the load must arm a deadline at all");
+  for (const t of armed) {
+    assert.ok(t?.hasRef?.() !== false, "a deadline must never be unref'd");
+  }
 });
 
 test("consecutive same-episode slices may run BACKWARDS through the episode", async () => {

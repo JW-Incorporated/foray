@@ -90,30 +90,47 @@ const OUT_POINT_ARM_LEAD_SEC = 0.5;
 /** Browsers clamp nested timeouts to ~4 ms; asking for less just burns wakeups. */
 const OUT_POINT_MIN_TIMER_MS = 4;
 
-/** How long an in-place seek into an already-loaded source may take to settle
-    before we give up and let the manager degrade. Generous — a range request
-    into the middle of a podcast normally settles in well under a second, and
-    the cost of being wrong in the impatient direction is dropping a segment
-    that would have played. The cost of having no deadline at all is a player
-    that never recovers, which is strictly worse. See _seekWithinLoadedSource. */
-const SAME_SOURCE_SEEK_TIMEOUT_MS = 10_000;
+/** How long EITHER load path may take to settle before we give up and let the
+    manager degrade. Generous — a range request into the middle of a podcast
+    normally settles in well under a second, and the cost of being wrong in the
+    impatient direction is dropping a segment that would have played. The cost
+    of no deadline at all is a player that never recovers.
+
+    Both paths need one for the same reason: the events that mean "ready"
+    (`canplay`, `seeked`) and the event that means "broken" (`error`) do not
+    cover a network that simply stops. A stalled fetch fires `stalled` and
+    `suspend` and then nothing at all, forever. Without a deadline the promise
+    stays pending, `_loadItem` awaits it forever, and the state machine sits in
+    `loadingItem` with no path out — a listener stranded mid-Foray with a UI
+    that still says "loading".
+
+    NEVER `unref()` A DEADLINE. That was the actual CI failure on this PR
+    (#111): the seek deadline was unref'd, so it was not guaranteed to fire at
+    all — an unref'd timer only runs if something ELSE keeps the event loop
+    alive, which makes a recovery path depend on unrelated activity elsewhere in
+    the process. Node 24's test runner happened to hold the loop open, Node 22's
+    did not, and the suite hung with "Promise resolution is still pending but
+    the event loop has already resolved". `unref()` is for periodic
+    housekeeping that nobody awaits (the manager's 15s position timer); it is
+    never right for a timer something is waiting on. */
+const LOAD_SETTLE_TIMEOUT_MS = 10_000;
 
 export class HtmlAudioBackend {
   /**
    * @param {object} [opts]
    * @param {HTMLAudioElement} [opts.element] injected for tests
    * @param {Function} [opts.telemetry]
-   * @param {number} [opts.seekTimeoutMs] deadline for an in-place seek into an
-   *   already-loaded source. Injected only so the stall case is testable in
-   *   milliseconds instead of ten seconds.
+   * @param {number} [opts.loadTimeoutMs] deadline for either load path.
+   *   Injected only so the stall cases are testable in milliseconds instead of
+   *   ten seconds.
    */
-  constructor({ element = null, telemetry = null, seekTimeoutMs = SAME_SOURCE_SEEK_TIMEOUT_MS } = {}) {
+  constructor({ element = null, telemetry = null, loadTimeoutMs = LOAD_SETTLE_TIMEOUT_MS } = {}) {
     const el = element ?? (typeof Audio !== "undefined" ? new Audio() : null);
     if (!el) throw new Error("HtmlAudioBackend requires an <audio> element");
 
     this.el = el;
     this._telemetry = telemetry;
-    this._seekTimeoutMs = seekTimeoutMs;
+    this._loadTimeoutMs = loadTimeoutMs;
     this.onItemEnded = null;
     this.onError = null;
 
@@ -258,11 +275,13 @@ export class HtmlAudioBackend {
     const remainingWallSec = (this._outPoint - this.currentTime) / rate;
     if (remainingWallSec > OUT_POINT_ARM_LEAD_SEC) return; // timeupdate will bring us closer
     const ms = Math.max(OUT_POINT_MIN_TIMER_MS, Math.ceil(remainingWallSec * 1000));
+    // Not unref'd either: this is the timer that STOPS the audio at the
+    // boundary. It is always cleared on reach, disarm, pause or release, so it
+    // can never outlive the item it belongs to.
     this._fineTimer = setTimeout(() => {
       this._fineTimer = null;
       this._onFineWake();
     }, ms);
-    if (typeof this._fineTimer?.unref === "function") this._fineTimer.unref();
   }
 
   _onFineWake() {
@@ -337,11 +356,13 @@ export class HtmlAudioBackend {
       const el = this.el;
       let settled = false;
 
+      let timer = null;
       const cleanup = () => {
         el.removeEventListener("loadedmetadata", onMeta);
         el.removeEventListener("canplay", onCanPlay);
         el.removeEventListener("error", onErr);
         el.removeEventListener("seeked", onSeeked);
+        if (timer != null) clearTimeout(timer);
       };
       const done = () => {
         if (settled) return;
@@ -379,6 +400,12 @@ export class HtmlAudioBackend {
       el.addEventListener("canplay", onCanPlay);
       el.addEventListener("seeked", onSeeked);
       el.addEventListener("error", onErr);
+      // A fetch that stalls without erroring would otherwise hang here forever.
+      // Same hole as the in-place path, same fix, and NOT unref'd.
+      timer = setTimeout(
+        () => fail(`load of ${item.id} did not settle within ${this._loadTimeoutMs}ms`),
+        this._loadTimeoutMs
+      );
 
       el.src = item.audio_url;
       el.load();
@@ -438,11 +465,11 @@ export class HtmlAudioBackend {
       el.addEventListener("seeked", onProgress);
       el.addEventListener("canplay", onProgress);
       el.addEventListener("error", onErr);
+      // Deliberately NOT unref'd — see LOAD_SETTLE_TIMEOUT_MS.
       timer = setTimeout(
-        () => fail(`in-place seek to ${Math.round(target)}s did not settle within ${this._seekTimeoutMs}ms`),
-        this._seekTimeoutMs
+        () => fail(`in-place seek to ${Math.round(target)}s did not settle within ${this._loadTimeoutMs}ms`),
+        this._loadTimeoutMs
       );
-      if (typeof timer?.unref === "function") timer.unref();
 
       try { el.currentTime = target; } catch (_) { /* not seekable yet; events will settle it */ }
       if (near()) done();
