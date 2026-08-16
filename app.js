@@ -15,6 +15,7 @@ const state = {
   segments: null,           // data/segments.json
   segmentSources: null,     // data/segment-sources.json
   foray: null,              // the resolved Foray currently on screen
+  forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
   forayPainted: null,       // last segment index painted onto the running order
   cardSlots: [],            // the four dealt suggestions
@@ -138,10 +139,12 @@ function toEventRow(e, userId) {
       // node, so a thumb with nowhere to land is dropped here rather than
       // inserted as a row nothing can read (events-client-integration-spec §2).
       if (!p.node_id || (p.direction !== "up" && p.direction !== "down")) return null;
+      // `episode_slug` is OPTIONAL in the contract, and optional means absent —
+      // the schema is `z.string().optional()`, which rejects an explicit null.
       return row("thumbs", {
         direction: p.direction,
         node_id: p.node_id,
-        episode_slug: p.episode_slug || null,
+        ...(p.episode_slug ? { episode_slug: p.episode_slug } : {}),
         // Additive context. §6 of the spec notes `up` reuses `more_like_this`
         // server-side, so the reason codes only ever ride a `down`.
         reasons: p.reasons || [],
@@ -1062,7 +1065,6 @@ function bindFeedback(r) {
     setFeedback(fbTarget, "down", { reasons: sheetPicks(), note: $("#fy-sheet-note").value });
     closeFeedbackSheet();
   });
-  return byIndex;
 }
 
 /* ---------- where this came from ---------- */
@@ -1074,17 +1076,22 @@ function bindFeedback(r) {
    grouping and the links are computed in player/foray-sources.js, where they are
    tested; this only renders them. */
 function foraySourcesHtml(r, player) {
+  // Deployed asynchronously from player/client.js (service worker, cache), so a
+  // returning visitor can briefly hold a new app.js against an older module.
+  // Losing the credit block is a missing section; throwing here is a blank page.
+  if (typeof player.forayCredits !== "function") return "";
   const { credits, summary } = player.forayCredits(r, { discoverDoc: state.discover });
   if (!credits.length) return "";
+  const clips = (n) => `${esc(String(n))} clip${n === 1 ? "" : "s"}`;
   const rows = credits.map(c => `
     <div class="fy-src">
       <a class="fy-src-head" href="${esc(safeUrl(c.link))}" target="_blank" rel="noopener"
          data-src-show="${esc(c.show)}">
         <span class="fy-src-show">${esc(c.show)} ↗</span>
-        <span class="fy-src-meta">${c.clips} clip${c.clips === 1 ? "" : "s"} · ${esc(player.fmtSpan(c.seconds))}</span>
+        <span class="fy-src-meta">${clips(c.clips)} · ${esc(player.fmtSpan(c.seconds))}</span>
       </a>
       <ul class="fy-src-eps">${c.episodes.map(e =>
-        `<li>${esc(e.title)} <span>${e.clips} clip${e.clips === 1 ? "" : "s"}</span></li>`).join("")}</ul>
+        `<li>${esc(e.title)} <span>${clips(e.clips)}</span></li>`).join("")}</ul>
     </div>`).join("");
   return `<section class="fy-sources">
     <h3>Where this came from</h3>
@@ -1147,9 +1154,17 @@ async function renderForay(id) {
   const lost = r.unplayable.length;
   /* Read the resume point BEFORE anything is wired up: it decides the clock the
      page opens on, which rows are already ticked off, and what the main button
-     says. Against the LIVE runtime, so a repaired data file cannot leave someone
-     resuming past the end of a Foray that got shorter. */
-  const resume = player.forayResume(r.id, { totalSec: r.totalSec });
+     says. Against the LIVE runtime AND the live segment count, so a repaired
+     data file cannot leave someone resuming past the end of a Foray that got
+     shorter, or paint a running order that is entirely behind them.
+
+     Guarded because app.js and the ES module deploy independently (the service
+     worker refreshes each on its own schedule): an older module costs the resume
+     offer, which is a missing banner rather than a page stuck on "Loading…". */
+  const resume = typeof player.forayResume === "function"
+    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length })
+    : null;
+  state.forayResume = resume;
 
   $("#view").innerHTML = `
     <div class="page foray">
@@ -1208,7 +1223,7 @@ function sizeForayStrip(r) {
   });
 }
 
-const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0, resumeIndex: -1 };
+const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
 
 function bindForayTransport(r, player, resume = null) {
   const onChange = (s) => paintForay(s);
@@ -1222,9 +1237,10 @@ function bindForayTransport(r, player, resume = null) {
     : start(0);
 
   $("#fy-restart")?.addEventListener("click", async () => {
-    player.clearForayResume(r.id);
+    if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
     logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(resume?.elapsedSec || 0) });
     resume = null;
+    state.forayResume = null;
     $("#fy-resume")?.remove();
     await start(0);
   });
@@ -1277,10 +1293,7 @@ function bindForayTransport(r, player, resume = null) {
      ticked. A resume offer that leaves the page looking untouched is a resume
      offer nobody believes. */
   const live = player.watchForay(onChange);
-  const idle = resume
-    ? { ...FORAY_IDLE, elapsedSec: resume.elapsedSec, resumeIndex: resume.index }
-    : FORAY_IDLE;
-  paintForay(live && live.forayId === r.id ? live : idle);
+  paintForay(live && live.forayId === r.id ? live : FORAY_IDLE);
 }
 
 /** Is the player already inside THIS Foray? Pressing play on a Foray that is
@@ -1296,15 +1309,28 @@ function paintForay(s) {
   if (!state.foray) return;
   state.forayPlaying = s.index >= 0 ? state.foray.id : null;
 
+  /* Nothing loaded — cold, or the mini bar was just closed. Fall back to the
+     stored resume point rather than repainting the page as untouched: the
+     banner above still says "Jump back in at 23:14" and the button still
+     resumes there, so a clock reading 0:00 underneath it would be the page
+     contradicting itself. */
+  const resume = s.index >= 0 ? null : state.forayResume;
+  const elapsed = s.index >= 0 ? (s.elapsedSec || 0) : (s.elapsedSec || resume?.elapsedSec || 0);
+
   const now = $("#fy-now");
-  if (now && window.ForayPlayer) now.textContent = window.ForayPlayer.fmtClock(s.elapsedSec || 0);
+  if (now && window.ForayPlayer) now.textContent = window.ForayPlayer.fmtClock(elapsed);
+
+  // The offer only means anything while stopped; once it is playing, the
+  // transport IS the progress and a second "jump back in" is noise.
+  const banner = $("#fy-resume");
+  if (banner) banner.hidden = s.index >= 0;
 
   const playBtn = $("#fy-play");
   if (playBtn) {
     // Three different "not playing" states, and they mean different things:
     // paused mid-segment, never started but with a stored position, and cold.
-    const stopped = s.index >= 0 || (s.resumeIndex ?? -1) >= 0 || (s.elapsedSec || 0) > 0;
-    const label = s.playing ? "❚❚ Pause" : (s.loading ? "Loading…" : (stopped ? "▶ Resume" : "▶ Play"));
+    const started = s.index >= 0 || elapsed > 0;
+    const label = s.playing ? "❚❚ Pause" : (s.loading ? "Loading…" : (started ? "▶ Resume" : "▶ Play"));
     playBtn.textContent = label;
     playBtn.setAttribute("aria-label", s.playing ? "Pause" : "Play");
   }
@@ -1327,7 +1353,7 @@ function paintForay(s) {
      playing that is the live segment; before anything has started it is the
      stored resume point, so a page opened cold shows the hour already half
      ticked off instead of pretending it was never touched. */
-  const mark = s.index >= 0 ? s.index : (s.resumeIndex ?? -1);
+  const mark = s.index >= 0 ? s.index : (resume?.index ?? -1);
 
   $("#view").querySelectorAll("[data-fy]").forEach(row => {
     const i = Number(row.dataset.fy);
@@ -1377,7 +1403,7 @@ function forayHomeHtml() {
    would reintroduce exactly the leak that rule closed — so with no `?foray=` in
    the URL, a draft's progress is remembered and simply not advertised. */
 function forayResumeRows() {
-  if (!window.ForayPlayer) return [];
+  if (typeof window.ForayPlayer?.forayResumeList !== "function") return [];
   const visible = new Set(forayCards().map(f => f.id));
   return window.ForayPlayer.forayResumeList()
     .filter(p => visible.has(p.id) && !p.finished && p.label)
@@ -1454,6 +1480,12 @@ function enterForayFromQuery() {
 function route() {
   if (!state.ready) return;
   openDrawer(false);
+  /* Both of these belong to a page that is about to be replaced. The sheet's DOM
+     and listeners die with #view, so neither can act — but a stale entry left
+     pointing at a detached segment is the kind of thing that becomes a bug the
+     next time someone reuses the sheet. */
+  fbTarget = null;
+  state.forayResume = null;
   const h = location.hash || "#/";
   const forayId = forayRouteId();
   let m;

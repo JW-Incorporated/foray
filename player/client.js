@@ -298,6 +298,13 @@ function persistForayProgress({ force = false } = {}) {
      that would overwrite a precise resume point with a rounded-down one every
      time the listener re-opened the page. */
   if (manager?.currentIndex !== foray.index) return;
+  /* A resume is TWO steps — load the segment at its in-point, then seek into it
+     — and the load fires real media events in between. Without this the tick
+     between them writes the segment's in-point over the precise position we are
+     in the middle of restoring, and a resume that then failed (or a tab closed
+     inside that second) would have quietly rounded the listener back by up to a
+     whole segment, again on every attempt. */
+  if (foray.resumeSeekPending) return;
   forayProgress.save({
     forayId: id,
     title: foray.resolved.title,
@@ -533,6 +540,9 @@ const ForayPlayer = {
   async play(item, { why = "" } = {}) {
     if (!this.canPlay(item)) return false;
     ensureBooted();
+    // Leaving a Foray for a single episode must not cost the last few seconds
+    // of it — this is the only place `foray` is dropped without a flush.
+    persistForayProgress({ force: true });
     foray = null;
     setSkipButtonMode(false);
     setNowPlaying(item, why);
@@ -600,13 +610,20 @@ const ForayPlayer = {
     const at = Number.isFinite(startElapsedSec) && startElapsedSec > 0
       ? segmentAtElapsed(report.items, startElapsedSec)
       : null;
+    foray.resumeSeekPending = Boolean(at);
     // Paint the intent before awaiting the load: a running order that only
     // highlights the row once the audio arrives reads as a dead button.
     setForayIndex(clampIndex(at ? at.index : startIndex, report.items.length));
-    await manager.play(foray.index);
-    if (at) {
-      const item = report.items[foray.index];
-      if (item) await manager.seek(item.start_sec + at.into, { precise: true });
+    try {
+      await manager.play(foray.index);
+      if (at) {
+        const item = report.items[foray.index];
+        if (item) await manager.seek(item.start_sec + at.into, { precise: true });
+      }
+    } finally {
+      // Even if the load threw, the window has to close or this Foray would
+      // never write a position again.
+      if (foray) foray.resumeSeekPending = false;
     }
     render();
     return report;
@@ -617,16 +634,17 @@ const ForayPlayer = {
   /**
    * Where this Foray was left, or null when there is nothing worth offering.
    *
-   * `totalSec` should be the LIVE Foray's runtime — the document can have
-   * changed since the row was written, and a resume point past the end of the
-   * Foray as it exists now is a stale row, not a position.
+   * `totalSec` and `itemCount` should describe the LIVE Foray — the document can
+   * have changed since the row was written, and a resume point past the end of
+   * the Foray as it exists now is a stale row, not a position.
    *
    * @returns {{ elapsedSec, index, remainingSec, percent, finished, label,
    *             clock, title } | null}
    */
-  forayResume(forayId, { totalSec = null } = {}) {
+  forayResume(forayId, { totalSec = null, itemCount = null } = {}) {
     const record = forayProgress.get(forayId);
-    const point = resumePoint(record, { totalSec });
+    const maxIndex = Number.isInteger(itemCount) && itemCount > 0 ? itemCount - 1 : null;
+    const point = resumePoint(record, { totalSec, maxIndex });
     if (!point || point.finished) return null;
     return {
       ...point,
@@ -692,6 +710,9 @@ const ForayPlayer = {
     if (isPlaying()) await manager.pause();
     else await manager.resume();
     render();
+    // The page's own pause is the one a listener actually uses; it gets the same
+    // forced write the mini bar's does.
+    persistForayProgress({ force: true });
   },
 
   async forayJump(index) {

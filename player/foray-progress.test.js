@@ -208,6 +208,24 @@ test("a stored position past the Foray's CURRENT length is clamped, not trusted"
   assert.equal(p.finished, true);
 });
 
+test("a stored index past the Foray's CURRENT last segment is dropped, not clamped to the end", () => {
+  // The failure this prevents: a repaired data file leaves index 31 against a
+  // 20-segment Foray, and the running order paints every row as already heard.
+  const p = resumePoint(record({ index: 31 }), { totalSec: TOTAL, maxIndex: 19 });
+  assert.equal(p.index, -1, "unknown beats a confident wrong answer");
+  assert.equal(p.elapsedSec, 1180, "the clock itself is still good");
+});
+
+test("an in-range index survives the clamp, and -1 stays -1", () => {
+  assert.equal(resumePoint(record({ index: 9 }), { totalSec: TOTAL, maxIndex: 31 }).index, 9);
+  assert.equal(resumePoint(record({ index: 31 }), { totalSec: TOTAL, maxIndex: 31 }).index, 31);
+  assert.equal(resumePoint(record({ index: -1 }), { totalSec: TOTAL, maxIndex: 31 }).index, -1);
+});
+
+test("with no maxIndex given the stored index is passed through unchanged", () => {
+  assert.equal(resumePoint(record({ index: 9 }), { totalSec: TOTAL }).index, 9);
+});
+
 test("resumePoint on a missing or malformed row is null", () => {
   assert.equal(resumePoint(null, { totalSec: TOTAL }), null);
   assert.equal(resumePoint({ foray_id: ID }, { totalSec: TOTAL }), null);

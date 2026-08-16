@@ -154,30 +154,46 @@ function isStale(record, { now, maxAgeH }) {
  * is distinct from its `load`: "we stored 19 seconds" and "resume at 19 seconds"
  * are different questions.
  *
- * `totalSec` is passed separately because the Foray on disk can have changed
- * since the row was written — a segment repaired, one dropped — and the live
- * document is the authority on how long it is now.
+ * `totalSec` and `maxIndex` are passed separately because the Foray on disk can
+ * have changed since the row was written — a segment repaired, one dropped — and
+ * the live document is the authority on both how long it is and how many
+ * segments it has. Clamping one without the other is the bug this signature is
+ * shaped to prevent: a stored `index` of 31 against a Foray that now has 20
+ * segments marks the whole running order as already heard.
  *
+ * @param {object} [opts]
+ * @param {number} [opts.totalSec]   the LIVE runtime
+ * @param {number} [opts.maxIndex]   the LIVE last playable index
  * @returns {{ elapsedSec: number, index: number, remainingSec: number,
  *             percent: number, finished: boolean } | null}
  */
-export function resumePoint(record, { totalSec = null } = {}) {
+export function resumePoint(record, { totalSec = null, maxIndex = null } = {}) {
   if (!isProgressRecord(record)) return null;
   const total = isNum(totalSec) && totalSec > 0 ? totalSec : record.total_sec;
   // A stored position past the end of the Foray as it exists NOW is not a
   // resume point; it is a stale row against a shorter document.
   const elapsed = Math.min(record.elapsed_sec, total);
+  const index = clampIndex(record.index, maxIndex);
   if (elapsed < MIN_RESUME_SEC) return null;
   if (elapsed > total - NEAR_END_SEC) {
-    return { elapsedSec: elapsed, index: record.index, remainingSec: 0, percent: 100, finished: true };
+    return { elapsedSec: elapsed, index, remainingSec: 0, percent: 100, finished: true };
   }
   return {
     elapsedSec: elapsed,
-    index: record.index,
+    index,
     remainingSec: total - elapsed,
     percent: percentDone(elapsed, total),
     finished: false,
   };
+}
+
+/** -1 ("we do not know") is a legal answer and must survive the clamp; anything
+    past the live end becomes -1 rather than the last segment, because "the whole
+    thing is behind you" is a stronger claim than the stale row can support. */
+function clampIndex(index, maxIndex) {
+  if (!Number.isInteger(index) || index < 0) return -1;
+  if (!Number.isInteger(maxIndex) || maxIndex < 0) return index;
+  return index > maxIndex ? -1 : index;
 }
 
 /** 0–100, rounded. Used for a bar width, so it is clamped rather than trusted. */

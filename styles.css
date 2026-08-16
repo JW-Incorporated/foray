@@ -629,8 +629,13 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   font: inherit;
   cursor: pointer;
 }
-.fy-row:hover { border-color: var(--accent); }
+/* Hover follows the PLAY affordance, not the whole card — the thumbs are not a
+   way to start a segment and should not look like one. */
+.fy-row:has(.fy-jump:hover) { border-color: var(--accent); }
 .fy-jump.is-played { opacity: 0.55; }
+/* Dim the thumbs with the row they belong to. Separate from the rule above
+   because that one must keep working where :has() does not. */
+.fy-row:has(.fy-jump.is-played) .fy-fb { opacity: 0.55; }
 .fy-row:has(.fy-jump.is-playing) {
   border-color: var(--accent);
   background: var(--surface-2);
