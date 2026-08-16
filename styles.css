@@ -605,26 +605,42 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--text-dim);
 }
+/* The row is a CONTAINER, not the button. It was the button until the thumbs
+   arrived, and a button inside a button is invalid HTML whose inner click never
+   survives. So `.fy-jump` is the play affordance and carries the is-playing /
+   is-played state that app.js paints; `.fy-row` is the card around it. */
 .fy-row {
-  display: flex; align-items: flex-start; gap: 10px; width: 100%;
-  text-align: left;
+  display: flex; align-items: flex-start; gap: 8px; width: 100%;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--shadow);
   padding: 11px 12px;
   margin-bottom: 8px;
+}
+.fy-jump {
+  display: flex; align-items: flex-start; gap: 10px;
+  flex: 1; min-width: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
   color: var(--text);
   font: inherit;
   cursor: pointer;
 }
-.fy-row:hover { border-color: var(--accent); }
-.fy-row.is-played { opacity: 0.55; }
-.fy-row.is-playing {
-  opacity: 1;
+/* Hover follows the PLAY affordance, not the whole card — the thumbs are not a
+   way to start a segment and should not look like one. */
+.fy-row:has(.fy-jump:hover) { border-color: var(--accent); }
+.fy-jump.is-played { opacity: 0.55; }
+/* Dim the thumbs with the row they belong to. Separate from the rule above
+   because that one must keep working where :has() does not. */
+.fy-row:has(.fy-jump.is-played) .fy-fb { opacity: 0.55; }
+.fy-row:has(.fy-jump.is-playing) {
   border-color: var(--accent);
   background: var(--surface-2);
 }
+.fy-jump.is-playing { opacity: 1; }
 .fy-label {
   flex: none;
   min-width: 52px;
@@ -633,7 +649,7 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   color: var(--text-dim);
   padding-top: 2px;
 }
-.fy-row.is-playing .fy-label { color: var(--accent); }
+.fy-jump.is-playing .fy-label { color: var(--accent); }
 .fy-body { flex: 1; min-width: 0; }
 .fy-meta { font-size: 0.74rem; color: var(--text-dim); }
 .fy-why {
@@ -643,11 +659,175 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   line-height: 1.35;
 }
 .fy-state { flex: none; width: 14px; padding-top: 3px; color: var(--accent); }
-.fy-row.is-playing .fy-state::before { content: "▶"; font-size: 0.7rem; }
-.fy-row.is-played .fy-state::before { content: "✓"; font-size: 0.75rem; color: var(--text-dim); }
+.fy-jump.is-playing .fy-state::before { content: "▶"; font-size: 0.7rem; }
+.fy-jump.is-played .fy-state::before { content: "✓"; font-size: 0.75rem; color: var(--text-dim); }
 
 /* a segment that cannot play is shown, greyed, with the reason — a Foray that
    lost one is a shorter Foray and has to say so */
-.fy-row.is-out { opacity: 0.6; cursor: default; }
+.fy-row.is-out { opacity: 0.6; }
+.fy-row.is-out .fy-jump { cursor: default; }
 .fy-out { margin: 4px 0 0; font-size: 0.72rem; color: var(--gold); }
 .fy-error { margin: 10px 0 0; text-align: center; font-size: 0.78rem; color: var(--gold); }
+
+/* ---------- per-segment feedback ----------
+   Up is one quiet tap; down opens the sheet. The controls are the same size so
+   the pair does not read as a recommendation to press the friendly one. */
+.fy-fb { flex: none; display: flex; gap: 6px; padding-top: 1px; }
+.fy-thumb {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 15px;
+  border: 1px solid transparent;
+  background: var(--surface-2);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+.fy-thumb:hover { border-color: var(--line); opacity: 1; }
+.fy-thumb.on { filter: none; opacity: 1; }
+.fy-thumb[data-thumb="up"].on { border-color: var(--accent); background: var(--surface); }
+.fy-thumb[data-thumb="down"].on { border-color: var(--gold); background: var(--surface); }
+
+/* the reason sheet */
+body.fy-sheet-open { overflow: hidden; }
+/* Above #foray-player (60): the sheet is modal, and a mini bar poking through
+   its scrim reads as a stuck overlay. */
+.fy-sheet { position: fixed; inset: 0; z-index: 70; }
+.fy-scrim { position: absolute; inset: 0; background: rgba(8, 5, 12, 0.62); }
+.fy-panel {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  max-width: 680px; margin: 0 auto;
+  max-height: 88vh; overflow-y: auto;
+  padding: 8px 18px calc(20px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px 22px 0 0;
+  box-shadow: var(--shadow);
+}
+.fy-grab {
+  width: 38px; height: 4px; margin: 6px auto 12px;
+  border-radius: 2px; background: var(--line);
+}
+.fy-panel h3 {
+  margin: 0 0 4px;
+  font-family: var(--serif); font-size: 1.15rem; font-weight: 700;
+}
+.fy-sheet-sub { margin: 0 0 14px; font-size: 0.8rem; color: var(--text-dim); }
+.fy-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.fy-chip {
+  padding: 7px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: inherit; font-size: 0.78rem;
+  cursor: pointer;
+}
+.fy-chip.on { border-color: var(--accent); color: var(--text); background: var(--surface); }
+#fy-sheet-note {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit; font-size: 0.86rem;
+}
+.fy-sheet-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+.fy-sheet-cancel {
+  padding: 10px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-dim);
+  font: inherit; font-size: 0.82rem;
+  cursor: pointer;
+}
+.fy-sheet-go {
+  flex: 1;
+  padding: 11px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font: inherit; font-size: 0.86rem; font-weight: 700;
+  cursor: pointer;
+}
+.fy-sheet-go:disabled {
+  background: var(--surface-2); border-color: var(--line);
+  color: var(--text-dim); cursor: default;
+}
+
+/* ---------- resume ---------- */
+.fy-resume { margin-bottom: 10px; }
+.fy-bar {
+  display: block;
+  height: 5px; width: 100%;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.fy-bar-fill { display: block; height: 100%; width: 0; background: var(--accent); }
+.fy-resume-line {
+  display: flex; justify-content: space-between; gap: 10px;
+  margin: 7px 0 0;
+  font-size: 0.76rem;
+}
+.fy-resume-at { color: var(--text-dim); }
+.fy-resume-left { color: var(--gold); font-weight: 700; }
+.fy-restart {
+  margin-top: 6px;
+  padding: 0;
+  border: 0; background: none;
+  color: var(--text-dim);
+  font: inherit; font-size: 0.72rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.fy-restart:hover { color: var(--text); }
+
+/* the home-screen rail */
+.fy-jbi-row { position: relative; }
+.fy-jbi-row .fy-bar { margin-top: 8px; }
+.fy-jbi-left { margin-top: 5px; font-size: 0.72rem; font-weight: 700; color: var(--gold); }
+
+/* ---------- where this came from ----------
+   Publisher credit. Every clip is a download against the show's own feed, so
+   this is the page that says whose work it was and where to go and get more. */
+.fy-sources { margin: 26px 0 0; }
+.fy-sources h3 {
+  margin: 0 0 6px;
+  font-family: var(--serif);
+  font-size: 0.86rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.fy-src-note { margin: 0 0 12px; font-size: 0.78rem; color: var(--text-dim); }
+.fy-src {
+  padding: 11px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.fy-src-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  color: var(--text);
+  text-decoration: none;
+}
+.fy-src-head:hover .fy-src-show { color: var(--accent); }
+.fy-src-show { font-family: var(--serif); font-size: 0.94rem; font-weight: 700; }
+.fy-src-meta { flex: none; font-size: 0.72rem; color: var(--text-dim); }
+.fy-src-eps { margin: 8px 0 0; padding: 0 0 0 14px; list-style: none; }
+.fy-src-eps li {
+  position: relative;
+  margin-top: 4px;
+  font-size: 0.76rem; color: var(--text-dim);
+  line-height: 1.35;
+}
+.fy-src-eps li::before {
+  content: "·"; position: absolute; left: -12px; color: var(--line);
+}
+.fy-src-eps li span { color: var(--text-dim); opacity: 0.75; white-space: nowrap; }

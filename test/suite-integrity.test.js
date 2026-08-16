@@ -52,9 +52,11 @@ const ROOT = path.join(__dirname, "..");
 
 /* suite -> minimum number of top-level test() declarations. */
 const FLOORS = {
-  "player/foray-playback.test.js": 22,
+  "player/foray-playback.test.js": 28,
+  "player/foray-progress.test.js": 38,
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 38,
+  "player/foray-sources.test.js": 24,
   "player/html-audio-backend.test.js": 44,
   "player/queue-manager.test.js": 50,
   "player/queue-state.test.js": 56,

@@ -32,6 +32,7 @@ import {
   resolveForay, indexSegments, indexSources, findForay,
   forayElapsed, segmentAtElapsed, fmtClock,
 } from "./foray-resolve.js";
+import { ForayProgressStore, resumePoint } from "./foray-progress.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -95,6 +96,17 @@ class FakeBackend {
 }
 
 const round = (n) => Math.round(Number(n) || 0);
+
+/** The resume store writes to a Storage; there is no browser here. Only the
+    three methods it actually calls, so a change to what it needs fails loudly. */
+class FakeStorage {
+  constructor() { this.map = new Map(); }
+  get length() { return this.map.size; }
+  key(i) { return [...this.map.keys()][i] ?? null; }
+  getItem(k) { return this.map.has(k) ? this.map.get(k) : null; }
+  setItem(k, v) { this.map.set(k, String(v)); }
+  removeItem(k) { this.map.delete(k); }
+}
 
 function make(opts = {}) {
   __resetInstanceForTests();
@@ -358,6 +370,128 @@ test("the manager builds exactly the queue the surface rendered", async () => {
   assert.deepEqual(report.items.map((i) => i.id), r.playable.map((i) => i.id));
   assert.deepEqual(report.items.map((i) => i.start_sec), r.playable.map((i) => i.start_sec));
   assert.deepEqual(report.skipped, []);
+});
+
+/* ---------- closing the tab and coming back ----------
+
+   The bar: 20 minutes into a 61-minute Foray, close the tab, come back, land in
+   the same second. Three things have to line up for that — the clock we store
+   (`forayElapsed`), the segment we map it back to (`segmentAtElapsed`), and the
+   two-step load-then-seek the client performs, because the manager loads a
+   bounded segment at its IN-POINT by contract and no start offset changes that.
+   Each is tested alone elsewhere; this is the round trip, on the real Foray.
+
+   The client's own resume path is `ForayPlayer.playForay({ startElapsedSec })`,
+   which cannot run here (it builds DOM). What is reproduced below is exactly the
+   sequence it performs, so a change to that sequence has to change this file. */
+
+/** What player/client.js does with a stored elapsed, minus the DOM. */
+async function resumeAt(m, r, elapsedSec) {
+  const at = segmentAtElapsed(r.playable, elapsedSec);
+  await m.play(at.index);
+  const item = r.playable[at.index];
+  await m.seek(item.start_sec + at.into, { precise: true });
+  return at;
+}
+
+test("a position stored mid-Foray comes back to the same segment and the same second", async () => {
+  const r = realResolve();
+  const { m, backend } = make();
+  await startForay(m, r);
+
+  // Listen into segment 17, then "close the tab".
+  await m.play(17);
+  const playhead = r.playable[17].start_sec + 40;
+  backend.currentTime = playhead;
+  const stored = forayElapsed(r.playable, 17, playhead);
+
+  const store = new ForayProgressStore({ storage: new FakeStorage() });
+  store.save({ forayId: r.id, title: r.title, elapsedSec: stored, totalSec: r.totalSec, index: 17 });
+
+  // A fresh page load: nothing in memory, only the row in storage.
+  const point = resumePoint(store.get(r.id), { totalSec: r.totalSec });
+  assert.ok(point, "20 minutes of listening must be offered back");
+  assert.equal(point.index, 17);
+
+  const fresh = make();
+  await startForay(fresh.m, r);
+  const at = await resumeAt(fresh.m, r, point.elapsedSec);
+  assert.equal(at.index, 17, "the resume point must resolve to the segment it was taken from");
+  assert.equal(fresh.m.currentIndex, 17);
+  assert.ok(Math.abs(fresh.backend.currentTime - playhead) < 0.001,
+    `resumed at ${fresh.backend.currentTime}, left at ${playhead}`);
+});
+
+test("resuming loads the segment at its in-point and only then seeks", async () => {
+  // Not a style point. The manager arms the out-point from the item's bounds at
+  // load; a load placed straight at the resume offset would be a load into the
+  // middle of somebody else's episode with no boundary behind it.
+  const r = realResolve();
+  const { m, backend } = make();
+  await startForay(m, r);
+  backend.calls.length = 0;
+
+  const target = forayElapsed(r.playable, 12, r.playable[12].start_sec + 25);
+  await resumeAt(m, r, target);
+
+  const item = r.playable[12];
+  const loadAt = backend.calls.indexOf(`load:${item.id}@${round(item.start_sec)}`);
+  const seekAt = backend.calls.findIndex((c) => c.startsWith("seek:"));
+  assert.ok(loadAt >= 0, `no in-point load: ${backend.calls.join(" | ")}`);
+  assert.ok(seekAt > loadAt, "the seek must follow the load, never replace it");
+  assert.equal(backend.outPoint, item.end_sec, "the resumed segment still needs its own out-point armed");
+});
+
+test("resuming keeps the rest of the Foray intact — it plays on to the end from there", async () => {
+  const r = realResolve();
+  const { m, backend } = make();
+  await startForay(m, r);
+  const at = await resumeAt(m, r, forayElapsed(r.playable, 29, r.playable[29].start_sec + 10));
+  assert.equal(at.index, 29);
+
+  for (let i = 29; i < r.playable.length; i++) await backend.reachOutPoint();
+  assert.equal(m.state.type, "ended");
+  assert.equal(m.currentIndex, r.playable.length - 1);
+});
+
+test("a stored position in the closing segment is treated as finished, not resumed", async () => {
+  const r = realResolve();
+  const store = new ForayProgressStore({ storage: new FakeStorage() });
+  store.save({ forayId: r.id, elapsedSec: r.totalSec - 10, totalSec: r.totalSec, index: 31 });
+  const point = resumePoint(store.get(r.id), { totalSec: r.totalSec });
+  assert.equal(point.finished, true, "resuming 10 seconds before the end drops the listener into a goodbye");
+});
+
+test("a position stored against a longer version of the Foray does not resume past its end", async () => {
+  // A repaired data file makes the Foray shorter. The live document is the
+  // authority, and the clamp must land on a segment that still exists.
+  const r = realResolve();
+  const store = new ForayProgressStore({ storage: new FakeStorage() });
+  store.save({ forayId: r.id, elapsedSec: r.totalSec + 600, totalSec: r.totalSec + 900, index: 99 });
+  const point = resumePoint(store.get(r.id), { totalSec: r.totalSec });
+  assert.equal(point.elapsedSec, r.totalSec);
+
+  const { m } = make();
+  await startForay(m, r);
+  const at = await resumeAt(m, r, point.elapsedSec);
+  assert.equal(at.index, r.playable.length - 1, "clamped to the last real segment, never to nothing");
+});
+
+test("every second of the Foray maps back to the segment it came from", async () => {
+  // The property behind resume, checked across the whole hour rather than at one
+  // point: whatever we store, we come back to the same place.
+  const r = realResolve();
+  let checked = 0;
+  for (let i = 0; i < r.playable.length; i++) {
+    const item = r.playable[i];
+    const into = Math.min(5, (item.authored_end_sec ?? item.end_sec) - item.start_sec - 0.5);
+    const elapsed = forayElapsed(r.playable, i, item.start_sec + into);
+    const back = segmentAtElapsed(r.playable, elapsed);
+    assert.equal(back.index, i, `segment ${i} resumed as ${back.index}`);
+    assert.ok(Math.abs(back.into - into) < 0.001);
+    checked++;
+  }
+  assert.equal(checked, 32);
 });
 
 test("a backend with no out-point watch refuses the Foray instead of playing whole episodes", () => {

@@ -30,6 +30,14 @@
    The resolution itself — forays.json + segments.json + segment-sources.json —
    is NOT done here. app.js needs the same running order to render, so it lives
    in the pure module and both callers use it through `ForayPlayer.resolve`.
+
+   ── Resuming across sessions ──────────────────────────────────────────────
+   `PositionStore` already persists a position per QUEUE ITEM, and for a Foray
+   that is 32 rows none of which is the Foray's own clock. So a Foray's resume
+   point is written separately, by `player/foray-progress.js`, in the only unit a
+   listener recognises: elapsed across the whole thing. This file is where the
+   live playhead meets that store — on every tick (throttled), and forced at the
+   two moments the next tick may never come, pause and page-hide.
 */
 
 import { PlayerQueueManager } from "./queue-manager.js";
@@ -41,6 +49,8 @@ import {
   resolveForay, indexSegments, indexSources, findForay, listableForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan,
 } from "./foray-resolve.js";
+import { ForayProgressStore, resumePoint, remainingLabel, percentDone } from "./foray-progress.js";
+import { forayCredits, collectionIdsByShow, creditsSummary } from "./foray-sources.js";
 
 const SEEK_BACK = 15;
 const SEEK_FWD = 30;
@@ -50,6 +60,11 @@ let manager = null;
 let backend = null;
 let positions = null;
 let ui = null;
+
+/* Resume points are readable with nothing booted: the home screen asks for them
+   before anything has been played, and booting an <audio> element to answer a
+   question about localStorage would be absurd. */
+const forayProgress = new ForayProgressStore();
 
 /* ---------- DOM ---------- */
 
@@ -129,9 +144,16 @@ function buildUI() {
   const openLink = el("a", "fp-openep", "Open episode ↗");
   openLink.target = "_blank";
   openLink.rel = "noopener";
+  /* The bar already survives navigation — it lives on <body>, not inside
+     #view — but until now there was no way BACK. Leaving the Foray page to look
+     at something else meant the running order, the segment you were on and the
+     thumbs were all gone until you found the URL again. This is that way back,
+     and it is an in-app hash route, never an external link. */
+  const forayLink = el("a", "fp-openep fp-toforay", "Back to the Foray");
+  forayLink.hidden = true;
   const collapse = el("button", "fp-collapse", "Close");
   collapse.type = "button";
-  row2.append(rateBtn, openLink, collapse);
+  row2.append(rateBtn, openLink, forayLink, collapse);
 
   const note = el("p", "fp-note");
 
@@ -142,7 +164,7 @@ function buildUI() {
   return {
     root, bar, art, title, show, playBtn, closeBtn, fill, sheet,
     sTitle, sShow, sWhy, scrub, tNow, tLeft, bigPlay, backBtn, fwdBtn,
-    rateBtn, openLink, collapse, info, note,
+    rateBtn, openLink, forayLink, collapse, info, note,
   };
 }
 
@@ -211,13 +233,21 @@ function syncForaySegment() {
 }
 
 /** The mini-player wants a catalogue-shaped item; a queue item is close but
-    names the episode rather than the segment. */
+    names the episode rather than the segment.
+
+    The bar leads with the FORAY's title, not the source episode's — the mockup's
+    `MiniPlayer` does the same, and for the same reason: the episode title
+    changes nine times over the hour and is not the thing being listened to. The
+    show is on the second line, which is where the mockup puts it too
+    (`Now: <show name>`), extended with the part number because a Foray's second
+    line has room and "part 12 of 32" is the one fact a mini bar can add. */
 function forayNowPlaying(item, index) {
   const total = foray.resolved.playable.length;
+  const show = item.show ? `Now: ${item.show}` : "Now playing";
   return {
     id: item.id,
-    title: item.title || foray.resolved.title,
-    show: `${item.show} · part ${index + 1} of ${total}`,
+    title: foray.resolved.title || item.title || "",
+    show: `${show} · part ${index + 1} of ${total}`,
     duration_sec: null,
     dai_suspected: Boolean(item.dai_suspected),
   };
@@ -245,6 +275,46 @@ function notifyForay() {
   if (foray?.onChange) foray.onChange(forayStateSnapshot());
 }
 
+/**
+ * Write down where the listener is, so closing the tab does not cost them the
+ * hour they were part-way through.
+ *
+ * Called from `render()`, which every media event already drives, so there is no
+ * second timer — the store throttles the 4 Hz tick down to one write per five
+ * seconds of movement. `force` is for the moments where the next tick may never
+ * arrive: pause, page-hide, and closing the bar.
+ *
+ * Reaching the end CLEARS the row rather than storing "100%". A finished Foray
+ * that keeps offering "0 min left" on the home screen is worse than one that
+ * quietly goes back to being unplayed.
+ */
+function persistForayProgress({ force = false } = {}) {
+  if (!foray || foray.index < 0) return;
+  const id = foray.resolved.id;
+  if (manager?.state?.type === "ended") { forayProgress.clear(id); return; }
+  /* Only write once the segment we are showing is the one actually loaded.
+     Mid-jump — and on the first paint of a RESUME, which happens before the
+     load — `forayPosition()` honestly reports the segment's start, and storing
+     that would overwrite a precise resume point with a rounded-down one every
+     time the listener re-opened the page. */
+  if (manager?.currentIndex !== foray.index) return;
+  /* A resume is TWO steps — load the segment at its in-point, then seek into it
+     — and the load fires real media events in between. Without this the tick
+     between them writes the segment's in-point over the precise position we are
+     in the middle of restoring, and a resume that then failed (or a tab closed
+     inside that second) would have quietly rounded the listener back by up to a
+     whole segment, again on every attempt. */
+  if (foray.resumeSeekPending) return;
+  forayProgress.save({
+    forayId: id,
+    title: foray.resolved.title,
+    elapsedSec: forayPosition(),
+    totalSec: foray.resolved.totalSec,
+    index: foray.index,
+    force,
+  });
+}
+
 function render() {
   if (!ui || !current) return;
   syncForaySegment();
@@ -268,7 +338,10 @@ function render() {
     ? `-${foray ? fmtClock(Math.max(0, dur - pos)) : formatTimestamp(Math.max(0, dur - pos), EXACT)}`
     : "--:--";
   syncCardButtons();
-  if (foray) notifyForay();
+  if (foray) {
+    persistForayProgress();
+    notifyForay();
+  }
 }
 
 function syncCardButtons() {
@@ -301,6 +374,14 @@ function setNowPlaying(item, why) {
   } else {
     ui.openLink.hidden = true;
   }
+  if (foray) {
+    // Our own route, built from our own id — the only interpolation here is
+    // encodeURIComponent's output, so no scheme can be smuggled in.
+    ui.forayLink.href = `#/foray/${encodeURIComponent(foray.resolved.id)}`;
+    ui.forayLink.hidden = false;
+  } else {
+    ui.forayLink.hidden = true;
+  }
 
   // Honest scrub affordance. On an ad-stitched feed our own playhead is
   // reliable for this listener (#22's corollary), so scrubbing is exact — but
@@ -318,11 +399,17 @@ function bind() {
     if (isPlaying()) await manager.pause();
     else await manager.resume();
     render();
+    // A pause may be the last thing that ever happens on this page load, so it
+    // does not get to wait for the throttle window.
+    persistForayProgress({ force: true });
   };
   ui.playBtn.addEventListener("click", toggle);
   ui.bigPlay.addEventListener("click", toggle);
 
   ui.closeBtn.addEventListener("click", async () => {
+    // Closing the bar is not "I am done with this Foray", it is "get this off my
+    // screen". Keep the resume point; the only thing that clears it is finishing.
+    persistForayProgress({ force: true });
     await manager.stop();
     ui.root.hidden = true;
     ui.sheet.hidden = true;
@@ -347,6 +434,9 @@ function bind() {
   };
   ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
   ui.collapse.addEventListener("click", () => setExpanded(false));
+  // Following the route with the sheet still open would leave the Foray page
+  // rendered underneath a full-height overlay.
+  ui.forayLink.addEventListener("click", () => setExpanded(false));
 
   // In a Foray these are previous/next SEGMENT, not ±15/30 s: a segment here is
   // often under two minutes, so a 30-second nudge mostly leaves it anyway, and
@@ -385,7 +475,12 @@ function bind() {
 
   // Corner case #17: pocketing the phone must not lose the position. This is
   // the path that actually matters on mobile — beforeunload is unreliable there.
-  const flush = () => { if (current && isPlaying()) manager._persistPosition(); };
+  const flush = () => {
+    if (current && isPlaying()) manager._persistPosition();
+    // Unconditional, unlike the line above: a Foray paused at 23:14 and then
+    // backgrounded must still remember 23:14.
+    persistForayProgress({ force: true });
+  };
   document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
   window.addEventListener("pagehide", flush);
 }
@@ -445,6 +540,9 @@ const ForayPlayer = {
   async play(item, { why = "" } = {}) {
     if (!this.canPlay(item)) return false;
     ensureBooted();
+    // Leaving a Foray for a single episode must not cost the last few seconds
+    // of it — this is the only place `foray` is dropped without a flush.
+    persistForayProgress({ force: true });
     foray = null;
     setSkipButtonMode(false);
     setNowPlaying(item, why);
@@ -481,17 +579,25 @@ const ForayPlayer = {
   fmtSpan,
 
   /**
-   * Play a resolved Foray from `startIndex`.
+   * Play a resolved Foray from `startIndex`, or from a position in the Foray's
+   * own clock.
    *
    * @param {object} resolved  from `resolve()` above
    * @param {object} [opts]
    * @param {number} [opts.startIndex]
+   * @param {number} [opts.startElapsedSec]  resume point, in FORAY seconds.
+   *   Wins over `startIndex` when given, because it is strictly more specific:
+   *   it names the segment AND the offset inside it. Seeking is a second step
+   *   rather than a load offset on purpose — the manager loads a bounded segment
+   *   at its in-point by contract (`queue-manager.js`'s `resumingInPlace`), and
+   *   that contract is what keeps a Foray from starting mid-sentence in
+   *   somebody else's episode.
    * @param {Function} [opts.onChange] called with `{ index, playing, ended,
    *   elapsedSec, totalSec }` on every position tick and every segment change —
    *   the page owns the running order, so it needs to be told, not to poll.
    * @returns the build report, or null when nothing is playable.
    */
-  async playForay(resolved, { startIndex = 0, onChange = null } = {}) {
+  async playForay(resolved, { startIndex = 0, startElapsedSec = null, onChange = null } = {}) {
     if (!resolved || !resolved.playable.length) return null;
     ensureBooted();
     foray = { resolved, index: -1, pendingFrom: null, onChange, error: null };
@@ -500,12 +606,89 @@ const ForayPlayer = {
     const report = manager.setQueueFromForay(resolved.hydrated, {
       resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
     });
+
+    const at = Number.isFinite(startElapsedSec) && startElapsedSec > 0
+      ? segmentAtElapsed(report.items, startElapsedSec)
+      : null;
+    foray.resumeSeekPending = Boolean(at);
     // Paint the intent before awaiting the load: a running order that only
     // highlights the row once the audio arrives reads as a dead button.
-    setForayIndex(clampIndex(startIndex, report.items.length));
-    await manager.play(foray.index);
+    setForayIndex(clampIndex(at ? at.index : startIndex, report.items.length));
+    try {
+      await manager.play(foray.index);
+      if (at) {
+        const item = report.items[foray.index];
+        if (item) await manager.seek(item.start_sec + at.into, { precise: true });
+      }
+    } finally {
+      // Even if the load threw, the window has to close or this Foray would
+      // never write a position again.
+      if (foray) foray.resumeSeekPending = false;
+    }
     render();
     return report;
+  },
+
+  /* ---------- resume across sessions ---------- */
+
+  /**
+   * Where this Foray was left, or null when there is nothing worth offering.
+   *
+   * `totalSec` and `itemCount` should describe the LIVE Foray — the document can
+   * have changed since the row was written, and a resume point past the end of
+   * the Foray as it exists now is a stale row, not a position.
+   *
+   * @returns {{ elapsedSec, index, remainingSec, percent, finished, label,
+   *             clock, title } | null}
+   */
+  forayResume(forayId, { totalSec = null, itemCount = null } = {}) {
+    const record = forayProgress.get(forayId);
+    const maxIndex = Number.isInteger(itemCount) && itemCount > 0 ? itemCount - 1 : null;
+    const point = resumePoint(record, { totalSec, maxIndex });
+    if (!point || point.finished) return null;
+    return {
+      ...point,
+      title: record.title || "",
+      clock: fmtClock(point.elapsedSec),
+      label: remainingLabel(point.remainingSec),
+    };
+  },
+
+  /** Every Foray with a resume point, most recent first — the home screen's
+      "Jump back in" rail. The CALLER still has to apply the draft rule: a stored
+      position is not permission to list an unpublished Foray. */
+  forayResumeList() {
+    return forayProgress.list().map((r) => {
+      const point = resumePoint(r);
+      return {
+        id: r.foray_id,
+        title: r.title || "",
+        updated_at: r.updated_at,
+        elapsedSec: r.elapsed_sec,
+        totalSec: r.total_sec,
+        index: r.index,
+        percent: percentDone(r.elapsed_sec, r.total_sec),
+        finished: Boolean(point?.finished),
+        label: point && !point.finished ? remainingLabel(point.remainingSec) : "",
+      };
+    });
+  },
+
+  /** Forget a Foray's position. The listener saying "start it again" is the only
+      thing besides finishing that may do this. */
+  clearForayResume(forayId) {
+    forayProgress.clear(forayId);
+  },
+
+  /* ---------- who it is made of ---------- */
+
+  /** The publisher credit block for a resolved Foray: which shows and episodes
+      it draws on, how much of the runtime each carries, and where to go and
+      subscribe. `discoverDoc` is optional and only ever upgrades a link from an
+      Apple search to the show's real page. */
+  forayCredits(resolved, { discoverDoc = null } = {}) {
+    const credits = forayCredits(resolved, { collectionIds: collectionIdsByShow(discoverDoc) });
+    return { credits, summary: creditsSummary(credits) };
   },
 
   /** The live Foray's state, or null when none is loaded. A page that
@@ -527,6 +710,9 @@ const ForayPlayer = {
     if (isPlaying()) await manager.pause();
     else await manager.resume();
     render();
+    // The page's own pause is the one a listener actually uses; it gets the same
+    // forced write the mini bar's does.
+    persistForayProgress({ force: true });
   },
 
   async forayJump(index) {
