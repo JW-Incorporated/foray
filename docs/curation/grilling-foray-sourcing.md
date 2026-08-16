@@ -16,6 +16,15 @@ more important half of this document.
 
 ## 1. Method, and what "usable" means
 
+> **Gate 1 below is SUPERSEDED by `docs/adr/0008-ad-tolerance-and-timestamp-precision.md`**
+> (Wyatt, 2026-08-16: *"Ads should not be a blocking issue as long as we can find
+> the approximate right timestamp."*). Ad load is **no longer a reason to reject a
+> source**. It is now measured as a **delta in seconds per episode** and decides
+> only how a segment is anchored: ≤ 120 s → padded and playable; > 120 s →
+> authored now, played once ADR-0007's anchor-resolution rung exists. The
+> measurements below stand; the verdicts drawn from them do not. Do **not**
+> re-reject a show on ad ratio alone.
+
 Two hard gates, plus a content gate:
 
 1. **Ad-free delivery.** The listener plays their own copy from the publisher's
@@ -146,6 +155,19 @@ to paper over.
 ---
 
 ## 4. Rejected — and why
+
+> **Every "injected" verdict in this table is SUPERSEDED by ADR-0008.** Usable:
+> Gastropod (**measured +66 s**, and its 1.080 here was the weaker
+> bitrate-implied method — §7 already flagged it for re-measurement); A Taste of
+> the Past and Proof, whose ratios cross 120 s only above 100 min and 71 min of
+> program respectively, so they clear it on any plausible episode length (probe
+> once to confirm). Borderline and undecided until probed: The Fantastic History
+> Of Food (crosses at 46.5 min). Over the threshold, and therefore **authorable
+> now, playable once the locate step exists**: The Delicious Legacy, BBC The Food
+> Programme, Grill This! and Hungry for History. Rejections on
+> *content* (Culinary Connections, Seu Churrasco) and on *dead audio* (BBQ
+> Nation) are unaffected. See ADR-0008 § "The unlock, quantified" for the
+> per-show tier table.
 
 | Show | Ad-free | Why rejected |
 |---|---|---|
