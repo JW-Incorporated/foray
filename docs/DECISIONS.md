@@ -517,7 +517,7 @@ its reasoning.
     documents themselves call exactly on brief. Content quality and transcript
     availability are now the only grounds for rejecting a source.
   - **The measurement moves from a ratio to a delta in seconds, per episode,
-    summarised by the maximum** over at least two probes. A ratio is not
+    over N ≥ 2 probes of the SAME episode, summarised by the maximum.** A ratio is not
     comparable across episode lengths (1.02 is ~94 s on a 78-minute episode and
     ~24 s on a 20-minute one) and is uncomputable on the `length="0"` feeds where
     we most need it, whereas seconds are obtainable from decoded duration
@@ -534,7 +534,48 @@ its reasoning.
     or six mid-rolls.
     120 s also sits just above the **centre** of the 75–180 s segment band
     (~110 s), past which the pad is longer than the typical segment it protects.
-    The pad actually applied is the *measured* delta, not the ceiling.
+  - **The pad is an UPPER BOUND on the delta, never a point estimate — and this
+    corrects the rule as first drafted.** A confirming double-probe of Gastropod's
+    "Out of the Fire, Into the Frying Pan" (`itunes:duration` 2501.0 s) returned
+    **+66.1 s** and, hours later from the same client, **+32.7 s**: **33.4 s of
+    per-request variance on one episode.** The delta is a property of the *request*,
+    not of the episode. **The pad controls only the STOP** — the seek already lands
+    early by the copy's ad load, whatever the pad is. Padding is asymmetric there:
+    a pad at least as large as the copy's load captures the whole payload plus some
+    extra tail, while **a pad smaller than the copy's load stops early and truncates
+    the payload**, the one failure padding exists to prevent. So
+    `pad = delta_max(N ≥ 2 probes) + margin`, margin ≥ the observed spread, and the
+    120 s admission test runs on the *pad*. For Gastropod: `delta_max` 66.1 s,
+    spread 33.4 s, pad ~100 s (66.1 + 33.4 = 99.5 — clearing the 120 s ceiling by
+    only 17%). **N = 1 bounds nothing.** Two consequences worth recording:
+    practical headroom is well under 120 s of raw delta (strictly `≤ 86.6 s`; the
+    tighter `60–80 s` quoted in the ADR additionally assumes the margin *scales*
+    with the delta, which is generalised from one ratio on one episode and is not
+    measured), and the guarantee weakens from deterministic to probabilistic — a copy
+    carrying more load than we sampled is truncated by the excess, and the one spread
+    we have measured is 33.4 s, up to a third of a 110 s segment. Not "a few
+    seconds", and not a bound.
+  - **`summariseShow()` is wrong twice over for this purpose**, not once: a median
+    (wrong statistic) across *different episodes* (wrong axis). Bounding a pad needs
+    the max across repeats of *one* episode — and no episode in this repo has ever been
+    probed twice, which is the gap, not per-show measurement (many rows are properly
+    per-episode).
+  - **Instrument note.** Gastropod's recorded `1.080 — injected (bitrate-implied)`
+    describes a **different episode** ("Where There's Smoke, There's… Whiskey, Fish,
+    and Barbecue!"), which has not been re-probed — so it is not a refuted
+    measurement, and comparing the two would be the same cross-episode error. What
+    holds: applied to the probed episode's 41.7-min program, 1.080 would imply
+    ~200 s, **3–6× what was measured**, so a bitrate-implied ratio cannot size a pad.
+    A second caveat on the new instrument: it compares against `itunes:duration`
+    only, and `tools/transcribe/README.md` records 244 s of pure metadata error on a
+    non-DAI Radiolab episode — so cross-check against the transcript's last cue
+    before calling a single-source delta "ad load". Where we can afford the download, decode
+    the file and compare against `itunes:duration` (PyAV,
+    `container.duration / av.time_base`); the ranged-GET ratio is the cheap screen,
+    not the number to size a pad from. On `length="0"` feeds (Megaphone — Gastropod,
+    olive, Proof) the byte ratio cannot be computed at all, so N ≥ 2 there means two
+    full downloads. On feeds declaring a real `length`, repeated 2-byte ranged GETs
+    do see per-request variance and cost kilobytes.
   - **Above 120 s, mid-rolls are the killer, not volume.** The error at any point
     is our cumulative ad time before it minus the listener's, so it **grows
     through the episode** and reached +8 to +10.7 min on Stuff You Should Know,
@@ -559,14 +600,17 @@ its reasoning.
     `OWN` branch — and the segment is skipped. **The worst case of relaxing this
     gate today is a skipped segment, never a bad cut.**
   - **What it unlocks, from measurements already on record (no new scan):** six
-    shows become usable now — olive and El Mundo en un Bocado on numbers recorded
-    in this repo; A Taste of the Past and Proof on an **estimated** episode length
-    with a wide margin (one 2-byte probe each to confirm); **Gastropod pending one
-    confirming probe**, because its +66 s was supplied with the ruling and is not
-    recorded here — it contradicts the 1.080 bitrate-implied reading that is, and
-    the ADR says plainly not to ship a Gastropod segment before that probe; The
-    Fantastic History Of Food genuinely undecided until probed — and eight become
-    authorable-now/playable-later. **Tandoor moves
+    shows move to PADDABLE and eight to authorable-now/playable-later. **No row is
+    rejected on ad load any more — but "admitted" means `pad ≤ 120 s`, and only
+    Gastropod has the N ≥ 2 same-episode probes needed to establish that.** Nor is
+    Gastropod "ready to ship": playback still needs the `seekPrecision()` `FOREIGN`
+    branch, and transcript availability remains a rejection ground with Gastropod's
+    timed-transcript status unrecorded here. The
+    other five PADDABLE rows (A Taste of the Past, Proof, olive, El Mundo en un
+    Bocado, The Fantastic History Of Food) rest on ratios that are medians across
+    *different* episodes, which cannot bound per-request variance; **Proof and olive
+    are tight enough that probing could push them back over the line, and that is
+    the system working.** **Tandoor moves
     from "not sourceable" to reachable** — `catalogue-broadening.md` §4's verdict
     was a consequence of this gate, not of the content — and mangal/kebab gains
     its first *ad-gated* candidate (its other candidate, Gurmelik Denemeleri, was

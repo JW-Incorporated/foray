@@ -221,9 +221,18 @@ actually reach a listener. In the manifest every row carries `language` and
 > `docs/adr/0008-ad-tolerance-and-timestamp-precision.md`** (Wyatt, 2026-08-16 —
 > ads no longer block a source). Recomputed as a delta in seconds against that
 > ADR's 120 s threshold: **olive** (~1.02 on a 45-min episode ≈ 54 s) and **El
-> Mundo en un Bocado** (1.0159 on a 47-min episode ≈ 45 s) are **usable now**;
+> Mundo en un Bocado** (1.0159 on a 47-min episode ≈ 45 s) are **admitted**;
 > **Naan Curry** (1.0470 on a 67-min episode ≈ 189 s) is authorable now and
-> playable once the locate step exists. Rejections on the **content** gate
+> playable once the locate step exists. **Admitted is not yet shippable:** ADR-0008
+> requires **N ≥ 2 probes of the same episode** first, because a Gastropod
+> double-probe measured **33.4 s of per-request variance** and the pad must be an
+> upper bound, not a point estimate. **No episode in this repo has ever been probed
+> twice**, so nothing here bounds it yet. olive is the tighter of the two and needs a
+> decode rather than a byte probe — its Megaphone feed declares `length="0"`, so no
+> ratio can be computed at all, and the ~1.02 above is bitrate-implied. Treat that
+> with care: on Gastropod, a bitrate-implied ratio would have implied 3–6× the ad
+> load that decoding actually found.
+> Rejections on the **content** gate
 > (Gurmelik Denemeleri, Colombia sabe bien, 肉の丸一, Unlock Local, TOROMI, the
 > vlogs) are unaffected. Do not re-reject a show on ad ratio alone.
 

@@ -62,19 +62,74 @@ shows on 2026-08-15:
 Every indie/self-hosted show measured across both sourcing passes came in at
 **0 s** — 41 of 41 episodes at ratio 1.0000 in `grilling-foray-passages.md` §2.
 
-**One further delta, and its provenance needs stating precisely, because a lot
-below leans on it. Gastropod: +66 s.** That figure was **supplied to this session
-alongside the ruling on 2026-08-16** and is **not otherwise recorded in this
-repo**. The only Gastropod ad measurement on file is `1.080 — injected
-(bitrate-implied)` (`grilling-foray-sourcing.md` §4), which on a 45-minute
-episode would be ~216 s, so **the two do not reconcile on any plausible episode
-length**. The bitrate-implied reading is the weaker method on a feed that declares
-`length="0"`, and §7 of that document already lists Gastropod for
-re-measurement — so +66 s is the more likely of the two to be right. But it is
-an unreplicated number that contradicts the record, and this ADR does not treat
-it as settled: **Gastropod is PADDABLE pending one confirming seconds-based
-probe**, exactly like the other rows whose ratio does not decide them. Do not
-ship a Gastropod segment before that probe.
+### Gastropod, probed twice — and the finding that reshaped the padding rule
+
+Probed 2026-08-16 by an ad-hoc script, with the numbers recorded in the PR #184
+discussion. Episode: *"Out of the Fire, Into the Frying Pan"*, `itunes:duration`
+= **2501.0 s**.
+
+| probe | true decoded duration | bytes | delta vs feed |
+|---|---|---|---|
+| 1 | 2567.1 s | 41,146,837 | **+66.1 s** |
+| 2 (fresh, same day, **same client**) | 2533.7 s | 40,612,263 | **+32.7 s** |
+
+**Method:** fetch the enclosure, decode it, and compare the true duration against
+the feed's `itunes:duration` — `container.duration / av.time_base` via PyAV
+(`av==18.0.0` is already pinned in `tools/transcribe/requirements.txt`). It costs a
+full download per probe, and it is the *only* instrument that works here, because
+Megaphone declares `length="0"` and a byte ratio cannot be computed at all.
+**No committed tool does this** — `ad-inflation.mjs` does ranged GETs only. Per
+workflow rule 6, if we probe a second show this belongs beside it as a committed
+script with a test floor rather than another ad-hoc run.
+
+**Internal corroboration worth having, because it separates two error sources.**
+Both probes decode at ~128.2 kbps (`41,146,837 × 8 ÷ 2567.1` and
+`40,612,263 × 8 ÷ 2533.7`), and the byte difference over that bitrate is
+`534,574 × 8 ÷ 128,200 =` **33.4 s** — exactly the duration spread. So the spread
+is real, delivered audio, not a decoder or metadata artefact.
+
+**But the baseline is a different matter, and this probe is missing the cross-check
+the 2026-08-15 method had.** That table carries *both* "feed says" and "transcript
+ends" columns and makes a point of their agreeing within a minute. The Gastropod
+probe has only `itunes:duration` — and declared durations can be badly wrong with
+**no ads at all**: `tools/transcribe/README.md` records Radiolab, flagged
+`dai_suspected: false`, decoding at 1989.4 s against a declared 1745 s. **244 s of
+pure metadata error on a file with no injection**, which is exactly why that
+harness "measures duration from the file itself rather than trusting feed
+metadata". So some part of Gastropod's 32.7 s floor may be metadata inaccuracy
+rather than ad load. Which way that cuts: a constant metadata error inflates
+`delta_max` without inflating actual displacement against the *transcript*
+timeline, so the pad would be oversized — safe for the listener, but it can
+wrongly push a show past the admission test. **Cross-check against the publisher
+transcript's last cue before treating any single-source delta as ad load.** The
+33.4 s spread is unaffected by this; only the baseline is.
+
+Three things come out of this, and the third one is the important one:
+
+1. **Gastropod's ad load is real, small, and inside the threshold** — 33–66 s, so
+   it is PADDABLE. **One caveat is outstanding and it is not small:** both probes
+   were the same client on the same day, and the margin below exists precisely to
+   cover *a different requester's* copy, which we have never sampled. See open
+   question 3.
+2. **A bitrate-implied ratio cannot size a pad.** `grilling-foray-sourcing.md` §4
+   records `1.080 — injected (bitrate-implied)` for Gastropod — but **against a
+   different episode** (*"Where There's Smoke, There's… Whiskey, Fish, and
+   Barbecue!"*), which has not been re-probed. So this is not a case of a
+   measurement being refuted; it is two different episodes, and comparing them is
+   the very axis error this section is about. What we can say: applied to *this*
+   episode's 41.7-minute program, 1.080 would imply ~200 s, i.e. **3–6× what we
+   actually measured** (against `delta_max` 66.1 s and probe 2's 32.7 s
+   respectively). **Where we can afford the download, decode-and-compare is the
+   instrument; the ranged-GET ratio is a screen.** (§7 of that document had already
+   listed Gastropod for re-measurement — that flag covers Gastropod only, not the
+   other bitrate-implied rows.)
+3. **The delta is a property of the REQUEST, not of the episode.** The same
+   episode, the same client, hours apart: **33.4 s of variance.** Nothing in this
+   repo had measured that before — not because measurements were per-show (many are
+   properly per-episode; `grilling-foray-passages.md` §1 insists on it) but because
+   **no episode had ever been measured twice.** Per-episode tells you about the
+   episode; per-*request* repeats tell you about the stitch, and only the second
+   bounds a pad. That distinction is what the padding rule below turns on.
 
 Stuff You Should Know's 8–10 minutes is understood to be **a pre-roll plus
 mid-rolls** rather than one block at the front. Note what kind of claim that is:
@@ -162,8 +217,8 @@ Replace the boolean with a per-episode delta in seconds and two tiers:
 
 | tier | condition | what it means |
 |---|---|---|
-| **PADDABLE** | max measured delta **≤ 120 s** | usable now: pad by the measured delta |
-| **LOCATE-REQUIRED** | max measured delta **> 120 s** | author now, play once the locate step exists |
+| **PADDABLE** | pad (`delta_max` + margin, N ≥ 2 probes) **≤ 120 s** | usable now: pad by that upper bound |
+| **LOCATE-REQUIRED** | pad **> 120 s** | author now, play once the locate step exists |
 
 ## The threshold, and why it is 120 s
 
@@ -183,7 +238,9 @@ already decided is slack rather than junk. Because `cum(t) ≤ total`
 for every `t`, a total delta ≤ 120 s bounds the error at **every point in the
 episode** at ≤ 120 s — **whatever the ad distribution is.** This is the crux: below
 the threshold we do not need to know, and do not need to discover, whether the
-ads are a pre-roll or six mid-rolls. Above it, the distribution decides the
+ads are a pre-roll or six mid-rolls. (That bound holds *within* a given copy. Which
+copy the listener gets is a second question, and the answer moves per request —
+see § "The pad must be an UPPER BOUND".) Above it, the distribution decides the
 outcome and the distribution is exactly what a byte or duration measurement
 cannot see. Two shows with an identical total delta, one pre-roll-only and one
 mid-rolled, are indistinguishable from outside the file. Determining which is
@@ -197,34 +254,107 @@ nothing at all: +0.8 s and +0.3 s.)
 and the number that matters here is the centre, because that is the length of a
 typical segment the pad has to protect. Padding
 costs runtime: seeking to an un-corrected in-point lands us `cum` seconds *early*
-in the content (harmless run-up — §3f's sacrificial-head rule already wants
-segments to open on run-up) but also stops `cum` seconds early, truncating the
-payload, so the **stop** must be extended by the pad. At a 120 s pad on a 110 s
-segment, the pad exceeds the thing it protects. Beyond that the "segment" is
+in the content, and an un-extended stop lands `cum` seconds early too, truncating
+the payload — so the **stop** must be extended by the pad. At a 120 s pad on a
+110 s segment, the pad exceeds the thing it protects. Beyond that the "segment" is
 just a region of episode with a hopeful name.
 
-**3. The pad applied is the measured delta, not the ceiling.** Because we record
-seconds per episode, Gastropod is padded by ~66 s, not by 120 s. The ceiling
-gates; the measurement sizes. This keeps the editorial cost proportional to the
-actual ad load instead of charging every show the worst case.
+**Do not justify that extra head with §3f.** The sacrificial-head rule budgets
+**~4 s** ("≈ 11 words at 170 wpm") of *deliberately chosen* run-up. A displaced
+seek produces tens of seconds of *incidental* audio, which is a different and much
+larger thing — 66 s is ~16× the §3f budget. It is usually harmless (it is program
+audio from slightly earlier), but it is not free, and if an ad break happens to
+straddle the landing point the segment can **open inside an ad pod**. That is an
+editorial cost to accept knowingly, not a rule we already have. It does not touch
+R11: playing an ad we happen to land on is the opposite of detecting or stripping
+one.
 
-**Measure per episode, and summarise with the MAXIMUM.** Two constraints from
-the existing data. Stuff You Should Know's own two episodes differ (+10.0 and
-+8.4 min), and `grilling-foray-passages.md` §1 already insists on per-episode
-measurement, "never per show". And `summariseShow()` in `ad-inflation.mjs`
-returns a **median** — correct for classifying a show's behaviour, wrong for
-this gate, which is a worst-case bound. The tier is set by the max over probes
-(minimum two), because the listener's copy is stitched independently of ours and
-their load is not guaranteed to be our median.
+**3. The pad is sized from the show's own measured worst case, not from the
+global ceiling.** The ceiling admits; the measurement sizes. Gastropod is padded
+by ~100 s rather than by a flat 120 s. But *which* measurement sizes it is the
+subtle part, and getting it wrong misses content — see the next section.
 
-**Recorded-number reconciliation, kept honest.** Gastropod is recorded at
-**1.080 bitrate-implied** in `grilling-foray-sourcing.md` §4, and its measured
-delta is **+66 s**. Those two do not reconcile on any plausible episode length —
-1.080 would be ~3.5 min on a 45-minute episode. The ratio came from the weaker
-bitrate-implied method on a feed that declares `length="0"`, and §7 of that same
-document already lists Gastropod for re-measurement. **The seconds measurement
-supersedes the ratio**, and this disagreement is itself the argument for option 3
-over option 2.
+### The pad must be an UPPER BOUND on the delta, never a point estimate
+
+This is the rule the Gastropod double-probe forced, and it corrects an earlier
+draft of this ADR that said "pad by the measured delta". That was unsafe.
+
+**Padding is asymmetric in cost — and the pad controls only the STOP.** Be precise
+about the geometry, because it is easy to state backwards. Content authored at
+program-time `t` sits at `t + cum(t)` in the listener's file. So an un-corrected
+seek lands us **early** in the content by `cum`, and an un-extended stop lands
+**early** too, cutting the payload short. **The early start happens regardless of
+the pad** — it is the displacement itself, not something padding buys or reduces.
+What the pad decides is whether the stop reaches far enough to cover the payload:
+
+- **Pad ≥ the copy's load → the whole payload is captured**, plus up to
+  `pad − cum` seconds of extra tail. Cheap, and the direction the ruling accepts.
+- **Pad < the copy's load → the stop lands early and the payload is truncated by
+  the shortfall.** This is the one failure padding exists to prevent.
+
+So a point estimate is the wrong statistic: it is too small about half the time,
+and every such time loses content. Concretely, from the two probes above: **pad by
+the measured 33 s and a listener whose copy carries 66 s stops us 33 s early —
+33 s of payload cut off the end.** Pad by 66 s and a listener carrying 33 s stops
+33 s late — payload captured, with 33 s of extra tail.
+
+**Scope: this one-way asymmetry assumes we authored against the publisher's
+ad-free transcript**, where `cum_ours ≡ 0`. For a segment authored against our own
+downloaded (stitched) copy — the fingerprint route below — both terms are non-zero
+and, as § "The distinction the ruling turns on" already says, the sign can go
+either way. Those segments need a head allowance as well as a tail one, and this
+section's stop-only rule is not sufficient for them.
+
+**The rule:**
+
+```
+delta_max = max delta over N probes of the SAME episode,  N >= 2
+pad        = delta_max + margin,  margin >= the observed spread between probes
+admit if   pad <= 120 s
+```
+
+- **N = 1 bounds nothing.** Two probes of one episode disagreed by 33.4 s, so a
+  single sample is a draw from a distribution whose width we have not measured.
+  This is mandatory, not advisory.
+- **The margin exists because our probes are not the listener's request.** We can
+  only sample our own copies; the listener's is another draw. A margin at least as
+  wide as the spread we observed is the cheapest defensible cover. For Gastropod:
+  `delta_max` 66.1 s + spread 33.4 s = 99.5 s, i.e. **a ~100 s pad**.
+- **The admission test runs on the PAD, not on the raw delta.** Both numbers want
+  the same worst-case statistic, for different reasons: admit only if the worst
+  plausible displacement stays inside the tolerance, then pad by that same worst
+  case. Using a median or a single sample for either is the same class of error
+  this ADR already calls out in `summariseShow()`.
+- **`summariseShow()` is therefore wrong twice over for this purpose**, not once.
+  It takes a median (wrong statistic) across *different episodes* (wrong axis).
+  Bounding a pad needs the max across *repeats of one episode*. Both are recorded
+  here as consequences; neither is changed in this docs-only PR.
+
+**The honest cost of this correction: the guarantee weakens from deterministic to
+probabilistic, and nothing we have measured bounds the tail.** With the delta
+fixed per episode, "total ≤ 120 s bounds the error everywhere" was arithmetic. With
+the delta varying per request, we bound the listener's load only by sampling our
+own, so the claim becomes: *displacement stays within the pad for any copy whose
+load is no worse than the worst we sampled, plus the margin.* When a copy exceeds
+that, the payload is truncated **by however much it exceeds it** — and the one
+spread we have measured is **33.4 s, up to a third of a 110 s segment.** Do not
+read this as "a few seconds". Nor can we claim such a copy could never land in a
+different story: the admission test caps *our sampled* load, not the listener's,
+which is exactly the limitation this paragraph is about. It is still a materially
+better failure than the >120 s tier's — truncation of a segment we chose, rather
+than a confident cut at an unknown place — but it is a probabilistic argument now
+and should not be dressed as a bound.
+
+**Effective headroom is smaller than the ceiling — how much smaller depends on an
+assumption, so state it.** Strictly, `pad = delta_max + margin ≤ 120` with
+`margin ≥ 33.4 s` gives only `delta_max ≤ 86.6 s`. The tighter figure quoted
+elsewhere in this ADR — roughly `delta_max ≤ 60–80 s` — additionally assumes the
+margin **scales with the delta** (Gastropod's spread was 0.505 × its `delta_max`),
+which is generalised from one ratio on one episode of one show. That assumption is
+not measured, and it is the single most load-bearing unmeasured thing here; open
+question 3 asks for the two extra probes that would test it. Either way the
+direction is unambiguous: **admission headroom is well under 120 s of raw delta**,
+which is why every PADDABLE row except Gastropod needs probing before it ships.
 
 ## What a large delta costs, and what recovers it
 
@@ -260,8 +390,16 @@ which one we can afford:
   looks, and the delta measurement is what makes it cheap: since
   `cum(t) ∈ [0, total]`, the content authored at `t` lies in
   `[t, t + total]` in the listener's file. **The search window is exactly the
-  total delta wide.** For a 2-minute segment on a Stuff You Should Know episode
-  that is ~12 minutes of audio to transcribe instead of 47 — a 3–4× saving. So
+  total delta wide** — and, for the same reason the pad must be an upper bound,
+  the window must be sized on `delta_max + margin` rather than on a single
+  measured delta. A window sized to a point estimate can simply not contain the
+  target: the anchor then reads as unresolvable and the segment is skipped, which
+  is safe but wastes the whole locate attempt. Sized honestly for a 2-minute segment on a Stuff
+  You Should Know episode — `delta_max` 10.0 min, plus a margin (its 1.6 min
+  cross-episode spread is the only one on record, and by this ADR's own axis
+  argument it does not bound one episode's per-request spread) — the window is
+  **~13.6 min of audio to transcribe instead of 47, a ~3.5× saving.** An earlier
+  draft said ~12 min, which was the point estimate this section forbids. So
   the per-episode delta is not only the gate; it is the *parameter* of the locate
   step, which is a second reason to record it in seconds rather than throwing it
   away as a boolean.
@@ -283,13 +421,19 @@ which one we can afford:
    `merge-segments.mjs` already permits a DAI item when both anchors are present
    and non-empty, and already validates anchors as verbatim — no schema change,
    no validator change, no new constant.
-3. **Record the delta in seconds, per episode, alongside the ratio.** The 2-byte
-   ranged GET already yields the bytes; the seconds follow from the per-episode
-   bitrate that `grilling-foray-passages.md` §1 already corroborates.
+3. **Record the delta in seconds, per episode, over N ≥ 2 probes, alongside the
+   ratio.** Where the feed declares a real `length`, repeated 2-byte ranged GETs
+   are enough and cost kilobytes — each request reports its own `Content-Range`
+   total, so the repeats are what expose per-request variance. Where the feed
+   declares `length="0"`, only a decode works, so budget two downloads for that
+   episode. Record `delta_max`, the observed spread, and N — a delta with no N is
+   not a bound.
 4. **Rely on the existing honest-failure path for anything unplayable.** An
    authored segment boundary is `FOREIGN` by ADR-0007's own definition, and
    `seekPrecision()` as it stands today returns **`approximate` for any
-   `dai_suspected` item on a foreign timeline, unconditionally** — it does not
+   `dai_suspected` item on a foreign timeline whenever there is no downloaded file**
+   (`isLocalFile` short-circuits to `exact` ahead of the DAI check, and that path
+   needs #29) — it does not
    even reach a duration comparison, because ADR-0007's third and fourth rungs
    are described in that ADR and **not yet implemented**: the live function has
    only `OWN` and `FOREIGN`, and the `DRIFT_TOLERANCE_SEC = 30` check runs solely
@@ -301,48 +445,61 @@ which one we can afford:
 
 **A player change — small, but larger than "one constant" — needed before a
 PADDABLE segment on an injected show actually plays.** Two parts. The stop must
-be extended by the recorded delta; and `seekPrecision()` needs a **`FOREIGN`
-branch that consults a recorded per-episode `ad_delta_sec`**, which does not
-exist today — the function currently returns `approximate` for every foreign DAI
-timestamp without looking at durations at all, and its `DRIFT_TOLERANCE_SEC = 30`
-comparison lives only on the `OWN` branch. So this is not "widen a constant": it
-is implementing the third rung of ADR-0007's ladder for foreign timestamps, with
-the tolerance keyed to the segment's measured delta rather than to 30 s. Still
+be extended by the **pad** — the upper bound, not the last delta we happened to
+measure; and `seekPrecision()` needs a **`FOREIGN` branch that consults a recorded
+per-episode pad**, which does not exist today — the function currently returns
+`approximate` for every foreign DAI timestamp without looking at durations at all,
+and its `DRIFT_TOLERANCE_SEC = 30` comparison lives only on the `OWN` branch. So
+this is not "widen a constant": it is implementing the third rung of ADR-0007's
+ladder for foreign timestamps, with the tolerance keyed to the segment's recorded
+pad rather than to 30 s. Still
 bounded — one field on the segment record, one branch, and tests — and
 deliberately not built in this PR. Note the 30 s constant itself should **not** be
 widened: it guards the listener's own marker against their own copy, which is a
 different question with a correct answer already.
 
 **Waits for the locate step (>120 s):** playback of anything in the
-LOCATE-REQUIRED tier, which is where Stuff You Should Know, Odd Lots, This
-Podcast Will Kill You, the BBC Food Programme, The Delicious Legacy and Naan
-Curry all sit. Authoring does not wait; playing does.
+LOCATE-REQUIRED tier — all eight of Stuff You Should Know, Odd Lots, This Podcast
+Will Kill You, Naan Curry, the BBC Food Programme, The Delicious Legacy, Hungry for
+History, and (once headroom is applied) Grill This! and The Fantastic History Of
+Food. Authoring does not wait; playing does.
 
 ## The unlock, quantified
 
 Reasoned from the recorded measurements in the two sourcing documents; **no new
-scan was run.** For a show recorded only as a ratio, the delta in seconds is
-`(r − 1) × program_length`, so each ratio has a **break-even length** —
-`120 ÷ (r − 1)` — above which its episodes cross the threshold. That converts
-every recorded ratio into a decision without a single new fetch.
+scan was run** beyond the Gastropod probes above. For a show recorded only as a
+ratio, the implied delta is `(r − 1) × program_length`.
 
-*Read the break-even column as **ad-free program minutes**, i.e. the length the
-feed declares, not the length of the file you would download.* Since
-`ratio = delivered ÷ declared`, the denominator is the program, and for a heavily
-injected show the two differ by exactly the quantity under discussion — a
-67-minute declared episode delivering 70 minutes is the same row, not a
-contradiction.
+**Two health warnings on the table, both consequences of the upper-bound rule.**
 
-| Show | recorded | break-even length | episode length | tier |
+1. **The `break-even` column is a SCREEN, not the admission test.** It answers
+   "above what program length does the *implied* delta cross 120 s?" —
+   `120 ÷ (r − 1)`, read in **ad-free program minutes** (the length the feed
+   declares, since `ratio = delivered ÷ declared`). It predates the upper-bound
+   rule and is now optimistic in every row, because admission runs on
+   `delta_max + margin`, not on a single implied delta. At an illustrative 60 s of
+   headroom the same break-evens halve: A Taste of the Past 50 min, Proof
+   **35.7 min** (inside its own estimated 30–40 min band), olive 50 min, El Mundo
+   62.9 min, The Fantastic History Of Food 23.3 min, Grill This! 13.7 min. Use the
+   column to *rank probing effort*, never to admit a show.
+2. **No pad is quoted for any row but Gastropod, deliberately.** A pad needs
+   `delta_max` and a spread; every other row has a *median across different
+   episodes*, from which `delta_max` cannot be derived at all — it is unbounded
+   above by construction. An earlier draft of this table quoted pads of
+   `2 × implied delta` for those rows; that coefficient appears in no rule, and
+   applied to Gastropod it would have produced a 132 s pad and **failed the very
+   row we measured.** Withdrawn.
+
+| Show | recorded | break-even (screen only) | episode length | tier |
 |---|---|---|---|---|
-| Gastropod | **+66 s** (supplied with the ruling; repo records 1.080 bitrate-implied — see § Context) | — | — | **PADDABLE pending one confirming probe** |
-| A Taste of the Past | 1.020 | 100 min | *est.* ~35–45 min | **PADDABLE** unless > 100 min |
-| Proof (America's Test Kitchen) | 1.028 (bitrate-implied) | 71 min | *est.* ~30–40 min | **PADDABLE** unless > 71 min |
-| olive (Immediate Media) | ~1.02 (bitrate-implied) | 95–100 min | **45 min** (recorded) | **PADDABLE** |
-| El Mundo en un Bocado | 1.0159 | 126 min | **47 min** (recorded) | **PADDABLE** |
-| The Fantastic History Of Food | 1.043 | 46.5 min | unrecorded | **genuinely undecided** — one probe settles it |
+| Gastropod | **+66.1 / +32.7 s, 2 probes** (decoded duration) | — | 41.7 min (recorded) | **PADDABLE** — `delta_max` 66.1, spread 33.4, **pad ~100 s** (99.5 of a 120 s ceiling: it clears by 17%) |
+| A Taste of the Past | 1.020 | 100 min | *est.* ~35–45 min | PADDABLE on the screen — implied 42–54 s. `delta_max` unknown. Needs N≥2 probes |
+| Proof (America's Test Kitchen) | 1.028 (bitrate-implied) | 71 min | *est.* ~30–40 min | **TIGHT** — implied 50–67 s, i.e. already at Gastropod's *max*. Needs N≥2 probes |
+| olive (Immediate Media) | ~1.02 (bitrate-implied) | 95–100 min | **45 min** (recorded) | **TIGHT** — implied ~54 s. Needs N≥2 probes, by decode (`length="0"`) |
+| El Mundo en un Bocado | 1.0159 | 126 min | **47 min** (recorded) | PADDABLE on the screen — implied ~45 s. Needs N≥2 probes |
+| The Fantastic History Of Food | 1.043 | 46.5 min (23.3 at 60 s headroom) | unrecorded | **undecided, and likely LOCATE-REQUIRED** once headroom is applied |
 | Naan Curry with Sadaf and Archit | 1.0470 | 42.6 min | **67 min** (recorded) | LOCATE-REQUIRED |
-| Grill This! | 1.073 | 27.4 min | unrecorded | **undecided** — LOCATE-REQUIRED unless < 27 min |
+| Grill This! | 1.073 | 27.4 min (13.7 at 60 s headroom) | unrecorded | **undecided, and likely LOCATE-REQUIRED** |
 | BBC The Food Programme | 1.099 | 20.2 min | *est.* ~28 min (R4 slot) | LOCATE-REQUIRED |
 | The Delicious Legacy | 1.170 | 11.8 min | unrecorded — irrelevant, see below | LOCATE-REQUIRED |
 | Hungry for History | 1.461 | 4.3 min | unrecorded — irrelevant | LOCATE-REQUIRED |
@@ -350,47 +507,74 @@ contradiction.
 | Odd Lots | **+8.8 to +10.7 min** | — | 60–66 m (recorded) | LOCATE-REQUIRED |
 | This Podcast Will Kill You | **+8.0 min** | — | 73–79 m (recorded) | LOCATE-REQUIRED |
 
-**Six shows move to PADDABLE (two on recorded numbers alone, two on estimates
-with wide margins, one pending a confirming probe, one genuinely undecided);
-eight move to LOCATE-REQUIRED, one of those eight still undecided.** Of the
-fourteen rows, **eleven were flat rejects** on ad ratio; the other three (Stuff
-You Should Know, Odd Lots, This Podcast Will Kill You) were never in a sourcing
-rejection table — they were routed to ASR instead, because
-`transcription-scale-plan.md` §4 concluded "route 2 is dead and ASR is the path
-for injected shows." This ADR gives them a third option that costs no ASR at all.
+**No show in the table is rejected on ad load any more.** Beyond that, be careful
+with the word *admitted*: it means `pad ≤ 120 s`, and only **Gastropod** has the
+measurements to satisfy it. Four more rows screen as plausibly PADDABLE, two are
+undecided and likely LOCATE-REQUIRED, and eight are LOCATE-REQUIRED outright —
+those eight are emphatically *not* "admitted", they are authorable.
 
-**Which rows are safe without a new measurement, and which are not — stated
-explicitly, because this is the part that is easy to over-claim:**
+Of the fourteen rows, **eleven were flat rejects** on ad ratio; the other three
+(Stuff You Should Know, Odd Lots, This Podcast Will Kill You) were never in a
+sourcing rejection table — they were routed to ASR instead, because
+`transcription-scale-plan.md` §4 concluded "route 2 is dead and ASR is the path for
+injected shows." This ADR gives them a third option that costs no ASR at all.
 
-- **Safe on numbers recorded in this repo:** olive and El Mundo en un Bocado and
-  Naan Curry (recorded episode durations), plus Stuff You Should Know, Odd Lots
-  and This Podcast Will Kill You (deltas measured from full downloads). The
-  Delicious Legacy and Hungry for History are also safe *without* a duration,
-  because their break-even lengths (11.8 and 4.3 min) are below any plausible
-  episode — the tier holds whatever the length turns out to be. Same logic in
-  reverse does not apply anywhere.
-- **Safe only on a number supplied with the ruling:** Gastropod. Its +66 s is not
-  recorded in this repo and contradicts the 1.080 bitrate-implied reading that is
-  (see § Context). One confirming probe, then it is the cleanest row in the table;
-  until then it is the least settled.
+**Which rows are ready, and which need work — stated explicitly, because this is
+the part that is easy to over-claim:**
+
+- **Gastropod is the only row with a defensible pad** — two same-episode probes, a
+  measured spread, a `delta_max`, and a pad derived from them. It is the template
+  for the rest. **It is not "ready to ship", and this ADR should not be read as
+  saying so**, for two reasons outside the ad question: no PADDABLE segment can
+  *play* until `seekPrecision()` gains the `FOREIGN` branch described above (open
+  question 2 asks whether that work is even funded), and Decision 1 keeps
+  **transcript availability** as a rejection ground — nothing in this repo records
+  whether Gastropod ships a timed transcript, and
+  `grilling-foray-passages.md` §Scope says plainly "no Gastropod was fetched or
+  authored here." Confirm the transcript before anyone counts this slot as filled.
+- **Screened as plausibly PADDABLE, but not admitted until probed N ≥ 2: every
+  other candidate row.** Their deltas are *implied* from a ratio recorded as a
+  median across different episodes; no episode was ever probed twice, so
+  per-request variance is unbounded and `delta_max` cannot be derived at all. Two of them — **Proof and olive** — are the
+  ones to watch: at an implied 50–67 s and ~54 s, their *median* is already at or
+  above Gastropod's *maximum*, so their own maximum is likely higher again. **A
+  show can fail admission at the probing step, and that is the system working, not
+  a regression.**
+- **Cheap for some, a download for others.** Where a feed declares a real
+  `length`, N repeated 2-byte ranged GETs *do* see per-request variance — each
+  request returns its own `Content-Range` total — so N ≥ 2 costs a few kilobytes.
+  Where a feed declares `length="0"` (**Gastropod** and **olive** on Megaphone; **Proof**'s host is
+  not recorded in this repo), only a decode works, so N ≥ 2 costs **two full downloads per
+  episode**. The shows we most want to bound are the ones that cost the most to
+  bound. Budget for it rather than skipping the second probe.
+- **Safe on their break-even alone, with no duration and no probe:** The Delicious
+  Legacy and Hungry for History. Their break-even lengths (11.8 and 4.3 min) are
+  below any plausible episode, so LOCATE-REQUIRED holds whatever the length is.
+  Same logic in reverse does not apply anywhere — no row is admitted on a
+  break-even alone.
+- **Safe on measured deltas:** Stuff You Should Know, Odd Lots and This Podcast
+  Will Kill You are far enough over the line (+8 to +10.7 min) that per-request
+  variance of tens of seconds cannot change their tier.
 - **Marked `est.` = an episode length that is NOT recorded in this repo.** Those
   three rows (A Taste of the Past, Proof, BBC The Food Programme) rest on an
-  outside-repo expectation of typical episode length, and each has a wide margin
-  — A Taste of the Past would have to run past 100 minutes to change tier. They
-  are still estimates and are labelled as such. **Confirm with one 2-byte probe
-  plus `itunes:duration` before a segment from them ships.**
-- **Undecided:** The Fantastic History Of Food (break-even 46.5 min) and
-  Grill This! (27.4 min) sit close enough to plausible episode lengths that the
-  ratio genuinely does not decide them. One probe each.
-- **Two PADDABLE rows carry a caveat inherited from the source docs:** Proof and
-  olive are **bitrate-implied** measurements on `length="0"` feeds, and olive's
-  ~1.02 is the recorded reading of "delivered bytes imply 163.4 kbps against a
-  160 kbps encode". Both need the seconds-based re-probe before a segment ships —
-  cheap, and specifically what §7 of the sourcing doc already asked for.
+  outside-repo expectation of typical episode length. Two independent unknowns
+  therefore stack on those rows — the episode length *and* the per-request spread
+  — which is why they are the ones to probe first.
+- **Undecided on the ratio alone:** The Fantastic History Of Food (break-even
+  46.5 min) and Grill This! (27.4 min) sit close enough to plausible episode
+  lengths that the ratio does not decide them at all.
+- **Proof and olive carry a third caveat inherited from the source docs:** both are
+  **bitrate-implied** readings on `length="0"` feeds, and olive's ~1.02 is the
+  recorded reading of "delivered bytes imply 163.4 kbps against a 160 kbps encode".
+  Gastropod's case is the cautionary one here — its bitrate-implied 1.080 overstated
+  the true load by roughly 3×. Bitrate-implied numbers may be wrong in *either*
+  direction, so neither of these rows should be read as settled in either
+  direction.
 
-None of this changes the count that matters: **no show in the table is rejected
-any more, and the work needed to settle every open row is a handful of 2-byte
-requests.**
+None of this changes the thing that actually changed: **no show in the table is
+rejected on ad load any more.** What the double-probe changed is the price of
+acting on a row — from "read the ratio" to "probe the episode twice" — and one
+row has now paid it.
 
 ### What this does to Foray #1's arc
 
@@ -399,7 +583,7 @@ hold **8 passages / 8:21 total** across 5 slots:
 
 | Arc slot | Before | After the relaxed gate |
 |---|---|---|
-| Fire and the origins of cooking | partial, 2:06 — counterpoint only; the cooking hypothesis is in Origin Stories, which publishes no transcript | **Gastropod becomes a candidate for the arc's opening slot, without ASR.** Two things to verify first, neither recorded in this repo: the +66 s delta (§ Context) and the episode itself — *"Out of the Fire, Into the Frying Pan"* (prehistoric origins) was named with the ruling, and the only Gastropod episode on file here is *"Where There's Smoke, There's… Whiskey, Fish, and Barbecue!"*. Confirm both with one feed fetch |
+| Fire and the origins of cooking | partial, 2:06 — counterpoint only; the cooking hypothesis is in Origin Stories, which publishes no transcript | **Gastropod's "Out of the Fire, Into the Frying Pan" (prehistoric origins) is probed twice and PADDABLE at a ~100 s pad** — the first candidate admitted on measured evidence under this ADR, and a real prospect for the arc's opening slot with no ASR. Two things still gate it, neither about ads: whether it ships a **timed transcript** (unrecorded here), and the `seekPrecision()` `FOREIGN` branch |
 | Pre-modern hearth / spit / griddle | filled, 2:13 | The Delicious Legacy (249 eps of ancient/medieval food history) becomes authorable — LOCATE-REQUIRED |
 | American barbecue's birth and westward spread | other workstream's | **A Taste of the Past's "Black Smoke, the African American Roots of BBQ" and Proof's 4-part "Barbecue Trailblazers" are PADDABLE** (both on an estimated episode length — one probe each). SYSK's **"A Lip-Smacking Look at Barbecue"** is LOCATE-REQUIRED |
 | Regional US divergence (Santa Maria) | blocked, 0:00 — BBQ RADIO NETWORK ships no transcripts | Proof adds a transcript-bearing US-barbecue source; Santa Maria itself unchanged |
@@ -449,20 +633,30 @@ unlocks more episodes per dollar.**
    grounds for rejecting a source. Recorded ad-ratio rejections in
    `grilling-foray-sourcing.md` §4 and `catalogue-broadening.md` §3 are
    superseded.
-2. **Measure the delta in seconds, per episode, and summarise with the maximum**
-   over at least two probes. Keep the ratio as a companion; it is comparable
-   across neither episode lengths nor feeds that declare `length="0"`.
-3. **The threshold is 120 s**, equal to `ANCHOR_TIME_TOLERANCE_SEC`. ≤ 120 s →
-   PADDABLE, and the pad applied is the *measured* delta, not the ceiling.
-   > 120 s → LOCATE-REQUIRED.
+2. **Measure the delta in seconds, per episode, over N ≥ 2 probes of the same
+   episode, and take the MAXIMUM.** N = 1 bounds nothing — two probes of one
+   Gastropod episode disagreed by 33.4 s. Keep the ratio as a cheap screen; it is
+   comparable across neither episode lengths nor feeds that declare `length="0"`,
+   and a median across different episodes cannot bound per-request variance at all.
+3. **The threshold is 120 s**, equal to `ANCHOR_TIME_TOLERANCE_SEC`, and it is
+   applied to the **pad** — `delta_max + margin`, where the margin is at least the
+   observed spread between probes. `pad ≤ 120 s` → PADDABLE; otherwise
+   LOCATE-REQUIRED. **The pad is an upper bound, never a point estimate**, because
+   it controls the stop: a pad smaller than the listener's ad load truncates the
+   payload, while a generous one only adds tail. Strictly this leaves headroom of
+   `delta_max ≤ 86.6 s` at the one spread we have measured, and ~`60–80 s` if the
+   margin scales with the delta (assumed, not measured — open question 3).
 4. **`AD_FREE_THRESHOLD = 1.01` in `ad-inflation.mjs` stays as a label, not a
    gate.** It is the right constant for the question it was written to answer —
    "can this publisher's transcript timeline be trusted verbatim?" — and 1% still
    correctly excludes even a 30-second pre-roll. It is simply no longer a verdict
    on whether a show may be used.
 5. **LOCATE-REQUIRED shows are authored, not played.** Extraction proceeds;
-   playback waits for ADR-0007's fourth rung. No segment is ever played at a
-   position we cannot justify.
+   playback waits for ADR-0007's fourth rung, whose search window is sized at
+   `delta_max + margin` — the same upper bound, for the same reason, and the
+   measurement that makes the locate step affordable at all (~12 min of audio
+   rather than 47 for a 2-minute Stuff You Should Know segment). No segment is ever
+   played at a position we cannot justify.
 6. **Nothing in ADR-0007 relaxes.** DAI items still require both anchors,
    non-empty and verbatim. If anything this ADR makes that rule more
    load-bearing, because it is now the only thing standing between a heavy-DAI
@@ -470,9 +664,10 @@ unlocks more episodes per dollar.**
 
 ## What this does not do
 
-- **It does not make heavy-DAI shows playable.** Segments authored on Stuff You
-  Should Know, Odd Lots, This Podcast Will Kill You, the BBC Food Programme, The
-  Delicious Legacy or Naan Curry **may land minutes away from their intended
+- **It does not make heavy-DAI shows playable.** Segments authored on any
+  LOCATE-REQUIRED show — Stuff You Should Know, Odd Lots, This Podcast Will Kill
+  You, Naan Curry, the BBC Food Programme, The Delicious Legacy, Hungry for History
+  — **may land minutes away from their intended
   position until the locate step exists** — up to ~11 minutes on the worst
   measured show, which is several segment-lengths and can put a segment in an
   entirely different part of the episode. Today they will not play at all:
@@ -480,6 +675,15 @@ unlocks more episodes per dollar.**
   correct behaviour and it is also the honest cost of this decision. Anyone
   tempted to ship a LOCATE-REQUIRED segment by loosening the drift check is
   choosing a bad cut over a skipped one; do not.
+- **It does not promise an exact cut even in the PADDABLE tier.** A padded segment
+  opens on extra run-up and closes on extra tail, by design, and the amount varies
+  per download. And because the pad is bounded from our own samples rather than
+  from the listener's request, a copy carrying more ad load than anything we
+  probed is **truncated by however much it exceeds the pad** — and the one spread we
+  have measured is 33.4 s, up to a third of a 110 s segment. Better than the
+  alternative, and honest, but "PADDABLE" means *tolerably approximate* — which is
+  what the ruling asked for — and never *frame-accurate*. The extra head can also
+  land inside an ad pod if a break straddles the seek point.
 - **It does not touch ad detection or ad skipping.** R11 permanently rejects
   automated ad detection and stripping. Nothing here identifies where an ad is;
   the locate step finds *content we already chose*, and the total-delta figure is
@@ -505,18 +709,31 @@ unlocks more episodes per dollar.**
 
 ## Open questions for Wyatt
 
-1. **Which locate implementation gets funded** — windowed on-device ASR (designed
-   in ADR-0007, needs #29, window = total delta) or Chromaprint fingerprint
-   alignment (cheaper per lookup, undesigned, and unusable for
+1. **Which locate implementation gets funded** — windowed on-device ASR (the rung
+   is named in ADR-0007, needs #29, window = `delta_max` + margin) or Chromaprint
+   fingerprint alignment (cheaper per lookup, undesigned, and unusable for
    publisher-transcript segments)? They cover different halves of the catalogue,
    so "both eventually" is a real answer; the question is which first.
 2. **Does the playback pad ship before the locate step?** It is what turns six
-   shows from *authorable* into *playable*, and it is bounded — one field
-   (`ad_delta_sec`), one new `FOREIGN` branch in `seekPrecision()`, and tests —
-   but it is genuinely more than a constant change, because that branch does not
-   exist yet (see above). The alternative is holding all injected shows out of
-   playback until the locate step exists, which is safer and slower.
-3. **Does the 120 s threshold need a founder number instead of a derived one?**
-   It is derived from two existing constants and one existing band. If the
-   editorial answer is that a 60-second pad already reads as sloppy, the
-   threshold should be 60 s and this ADR should say so.
+   shows from *authorable* into *playable*, and it is bounded — a per-episode
+   `ad_delta_sec` (now: `delta_max`, spread and N), one new `FOREIGN` branch in
+   `seekPrecision()`, and tests — but it is genuinely more than a constant change,
+   because that branch does not exist yet (see above). The alternative is holding
+   all injected shows out of playback until the locate step exists, which is safer
+   and slower.
+3. **How big is the margin, and does N stay at 2?** The margin is currently "at
+   least the observed spread", justified by a single show's single pair of probes
+   (33.4 s on a 33–66 s load). n=2 on one episode of one show is not a
+   distribution. A third and fourth probe of Gastropod would cost two downloads
+   and would tell us whether the spread is stable, growing, or worse than we think
+   — and it is the cheapest way to find out whether "delta_max + spread" is
+   generous or optimistic. **Recommend it before the second show is admitted**,
+   because every future pad inherits this coefficient.
+4. **Does the 120 s threshold need a founder number instead of a derived one?**
+   It is derived from two existing constants and one existing band. Note the
+   upper-bound rule has already halved its practical effect: admission now needs
+   `delta_max ≤ ~60–80 s`, so the *effective* threshold is close to 60 s whether we
+   choose it or not. If the editorial answer is that a 100-second pad on a 110-second
+   segment — 91% of the segment, past reason 2's own alarm line — already reads as
+   sloppy, say so and the number should come down
+   explicitly rather than by arithmetic.

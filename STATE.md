@@ -40,10 +40,19 @@ docs/. Completed workstreams move to their plan doc's retro section.
   *"ads should not be a blocking issue as long as we can find the approximate
   right timestamp."* **Do not reject a show on ad ratio.** New rule in
   `docs/adr/0008-ad-tolerance-and-timestamp-precision.md`: measure the delta in
-  **seconds per episode**, max over ≥2 probes; **≤ 120 s** → pad by the measured
-  delta and it is usable now; **> 120 s** → author the segment now (anchors are
-  durable per ADR-0007) and play it once the anchor-resolution rung exists.
+  **seconds**, over **N ≥ 2 probes of the SAME episode**, and take the max. The pad
+  is `delta_max + margin` — an **upper bound, never a point estimate**. The pad
+  controls only the STOP: a pad smaller than the listener's ad load stops early and
+  **truncates the segment**; a generous one just adds tail. Admit if
+  `pad ≤ 120 s` — which in practice means **well under 120 s of raw delta** (Gastropod's
+  66 s delta already produces a 100 s pad). Above that, author the segment now (anchors are durable per
+  ADR-0007) and play it once the anchor-resolution rung exists.
   `AD_FREE_THRESHOLD = 1.01` is a label, not a verdict.
+- **Measured, and it is why N ≥ 2 is mandatory:** two probes of one Gastropod
+  episode, hours apart from the same client, differed by **33.4 s** (+66.1 / +32.7).
+  The delta is a property of the *request*, not the episode. **No episode in this repo
+  has ever been probed twice**, so no recorded ratio bounds this — and the recorded
+  ratios are medians across *different* episodes, which is a different axis again.
 - **Second ruling, same day:** a narrator (our script, ElevenLabs audio) will
   cover what no podcast does — braai, Filipino lechon — and is sanctioned in
   principle, but *"let's wait before we deliver that feature."* **Design only.
