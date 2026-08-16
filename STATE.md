@@ -94,6 +94,44 @@ docs/. Completed workstreams move to their plan doc's retro section.
   a fake backend (32 segments, in order, each at its own in-point, each stopping
   at its own out-point) and by the real UI driving the real manager — not by ear.
 
+### Foray #2 sourcing — types of capital & startup funding (2026-08-16, one docs PR, no follow-up)
+
+- **What:** `docs/foray2-capital-sourcing`. Sourcing and a work order only —
+  **nothing was transcribed and no audio was downloaded.**
+  `docs/curation/foray2-capital-sourcing.md` (the shortlist, 16 arc slots) and
+  `docs/curation/foray2-asr-manifest.json` (35 episodes, 18.95 h, **17.23
+  CPU-hours** at 1.1x; priority 1 alone is 9 episodes / 6.37 h / **5.79
+  CPU-hours**).
+- **Owned files:** those two, plus this entry. **Touched nothing** in `data/`,
+  `player/`, `app.js`, `tools/` or `backend/`.
+- **Three findings other sourcing passes should reuse:**
+  1. **The 20% relative cap bites hard on short shows, and it is easy to miss.**
+     VC Minute (`rss.buzzsprout.com/1970319.rss`) looked like the find of the
+     pass: 275 episodes of 60–290 s, **24 probed at ratio 1.0000** (N=2), all
+     shipping timed **VTT + SRT + JSON** with speaker labels, zero ASR. But
+     `segment-length-rules.md` §0 caps a segment at ≤ 20% of its source, so
+     **10 of those 24 cap out below the 30 s hard floor and can yield no
+     compliant segment at all**, and the other 14 top out at 30–51 s — `quote`
+     tier, never the 75–180 s band. With D4's quote budget that is **≤ 7
+     segments, ~5 min of an hour.** If you are sourcing sub-10-minute shows,
+     compute `0.2 × duration` before you count the hours.
+  2. **NCI's SBIR Innovation Lab is dead audio and it does not look dead.** 16
+     agency-published SRTs that fetch 200 and read cleanly; **every enclosure
+     tested 404s** — 3 of its 26 episodes, each × 3 URL shapes × 2 UAs, against a
+     same-host Libsyn control returning 206. BBQ Nation again, except a
+     transcript-availability screen would have admitted it. **Fetch one enclosure
+     before believing a feed.**
+  3. **Per-episode ad deltas, not per-show.** The Full Ratchet's Libsyn insert
+     measures 12.4 s, 22.8 s, 29.3 s and **136.7 s** across 14 episodes of one
+     feed — `summariseShow()`'s median would have been wrong for every row. Three
+     prefix chains injected nothing on the episodes measured:
+     `2.gum.fm→op3.dev→pdcn.co→pdst.fm→podtrac` (Bootstrapped Founder),
+     `pscrb.fm` (Capital Allocators), `prfx.byspotify.com` (Startups For the Rest
+     of Us).
+- **Related:** ADR-0008 (the rule applied), `docs/curation/segment-length-rules.md`
+  (the 75–180 s band and the relative cap above), `docs/curation/grilling-foray.md`
+  (the 12% yield this was sized against).
+
 ### Foray data layer — the running order becomes data (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/foray-data`, issues #182 and #134. Foray #1's 32-segment
