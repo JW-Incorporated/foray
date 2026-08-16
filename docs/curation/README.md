@@ -35,6 +35,16 @@ depth-based learning paths.
   concept-misrouting bug (8 flagged concepts, incl. true-crime search
   silently routing into history). Full machine-readable cross-reference:
   `data/topic-coverage-report.json` (built by `tools/topic-coverage-report.mjs`).
+- **[grilling-foray-sourcing.md](grilling-foray-sourcing.md)** — sourcing pass
+  for a grilling/barbecue Foray's non-Western half (asado, braai, yakitori,
+  jerk, satay, tandoor, lechon, mangal, Santa Maria, the cooking hypothesis):
+  which traditions have a usable ad-free source, which have **none**, and a
+  measured answer to whether the Apple-chart catalogue can support subject-led
+  curation at all. Headline: chart rank predicts ad injection — ranks 1–25 are
+  33% ad-free vs 71% at ranks 26–200 (χ²=8.22, p<0.01) — so a chart harvest
+  selects *against* the shows we can anchor. Note this sits alongside, not
+  against, `search-coverage-gaps.md`: promotion is still the fix for most
+  topics; sourcing is the fix for non-Anglophone ones.
 
 Background these build on: `docs/brief/03_CURATION_SPEC.md` (the original,
 excellent — but single-user — curation design) and the product principles in
