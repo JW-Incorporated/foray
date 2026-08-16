@@ -4,6 +4,17 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Added 2026-08-16, and it is load-bearing rather than a convenience.
+  # `.github/workflows/pr-hygiene.yml` updates PR branches that have fallen
+  # behind `main`. That changes the PR's head SHA, and `protect-main`'s required
+  # checks (`backend`, `data-and-site`) are matched against THAT SHA — but a
+  # push made with the automatic GITHUB_TOKEN does not create a workflow run
+  # (GitHub's anti-recursion rule), so the updated PR would sit forever at
+  # "Expected — waiting for status to be reported". `workflow_dispatch` is one
+  # of the two documented exceptions to that rule, so pr-hygiene dispatches this
+  # workflow on the PR's head branch and the required checks report on the new
+  # SHA. Removing this trigger would silently strand every auto-updated PR.
+  workflow_dispatch: {}
 
 jobs:
   backend:
@@ -25,6 +36,13 @@ jobs:
     # ForayKit is a pure-Swift package (no AVFoundation) precisely so its
     # state machine + intent grammar tests can run on a CI Mac — the only
     # Mac this project currently has.
+    #
+    # Skipped on `workflow_dispatch`, which exists solely so pr-hygiene can
+    # re-report the REQUIRED checks (`backend`, `data-and-site`) on a PR head it
+    # just updated. `ios-kit` is not required, and macOS runner minutes bill at
+    # 10x — re-running it on every auto-update would be the largest single cost
+    # of that feature for no gate. A push or PR still runs it normally.
+    if: github.event_name != 'workflow_dispatch'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

@@ -1,0 +1,277 @@
+# The silently-stuck class: PRs that will never merge and never say so.
+#
+# WHY (measured 2026-08-16). PR #173 sat CONFLICTING/DIRTY for hours and never
+# merged. GitHub's auto-merge only acts on a MERGEABLE PR, so a conflicting one
+# is indistinguishable from one waiting on checks: same "auto-merge enabled"
+# badge, no red check, no notification, nothing in the repo saying so. It was
+# fixed only because a human went looking. Separately, a branch that falls
+# behind `main` can re-block after its checks have already passed.
+#
+# So, on every PR event and on a sweep every 6 hours:
+#   - BEHIND and mergeable -> update the branch from `main`, then re-dispatch CI
+#     (see "the pairing" below — this half is not optional).
+#   - CONFLICTING          -> apply `merge-conflict` and comment ONCE.
+#   - needs a founder      -> apply `needs-founder`, the batched queue.
+#
+# EXACTLY ONE COMMENT, EVER. The comment carries a hidden marker and the planner
+# refuses to plan a second one if that marker is already present. CLAUDE.md's
+# "never babysit your own PR" invariant is about token spend, but the disease is
+# noise-that-teaches-you-to-ignore-it, and a bot that comments every six hours
+# has it. The LABEL is the live signal: it appears and disappears by itself.
+#
+# THE PAIRING: WHY EVERY update-branch IS FOLLOWED BY A CI DISPATCH.
+# Updating a branch changes the PR's head SHA, and `protect-main`'s required
+# checks (`backend`, `data-and-site`) are matched against that SHA. Pushes made
+# with the automatic GITHUB_TOKEN do not create workflow runs — GitHub's
+# anti-recursion rule — so an auto-updated PR would sit forever at "Expected —
+# waiting for status to be reported". Unpaired, this workflow would have
+# MANUFACTURED the silent stall it exists to remove. `workflow_dispatch` is one
+# of the two documented exceptions to that rule, which is why `ci.yml` gained a
+# `workflow_dispatch` trigger in the same change.
+#
+# KEYLESS, and it stays keyless: GITHUB_TOKEN only. The one thing that costs is
+# writing the refreshed "waiting on you" block into HUMAN-ACTIONS.md — `main` is
+# protected with zero bypass, and a PR opened by GITHUB_TOKEN triggers no
+# workflows, so its required checks would never run and it could never merge.
+# A PAT would fix that and break CLAUDE.md decision-authority item 2, which is
+# not a trade worth making for a list. Instead: the block is rendered into this
+# workflow's run summary every sweep (always current), and any session refreshes
+# the committed copy with `node tools/ci/pr-triage.mjs waiting --write` — which
+# now auto-merges, because HUMAN-ACTIONS.md is allowlisted.
+#
+# All the decisions live in `tools/ci/pr-triage.mjs` with a test suite. This
+# file gathers facts and executes a plan; it decides nothing.
+
+name: pr-hygiene
+
+on:
+  pull_request:
+    # `labeled`/`unlabeled` are here because this workflow is the SINGLE WRITER
+    # of both `merge-conflict` and `needs-founder`, and adding `hold` or
+    # `founder-decision` changes whether a PR belongs in the founder queue.
+    #
+    # It cannot loop on its own writes. Adding a label that is already present
+    # emits no event, and the planner only plans a write when the label's
+    # current state is wrong — so a write produces at most one more run, which
+    # finds nothing to do. (The version of this that WOULD have looped had
+    # `automerge-nightly.yml` writing `needs-founder` too: it cannot see
+    # mergeability, so it queued conflicting PRs that this workflow unqueues,
+    # and the two traded the label back and forth. See the note in that file.)
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+  schedule:
+    # :23, off the top of the hour — GitHub's scheduler is badly contended at
+    # :00 (measured on this repo: a 09:40 cron starting at 10:54).
+    - cron: "23 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # update-branch pushes to the PR head branch
+  pull-requests: write
+  issues: write # labels and comments are issues-API resources
+  actions: write # dispatching ci.yml after an update
+  checks: read # reading which check runs exist on a PR's head SHA
+  statuses: read # older integrations report as commit statuses, not check runs
+
+concurrency:
+  # ONE global group, deliberately not per-PR. "Exactly one comment, ever" is
+  # enforced in the planner, which reads the PR's existing comments — so it is
+  # only sound if no two runs can be between "read comments" and "post comment"
+  # at the same time. Per-PR and sweep groups do not exclude each other: a
+  # `synchronize` on a conflicting PR landing at :23 would run alongside the
+  # sweep, both would see no marker, and both would comment. Serialising every
+  # run costs a little queueing (runs are ~30s) and buys the invariant.
+  group: pr-hygiene
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    # Every action here needs a write token, and a `pull_request` event from a
+    # fork gets a read-only one. Skipping is honest (a red job on every fork PR
+    # would say "CI is broken" when it means "not applicable"); the 6-hourly
+    # sweep runs with a write token and picks fork PRs up for everything that
+    # does not require pushing to their branch.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      # Always the default branch, never a PR head: this job holds write
+      # permissions and must not execute PR-authored code.
+      - name: Check out the triage module from main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch || 'main' }}
+          sparse-checkout: tools/ci
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      # See automerge-nightly.yml the bootstrap case. The triage module runs
+      # from the default branch, so on the PR that introduces it there is
+      # nothing to run and every step below must stand down rather than go red.
+      - name: Is the triage module installed on the default branch?
+        id: policy
+        run: |
+          if [ -f tools/ci/pr-triage.mjs ]; then
+            echo "installed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "installed=false" >> "$GITHUB_OUTPUT"
+            echo "tools/ci/pr-triage.mjs is not on the default branch yet - standing down."
+          fi
+
+      - name: Gather open PRs
+        if: steps.policy.outputs.installed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ONE_PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${ONE_PR:-}" ]; then
+            numbers="$ONE_PR"
+          else
+            numbers=$(gh pr list --repo "$REPO" --state open --limit 100 --json number --jq '.[].number')
+          fi
+
+          echo "[]" > prs.json
+          for n in $numbers; do
+            # REST, not GraphQL: `mergeable`/`mergeable_state` need no extra
+            # scope and work on a read-only token. GitHub computes mergeability
+            # asynchronously, so the first read can be null — ask again a couple
+            # of times, then give up and let the next sweep settle it. The
+            # planner treats UNKNOWN as "do nothing", never as "fine".
+            pr=""
+            for attempt in 1 2 3; do
+              pr=$(gh api "repos/$REPO/pulls/$n")
+              # `if`, not `[ ... ] && break`: under `set -e` an AND-OR list
+              # whose test fails aborts the whole step.
+              if [ "$(jq -r '.mergeable' <<<"$pr")" != "null" ]; then break; fi
+              sleep 4
+            done
+            files=$(gh api --paginate "repos/$REPO/pulls/$n/files" --jq '[.[].filename]' | jq -s 'add // []')
+            comments=$(gh api --paginate "repos/$REPO/issues/$n/comments" --jq '[.[].body]' | jq -s 'add // []')
+            # Check-run names on the CURRENT head SHA. Used only to notice a head
+            # that has none of the required checks — a lost CI dispatch after an
+            # auto-update, which would otherwise strand the PR forever.
+            head_sha=$(jq -r '.head.sha' <<<"$pr")
+            checks=$(gh api --paginate "repos/$REPO/commits/$head_sha/check-runs" \
+                       --jq '[.check_runs[].name]' | jq -s 'add // []')
+            jq -n --argjson pr "$pr" --argjson files "$files" \
+                  --argjson comments "$comments" --argjson checks "$checks" \
+              '$pr + {files: $files, comments: $comments, checkNames: $checks}' > "pr-$n.json"
+            jq -s '.[0] + [.[1]]' prs.json "pr-$n.json" > prs.tmp && mv prs.tmp prs.json
+          done
+          echo "gathered $(jq length prs.json) PR(s)"
+
+      - name: Plan
+        if: steps.policy.outputs.installed == 'true'
+        env:
+          FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
+          REPO: ${{ github.repository }}
+          ONE_PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          # On a `pull_request` event this run looked at exactly one PR, so the
+          # founder queue it can see is not the founder queue. `--partial` makes
+          # the summary say so instead of rendering "nothing is waiting on a
+          # founder" from a sample of one — false reassurance is the specific
+          # bug this whole change set is about.
+          partial=""
+          sweep="--sweep"
+          if [ -n "${ONE_PR:-}" ]; then partial="--partial"; sweep=""; fi
+          node tools/ci/pr-triage.mjs plan \
+            --from prs.json \
+            --freeze "${FREEZE:-}" \
+            --repo "$REPO" \
+            $partial $sweep \
+            --actions actions.jsonl \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      # Its own step, and it runs even when there is nothing to do: this is what
+      # means no owner action is needed to bootstrap any of the labels this
+      # system uses. `gh label create` on an existing label is an error, hence
+      # the `|| true` — that is the idempotence.
+      - name: Ensure the labels exist
+        if: steps.policy.outputs.installed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          gh label create merge-conflict --repo "$REPO" --color "D93F0B" \
+            --description "Conflicts with main; auto-merge cannot act on it" 2>/dev/null || true
+          gh label create needs-founder --repo "$REPO" --color "B60205" \
+            --description "Auto-merge could not land this; a founder must act" 2>/dev/null || true
+          # Nothing here ever APPLIES this one — it is created so it is already
+          # in the picker when a founder reaches for it. `path-policy.yml` only
+          # reads it, with a read-only token, so it cannot create it itself.
+          gh label create founder-approved --repo "$REPO" --color "0E8A16" \
+            --description "A founder approved this PR touching governed paths" 2>/dev/null || true
+          exit 0
+
+      - name: Execute
+        if: steps.policy.outputs.installed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          [ -s actions.jsonl ] || { echo "nothing to do"; exit 0; }
+
+          failures=0
+          # Read on fd 3, not stdin. A `gh` subcommand that ever decides to read
+          # stdin would otherwise eat the rest of the action list and the loop
+          # would silently do half the work — and `gh pr comment --body-file -`
+          # below is already using stdin for its own purposes.
+          while IFS= read -r line <&3; do
+            if [ -z "$line" ]; then continue; fi
+            kind=$(jq -r '.kind'  <<<"$line")
+            pr=$(jq -r   '.pr'    <<<"$line")
+            label=$(jq -r '.label // empty' <<<"$line")
+            ref=$(jq -r   '.ref // empty'   <<<"$line")
+            echo "::group::$kind #$pr $label$ref"
+            case "$kind" in
+              add-label)     gh pr edit "$pr" --repo "$REPO" --add-label "$label" ;;
+              remove-label)  gh pr edit "$pr" --repo "$REPO" --remove-label "$label" ;;
+              comment)       jq -r '.body' <<<"$line" | gh pr comment "$pr" --repo "$REPO" --body-file - ;;
+              disable-auto)  gh pr merge "$pr" --repo "$REPO" --disable-auto ;;
+              # `PUT .../update-branch` returns 202 Accepted and merges in the
+              # BACKGROUND. Dispatching immediately races it and loses two ways:
+              # CI runs on the pre-update SHA (so the new head gets no checks at
+              # all), or the dispatch 422s because the branch has not yet
+              # received main's `ci.yml` and `workflow_dispatch` is validated at
+              # the ref. So wait for the head SHA to actually move before the
+              # paired dispatch-ci action runs. The sweep's checks-missing
+              # self-heal (tools/ci/pr-triage.mjs) is the backstop if this
+              # still ends up not dispatching.
+              update-branch)
+                before=$(gh api "repos/$REPO/pulls/$pr" --jq '.head.sha')
+                gh api -X PUT "repos/$REPO/pulls/$pr/update-branch" >/dev/null
+                moved=""
+                for _ in $(seq 1 20); do
+                  sleep 3
+                  after=$(gh api "repos/$REPO/pulls/$pr" --jq '.head.sha')
+                  if [ "$after" != "$before" ]; then moved="$after"; break; fi
+                done
+                if [ -z "$moved" ]; then
+                  echo "update-branch on #$pr did not move the head within 60s" >&2
+                  false
+                else
+                  echo "#$pr head $before -> $moved"
+                fi
+                ;;
+              # The other half of the pairing — without this the updated PR has
+              # no checks on its new head SHA and can never merge.
+              dispatch-ci)   gh workflow run ci.yml --repo "$REPO" --ref "$ref" ;;
+              *)             echo "unknown action kind: $kind"; failures=$((failures + 1)) ;;
+            esac || { echo "action failed: $kind #$pr"; failures=$((failures + 1)); }
+            echo "::endgroup::"
+          done 3< actions.jsonl
+
+          # One failed action (a PR closed mid-sweep, a race on update-branch)
+          # must not hide the rest, but the job still goes red so a persistent
+          # failure is visible rather than swallowed.
+          if [ "$failures" -gt 0 ]; then
+            echo "$failures action(s) failed" >&2
+            exit 1
+          fi

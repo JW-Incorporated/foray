@@ -1,0 +1,177 @@
+# One policy, both merge paths.
+#
+# WHY (2026-08-16). The allow/deny path lists lived inside
+# `automerge-nightly.yml`, so they described what the Actions auto-merge job
+# would do and nothing else. On 2026-08-16 two PRs were merged from a laptop
+# with `gh pr merge` and a founder token and walked straight past the deny-list
+# — not by defeating it, but because on that path there was nothing to defeat.
+# The policy is now `tools/ci/path-policy.mjs`, and this workflow reports it as
+# a status check on EVERY pull request, so the same rule is visible on every
+# route to `main`.
+#
+# ── BE HONEST ABOUT WHAT THIS BUYS ───────────────────────────────────────────
+#
+# A required status check constrains automation and ordinary merges. It does
+# NOT stop a repo admin with a token: both founders have admin, and admin
+# override of a required check is a supported GitHub operation. So this is
+# VISIBILITY AND CONSISTENCY, not a lock. Anyone who bypasses it leaves a
+# visible trace on the PR instead of leaving none.
+#
+# And the corollary, stated rather than hidden: the check is satisfied by a
+# LABEL (`founder-approved`), and an agent with write access to this repo can
+# apply a label. So if an agent can satisfy it, it is not a guardrail against
+# an agent — it is a guardrail against an ACCIDENT, and a record of intent. The
+# thing that actually makes it a founder gate is that the founders are the ones
+# who agree to apply it and agents are instructed not to. That is a norm with a
+# receipt, not a wall. Anything stronger needs a human-only signal a token
+# cannot produce (a CODEOWNERS review from a protected team, or a merge queue
+# fed by a separate identity), and that is a bigger change than this one — see
+# the recommendation in the PR that introduced this file.
+#
+# ── HOW IT BEHAVES ───────────────────────────────────────────────────────────
+#
+#   CLEAN       the PR touches nothing in DENIED_PREFIXES -> green.
+#   APPROVED    it does, and carries `founder-approved` -> green.
+#   UNAPPROVED  it does, and does not.
+#                 - default: GREEN, with a loud summary. Report-only.
+#                 - with repo variable PATH_POLICY_ENFORCE set: RED.
+#
+# Report-only is the shipped default deliberately. Landing this enforcing would
+# turn every in-flight `.github/`, `CLAUDE.md` and `docs/adr/` PR red on the day
+# it merged, before anyone had agreed the check should block — and a red check
+# nobody agreed to is how a check gets ignored. The owner flips one repo
+# variable to make it bite (HUMAN-ACTIONS.md #1), and marks it required in the
+# same sitting. Until then it is a report, and it says so on its own face.
+#
+# NOTE it is deliberately NOT a job inside `ci.yml`. This must re-evaluate when
+# a label is added or removed — that is the whole approval mechanism — and
+# adding `labeled`/`unlabeled` to ci.yml's triggers would re-run the macOS
+# `ios-kit` job on every label change.
+#
+# UNLISTED paths (neither allowed nor denied) are NOT a failure here. They mean
+# "auto-merge will not touch this", which is normal for most human PRs; failing
+# on them would block ordinary work for no safety gain.
+
+name: path-policy
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: path-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  path-policy:
+    # Only PRs into `main`. Without this the job would check out and EXECUTE
+    # `tools/ci/` from whatever branch the PR happened to target — anyone with
+    # write access could put arbitrary code on an unprotected branch and have
+    # Actions run it, and the policy judging such a PR would be the policy it
+    # shipped. The token is read-only so this was never escalation, but it is
+    # gratuitous, and the check is meaningless on those PRs anyway.
+    if: github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      # The DEFAULT BRANCH, never this PR — a PR must not be able to rewrite the
+      # rule that judges it. `tools/ci/` is a DENIED path precisely so that
+      # rewriting it requires a human merge first.
+      #
+      # Not `base.sha`: on every PR opened before this change landed,
+      # `tools/ci/` does not exist at that commit, so the job would die with
+      # "Cannot find module" — and once this check is REQUIRED that is a
+      # permanently red gate no push can clear, because pushing does not move
+      # `base.sha`. It would also mean a policy tightening never applied to
+      # already-open PRs. See automerge-nightly.yml point 3.
+      - name: Check out the policy from the default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: tools/ci
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      # See automerge-nightly.yml § the bootstrap case. The policy runs from the
+      # default branch, so on the PR that introduces it there is nothing to run.
+      - name: Is the policy installed on the default branch?
+        id: policy
+        run: |
+          if [ -f tools/ci/path-policy.mjs ]; then
+            echo "installed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "installed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: No policy to apply
+        if: steps.policy.outputs.installed != 'true'
+        env:
+          ENFORCE: ${{ vars.PATH_POLICY_ENFORCE }}
+        # Enforcing means "no PR merges without this verdict". A missing policy
+        # is then a failure, not a pass — a gate that cannot run has not been
+        # satisfied. Report-only, it is a loud green, which is what lets the PR
+        # that INSTALLS the policy land.
+        run: |
+          set -uo pipefail
+          {
+            echo "## path-policy: NOT EVALUATED"
+            echo ""
+            echo "\`tools/ci/path-policy.mjs\` is not on the default branch, so no verdict"
+            echo "was reached. This is expected exactly once — on the PR that introduces it."
+          } >> "$GITHUB_STEP_SUMMARY"
+          case "$(printf '%s' "${ENFORCE:-}" | tr '[:upper:]' '[:lower:]')" in
+            ""|false|0|no|off)
+              echo "path-policy: NOT EVALUATED (report-only, so not failing the job)" ;;
+            *)
+              echo "path-policy is enforcing but its policy module is missing — failing." >&2
+              exit 1 ;;
+          esac
+
+      - name: Gather PR facts
+        if: steps.policy.outputs.installed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # REST + --paginate: `gh pr view --json files` truncates at 100.
+          gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' > changed-files.txt
+          # Read labels live rather than from the event payload — a PR opened
+          # before the founder labels it must go green on the `labeled` re-run.
+          gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' > pr-labels.txt
+
+          # The files endpoint also caps at 3000 including pagination, silently.
+          # "Every path I could see is clean" is worth nothing if I could not see
+          # all of them, so compare against the PR's own count and refuse.
+          expected=$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')
+          actual=$(wc -l < changed-files.txt | tr -d ' ')
+          if [ "$expected" != "$actual" ]; then
+            echo "INCOMPLETE changed-file list: API reports $expected, we read $actual"
+            echo "TRUNCATED=--truncated" >> "$GITHUB_ENV"
+          else
+            echo "TRUNCATED=" >> "$GITHUB_ENV"
+          fi
+
+      - name: Evaluate
+        if: steps.policy.outputs.installed == 'true'
+        env:
+          ENFORCE: ${{ vars.PATH_POLICY_ENFORCE }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          enforce=""
+          case "$(printf '%s' "${ENFORCE:-}" | tr '[:upper:]' '[:lower:]')" in
+            ""|false|0|no|off) enforce="" ;;
+            *) enforce="--enforce" ;;
+          esac
+          node tools/ci/path-policy.mjs check \
+            --files-from changed-files.txt \
+            --labels-from pr-labels.txt \
+            --pr "$PR" \
+            $enforce \
+            ${TRUNCATED:-} \
+            --summary "$GITHUB_STEP_SUMMARY"
