@@ -31,7 +31,8 @@ timeouts from CPU starvation), and two concurrent runs starve each other to
 0.23 effective threads with neither finishing.
 
 **But the more useful finding is that we do not need thousands.**
-`data/segments.json` currently holds **0 segments**. Nothing has been built yet.
+`data/segments.json` holds **9 segments** as of 2026-08-16 — the first ever, cut
+from two self-transcribed episodes (`docs/curation/grilling-foray-batch-1.md`).
 The next milestone is the first 3 Foray subjects (#112), which needs tens of
 episodes, not thousands. Transcription volume should be **demand-driven** —
 transcribe what we are about to publish, not the catalogue.

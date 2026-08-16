@@ -1022,8 +1022,16 @@ Four notes for whoever writes `docs/agents/runner-prompts/segment-batch.md`
   proposal borrowed from #174's own text, not a ruling.
 - **Any of this against real listening.** Every number here is derived from
   literature, precedent and internal constraints. None of it has been tested
-  against a Foray anyone has heard, because none exists yet
-  (`data/segments.json` is empty as of 2026-08-15). The first three
-  hand-authored Forays (#67) are the experiment that should move these numbers,
-  and the most valuable thing that could happen to this document is being
-  contradicted by one.
+  against a Foray anyone has heard, because none exists yet. The pool is no
+  longer empty, though — the first 9 segments landed 2026-08-16
+  (`docs/curation/grilling-foray-batch-1.md`), authored against these rules. The
+  first three hand-authored Forays (#67) are the experiment that should move
+  these numbers, and the most valuable thing that could happen to this document
+  is being contradicted by one.
+- **D5 does not say which quartile definition it means, and that is not
+  academic.** Batch 1's interquartile range is **41.0 s** under Tukey hinges and
+  R-7 linear interpolation (NumPy's and R's default) but **63.6 s** under the
+  exclusive definition — so the 45 s floor fails under the common default and
+  passes under the other, on the same nine numbers
+  (`docs/curation/grilling-foray-batch-1.md` §2). Pick one before anything
+  enforces it.
