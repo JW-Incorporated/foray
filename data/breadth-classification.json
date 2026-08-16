@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-16T00:30:40.870Z",
+  "built_at": "2026-08-16T08:30:04.343Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-16-a94d6dcc",
+    "last_batch_id": "fresh-2026-08-16-e1a5d6d1",
     "last_batch_tier": 1
   },
   "entries": {
@@ -99019,10 +99019,28 @@
     "1550107435": {
       "topics": [
         "nature/earth-science",
-        "science"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sustainability and recycling focused program covering waste management practices.",
+      "display_title": "MassRecycle Podcast",
+      "blurb": "Weekly conversations about recycling, waste diversion, and sustainability practices in Massachusetts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "1550147837": {
       "topics": [
@@ -207227,10 +207245,29 @@
     },
     "1896933847": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.95
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode recap analyzing survival challenges and human resilience from Alone.",
+      "display_title": "Feral Enough",
+      "blurb": "Weekly analysis of Alone episodes exploring survival strategy and contestant resilience.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "1896933992": {
       "topics": [
@@ -207256,10 +207293,29 @@
     },
     "1896934501": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "news",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Opinionated World Cup analysis and commentary featuring journalists and former players.",
+      "display_title": "World Cup Uncensored",
+      "blurb": "Opinionated sports commentary on World Cup matches with player interviews and live reactions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "1896934884": {
       "topics": [
@@ -207309,10 +207365,29 @@
     },
     "1896935449": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast helping children understand emotions and navigate social challenges through storytelling.",
+      "display_title": "Big Life Universe: Transmissions",
+      "blurb": "Fictional podcast where child listeners help aliens decode feelings, friendships, and everyday challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "1896936182": {
       "topics": [
@@ -207363,7 +207438,25 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert conversations on AI implementation and innovation in news organizations.",
+      "display_title": "RJI Momentum",
+      "blurb": "Industry insights on AI applications, newsroom strategy, and journalistic innovation from news leaders.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "1896938110": {
       "topics": [
@@ -207530,10 +207623,29 @@
     },
     "1896946705": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf-centered conversations with notable guests from music and sports.",
+      "display_title": "Absolute Albatross",
+      "blurb": "Conversations with celebrities and musicians about golf and their life stories beyond the game.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "1896947286": {
       "topics": [
@@ -207551,10 +207663,29 @@
     },
     "6780954889": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal journey of amateur golfer pursuing competitive tournament qualification.",
+      "display_title": "Project Mid-Am",
+      "blurb": "An amateur golfer chronicles his path back to the U.S. Mid-Amateur championship.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6780977971": {
       "topics": [
@@ -207562,7 +207693,25 @@
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Multi-sport daily analysis covering NBA, NFL, college sports, and golf.",
+      "display_title": "GameTime",
+      "blurb": "Daily sports analysis across NBA, NFL, college athletics, and golf with expert commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6781010368": {
       "topics": [
@@ -207581,11 +207730,29 @@
     },
     "6781737295": {
       "topics": [
-        "sports",
+        "sports/soccer",
         "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes World Cup coverage examining political and cultural dimensions.",
+      "display_title": "Reuters Pitchside",
+      "blurb": "Global sports journalism exploring politics, culture, and business behind World Cup events.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6781868404": {
       "topics": [
@@ -207650,10 +207817,29 @@
     },
     "6783126061": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Utah-focused daily news with contextual analysis of state issues.",
+      "display_title": "KSL News Daily",
+      "blurb": "Daily Utah news with in-depth analysis of state stories, from wildlife to water.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6783128472": {
       "topics": [
@@ -207680,10 +207866,29 @@
     },
     "6783386839": {
       "topics": [
-        "music"
+        "music",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interview show featuring independent musicians in Americana, folk, and roots genres.",
+      "display_title": "Curious Goldfish",
+      "blurb": "Conversations with independent musicians exploring their creative process and artistic journeys.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6783399731": {
       "topics": [
@@ -207882,7 +208087,25 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biweekly conversations with climate adaptation professionals and environmental stewards.",
+      "display_title": "Common Mud",
+      "blurb": "Extended conversations with climate professionals, evaluators, and environmental stewards on adaptation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6783967685": {
       "topics": [
@@ -207900,17 +208123,55 @@
     },
     "6783977863": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy/casual-hangs",
+        "personal-journals"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Humorous podcast about navigating middle age, parenting, and life challenges.",
+      "display_title": "Lost My Mind at 40",
+      "blurb": "Humorous and honest stories from a middle-aged dad navigating parenting, marriage, and work.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6783984853": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home gardening podcast with visits to gardeners discussing plant care.",
+      "display_title": "Call the Plant Bus Lady",
+      "blurb": "Home gardening advice series visiting gardeners and troubleshooting plant care challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6784349301": {
       "topics": [
@@ -208012,7 +208273,25 @@
         "food"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition education focused on healthy eating and understanding food labels.",
+      "display_title": "Godly Nutrition",
+      "blurb": "Nutrition education covering food labels, healthy eating, and whole-food cooking strategies.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6785119151": {
       "topics": [
@@ -208062,10 +208341,29 @@
     },
     "6785500393": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "sports/endurance"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Elite athletes discussing competitive fitness, training, and work-life balance.",
+      "display_title": "Off Track",
+      "blurb": "Elite HYROX athletes discussing competitive fitness, training challenges, and athlete life balance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6785528498": {
       "topics": [
@@ -208084,10 +208382,28 @@
     "6785549395": {
       "topics": [
         "sports",
-        "news"
+        "society"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Utah sports history told through interviews with former players and coaches.",
+      "display_title": "Voices from the Cheap Seats",
+      "blurb": "Utah athletics stories from former players and coaches who shaped program history.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6785560837": {
       "topics": [
@@ -208134,18 +208450,55 @@
     },
     "6785625037": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business technology and AI systems implementation for enterprise automation.",
+      "display_title": "Builder's Hub",
+      "blurb": "Practical conversations on building AI-powered business systems and enterprise automation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6785644465": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Episode-by-episode analysis of Apple TV series Silo with reactions and theories.",
+      "display_title": "The Outside View",
+      "blurb": "Episode-by-episode Silo analysis with spoiler breakdowns, theories, and host reactions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6785647974": {
       "topics": [
@@ -208156,10 +208509,29 @@
     },
     "6785649655": {
       "topics": [
-        "sports/fantasy"
+        "sports/fantasy",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Friends discussing fantasy football leagues and draft strategies.",
+      "display_title": "Fantasy Football",
+      "blurb": "Friends discussing fantasy football leagues, draft decisions, and seasonal predictions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6785668034": {
       "topics": [
@@ -208171,10 +208543,29 @@
     },
     "6785701153": {
       "topics": [
-        "nature"
+        "nature",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Engineering solutions inspired by biological strategies and natural systems.",
+      "display_title": "Wild Engineers",
+      "blurb": "Biomimicry podcast exploring nature-inspired engineering for temperature, flow, and structural solutions.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6785743281": {
       "topics": [
@@ -208204,7 +208595,25 @@
         "health/fitness"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly running news covering marathons, competitions, and running trends.",
+      "display_title": "The Running Story",
+      "blurb": "Weekly running news show covering marathons, athletes, records, and industry trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6785789040": {
       "topics": [
@@ -208251,10 +208660,29 @@
     },
     "6786026749": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "philosophy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations about golf traditions and the role of etiquette in the game.",
+      "display_title": "Tuxedo Talks",
+      "blurb": "Conversations exploring etiquette, traditions, and the deeper meaning in golf.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6786034516": {
       "topics": [
@@ -208391,10 +208819,32 @@
     },
     "6786469033": {
       "topics": [
-        "tv-film/animation"
+        "tv-film/animation",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "First-time viewer experiencing One Piece manga with anime expert guide.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6786483070": {
       "topics": [
@@ -208703,17 +209153,55 @@
     },
     "6788153353": {
       "topics": [
-        "business/careers"
+        "business/careers",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career and personal growth podcast addressing burnout and redefining success.",
+      "display_title": "The Big Bun Theory",
+      "blurb": "Leadership and career conversations addressing burnout, boundaries, and redefining professional success.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6788176243": {
       "topics": [
-        "health/fitness"
+        "health/fitness",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-based women's health and fitness podcast with practical wellness advice.",
+      "display_title": "Get the Girlies Moving",
+      "blurb": "Science-backed women's fitness and wellness podcast with practical advice and real stories.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6788185998": {
       "topics": [
@@ -208855,10 +209343,29 @@
     },
     "6788834383": {
       "topics": [
-        "nature"
+        "nature",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast teaching bird identification techniques through sound and field marks.",
+      "display_title": "Birding by Ear",
+      "blurb": "Educational series on bird identification by sound, featuring field mark techniques.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6788836685": {
       "topics": [
@@ -208923,7 +209430,29 @@
         "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Microbiology conversations with scientists discussing microbes and scientific discovery.",
+      "display_title": "My Favorite Microbe",
+      "blurb": "Scientists share favorite microbes and discuss microbiology's role in medicine and biotechnology.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-e1a5d6d1",
+      "classified_at": "2026-08-16T08:30:04.343Z"
     },
     "6788924170": {
       "topics": [
