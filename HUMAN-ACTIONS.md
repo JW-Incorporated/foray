@@ -80,6 +80,56 @@ green.
 
 **Status:** OPEN
 
+### 2. Listen to Foray #1 end to end, then decide whether to publish it
+
+**Tag:** `[BLOCKING]` · **Time:** ~65 minutes of listening + 1 minute of edit · **Owner:** Joey
+
+**Why it matters.** Foray #1 — the 61-minute history of grilling — is now real
+data (`data/forays.json`, issue #182), and every number about it is a property
+of timestamps and transcripts. **Nobody has heard it.** It is committed as
+`"status": "draft"`, which by the same rule that governs ladders means no client
+may ever surface it. Only a founder flips that. `docs/curation/segment-length-rules.md`
+§10 is explicit that the listening is the experiment that should move the
+pacing numbers, and §9 of `docs/curation/grilling-foray.md` says the first
+person to listen will find things no rule caught.
+
+Two known defects to listen for specifically, both recorded in
+`docs/curation/grilling-foray.md` §4:
+
+- **TAV-3** and **MOSS-4** open mid-clause — a listener hears a fragment for the
+  first second or two.
+- **TAV-2** opens *"Mrs Glass is famous for one other thing"* and the actual
+  claim arrives about 4 s in, at the edge of what the rules allow.
+
+There are **no narration bridges yet**, so segments will cut straight from one
+to the next with no explanation of who is speaking or why the subject moved.
+Expect that; it is the next workstream, not a defect in this one.
+
+**Steps.**
+
+1. Read the running order: `docs/curation/grilling-foray.md` §2 (32 rows, in
+   listening order, with what each one contributes).
+2. Listen. Every source episode's audio URL is in `data/segment-sources.json`
+   (`sources[].audio_url`), and each segment's in and out points are
+   `start_sec` / `end_sec` in `data/segments.json`. There is no player for this
+   yet — that is issues #111, #128 and #133 — so this is a manual pass with a
+   podcast app and the timestamps.
+3. Decide. If it holds together, change **one word** in `data/forays.json`:
+
+   ```
+   "status": "draft"     ->     "status": "published"
+   ```
+
+   in the `"grilling-history-1"` block, and open a PR with it. If it does not,
+   say what was wrong and leave it `draft` — a note in the PR or the issue is
+   enough; a session will re-cut it.
+
+**Worked if:** either `data/forays.json` says `"status": "published"` on
+`grilling-history-1`, or there is a written note saying what a listener heard
+that the rules did not catch.
+
+**Status:** OPEN
+
 ---
 
 <!-- BEGIN generated:waiting-on-you -->
