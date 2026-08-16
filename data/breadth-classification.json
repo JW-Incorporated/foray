@@ -74348,13 +74348,838 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-16-16e44dc1",
       "classified_at": "2026-08-16T00:51:49.987Z"
+    },
+    "1823435384": {
+      "topics": [
+        "culture/fashion",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Beauty industry insiders share salon drama and professional realities candidly.",
+      "display_title": "The Overprocessed Podcast",
+      "blurb": "Beauty industry insiders expose salon drama and professional realities candidly.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1823463812": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Latin American soccer news, analysis, and expert tactical debate.",
+      "display_title": "Jorge Ramos y su Banda",
+      "blurb": "Latin American soccer analysis, expert debate, and tactical commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1823549402": {
+      "topics": [
+        "culture/performing-arts",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic 1950s western radio drama series; Paladin as the gunslinger.",
+      "display_title": "Have Gun Will Travel - Old Time Radio",
+      "blurb": "Classic 1950s western radio drama featuring gunslinger Paladin's adventures.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1823692784": {
+      "topics": [
+        "society",
+        "news/politics"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Interviews on alternative perspectives; unclear primary subject focus.",
+      "display_title": "David A. Hughes",
+      "blurb": "Interviews exploring alternative perspectives on history, politics, and society.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1823786804": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College football prospect scouting with tape study and analytics.",
+      "display_title": "Devy Dojo",
+      "blurb": "Deep scouting and film analysis for dynasty fantasy football prospects.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1824468884": {
+      "topics": [
+        "culture/pop-culture",
+        "culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Reddit stories read aloud; paranormal, drama, and scandal topics unclear.",
+      "display_title": "Reddit's Most Shocking Stories: Jaw-Dropping Tales from Reddit",
+      "blurb": "Reddit's wildest stories: relationships, paranormal encounters, internet drama.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:50:28.840Z"
+    },
+    "1824569474": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vedantic philosophy and Upanishads in English, Tamil, and Sanskrit.",
+      "display_title": "Atmanandalahari",
+      "blurb": "Vedantic philosophy and ancient Hindu scriptures in multiple languages.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1825066598": {
+      "topics": [
+        "business",
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Restaurant operations scaling and hospitality business strategy conversations.",
+      "display_title": "What's Cooking? | A Podcast from Nory",
+      "blurb": "Restaurant operations and scaling strategies from hospitality industry leaders.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1825087016": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bhagavad Gita recitation and teaching from BAPS Akshardham tradition.",
+      "display_title": "Shrimad Bhagavad Gita (Demo Podcast)",
+      "blurb": "Sacred Hindu scripture teachings from BAPS Akshardham tradition.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1825201502": {
+      "topics": [
+        "music",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Taylor Swift songwriting secrets and viral storytelling technique decoding.",
+      "display_title": "Decoding Taylor Swift",
+      "blurb": "Decoding Taylor Swift's songwriting secrets and viral storytelling techniques.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1825507118": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Punk and indie band interviews profiling Gainesville Fest musicians.",
+      "display_title": "At Least There's Fest",
+      "blurb": "Interviews profiling punk and indie bands at Gainesville's Fest.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1825931696": {
+      "topics": [
+        "computing",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI culture, ethics, and adoption implications in contemporary society.",
+      "display_title": "AIpocalypse?",
+      "blurb": "AI culture, ethics, and adoption implications in contemporary society.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1826094584": {
+      "topics": [
+        "culture/pop-culture",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vanderpump Rules analysis with production critique and skeptical comedy.",
+      "display_title": "Vanderpump Robs",
+      "blurb": "Vanderpump Rules analysis with comedy, skepticism, and production critique.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:50:28.840Z"
+    },
+    "1826298836": {
+      "topics": [
+        "aviation"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Backcountry flying stories, remote airstrip techniques, and adventures.",
+      "display_title": "Backcountry Aviation Radio",
+      "blurb": "Backcountry flying stories, remote airstrip techniques, and aviation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1826400356": {
+      "topics": [
+        "medicine/biology",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pediatric biotech research and innovation from hospital scientists.",
+      "display_title": "BENCH to BEDSIDE",
+      "blurb": "Pediatric biotech research and medical innovation from hospital scientists.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1826619494": {
+      "topics": [
+        "adventure/exploration",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.75
+        },
+        {
+          "node": "sports",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hunting, fishing, and outdoors personality interviews with storytelling.",
+      "display_title": "The Michael Waddell Podcast",
+      "blurb": "Conversations with hunting, fishing, and outdoors industry personalities.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1826948882": {
+      "topics": [
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Baking history, techniques, troubleshooting with industry professionals.",
+      "display_title": "The Golden Hour Baking Podcast",
+      "blurb": "Baking history, techniques, and troubleshooting with professional bakers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1826960264": {
+      "topics": [
+        "health/sexuality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Erotic audio stories exploring intimate adult fantasies and scenarios.",
+      "display_title": "Audio Smut",
+      "blurb": "Erotic audio stories exploring intimate adult fantasies and scenarios.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1826962100": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Super League rugby analysis, predictions, and North regional debate.",
+      "display_title": "All Out Rugby League: Back Ten",
+      "blurb": "Super League rugby analysis, predictions, and Northern England debate.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1827144050": {
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedian's casual podcast conversations and comedy commentary.",
+      "display_title": "All Over The Road with Mark Normand",
+      "blurb": "Stand-up comedian Mark Normand's casual podcast conversations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1827167720": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College basketball player Azzi Fudd discusses athletics, draft prep.",
+      "display_title": "Fudd Around and Find Out",
+      "blurb": "College basketball star Azzi Fudd discusses athletics and draft prep.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1828492796": {
+      "topics": [
+        "health",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Indiana Department of Health updates and public health guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:50:28.840Z"
+    },
+    "1828504796": {
+      "topics": [
+        "travel",
+        "culture/pop-culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Las Vegas gambling strategy, casino tips; ambiguous travel/entertainment.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:50:28.840Z"
+    },
+    "1828511042": {
+      "topics": [
+        "culture/pop-culture",
+        "comedy"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.6
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Gen Alpha/Z micro-dramas; short video content format unclear.",
+      "display_title": "Jessica Kaylee",
+      "blurb": "Micro-dramas for Gen Alpha and Gen Z with trending scenarios.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:50:28.840Z"
+    },
+    "1829544728": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian faith, redemption, and transformation testimony conversations.",
+      "display_title": "The Knock Podcast",
+      "blurb": "Christian testimonies of faith, redemption, and personal transformation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1829609450": {
+      "topics": [
+        "sports",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": false,
+      "rationale": "College volleyball recruiting strategy and athlete development guidance.",
+      "display_title": "NXTVB",
+      "blurb": "College volleyball recruiting strategy and athlete development guidance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1829721662": {
+      "topics": [
+        "science",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biotech founders and researchers shaping life sciences innovation.",
+      "display_title": "Frameshifts with Benjamin Arya",
+      "blurb": "Biotech founders and researchers advancing life sciences innovation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1829793986": {
+      "topics": [
+        "culture/pop-culture",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity culture, relationships, astrology, and zeitgeist commentary.",
+      "display_title": "Tefi Talks",
+      "blurb": "Celebrity culture, relationships, astrology, and cultural commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:50:28.840Z"
+    },
+    "1830150710": {
+      "topics": [
+        "science/physics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cosmology and quantum physics explained through sibling discussion.",
+      "display_title": "I'm Finally Reading My Brother's Book",
+      "blurb": "Cosmology and quantum physics explored through accessible sibling discussion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1830748202": {
+      "topics": [
+        "engineering",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Industrial adhesives technology innovation across multiple engineering sectors.",
+      "display_title": "Adhesion Matters",
+      "blurb": "Industrial adhesive technology and innovation across engineering sectors.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1830992336": {
+      "topics": [
+        "math",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Data science and AI explained accessibly in Spanish language.",
+      "display_title": "Data Science para Todos",
+      "blurb": "Data science and AI explained accessibly in Spanish language.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1831347920": {
+      "topics": [
+        "health",
+        "religion/hinduism"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Ayurveda and meditation positioned as wellness; Hindu practices blended.",
+      "display_title": "Wellness Reimagined",
+      "blurb": "Ancient wellness practices like Ayurveda and meditation with science.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
+    },
+    "1831388192": {
+      "topics": [
+        "society/law",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Texas law training on penal code for peace officers and prosecutors.",
+      "display_title": "State and Federal Law",
+      "blurb": "Texas penal code and law enforcement procedure training podcast.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:50:28.840Z"
+    },
+    "1831547336": {
+      "topics": [
+        "nature/earth-science",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Climate change and energy innovation with sustainability solutions focus.",
+      "display_title": "Shocked",
+      "blurb": "Climate change and energy innovation with solutions-focused analysis.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-16-d748575b",
+      "classified_at": "2026-08-16T08:49:52.882Z"
     }
   },
-  "built_at": "2026-08-16T00:51:49.987Z",
+  "built_at": "2026-08-16T08:50:28.840Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-16-16e44dc1",
+    "last_batch_id": "fresh-2026-08-16-d748575b",
     "last_batch_tier": 1
   }
 }
