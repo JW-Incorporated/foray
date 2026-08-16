@@ -10,6 +10,26 @@
    third-party RSS, and DOM construction is safe by default in a way string
    concatenation is not. There is a strict CSP with no inline styles or scripts;
    all styling lives in styles.css.
+
+   ── Forays (#128) ─────────────────────────────────────────────────────────
+   A Foray is one queue of 32 segments, so it needs a second entry point next
+   to `play(item)`: `playForay(resolved)`. Everything below the surface is
+   unchanged — the same manager, the same backend, the same out-point watch. Two
+   things are different above it, and both exist because a segment is a slice of
+   somebody else's episode:
+
+     - POSITION IS FORAY POSITION. The audio element's `currentTime` for segment
+       20 is ~31 minutes, which is a fact about a stranger's podcast. Everything
+       displayed and everything scrubbed goes through `forayElapsed` /
+       `segmentAtElapsed` (player/foray-resolve.js, tested) so the listener only
+       ever sees the Foray's own clock.
+     - THE SKIP BUTTONS MOVE BETWEEN SEGMENTS. ±15/30 s inside a 90-second
+       segment would mostly leave it, and leaving a segment is what `next` is
+       for.
+
+   The resolution itself — forays.json + segments.json + segment-sources.json —
+   is NOT done here. app.js needs the same running order to render, so it lives
+   in the pure module and both callers use it through `ForayPlayer.resolve`.
 */
 
 import { PlayerQueueManager } from "./queue-manager.js";
@@ -17,6 +37,10 @@ import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PositionStore } from "./position-store.js";
 import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
+import {
+  resolveForay, indexSegments, indexSources, findForay, listableForays,
+  forayElapsed, segmentAtElapsed, fmtClock, fmtSpan,
+} from "./foray-resolve.js";
 
 const SEEK_BACK = 15;
 const SEEK_FWD = 30;
@@ -102,7 +126,7 @@ function buildUI() {
   const rateBtn = el("button", "fp-rate", "1×");
   rateBtn.type = "button";
   rateBtn.setAttribute("aria-label", "Playback speed");
-  const openLink = el("a", "fp-open", "Open episode ↗");
+  const openLink = el("a", "fp-openep", "Open episode ↗");
   openLink.target = "_blank";
   openLink.rel = "noopener";
   const collapse = el("button", "fp-collapse", "Close");
@@ -127,28 +151,124 @@ function buildUI() {
 let current = null;
 let scrubbing = false;
 
+/** The Foray being played, or null for ordinary single-episode playback.
+    `{ resolved, index, onChange, error }`.
+
+    `index` is the segment the LISTENER is on, which is not the same as the one
+    the backend has finished loading — the same distinction the manager keeps as
+    `_targetIndex` vs `currentIndex`. It matters here for a plain reason: a load
+    can take a second (or hit its ten-second deadline), and a running order that
+    only highlights the new row once the bytes arrive looks broken. Intent is
+    painted immediately; a divergence is reconciled by `syncForaySegment`. */
+let foray = null;
+
 function isPlaying() {
   return manager?.state?.type === "playing";
 }
 
+/** Where we are, in the Foray's own seconds. The playhead only counts when the
+    segment we are showing is the one actually loaded; mid-jump, the honest
+    answer is that segment's start. */
+function forayPosition() {
+  if (!foray || foray.index < 0) return 0;
+  const loaded = manager?.currentIndex === foray.index;
+  return forayElapsed(foray.resolved.playable, foray.index, loaded ? (backend?.currentTime ?? null) : null);
+}
+
+/**
+ * Move the listener to `index`: now-playing, the page and the position all
+ * follow from this one call, whether the move was a click or an out-point.
+ *
+ * `pendingFrom` records where the manager was when we asked. Until the manager
+ * either arrives at `index` or lands somewhere else entirely, `syncForaySegment`
+ * must leave our intent alone — the first draft did not, and the nested render
+ * inside `setNowPlaying` immediately reconciled every jump straight back to the
+ * segment we were leaving. Prev and next looked completely dead.
+ */
+function setForayIndex(index, { pending = true } = {}) {
+  if (!foray) return;
+  foray.index = index;
+  foray.pendingFrom = pending ? (manager?.currentIndex ?? -1) : null;
+  const item = foray.resolved.playable[index];
+  if (item) setNowPlaying(forayNowPlaying(item, index), item.why);
+  else notifyForay();
+}
+
+/** Reconcile with the manager when IT moved us — the out-point path, where the
+    backend reports an end and the manager loads the next segment with nothing
+    in this file involved. Called from render(), which every relevant media
+    event already drives, so no new callback is needed on the manager. */
+function syncForaySegment() {
+  if (!foray) return;
+  const index = manager?.currentIndex ?? -1;
+  if (index < 0) return;
+  if (index === foray.index) { foray.pendingFrom = null; return; }
+  // A jump we asked for is still in flight and the manager has not moved yet.
+  // Leave it; the load will land or fail, and either way we hear about it.
+  if (foray.pendingFrom != null && index === foray.pendingFrom) return;
+  foray.error = null;
+  setForayIndex(index, { pending: false });
+}
+
+/** The mini-player wants a catalogue-shaped item; a queue item is close but
+    names the episode rather than the segment. */
+function forayNowPlaying(item, index) {
+  const total = foray.resolved.playable.length;
+  return {
+    id: item.id,
+    title: item.title || foray.resolved.title,
+    show: `${item.show} · part ${index + 1} of ${total}`,
+    duration_sec: null,
+    dai_suspected: Boolean(item.dai_suspected),
+  };
+}
+
+/** Everything a page needs to paint itself, in Foray terms. */
+function forayStateSnapshot() {
+  if (!foray) return null;
+  return {
+    forayId: foray.resolved.id,
+    index: foray.index,
+    loading: manager?.state?.type === "loadingItem",
+    playing: isPlaying(),
+    ended: manager?.state?.type === "ended",
+    elapsedSec: forayPosition(),
+    totalSec: foray.resolved.totalSec,
+    // A segment that would not load is the failure a listener actually meets,
+    // and it is silent otherwise: the manager pauses and the page just sits
+    // there. Hand it up so the surface can say what happened.
+    error: foray.error ?? null,
+  };
+}
+
+function notifyForay() {
+  if (foray?.onChange) foray.onChange(forayStateSnapshot());
+}
+
 function render() {
   if (!ui || !current) return;
+  syncForaySegment();
   const glyph = isPlaying() ? "❚❚" : "▶";
   ui.playBtn.textContent = glyph;
   ui.bigPlay.textContent = glyph;
   ui.playBtn.setAttribute("aria-label", isPlaying() ? "Pause" : "Play");
   ui.bigPlay.setAttribute("aria-label", isPlaying() ? "Pause" : "Play");
 
-  const pos = backend?.currentTime ?? 0;
-  const dur = backend?.duration ?? current.duration_sec ?? null;
+  // In a Foray the clock is the Foray's, not the source episode's: 31 minutes
+  // into somebody else's podcast is not a position this listener recognises.
+  const pos = foray ? forayPosition() : (backend?.currentTime ?? 0);
+  const dur = foray ? foray.resolved.totalSec : (backend?.duration ?? current.duration_sec ?? null);
 
   if (!scrubbing && dur) {
     ui.scrub.value = String(Math.round((pos / dur) * 1000));
     ui.fill.style.width = `${Math.min(100, (pos / dur) * 100)}%`;
   }
-  ui.tNow.textContent = formatTimestamp(pos, EXACT);
-  ui.tLeft.textContent = dur ? `-${formatTimestamp(Math.max(0, dur - pos), EXACT)}` : "--:--";
+  ui.tNow.textContent = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
+  ui.tLeft.textContent = dur
+    ? `-${foray ? fmtClock(Math.max(0, dur - pos)) : formatTimestamp(Math.max(0, dur - pos), EXACT)}`
+    : "--:--";
   syncCardButtons();
+  if (foray) notifyForay();
 }
 
 function syncCardButtons() {
@@ -208,6 +328,16 @@ function bind() {
     ui.sheet.hidden = true;
     document.body.classList.remove("fp-open", "fp-expanded");
     current = null;
+    // Same shape the live snapshot has, so the page never has to guess which
+    // fields it got.
+    const wasForay = foray;
+    foray = null;
+    if (wasForay?.onChange) {
+      wasForay.onChange({
+        forayId: wasForay.resolved.id, index: -1, loading: false, playing: false,
+        ended: false, elapsedSec: 0, totalSec: wasForay.resolved.totalSec, error: null,
+      });
+    }
     syncCardButtons();
   });
 
@@ -218,20 +348,30 @@ function bind() {
   ui.info.addEventListener("click", () => setExpanded(ui.sheet.hidden));
   ui.collapse.addEventListener("click", () => setExpanded(false));
 
+  // In a Foray these are previous/next SEGMENT, not ±15/30 s: a segment here is
+  // often under two minutes, so a 30-second nudge mostly leaves it anyway, and
+  // "leave this one" is what the button should mean.
   ui.backBtn.addEventListener("click", async () => {
+    if (foray) return ForayPlayer.forayPrevious();
     await manager.seek(Math.max(0, (backend.currentTime ?? 0) - SEEK_BACK), { precise: true });
     render();
   });
   ui.fwdBtn.addEventListener("click", async () => {
+    if (foray) return ForayPlayer.forayNext();
     await manager.seek((backend.currentTime ?? 0) + SEEK_FWD, { precise: true });
     render();
   });
 
   ui.scrub.addEventListener("input", () => { scrubbing = true; });
   ui.scrub.addEventListener("change", async () => {
-    const dur = backend?.duration ?? current?.duration_sec;
-    if (dur) await manager.seek((Number(ui.scrub.value) / 1000) * dur, { precise: true });
+    const frac = Number(ui.scrub.value) / 1000;
     scrubbing = false;
+    if (foray) {
+      await ForayPlayer.foraySeek(frac * foray.resolved.totalSec);
+      return;
+    }
+    const dur = backend?.duration ?? current?.duration_sec;
+    if (dur) await manager.seek(frac * dur, { precise: true });
     render();
   });
 
@@ -267,7 +407,17 @@ function ensureBooted() {
     backend,
     positionStore: positions,
     strategy: SINGLE_ITEM,
-    telemetry: (m) => { if (/error|rejected/i.test(m)) console.warn("[player]", m); },
+    telemetry: (m) => {
+      if (!/error|rejected|skipped/i.test(m)) return;
+      console.warn("[player]", m);
+      // A Foray that stops on a dead segment must SAY so. Without this the
+      // manager pauses, the page keeps its highlight, and the only evidence is
+      // a console line nobody has open.
+      if (foray && /player\.error|segment\.skipped/i.test(m)) {
+        foray.error = m;
+        notifyForay();
+      }
+    },
   });
 
   ui = buildUI();
@@ -295,6 +445,8 @@ const ForayPlayer = {
   async play(item, { why = "" } = {}) {
     if (!this.canPlay(item)) return false;
     ensureBooted();
+    foray = null;
+    setSkipButtonMode(false);
     setNowPlaying(item, why);
     manager.setQueueFromPick(item);
     await manager.play(0);
@@ -305,7 +457,156 @@ const ForayPlayer = {
   isPlaying(id) {
     return isPlaying() && current?.id === id;
   },
+
+  /* ---------- Forays (#128) ---------- */
+
+  /** The three-document join, re-exported so app.js resolves the running order
+      with exactly the code that builds the queue. app.js is a classic script and
+      cannot import an ES module, which is the whole reason this bridge exists. */
+  resolve(foraysDoc, { id, segmentsDoc, sourcesDoc, unlocked = [] } = {}) {
+    const doc = findForay(foraysDoc, id, { unlocked });
+    if (!doc) return null;
+    return resolveForay(doc, {
+      segments: indexSegments(segmentsDoc),
+      sources: indexSources(sourcesDoc),
+    });
+  },
+
+  /** Which Forays may be listed for this visitor (drafts only when named). */
+  listForays(foraysDoc, { unlocked = [] } = {}) {
+    return listableForays(foraysDoc, { unlocked });
+  },
+
+  fmtClock,
+  fmtSpan,
+
+  /**
+   * Play a resolved Foray from `startIndex`.
+   *
+   * @param {object} resolved  from `resolve()` above
+   * @param {object} [opts]
+   * @param {number} [opts.startIndex]
+   * @param {Function} [opts.onChange] called with `{ index, playing, ended,
+   *   elapsedSec, totalSec }` on every position tick and every segment change —
+   *   the page owns the running order, so it needs to be told, not to poll.
+   * @returns the build report, or null when nothing is playable.
+   */
+  async playForay(resolved, { startIndex = 0, onChange = null } = {}) {
+    if (!resolved || !resolved.playable.length) return null;
+    ensureBooted();
+    foray = { resolved, index: -1, pendingFrom: null, onChange, error: null };
+    setSkipButtonMode(true);
+
+    const report = manager.setQueueFromForay(resolved.hydrated, {
+      resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
+    });
+    // Paint the intent before awaiting the load: a running order that only
+    // highlights the row once the audio arrives reads as a dead button.
+    setForayIndex(clampIndex(startIndex, report.items.length));
+    await manager.play(foray.index);
+    render();
+    return report;
+  },
+
+  /** The live Foray's state, or null when none is loaded. A page that
+      re-renders (navigating away and back) needs to paint the CURRENT segment
+      rather than assume nothing is playing. */
+  forayStatus() {
+    return forayStateSnapshot();
+  },
+
+  /** Re-point the change callback at a freshly rendered page. */
+  watchForay(onChange) {
+    if (foray) foray.onChange = onChange;
+    return this.forayStatus();
+  },
+
+  /** Play/pause the Foray without rebuilding it. */
+  async forayToggle() {
+    if (!foray) return;
+    if (isPlaying()) await manager.pause();
+    else await manager.resume();
+    render();
+  },
+
+  async forayJump(index) {
+    if (!foray) return;
+    foray.error = null;
+    setForayIndex(clampIndex(index, foray.resolved.playable.length));
+    await manager.play(foray.index);
+    render();
+  },
+
+  async forayNext() {
+    if (!foray) return;
+    const last = foray.resolved.playable.length - 1;
+    if (manager.currentIndex >= last) return;
+    foray.error = null;
+    setForayIndex(manager.currentIndex + 1);
+    await manager.skipToNext();
+    render();
+  },
+
+  /**
+   * Previous means "restart this segment" while we are inside it, and "the one
+   * before" when we have only just started it — the convention every podcast
+   * player uses, and the only one that is usable when segments are 90 seconds
+   * long. The threshold is measured against the segment's own start, not the
+   * episode's.
+   */
+  async forayPrevious() {
+    if (!foray) return;
+    foray.error = null;
+    const index = manager.currentIndex;
+    const item = foray.resolved.playable[index];
+    const into = item ? (backend.currentTime ?? 0) - item.start_sec : 0;
+    if (index > 0 && into < RESTART_WINDOW_SEC) {
+      setForayIndex(index - 1);
+      await manager.play(foray.index);
+    } else {
+      await manager.skipToPrevious();
+    }
+    render();
+  },
+
+  /** Seek to a position in the WHOLE Foray: find the segment, then the offset
+      inside its source episode. */
+  async foraySeek(elapsedSec) {
+    if (!foray) return;
+    const at = segmentAtElapsed(foray.resolved.playable, elapsedSec);
+    if (!at) return;
+    const item = foray.resolved.playable[at.index];
+    if (at.index !== manager.currentIndex) {
+      foray.error = null;
+      setForayIndex(at.index);
+      await manager.play(at.index);
+    }
+    await manager.seek(item.start_sec + at.into, { precise: true });
+    render();
+  },
 };
 
+/** Below this many seconds into a segment, "previous" means the segment before. */
+const RESTART_WINDOW_SEC = 4;
+
+function clampIndex(index, length) {
+  const n = Number.isInteger(index) ? index : 0;
+  return Math.min(Math.max(0, n), Math.max(0, length - 1));
+}
+
+/** The ±15/30 s buttons become previous/next segment inside a Foray. */
+function setSkipButtonMode(isForay) {
+  if (!ui) return;
+  ui.backBtn.textContent = isForay ? "‹‹" : `↺ ${SEEK_BACK}`;
+  ui.fwdBtn.textContent = isForay ? "››" : `${SEEK_FWD} ↻`;
+  ui.backBtn.setAttribute("aria-label", isForay ? "Previous segment" : `Back ${SEEK_BACK} seconds`);
+  ui.fwdBtn.setAttribute("aria-label", isForay ? "Next segment" : `Forward ${SEEK_FWD} seconds`);
+}
+
 window.ForayPlayer = ForayPlayer;
+/* app.js is a classic script and this is a deferred module, so app.js cannot
+   assume the bridge exists when it renders. One event, once, rather than a
+   poll. */
+window.dispatchEvent(new Event("forayplayer:ready"));
+
 export default ForayPlayer;
