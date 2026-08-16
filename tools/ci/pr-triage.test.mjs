@@ -64,6 +64,44 @@ test("mergeable_state, mergeStateStatus and state are all read, and lowercased",
   assert.equal(normalizePr({}).state, "unknown");
 });
 
+test("mergeable_state WINS over REST's issue-level `state` on a real payload", () => {
+  // The bug this pins, caught in review before it shipped: `gh api
+  // repos/O/R/pulls/N` returns BOTH `state:"open"` (the issue state) and
+  // `mergeable_state:"behind"`. Reading `state` first made every gathered PR
+  // read "open", so `behind` and `dirty` were permanently false and the whole
+  // auto-update path was dead — while the suite stayed green, because the
+  // fixtures set `state` directly, a shape the REST gatherer never produces.
+  const rest = {
+    number: 5,
+    state: "open",
+    mergeable: true,
+    mergeable_state: "behind",
+    head: { ref: "nightly/x", sha: "abc", repo: { full_name: "o/r" } },
+    base: { ref: "main", repo: { full_name: "o/r" } },
+  };
+  assert.equal(normalizePr(rest).state, "behind");
+  const { actions } = planMergeability([rest]);
+  assert.deepEqual(kinds(actions), ["update-branch", "dispatch-ci"]);
+});
+
+test("a bare REST payload with no merge state does not read as a merge state", () => {
+  // "open"/"closed" are issue states and must never be mistaken for one.
+  assert.equal(normalizePr({ state: "open" }).state, "unknown");
+  assert.equal(normalizePr({ state: "closed" }).state, "unknown");
+});
+
+test("REST's dirty state on a full payload still triggers the conflict path", () => {
+  const rest = {
+    number: 6,
+    state: "open",
+    mergeable: false,
+    mergeable_state: "dirty",
+    head: { ref: "b", sha: "s", repo: { full_name: "o/r" } },
+    base: { ref: "main", repo: { full_name: "o/r" } },
+  };
+  assert.deepEqual(kinds(planMergeability([rest]).actions), ["add-label", "comment"]);
+});
+
 test("REST head/base shapes normalise, including fork detection", () => {
   const p = normalizePr({
     number: "7",
@@ -210,6 +248,101 @@ test("a conflicting PR is not also auto-updated", () => {
   assert.equal(kinds(actions).includes("update-branch"), false);
 });
 
+/* -------------------------------------------------------------- disarming */
+
+test("an armed PR that is no longer allowed gets disarmed", () => {
+  // `gh pr merge --auto` is sticky: adding `hold` or pushing a governed-path
+  // file does NOT clear it, so re-deciding NOT ARMED and doing nothing let the
+  // PR merge anyway. Deciding is only honest if the no branch acts.
+  const { actions } = planMergeability([pr({ autoMergeEnabled: true, labels: ["hold"] })]);
+  assert.ok(kinds(actions).includes("disable-auto"));
+  assert.match(actions.find((a) => a.kind === "disable-auto").reason, /hold/);
+});
+
+test("a mid-flight governed-path addition disarms an already-armed PR", () => {
+  const { actions } = planMergeability([
+    pr({ autoMergeEnabled: true, files: ["data/x.json", ".github/workflows/evil.yml"] }),
+  ]);
+  assert.ok(kinds(actions).includes("disable-auto"));
+});
+
+test("the freeze switch reaches already-armed PRs — that is what makes it a kill switch", () => {
+  // Setting a repo variable fires no PR event, so the sweep is the only thing
+  // that can disarm what is already armed.
+  const { actions } = planMergeability([pr({ autoMergeEnabled: true })], { freeze: "1" });
+  assert.ok(kinds(actions).includes("disable-auto"));
+});
+
+test("an armed PR that is still allowed is left armed", () => {
+  const { actions } = planMergeability([pr({ autoMergeEnabled: true })]);
+  assert.equal(kinds(actions).includes("disable-auto"), false);
+});
+
+test("a PR that was never armed is not disarmed", () => {
+  const { actions } = planMergeability([pr({ labels: ["hold"] })]);
+  assert.deepEqual(actions, []);
+});
+
+test("REST's auto_merge object and GraphQL's autoMergeRequest both read as armed", () => {
+  assert.equal(normalizePr({ auto_merge: { merge_method: "squash" } }).autoMergeEnabled, true);
+  assert.equal(normalizePr({ autoMergeRequest: {} }).autoMergeEnabled, true);
+  assert.equal(normalizePr({ auto_merge: null }).autoMergeEnabled, false);
+  assert.equal(normalizePr({}).autoMergeEnabled, false);
+});
+
+/* ------------------------------------------------- checks-missing self-heal */
+
+const OLD = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+
+test("a stale head with none of the required checks is re-dispatched on the sweep", () => {
+  // The backstop for a lost dispatch after an auto-update: without it, one lost
+  // race strands the PR at "Expected — waiting for status to be reported"
+  // forever, because it is no longer `behind` and nothing looks again.
+  const { actions, notes } = planMergeability(
+    [pr({ checkNames: [], updatedAt: OLD })],
+    { sweep: true }
+  );
+  assert.deepEqual(kinds(actions), ["dispatch-ci"]);
+  assert.match(notes.join(" "), /re-dispatching CI/);
+});
+
+test("the self-heal never fires outside the scheduled sweep", () => {
+  const { actions } = planMergeability([pr({ checkNames: [], updatedAt: OLD })]);
+  assert.deepEqual(actions, []);
+});
+
+test("a freshly-updated PR is not re-dispatched into its own CI run", () => {
+  const { actions } = planMergeability(
+    [pr({ checkNames: [], updatedAt: new Date().toISOString() })],
+    { sweep: true }
+  );
+  assert.deepEqual(actions, []);
+});
+
+test("a head with even one required check is left alone", () => {
+  const { actions } = planMergeability(
+    [pr({ checkNames: ["backend"], updatedAt: OLD })],
+    { sweep: true }
+  );
+  assert.deepEqual(actions, []);
+});
+
+test("the self-heal does not touch forks, whose branches we cannot dispatch on", () => {
+  const { actions } = planMergeability(
+    [pr({ checkNames: [], updatedAt: OLD, crossRepo: true })],
+    { sweep: true }
+  );
+  assert.deepEqual(actions, []);
+});
+
+test("a conflicting PR is not re-dispatched — its problem is not missing checks", () => {
+  const { actions } = planMergeability(
+    [pr({ mergeable: "CONFLICTING", state: "dirty", checkNames: [], updatedAt: OLD })],
+    { sweep: true }
+  );
+  assert.equal(kinds(actions).includes("dispatch-ci"), false);
+});
+
 /* --------------------------------------------------------- founder queue */
 
 test("a PR touching a denied path is queued and labelled", () => {
@@ -310,6 +443,42 @@ test("pipes and newlines in a PR title cannot break the table", () => {
   // the reason's are escaped, and the newline is folded to a space.
   assert.equal((row.match(/(^|[^\\])\|/g) || []).length, 4, row);
   assert.match(row, /a \\\| b c/);
+});
+
+test("a PR title cannot inject the block's own end marker", () => {
+  // spliceBlock finds the FIRST BLOCK_END, so an injected one would make the
+  // next --write splice mid-block, duplicating half of it and orphaning the
+  // real marker. PR titles are untrusted text.
+  const b = renderWaitingBlock([{ number: 1, title: BLOCK_END, reason: BLOCK_BEGIN }]);
+  assert.equal(b.split(BLOCK_END).length - 1, 1, "exactly one real end marker");
+  assert.equal(b.split(BLOCK_BEGIN).length - 1, 1, "exactly one real begin marker");
+  // And the round trip still behaves.
+  const once = spliceBlock("# H\n", b);
+  assert.equal(spliceBlock(once, b), once);
+});
+
+test("an approved PR is marked as needing only the merge", () => {
+  const b = renderWaitingBlock([
+    { number: 3, title: "t", reason: "r", approved: true },
+    { number: 4, title: "u", reason: "s", approved: false },
+  ]);
+  assert.match(b, /#3.*approved — just needs the merge/);
+  assert.doesNotMatch(b.split("\n").find((l) => l.includes("#4")), /approved/);
+});
+
+test("planFounderQueue reports the approval state from the label", () => {
+  const q = planFounderQueue([pr({ files: ["CLAUDE.md"], labels: ["founder-approved"] })]).queue;
+  assert.equal(q[0].approved, true);
+  assert.equal(planFounderQueue([pr({ files: ["CLAUDE.md"] })]).queue[0].approved, false);
+});
+
+test("approval does NOT remove a PR from the queue — a founder still merges it", () => {
+  // The docs must match this: `founder-approved` makes the path-policy CHECK
+  // green; it does not arm auto-merge on a governed path.
+  const { queue } = planFounderQueue([
+    pr({ files: ["CLAUDE.md"], labels: ["founder-approved"] }),
+  ]);
+  assert.equal(queue.length, 1);
 });
 
 test("the block carries the live filter URL for the queue label", () => {

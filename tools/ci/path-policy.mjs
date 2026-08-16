@@ -81,6 +81,16 @@ export const DENIED_PREFIXES = [
   // to the CI runner needs a human merge. Measured frequency: single digits per
   // year. That is the right trade.
   "tools/ci/",
+  // Two more gates that ci.yml invokes by name. Same argument as tools/ci/,
+  // one directory over: a one-line `process.exit(0)` in either neuters a
+  // required check with no human in the loop, and `tools/` is allowlisted.
+  // Cheap to deny — 6 and 2 commits respectively in the repo's whole history.
+  //
+  // path-policy.test.mjs asserts that EVERY `node tools/**.mjs` invoked by
+  // ci.yml is either denied here or explicitly acknowledged with a reason, so
+  // a new gate script cannot acquire this exposure silently.
+  "tools/test-search.mjs",
+  "tools/validate-semantic-index.mjs",
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
@@ -266,6 +276,7 @@ export function automergeDecision(input = {}) {
     freeze = "",
     draft = false,
     baseRef = "main",
+    truncated = false,
     denied,
     allowed,
     blockingLabels = BLOCKING_LABELS,
@@ -317,6 +328,20 @@ export function automergeDecision(input = {}) {
   }
   if (!files.length) {
     return not("NO_FILES", "No changed files were reported for this PR — refusing to guess.", true);
+  }
+  // A TRUNCATED changed-file list is the one input that makes an allowlist lie:
+  // every path the caller could see is allowlisted, and the one it could not
+  // see is `.github/workflows/ci.yml`. The list endpoint caps at 3000 files
+  // (pagination included) and truncates SILENTLY, so the caller compares its
+  // line count against the PR's own `changed_files` and sets this when they
+  // disagree. Refusing is the only safe answer: "I could not see the whole
+  // diff" is not the same as "the diff is fine".
+  if (truncated) {
+    return not(
+      "TRUNCATED_FILE_LIST",
+      `The changed-file list was truncated (${files.length} of a larger diff) — refusing to judge a diff it cannot fully see.`,
+      true
+    );
   }
   if (policy.malformed.length) {
     return not(
@@ -370,6 +395,7 @@ export function governedCheck(input = {}) {
     files = [],
     labels = [],
     enforce = false,
+    truncated = false,
     approvalLabel = APPROVAL_LABEL,
     denied,
     allowed,
@@ -380,6 +406,8 @@ export function governedCheck(input = {}) {
   const governed = [
     ...policy.denied,
     ...policy.malformed.map((m) => ({ file: m.file, prefix: `<${m.problem}>` })),
+    // A truncated list cannot be certified clean — see automergeDecision.
+    ...(truncated ? [{ file: "(changed-file list truncated)", prefix: "<unreadable diff>" }] : []),
   ];
   const approved = labelSet.includes(approvalLabel);
 
@@ -544,6 +572,9 @@ options:
   --base <ref>            PR base ref (default: main)
   --pr <number>           PR number, for the report headline only
   --draft                 PR is a draft
+  --truncated             the changed-file list is incomplete (the caller's line
+                          count disagreed with the PR's own changed_files), so
+                          refuse rather than judge a diff it cannot fully see
   --enforce               (check) fail the job on an unapproved governed path
   --approval-label <name> (check) default: ${APPROVAL_LABEL}
   --summary <path>        append the markdown report here ($GITHUB_STEP_SUMMARY)
@@ -563,7 +594,7 @@ const FLAGS_WITH_VALUE = new Set([
   "--github-output",
   "--json",
 ]);
-const BOOL_FLAGS = new Set(["--draft", "--enforce"]);
+const BOOL_FLAGS = new Set(["--draft", "--enforce", "--truncated"]);
 
 /** Parse argv into { command, opts } or throw. Exported for the test suite. */
 export function parseArgs(argv) {
@@ -661,6 +692,7 @@ export function runCli(argv, io = {}) {
       labels,
       freeze: opts.freeze,
       draft: Boolean(opts.draft),
+      truncated: Boolean(opts.truncated),
       baseRef: opts.base ?? "main",
     });
     if (opts.githubOutput) {
@@ -689,6 +721,7 @@ export function runCli(argv, io = {}) {
     files,
     labels,
     enforce: Boolean(opts.enforce),
+    truncated: Boolean(opts.truncated),
     approvalLabel: opts.approvalLabel ?? APPROVAL_LABEL,
   });
   if (opts.githubOutput) {

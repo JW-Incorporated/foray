@@ -10,6 +10,11 @@
 
 import { test } from "node:test";
 import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 import {
   ALLOWED_PREFIXES,
@@ -136,6 +141,49 @@ test("the governance paths from the original workflow are all still denied", () 
   ]) {
     assert.equal(pathPolicy([f]).denied.length, 1, `${f} should be denied`);
   }
+});
+
+/* Scripts `ci.yml` invokes directly ARE gates: a one-line `process.exit(0)` in
+ * any of them neuters a check with no human in the loop, which is exactly what
+ * the `tools/ci/` deny entry exists to prevent — one directory over. This test
+ * makes the exposure impossible to acquire silently: a NEW gate script must
+ * either be denied or be added to the acknowledgement list below, in a diff
+ * someone reads.
+ *
+ * The acknowledged ones are a deliberate, stated trade, not an oversight. */
+const ACKNOWLEDGED_UNDENIED_GATES = {
+  // Actively developed by the segments workstream (epic #115), and its own
+  // suite carries a floor of 39. Denying it would put a founder merge on every
+  // segment-pipeline PR — the friction pointing the wrong way that #167 was
+  // about. Revisit if that workstream finishes.
+  "tools/segments/merge-segments.mjs": "active workstream; own suite floored at 39",
+};
+
+test("every script ci.yml runs as a gate is denied, or explicitly acknowledged", () => {
+  const ci = fs.readFileSync(path.join(REPO, ".github/workflows/ci.yml"), "utf8");
+  const scripts = [...ci.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)/g)].map((m) => m[1]);
+  assert.ok(scripts.length >= 3, `expected to find gate scripts in ci.yml, found ${scripts}`);
+
+  const exposed = [...new Set(scripts)]
+    .filter((s) => !pathPolicy([s]).denied.length)
+    .filter((s) => !(s in ACKNOWLEDGED_UNDENIED_GATES))
+    .sort();
+
+  assert.deepStrictEqual(
+    exposed,
+    [],
+    "these scripts are invoked by ci.yml as gates but sit on an ALLOWED path, so " +
+      "a bot PR could neuter them and auto-merge unread. Add each to " +
+      "DENIED_PREFIXES in tools/ci/path-policy.mjs, or to " +
+      "ACKNOWLEDGED_UNDENIED_GATES here with the reason:\n" + exposed.join("\n")
+  );
+});
+
+test("the acknowledgement list has not gone stale", () => {
+  // An entry for a script ci.yml no longer runs is a licence nobody needs.
+  const ci = fs.readFileSync(path.join(REPO, ".github/workflows/ci.yml"), "utf8");
+  const stale = Object.keys(ACKNOWLEDGED_UNDENIED_GATES).filter((s) => !ci.includes(s));
+  assert.deepStrictEqual(stale, [], `no longer invoked by ci.yml: ${stale.join(", ")}`);
 });
 
 test("STATE.md and HUMAN-ACTIONS.md are allowlisted", () => {
@@ -293,6 +341,39 @@ test("an empty changed-file list refuses to guess", () => {
   const d = automergeDecision({ files: [] });
   assert.equal(d.code, "NO_FILES");
   assert.equal(d.needsFounder, true);
+});
+
+test("a truncated changed-file list refuses, even when every path it saw is allowed", () => {
+  // The one input that makes an allowlist lie. The files endpoint caps at 3000
+  // including pagination and truncates SILENTLY, so "everything I could see is
+  // allowlisted" is worthless if the file I could not see is a workflow.
+  const d = automergeDecision({ files: ["data/a.json", "data/b.json"], truncated: true });
+  assert.equal(d.armed, false);
+  assert.equal(d.code, "TRUNCATED_FILE_LIST");
+  assert.equal(d.needsFounder, true);
+});
+
+test("truncation is reported ahead of the paths it could see", () => {
+  const d = automergeDecision({ files: ["data/a.json"], truncated: true });
+  assert.match(d.reason, /truncated/i);
+});
+
+test("a blocking label still outranks truncation in the reported reason", () => {
+  const d = automergeDecision({ files: ["data/a.json"], truncated: true, labels: ["hold"] });
+  assert.equal(d.code, "BLOCKING_LABEL");
+});
+
+test("governedCheck cannot certify a truncated list as clean", () => {
+  const c = governedCheck({ files: ["data/a.json"], truncated: true, enforce: true });
+  assert.equal(c.verdict, "UNAPPROVED");
+  assert.equal(c.exitCode, 1);
+  assert.match(c.governed[0].file, /truncated/);
+});
+
+test("CLI --truncated reaches the decision", () => {
+  const h = harness({ f: "data/a.json\n" });
+  runCli(["decide", "--files-from", "f", "--truncated", "--github-output", "O"], h.io);
+  assert.match(h.appended.O, /code=TRUNCATED_FILE_LIST/);
 });
 
 test("an unlisted path is not armed and does need a founder", () => {

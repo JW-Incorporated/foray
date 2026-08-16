@@ -65,7 +65,7 @@
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { automergeDecision, FOUNDER_QUEUE_LABEL } from "./path-policy.mjs";
+import { APPROVAL_LABEL, automergeDecision, FOUNDER_QUEUE_LABEL } from "./path-policy.mjs";
 
 export const CONFLICT_LABEL = "merge-conflict";
 export const CONFLICT_MARKER = "<!-- foray:pr-triage:merge-conflict -->";
@@ -77,6 +77,11 @@ export const QUEUE_LABEL = FOUNDER_QUEUE_LABEL;
  * appending a second copy of the list every time. */
 export const BLOCK_BEGIN = "<!-- BEGIN generated:waiting-on-you -->";
 export const BLOCK_END = "<!-- END generated:waiting-on-you -->";
+
+/* The checks `protect-main` requires. Used only to notice a head SHA that has
+ * none of them — see the self-heal in planMergeability. Keep in step with the
+ * ruleset; being wrong here costs a redundant CI dispatch, never a merge. */
+export const REQUIRED_CHECKS = ["backend", "data-and-site"];
 
 /* ------------------------------------------------------------- normalising */
 
@@ -90,6 +95,17 @@ export const BLOCK_END = "<!-- END generated:waiting-on-you -->";
  * but accepting both means a future caller cannot get this subtly wrong. */
 const MERGEABLE_FROM_BOOL = { true: "MERGEABLE", false: "CONFLICTING" };
 
+/* REST's `state` on a pull request is the ISSUE state — "open" / "closed" — and
+ * has nothing to do with mergeability. It is spelled the same as our normalised
+ * merge-state field, which is exactly the trap: reading `raw.state` first makes
+ * every gathered PR read "open", so `behind` and `dirty` become permanently
+ * false and the whole auto-update path dies silently while its tests stay green
+ * (they passed hand-built fixtures that set `state` directly — a shape the REST
+ * gatherer never produces). Found in review before this shipped. Two defences:
+ * `mergeable_state` is consulted BEFORE `state`, and these two values are
+ * rejected outright if they ever arrive in the merge-state slot. */
+const ISSUE_STATES = new Set(["open", "closed"]);
+
 /** One PR, from either API shape, as the flat record every planner takes. */
 export function normalizePr(raw = {}) {
   const labels = (raw.labels ?? []).map((l) => (typeof l === "string" ? l : l?.name)).filter(Boolean);
@@ -99,9 +115,10 @@ export function normalizePr(raw = {}) {
   if (mergeable === null || mergeable === undefined || mergeable === "") mergeable = "UNKNOWN";
   mergeable = String(mergeable).toUpperCase();
 
-  const state = String(
-    raw.state ?? raw.mergeStateStatus ?? raw.mergeable_state ?? "unknown"
+  let state = String(
+    raw.mergeStateStatus ?? raw.mergeable_state ?? raw.state ?? "unknown"
   ).toLowerCase();
+  if (ISSUE_STATES.has(state)) state = "unknown";
 
   return {
     number: Number(raw.number),
@@ -118,6 +135,16 @@ export function normalizePr(raw = {}) {
     mergeable,
     state,
     labels,
+    // `gh pr merge --auto` is STICKY: GitHub does not clear it when a label is
+    // added or when someone pushes. So knowing whether a PR is currently armed
+    // is what lets the sweep take it back off — see planMergeability.
+    autoMergeEnabled: Boolean(
+      raw.autoMergeEnabled ?? raw.auto_merge ?? raw.autoMergeRequest ?? false
+    ),
+    // Names of the check runs already reported on the current head SHA. Used
+    // only to notice a head that never got any (a lost CI dispatch).
+    checkNames: raw.checkNames ?? [],
+    headSha: raw.headSha ?? raw.head?.sha ?? "",
     files: raw.files ?? [],
     comments: raw.comments ?? [],
     author: raw.author?.login ?? raw.user?.login ?? "",
@@ -172,7 +199,14 @@ export function conflictComment(pr) {
  *   { kind: "dispatch-ci",  pr, ref }   always paired with update-branch
  */
 export function planMergeability(prs, opts = {}) {
-  const { autoUpdate = true } = opts;
+  const {
+    autoUpdate = true,
+    freeze = "",
+    sweep = false,
+    now = Date.now(),
+    requiredChecks = REQUIRED_CHECKS,
+    staleAfterMs = 30 * 60 * 1000,
+  } = opts;
   const actions = [];
   const notes = [];
 
@@ -185,6 +219,28 @@ export function planMergeability(prs, opts = {}) {
     if (pr.baseRefName && pr.baseRefName !== "main") {
       notes.push(`#${pr.number}: targets ${pr.baseRefName}, not main — skipped`);
       continue;
+    }
+
+    // DISARM. `gh pr merge --auto` is sticky: adding `hold`, pushing a commit
+    // that touches `.github/`, or flipping AUTOMERGE_FREEZE does NOT clear it,
+    // so a PR armed a minute before any of those still merges the moment its
+    // checks go green. The automerge job re-decides and prints NOT ARMED, which
+    // is worse than useless on its own — it reads as if something stopped it.
+    // Taking the arming back off is the half that was missing.
+    //
+    // This is also what makes AUTOMERGE_FREEZE a real kill switch: setting a
+    // repo variable fires no PR event at all, so the 6-hourly sweep is the only
+    // thing that can reach an already-armed PR.
+    if (pr.autoMergeEnabled) {
+      const decision = automergeDecision({
+        files: pr.files,
+        labels: pr.labels,
+        freeze,
+        baseRef: pr.baseRefName || "main",
+      });
+      if (!decision.armed) {
+        actions.push({ kind: "disable-auto", pr: pr.number, reason: decision.reason });
+      }
     }
 
     const labelled = pr.labels.includes(CONFLICT_LABEL);
@@ -245,6 +301,32 @@ export function planMergeability(prs, opts = {}) {
         // PR with one whose checks never report. See the header.
         actions.push({ kind: "dispatch-ci", pr: pr.number, ref: pr.headRefName });
       }
+      continue;
+    }
+
+    // SELF-HEAL: a head SHA carrying none of the required checks.
+    //
+    // `update-branch` is asynchronous (202 Accepted) and the paired dispatch can
+    // still lose the race or 422 even with the executor's SHA poll. If it does,
+    // the PR is no longer `behind`, so nothing above would ever look at it
+    // again, and it sits at "Expected — waiting for status to be reported"
+    // forever — the exact silent stall this file exists to delete, manufactured
+    // by the fix for it. This branch notices and re-dispatches.
+    //
+    // Sweep-only and time-gated: on a fresh PR the checks legitimately have not
+    // reported yet, and dispatching into that race would double every CI run.
+    // A head that is 30 minutes old with zero required checks is stuck, not
+    // starting.
+    if (sweep && pr.headRefName && !pr.crossRepo && pr.checkNames.length !== undefined) {
+      const age = pr.updatedAt ? now - Date.parse(pr.updatedAt) : Infinity;
+      const missing = requiredChecks.filter((c) => !pr.checkNames.includes(c));
+      if (missing.length === requiredChecks.length && Number.isFinite(age) && age > staleAfterMs) {
+        actions.push({ kind: "dispatch-ci", pr: pr.number, ref: pr.headRefName });
+        notes.push(
+          `#${pr.number}: head has none of ${requiredChecks.join("/")} after ` +
+            `${Math.round(age / 60000)}m — re-dispatching CI`
+        );
+      }
     }
   }
   return { actions, notes };
@@ -290,6 +372,13 @@ export function planFounderQueue(prs, opts = {}) {
         code: decision.code,
         labels: pr.labels,
         updatedAt: pr.updatedAt,
+        // `founder-approved` makes the `path-policy` CHECK green; it does not
+        // arm auto-merge on a governed path, so the PR stays in this queue
+        // until someone actually merges it. Surfacing it means the founder can
+        // see at a glance which rows are "already agreed, just needs the
+        // click" — otherwise an approved PR looks identical to an unread one
+        // and the batched list starts getting skimmed.
+        approved: pr.labels.includes(APPROVAL_LABEL),
       });
       if (!labelled) actions.push({ kind: "add-label", pr: pr.number, label: QUEUE_LABEL });
     } else if (labelled) {
@@ -344,7 +433,12 @@ export function renderWaitingBlock(queue, opts = {}) {
     lines.push("| PR | What it is | Why it needs you |", "| --- | --- | --- |");
     for (const item of queue) {
       const link = item.url ? `[#${item.number}](${item.url})` : `#${item.number}`;
-      lines.push(`| ${link} | ${cell(item.title)} | ${cell(item.reason)} |`);
+      // "approved" means the path-policy check is satisfied and only the merge
+      // itself is left — a materially different ask from "nobody has looked".
+      const why = item.approved
+        ? `**approved — just needs the merge.** ${cell(item.reason)}`
+        : cell(item.reason);
+      lines.push(`| ${link} | ${cell(item.title)} | ${why} |`);
     }
     lines.push("");
     lines.push(
@@ -358,11 +452,22 @@ export function renderWaitingBlock(queue, opts = {}) {
   return lines.join("\n");
 }
 
-/** Make one line of text safe inside a markdown table cell. */
+/**
+ * Make one line of untrusted text safe inside a markdown table cell.
+ *
+ * The `<!--` neutralisation is not cosmetic. A PR titled
+ * `<!-- END generated:waiting-on-you -->` would render that marker INSIDE the
+ * generated block, and spliceBlock finds the FIRST `BLOCK_END` — so the next
+ * `waiting --write` would splice at the injected marker, duplicate half the
+ * block and orphan the real one. PR titles and file paths are both attacker- or
+ * accident-controlled text that lands here.
+ */
 function cell(text) {
   return String(text ?? "")
     .replace(/\r?\n/g, " ")
     .replace(/\|/g, "\\|")
+    .replace(/<!--/g, "<!‑‑")
+    .replace(/-->/g, "‑‑>")
     .trim();
 }
 
@@ -458,6 +563,8 @@ options:
   --no-auto-update       plan no update-branch/dispatch-ci actions
   --partial              (plan) this run looked at one PR, not all of them, so
                         do not render the founder queue as if it were complete
+  --sweep                (plan) this is the scheduled sweep, so enable the
+                        checks-missing self-heal (see planMergeability)
   --actions <path>       write planned actions as JSON lines here
   --summary <path>       append a markdown report here ($GITHUB_STEP_SUMMARY)
   --file <path>          (waiting) the file to splice, default HUMAN-ACTIONS.md
@@ -474,7 +581,7 @@ const VALUE_FLAGS = new Set([
   "--file",
   "--repo",
 ]);
-const BOOL_FLAGS = new Set(["--no-auto-update", "--write", "--print", "--check", "--partial"]);
+const BOOL_FLAGS = new Set(["--no-auto-update", "--write", "--print", "--check", "--partial", "--sweep"]);
 
 export function parseArgs(argv) {
   const [command, ...rest] = argv;
@@ -545,6 +652,7 @@ export function runCli(argv, io = {}) {
     const { actions, notes, queue } = planTriage(prs, {
       freeze: opts.freeze,
       autoUpdate: !opts.noAutoUpdate,
+      sweep: Boolean(opts.sweep),
     });
     if (opts.actions) {
       $.writeFile(opts.actions, actions.map((a) => JSON.stringify(a)).join("\n") + (actions.length ? "\n" : ""));

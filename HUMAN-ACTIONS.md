@@ -33,10 +33,15 @@ stays green. These two steps make it actually block.
 
 **Read this before doing it — it is a real trade, not a formality.**
 
-- What you gain: both merge routes answer to the same rule, and touching a
-  governed path becomes a founder *approval* (apply one label) instead of a
-  founder *merge* (watch the PR, then click merge). Fewer interruptions, same
-  authority.
+- What you gain: both merge routes answer to the same rule, and every PR that
+  touches a governed path says so on its own face instead of only in a workflow
+  log nobody opens.
+- What you do **not** gain, stated plainly because an earlier draft of this
+  entry got it wrong: applying `founder-approved` makes the *check* green, it
+  does **not** auto-merge the PR. You still click merge. Letting a label
+  auto-merge a change to `.github/` or `CLAUDE.md` would be more dangerous than
+  requiring the click, and nobody has decided that — if you want that trade,
+  say so and it can be built, but it should not arrive as a side effect.
 - What you do NOT gain: this is not a lock. You both have admin, and an admin
   can override a required check — that is supported and sometimes correct.
   Bluntly: the check is satisfied by a label, and an agent with write access to

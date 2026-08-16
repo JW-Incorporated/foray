@@ -68,16 +68,29 @@ concurrency:
 
 jobs:
   path-policy:
+    # Only PRs into `main`. Without this the job would check out and EXECUTE
+    # `tools/ci/` from whatever branch the PR happened to target — anyone with
+    # write access could put arbitrary code on an unprotected branch and have
+    # Actions run it, and the policy judging such a PR would be the policy it
+    # shipped. The token is read-only so this was never escalation, but it is
+    # gratuitous, and the check is meaningless on those PRs anyway.
+    if: github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
-      # The policy is read from the BASE, not from this PR, for the same reason
-      # automerge-nightly.yml does it: a PR must not be able to rewrite the rule
-      # that judges it. `tools/ci/` is a DENIED path precisely so that rewriting
-      # it requires a human merge first.
-      - name: Check out the policy from the base branch
+      # The DEFAULT BRANCH, never this PR — a PR must not be able to rewrite the
+      # rule that judges it. `tools/ci/` is a DENIED path precisely so that
+      # rewriting it requires a human merge first.
+      #
+      # Not `base.sha`: on every PR opened before this change landed,
+      # `tools/ci/` does not exist at that commit, so the job would die with
+      # "Cannot find module" — and once this check is REQUIRED that is a
+      # permanently red gate no push can clear, because pushing does not move
+      # `base.sha`. It would also mean a policy tightening never applied to
+      # already-open PRs. See automerge-nightly.yml point 3.
+      - name: Check out the policy from the default branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.repository.default_branch }}
           sparse-checkout: tools/ci
           sparse-checkout-cone-mode: false
           persist-credentials: false
@@ -95,6 +108,18 @@ jobs:
           # before the founder labels it must go green on the `labeled` re-run.
           gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' > pr-labels.txt
 
+          # The files endpoint also caps at 3000 including pagination, silently.
+          # "Every path I could see is clean" is worth nothing if I could not see
+          # all of them, so compare against the PR's own count and refuse.
+          expected=$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')
+          actual=$(wc -l < changed-files.txt | tr -d ' ')
+          if [ "$expected" != "$actual" ]; then
+            echo "INCOMPLETE changed-file list: API reports $expected, we read $actual"
+            echo "TRUNCATED=--truncated" >> "$GITHUB_ENV"
+          else
+            echo "TRUNCATED=" >> "$GITHUB_ENV"
+          fi
+
       - name: Evaluate
         env:
           ENFORCE: ${{ vars.PATH_POLICY_ENFORCE }}
@@ -111,4 +136,5 @@ jobs:
             --labels-from pr-labels.txt \
             --pr "$PR" \
             $enforce \
+            ${TRUNCATED:-} \
             --summary "$GITHUB_STEP_SUMMARY"

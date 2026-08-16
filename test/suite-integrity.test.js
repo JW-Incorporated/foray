@@ -59,8 +59,8 @@ const FLOORS = {
   "test/app-security.test.js": 18,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
-  "tools/ci/path-policy.test.mjs": 75,
-  "tools/ci/pr-triage.test.mjs": 66,
+  "tools/ci/path-policy.test.mjs": 82,
+  "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
@@ -102,13 +102,99 @@ for (const [rel, floor] of Object.entries(FLOORS)) {
 }
 
 /* The source trees that can auto-merge without a human read, and therefore the
- * trees whose suites must all be floored. This list should track Tiers 3–4 of
- * ALLOWED_PREFIXES in .github/workflows/automerge-nightly.yml.
+ * trees whose suites must all be floored. This list tracks Tiers 3–4 of
+ * ALLOWED_PREFIXES in tools/ci/path-policy.mjs.
  *
- * `backend/` is deliberately absent for the same reason it is absent from the
- * allowlist: backend PRs still get read by a person, so the floor buys nothing
- * there. Add it here the day backend/ becomes auto-mergeable, not before. */
+ * `backend/` is NOT here, and that is now a statement about mechanics rather
+ * than about policy — see BACKEND_FLOORS below. This constant is pinned to
+ * SCANNED_DIRS in tools/ci/run-suites.mjs (the closure test at the bottom
+ * asserts the two scans agree), and the CI runner does not run backend's
+ * TypeScript suites: they belong to the separate, required `backend` job. So
+ * adding "backend" here would either break that pin or silently duplicate a CI
+ * job. The floor is enforced by its own scan instead. */
 const SCANNED_DIRS = ["player", "test", "tools"];
+
+/* backend/test/ became auto-mergeable on 2026-08-16 (PR #175's blocker), so its
+ * suites need the same protection as everything else in the allowlist — and
+ * they need it for a sharper reason than the others.
+ *
+ * The `backend` check is REQUIRED. The whole argument for letting test-only
+ * backend changes land unread is "a wrong assertion turns that check red". A PR
+ * that DELETES the assertions turns it green. That is the exact two-step
+ * gutting this file was written for (weaken the gate in PR 1, land the thing it
+ * would have caught in PR 2), and until this list existed both steps could have
+ * auto-merged with no human.
+ *
+ * Separate from FLOORS because these are `.test.ts`, run by the `backend` job
+ * via `npm test` in backend/, not by tools/ci/run-suites.mjs. */
+const BACKEND_FLOORS = {
+  "test/archetypes.test.ts": 7,
+  "test/budgetGuard.test.ts": 6,
+  "test/candidateExtractor.test.ts": 8,
+  "test/conditionalGet.test.ts": 6,
+  "test/copyRules.test.ts": 3,
+  "test/createEnricher.test.ts": 1,
+  "test/dataSchemaCompliance.test.ts": 8,
+  "test/dedup.test.ts": 17,
+  "test/duration.test.ts": 12,
+  "test/events.test.ts": 15,
+  "test/html.test.ts": 8,
+  "test/interestLearning.test.ts": 30,
+  "test/itunes.test.ts": 3,
+  "test/ladderBuilder.test.ts": 13,
+  "test/ladderIntegrity.test.ts": 11,
+  "test/ladderProgress.test.ts": 8,
+  "test/learningJob.test.ts": 4,
+  "test/parser.test.ts": 29,
+  "test/personas.test.ts": 6,
+  "test/podcastIndex.test.ts": 3,
+  "test/politeness.test.ts": 9,
+  "test/poolIntegrity.test.ts": 6,
+  "test/property/dedup.property.test.ts": 5,
+  "test/property/duration.property.test.ts": 5,
+  "test/property/html.property.test.ts": 4,
+  "test/property/interestWeight.property.test.ts": 3,
+  "test/redirect.test.ts": 6,
+  "test/scoring.test.ts": 17,
+  "test/sessionBuilder.test.ts": 12,
+  "test/stubEnricher.test.ts": 6,
+  "test/userInterests.test.ts": 17,
+};
+
+/* `it(` as well as `test(`: backend's suites use both spellings. */
+const TS_TEST_RE = /^\s*(test|it)\(/gm;
+
+for (const [rel, floor] of Object.entries(BACKEND_FLOORS)) {
+  test(`backend/${rel} still exists and has >= ${floor} tests`, () => {
+    const full = path.join(ROOT, "backend", rel);
+    assert.ok(
+      fs.existsSync(full),
+      `backend/${rel} is missing. backend/test/ can auto-merge now, so deleting a ` +
+        `suite is not a valid way to make the required 'backend' check pass.`
+    );
+    const count = (fs.readFileSync(full, "utf8").match(TS_TEST_RE) || []).length;
+    assert.ok(
+      count >= floor,
+      `backend/${rel} has ${count} tests but the committed floor is ${floor}. ` +
+        `If you removed tests on purpose, lower the floor in ` +
+        `test/suite-integrity.test.js in the same PR and say why.`
+    );
+  });
+}
+
+test("every backend suite on disk is covered by a floor", () => {
+  const found = findSuites("backend/test", /\.test\.ts$/)
+    .map((f) => f.replace(/^backend\//, ""))
+    .sort();
+  const unfloored = found.filter((f) => !(f in BACKEND_FLOORS));
+  assert.deepStrictEqual(
+    unfloored,
+    [],
+    "these backend suites have no committed floor — add them to BACKEND_FLOORS " +
+      "in test/suite-integrity.test.js with the suite's current test count:\n" +
+      unfloored.join("\n")
+  );
+});
 
 /* `.mjs` matters: every suite under tools/ is an ES module, and the original
  * scan matched `.test.js` only — which is precisely why 26 tests sat

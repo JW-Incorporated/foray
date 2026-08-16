@@ -103,12 +103,28 @@ explicitly on the other.** A test-only backend change cannot break production:
 a wrong assertion turns the required `backend` check red and the PR cannot
 merge at all. The blast radius is a red build, not a bad deploy.
 
-**Once `path-policy` is enforcing** (HUMAN-ACTIONS.md #1 — Wyatt's call, not
-done yet), touching a governed path becomes a founder **approval** — apply the
-`founder-approved` label — rather than a founder **merge**. Be clear-eyed about
-that trade: it is a guardrail against accidents and a record of intent, not a
-wall. Both founders have admin and admin can override a required check, and the
-check is satisfied by a label that anything with repo write access can apply.
-It buys visibility and one consistent rule across both merge routes. A signal an
-agent genuinely cannot produce would need CODEOWNERS review from a
-founders-only team; that is a separate decision.
+**What `founder-approved` does, precisely.** It makes the `path-policy` *check*
+green. It does **not** arm auto-merge on a governed path — a founder still
+performs the merge. Say it that way and nowhere say "approval instead of
+merge": letting a label auto-merge a change to `.github/` or `CLAUDE.md` would
+be strictly more dangerous than requiring the click, and nobody has decided
+that. The label's value is that the rule is stated, evaluated on every PR, and
+recorded on the ones that pass it.
+
+Be clear-eyed about the limit. It is a guardrail against accidents and a record
+of intent, not a wall: both founders have admin and admin can override a
+required check, and the check is satisfied by a label that anything with repo
+write access can apply. It buys visibility and one consistent rule across both
+merge routes. A signal an agent genuinely cannot produce would need CODEOWNERS
+review from a founders-only team; that is a separate decision.
+
+**Two mechanics worth knowing, because their absence caused real incidents:**
+
+- Auto-merge, once armed, is **sticky**. Adding `hold` or pushing a commit that
+  touches a governed path does not clear it. `automerge-decision` therefore
+  *disarms* as well as arms, and the 6-hourly `pr-hygiene` sweep disarms
+  anything the `AUTOMERGE_FREEZE` kill switch should have stopped — setting a
+  repo variable fires no PR event, so the sweep is the only thing that can
+  reach an already-armed PR.
+- Arming is bound to the exact commit it judged (`--match-head-commit`), so a
+  later push cannot ride an earlier approval.

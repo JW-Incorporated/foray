@@ -69,9 +69,18 @@ permissions:
   pull-requests: write
   issues: write # labels and comments are issues-API resources
   actions: write # dispatching ci.yml after an update
+  checks: read # reading which check runs exist on a PR's head SHA
+  statuses: read # older integrations report as commit statuses, not check runs
 
 concurrency:
-  group: pr-hygiene-${{ github.event.pull_request.number || 'sweep' }}
+  # ONE global group, deliberately not per-PR. "Exactly one comment, ever" is
+  # enforced in the planner, which reads the PR's existing comments — so it is
+  # only sound if no two runs can be between "read comments" and "post comment"
+  # at the same time. Per-PR and sweep groups do not exclude each other: a
+  # `synchronize` on a conflicting PR landing at :23 would run alongside the
+  # sweep, both would see no marker, and both would comment. Serialising every
+  # run costs a little queueing (runs are ~30s) and buys the invariant.
+  group: pr-hygiene
   cancel-in-progress: false
 
 jobs:
@@ -127,8 +136,15 @@ jobs:
             done
             files=$(gh api --paginate "repos/$REPO/pulls/$n/files" --jq '[.[].filename]' | jq -s 'add // []')
             comments=$(gh api --paginate "repos/$REPO/issues/$n/comments" --jq '[.[].body]' | jq -s 'add // []')
-            jq -n --argjson pr "$pr" --argjson files "$files" --argjson comments "$comments" \
-              '$pr + {files: $files, comments: $comments}' > "pr-$n.json"
+            # Check-run names on the CURRENT head SHA. Used only to notice a head
+            # that has none of the required checks — a lost CI dispatch after an
+            # auto-update, which would otherwise strand the PR forever.
+            head_sha=$(jq -r '.head.sha' <<<"$pr")
+            checks=$(gh api --paginate "repos/$REPO/commits/$head_sha/check-runs" \
+                       --jq '[.check_runs[].name]' | jq -s 'add // []')
+            jq -n --argjson pr "$pr" --argjson files "$files" \
+                  --argjson comments "$comments" --argjson checks "$checks" \
+              '$pr + {files: $files, comments: $comments, checkNames: $checks}' > "pr-$n.json"
             jq -s '.[0] + [.[1]]' prs.json "pr-$n.json" > prs.tmp && mv prs.tmp prs.json
           done
           echo "gathered $(jq length prs.json) PR(s)"
@@ -146,12 +162,13 @@ jobs:
           # founder" from a sample of one — false reassurance is the specific
           # bug this whole change set is about.
           partial=""
-          if [ -n "${ONE_PR:-}" ]; then partial="--partial"; fi
+          sweep="--sweep"
+          if [ -n "${ONE_PR:-}" ]; then partial="--partial"; sweep=""; fi
           node tools/ci/pr-triage.mjs plan \
             --from prs.json \
             --freeze "${FREEZE:-}" \
             --repo "$REPO" \
-            $partial \
+            $partial $sweep \
             --actions actions.jsonl \
             --summary "$GITHUB_STEP_SUMMARY"
 
@@ -200,7 +217,32 @@ jobs:
               add-label)     gh pr edit "$pr" --repo "$REPO" --add-label "$label" ;;
               remove-label)  gh pr edit "$pr" --repo "$REPO" --remove-label "$label" ;;
               comment)       jq -r '.body' <<<"$line" | gh pr comment "$pr" --repo "$REPO" --body-file - ;;
-              update-branch) gh api -X PUT "repos/$REPO/pulls/$pr/update-branch" >/dev/null ;;
+              disable-auto)  gh pr merge "$pr" --repo "$REPO" --disable-auto ;;
+              # `PUT .../update-branch` returns 202 Accepted and merges in the
+              # BACKGROUND. Dispatching immediately races it and loses two ways:
+              # CI runs on the pre-update SHA (so the new head gets no checks at
+              # all), or the dispatch 422s because the branch has not yet
+              # received main's `ci.yml` and `workflow_dispatch` is validated at
+              # the ref. So wait for the head SHA to actually move before the
+              # paired dispatch-ci action runs. The sweep's checks-missing
+              # self-heal (tools/ci/pr-triage.mjs) is the backstop if this
+              # still ends up not dispatching.
+              update-branch)
+                before=$(gh api "repos/$REPO/pulls/$pr" --jq '.head.sha')
+                gh api -X PUT "repos/$REPO/pulls/$pr/update-branch" >/dev/null
+                moved=""
+                for _ in $(seq 1 20); do
+                  sleep 3
+                  after=$(gh api "repos/$REPO/pulls/$pr" --jq '.head.sha')
+                  if [ "$after" != "$before" ]; then moved="$after"; break; fi
+                done
+                if [ -z "$moved" ]; then
+                  echo "update-branch on #$pr did not move the head within 60s" >&2
+                  false
+                else
+                  echo "#$pr head $before -> $moved"
+                fi
+                ;;
               # The other half of the pairing — without this the updated PR has
               # no checks on its new head SHA and can never merge.
               dispatch-ci)   gh workflow run ci.yml --repo "$REPO" --ref "$ref" ;;

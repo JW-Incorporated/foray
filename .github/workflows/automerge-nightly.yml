@@ -1,5 +1,5 @@
 # Auto-merge bot CONTENT PRs once their required checks pass — and, when it
-# does not, say plainly why.
+# does not, say plainly why, and take the arming back off.
 #
 # Why this exists (2026-07-24): content PRs used to sit open awaiting a human
 # merge, and in Swift2 the cloud agents babysat them with hourly self-check-in
@@ -28,6 +28,7 @@
 #   - Label a PR `hold` or `founder-decision` to stop that one.
 #   - Set repo variable AUTOMERGE_FREEZE to halt ALL of it instantly, with no
 #     PR and no deploy needed. This is the kill switch for a runaway army.
+#     It only reaches ALREADY-ARMED PRs via the pr-hygiene sweep — see point 4.
 #
 # ── WHAT CHANGED ON 2026-08-16, AND WHY ──────────────────────────────────────
 #
@@ -49,16 +50,33 @@
 #    path-policy.yml` now evaluates the same policy as a status check on every
 #    PR; see its header for the honest limit of what that buys.
 #
-# 3. THIS JOB NOW CHECKS OUT CODE — AND IT MUST BE THE BASE, NEVER THE HEAD.
-#    The previous version noted, correctly, that it contained no `actions/
-#    checkout` and therefore never executed PR-authored code while holding a
-#    `contents: write` + `pull-requests: write` token. Calling a module means
-#    checking something out, so it checks out `base.sha` — the tip of `main`
-#    that the PR targets — with a sparse checkout of `tools/ci` and no persisted
-#    credentials. A PR CANNOT influence the policy that judges it: to change the
-#    policy you must first merge a change to `tools/ci/`, which is a DENIED path
-#    and therefore needs a human. That deny entry is what makes this safe;
-#    do not remove it.
+# 3. THIS JOB NOW CHECKS OUT CODE — AND IT MUST NOT BE THE PR'S OWN. Calling a
+#    module means checking something out, so it checks out the DEFAULT BRANCH,
+#    sparsely, with no persisted credentials. A PR cannot influence the policy
+#    that judges it: to change the policy you must first merge a change to
+#    `tools/ci/`, which is a DENIED path and therefore needs a human. That deny
+#    entry is what makes this safe; do not remove it.
+#
+#    Not `base.sha`, which was the first attempt at "not the head". That is the
+#    base tip as of the last PR event, which fails two ways: a policy TIGHTENING
+#    would not apply to any already-open PR until it re-synced, and on every PR
+#    opened before this change landed `tools/ci/` does not exist at that commit,
+#    so the job dies with "Cannot find module" — a permanently red gate that
+#    pushing cannot fix, because pushing does not move `base.sha`.
+#
+# 4. IT NOW DISARMS, NOT JUST ARMS. `gh pr merge --auto` is STICKY: GitHub does
+#    not clear it when a label is added, and does not clear it on a push. So the
+#    old flow could re-decide NOT ARMED on a `labeled`/`synchronize` event, print
+#    it, and let the PR merge anyway — `hold`, `founder-decision` and a
+#    mid-flight `.github/` addition were all cosmetic once a PR was armed. The
+#    decision is only honest if the NOT-ARMED branch does something. Two halves:
+#      - the disarm step below, for anything that fires a PR event, and
+#      - `--match-head-commit`, so arming approves ONE commit and a later push
+#        cannot ride an old approval.
+#    Setting AUTOMERGE_FREEZE fires no PR event at all, so already-armed PRs are
+#    reached by the 6-hourly sweep in `pr-hygiene.yml`, which disarms every open
+#    PR whose decision is NOT ARMED. That is what makes the kill switch a kill
+#    switch rather than a "stop arming new ones" switch.
 
 name: automerge-nightly
 
@@ -90,12 +108,12 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      # BASE, not head. See point 3 in the header — this is the whole reason it
-      # is safe for this job to run code at all.
-      - name: Check out the policy from main (never from the PR)
+      # The DEFAULT BRANCH, never the PR head. See point 3 in the header — this
+      # is the whole reason it is safe for this job to run code at all.
+      - name: Check out the policy from the default branch (never from the PR)
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.repository.default_branch }}
           sparse-checkout: tools/ci
           sparse-checkout-cone-mode: false
           persist-credentials: false
@@ -113,8 +131,22 @@ jobs:
           # is `.github/workflows/ci.yml`. Truncation that fails OPEN is the one
           # failure mode a path allowlist cannot survive.
           gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' > changed-files.txt
-          gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name'  > pr-labels.txt
-          echo "changed files: $(wc -l < changed-files.txt)"
+          gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' > pr-labels.txt
+
+          # The REST endpoint has its OWN cap: 3000 files including pagination,
+          # truncated SILENTLY. So paginating is necessary and not sufficient.
+          # The PR object reports the true count — if the two disagree we did not
+          # see the whole diff, and "every path I could see is allowlisted" is
+          # then worth nothing. Refuse instead.
+          expected=$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')
+          actual=$(wc -l < changed-files.txt | tr -d ' ')
+          if [ "$expected" != "$actual" ]; then
+            echo "INCOMPLETE changed-file list: API reports $expected, we read $actual"
+            echo "TRUNCATED=--truncated" >> "$GITHUB_ENV"
+          else
+            echo "TRUNCATED=" >> "$GITHUB_ENV"
+          fi
+          echo "changed files: $actual of $expected"
 
       - name: Decide
         id: decide
@@ -124,12 +156,14 @@ jobs:
         # Exits 0 whether or not it arms: "not armed" is a decision, and a red
         # check here would be indistinguishable from CI actually failing.
         run: |
+          set -uo pipefail
           node tools/ci/path-policy.mjs decide \
             --files-from changed-files.txt \
             --labels-from pr-labels.txt \
             --freeze "${FREEZE:-}" \
             --pr "$PR" \
             --base main \
+            ${TRUNCATED:-} \
             --summary "$GITHUB_STEP_SUMMARY" \
             --github-output "$GITHUB_OUTPUT"
 
@@ -139,7 +173,32 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
-        run: gh pr merge "$PR" --repo "$REPO" --squash --auto --delete-branch
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # --match-head-commit binds the arming to the commit that was actually
+        # judged. Without it, arming is open-ended: a later push could land any
+        # diff at all on an approval given for a different one.
+        run: |
+          gh pr merge "$PR" --repo "$REPO" --squash --auto --delete-branch \
+            --match-head-commit "$HEAD_SHA"
+
+      - name: Disarm auto-merge
+        if: steps.decide.outputs.armed != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        # The other half of an honest decision. `--disable-auto` errors when
+        # auto-merge was not enabled, which is the common case and not a
+        # problem — hence `|| true`. This is what makes `hold`, `founder-decision`
+        # and a mid-flight governed-path addition actually stop a merge instead
+        # of merely being reported.
+        run: |
+          set -uo pipefail
+          if gh pr merge "$PR" --repo "$REPO" --disable-auto 2>/dev/null; then
+            echo "auto-merge was enabled and has been turned OFF for #$PR"
+          else
+            echo "auto-merge was not enabled on #$PR — nothing to disarm"
+          fi
 
       # NOTE: the `needs-founder` queue label is deliberately NOT written here,
       # even though `steps.decide.outputs.needs_founder` says exactly what it
