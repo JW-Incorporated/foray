@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T11:42:53.581Z",
+  "built_at": "2026-08-16T11:43:03.233Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -13019,6 +13019,89 @@
       "ghost-stories",
       "true-stories",
       "witness"
+    ],
+    "the-ancients--how-slavery-built-the-roman-empire": [
+      "ancient-rome",
+      "roman-history",
+      "roman-empire",
+      "slavery",
+      "ancient-history",
+      "labor",
+      "historiography",
+      "conquest"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1617": [
+      "history-of-technology",
+      "engineering-history",
+      "causation",
+      "historiography",
+      "technology",
+      "engines"
+    ],
+    "founders--429-bob-dylan-s-autobiography": [
+      "business",
+      "founders",
+      "biography",
+      "creativity",
+      "entrepreneurship",
+      "memoir",
+      "reinvention"
+    ],
+    "twenty-minute-vc--20growth-how-to-build-a-100m": [
+      "startups",
+      "business",
+      "marketing",
+      "growth",
+      "venture-capital",
+      "paid-ads",
+      "referral-marketing",
+      "ugc"
+    ],
+    "the-race-f1-podcast--driving-style-secrets-we-answer-your": [
+      "motorsport",
+      "racing",
+      "f1-history",
+      "driving",
+      "formula-1",
+      "race-analysis"
+    ],
+    "masters-of-scale--pioneers-of-ai-why-ai-conversations": [
+      "ai",
+      "artificial-intelligence",
+      "trust",
+      "conversation",
+      "technology",
+      "journalism",
+      "psychology",
+      "communication"
+    ],
+    "common-descent--episode-250-camels": [
+      "paleontology",
+      "evolution",
+      "andes",
+      "desert",
+      "zoology",
+      "mammals",
+      "biology",
+      "natural-history"
+    ],
+    "casefile--case-348-toyah-cordingley": [
+      "true-crime",
+      "murder-investigation",
+      "crime",
+      "investigation",
+      "australia",
+      "missing-persons",
+      "homicide-investigation"
+    ],
+    "wow-in-the-world--wewow-on-the-weekend-popsicle-stick": [
+      "kids",
+      "family",
+      "science-for-kids",
+      "arts-and-crafts",
+      "ducks",
+      "baking",
+      "variety-show"
     ]
   }
 }
