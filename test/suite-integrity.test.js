@@ -66,6 +66,7 @@ const FLOORS = {
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
   "tools/transcribe/fetch-audio.test.mjs": 64,
+  "tools/transcribe/ad-inflation.test.mjs": 20,
   "tools/corpus/fetcher.test.mjs": 23,
   "tools/corpus/extract.test.mjs": 21,
   "tools/corpus/db.test.mjs": 20,
