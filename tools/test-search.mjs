@@ -65,8 +65,8 @@
         tagDF=1/corpusDF=0.00102 -- it was always the hand-removed,
         one-tangential-mention case the next clause describes, and pretending
         it was strictly zero is what made "no NBA content in catalog" look
-        true enough to assert in §3 for the three weeks between 040c9f6
-        (2026-07-24) and the refresh that broke it (24 days).
+        true enough to assert in §3 for the 24 days between 040c9f6
+        (2026-07-24) and the refresh that broke it.
 
    Usage: node tools/test-search.mjs
    Exit code 0 = all pass, 1 = at least one failure (readable report to stdout). */
@@ -351,21 +351,31 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
      basketball only in its hook). Widening the shared itemHas() instead would
      loosen every §1/§2 on-topic check, a separate decision with a 51-needle
      blast radius.
+     `show` is deliberately NOT read. scoreMatch weights a show hit at 1.0,
+     below the 1.2 per-group threshold, so an item whose ONLY league mention is
+     its show name can never reach `results` at all -- counting it would inflate
+     `covered` and switch the gate off for an item the ranker will never return,
+     which is the NBAA failure in a different costume. No catalog show currently
+     contains the word, so this is prophylactic.
      COLLAPSE THIS INTO THE SHARED MATCHER once search-engine.js exports
-     hitText/hitTag (PR #211 does exactly that, and is waiting only on a label).
-     The duplication is the price of not exporting them, and it should be paid
-     back, not kept. */
+     hitText/hitTag. PR #211 does exactly that -- and its rewritten itemHas is
+     already equivalent to this predicate, so the collapse is a pure deletion,
+     not a re-derivation. It is open and carries `needs-founder`, so it is
+     waiting on founder action rather than on any work. The duplication is the
+     price of not exporting them and should be paid back, not kept. */
   const nbaWord = new RegExp("\\b" + needle + "\\b");
   const taggedLeague = (i) => {
     const tags = itemTags.tags?.[i.id] || [];
     return tags.some((t) => t === needle || t.split("-").includes(needle));
   };
+  const titleHit = (i) => nbaWord.test(i.title.toLowerCase());
+  const topicsHit = (i) => nbaWord.test((i.topics || []).join(" ").toLowerCase());
   const namesLeague = (i) =>
     taggedLeague(i) ||
-    nbaWord.test([i.title, i.show, i.hook, (i.topics || []).join(" ")].join(" ").toLowerCase());
+    nbaWord.test([i.title, i.hook, (i.topics || []).join(" ")].join(" ").toLowerCase());
 
   const covered = pool.filter(namesLeague).length;
-  const { status, picks, results } = search(needle);
+  const { status, picks, results, interp } = search(needle);
 
   const offTopic = picks.filter((p) => !namesLeague(p.i));
   check(`"nba" returns only items that name the league`, offTopic.length === 0,
@@ -378,31 +388,64 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
      derives its relative `bar`. So this structurally cannot reproduce the
      landmine that got the old recall assertion deleted -- no relative bar is
      involved, and an item's presence here does not depend on how well any OTHER
-     item scored.
-     Restricted to STRONG-signal items, which is a claim about scoreMatch's own
-     weights: a tag hit is 2.5 x 1.35 = 3.375, topics 3 -> 4.05, title 2 -> 2.7,
-     all comfortably past minScore 2. Deliberately excluded: show-only (1.0,
-     which never clears the 1.2 per-group threshold, so it is not retrievable by
-     design) and hook-only (1.5 -> 2.025, which clears minScore by 1.25% and
-     would become a false red the day that constant moves).
-     Honest about its own reach: the suite catches the flood mutation below by
-     other means too, so this is not the only net. But when `covered` is wrong
-     and purity is vacuous -- the NBAA scenario above -- it is the only thing
-     left asserting anything about this query. */
-  const stronglySignalled = pool.filter((i) =>
-    taggedLeague(i) ||
-    nbaWord.test(i.title.toLowerCase()) ||
-    nbaWord.test((i.topics || []).join(" ").toLowerCase()));
+     item scored. (It also passes `passesFilters`, vacuous here since a bare
+     "nba" carries no duration/format modifier, and never takes a relaxation
+     branch for the same reason.)
+     Restricted to STRONG-signal items, and the floor is DERIVED, not hard-coded,
+     because scoreMatch's df multiplier is itself a function of catalog size:
+     `best * (df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75)`, where df is tagDF("nba")
+     -- exactly the quantity the nightly grows. At 1.35 a tag hit is 3.375,
+     topics 4.05, title 2.7, all clear of minScore 2. But at df=11 the
+     multiplier drops to 1 and a title-only item scores EXACTLY 2.000, which the
+     strict `sum > minScore` gate rejects -- so a hard-coded field list would
+     start false-reding on pure catalog growth and blame "a scoring regression".
+     That is the failure this whole case exists to eliminate, so the field list
+     is filtered by the tier actually in force. Fields sum, so a single field is
+     a floor on the score, never a ceiling.
+     Deliberately excluded at every tier: show-only (1.0, which never clears the
+     1.2 per-group threshold, so it is not retrievable by design) and hook-only
+     (2.025, which clears minScore by 1.25% and would become a false red the day
+     that constant moves).
+     HONEST ABOUT ITS REACH, because it is easy to overrate. The suite catches
+     the flood below by other means too, so this is not the only net. On the real
+     pools it would NOT catch #219-style matcher drift: break hitTag's short
+     branch and both real items keep prose hits (Chris Chase falls to hook-only
+     2.025, still retrieved), so this check stays green -- while on the refresh's
+     pool that same drift silently flips the query sparse -> empty and the whole
+     battery still passes, because the loss happens at the relative bar this file
+     deliberately refuses to assert. It earns its place in one specific state:
+     when `covered` is wrong and purity is vacuous, it is the only thing left
+     asserting anything at all about this query. */
+  const dfMult = (() => {
+    const df = interp.groups[0]?.df ?? 0;
+    return df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75;
+  })();
+  const strongFields = [[2.5, taggedLeague], [3, topicsHit], [2, titleHit]]
+    .filter(([weight]) => weight * dfMult > 2);
+  const stronglySignalled = pool.filter((i) => strongFields.some(([, hit]) => hit(i)));
   const unretrieved = stronglySignalled.filter((i) => !results.some((r) => r.i.id === i.id));
-  check(`"nba" retrieves all ${stronglySignalled.length} item(s) carrying a strong signal (tag/title/topics)`,
+  check(`"nba" retrieves every item carrying a signal strong enough to clear minScore alone`,
     unretrieved.length === 0,
-    `never reached the result set: ${unretrieved.map((i) => `${i.id} "${i.title}"`).join(", ")} -- these clear minScore on one field alone, so a miss is a scoring or gating regression, not a tiering choice`);
+    `${stronglySignalled.length} item(s) qualify at df multiplier ${dfMult}; never reached the result set: ${unretrieved.map((i) => `${i.id} "${i.title}"`).join(", ")} -- each clears minScore on one field alone, so a miss is a scoring or gating regression, not a tiering choice`);
 
   if (covered < 2) {
     check(`"nba" is honestly empty (only ${covered} catalog item(s) name the league, below the two-strong floor)`,
       status === "empty" && picks.length === 0,
       `got status=${status}, picks=${picks.length} -- if these picks DO name the league, the coverage count above is what is wrong, not the engine`);
   }
+  /* THE GATE STILL HAS A DATA-ONLY OFF-SWITCH, and saying so is the point of
+     writing it down. Closing the NBAA hole closed the SUBSTRING route, not every
+     route. Two ordinary hook mentions of the league (say a Business Breakdowns
+     episode pricing an NBA jersey patch) take `covered` to 3 on main's data while
+     scoring 2.025 each -- under a 2.700 bar set by the one tagged item, so
+     `results` has three entries, `classifyResults` returns empty, and the gate
+     switches off against 0 picks. `covered >= 2` is a proxy for "two items could
+     clear the RELATIVE strong floor", and a proxy is all it can be: gating on the
+     strong-signal count instead just trades this for a false red when three
+     hook-only items arrive with no dominant tagged one. That is the same trade
+     that got the recall assertion deleted, taken the same way -- prefer silence
+     to a nightly-blocking assertion over correct behaviour -- and the retrieval
+     check above is what keeps that silence from being total. */
 }
 
 /* ---------- 4. diversity: no show dominates, except where honesty requires it ---------- */
