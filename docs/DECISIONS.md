@@ -662,3 +662,67 @@ its reasoning.
   - **Copy rules apply to scripts** — they are user-facing copy and go through
     the CI copy-rules gate. Note the standing irony: the feature's internal name
     ("deep dive") is itself a banned phrase and must never appear in a script.
+
+## 2026-08-17 (the native app shell, and what `ios/` is for now)
+
+- **Foray ships as a Capacitor shell around the web player, and the shell lives in
+  `mobile/` — not at the repo root.** Issue #36 (MP2). Rationale and the full
+  argument: `docs/mobile-shell.md`. Capacitor brings `node_modules` and a build
+  step, and the repo root is deliberately dependency-free with no build step —
+  that property is what lets the keyless Action deploy the static site from
+  `main`'s root, and the root `package.json`'s own description records it. So the
+  shell carries its own `package.json` and reaches *up* into the repo for the web
+  files, the same pattern as `backend/` and `tools/corpus/`. **This deviates from
+  #36's own recommendation**, which said the scaffold "puts a `package.json` +
+  `node_modules` at the repo root for the first time"; it must not, and
+  `tools/mobile/shell-invariants.test.mjs` now asserts the root declares no
+  dependencies of any kind and exactly one script.
+- **`ios/` is reclassified from "the iOS app" to reference material — and is
+  deliberately NOT moved or renamed.** There is exactly one iOS target that
+  ships, and it is the shell. `ios/ForayKit` stays real and CI-compiled (`ios-kit`
+  runs `swift test` on a macOS runner) and holds `IntentGrammar.swift`, which has
+  no JavaScript equivalent; `ios/App/Player/` is a **stale second copy** of
+  `player/queue-state.js` + `player/queue-manager.js`, and the JS port is
+  authoritative because it found two real bugs in the Swift (#50). #36 recommended
+  moving the tree to `ios-native-reference/`; that was rejected because it buys
+  nothing that Capacitor's `ios.path` does not, while costing edits to three
+  auto-merge-denied paths (`.github/workflows/ci.yml`, `CLAUDE.md`,
+  `ios/README.md`) plus the references in #28 and #33. **Role is fixed by writing
+  it down, not by renaming.** Whether the Swift state-machine copies get retired
+  is left open and belongs to #28.
+- **The app id is `com.jwincorporated.foray`, pinned in the config and in a test,
+  and it is still a founder ruling** (`HUMAN-ACTIONS.md` #13). Permanent once
+  published. `ios/project.yml`'s `com.wjduvall.foray` predates the org, belongs to
+  the reference scaffold, and has never been published.
+- **The native bundle's `webDir` is built by a committed, dependency-free script
+  whose data list is DERIVED from `app.js`, not written down.**
+  `tools/mobile/prepare-webdir.mjs`. `data/` holds ~62 MB of pipeline inputs and
+  the client fetches ~2.5 MB, so the bundle is curated and the cap (3 MB) **fails**
+  the build rather than warning. #36 listed the runtime files by hand and then
+  said to verify the list against the `fetchJson` calls; a list that must be
+  manually verified is a list that will drift, so the script reads the calls. The
+  matching risk — a regex that stops matching and emits a small, silent, valid
+  bundle with no session document — is guarded by a floor on the derivation.
+- **The service worker does not register inside the shell.** Cache-first in front
+  of local files buys nothing and is the "app won't update after a store release"
+  bug. Gated on `window.Capacitor.isNativePlatform()` plus the
+  `capacitor:`/`ionic:` origin, and deliberately **not** on the hostname —
+  Capacitor's Android default origin is `https://localhost`, so a hostname test
+  would break the service worker for anyone serving the real site from a local dev
+  server.
+- **`img-src` gained `'self'`, and that was a real latent iOS bug, not
+  housekeeping.** The iOS shell's origin is `capacitor://localhost` — a custom
+  scheme WKWebView requires — so the app's own bundled icons matched neither
+  `https:` nor `data:` and would have been blocked. Android's `https://localhost`
+  default would never have shown it. `connect-src` was deliberately **not**
+  widened as #36 asked: nothing fetches that origin yet, and the entry belongs
+  with #40's refresh code.
+- **Bundled data is frozen at build time, and that is now a named release gate.**
+  Nothing in the shell re-fetches data, so a shipped app shows its build day's
+  session until #40's remaining half lands. Filed as `HUMAN-ACTIONS.md` #15.
+- **Nothing was generated, installed, compiled or launched.** No `cap init`, no
+  `cap add`, no `mobile/node_modules`. Both platforms are blocked on hardware this
+  project does not have on Windows — MP1 already burned ~75 minutes proving the
+  Android emulator will not boot here — so committing a few hundred unverifiable
+  generated native files was rejected in favour of one command a founder runs on a
+  Mac (`HUMAN-ACTIONS.md` #14).

@@ -1,5 +1,34 @@
 # Foray — iOS
 
+> ## This is not the iOS app that ships. Read this box first.
+>
+> As of **2026-08-17** (issue **#36**, MP2) the shipping iOS app is a **Capacitor
+> shell around the web player**, and it lives in **`mobile/`** — see
+> `docs/mobile-shell.md`, which explains why in full. This directory is
+> **reference material plus one CI-tested Swift package**. It is deliberately not
+> moved or renamed; only its role changed.
+>
+> - **`ios/ForayKit/` is alive.** CI's `ios-kit` job runs `swift test
+>   --package-path ios/ForayKit` on a macOS runner, so this package really does
+>   compile and pass. `IntentGrammar.swift` (the Tier-1 voice grammar) exists
+>   **only** here — there is no JavaScript equivalent anywhere in the repo.
+> - **`ios/App/Player/` is a stale second copy.** `PlayerQueueState.swift` was
+>   ported to `player/queue-state.js` and the manager to
+>   `player/queue-manager.js`, and the **port is the authoritative copy**: it
+>   found two real bugs in this Swift (#50, AUDIT item 9), and it is what CI
+>   exercises. If you change playback behaviour, change the JavaScript. Whether
+>   this Swift gets retired belongs to **#28**.
+> - **Nothing under `App/` is compiled by CI**, and the segment machinery the
+>   product runs on (`foray-resolve`, `foray-queue`, `seam-gap`, `seek-policy`,
+>   `html-audio-backend`, `durable-store`) has no Swift counterpart at all.
+> - **Do not point `cap add ios` at this directory.** Capacitor's default output
+>   path is `ios`, which is why `mobile/capacitor.config.json` sets `ios.path`
+>   explicitly and `tools/mobile/shell-invariants.test.mjs` fails if the two ever
+>   resolve to the same place.
+> - **`PRODUCT_BUNDLE_IDENTIFIER` here is `com.wjduvall.foray`**, which predates
+>   the org. The shell uses `com.jwincorporated.foray`. They are different apps;
+>   this one has never been published.
+
 This was scaffolded on Windows, so **none of it has been compiled or run**.
 Every file was written with care for Swift/AVFoundation/SwiftUI correctness,
 and every spot where the exact behavior of an Apple API couldn't be

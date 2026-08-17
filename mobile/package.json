@@ -1,0 +1,27 @@
+{
+  "name": "foray-mobile",
+  "private": true,
+  "description": "The native app shell (issue #36). Deliberately NOT at the repo root: the root is dependency-free with no build step, which is what lets the keyless GitHub Action deploy the static site from main's root — see the root package.json's own description and CLAUDE.md. Capacitor's node_modules and its build step live here and reach UP into the repo for the web files, so the web deploy path is untouched. Same pattern as tools/corpus/ and backend/.",
+  "//no-test-script": "Intentional. tools/ci/run-suites.mjs scans player/, test/ and tools/ only, so no suite is ever discovered under mobile/ and this package is never installed by CI. The shell's own suites live in tools/mobile/ (dependency-free, root group). If SCANNED_DIRS is ever widened to include mobile/, the runner will hard-error on 'dependencies but no test script' — that is the loud failure it is designed to give, and the fix is to add a test script here, not to widen the scan quietly.",
+  "//webdir": "www/ is a BUILD ARTEFACT, gitignored, rebuilt by ../tools/mobile/prepare-webdir.mjs. Never edit anything inside it; you would be editing a copy of the real site.",
+  "scripts": {
+    "prepare:webdir": "node ../tools/mobile/prepare-webdir.mjs",
+    "sync": "npm run prepare:webdir && cap sync",
+    "add:ios": "npm run prepare:webdir && cap add ios",
+    "add:android": "npm run prepare:webdir && cap add android",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/splash-screen": "^8.0.0",
+    "@capacitor/status-bar": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0"
+  }
+}

@@ -766,6 +766,125 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 
 ---
 
+### 13. Rule on the app's permanent bundle id
+
+**Tag:** `[BLOCKING]` for any store submission · **Time:** ~2 minutes · **Owner:** Wyatt (architecture)
+
+**Why it matters.** The bundle id is the app's identity in both stores and it is **permanent once published** — changing it after a release means a brand-new listing, a new URL, and zero installs carried over. It is now written into a file and into a test, so it will not drift by accident, but nobody has actually agreed to it.
+
+**The recommendation** (from #36, unchanged): **`com.jwincorporated.foray`**. It matches the GitHub org that owns the repo and pays the Actions bill.
+
+**The one thing to know before saying yes.** `ios/project.yml` — the old SwiftUI scaffold — says `com.wjduvall.foray`, which predates the org. That is a **different app** and it has never been published, so there is nothing to migrate. As of #36 that directory is reference material, not the shipping app (`docs/mobile-shell.md` §1); the shipping app is the Capacitor shell in `mobile/`. Leaving the two ids different is fine and is the current state.
+
+**Steps.**
+
+1. Open `mobile/capacitor.config.json`. Line 2 reads:
+
+   ```json
+   "appId": "com.jwincorporated.foray",
+   ```
+
+2. Reply either **"confirmed"**, or with the id you want instead.
+3. If you want a different one, a session changes it in exactly two places — that file and the pinned assertion in `tools/mobile/shell-invariants.test.mjs` ("the app id is pinned, because it is permanent once published"). Do not change one without the other; the test exists so that the change cannot be quiet.
+
+**Worked if:** the status below says DONE and `mobile/capacitor.config.json`'s `appId` is the id you intend to publish under, forever.
+
+**Status:** OPEN
+
+---
+
+### 14. On a Mac: generate the iOS shell, add one `Info.plist` line, and build it
+
+**Tag:** `[BLOCKING]` for iOS · **Time:** ~30 minutes the first time (mostly Xcode and CocoaPods downloading) · **Owner:** whoever has the Mac
+
+**Why it matters.** #36 committed the shell's configuration, the `webDir` build and the guard tests, but **no native project has been generated and nothing has been compiled** — this is a Windows machine. Everything about a *running* app is therefore unverified, including one CSP change that is reasoned from WebKit's behaviour rather than observed. One session on a Mac converts the whole thing from "should work" to "does".
+
+**Do item #13 first** if you can — the bundle id is baked into the generated project, and changing it afterwards means regenerating.
+
+**Steps.** All of these run from the repo root unless stated.
+
+1. Install the toolchain, if it is not there:
+
+   ```bash
+   brew install cocoapods
+   ```
+
+   Xcode itself must be from the App Store, opened once so it accepts its licence.
+
+2. Install the shell's dependencies and build the web bundle:
+
+   ```bash
+   cd mobile
+   npm install
+   npm run prepare:webdir
+   ```
+
+   **Worked if:** it prints something like `webDir ready: mobile/www  (30 files, 2.52 MB of 3.00 MB)`. If it prints a size *error* instead, stop and report it — that guard is doing its job and the fix is not to raise the cap.
+
+3. Generate the iOS project:
+
+   ```bash
+   npm run add:ios
+   ```
+
+   This creates `mobile/ios/`. It does **not** touch the repo's `ios/` directory — that is the old SwiftUI scaffold and it must stay untouched (`docs/mobile-shell.md` §1).
+
+4. **Add the background-audio key.** This is the single most important step, and it is the *entire* iOS background-audio requirement — no plugin, no Swift, no audio-session code. Open `mobile/ios/App/App/Info.plist` and add, inside the top-level `<dict>`:
+
+   ```xml
+   <key>UIBackgroundModes</key>
+   <array>
+       <string>audio</string>
+   </array>
+   ```
+
+   In Xcode's UI the same thing is: select the **App** target → **Signing & Capabilities** → **+ Capability** → **Background Modes** → tick **Audio, AirPlay, and Picture in Picture**.
+
+5. Open and run it:
+
+   ```bash
+   npm run open:ios
+   ```
+
+   In Xcode: select the **App** scheme, pick your device, set your team under **Signing & Capabilities** (it is blank on purpose — no Apple Team ID is committed), then Run.
+
+6. **The four things to report back**, in one comment on #36:
+   1. Does the app launch and show the four cards?
+   2. **Are the app icons visible, and is the Xcode console free of Content-Security-Policy errors?** This is the one change made blind: the page's CSP had to gain `'self'` for `img-src`, because the iOS shell's origin is `capacitor://localhost` and the app's own bundled icons match neither `https:` nor `data:`. If you see a CSP error mentioning an image, say so — the fix is one token and it would be wrong.
+   3. Start a Foray, press play, **lock the phone for 15 minutes.** Does audio continue, and does the running order keep advancing through segments? (This is the real version of item #11, the one a browser tab cannot answer.)
+   4. Does the app pick up a new build, or does it seem to serve stale content? It should not cache — the shell deliberately does not register the service worker — and this is the check that confirms it.
+
+7. Commit `mobile/ios/` when it works. Capacitor's own guidance is to commit the generated project, and it keeps CI from needing a `cap add` step.
+
+**Worked if:** there is a comment on #36 answering the four questions in step 6, and `mobile/ios/` is committed with `UIBackgroundModes: audio` in its `Info.plist`.
+
+**Status:** OPEN
+
+---
+
+### 15. Decide: does the app ship with data frozen at build time?
+
+**Tag:** `[BLOCKING]` for a public release · **Time:** ~5 minutes to decide · **Owner:** Joey (product)
+
+**Why it matters.** The app bundles `data/*.json` — the session, the discover pool, the taxonomy, the Foray running orders. That is what makes it work offline in a cell dead zone, which is the founding constraint. But **the bundle is a snapshot taken when the app was built, and nothing in the app refreshes it.** The web site picks up the nightly regeneration immediately; a shipped app would show its build day's picks forever, until someone shipped a new build.
+
+For a product whose promise is "four picks, every day", that is the difference between a demo and the actual thing.
+
+**This is #40's remaining half** ("data freshness"), whose web half already landed in #204. It is not new work discovered late — it is a known, scoped piece — but #36 makes it concrete, because it is now the specific reason a store build would feel wrong.
+
+**The decision.** Reply with one of:
+
+- **"#40 before any public release"** (recommended). The app fetches fresh data on launch with the bundled copy as the offline fallback. This is one issue, already designed. A closed-testing or internal track can ship before it.
+- **"Ship frozen, refresh later."** Acceptable only for an internal/TestFlight build where everyone knows. Do not put this on a public listing: the four cards would be visibly stale within a week and the product would read as broken rather than as unfinished.
+
+**Answer this together with item #12** if you are answering either — both are "what must be true before a store listing", and a single sitting settles the release shape.
+
+**Worked if:** #40 says whether it gates the first public release, and the status below says DONE.
+
+**Status:** OPEN
+
+---
+
 <!-- BEGIN generated:waiting-on-you -->
 
 ### Waiting on a founder (auto-maintained)

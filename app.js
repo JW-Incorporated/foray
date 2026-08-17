@@ -1797,6 +1797,38 @@ async function init() {
 
 init();
 
-if ("serviceWorker" in navigator) {
+/* Should this page register `sw.js`? On the web: yes — it is what makes the site
+   render its last-known state in a cell dead zone. Inside the native shell
+   (issue #36 §2): NO.
+
+   The shell's assets are already local files, so a cache-first service worker
+   adds a stale-cache layer in FRONT of local files and buys nothing. Worse, it
+   is the classic "the app won't update" bug: a shipped build would keep serving
+   the cached copy of its own bundle after an app-store update replaced it, and
+   the symptom is an app that ignores new versions with no error anywhere.
+
+   `window.Capacitor` is injected by the native bridge before page scripts run,
+   so `isNativePlatform()` is the reliable signal and it is checked first. The
+   protocol check is a second, independent net for the iOS case, where the page
+   origin is `capacitor://localhost`.
+
+   Deliberately NOT a hostname check. Capacitor's Android default is
+   `https://localhost`, so testing for "localhost" would also disable the service
+   worker for anyone serving the real site from a local dev server — a live web
+   behaviour broken to fix an app one. */
+function shouldRegisterServiceWorker(win) {
+  try {
+    const cap = win && win.Capacitor;
+    if (cap) {
+      if (typeof cap.isNativePlatform === "function") { if (cap.isNativePlatform()) return false; }
+      else if (cap.isNative) return false;
+    }
+    const proto = (win && win.location && win.location.protocol) || "";
+    if (proto === "capacitor:" || proto === "ionic:") return false;
+  } catch (_) { /* a hostile/absent window is the web case, not the shell */ }
+  return true;
+}
+
+if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   navigator.serviceWorker.register("sw.js").catch(() => { /* progressive */ });
 }

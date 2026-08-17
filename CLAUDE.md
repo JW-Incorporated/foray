@@ -195,9 +195,22 @@ cannot drift.
 - `backend/`: Node/TS — ingest, dedup, cost metering, curation engine,
   session-builder CLI. Runs keyless in dry-run (StubEnricher); real keys go in
   root `.env` (gitignored).
-- `ios/`: SwiftUI app + ForayKit Swift package (state machine + intent grammar,
-  unit-tested). Builds only on macOS via XcodeGen. `// AUDIT:` marks unverified
-  AVFoundation behavior.
+- `mobile/`: the **shipping native app** — a Capacitor shell around the web
+  player (#36). Its own `package.json`; the repo root stays dependency-free and
+  no-build, and the Pages deploy from `main` root is untouched. The `webDir` is
+  built by `tools/mobile/prepare-webdir.mjs`, which **copies** the real
+  `index.html`/`app.js`/`styles.css`/`player/` plus the ~2.5 MB of `data/` the
+  client fetches — there is no second copy of the player. Architecture,
+  decisions and the founder's Mac steps: `docs/mobile-shell.md`.
+- `ios/`: **reference material, not the shipping app** (reclassified 2026-08-17,
+  #36 — the shell in `mobile/` is the app). SwiftUI app + ForayKit Swift package
+  (state machine + intent grammar, unit-tested). `ios/ForayKit` is real and CI
+  compiles it (`ios-kit`, macOS); `IntentGrammar.swift` exists only there.
+  `ios/App/` builds only on macOS via XcodeGen, is not compiled by CI, and its
+  `Player/` is a **stale second copy** of `player/queue-state.js` +
+  `player/queue-manager.js` — the JS port is authoritative (it found two bugs in
+  the Swift, #50). `// AUDIT:` marks unverified AVFoundation behavior. Retiring
+  the Swift copies belongs to #28.
 - `docs/brief/`: original product spec (read first). `docs/adr/`,
   `docs/DECISIONS.md`: decisions. `docs/agents/`: runner prompts + registry.
   `docs/roles.md`: who owns what. `docs/marketing/`, `docs/research/` (incl.
