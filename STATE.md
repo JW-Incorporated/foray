@@ -48,12 +48,24 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `probe-seam.js` pins it at `ARM_AFTER_HIDDEN_SEC = 15`. **So the pair cannot
   test the ramp — it does not vary the variable.** The hypothesis is neither
   supported nor refuted and stays open.
-  **2026-08-17, PR #240 varies the variable: the arm is 60 s and the seam window
-  175 s, so the first boundary lands past the ~28 s the record has always stopped
-  at.** That was aimed at the suspension question rather than the ramp, but it is
-  the same knob, and it also showed the ~28 s is `15 s of arm + a 10-13 s WebKit
-  assertion release` in all three prior runs. Read that PR's run before quoting
-  either paragraph.
+  **2026-08-17, PR #240 varied the variable and the answer is a CEILING (run
+  32077857553).** The arm went to 60 s and the window to 175 s so the probe's own audio
+  never stopped near the number in question. The record still ended at **+24.6 s** and
+  the log still shows `didChangeThrottleState(Suspended)` at **+26.3 s** — with audio at
+  **0.99992x wall clock** across the whole window and **no assertion-release timer armed
+  anywhere**. So the ~26 s is time-since-hidden, not a consequence of our silences, and
+  the `15 s of arm + a 10-13 s release` arithmetic that fit the three earlier runs was a
+  coincidence (they all shared one arm value). Traced cause, from that log: a **~30 s
+  UIKit background-task budget** expiring while the app cannot hold the RBS `'WebKit
+  Media Playback'` assertion for want of `com.apple.runningboard.assertions.webkit` --
+  the entitlement `UIBackgroundModes: audio` buys a real SIGNED app, so this is the one
+  mechanism a Simulator cannot model. **`HUMAN-ACTIONS.md` #11 on a phone is now the
+  highest-value twenty minutes in this project.** Both the arm and the window are
+  reverted (at a 60 s arm the boundary lands past the ceiling and the probe measures
+  nothing about the seam); `suspensionVerdict` and the record's `saveTrail` stay, and
+  report it as section 3b of every job summary. **`MIN_HIDDEN_TRANSITIONS = 2` is
+  unsatisfiable on this instrument** -- transition 2 needs ~39 s of hidden time -- so
+  every `too-few-transitions` verdict to date describes the 30 s budget, not the seam.
 - **WHAT THE SAME PAIR DOES SHOW, and it is the more useful finding: 1.8x
   run-to-run variance on identical code.** Retreat **5,114 ms** against pre-#227
   **9,153 ms** — same one-element path, same 15.0 s hidden position, same local

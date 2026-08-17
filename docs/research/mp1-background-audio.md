@@ -378,13 +378,16 @@ tail, and §8's argument rests on the median.
 > Added 2026-08-17. This bounds every hidden measurement in this document and it
 > was not known when §4.1a was written.
 >
-> **READ §4.1b-ii BEFORE QUOTING THIS SECTION.** The three record-end times below are
-> right; calling the cause "~26 s of hidden time" is not established. The probe stopped
-> its OWN audio 15 s into each of those windows, and 15 s + WebKit's ~12 s
-> assertion-release lands on the same number — so this section's reading and a
-> silence-driven one fit every run here equally. §4.1b-ii has the log lines, the
-> arithmetic, and what happened in the 35 s AFTER the record stops, which is not what
-> this section assumes.
+> **CONFIRMED BY EXPERIMENT — see §4.1b-iii, and read it before §4.1b-ii.** This
+> section's headline was challenged the same day: the probe stopped its OWN audio 15 s
+> into each of these windows, and 15 s + a ~12 s WebKit assertion release lands on the
+> same ~26 s, so a silence-driven reading fit all three runs equally (§4.1b-ii). Run
+> **32077857553** moved the probe's first silence to 60 s of hidden time and the
+> suspension **still landed at +26.3 s**, with audio at 0.99992× wall clock and **no
+> release timer armed at all**. So the ceiling is real and this section stands. What
+> §4.1b-iii adds is the traced cause — a ~30 s UIKit background-task budget expiring
+> while the app cannot hold the RBS media-playback assertion — and why that makes it
+> weak evidence about a signed app on a phone.
 >
 > Across the three seam runs the durable `foray_probe_seam` record simply stops:
 > the last write lands **25.2 s, 26.8 s and 27.9 s** after the app went hidden
@@ -404,10 +407,11 @@ tail, and §8's argument rests on the median.
 >   "does throttling deepen with time hidden?" question is currently
 >   unanswerable with this instrument: moving the probe's first boundary to 45-60 s
 >   of hidden time puts it *past the suspension*, so it would measure nothing.
->   **THAT PREDICTION IS NOW THE EXPERIMENT, not a reason not to run it** — the arm is
->   60 s as of 2026-08-17. If the record covers 60 s of hidden time, this bullet is
->   wrong; if it stops at ~28 s with `seg-a` still playing, it is right and the answer
->   is the bad one. Either way the run decides it, which is more than either of us can.
+>   **THIS BULLET WAS RIGHT, and run 32077857553 is the receipt.** The arm was moved to
+>   60 s, the record stopped at +24.6 s with `seg-a` still audibly playing, the boundary
+>   at media 74.47 s was never reached, and `seamTransitionVerdict` reported
+>   `inconclusive` — the run measured nothing about the seam, exactly as predicted. The
+>   arm is back to 15 s for that reason; the ceiling answer is in §4.1b-iii.
 > - **`MIN_HIDDEN_TRANSITIONS = 2` has never been met.** All three runs contain
 >   ONE transition and two audible items. `seg-b`'s out-point is armed
 >   (`outPoint.set 20.00s`) and the last durable write lands ~0.3 s before that
@@ -522,17 +526,107 @@ tail, and §8's argument rests on the median.
 >   was not audio. Whether that is a genuine stall through the suspension or the
 >   coarseness of `updateNowPlayingInfo`'s position reports is **unresolved** — those
 >   reports arrive in bursts and one of them was 5.5 s late elsewhere in the same run.
-> - **Still open, and now the narrow question:** whether a hidden page is suspended at
->   ~28 s of hidden time *when its audio never stops at all*. Nothing measured so far
->   can say, because the probe has always stopped its own audio at 15 s.
-> - **The instrument for it** is `ARM_AFTER_HIDDEN_SEC = 60` (2026-08-17) with the
->   seam window at 175 s, so the first silence falls at 60 s of hidden time. A record
->   that stops at ~28 s with `seg-a` still audibly playing is the ceiling; a record
->   that runs to 60 s is not. `tools/mobile/ios-ci.mjs`'s `suspensionVerdict` decides
->   it from the artifact rather than from a human reading a log, and reports it as
->   section 3b of the job summary.
+> - ~~**Still open, and now the narrow question:** whether a hidden page is suspended at
+>   ~28 s of hidden time *when its audio never stops at all*.~~ **ANSWERED THE SAME DAY:
+>   YES.** Run 32077857553, §4.1b-iii. It is a ceiling on hidden time, and the
+>   silence-driven mechanism this section proposed is **retracted as the explanation** —
+>   its lead-time arithmetic was a coincidence across three runs that happened to share
+>   one arm value.
+> - **The instrument was `ARM_AFTER_HIDDEN_SEC = 60` with the seam window at 175 s**,
+>   which put the first silence at 60 s of hidden time. Both are reverted now that the
+>   question is answered, because at 60 s the boundary lands past the ceiling and the
+>   probe measures nothing about the seam. `tools/mobile/ios-ci.mjs`'s
+>   `suspensionVerdict` stays permanently, and reports this as section 3b of every job
+>   summary — decided from the artifact rather than from a human reading a log.
 > - **`HUMAN-ACTIONS.md` #11 is unchanged and still worth more than any of this.** A
 >   Simulator that cannot hold the media-playback assertion is not a phone that can.
+
+
+> **4.1b-iii — THE EXPERIMENT RAN, AND IT REFUTED THE PARAGRAPHS ABOVE. THE CEILING IS
+> REAL.** Run **32077857553** (PR #240), 2026-08-17. Read this before §4.1b-ii, which
+> is left in place because its measurements are right and its *explanation* was wrong —
+> the same courtesy §4.4 gets.
+>
+> **The design.** `ARM_AFTER_HIDDEN_SEC` 15 → **60 s** and pass 2's window 90 → 175 s,
+> so the probe's own audio never stopped anywhere near the ~26 s in question. One
+> variable moved.
+>
+> **The result, and every number is Measured.**
+>
+> | | |
+> |---|---|
+> | audio before the suspension | **continuous**, from 14.5 s BEFORE the app was hidden |
+> | the record's own trail | 24 stamps, `paused: false` on every one, media clock **0.99992×** wall clock over 24.6 s |
+> | first boundary | armed at media **74.47 s** (= hidden + 60) — **never reached** |
+> | record's last durable write | **+24.59 s** of hidden time, at media 39.063 s, PLAYING |
+> | log's media clock | `isPlaying = true` at **+25.01 s**, position 39.48 — 1.3 s before the suspension |
+> | `didChangeThrottleState(Suspended)` | **+26.28 s**; `applicationIsAboutToSuspend` +27.28 s |
+> | assertion-release timers armed | **NONE.** No `audible-clear-armed`, no `foreground-release-armed`, anywhere in the window |
+>
+> **So the ~26 s is a ceiling on HIDDEN TIME, and §4.1b's headline was right all
+> along.** With no silence of ours anywhere and no WebKit release timer running, the
+> page was suspended anyway, 26.3 s after going hidden.
+>
+> **§4.1b-ii's mechanism is RETRACTED as the explanation.** Its arithmetic — 15 s of
+> arm plus a 10-13 s assertion release ≈ the observed 25-28 s — held in all three
+> earlier runs and was a **coincidence**. The lead times it tabulates are real; reading
+> them as the cause was an inference, and this run is what an inference gets tested
+> against. (What survives from it: the entitlement denial, and the fact that both
+> transitions completed in run 32064639785 after a resume. Those were measured.)
+>
+> **The traced cause, from this run's own log, and it is the one thing a Simulator
+> cannot model:**
+>
+> ```
+> 22:56:31.897  updateThrottleState: UIProcess is taking a foreground assertion
+>               because we are playing audio
+> 22:56:31.897  ProcessThrottler::Activity: Starting foreground activity /
+>               'View is playing audio'
+> 22:56:31.898  ProcessAssertion::acquireSync FAILED 'WebKit Media Playback'
+>               (originator doesn't have entitlement
+>                com.apple.runningboard.assertions.webkit)
+> 22:56:46.440  releasing a foreground assertion because the view is no longer visible
+> 22:57:12.708  WKProcessAssertionBackgroundTaskManager:
+>               _handleBackgroundTaskExpirationOnMainThread (remainingTime=3.94979)
+> 22:57:12.711  ProcessThrottler::uiAssertionWillExpireImminently
+> 22:57:12.720  didChangeThrottleState(Suspended)
+> 22:57:12.725  Activity::invalidate: Ending foreground activity /
+>               'View is playing audio'      <- torn down BY the suspension, not before
+> 22:57:13.720  WKProcessAssertionBackgroundTaskManager: endBackgroundTask
+> ```
+>
+> A **~30 s UIKit background-task budget** ran out (26.3 s elapsed + 3.95 s remaining),
+> and the still-held `'View is playing audio'` activity could not save the process
+> because the RBS **`'WebKit Media Playback'` assertion had been refused at playback
+> start** for want of `com.apple.runningboard.assertions.webkit`. **That entitlement is
+> exactly what `UIBackgroundModes: audio` buys a real, signed app** — §7.3 and §7.4's
+> whole subject.
+>
+> **Which cuts both ways, and both halves matter.**
+>
+> - **Against the shell:** the ceiling is real *here*, it is not an artifact of the
+>   probe's fixtures, and it bounds every hidden number in this document at ~26 s.
+>   `MIN_HIDDEN_TRANSITIONS = 2` needs ~39 s of hidden time at the measured 9.2 s beat,
+>   so it is **unsatisfiable on this instrument** — and `too-few-transitions` on every
+>   run to date is a statement about a 30 s background-task budget, not about the seam.
+> - **For the shell:** the mechanism is a **missing entitlement**, and the missing
+>   entitlement is a property of `simctl`-launched unsigned Simulator apps rather than
+>   of iOS. A signed app with the background mode is the case that has never been
+>   tested. This is `SIMULATOR_CAVEAT` doing precisely the job it was written for —
+>   except pointing the other way for once: the *failure* here is the weak direction,
+>   because its cause is visibly absent on the Simulator and present on a phone.
+>
+> **DO NOT report "a Foray stops advancing 26 s after the screen locks" as a device
+> finding.** What is measured is: an unsigned Simulator app that cannot hold the
+> media-playback assertion is suspended when its 30 s background-task budget expires.
+> **`HUMAN-ACTIONS.md` #11 is now the highest-value twenty minutes available to this
+> project** — screen off, does the running order keep advancing past half a minute? A
+> phone answers in one commute what four CI runs could not.
+>
+> **The probe is back to `ARM_AFTER_HIDDEN_SEC = 15` and the window to 90 s**, because
+> at 60 s the first boundary lands ~34 s past the ceiling and the probe measures nothing
+> at all about the seam — §4.1b predicted that, and it was right. The constant's comment
+> carries the one-line recipe for re-running this experiment.
 
 
 **4.2 — The seam beat specifically.** One `setTimeout(2000)` — the real

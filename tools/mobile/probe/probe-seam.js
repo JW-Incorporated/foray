@@ -58,7 +58,7 @@
  * when the boundary lands, `onItemEnded` reaches the manager exactly as it would in
  * production and the manager arms the beat itself.
  *
- * Segments B and C keep AUTHORED bounds (`end_sec` 20 and 26), because by then the
+ * Segments B and C keep AUTHORED bounds (`end_sec` 27 and 32), because by then the
  * page is hidden and the whole point is that the shipped path runs untouched.
  *
  * ── WHAT WOULD MAKE THIS A LIE, AND WHAT STOPS IT ────────────────────────────
@@ -76,19 +76,24 @@
  *     page has been silent through a beat, which is when the audibility assertion
  *     would have lapsed if it is going to.
  *
- * ── AND SINCE 2026-08-17 IT ANSWERS A BIGGER QUESTION FIRST ──────────────────
+ * ── THE CEILING THAT BOUNDS EVERY NUMBER THIS PROBE CAN PRODUCE ──────────────
  *
- * Three runs of this probe have produced a record that STOPS 25-28 s after the app
- * went hidden, with 60+ s of the window unused. `mp1-background-audio.md` §4.1b
- * reads that as a platform ceiling on hidden time, which would make the whole
- * WebView shell unsafe — and it is ALSO exactly what you would see if a hidden page
- * is suspended some seconds after ITS OWN AUDIO STOPS, because this probe's first
- * boundary stopped the audio at 15 s of hidden time in every one of those runs.
+ * Every run of this probe produces a record that STOPS 25-28 s after the app went
+ * hidden, with most of the window unused. **Run 32077857553 settled why**, by arming
+ * the first boundary at 60 s instead of 15 s so the probe's own audio never stopped:
+ * the record still ended at +24.6 s and the log still shows
+ * `didChangeThrottleState(Suspended)` at **+26.3 s**, with the media clock reading
+ * `isPlaying = true` 1.3 s earlier and the record's own trail showing audio at
+ * **0.99992x wall clock** across the whole window. So it is a CEILING ON HIDDEN TIME,
+ * not a consequence of this probe's silences — see `ARM_AFTER_HIDDEN_SEC`.
  *
- * `ARM_AFTER_HIDDEN_SEC` — 60 s now, 15 s then — is where those two readings come
- * apart, and its comment carries the argument. Everything else here is unchanged,
- * deliberately: the seam measurement is the same measurement, taken later in a
- * hidden window that this probe no longer stops the audio in the middle of.
+ * WHAT THAT MEANS FOR THIS FILE'S OWN CLAIMS, and it is a real limit rather than a
+ * caveat: at the measured 9.2 s beat the SECOND transition needs ~39 s of hidden time,
+ * and the app is not alive at 39 s. **`MIN_HIDDEN_TRANSITIONS = 2` is therefore
+ * unsatisfiable on this instrument**, and `too-few-transitions` on every run to date is
+ * a statement about the Simulator's ~26 s budget, not about the seam. One hidden
+ * transition is all this rig can ever obtain; the second one needs a device
+ * (`HUMAN-ACTIONS.md` #11) or a faster beat.
  */
 
 import { PlayerQueueManager } from "./player/queue-manager.js";
@@ -149,12 +154,43 @@ const TONE_C = "probe-tone-c.wav";
  * time puts it PAST the suspension, so it would measure nothing"). That prediction
  * is the thing under test: if the record covers 60 s of hidden time, it is wrong.
  *
- * THE COST is runner time, and it is stated where it is spent: pass 2's window in
- * `.github/workflows/ios-build.yml` has to hold 60 s + beat + `seg-b` + beat, which
- * is why that sleep went from 90 s to 175 s. `ios-workflow.test.mjs` pins the floor
- * against this constant so the two cannot drift apart silently.
+ * ── THE EXPERIMENT RAN. IT IS 15 s AGAIN, AND HERE IS WHY BOTH ARE RIGHT ─────
+ *
+ * Run **32077857553** (PR #240) set this to 60 s with a 175 s window, and the answer
+ * came back on the FIRST reading above:
+ *
+ *   - `seg-a` played CONTINUOUSLY from before the app was hidden, and the record's
+ *     own trail shows a media/wall ratio of **0.99992 over 24.6 s** — audio at
+ *     exactly 1x, no silence anywhere, `paused: false` on every one of 24 stamps.
+ *   - **NO assertion-release timer was armed at any point** (no
+ *     `audible-clear-armed`, no `foreground-release-armed`) — the mechanism the
+ *     earlier runs' arithmetic suggested was simply absent.
+ *   - The record still stops at **+24.59 s**, and the log has
+ *     `didChangeThrottleState(Suspended)` at **+26.28 s**, with the media clock
+ *     reading `isPlaying = true` 1.3 s earlier.
+ *
+ * So the ~26 s is a CEILING ON HIDDEN TIME, not a consequence of this probe's own
+ * silence. The traced cause is in that log and it is Simulator-specific:
+ * `WKProcessAssertionBackgroundTaskManager: _handleBackgroundTaskExpirationOnMainThread
+ * (remainingTime=3.9)` — a ~30 s UIKit background-task budget expiring — while the
+ * `'View is playing audio'` foreground activity was still held and the RBS
+ * `'WebKit Media Playback'` assertion had been REFUSED at playback start for want of
+ * `com.apple.runningboard.assertions.webkit`. That entitlement is what
+ * `UIBackgroundModes: audio` buys a real signed app, so this is the one mechanism a
+ * Simulator cannot model. `HUMAN-ACTIONS.md` #11 is the only thing that settles it.
+ *
+ * AND THAT IS WHY THE CONSTANT GOES BACK TO 15. At 60 s the first boundary lands
+ * ~34 s PAST the ceiling, so the probe never reaches a seam at all and
+ * `seamTransitionVerdict` reports `inconclusive` — a probe whose standing job is the
+ * regression test for #227 and #224 would measure nothing, every run, for 14 extra
+ * billable minutes. §4.1b predicted exactly that and was right.
+ *
+ * TO RE-RUN THE CEILING EXPERIMENT: set this to 60 and raise pass 2's `sleep 90` to
+ * 175 in `.github/workflows/ios-build.yml` (a GOVERNED file — that needs a founder
+ * label). `ios-workflow.test.mjs` derives the window's floor from this constant, so
+ * it will tell you if you move one without the other.
  */
-const ARM_AFTER_HIDDEN_SEC = 60;
+const ARM_AFTER_HIDDEN_SEC = 15;
 /** If the app is never backgrounded, arm anyway so the run produces a record that
  *  says so instead of playing a tone for the whole window and reporting nothing.
  *
@@ -187,30 +223,31 @@ const SAVE_TRAIL_MAX = 300;
 /* THE QUEUE. Three bounded segments, three files, and every transition therefore a
    real load. B's and C's bounds are authored and untouched by the probe at runtime.
 
-   THE LENGTHS ARE PART OF THE SUSPENSION EXPERIMENT, not padding. `seg-b` is 25 s
-   (12 -> 37) and `seg-c` is 20 s (20 -> 40), where they were 8 s and 6 s. Two
-   reasons, and the second is the one that matters:
+   `seg-b` IS 15 s AND `seg-c` IS 12 s, where they were 8 s and 6 s, and the reason
+   survives the arm going back to 15 s: AUDIO MUST OUTLAST THE SUSPICION. In run
+   32064639785 the record's last write landed **0.3 s** before `seg-b`'s audio was due
+   to run out, so "the page was suspended" and "the probe simply ran out of audio" fit
+   the same artifact — the ambiguity that cost this project a day and two retractions.
+   With the ceiling measured at ~26 s of hidden time (run 32077857553) and `seg-b`
+   becoming audible at ~24 s, a 15 s segment leaves its audio ~13 s still to run when
+   the record stops. Nothing about the record's end can be blamed on the fixture.
 
-     1. AUDIO MUST OUTLAST THE SUSPICION. In run 32064639785 the record's last write
-        landed 0.3 s before `seg-b`'s audio was due to run out, so "the page was
-        suspended" and "the probe simply ran out of audio" fit the same artifact.
-        A 25 s segment cannot be confused with a 28 s ceiling.
-     2. EVERY SILENCE IS A NEW EXPERIMENT. If the suspension is driven by our own
-        silences rather than by the clock, the record should survive `seg-b` and stop
-        ~10-12 s into the SECOND beat — a different, checkable prediction from the
-        first beat's.
+   THE LENGTHS ARE ALSO BOUNDED FROM ABOVE, by the window rather than by taste: at the
+   MEASURED 9.2 s beat, 15 + 9.2 + 15 + 9.2 = 48.4 s of hidden chain plus the measured
+   39 s foregrounding delay is 87.4 s inside a 90 s window. `ios-workflow.test.mjs`
+   derives that floor from these very bounds, so lengthening a middle segment without
+   raising the window fails a test instead of silently producing a run that measures
+   nothing.
 
-   Both stay well inside their 60 s tone files (`install-probe.mjs` generates them),
-   so a boundary that fails to fire still leaves 20+ s of audible margin BEFORE the
-   file ends — the difference between "the out-point was late" and "the audio ran
-   out", which the record has to be able to show. The tones are deliberately NOT
-   lengthened: `capacitor://` media loads go through a UIProcess scheme handler that
-   took 3.0 s for a 960 KB file while hidden in that same run, and a bigger file
-   would push a hidden load toward `LOAD_SETTLE_TIMEOUT_HIDDEN_MS` for no gain. */
+   Both stay well inside their 60 s tone files (`install-probe.mjs` generates them).
+   The tones are deliberately NOT lengthened: `capacitor://` media loads go through a
+   UIProcess scheme handler that took 3.0 s for a 960 KB file while hidden in run
+   32064639785, and a bigger file would push a hidden load toward
+   `LOAD_SETTLE_TIMEOUT_HIDDEN_MS` for no gain. */
 const QUEUE = [
   { id: "seg-a", audio_url: TONE_A, start_sec: 0, end_sec: SEGMENT_A_END_SEC },
-  { id: "seg-b", audio_url: TONE_B, start_sec: 12, end_sec: 37 },
-  { id: "seg-c", audio_url: TONE_C, start_sec: 20, end_sec: 40 },
+  { id: "seg-b", audio_url: TONE_B, start_sec: 12, end_sec: 27 },
+  { id: "seg-c", audio_url: TONE_C, start_sec: 20, end_sec: 32 },
 ];
 
 /* A NUMBERED SLOT, not one fixed key — `xcrun simctl launch` on a running app can

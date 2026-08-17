@@ -108,18 +108,25 @@ relaunch, and a 15 s + 90 s window — for about **95 s more**, so ~10 minutes a
 PR that added it is the measurement, and this line should be replaced with that
 number rather than left to be quoted as one.
 
-**Estimated, 2026-08-17, same standard:** the seam window went **90 s → 175 s**, so
-~11.5 minutes and **~115 billable minutes**. The 85 extra seconds are not slack —
-they are what puts the probe's first silence at 60 s of hidden time instead of 15 s,
-which is the only way to tell a platform suspension **ceiling** apart from a
-suspension that follows the probe's own silence (§4c, and
-`docs/research/mp1-background-audio.md` §4.1b-ii). The arithmetic lives at the
-`sleep 175` itself. Two things this does **not** license, spelled out because a
-slower job invites both: widening the path filter, and making this a required check.
-`.github/workflows/ios-build.yml` is **governed** — that change needs a founder
-label, and the probe change it pays for does not, which is why
-`ios-workflow.test.mjs` now derives the window's floor from `probe-seam.js`'s own
-constants rather than trusting the two files to move together.
+**Measured, 2026-08-17, and then REVERTED — the one-run experiment and what it cost.**
+The seam window went 90 s → 175 s for exactly one run (**32077857553**, **8 min 26 s**
+wall clock, so ~85 billable minutes at the 10× multiplier), to put the probe's first
+silence at 60 s of hidden time instead of 15 s. That was the only way to tell a
+suspension **ceiling** apart from a suspension following the probe's own silence, and it
+settled it (§4c-iii). **Both the window and the arm are back to 90 s and 15 s**, because
+at a 60 s arm the boundary lands past the ceiling and the run measures nothing about the
+seam — a permanent 14-billable-minute surcharge for a blind probe.
+
+Two things a longer window would **not** have licensed, recorded because a slower job
+invites both: widening the path filter, and making this a required check. And one thing
+that cost a run: `player/**` is in the path filter, so a second push to the same PR
+**cancelled an in-flight run mid-probe** (`concurrency: cancel-in-progress`) and started
+another — ~10 wasted 10×-billed minutes. Batch pushes to a branch this workflow watches.
+
+`.github/workflows/ios-build.yml` is **governed**, so the window change needed a founder
+label while the probe change it paid for did not — which is why `ios-workflow.test.mjs`
+now **derives** the window's floor from `probe-seam.js`'s own constants rather than
+trusting the two files to move together. That test is the lasting part of this.
 
 So: `workflow_dispatch` plus a path filter narrow enough that nightly content
 PRs never trigger it (`mobile/`, `tools/mobile/`, `index.html`, `app.js`,
@@ -654,11 +661,58 @@ own account of itself.
 about the seam** — including the runs people (the founder included) described as
 successes. Quote it that way.
 
-**What is still open is narrower and still serious:** whether a hidden page is
-suspended at ~28 s **when its audio never stops at all**. Nothing measured so far can
-say, because the probe stopped its own audio at 15 s of hidden time in every run.
-`ARM_AFTER_HIDDEN_SEC = 60` and the 175 s window are the instrument for exactly that,
-and `HUMAN-ACTIONS.md` #11 on real hardware still outranks whatever it says.
+### 4c-iii. The experiment ran, and the ceiling is real — run 32077857553
+
+**The question §4c-ii left open — whether a hidden page is suspended at ~26 s *when its
+audio never stops at all* — is answered: YES.** The arm went to 60 s and the window to
+175 s so the probe's own audio never stopped anywhere near the number in question. One
+variable moved.
+
+| | |
+|---|---|
+| audio before the suspension | **continuous**, from 14.5 s before the app was hidden |
+| the record's own save trail | 24 stamps, `paused: false` on all of them, media clock at **0.99992×** wall clock over 24.6 s |
+| first boundary | armed at media **74.47 s** — never reached |
+| record's last durable write | **+24.59 s** of hidden time, PLAYING |
+| log's media clock | `isPlaying = true` at **+25.01 s** — 1.3 s before the suspension |
+| suspension | `didChangeThrottleState(Suspended)` **+26.28 s** |
+| assertion-release timers | **NONE armed anywhere in the window** |
+
+**So §4c-ii's mechanism is retracted as the explanation.** Its lead-time arithmetic
+(15 s of arm + a 10-13 s WebKit release ≈ 25-28 s) held across three runs and was a
+coincidence — all three shared one arm value. The measurements in it stand; the causal
+reading does not. That is what an inference is for, and this is what testing one costs.
+
+**The traced cause is the one thing a Simulator cannot model.** From this run's log: a
+**~30 s UIKit background-task budget** expired (`WKProcessAssertionBackgroundTaskManager:
+_handleBackgroundTaskExpirationOnMainThread (remainingTime=3.94979)`) while the
+`'View is playing audio'` foreground activity was **still held** — and it could not save
+the process because the RBS `'WebKit Media Playback'` assertion had been **refused at
+playback start** for want of `com.apple.runningboard.assertions.webkit`. That entitlement
+is what `UIBackgroundModes: audio` buys a real signed app.
+
+**Both halves of that, kept together:**
+
+- the ceiling is real *here*, it is not a fixture artifact, and it bounds every hidden
+  number this workflow has ever produced at ~26 s. **`MIN_HIDDEN_TRANSITIONS = 2` needs
+  ~39 s of hidden time at the measured 9.2 s beat, so it is unsatisfiable on this
+  instrument** — `too-few-transitions` on every run to date is a statement about a 30 s
+  background-task budget, not about the seam;
+- and the cause is a **missing entitlement on an unsigned `simctl`-launched app**, which
+  is a property of the Simulator rather than of iOS. `SIMULATOR_CAVEAT` finally points the
+  other way: this *failure* is the weak direction of the evidence, because its mechanism
+  is visibly absent here and present on a phone.
+
+**Do not report "a Foray stops advancing 26 s after the screen locks" as a device
+finding.** `HUMAN-ACTIONS.md` **#11** is now the highest-value twenty minutes available
+to this project: screen off, does the running order keep advancing past half a minute?
+
+**The probe is back to `ARM_AFTER_HIDDEN_SEC = 15` and the window to 90 s**, because at
+60 s the boundary lands ~34 s past the ceiling and the run measures nothing about the
+seam (that run's `seamTransitionVerdict` was `inconclusive`). The ceiling instrument —
+`saveTrail`, `parseSimulatorLifecycle`, `suspensionVerdict`, section 3b — stays
+permanently, and `ARM_AFTER_HIDDEN_SEC`'s comment carries the recipe for re-running the
+experiment.
 
 ### The audibility grace is **5 s**, not 10 s — and the beat blew straight through it
 

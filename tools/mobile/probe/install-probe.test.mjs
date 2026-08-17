@@ -654,19 +654,41 @@ test("the seam probe counts localStorage write failures instead of swallowing th
   assert.match(js, /rec\.saveErrors = \(rec\.saveErrors \|\| 0\) \+ 1/, "setItem failures are swallowed again");
 });
 
-test("the seam probe's first boundary is armed well past the ~28 s the record has always stopped at", () => {
-  /* THE EXPERIMENT, PINNED. Three runs ended their record 25-28 s into the hidden window
-     and the probe stopped its own audio at 15 s, so "a ceiling on hidden time" and
-     "~12 s after OUR audio stopped" fit all three. The arm has to sit far enough past
-     28 s that the two readings produce different records; back at 15 s this probe cannot
-     tell them apart, however long the workflow's window is. */
+test("the middle segment's audio outlasts the Simulator's ~26 s suspension ceiling", () => {
+  /* THE AMBIGUITY THIS EXISTS TO PREVENT, and it cost this project a day and two
+     retractions. In run 32064639785 `seg-b` was 8 s long and became audible 20.2 s into
+     the hidden window, so its audio was due to run out at +28.2 s — and the record's
+     last durable write landed at +27.9 s, 0.3 s earlier. "The page was suspended" and
+     "the probe simply ran out of audio" fit that artifact equally, and separating them
+     took a second run (32077857553) and a third measurement channel.
+
+     Run 32077857553 measured the ceiling at ~26.3 s of hidden time, with the first
+     boundary at 15 s the beat puts `seg-b` audible at ~24 s, so a middle segment shorter
+     than ~10 s re-creates the coincidence. This is a floor on the FIXTURE, not on the
+     product: the seam being measured does not care how long the segment is, and the
+     window's upper bound is enforced separately by `ios-workflow.test.mjs`. */
   const js = asset("probe-seam.js");
-  const arm = Number(/ARM_AFTER_HIDDEN_SEC = (\d+)/.exec(js)?.[1]);
-  assert.ok(Number.isFinite(arm), "ARM_AFTER_HIDDEN_SEC is no longer a plain number");
+  const queueSrc = /const QUEUE = \[([\s\S]*?)\];/.exec(js)?.[1];
+  assert.ok(queueSrc, "probe-seam.js no longer declares `const QUEUE = [...]`");
+  const queue = [...queueSrc.matchAll(/\{\s*id:\s*"([^"]+)"[^}]*?start_sec:\s*(\d+),\s*end_sec:\s*([^,}\s]+)/g)].map(
+    (m) => ({ id: m[1], start: Number(m[2]), end: Number(m[3]) })
+  );
+  assert.ok(queue.length >= 3, `expected three queued segments, found ${queue.length}`);
+  for (const q of queue.slice(1, -1)) {
+    assert.ok(
+      Number.isFinite(q.end) && q.end - q.start >= 10,
+      `${q.id} is ${q.end - q.start}s of audio; under 10 s its audio can run out within seconds of the ` +
+        `~26 s suspension ceiling, which is the exact confound that made run 32064639785 unreadable`
+    );
+  }
+  /* And the first segment's authored end must stay unreachable, so a missed override reads
+     as `END_NATURAL` or as no boundary rather than as a real-looking out-point. */
+  const armSec = Number(/ARM_AFTER_HIDDEN_SEC = (\d+)/.exec(js)?.[1]);
+  const firstEnd = Number(/SEGMENT_A_END_SEC = (\d+)/.exec(js)?.[1]);
+  assert.ok(Number.isFinite(armSec) && Number.isFinite(firstEnd));
   assert.ok(
-    arm >= 45,
-    `the first boundary is armed ${arm}s into the hidden window, which is inside the 25-28 s the record ` +
-      `has stopped at in every run — so a suspension there cannot be told apart from the probe's own ` +
-      `silence. See the constant's comment in probe-seam.js.`
+    firstEnd > armSec + 60,
+    `SEGMENT_A_END_SEC (${firstEnd}) is close enough to the arm (${armSec}) that a missed override ` +
+      `could produce a boundary at a time nothing chose`
   );
 });
