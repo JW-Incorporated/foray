@@ -56,10 +56,10 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 50,
+  "player/durable-store.test.js": 59,
   "player/idb-tier.test.js": 23,
   "player/foray-playback.test.js": 61,
-  "player/foray-progress.test.js": 55,
+  "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 42,
   "player/foray-sources.test.js": 24,
