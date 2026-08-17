@@ -17,6 +17,15 @@
    the storage object is passed in, which is what makes it testable without a
    browser. Keys keep the legacy `cp_` prefix (CLAUDE.md § Conventions).
 
+   ── Where the row actually lives (#40) ────────────────────────────────────
+   That injected `storage` used to be `localStorage`, which browsers evict —
+   Safari after ~7 days without a visit, anyone under storage pressure. So the
+   thing `player/client.js` passes in is now `player/durable-store.js`: the same
+   synchronous Storage shape, backed by IndexedDB with localStorage kept as a
+   mirror. Nothing in this file changed to accommodate that, which was the point
+   of injecting it — and `save()` now counts the writes it was refused, because
+   a resume store that silently stops recording is the defect, not an edge case.
+
    ── The two thresholds, and why they are not PositionStore's ──────────────
    PositionStore resumes above 10 s and calls the last 30 s "finished". A Foray
    is an hour of 90-second segments, so both are re-derived rather than copied:
@@ -40,6 +49,39 @@ export const NEAR_END_SEC = 45;
     a thing anyone is "jumping back in" to, and the row is otherwise immortal. */
 export const MAX_AGE_H = 24 * 30;
 
+/* ---------- data freshness: the row and the document can disagree ----------
+
+   The service worker serves `data/*.json` network-first (`sw.js`), so a listener
+   offline or on a dead cell gets the LAST-KNOWN Foray, while their stored row
+   was written against whatever the document said at the time. Between those two
+   moments a segment can be repaired, dropped, or moved: #40 pairs durability
+   with freshness precisely because a durable row pointed at a changed document
+   is a new way to lose someone.
+
+   A row therefore records WHICH segment it was in (`segment_id`) and how far
+   into it (`into_sec`), not only a number of seconds into a running order that
+   may no longer be that running order. Given the live order, `resumePoint` can
+   then say honestly which of five things happened. */
+
+/** No live running order was supplied — the caller did not ask to be checked. */
+export const DRIFT_UNVERIFIED = "unverified";
+/** The segment is exactly where the row says it is. */
+export const DRIFT_EXACT = "exact";
+/** The segment still exists, at a different place in the Foray. Resume follows
+    the SEGMENT, not the clock: the listener remembers the content. */
+export const DRIFT_MOVED = "moved";
+/** The stored segment is not in the Foray any more. Resume falls back to the
+    clock, clamped to the live runtime, and paints no row as current. */
+export const DRIFT_DROPPED = "dropped";
+/** A row written before this file recorded segment ids. Checked against the live
+    runtime and segment count only, exactly as it always was. */
+export const DRIFT_UNANCHORED = "unanchored";
+
+/** Within this much, a re-derived clock and a stored clock are the same moment.
+    Segment lengths are sums of measurements of other people's audio; treating a
+    half-second as drift would report `moved` on every ordinary resume. */
+export const DRIFT_TOLERANCE_SEC = 1;
+
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 
@@ -58,15 +100,28 @@ export function progressKey(forayId) {
  * @param {number} p.elapsedSec  the FORAY's clock, not the audio element's
  * @param {number} p.totalSec
  * @param {number} [p.index]     segment the listener was on, for painting
+ * @param {string} [p.segmentId] the AUTHORED id of that segment — the only part
+ *                               of this row that still means something after the
+ *                               running order changes under it
+ * @param {number} [p.intoSec]   seconds into that segment, so a segment that
+ *                               MOVED can be resumed at the same moment of the
+ *                               same audio rather than the same clock reading
  * @param {Date|string} [p.now]
  */
-export function makeProgress({ forayId, title = "", elapsedSec, totalSec, index = -1, now = new Date() }) {
+export function makeProgress({
+  forayId, title = "", elapsedSec, totalSec, index = -1,
+  segmentId = null, intoSec = 0, now = new Date(),
+}) {
   return {
     foray_id: forayId,
     title: nonEmpty(title) ? title : "",
     elapsed_sec: clampNum(elapsedSec),
     total_sec: clampNum(totalSec),
     index: Number.isInteger(index) && index >= 0 ? index : -1,
+    /* null, not undefined: this row round-trips through JSON, and an absent
+       property and a null one must read back the same way. */
+    segment_id: nonEmpty(segmentId) ? segmentId : null,
+    into_sec: isNum(intoSec) && intoSec > 0 ? intoSec : 0,
     updated_at: typeof now === "string" ? now : now.toISOString(),
   };
 }
@@ -76,7 +131,10 @@ function clampNum(n) {
 }
 
 /** A row is only usable if it names a Foray and carries a finite clock. Anything
-    else is a partially-written or hand-edited entry and is treated as absent. */
+    else is a partially-written or hand-edited entry and is treated as absent.
+    `segment_id` and `into_sec` are deliberately NOT required: every row written
+    before they existed is still a valid resume point, and demanding them would
+    have thrown away the state this change exists to protect. */
 export function isProgressRecord(r) {
   return Boolean(
     r && typeof r === "object" && nonEmpty(r.foray_id) &&
@@ -161,22 +219,40 @@ function isStale(record, { now, maxAgeH }) {
  * shaped to prevent: a stored `index` of 31 against a Foray that now has 20
  * segments marks the whole running order as already heard.
  *
+ * `segments` is the freshness half of #40, and it is optional so that every
+ * existing caller keeps its exact behaviour: without it the answer is the clock,
+ * clamped, with `drift: "unverified"`. With it, the stored `segment_id` is looked
+ * up in the LIVE order and the clock is re-derived from where that segment now
+ * starts — so a reordered Foray resumes to the same audio rather than to the same
+ * number, and a deleted segment degrades to a clamped clock with no row painted
+ * instead of seeking somewhere wrong.
+ *
  * @param {object} [opts]
  * @param {number} [opts.totalSec]   the LIVE runtime
  * @param {number} [opts.maxIndex]   the LIVE last playable index
+ * @param {Array<{id: ?string, startSec: number, durationSec: number}>} [opts.segments]
+ *   the LIVE running order, in play order. Build it with
+ *   `progressSegments(resolved)` from `player/foray-resolve.js`.
  * @returns {{ elapsedSec: number, index: number, remainingSec: number,
- *             percent: number, finished: boolean } | null}
+ *             percent: number, finished: boolean, drift: string } | null}
  */
-export function resumePoint(record, { totalSec = null, maxIndex = null } = {}) {
+export function resumePoint(record, { totalSec = null, maxIndex = null, segments = null } = {}) {
   if (!isProgressRecord(record)) return null;
   const total = isNum(totalSec) && totalSec > 0 ? totalSec : record.total_sec;
+  const at = reconcileSegment(record, segments);
   // A stored position past the end of the Foray as it exists NOW is not a
   // resume point; it is a stale row against a shorter document.
-  const elapsed = Math.min(record.elapsed_sec, total);
-  const index = clampIndex(record.index, maxIndex);
+  const elapsed = Math.min(isNum(at.elapsedSec) ? at.elapsedSec : record.elapsed_sec, total);
+  /* A live index from reconciliation is already live and needs no clamp. Without
+     one, the stored index is clamped against the live count exactly as before —
+     a stored 31 against a 20-segment Foray must not mark the whole running order
+     as heard. */
+  const index = at.drift === DRIFT_DROPPED
+    ? -1
+    : (Number.isInteger(at.index) ? at.index : clampIndex(record.index, maxIndex));
   if (elapsed < MIN_RESUME_SEC) return null;
   if (elapsed > total - NEAR_END_SEC) {
-    return { elapsedSec: elapsed, index, remainingSec: 0, percent: 100, finished: true };
+    return { elapsedSec: elapsed, index, remainingSec: 0, percent: 100, finished: true, drift: at.drift };
   }
   return {
     elapsedSec: elapsed,
@@ -184,7 +260,43 @@ export function resumePoint(record, { totalSec = null, maxIndex = null } = {}) {
     remainingSec: total - elapsed,
     percent: percentDone(elapsed, total),
     finished: false,
+    drift: at.drift,
   };
+}
+
+/**
+ * What the stored row means against the running order as it exists now.
+ *
+ * Exported because it is the whole freshness rule and deserves to be tested
+ * directly rather than only through `resumePoint`'s five return fields.
+ *
+ * Nothing here can throw on a malformed live order or a hand-edited row: a
+ * document that changed under a listener is the ordinary case, and the worst
+ * allowed outcome is a clamped clock.
+ *
+ * @param {object} record
+ * @param {Array<{id: ?string, startSec: number, durationSec: number}>|null} segments
+ * @returns {{ drift: string, elapsedSec?: number, index?: number }}
+ */
+export function reconcileSegment(record, segments) {
+  const live = Array.isArray(segments) ? segments.filter(isSegmentDescriptor) : null;
+  if (!live || !live.length) return { drift: DRIFT_UNVERIFIED };
+  if (!isProgressRecord(record)) return { drift: DRIFT_UNVERIFIED };
+  const storedId = nonEmpty(record.segment_id) ? record.segment_id : null;
+  if (!storedId) return { drift: DRIFT_UNANCHORED };
+
+  const at = live.findIndex((s) => s.id === storedId);
+  if (at < 0) return { drift: DRIFT_DROPPED };
+
+  const into = isNum(record.into_sec) && record.into_sec > 0 ? record.into_sec : 0;
+  const elapsedSec = live[at].startSec + Math.min(into, live[at].durationSec);
+  const unmoved = record.index === at
+    && Math.abs(elapsedSec - record.elapsed_sec) <= DRIFT_TOLERANCE_SEC;
+  return { drift: unmoved ? DRIFT_EXACT : DRIFT_MOVED, elapsedSec, index: at };
+}
+
+function isSegmentDescriptor(s) {
+  return Boolean(s && typeof s === "object" && isNum(s.startSec) && s.startSec >= 0 && isNum(s.durationSec));
 }
 
 /** -1 ("we do not know") is a legal answer and must survive the clamp; anything
@@ -241,6 +353,8 @@ export class ForayProgressStore {
     this.storage = storage ?? (typeof localStorage !== "undefined" ? localStorage : null);
     this.everySec = isNum(everySec) && everySec > 0 ? everySec : SAVE_EVERY_SEC;
     this._lastWritten = new Map();
+    /** Writes this store attempted and was refused. See `save()`. */
+    this.refusedWrites = 0;
   }
 
   get(forayId) {
@@ -257,14 +371,29 @@ export class ForayProgressStore {
    *   moments where the next tick may never come
    * @returns {boolean} whether it wrote
    */
-  save({ forayId, title, elapsedSec, totalSec, index = -1, force = false, now = new Date() }) {
+  save({
+    forayId, title, elapsedSec, totalSec, index = -1,
+    segmentId = null, intoSec = 0, force = false, now = new Date(),
+  }) {
     if (!nonEmpty(forayId) || !isNum(elapsedSec) || !isNum(totalSec) || totalSec <= 0) return false;
     const last = this._lastWritten.get(forayId);
     if (!force && last != null && Math.abs(elapsedSec - last) < this.everySec) return false;
-    const ok = writeProgress(this.storage, makeProgress({ forayId, title, elapsedSec, totalSec, index, now }));
+    const ok = writeProgress(this.storage, makeProgress({
+      forayId, title, elapsedSec, totalSec, index, segmentId, intoSec, now,
+    }));
     if (ok) this._lastWritten.set(forayId, elapsedSec);
+    /* A refused write is COUNTED, not shrugged at. `writeProgress` returns false
+       and the caller is a 4 Hz render loop that cannot usefully react, so the
+       evidence has to live somewhere a human or a test can reach: this counter
+       plus the injected store's own `health()`. "Silently forgot you" is the
+       defect; a zero here is the claim that it did not happen. */
+    else this.refusedWrites += 1;
     return ok;
   }
+
+  /** How many writes this store has been refused. Non-zero means the listener's
+      place is not being recorded — see the note in `save()`. */
+  get failedWrites() { return this.refusedWrites; }
 
   clear(forayId) {
     clearProgress(this.storage, forayId);

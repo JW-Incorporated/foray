@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import {
   PUBLISHED, indexSegments, indexSources, allForays, forayVisibility,
   listableForays, findForay, hydrateForayItems, resolveForay, groupBySlot,
-  segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan,
+  segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan, progressSegments,
 } from "./foray-resolve.js";
 
 /* ---------- fixtures ---------- */
@@ -305,6 +305,43 @@ test("forayElapsed survives a bad index rather than returning NaN", () => {
   assert.equal(forayElapsed(q, -1, 10), 0);
   assert.equal(forayElapsed(q, 99, 10), 160);
   assert.equal(forayElapsed([], 0, 10), 0);
+});
+
+/* ---------- the stored-progress view (#40) ----------
+
+   `progressSegments` is the adapter between a resolved Foray and a stored resume
+   row. It exists because a queue item's id is `${forayId}#${ord}` — a POSITION,
+   which stops meaning anything the moment the running order changes — while the
+   authored `segment_id` survives that. */
+
+test("progressSegments pairs every playable item with its AUTHORED segment id", () => {
+  const r = resolved();
+  const desc = progressSegments(r);
+  assert.equal(desc.length, r.playable.length);
+  assert.deepEqual(desc.map((d) => d.id), ["s1", "s2"]);
+});
+
+test("progressSegments carries the Foray-clock start and the authored length", () => {
+  const r = resolved();
+  const desc = progressSegments(r);
+  assert.deepEqual(desc.map((d) => d.startSec), segmentStarts(r.playable));
+  assert.equal(desc[0].durationSec, 100);
+});
+
+test("progressSegments skips the unplayable, because the resume index is a QUEUE index", () => {
+  // A dropped segment is not in the queue, so pairing on authored position would
+  // offset every id by one and anchor a resume to the wrong audio.
+  const r = resolved({ items: [item("s1"), item("missing"), item("s2")] });
+  assert.equal(r.playable.length, 2);
+  assert.deepEqual(progressSegments(r).map((d) => d.id), ["s1", "s2"]);
+});
+
+test("progressSegments reports null rather than inventing an id it does not have", () => {
+  assert.deepEqual(progressSegments(null), []);
+  assert.deepEqual(progressSegments({}), []);
+  const r = resolved();
+  const noEntries = progressSegments({ playable: r.playable, entries: [] });
+  assert.deepEqual(noEntries.map((d) => d.id), [null, null]);
 });
 
 /* ---------- display ---------- */

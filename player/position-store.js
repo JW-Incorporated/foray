@@ -6,6 +6,14 @@
    Local is authoritative. Sync rides the existing cp_events pipeline (PR #13)
    rather than inventing a second write path — the manager calls save() on every
    savePosition effect plus its own 15s timer, and both land here.
+
+   ── Where "local" is (#40) ────────────────────────────────────────────────
+   It used to be `localStorage`, referenced directly. Browsers evict that, and a
+   position that survives pocketing the phone but not next Tuesday only clears
+   half of corner case #17. The store is injected now — `player/client.js` hands
+   in `player/durable-store.js` (IndexedDB, localStorage kept as a mirror) and
+   the default stays `localStorage` so nothing breaks where the better option is
+   unavailable. A refused write is counted rather than swallowed; see `save()`.
 */
 
 const KEY = (id) => `cp_pos:${id}`;
@@ -21,10 +29,18 @@ export class PositionStore {
    * @param {object} [opts]
    * @param {Function} [opts.onSave] (id, seconds, meta) — used to emit a
    *   cp_events row. Injected so this module never imports app.js.
+   * @param {Storage} [opts.storage] any Storage-shaped object; defaults to
+   *   `localStorage` where one exists, and to nothing where it does not (a
+   *   browser that has taken storage away is not a crash).
    */
-  constructor({ onSave = null } = {}) {
+  constructor({ onSave = null, storage = null } = {}) {
     this._onSave = onSave;
     this._lastEmitted = new Map();
+    this._storage = storage ?? (typeof localStorage !== "undefined" ? localStorage : null);
+    /** Writes this store attempted and was refused. A non-zero value means
+        positions are not being recorded — the one number that distinguishes
+        "nothing to resume" from "we forgot". */
+    this.refusedWrites = 0;
   }
 
   save(id, seconds, meta = {}) {
@@ -36,11 +52,14 @@ export class PositionStore {
       updated_at: new Date().toISOString(),
       source: "local",
     };
+    if (!this._storage) { this.refusedWrites += 1; return; }
     try {
-      localStorage.setItem(KEY(id), JSON.stringify(record));
+      this._storage.setItem(KEY(id), JSON.stringify(record));
     } catch (_) {
       // Storage full or blocked. Losing a position is bad but not worth
-      // throwing into the player's effect loop.
+      // throwing into the player's effect loop — so it is counted instead of
+      // being swallowed, which is the difference #40 is about.
+      this.refusedWrites += 1;
       return;
     }
 
@@ -57,9 +76,9 @@ export class PositionStore {
   }
 
   load(id) {
-    if (!id) return null;
+    if (!id || !this._storage) return null;
     try {
-      const raw = localStorage.getItem(KEY(id));
+      const raw = this._storage.getItem(KEY(id));
       if (!raw) return null;
       const r = JSON.parse(raw);
       if (typeof r?.seconds !== "number" || !Number.isFinite(r.seconds)) return null;
@@ -81,7 +100,7 @@ export class PositionStore {
   }
 
   clear(id) {
-    try { localStorage.removeItem(KEY(id)); } catch (_) {}
+    try { this._storage?.removeItem(KEY(id)); } catch (_) {}
     this._lastEmitted.delete(id);
   }
 }
