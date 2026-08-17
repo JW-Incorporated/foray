@@ -24,7 +24,7 @@ it means "read" is the failure mode this repo keeps paying for.
 | Gradle / AGP / JDK / SDK / Capacitor versions | **Executed** — read out of the generated project and the tools that ran. §1 |
 | Resolved `@capacitor/*` versions | **Executed** — `npm install`, then read from `node_modules`. §1.3 |
 | Our CSP does not block Capacitor's Android bridge | **INFERRED**, from the installed `@capacitor/android` **8.5.0** Java source plus document order in our own `index.html`. **Nothing was executed in a WebView.** §2, §3 |
-| `navigator.mediaSession` is absent in Android WebView | **INFERRED** (source-derived, unchanged from MP1 §5.4). §4 |
+| `navigator.mediaSession` is absent in Android WebView | **INFERRED** (source-derived). MP1 §5.4 claimed "confirmed live" and its own §6 says the spike never ran; corrected there by this change. §4 |
 | Whether #227's seam prefetch removes the need for a foreground service | **NEITHER.** Reasoning only, and it cannot be settled without a device. §5 |
 | Android's origin is `https://localhost` | **Executed-adjacent**: read from `CapConfig.java`'s defaults in the installed package. §2.1 |
 
@@ -364,13 +364,14 @@ so there is no Capacitor config, `gradle.properties` line or manifest flag that
 turns it back on. Reading `@capacitor/android` 8.5.0 for this build turned up
 nothing that touches it either.
 
-**One correction for whoever owns `docs/research/mp1-background-audio.md`.** §5.4
-ends *"Confirmed live: the spike logs `mediaSession present=` on startup — see
-§6"* — and §6 says the spike **never ran** and not one line was ever logged. The
-sentence describes an instrument, not a result, but it reads as a confirmation and
-it is the only place in that document where an Android claim looks measured. Not
-edited here because #220 has that file open; it is a one-sentence fix for
-whoever lands next.
+**One correction now MADE in `docs/research/mp1-background-audio.md`.** §5.4 ended
+*"Confirmed live: the spike logs `mediaSession present=` on startup — see §6"* — and
+§6 says the spike **never ran** and not one line was ever logged. The sentence
+described an instrument, not a result, and it was the only place in that document
+where an Android claim looked measured. This change was originally going to leave it
+alone because #220 had that file open; **#220 has since merged**, so it is fixed here
+instead, and the replacement says plainly that the claim is source-derived and what
+would close it.
 
 **The consequence, unchanged and still the biggest scope item in MP1.** #27
 (lock-screen and steering-wheel controls) **cannot be delivered in the Android
@@ -520,10 +521,16 @@ An Android APK inherits that exactly as an iOS build does.
 `tools/ci/run-suites.mjs` reported one failure while an 18-minute Gradle build was
 saturating the machine: *"a buffering stall at the boundary neither stops early nor
 spins"*, in `player/html-audio-backend.test.js`. That is the **pre-existing
-wall-clock flake class** STATE.md already records for that file (*"fails roughly 1
-run in 3 on a loaded Windows box … the #195 class its own header warns about"*).
+wall-clock flake class** STATE.md records for that file, and
 `player/html-audio-backend.test.js` is **not in this change's diff** — nothing under
-`player/` is — and the file passes **76/76 on three consecutive runs** with no build
-competing for the CPU. Recorded rather than dropped, because "a suite went red
-during my change" is worth a sentence either way. It still deserves its own fix by
-whoever owns that file.
+`player/` is. It passed 76/76 on three consecutive runs once nothing was competing
+for the CPU.
+
+**And it has since been fixed by someone else, so do not go looking for it.** This
+branch was rebased onto a `main` that had gained #211, which deletes the wall-clock
+budget outright rather than widening it and rewrites that exact stall test to poll
+to a condition instead of sleeping 350 ms (*"a duration assumption that broke 2 runs
+in 10 under 32 busy loops, blaming the backend for an end it was right to report"*).
+The observation above predates that merge. Recorded anyway, because "a suite went
+red during my change" is worth a sentence either way, and because it is
+corroborating evidence for a defect #211 diagnosed independently.

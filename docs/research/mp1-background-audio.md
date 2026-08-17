@@ -468,8 +468,18 @@ cl->AppendSwitch(switches::kDisableMediaSessionAPI);
 
 Corroborated by WebView's own web-exposure expectations
 (`not-webview-exposed.txt`: *"Media Session API is not enabled in Android
-WebView"*, `getter mediaSession`, `interface MediaSession`). Confirmed live: the
-spike logs `mediaSession present=` on startup — see §6.
+WebView"*, `getter mediaSession`, `interface MediaSession`).
+
+**NOT confirmed live, and this sentence used to say it was.** It read *"Confirmed
+live: the spike logs `mediaSession present=` on startup — see §6"* — but §6 records
+that the spike **never ran** and that not one line was ever logged, so the
+instrument existed and no reading was ever taken. Corrected by #37 (the Android
+build), which looked for a way to settle it and could not: the switch is appended by
+the WebView provider's own main delegate, so **no Capacitor config,
+`gradle.properties` line or manifest flag can turn it back on**, and confirming its
+absence still needs execution in the shipped WebView. **This claim remains
+source-derived** — strong, and not a measurement. `HUMAN-ACTIONS.md`'s Android
+device pass is what would close it.
 
 **This is the finding with the biggest scope consequence in the document**, and
 it has nothing to do with backgrounding. #27 (lock-screen and steering-wheel

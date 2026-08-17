@@ -251,12 +251,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `aw_main_delegate.cc`'s `kDisableMediaSessionAPI`. Nothing in this build can
   change it: the switch is appended by the WebView provider's own main delegate,
   so no Capacitor config, `gradle.properties` line or manifest flag turns it back
-  on. **One correction for whoever owns `docs/research/mp1-background-audio.md`:**
-  §5.4 ends *"Confirmed live: the spike logs `mediaSession present=` on startup —
-  see §6"*, and §6 says the spike **never ran**. That sentence describes an
-  instrument, not a result, and it is the only place an Android claim in that
-  document looks measured. **Not edited here because #220 has that file open** —
-  it is a one-sentence fix for whoever lands next.
+  on. **One false claim in `docs/research/mp1-background-audio.md` is CORRECTED
+  here:** §5.4 ended *"Confirmed live: the spike logs `mediaSession present=` on
+  startup — see §6"*, and §6 says the spike **never ran** and not one line was ever
+  logged. That sentence described an instrument, not a result, and it was the only
+  place an Android claim in that document looked measured. This branch was going to
+  leave it alone because #220 had that file open; **#220 merged during the reviewer
+  pass**, so it is fixed instead, and the replacement states that the claim is
+  source-derived and what would close it.
 - **Heads-up — the foreground service is NOT decided, and #227 is why it needed
   re-thinking rather than re-quoting.** #227 shrank a cross-episode seam from a
   measured **9,153 ms of silence** to the authored **2.0 s** by loading on a second
@@ -312,15 +314,26 @@ docs/. Completed workstreams move to their plan doc's retro section.
   keeps working either way.
 - **Owned files:** `docs/android-shell-build.md` (new), `mobile/package-lock.json`
   (new). **Shared files it touches:** `mobile/.gitignore`, `mobile/README.md`,
-  `docs/mobile-shell.md`, `tools/mobile/shell-invariants.test.mjs`, this file.
-  **Deliberately untouched:** `HUMAN-ACTIONS.md` (#220 renumbered 46 references
-  across 7 files and is MERGEABLE — the Android CSP item is **#18** in its
-  numbering, and editing that file now would make #220 DIRTY), `player/**` (#227
-  landed there, #224 open), `.github/**` (governed; the workflow shape is described
-  in `docs/android-shell-build.md` §3 instead of added),
-  `docs/research/mp1-background-audio.md` and `test/suite-integrity.test.js` (both
-  open on #220). No CSP change, no dependency beyond what Capacitor pulls, nothing
-  in `data/`, `index.html`, `app.js` or `sw.js`.
+  `docs/mobile-shell.md`, `tools/mobile/shell-invariants.test.mjs`,
+  `docs/research/mp1-background-audio.md` (one corrected sentence, §5.4 — see
+  above), this file.
+  **Deliberately untouched:** `HUMAN-ACTIONS.md` — the Android CSP item is **#18**
+  and the founder-facing items this produces are **#11** and a new foreground-service
+  call, but folding them in is being done by whoever owns that file (#231 has just
+  edited #11 and #16), and an agent adding items to it in parallel is how that file
+  collides. `player/**` (#227 landed there, #224 open), `.github/**` (governed; the
+  Android workflow shape is described in `docs/android-shell-build.md` §3 rather
+  than added), `test/suite-integrity.test.js` (not needed —
+  `tools/mobile/shell-invariants.test.mjs` is at **32** tests against its existing
+  floor of **27**, and that file is a standing collision magnet). No CSP change, no
+  dependency beyond what Capacitor pulls, nothing in `data/`, `index.html`, `app.js`
+  or `sw.js`.
+- **Rebased onto `main` after #220, #211, #221, #222, #226, #214 and #231 landed
+  mid-flight.** Three consequences folded in rather than left stale: #220's merge
+  unblocked the `mp1-background-audio.md` correction above; **#211 fixed the exact
+  wall-clock flake this branch observed** (the buffering-stall test now polls to a
+  condition instead of sleeping 350 ms), so do not go hunting it; and #220's own
+  `docs/ios-ci.md` is what showed that this branch had overstated #213's iOS result.
 - **`tools/mobile/shell-invariants.test.mjs` is at 32 tests against a floor of 27**,
   so `test/suite-integrity.test.js` did not need touching — which is the point,
   since #211 and #220 both have that file open.
