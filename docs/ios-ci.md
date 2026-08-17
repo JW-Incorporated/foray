@@ -280,8 +280,44 @@ Three changes in total, because a race cannot be tightened into reliability:
    The 15 s arm clears it by 3x, so a run landing there means something went wrong
    and says so.
 
-Until a run clears that floor, **MP1 §8's most load-bearing inference is still an
-inference**, and `HUMAN-ACTIONS.md` #11 and #14 are unchanged.
+### The run that cleared the floor
+
+Run [32025079276](https://github.com/JW-Incorporated/foray/actions/runs/32025079276),
+with those changes in place:
+
+| | |
+|---|---|
+| out-point fired | **4.9 ms** past the boundary (`end_sec` 60.001 → stopped 60.015) |
+| while hidden? | **yes** — `stoppedWhileBackgrounded: true`, `endReason: "outPoint"` |
+| hidden playback observed | **6.44 s**, clearing the 5 s floor |
+| `timeupdate` while hidden | **27 samples, median 252 ms, max 304 ms** |
+| hidden-page DOM timer | median **1001 ms** over 28 samples (250 ms requested) |
+
+**So MP1 §8's most load-bearing inference held.** `timeupdate` is a media event
+driven by WebCore's playback-progress timer, not a `DOMTimer`, and it kept firing
+at ~4 Hz in a backgrounded WKWebView while the aligned DOM timer next to it was
+throttled to 1 s — the two mechanisms measured side by side, in the same page, at
+the same time. That is exactly the distinction §8 reasoned to and could not test,
+and it is the difference between a 5 ms overshoot and MP1 §3's 936.5-second median
+disaster.
+
+**Read the caveats, both of them.**
+
+1. **A Simulator is not a device**, so this is the weak direction of the evidence
+   (§3). A failure here would have been decisive; a pass removes one way of being
+   wrong. `HUMAN-ACTIONS.md` #11 and #14 step 6.4 are unchanged.
+2. **This run's boundary was armed by the 40 s FALLBACK, not by the hidden
+   transition** — `armedWhileHidden: false`. Backgrounding took **54.3 s** after
+   playback started: `simctl launch com.apple.Preferences` returns immediately, but
+   Settings evidently takes most of a minute to actually come to the foreground on
+   a cold-booted runner. The fallback happened to place the boundary 6.4 s inside
+   the hidden window, which is a real measurement and clears the floor — but it is
+   not the 15 s the arm-on-hidden path is designed to give. **The timing constants
+   are deliberately left alone**: the measurement is in hand, the floor catches a
+   thin one, and re-tuning them costs a 10x run per attempt to verify. If a future
+   session wants the fuller window, raise `FALLBACK_ARM_AT_SEC`, lengthen the
+   post-background sleep and the tone together, and check `armedWhileHidden` came
+   back `true`.
 
 ### One thing that cost 18 minutes, recorded so nobody re-learns it
 
