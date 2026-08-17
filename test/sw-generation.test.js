@@ -296,6 +296,26 @@ test("styles and icons do not pin the page — only code decides the generation"
   );
 });
 
+test("an opaque redirect is an answer from the origin, not a stale shell", async () => {
+  /* A navigation's redirect mode is "manual", so a redirect arrives with
+     `ok === false` and `type === "opaqueredirect"`. Reading that as "no answer"
+     would serve the cached shell for a URL the origin wanted to move, and mark a
+     current page a version behind. */
+  const redirect = { ok: false, status: 0, type: "opaqueredirect", clone: () => redirect };
+  const h = loadWorker({
+    seed: { "./": "INDEX@deploy-1" },
+    network: (url) => (url === BASE ? redirect : ok('{"forays":["grilling-history-2"]}')),
+  });
+
+  const res = await h.fetch(nav("./"), { resultingClientId: "page-1" });
+  assert.equal(res, redirect, "handed straight back for the browser to follow");
+  assert.equal(
+    await (await h.fetch(sub(FORAYS), { clientId: "page-1" })).text(),
+    '{"forays":["grilling-history-2"]}',
+    "and the page is not pinned to the cache"
+  );
+});
+
 /* ------------------------------------------------------- saying so, out loud */
 
 test("falling back to cached code tells the page it is a version behind", async () => {

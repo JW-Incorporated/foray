@@ -188,9 +188,7 @@ async function cachePut(request, response) {
      and v4 stored one full copy of index.html per distinct query string; the
      precached "./" entry already answers any navigation offline. */
   if (isNavigation(request)) {
-    let search = "";
-    try { search = new URL(request.url).search; } catch (_) { search = "?"; }
-    if (search) return;
+    try { if (new URL(request.url).search) return; } catch (_) { return; }
   }
   try {
     const cache = await caches.open(CACHE);
@@ -254,7 +252,15 @@ function unavailable(request) {
  */
 async function handleShell(request, env, pin) {
   const res = await fromOrigin(request, env);
-  if (res && res.ok) {
+  /* `opaqueredirect` is a real answer from the origin even though `ok` is false:
+     a navigation's redirect mode is "manual", so a redirect arrives as an opaque
+     response that `respondWith` is happy with and the browser then follows.
+     Reading it as "no answer" would serve the cached shell for a URL the origin
+     wanted to move, and mark the page a version behind for no reason. It cannot
+     happen at the current scope (`/foray/` does not redirect, and `/foray` is
+     outside the worker's scope entirely) — this is here so that stays true by
+     accident rather than by luck. */
+  if (res && (res.ok || res.type === "opaqueredirect")) {
     if (pin && env.clientId) degraded.delete(env.clientId);
     return res;
   }
