@@ -46,9 +46,10 @@
    IT IS NOT A FILTER (founder ruling 2026-08-16). The label never removes a show
    from the catalogue, never touches `needs_review`, and never affects what a
    downstream consumer can see. A show that ships no transcript merges exactly
-   like one that ships a timed VTT for every episode; the label records that the
-   first costs ~46 min of CPU per hour of audio through our own ASR and the
-   second is nearly free. See tools/classify/labels.mjs.
+   like one that ships a timed VTT for every episode; the label records only that
+   the first is more expensive to build from, because we transcribe our own audio.
+   The rate, its source, and the whole rationale live in ONE place —
+   tools/classify/labels.mjs — deliberately, so there is nothing to keep in sync.
 
    Usage:
      node tools/classify/merge-results.mjs --batch data-local/classify-batch-<id>.json \
@@ -63,7 +64,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import copyRules from "../../backend/src/copy/rules.js";
-import { LABEL_SCHEMA_VERSION, emptyTranscriptLabels } from "./labels.mjs";
+import { LABEL_SCHEMA_VERSION, mergeTranscriptLabels } from "./labels.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const { BANNED, wordCount, MAX_DISPLAY_TITLE_WORDS, MAX_BLURB_WORDS } = copyRules;
@@ -219,13 +220,12 @@ function main() {
        results — prepare-batch.mjs read it off the feed it fetched, so it is
        observed rather than judged.
 
-       Unconditional on purpose. A batch prepared before the label existed gets an
-       honestly-empty one rather than a missing field, so every record has the
-       same shape — and, more to the point, there is then no branch anywhere in
-       this pipeline whose condition mentions the label at all. That is asserted
-       by tools/classify/no-exclusion.test.mjs, and it is a much easier invariant
-       to keep true than "the branch is a benign one". */
-    entry.transcript_labels = show.transcript_labels ?? emptyTranscriptLabels();
+       `mergeTranscriptLabels` keeps the richer OBSERVATION rather than blindly
+       overwriting: a Tier-2 escalation whose feed fetch happens to 500 must not
+       replace a real Tier-1 reading of 8 episodes with "we saw 0". Both branches
+       produce a record — this decides what the label SAYS, never whether the show
+       is merged. */
+    entry.transcript_labels = mergeTranscriptLabels(existing?.transcript_labels, show.transcript_labels);
 
     entry.source = source;
     entry.tier = batch.tier;
@@ -246,8 +246,9 @@ function main() {
     method: "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
     last_batch_id: batch.batch_id,
     last_batch_tier: batch.tier,
-    transcript_labels_are_not_filters:
-      "transcript_labels is descriptive only, and it is a COST signal rather than a requirement: a show that ships no <podcast:transcript> costs ~46 min of CPU per hour of audio through our own ASR, and is still catalogued, still recommendable and still Foray material. No consumer may read it as an eligibility test."
+    // One pointer, not a paragraph: the rule and its rationale belong in code and
+    // docs, not restated into a 4MB data file on every merge.
+    transcript_labels: "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   };
 
   writeFileSync(CLASSIFICATION_PATH, JSON.stringify(classification, null, 2) + "\n");

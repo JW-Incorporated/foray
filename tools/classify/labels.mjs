@@ -1,7 +1,16 @@
 /* The transcript label, and the shard key.
-   Pure, keyless, no I/O, no network. Imported by tools/classify/prepare-batch.mjs
-   (writes the label), tools/classify/merge-results.mjs (carries it into the
-   record) and tools/classify/select.mjs (the shard key).
+
+   Keyless, and every function here is pure — but the MODULE is not free of I/O,
+   and the header used to claim it was. Importing it pulls in
+   tools/segments/sweep-transcripts.mjs, which imports tools/refresh/dai.mjs,
+   which reads tools/refresh/dai-hosts.json at module scope. So: no network, no
+   writes, no I/O in any call — one committed JSON file, read once at import.
+   Stated precisely because this module is imported by the fleet SELECTOR, and a
+   wrong claim here is what a future session would trust. Caught in review.
+
+   Imported by tools/classify/prepare-batch.mjs (writes the label),
+   tools/classify/merge-results.mjs (carries it into the record) and
+   tools/classify/select.mjs (the shard key).
 
    ============================================================================
    THE ONE RULE THIS FILE EXISTS TO HOLD  (founder ruling, 2026-08-16)
@@ -17,22 +26,30 @@
    ============================================================================
    A TRANSCRIPT IS A COST, NOT A REQUIREMENT — and the difference is the point
    ============================================================================
-   Read this before writing anything that reasons about the label, because an
-   earlier framing of this work got it backwards and the wrong version is easy
-   to re-derive from the review docs.
+   THIS PARAGRAPH IS THE AUTHORITY. `docs/agents/fleet-review-2026-08.md` §3
+   ranks transcript availability as the #1 *binding constraint*; the founder
+   corrected that on 2026-08-16, and the review's framing is easy to re-derive if
+   you read it without this note.
 
-   **We can make transcripts.** Nine episodes for Foray #1 and nine for Foray #2
-   were transcribed with our own ASR at ~1.1x realtime, and on domain vocabulary
-   ours BEAT the publisher's: a Spotify SRT rendered "geology bites" as
-   `jala g b`. So a missing `<podcast:transcript>` costs roughly **46 minutes of
-   CPU per hour of audio**. It does not stop anything.
+   **We can make transcripts.** ASR feasibility is measured, and the measurement
+   lives in `docs/curation/transcription-scale-plan.md` §1/§5: **1.33x realtime
+   for `base.en`**, i.e. of order **45 minutes of CPU per hour of audio**. (The
+   ~1.1x figure quoted elsewhere, e.g. `docs/curation/foray2-asr-manifest.json`,
+   is a planning rate, not that measurement. Cite the scale plan, and do not
+   restate either number in new files — one source, linked, is the point.)
 
-   What the label is therefore FOR: it says which shows are **cheap** to build
-   from. A show that already ships a timed transcript is nearly free; one that
-   does not is 46 min/hour of CPU. That is a scheduling and budgeting signal, and
-   it is exactly why recording it is worth doing — and exactly why it must never
-   filter. A show with no transcript is still catalogued, still recommendable,
-   still Foray material at a price.
+   So a missing `<podcast:transcript>` is an amount of CPU. It does not stop
+   anything. What the label is therefore FOR: it says which shows are **cheap**
+   to build from. That is a scheduling and budgeting signal, which is exactly why
+   recording it is worth doing — and exactly why it must never filter. A show
+   with no transcript is still catalogued, still recommendable, still Foray
+   material at a price.
+
+   Quality is a genuinely open question, not a settled win. A prior session
+   compared our ASR against a publisher SRT on domain vocabulary and ours read
+   better on the terms it checked, but **WER is formally unmeasured in this
+   repo** — that is T2 (#117), still open per `STATE.md`. Do not cite "ours is
+   better" as established; cite T2 when it reports.
 
    Do NOT describe or model transcript availability as a requirement anywhere.
    The one thing that is genuinely a gate today is a **bounded ad delta**:
@@ -86,8 +103,9 @@ export const TRANSCRIPT_LABEL_FIELDS = Object.freeze([
   "label_schema_version",
   "episodes_sampled",
   "transcript_present",
-  "transcript_tags",
+  "episodes_with_transcript",
   "episodes_with_timed_transcript",
+  "transcript_tags",
   "transcript_types"
 ]);
 
@@ -157,11 +175,25 @@ export function shardOf(id, shardCount) {
    recreating the six-way duplicate-work collision the flag exists to fix, from
    one typo in one routine's config, with no warning anywhere.
 
-   Note which direction this fails in: it refuses to RUN. It never drops a show.
-   An omitted flag is still legal and still means "the whole catalogue". */
+   `""` AND WHITESPACE THROW, and that is not pedantry — it is the likeliest way
+   six cloud routines get misconfigured. A routine whose command reads
+   `--shard "$SHARD"` with `SHARD` unset passes an empty string, which is
+   indistinguishable at this layer from a deliberate whole-catalogue run and would
+   silently do six times the work. Only a genuinely ABSENT flag (null/undefined,
+   which parseArgs produces when `--shard` does not appear at all) means "the
+   whole catalogue".
+
+   Note which direction this fails in: it refuses to RUN. It never drops a show. */
 export function parseShard(spec) {
-  if (spec === null || spec === undefined || spec === "") return null; // unsharded — the whole catalogue, deliberately
+  if (spec === null || spec === undefined) return null; // flag absent — the whole catalogue, deliberately
   const raw = String(spec).trim();
+  if (raw === "") {
+    throw new Error(
+      '--shard: empty value. An unset variable (e.g. `--shard "$SHARD"`) reaches here as "" and used to run ' +
+        "the FULL unsharded catalogue silently. Pass a real shard (0/6..5/6), or omit the flag entirely if you " +
+        "genuinely mean the whole catalogue."
+    );
+  }
   const m = /^(\d+)\s*\/\s*(\d+)$/.exec(raw);
   if (!m) {
     throw new Error(`--shard: expected "i/N" (e.g. "0/6"), got ${JSON.stringify(raw)}. Refusing to run unsharded by accident.`);
@@ -193,14 +225,32 @@ export function parseShard(spec) {
    show whose feed would not parse is still catalogued, with a label that is
    honestly empty rather than one that claims zero transcripts. */
 
+/* FIELD NAMES MATCH data/transcript-availability.json AND
+   tools/segments/sweep-transcripts.mjs's `summariseShow`, deliberately and
+   exactly, because the two files describe the same quantities over overlapping
+   show sets and somebody will eventually aggregate them:
+
+     episodes_with_transcript        episodes carrying >= 1 <podcast:transcript>
+     episodes_with_timed_transcript  ... of which at least one is a TIMED format
+     transcript_tags                 TAGS, not episodes — feeds publish ~2.9 per
+                                     transcribed episode, so this is ~2.9x the
+                                     episode count and is not a coverage number
+     transcript_types                per-TYPE tag counts; sums to transcript_tags
+
+   The first draft of this label used `transcript_tags` for the episode count,
+   which meant `transcript_tags: 3` sitting next to a `transcript_types` that
+   summed to 8, and a ~2.9x disagreement with the field of the same name in
+   data/transcript-availability.json. Caught in review. */
+
 /** A label for a show whose feed we could not read on this run. */
 export function emptyTranscriptLabels(overrides = {}) {
   return {
     label_schema_version: LABEL_SCHEMA_VERSION,
     episodes_sampled: 0,
     transcript_present: false,
-    transcript_tags: 0,
+    episodes_with_transcript: 0,
     episodes_with_timed_transcript: 0,
+    transcript_tags: 0,
     transcript_types: {},
     ...overrides
   };
@@ -226,19 +276,45 @@ export function transcriptLabelsFromXml(xml, episodesSampled = 8) {
 
   labels.episodes_sampled = episodes.length;
   for (const ep of episodes) {
-    const types = (ep.transcript_types || []).filter(Boolean);
-    if (types.length > 0) {
+    /* Every tag is counted, including one with no readable @type — recorded as
+       "unknown" rather than dropped, so a publisher adding a new timestamped
+       format alongside their existing VTT shows up as a question instead of as a
+       silent loss. The first draft only reached the untyped branch when NO tag on
+       the episode had a type, which meant the realistic case (typed + untyped
+       together) dropped the untyped one. Caught in review. */
+    const tags = ep.transcript_types || [];
+    if (tags.length === 0) continue;
+
+    labels.episodes_with_transcript++;
+    if (tags.some((t) => hasTimestamps(t))) labels.episodes_with_timed_transcript++;
+    for (const t of tags) {
+      const key = t || "unknown";
       labels.transcript_tags++;
-      if (types.some((t) => hasTimestamps(t))) labels.episodes_with_timed_transcript++;
-      for (const t of types) labels.transcript_types[t] = (labels.transcript_types[t] || 0) + 1;
-    } else if (ep.transcript_url) {
-      // A <podcast:transcript> with no readable @type is still a tag. Recorded
-      // as "unknown" rather than dropped, so a new timestamped format shows up
-      // as a question instead of as a loss.
-      labels.transcript_tags++;
-      labels.transcript_types.unknown = (labels.transcript_types.unknown || 0) + 1;
+      labels.transcript_types[key] = (labels.transcript_types[key] || 0) + 1;
     }
   }
-  labels.transcript_present = labels.transcript_tags > 0;
+  labels.transcript_present = labels.episodes_with_transcript > 0;
   return labels;
+}
+
+/* Combines a previously-recorded label with a freshly-observed one, keeping the
+   richer OBSERVATION.
+
+   Why this exists: a Tier-2 escalation re-merges a show that Tier 1 already
+   labelled. If that run happens to hit a 500, an unconditional overwrite would
+   replace `episodes_sampled: 8, transcript_types: {text/vtt: 8}` with
+   `episodes_sampled: 0` — a real measurement destroyed by a transient failure,
+   in the one field whose entire purpose is budgeting.
+
+   "Richer" is `episodes_sampled`, i.e. how many episodes the label actually saw.
+   A fresh reading of the same or more episodes wins (feeds change, and the newer
+   observation is the truer one); a reading of FEWER episodes than we already had
+   loses. Note what this is not: it is not a judgment about the show, and it
+   never affects whether the show is merged. Both branches produce a record. */
+export function mergeTranscriptLabels(previous, next) {
+  const a = previous && typeof previous === "object" ? previous : null;
+  const b = next && typeof next === "object" ? next : null;
+  if (!b) return a ?? emptyTranscriptLabels();
+  if (!a) return b;
+  return Number(b.episodes_sampled ?? 0) >= Number(a.episodes_sampled ?? 0) ? b : a;
 }

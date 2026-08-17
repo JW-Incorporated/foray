@@ -40,8 +40,8 @@ const RETRY_COOLDOWN_MS = 6 * 3600_000; // 6h between retry attempts on the same
 
    None of the four consults a label. A show that ships no transcript is selected
    on exactly the same terms as one that ships a timed VTT for every episode —
-   the label says the first is ~46 min of CPU per hour of audio and the second is
-   nearly free, and says nothing about whether we keep it. */
+   the label says only that the first is more expensive to build from (rate and
+   rationale: labels.mjs), and says nothing about whether we keep it. */
 export function selectFreshCandidates(shows, classification, progress, now, batchSize, maxFetchAttempts, shard) {
   const shardSpec = parseShard(shard); // throws on a malformed value rather than silently running unsharded
   const entries = classification?.entries || {};
@@ -79,6 +79,35 @@ export function selectFreshCandidates(shows, classification, progress, now, batc
     return 0;
   };
   candidates.sort((a, b) => rank(b) - rank(a));
+  return candidates.slice(0, batchSize);
+}
+
+/* The Tier-2 queue: shows this pipeline already classified at Tier 1 and flagged
+   needs_review. Moved here from prepare-batch.mjs, unchanged, so that it gets the
+   same no-exclusion coverage as the fresh selector — it was the one selection path
+   with no behavioural test at all, and a review demonstrated that a label-based
+   `continue` could be added to it without any suite going red.
+
+   It has NO shard support and no ordering, deliberately: it iterates
+   `Object.entries(...)`, so six concurrent shards would select identical shows.
+   prepare-batch.mjs refuses `--shard` with `--mode escalate` rather than ignoring
+   it. The pile is small (~301 as of 2026-08-16) and drains as one routine.
+
+   Same rule as the fresh selector: no label is consulted. The three reasons a
+   show is not here are all about work — not Tier 1 yet, not flagged, or already
+   reserved by an unmerged batch. */
+export function selectEscalateCandidates(shows, classification, progress, batchSize) {
+  const byId = new Map(shows.map((s) => [String(s.apple_collection_id), s]));
+  const entries = classification?.entries || {};
+  const inFlight = progress?.in_flight || {};
+  const candidates = [];
+  for (const [id, entry] of Object.entries(entries)) {
+    if (entry.source !== "classify-agent-tier1") continue;
+    if (!entry.needs_review) continue;
+    if (inFlight[id]) continue;
+    const show = byId.get(id);
+    if (show) candidates.push({ show, priorResult: entry });
+  }
   return candidates.slice(0, batchSize);
 }
 

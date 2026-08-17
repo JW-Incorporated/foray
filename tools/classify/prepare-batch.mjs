@@ -41,9 +41,10 @@
    A LABEL, NOT A FILTER (founder ruling 2026-08-16). Each batch entry carries a
    `transcript_labels` object read out of bytes this script already fetched and
    used to discard: `<podcast:transcript>` presence, count and type. It is a COST
-   signal — a show that ships timed transcripts is nearly free to build from, one
-   that does not costs ~46 min of CPU per hour of audio through our own ASR — and
-   it is NOT a requirement for anything. Nothing in this file selects, orders,
+   signal — a show that ships timed transcripts is cheaper to build from, because
+   we transcribe our own audio otherwise — and it is NOT a requirement for
+   anything. Rate and rationale: tools/classify/labels.mjs, which is the one place
+   that number is written down. Nothing in this file selects, orders,
    skips or drops a show on the basis of it; see tools/classify/labels.mjs for the
    rule and tools/classify/no-exclusion.test.mjs for the check that holds it.
 
@@ -64,7 +65,7 @@ import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import { parseShard, transcriptLabelsFromXml, emptyTranscriptLabels, LABEL_SCHEMA_VERSION } from "./labels.mjs";
-import { selectFreshCandidates } from "./select.mjs";
+import { selectFreshCandidates, selectEscalateCandidates } from "./select.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -75,16 +76,37 @@ const RETRY_COOLDOWN_MS = 6 * 3600_000; // 6h between retry attempts on the same
 const STALE_IN_FLIGHT_MS = 12 * 3600_000; // reclaim a batch nobody merged within 12h
 const NEW_PIPELINE_SOURCE_PREFIX = "classify-agent-";
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
+  /* A flag present with no value is NOT the same as an absent flag, and
+     collapsing the two is how `--shard` fails open: `--shard` written last, or
+     `--shard --batch-size 60`, would otherwise read as "no shard" and silently
+     run the full unsharded catalogue. Present-but-valueless yields "", which
+     parseShard rejects; absent yields the fallback. */
   const get = (flag, fallback) => {
     const idx = argv.indexOf(flag);
-    return idx >= 0 && argv[idx + 1] !== undefined ? argv[idx + 1] : fallback;
+    if (idx < 0) return fallback;
+    const next = argv[idx + 1];
+    if (next === undefined || /^--/.test(next)) return "";
+    return next;
   };
+  /* Same fail-loud stance as --shard. `--batch-size abc` used to become NaN,
+     `slice(0, NaN)` used to become `[]`, and the run reported
+     CLASSIFY_BATCH_EMPTY — a silent no-op that looks exactly like "the pass is
+     complete". A misconfigured routine must be noisy. */
+  const int = (flag, fallback) => {
+    const raw = get(flag, fallback);
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1) {
+      throw new Error(`${flag}: expected a positive integer, got ${JSON.stringify(raw)}.`);
+    }
+    return n;
+  };
+
   return {
-    batchSize: Number(get("--batch-size", "60")),
+    batchSize: int("--batch-size", "60"),
     mode: get("--mode", "fresh"), // "fresh" | "escalate"
-    episodesPerShow: Number(get("--episodes-per-show", "8")),
-    maxFetchAttempts: Number(get("--max-fetch-attempts", "3")),
+    episodesPerShow: int("--episodes-per-show", "8"),
+    maxFetchAttempts: int("--max-fetch-attempts", "3"),
     outOverride: get("--out", null),
     progressOverride: get("--progress", null),
     // "i/N" for parallel sharded runs — take only shows this shard owns, by a
@@ -288,22 +310,28 @@ async function fetchTranscriptExcerpt(url) {
   }
 }
 
-function selectEscalateCandidates(shows, classification, progress, batchSize) {
-  const byId = new Map(shows.map((s) => [String(s.apple_collection_id), s]));
-  const candidates = [];
-  for (const [id, entry] of Object.entries(classification.entries)) {
-    if (entry.source !== "classify-agent-tier1") continue;
-    if (!entry.needs_review) continue;
-    if (progress.in_flight[id]) continue;
-    const show = byId.get(id);
-    if (show) candidates.push({ show, priorResult: entry });
-  }
-  return candidates.slice(0, batchSize);
-}
-
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   parseShard(args.shard); // fail loudly, before any network work, on a malformed --shard
+
+  /* `--shard` is meaningless in escalate mode: selectEscalateCandidates has no
+     shard support and no ordering, so six routines passing six different shards
+     would all select the identical batch — the same duplicate work the flag
+     exists to prevent, in the other mode. Refuse rather than ignore. */
+  if (args.mode === "escalate" && args.shard !== null) {
+    throw new Error("--shard is not supported with --mode escalate (the escalate selector cannot shard). Run escalation as a single routine.");
+  }
+
+  /* Resolve fast-xml-parser HERE, eagerly, outside any try. It is required
+     lazily so this module stays importable without backend/node_modules (CI's
+     data-and-site job never installs them), but a SCRIPT run must die on line one
+     if it is missing. Left to resolve inside parseShowSignal's try, a missing
+     dependency became MODULE_NOT_FOUND in the per-show catch: every feed in the
+     batch recorded a `failed_fetch`, and after three such runs the shows went
+     down the DEGRADED path and got permanently classified on Tier-0 genre alone.
+     A broken environment must not quietly become bad data. */
+  xmlParser();
+
   mkdirSync(join(ROOT, "data-local"), { recursive: true });
   const now = Date.now();
   const batchId = `${args.mode}-${new Date(now).toISOString().slice(0, 10)}-${randomUUID().slice(0, 8)}`;
@@ -395,12 +423,7 @@ async function main() {
     taxonomy_path: "data/taxonomy.json",
     genre_map_path: "data/genre-taxonomy-map.json",
     label_schema_version: LABEL_SCHEMA_VERSION,
-    // What this run's slice was, so a batch file explains itself later.
-    selection: {
-      shard: args.shard ?? null,
-      shard_key: "fnv1a32(String(apple_collection_id)) % N",
-      episodes_sampled_per_show: args.episodesPerShow
-    },
+    shard: args.shard ?? null, // which slice this run took, so a batch file explains itself later
     shows: batchShows
   };
   writeFileSync(outPath, JSON.stringify(batch, null, 2) + "\n");
