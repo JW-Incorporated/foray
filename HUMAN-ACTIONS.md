@@ -703,11 +703,13 @@ locally — either from six `classify/*` PRs, or from one
 
 **Tag:** `[BLOCKING]` for any store submission · **Time:** ~5 minutes to start, then a 15-minute walk · **Owner:** Joey (an iPhone) and/or Wyatt (an Android phone) — either one alone is worth doing
 
-**Why it matters.** #35 asked whether `<audio>` in a Capacitor WebView survives backgrounding. It now has an answer — `docs/research/mp1-background-audio.md` — but **no part of that answer came from a device.** iOS could not be tested at all (this is a Windows machine; iOS cannot be built on it), and the Android emulator route was tried and failed: the SDK went on, a throwaway Capacitor app was built around our real player code, the APK was pushed — and the emulator never finished booting well enough to install it. Three attempts, about 75 minutes, not one line of output. §6.2 of that document has the detail.
+> **Substantially answered 2026-08-17. Wyatt ran this on a real phone and it FAILED — filed as #224.** The failure was not the one this item was written to catch. Read the two paragraphs below before running it again; what remains to test is narrower and specific.
 
-An emulator is also not a phone for the two things that decide the Android answer — **power management and audio focus** — so even a successful emulator run would not have closed this.
+**What the phone actually showed.** Wyatt played `grilling-history-1` in mobile Safari: *"The transitions worked ok while my phone was unlocked, but when my screen was off then it would just pause."* Traced cause, and it is ours rather than the platform's: at a seam the page is hidden **and silent**, which is the throttled state; the next segment's load then crosses `LOAD_SETTLE_TIMEOUT_MS = 10_000` in `player/html-audio-backend.js`, and `player/queue-manager.js:470` turns a load rejection into `E.error` → idle + pause. **PR #227 (`c1c4e69`) is the fix** — it warms the next segment while audio is still flowing, which is the window in which a hidden page is provably *not* throttled, taking a measured seam from 9,153 ms to 2,000 ms.
 
-**The specific claim at stake, because it decides a lot of work.** On iOS, background JS timers are aligned to ~1 second, so the player's precise stop relies on the `timeupdate` media event still firing while backgrounded. That is an *inference* from WebKit's source, not something anyone has run. If it holds, a segment stops within about a quarter-second of where it should. If it does not, **the segment plays on into the rest of the source episode — a median of 15.6 minutes of the wrong content** (measured over the real Foray data), with the app still showing the Foray and its clock still counting. That is the difference between "ship the shell with a caveat" and "the shell needs a native audio backend on both platforms".
+**The claim this item was written to settle came out the other way, and that part is closed.** The fear was that `timeupdate` would stop firing while backgrounded, letting a segment run a median **15.6 minutes** into the wrong episode. It fires. Measured in the iOS Simulator on a macOS runner (run 32026332637, and again in 32036295743): out-point overshoot **0.004–0.021 s** across a **15.03 s** genuinely hidden window, 61–62 hidden `timeupdate` samples at ~252 ms, hidden DOM timers at ~1000 ms, `resumedAtWall: null`. So **no native audio backend is needed on iOS**, and #28's iOS half is not the critical path. A simulator is still not a phone, and `SIMULATOR_CAVEAT` in `tools/mobile/ios-ci.mjs` says so on every report.
+
+**What is still worth a phone, and it is now one specific thing.** Play a Foray across **at least two consecutive cross-episode seams with the screen off**, on `main` at or after `c1c4e69`. 16 of this Foray's 31 seams are cross-episode and pay a load; the other 15 are same-episode seeks and prove less. Two matters because the seam probe's own floor is `MIN_HIDDEN_TRANSITIONS = 2` — one transition can succeed inside WebKit's 5 s audible-activity grace (measured: `Starting timer to clear audible activity in 5 seconds`, `clearAudibleActivity` 5.006 s later) and the next still fail. **Android remains entirely untested on a device**, and an emulator is not a phone for the two things that decide it — power management and audio focus. The original emulator attempt failed outright: three boots, ~75 minutes, no output, recorded in §6.2 rather than dressed up.
 
 **Steps — five minutes, no tooling, either platform.**
 
@@ -856,21 +858,19 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 
 ### 16. On a Mac: generate the iOS shell, add one `Info.plist` line, and build it
 
-**Tag:** `[BLOCKING]` for iOS · **Time:** ~30 minutes the first time (mostly Xcode and CocoaPods downloading) · **Owner:** whoever has the Mac
+**Tag:** no longer blocking for the build · **Time:** ~0 minutes — CI does this now · **Owner:** nobody; kept for the signing step only
 
-**Why it matters.** #36 committed the shell's configuration, the `webDir` build and the guard tests, but **no native project has been generated and nothing has been compiled** — this is a Windows machine. Everything about a *running* app is therefore unverified, including one CSP change that is reasoned from WebKit's behaviour rather than observed. One session on a Mac converts the whole thing from "should work" to "does".
+> **Largely obsolete as of 2026-08-17 — do not follow the steps below as written; two of them are wrong.** PR #220 landed `.github/workflows/ios-build.yml`, a `macos-latest` job that does everything this item describes, and **it has already succeeded**: `BUILD SUCCEEDED` for the iOS Simulator (Debug) **and** for an arm64 device (Release, unsigned), with `window.Capacitor` present, 9 plugins loaded, **0 CSP violations**, and `UIBackgroundModes = ["audio"]` verified by Apple's own plist parser. Run it with `gh workflow run ios-build.yml --ref main -f probes=true`; ~8 minutes, free while the repo is public.
+>
+> **The steps below already carry their own correction — see the note under step 1: Capacitor 8 iOS is SwiftPM, so `brew install cocoapods` is unnecessary and there is no `App.xcworkspace`.** One thing that note does not cover: the CSP change is **no longer** "reasoned from WebKit's behaviour rather than observed" as the paragraph above claims — it was measured in-page at **0 violations**, from the `foray_probe_bridge` record. Incidentally `navigator.serviceWorker` does not exist at all under `capacitor://localhost`, so the stale-cache class of bug is impossible there by construction.
 
-**Do item #15 first** if you can — the bundle id is baked into the generated project, and changing it afterwards means regenerating.
+**What actually still needs a Mac, or rather an Apple account:** nothing for building. **Signing and TestFlight** need an Apple Developer account and secrets — that is item **#19**, and it is the real remaining gate. A device test with the screen off is item **#11**.
 
-**Steps.** All of these run from the repo root unless stated.
+**Do item #15 first** if you regenerate by hand — the bundle id is baked into the generated project, and changing it afterwards means regenerating.
 
-1. Install the toolchain, if it is not there:
+**Steps, for reference only — CI is the supported path.** All of these run from the repo root unless stated.
 
-   ```bash
-   brew install cocoapods
-   ```
-
-   Xcode itself must be from the App Store, opened once so it accepts its licence.
+1. Install the toolchain, if it is not there. Xcode must be from the App Store, opened once so it accepts its licence. **Do not install CocoaPods — Capacitor 8 does not use it.**
 
 2. Install the shell's dependencies and build the web bundle:
 
