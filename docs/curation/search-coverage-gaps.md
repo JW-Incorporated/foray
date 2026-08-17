@@ -133,40 +133,60 @@ or missing semantic concept:
 
 ## Full breakdown
 
-Of the 155 evaluated topics (`data/topic-coverage-report.json` →
-`summary.by_priority`):
+> **Re-measured 2026-08-16** (`feat/reclassify-taxonomy`). The numbers in this
+> section were written against the report as it stood in July and had already
+> drifted; they are restated below from the regenerated
+> `data/topic-coverage-report.json`. The one real movement is the taxonomy
+> column: **the 13 "no node exists" topics are down to 0**, because the 2026-08
+> taxonomy review created a node for every one of them and this branch finally
+> pointed `data/top-topics.json` at them. Priority-4 fell 24 → 9 as a result.
+>
+> The counter-movement is honest and expected: `misrouted` rose **27 → 38** and
+> `absent` content-depth **36 → 50**, because a topic with no node could not be
+> called misrouted at all — it had nothing to route *to*. The work moved from
+> the taxonomy column into the search-index column. It did not disappear, and
+> this document is where the remainder lives.
 
-- **8 priority-1** — fix search now (above).
-- **58 priority-2 / 26 priority-3** — a search fix and/or breadth-tier
+Of the 155 evaluated topics (`data/topic-coverage-report.json` →
+`summary.by_priority`), as of 2026-08-16:
+
+- **2 priority-1** — fix search now (above).
+- **45 priority-2 / 25 priority-3** — a search fix and/or breadth-tier
   promotion closes the gap; see the headline table and the `recommended_actions`
   field per topic in the report.
-- **24 priority-4** — either a re-tagging pass over items already in the
-  catalogue (11 topics — e.g. Archaeology, Sports science, Aviation, where
-  items exist but are tagged with adjacent words, not the query term itself;
-  4 more topics need re-tagging *and* a search fix, so they already surface
-  at priority 2), or genuinely **no taxonomy node exists** (13 topics — see
-  below).
-- **39 priority-6** — already well served: Comedy, Business, Startups,
+- **9 priority-4** — a re-tagging pass over items already in the catalogue
+  (e.g. Archaeology, Sports science, Aviation, where items exist but are tagged
+  with adjacent words, not the query term itself). This bucket was 24 before the
+  13 no-node topics were resolved.
+- **5 priority-5** — see below.
+- **69 priority-6** — already well served: Comedy, Business, Startups,
   History, Science, AI, Investing, Ancient Rome & Greece, Nature, Engineering,
   Psychology, and others where the founder's original tuning happens to
   overlap general-audience demand.
 
-### Needs a taxonomy ADR (no node fits — not created here)
+### Needed a taxonomy ADR — RESOLVED 2026-08-16
 
-Per `personalization-and-depth-plan.md` §5, taxonomy node additions require
-governance, so these are flagged, not invented: MMA/UFC, combat sports
-(boxing), esports, board games/tabletop, jazz, hip-hop/rap, K-pop, coffee,
-cryptocurrency, cybersecurity, meditation/mindfulness, immigrant/diaspora
-stories, LGBTQ+ stories & culture. Several of these (MMA/UFC, jazz, crypto)
-are real, frequent query terms in the general podcast market and worth an ADR
-discussion; others (K-pop, board games) are lower-tier long-tail.
+These thirteen had no node when this document was written: MMA/UFC, combat
+sports (boxing), esports, board games/tabletop, jazz, hip-hop/rap, K-pop,
+coffee, cryptocurrency, cybersecurity, meditation/mindfulness,
+immigrant/diaspora stories, LGBTQ+ stories & culture.
+
+**All thirteen have nodes now** — created by the 2026-08 taxonomy review
+(`docs/research/taxonomy-review-2026-08.md` §5.4) and mapped in
+`data/top-topics.json` by `feat/reclassify-taxonomy`. `sports/combat-sports`
+covers MMA/UFC and boxing; `food/drinks` covers coffee. What each still needs
+is a **semantic-index** entry so a query for "jazz" routes to `music/jazz` —
+that is the search-side work this document is about, and it is why these
+topics moved from `no-node` to `misrouted` rather than to `covered`.
 
 ### Genuinely low-priority (no lever today)
 
-None landed here in this pass — every absent/thin topic had either real
-breadth-tier supply, a search fix, or a retag opportunity. That's itself a
-useful signal: the catalogue's *breadth problem* is almost entirely solved by
-promoting already-harvested shows, not by net-new discovery.
+**5 topics** land here as of 2026-08-16 (it was none when this was written —
+the newly-noded topics with no supply and no search route yet). Every other
+absent/thin topic has either real breadth-tier supply, a search fix, or a
+retag opportunity. That's itself a useful signal: the catalogue's *breadth
+problem* is almost entirely solved by promoting already-harvested shows, not by
+net-new discovery.
 
 ## How to use this
 

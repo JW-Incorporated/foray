@@ -21,11 +21,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
   suite that proves it is `tools/classify-breadth.test.mjs`.
 - **Owned files:** `data/genre-taxonomy-map.json`,
   `data/breadth-classification.json`, `data/discover.json` (topics arrays
-  only — no copy touched), `tools/classify-breadth.mjs`,
+  only — no copy touched), `data/top-topics.json`,
+  `data/topic-coverage-report.json` (regenerated), `tools/classify-breadth.mjs`,
   `tools/classify/root-dumping-report.mjs` (new), their suites,
-  `test/suite-integrity.test.js` (two new floors),
+  `test/data-topic-integrity.test.js` (new — the standing gate on node ids in
+  `data/`), `test/suite-integrity.test.js` (three new floors),
   `docs/CATALOG-PIPELINE.md`, `docs/research/genre-map-notes.md`,
-  `docs/research/taxonomy-review-2026-08.md`, `tools/classify/README.md`.
+  `docs/research/taxonomy-review-2026-08.md`,
+  `docs/curation/search-coverage-gaps.md`, `tools/classify/README.md`.
 - **Out of scope:** `data/taxonomy.json` (no node added or renamed),
   `data/catalog.json`, `data/session.json` (measured clean), anything under
   `player/`, and the ~17,900 breadth shows still awaiting a tier-1 agent pass —

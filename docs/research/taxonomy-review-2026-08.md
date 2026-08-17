@@ -570,10 +570,12 @@ cannot come back.
   food show is about baking or barbecue; that is precisely the per-show judgement the
   Tier-1 LLM pass exists for. Leaving the coarse prior coarse is correct.
   **Partly superseded 2026-08-16** (`feat/reclassify-taxonomy`): the Food reasoning holds
-  and `Food` still maps to the bare root, but it does not generalise. Six genres —
-  Astronomy, Music History, Personal Journals, Sexuality, Games, Places & Travel — name a
-  child *exactly*, four of them via an `apple_anchor` this very review wrote. Those six
-  are now mapped; the other 104 stay coarse. See `genre-map-notes.md` § 2026-08-16.
+  exactly as written and `Food` still maps to the bare root, but it does not generalise.
+  Seven genres — Astronomy, Music History, Personal Journals, Sexuality, Games,
+  Places & Travel, Wilderness — name a child closely enough to map, six of them via an
+  `apple_anchor` this very review wrote. Note also that "all 110 entries still resolve"
+  undersold the map: 66 of them already reached a child before this change. See
+  `genre-map-notes.md` § 2026-08-16 for the per-genre evidence and the four declines.
 - `docs/agents/runner-prompts/foray-nightly.md` — no taxonomy references.
 - `backend/src/enrich/StubEnricher.ts` `FALLBACK_TOPICS` — stale (9 seed ids) but only
   used in keyless dry-run; noted in the PR body.
@@ -599,12 +601,19 @@ only, and the rule itself is worth keeping.
 
 > **Actioned 2026-08-16, `feat/reclassify-taxonomy`.** The founder asked directly whether
 > the classifying fleet had been fixed *and* its work redone; it had not. What that PR
-> did: re-pointed six genres at child nodes (§7 above), re-ran the deterministic base
+> did: re-pointed seven genres at child nodes (§7 above), re-ran the deterministic base
 > layer over all 19,787 breadth shows, and ran an LLM refinement pass over the curated
 > pool (`data/discover.json`). Root-only (show, branch) pairs in the breadth tier went
-> 9,741 → 9,089 and the curated pool's 305 → far fewer; the numbers per branch are in
-> that PR's body and are reproducible with
+> **9,741 → 8,874** (40.1% → 36.3%) and the curated pool's **305 → 161** (17.1% → 9.0%);
+> shows carrying no child node anywhere went 6,107 → 5,249 and pool items 108 → 31. No
+> branch got worse. Per-branch numbers are in that PR's body and are reproducible with
 > `node tools/classify/root-dumping-report.mjs`.
+>
+> **So the paragraph immediately below no longer describes the file.** "All 19,787 shows
+> keep the topics they were assigned before this change" was true when written; 1,026
+> shows have since gained a topic and none lost one. The bare-`food` count in it is also
+> slightly off — measured, it is 362, not 374 — and it is still 362, which is the review's
+> own Food argument holding up exactly as predicted: no genre map can reach those children.
 >
 > It also found the reason a re-run was not merely useless but dangerous:
 > `tools/classify-breadth.mjs` rebuilt the file from scratch, so the "cheap partial

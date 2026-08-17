@@ -91,26 +91,48 @@ comment, and the bottom layer did not honour it.
 | refinement | `classify-agent-tier1` | `tools/classify/` + a Claude Code agent | feed description + recent episodes |
 | escalation | `classify-agent-tier2` | ditto, `--mode escalate` | the above + a transcript excerpt |
 
-**Higher layers win.** The rules the base layer follows, in order:
+**Higher layers win.** The rules the base layer follows:
 
-1. A `classify-agent-*` entry is never touched — not overwritten, not enriched.
-   It is a real per-show judgement and may legitimately disagree with the genre
-   (*The Dice Tower* is `gaming/design`, not the `gaming/tabletop` its genre
-   implies).
-2. Any other overlay may be **upgraded only additively**: the genre map's topic
-   set must be a strict superset of what the overlay asserted, *and* must turn a
-   branch the overlay left bare into one with a child. Both conditions, because
-   the first alone lets the map bolt its coarse secondary branches
-   (`Social Sciences` carries psychology + society + economics) onto shows that
-   never asked for them — measured at 2,021 shows and root dumping getting
-   *worse*, 9,741 → 10,502 pairs.
+1. A `classify-agent-*` entry is **never touched** — not overwritten, not
+   enriched, not re-sourced. It is a real per-show judgement and may legitimately
+   disagree with the genre (*The Dice Tower* is `gaming/design`, not the
+   `gaming/tabletop` its genre implies).
+2. Any other overlay is **enriched in place**, never replaced. The base layer
+   adds the child nodes that fix a branch the overlay left bare, and nothing
+   else. It does not restate the overlay's `confidence`, does not change its
+   `source`, and does not drop any other field it carries — it records what it
+   added in `enriched_by` / `enriched_nodes`. An entry whose `source` field is
+   *missing* is treated as an overlay too: an unrecognised layer is protected by
+   default, not by remembering to list it.
 3. Entries for shows outside the input catalog are carried through untouched.
-4. If any show that had topics would end up with none, the script writes nothing
-   and exits non-zero. Same for a genre-map topic that is not a taxonomy node.
+4. Provenance is merged, not replaced: `merge-results.mjs` owns the top-level
+   keys, this script writes `provenance.base_layer`.
+5. A genre-map topic that is not a taxonomy node aborts the run before anything
+   is written, naming the topic.
 
-Rule 4 exists because the failure mode here is silent: the file stays valid JSON,
-CI stays green, and shows simply lose their tags. The pass that made this concrete
-would have deleted 1,851 agent-authored classifications on its next run.
+**Why rule 2 is that narrow.** Two looser versions were measured on the live
+file and both were worse:
+
+| Rule | Shows touched | Root-only pairs |
+|---|---:|---|
+| replace on any strict superset | 2,021 | 9,741 → **10,502** (worse) |
+| …only if it fixes a bare branch | 352 | 9,741 → 9,089, but 179 new bare-root pairs rode along |
+| add only the fixing children (shipped) | 388 | 9,741 → **8,874**, no branch worse |
+
+The failure in the first two is the same: the map's topic list carries coarse
+*secondary* branches (`Games` carries `hobbies`, `Astronomy` carries `science`,
+`Social Sciences` carries psychology + society + economics), and writing the
+whole list bolts those onto shows that never asked for them. More tags, worse
+classification.
+
+**On un-classification.** The structural protection is that `entries` starts as
+a copy of what is on disk and every write carries a non-empty `topics`, so a
+show cannot lose its tags. The script *also* asserts it and refuses to write —
+a belt-and-braces check on an unreachable path, kept because the failure it
+guards is silent: the file stays valid JSON, CI stays green, and shows simply
+lose their tags. The pass that made this concrete would have deleted 1,851
+agent-authored classifications on its next run. `test/data-topic-integrity.test.js`
+is the standing gate on the file itself.
 
 **Measuring it**: `node tools/classify/root-dumping-report.mjs` prints how much of
 each source sits on a bare branch that has children — the defect
