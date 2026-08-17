@@ -63,8 +63,11 @@ const FLOORS = {
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
   "test/app-security.test.js": 18,
+  "test/data-topic-integrity.test.js": 12,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
+  "tools/classify-breadth.test.mjs": 29,
+  "tools/classify/root-dumping-report.test.mjs": 31,
   "tools/ci/path-policy.test.mjs": 82,
   "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,
