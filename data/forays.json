@@ -275,6 +275,218 @@
           "role": "explanation"
         }
       ]
+    },
+    {
+      "id": "capital-types-1",
+      "kind": "deep-dive",
+      "title": "The types of capital a startup can raise",
+      "topic": "business/startups",
+      "status": "draft",
+      "summary": "Eight ways to fund a company, from an in-law’s cheque to an SBA loan.",
+      "runtime_sec": 3082.43,
+      "source_doc": "docs/curation/foray2-capital.md",
+      "label_prefixes": {
+        "BOOT": "tbf-309-funded",
+        "YC": "yc-how-fundraising-works",
+        "FAM": "ss-inlaw-investors",
+        "CALM": "tbf-328-tringas",
+        "GR": "ftb-89-sbir-grants",
+        "VD": "rtn-venture-debt",
+        "SBA": "am-sba-lender-roundtable",
+        "CF": "crowdcrux-557-atombeam"
+      },
+      "slots": [
+        {
+          "id": "wrong-default",
+          "title": "Why venture capital is the wrong default"
+        },
+        {
+          "id": "friends-and-family",
+          "title": "Money from the people who know you"
+        },
+        {
+          "id": "the-equity-round",
+          "title": "The equity round, and what it costs"
+        },
+        {
+          "id": "earnings-not-exits",
+          "title": "Investors who want earnings, not exits"
+        },
+        {
+          "id": "grants",
+          "title": "Money that is not an investment"
+        },
+        {
+          "id": "venture-debt",
+          "title": "Borrowing against the next round"
+        },
+        {
+          "id": "bank-and-sba",
+          "title": "Borrowing from a bank"
+        },
+        {
+          "id": "the-crowd",
+          "title": "Capital from the crowd"
+        }
+      ],
+      "items": [
+        {
+          "type": "segment",
+          "slot": "wrong-default",
+          "label": "BOOT-1",
+          "segment_id": "tbf-309-funded#51",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "wrong-default",
+          "label": "YC-1",
+          "segment_id": "yc-how-fundraising-works#411",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "friends-and-family",
+          "label": "FAM-1",
+          "segment_id": "ss-inlaw-investors#185",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "friends-and-family",
+          "label": "FAM-2",
+          "segment_id": "ss-inlaw-investors#565",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-equity-round",
+          "label": "YC-2",
+          "segment_id": "yc-how-fundraising-works#837",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-equity-round",
+          "label": "YC-3",
+          "segment_id": "yc-how-fundraising-works#1084",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "earnings-not-exits",
+          "label": "CALM-1",
+          "segment_id": "tbf-328-tringas#359",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "earnings-not-exits",
+          "label": "BOOT-2",
+          "segment_id": "tbf-309-funded#485",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "earnings-not-exits",
+          "label": "CALM-3",
+          "segment_id": "tbf-328-tringas#2624",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "grants",
+          "label": "GR-1",
+          "segment_id": "ftb-89-sbir-grants#296",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "grants",
+          "label": "GR-2",
+          "segment_id": "ftb-89-sbir-grants#1961",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "grants",
+          "label": "GR-3",
+          "segment_id": "ftb-89-sbir-grants#2286",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "venture-debt",
+          "label": "VD-1",
+          "segment_id": "rtn-venture-debt#1035",
+          "role": "explanation",
+          "needs_review": true,
+          "long_reason": "The underwriting question and the three sources of repayment are one argument: cutting after the thesis leaves the claim without the framework that makes it true, and the second half is where every number sits."
+        },
+        {
+          "type": "segment",
+          "slot": "venture-debt",
+          "label": "VD-2",
+          "segment_id": "rtn-venture-debt#1429",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "venture-debt",
+          "label": "VD-3",
+          "segment_id": "rtn-venture-debt#1800",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "venture-debt",
+          "label": "VD-4",
+          "segment_id": "rtn-venture-debt#2868",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "bank-and-sba",
+          "label": "SBA-1",
+          "segment_id": "am-sba-lender-roundtable#1689",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "bank-and-sba",
+          "label": "SBA-2",
+          "segment_id": "am-sba-lender-roundtable#2446",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "bank-and-sba",
+          "label": "SBA-3",
+          "segment_id": "am-sba-lender-roundtable#3752",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "bank-and-sba",
+          "label": "SBA-4",
+          "segment_id": "am-sba-lender-roundtable#4438",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-crowd",
+          "label": "CF-1",
+          "segment_id": "crowdcrux-557-atombeam#1225",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "the-crowd",
+          "label": "CF-2",
+          "segment_id": "crowdcrux-557-atombeam#1490",
+          "role": "explanation"
+        }
+      ]
     }
   ]
 }

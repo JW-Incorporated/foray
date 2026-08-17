@@ -7,6 +7,36 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Foray #2 authoring — the types of capital available to startups (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/foray2-capital`. Foray #2 authored end to end: **22 segments,
+  51:22**, eight arc slots, eight episodes, `capital-types-1` in
+  `data/forays.json` with `status: "draft"`. Write-up:
+  `docs/curation/foray2-capital.md`.
+- **Owned files:** `data/segments.json` (+26, pool now 62),
+  `data/segment-sources.json` (+8, now 17), `data/forays.json` (+1 Foray),
+  `docs/curation/foray2-capital.md` (new),
+  `tools/foray/check-forays.test.mjs`. **Out of scope:**
+  `data/breadth-classification.json` and `data/genre-taxonomy-map.json` (PR
+  #198 owns those), anything under `player/`, `app.js`, `styles.css`.
+- **Two findings other sessions need.**
+  (1) **`findAnchorOccurrences()` returns the CUE's span, not the anchor's** —
+  `buildTranscriptIndex()` stamps every token with its cue's start/end. Taking
+  its return value as a segment boundary ends segments mid-sentence; nine of
+  this batch's sixteen ASR segments did until it was fixed against the word
+  stream. **Foray #1 went through the same helper and should be re-checked.**
+  `docs/curation/foray2-capital.md` §4.
+  (2) **The Full Ratchet injects ads mid-roll**, confirmed from our own audio
+  (identical ~26.5 s Ramp pre-roll on four 2014 episodes, and a second read at
+  ~1,786 s of ep 235). Four already-transcribed episodes — 17, 18, 40, 235,
+  2 h 55 m — are therefore authorable but **not playable**, and the arc lost its
+  taxonomy spine and its corporate-VC slot. Do not queue a feed for ASR on a
+  PADDABLE tier alone; PADDABLE means authorable. §6.1.
+- **Heads-up — the six Foray-#1 snapshot tests in
+  `tools/foray/check-forays.test.mjs` are now generalised** (per-Foray pins
+  instead of whole-file counts). A third Foray should not need to touch that
+  file.
+
 ### Foray UI #3 — the seam beat, and the strip becomes a scrubber (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/foray-seams`. (1) **The seam silence.** Foray #1 has no

@@ -407,6 +407,43 @@ week three.
 
 ---
 
+### 8. Listen to Foray #2, and rule on one number the cut budget cost us
+
+**[BLOCKING]** for publishing Foray #2 — **~55 min of listening plus one
+decision.** Foray #2 (`capital-types-1`, 22 segments, 51:22) is authored,
+green, and `status: "draft"`, so no client surfaces it. Write-up:
+`docs/curation/foray2-capital.md`.
+
+Two things, and they are best done in one sitting because the second is a
+judgement you can only make with the thing in your ears.
+
+1. **Listen to it end to end.** Play it at
+   `https://jw-incorporated.github.io/foray/?foray=capital-types-1`. Nothing in
+   either Foray has ever been heard by anyone; every number in both write-ups is
+   a property of timestamps. Listen for the two things the rules cannot check:
+   whether a segment ends before its speaker has finished a thought, and whether
+   the eight slots read as one argument or as eight unrelated interviews.
+2. **Then rule on the cut budget.** The rolling cut budget (rule D1, "no more
+   than 6 segment starts in any 10 minutes") forced **four finished segments out
+   of the running order, and three of them are among the ten best passages in
+   the batch** — including the 59-second close of the friends-and-family slot,
+   where Heidi Roizen asks a founder how he would feel if his in-laws lost
+   everything. They were dropped for being **short**, not for being weak. The
+   number is marked "judgement" in `docs/curation/segment-length-rules.md` §5c,
+   so it is yours to move.
+
+   - If the Foray sounds like it jumps around, D1 is right and this is the price.
+   - If it sounds unhurried and you find yourself wishing it had more, say
+     "raise N to 8 for every length" and the four segments come back at a cost of
+     about six and a half minutes.
+
+**Worked if:** you say one of exactly three things — "publish it", "publish it
+and raise N", or "here is what I heard that the rules missed".
+
+**Status:** OPEN
+
+---
+
 <!-- BEGIN generated:waiting-on-you -->
 
 ### Waiting on a founder (auto-maintained)
