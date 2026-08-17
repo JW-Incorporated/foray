@@ -58,6 +58,12 @@ import {
   SEAM_BAD_MS,
   SEAM_OK_MS,
   seamTransitionVerdict,
+  saveTrailAnalysis,
+  parseSimulatorLifecycle,
+  suspensionVerdict,
+  SAVE_TRAIL_GAP_MS,
+  AUDIO_FLOWED_RATIO,
+  RECORD_TAIL_TOLERANCE_SEC,
 } from "./ios-ci.mjs";
 
 const allSecrets = () => Object.fromEntries(SIGNING_SECRETS.map((k) => [k, "x"]));
@@ -1293,4 +1299,292 @@ test("redact-localstorage rewrites a real rows file in place, redacted, and exit
   assert.match(r.stderr, /redacted 3 value\(s\)/);
   /* The probe records must still decode out of the file it wrote. */
   assert.equal(parseDump(decodeLocalStorageRows(out)).bridge.capacitor, "object");
+});
+
+/* ── WHERE THE RECORD STOPS: the suspension-ceiling channel (§4.1b) ──────────
+ *
+ * WHAT THESE ARE FOR. Three seam runs ended their record 25-28 s into the hidden
+ * window and the two available readings — a platform ceiling on hidden time, or
+ * ordinary suspension after the probe's own audio stopped — have opposite
+ * consequences for whether a WebView shell can play a Foray with the screen off.
+ * `suspensionVerdict` is what decides between them from a run's own artifact, so
+ * the property tested hardest below is the one that would be expensive to get
+ * wrong: `suspended-while-audible` must need POSITIVE evidence that audio was
+ * flowing, and must never be reachable from "no pause was recorded".
+ */
+
+/** A synthetic seam log, in the shape run 32064639785's really has. Times are
+ *  `HH:MM:SS.mmm` on 2026-08-17 and the parser reads them as UTC, which is what a
+ *  GitHub runner is. */
+function logLine(hhmmssmmm, rest) {
+  return `2026-08-17 ${hhmmssmmm} Df App[18721:e31c] ${rest}`;
+}
+function nowPlaying(hhmmssmmm, { isPlaying = true, duration = 60, now = 12 } = {}) {
+  return logLine(
+    hhmmssmmm,
+    `[com.apple.WebKit:Media] WebContent[18723] MediaSessionManageriOS::updateNowPlayingInfo(0) ` +
+      `title = "title", isPlaying = ${isPlaying}, duration = ${duration}, now = ${now}`
+  );
+}
+const SUSPENDED_LINE =
+  `[com.apple.WebKit:ProcessSuspension] 0x11010c0c0 - [PID=18723] ` +
+  `WebProcessProxy::didChangeThrottleState(Suspended) Release all assertions for network process`;
+
+/** Epoch ms for a time on 2026-08-17 UTC, so a record's stamps and a log's lines
+ *  can be written against the same clock in these tests. */
+function wallAt(h, m, s, ms = 0) {
+  return Date.UTC(2026, 7, 17, h, m, s, ms);
+}
+
+/** A seam record whose hidden window starts at 20:23:54.000, with a save trail on
+ *  a 2 s cadence for `seconds` of hidden time. */
+function trailedSeam({ seconds = 30, gapAt = null, gapSec = 0, mediaMovesInGap = 0, ...overrides } = {}) {
+  const bg = wallAt(20, 23, 54);
+  const saveTrail = [];
+  let wall = bg;
+  let mediaSec = 0;
+  for (let i = 0; i < seconds / 2; i++) {
+    saveTrail.push({ seq: i + 1, wall, mediaSec, paused: false, hidden: true });
+    const isGap = gapAt != null && Math.abs((wall - bg) / 1000 - gapAt) < 0.001;
+    if (isGap) {
+      wall += gapSec * 1000;
+      mediaSec += mediaMovesInGap;
+    } else {
+      wall += 2000;
+      mediaSec += 2;
+    }
+  }
+  return seamRecord({
+    backgroundedAtWall: bg,
+    lastSavedAtWall: saveTrail[saveTrail.length - 1].wall,
+    saveSeq: saveTrail.length,
+    firstSavedAtWall: bg,
+    saveTrail,
+    ...overrides,
+  });
+}
+
+test("a record with no hidden window says so, rather than reporting a ceiling", () => {
+  for (const seam of [null, undefined, {}, { backgroundedAtWall: null, lastSavedAtWall: 5 }, "nope", 7]) {
+    const v = suspensionVerdict({ seam, lifecycle: null });
+    assert.equal(v.verdict, "inconclusive", `${JSON.stringify(seam)} should be inconclusive`);
+  }
+  /* And it must not invent numbers on the way. */
+  const v = suspensionVerdict({ seam: null, lifecycle: null });
+  assert.equal(v.recordEndsAtHiddenSec, null);
+  assert.equal(v.trail.stamps, 0);
+});
+
+test("the pre-saveTrail runs still get an answer, and it names the missing channel", () => {
+  /* Runs 32036295743, 32057395270 and 32064639785 have no `saveTrail`. Their
+     records must not be silently unreadable by the thing built to explain them. */
+  const seam = seamRecord({ backgroundedAtWall: wallAt(20, 23, 54), lastSavedAtWall: wallAt(20, 24, 22) });
+  const v = suspensionVerdict({ seam, lifecycle: null });
+  assert.equal(v.verdict, "record-ends-early-no-log");
+  assert.equal(Math.round(v.recordEndsAtHiddenSec), 28);
+  assert.match(v.detail, /no save trail/);
+  assert.match(v.detail, /32064639785/);
+});
+
+test("a suspension while the audio is PLAYING is reading (a), and it needs the log to say so", () => {
+  const seam = trailedSeam({ seconds: 28 });
+  const text = [
+    nowPlaying("20:24:20.000", { isPlaying: true, now: 26 }),
+    logLine("20:24:22.000", SUSPENDED_LINE),
+  ].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.verdict, "suspended-while-audible");
+  assert.match(v.headline, /AUDIO STILL PLAYING/);
+  /* No release timer was armed in this window, so the verdict must NOT hedge — that
+     hedge is the whole difference between the two readings and it has to be earned. */
+  assert.equal(v.releaseArmedBeforeSuspensionSec, null);
+  assert.match(v.detail, /NO assertion-release timer was armed/);
+  assert.match(v.detail, /HUMAN-ACTIONS\.md #11/);
+});
+
+test("a suspension after the audio ALREADY STOPPED is reading (b), and says whose silence it was", () => {
+  /* The media session says the element stopped 12 s before the suspension. The
+     record's own stamps still read `paused: false`, which is the page's stale view of
+     itself — and the log has to win, or the suspect gets to testify. */
+  const seam = trailedSeam({ seconds: 28 });
+  const text = [
+    nowPlaying("20:24:10.000", { isPlaying: false, now: 31.2 }),
+    logLine("20:24:22.000", SUSPENDED_LINE),
+  ].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.verdict, "suspended-after-audio-stopped");
+  assert.match(v.headline, /not a ceiling on hidden time/);
+  assert.match(v.detail, /followed OUR silence/);
+  assert.match(v.detail, /THOSE TWO DISAGREE/);
+});
+
+test("`suspended-while-audible` is NOT reachable from the absence of a pause", () => {
+  /* THE OVERCLAIM THIS EXISTS TO STOP, and the shape of every guard in this file: a
+     record that does not SUPPORT the headline must not be counted toward it. Here the
+     log's media samples are gone and the trail carries no `paused` field, so nothing
+     anywhere says audio was flowing — and the architecture-changing verdict must not
+     be the default. Nor may the OPPOSITE headline be: an unobserved silence is not an
+     observed one. */
+  const seam = trailedSeam({ seconds: 28 });
+  seam.saveTrail = seam.saveTrail.map((s) => ({ seq: s.seq, wall: s.wall, mediaSec: s.mediaSec, hidden: true }));
+  const v = suspensionVerdict({
+    seam,
+    lifecycle: parseSimulatorLifecycle(logLine("20:24:22.000", SUSPENDED_LINE)),
+  });
+  assert.equal(v.verdict, "suspended-audio-unknown");
+  assert.match(v.detail, /refuses to resolve/);
+});
+
+test("an audible suspension with an assertion-release timer already armed is reported as WEAKER", () => {
+  /* Run 32064639785 exactly: a 5.1 s beat armed WebKit's ~10 s foreground-assertion
+     release, the next segment became audible, the re-acquire was DENIED for want of
+     an entitlement no Simulator app holds, and the release fired 11.7 s later with
+     audio playing. That is not "suspended regardless of audio" and the report must
+     not let it read as one. */
+  const text = [
+    logLine(
+      "20:24:10.755",
+      `[com.apple.WebKit:ProcessSuspension] WebPageProxy::updateThrottleState: UIProcess starting timer ` +
+        `to release a foreground assertion in 10 seconds if audio doesn't start to play`
+    ),
+    logLine(
+      "20:24:22.321",
+      `[com.apple.WebKit:ProcessSuspension] ProcessAssertion::acquireSync Failed to acquire RBS ` +
+        `assertion 'WebKit Media Playback' for process with PID=18723, error: ...`
+    ),
+    nowPlaying("20:24:22.347", { isPlaying: true, now: 12 }),
+    logLine("20:24:22.451", SUSPENDED_LINE),
+  ].join("\n");
+  const v = suspensionVerdict({ seam: trailedSeam({ seconds: 28 }), lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.verdict, "suspended-while-audible");
+  assert.equal(Math.round(v.releaseArmedBeforeSuspensionSec * 10) / 10, 11.7);
+  assert.match(v.detail, /WEAKER THAN IT READS/);
+  assert.match(v.detail, /denied 1 time/);
+});
+
+test("a record that covers its window with no suspension is the answer the ceiling reading forbids", () => {
+  const seam = trailedSeam({ seconds: 120 });
+  const text = [nowPlaying("20:25:50.000", { isPlaying: true, now: 40 })].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.verdict, "record-covers-window");
+  assert.ok(v.recordEndsAtHiddenSec > 110, `covered only ${v.recordEndsAtHiddenSec}s`);
+});
+
+test("a record that stops early while the process stays ALIVE blames the write path, not the scheduler", () => {
+  /* The other branch of `docs/ios-ci.md` §4c's open question, and it must be
+     reachable — a verdict function that can only ever report the interesting reading
+     is not measuring anything. */
+  const seam = trailedSeam({ seconds: 28 });
+  const text = [
+    nowPlaying("20:24:22.000", { isPlaying: true, now: 26 }),
+    nowPlaying("20:25:40.000", { isPlaying: true, now: 39 }),
+  ].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.verdict, "record-ends-early-no-suspension");
+  assert.match(v.detail, /write path is the suspect/);
+  /* And the out-of-band media advance is the evidence for it. */
+  assert.ok(v.audioAdvancedAfterRecordSec > 10, `advance was ${v.audioAdvancedAfterRecordSec}`);
+});
+
+test("a log whose clock does not overlap the record is DISCARDED, not offset-corrected", () => {
+  /* `log stream` prints local time with no zone. A runner that was not UTC would
+     hand this a log hours away from the record, and placing a suspension inside a
+     window it was never in is the one failure that turns this channel into a
+     confident lie. */
+  const seam = trailedSeam({ seconds: 28 });
+  const text = [
+    logLine("03:10:00.000", SUSPENDED_LINE),
+    nowPlaying("03:10:01.000", { isPlaying: true, now: 5 }),
+  ].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.verdict, "record-ends-early-no-log");
+  assert.match(v.detail, /do not overlap/);
+  assert.deepEqual(v.channels, ["record"]);
+});
+
+test("the save trail turns a gap into a FROZEN-AND-RESUMED finding, with the audio's own answer", () => {
+  /* The single thing `saveSeq` + `lastSavedAtWall` cannot do. A 13 s hole in a 2 s
+     cadence is a page that stopped running and started again; whether the audio went
+     with it is a different question, and the media clock in the same stamps answers
+     it. */
+  const flowed = saveTrailAnalysis(trailedSeam({ seconds: 40, gapAt: 20, gapSec: 13, mediaMovesInGap: 12 }));
+  assert.equal(flowed.gaps.length, 1);
+  assert.equal(flowed.gaps[0].gapSec, 13);
+  assert.equal(flowed.gaps[0].audioFlowed, true);
+  assert.equal(flowed.gaps[0].atHiddenSec, 20);
+
+  const stalled = saveTrailAnalysis(trailedSeam({ seconds: 40, gapAt: 20, gapSec: 13, mediaMovesInGap: 0.5 }));
+  assert.equal(stalled.gaps[0].audioFlowed, false);
+  assert.equal(stalled.gaps[0].mediaAdvancedSec, 0.5);
+
+  /* An ordinary cadence has no gaps at all — a detector that fires on 2 s jitter
+     would report every healthy run as a freeze. */
+  assert.deepEqual(saveTrailAnalysis(trailedSeam({ seconds: 40 })).gaps, []);
+});
+
+test("a media clock that went BACKWARDS across a gap is null, not a negative or a zero", () => {
+  /* `html-audio-backend.js` resets `currentTime` to the next item's `start_sec` on a
+     cross-file load, so a gap spanning a seam legitimately reads backwards. Calling
+     that "the audio stopped" would report a working transition as a stall. */
+  const seam = trailedSeam({ seconds: 20, gapAt: 10, gapSec: 12, mediaMovesInGap: 0 });
+  seam.saveTrail = seam.saveTrail.map((s, i) => (i > 5 ? { ...s, mediaSec: 0.5 } : s));
+  const a = saveTrailAnalysis(seam);
+  assert.equal(a.gaps.length, 1);
+  assert.equal(a.gaps[0].mediaAdvancedSec, null);
+  assert.equal(a.gaps[0].audioFlowed, null, "an unknown must not collapse into the negative");
+});
+
+test("hiddenMediaRatio sums per step, so one seam cannot make a playing page look stopped", () => {
+  /* End-to-end arithmetic over a trail that crosses a load would go NEGATIVE. Summed
+     upward per step, a page that played throughout reads ~1. */
+  const seam = trailedSeam({ seconds: 40 });
+  seam.saveTrail = seam.saveTrail.map((s, i) => (i >= 10 ? { ...s, mediaSec: s.mediaSec - 18 } : s));
+  const a = saveTrailAnalysis(seam);
+  assert.ok(a.hiddenMediaRatio > 0.8, `ratio was ${a.hiddenMediaRatio}`);
+  assert.ok(a.hiddenMediaRatio <= 1.05, `ratio was ${a.hiddenMediaRatio}`);
+});
+
+test("the lifecycle parser reads nothing out of nothing, and never throws on rubbish", () => {
+  for (const input of [null, undefined, "", 42, {}, "not a log at all\nno timestamps here"]) {
+    const lf = parseSimulatorLifecycle(input);
+    assert.deepEqual(lf.events, [], `events from ${JSON.stringify(input)}`);
+    assert.deepEqual(lf.media, []);
+    assert.equal(lf.firstWall, null);
+  }
+  /* A timestamped line with none of the needles is counted but says nothing. */
+  const lf = parseSimulatorLifecycle(logLine("20:24:22.000", "something entirely unrelated"));
+  assert.equal(lf.timestamped, 1);
+  assert.deepEqual(lf.events, []);
+});
+
+test("the media-clock line is parsed with its position and its isPlaying, both", () => {
+  /* Copied from run 32064639785's log verbatim. If a runner image changes this
+     string the parser must stop finding samples — which is why the verdict degrades
+     to `no-log` rather than to a pass. */
+  const real =
+    `2026-08-17 20:24:36.922 Df App[18721:e37a] [com.apple.WebKit:Media] WebContent[18723] ` +
+    `MediaSessionManageriOS::updateNowPlayingInfo(0) title = "title", isPlaying = true, duration = 60, ` +
+    `now = 25.80569554166661`;
+  const lf = parseSimulatorLifecycle(real);
+  assert.equal(lf.media.length, 1);
+  assert.equal(lf.media[0].isPlaying, true);
+  assert.equal(lf.media[0].durationSec, 60);
+  assert.equal(Math.round(lf.media[0].positionSec * 100) / 100, 25.81);
+  assert.equal(lf.media[0].wall, Date.UTC(2026, 7, 17, 20, 24, 36, 922));
+});
+
+test("the report always carries section 3b, including when it has nothing to say", () => {
+  /* A section that disappears when the data is thin is how a 25 s shortfall reads as
+     a footnote about save cadence for three runs running. */
+  const empty = renderReport({ seam: null, signingState: "absent" });
+  assert.match(empty, /3b\. Where the record STOPS/);
+  assert.match(empty, /`inconclusive`/);
+  const real = renderReport({
+    seam: trailedSeam({ seconds: 28 }),
+    lifecycle: parseSimulatorLifecycle(
+      [nowPlaying("20:24:20.000", { isPlaying: true, now: 26 }), logLine("20:24:22.000", SUSPENDED_LINE)].join("\n")
+    ),
+    signingState: "absent",
+  });
+  assert.match(real, /3b\. Where the record STOPS.*`suspended-while-audible`/);
 });

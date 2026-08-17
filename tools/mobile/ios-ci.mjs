@@ -1535,6 +1535,8 @@ export function parseSimulatorLifecycle(text) {
  * `suspended-after-audio-stopped`
  *                             a suspension whose preceding audio had already stopped.
  *                             Reading (b), with the lead time reported.
+ * `suspended-audio-unknown`   a suspension neither channel can pair with an audio
+ *                             state. Refused rather than resolved.
  * `record-ends-early-no-log`  the record stops early and no log covered the window,
  *                             which is exactly where the first three runs sat. The
  *                             in-record numbers are still reported.
@@ -1676,7 +1678,19 @@ export function suspensionVerdict({ seam, lifecycle } = {}) {
     const audibleByLog = lastBefore ? lastBefore.isPlaying === true : null;
     const audibleByRecord =
       trailStamp && typeof trailStamp.paused === "boolean" ? trailStamp.paused === false : null;
-    const audible = audibleByLog === true || audibleByRecord === true;
+    /* WHEN THE TWO CHANNELS DISAGREE, THE LOG WINS, and the disagreement is printed.
+       `paused` is the page's view of the element and `isPlaying` is the media
+       session's view of whether sound is being produced — and the page is the process
+       under suspicion here, so a page that believes it is playing while the session
+       says otherwise is the case where the page is wrong. Preferring the record would
+       be preferring the suspect's own account, in the direction of the verdict that
+       changes the architecture. */
+    const contested = audibleByLog === false && audibleByRecord === true;
+    const audible = audibleByLog === false ? false : audibleByLog === true || audibleByRecord === true;
+    /* NEITHER CHANNEL SPOKE. Not "the audio had stopped" — there is a real difference
+       between an observed silence and an unobserved one, and the second must not be
+       able to wear the first one's headline. */
+    const audioUnknown = audibleByLog == null && audibleByRecord == null;
     const atSec = (s.wall - bg) / 1000;
     /* WAS THIS SUSPENSION ALREADY IN MOTION BEFORE THE AUDIO CAME BACK?
        The difference between "suspended regardless of audio" and "suspended by a
@@ -1714,7 +1728,11 @@ export function suspensionVerdict({ seam, lifecycle } = {}) {
       (audibleByLog == null ? "" : ` The log's last media sample before it says isPlaying=${audibleByLog}.`) +
       (audibleByRecord == null
         ? ""
-        : ` The record's last stamp before it says paused=${!audibleByRecord}.`);
+        : ` The record's last stamp before it says paused=${!audibleByRecord}.`) +
+      (contested
+        ? ` THOSE TWO DISAGREE, and the log is taken: the page thought it was playing while the media ` +
+          `session said it was not, and the page is the process under suspicion.`
+        : "");
     if (audible) {
       return {
         ...base,
@@ -1729,6 +1747,20 @@ export function suspensionVerdict({ seam, lifecycle } = {}) {
           `all (\`originator doesn't have entitlement com.apple.runningboard.assertions.webkit\`, in this ` +
           `same log), and that assertion is the mechanism \`UIBackgroundModes: audio\` exists to satisfy ` +
           `on a device. HUMAN-ACTIONS.md #11 settles it in twenty minutes with no build.`,
+      };
+    }
+    if (audioUnknown) {
+      return {
+        ...base,
+        verdict: "suspended-audio-unknown",
+        headline:
+          `The page was suspended ${atSec.toFixed(1)}s into the hidden window, and NOTHING in this run ` +
+          `says whether audio was still playing at that moment.`,
+        detail:
+          `${why}${armedNote} ${numbers} Both channels are silent on the audio: no media-clock sample ` +
+          `before the suspension, and no \`paused\` stamp in the record. That is the one combination this ` +
+          `verdict refuses to resolve — an unobserved silence must not wear an observed one's headline, ` +
+          `because the two readings differ in whether the WebView shell can play a Foray at all.`,
       };
     }
     return {
