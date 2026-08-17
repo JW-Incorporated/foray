@@ -7,6 +7,384 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### #28 iOS half — the SEAM TRANSITION gets measured, and a wrong reading gets retracted (2026-08-17, one PR, founder-gated, no follow-up)
+
+- **What:** `feat/ios-native-outpoint`, issues **#28** / **#35**. A fourth probe
+  phase in the existing iOS CI harness: three bounded segments over three audio
+  files, driven through the **real `PlayerQueueManager`**, backgrounded, reporting
+  whether each seam transition (2.0 s beat → cross-episode load → seek → play)
+  completes with the app never resumed. Docs: `docs/ios-ci.md` §3 "Probe C" and
+  `docs/research/mp1-background-audio.md` **§0b**.
+- **STACKS ON #213 (`ci/ios-build`) AND #209 (`feat/capacitor-shell`), and must
+  merge after both.** Branched from `ci/ios-build`. #209 was `CONFLICTING` when
+  this started (`app.js`, `STATE.md`, `HUMAN-ACTIONS.md`,
+  `test/suite-integrity.test.js`) — expect a rebase; do not fix #209 from here.
+- **THE SEAM RESULT, STATED THE WAY THE CODE STATES IT: `too-few-transitions`,
+  NOT a pass.** Run 32036295743 got **1** hidden transition against
+  `MIN_HIDDEN_TRANSITIONS = 2`, so **this does NOT close #28's iOS half** and the
+  PR does not claim it does. What it does support: one full transition (beat →
+  cross-episode load → seek → play) completed with the app backgrounded and never
+  resumed, so nothing native is needed for the mechanism. What it also found, and
+  the PR gives it equal weight: **the 2.0 s beat took 9,153 ms** — the timer armed
+  in 2 ms, the *load* took nine seconds, on a **local bundled file**, and
+  `beat-ended` landed on the same millisecond as `canplay`, so the silence is
+  `max(beat, load)`. Filed as **#223** and **already fixed by #227** the same day
+  (prefetch on a second element, 12 s before the out-point, while audio still
+  flows); `seam-gap.js` is now explicit that its number is the BEAT, not the
+  silence. **Nothing in `player/` is touched here, before or after that fix.**
+- **THIS PROBE IS NOW #227'S ONLY VERIFIER, and #224 is why that matters.** Wyatt
+  heard it on a real phone: *"transitions worked ok while my phone was unlocked, but
+  when my screen was off then it would just pause"* — the load crossing **our own**
+  `LOAD_SETTLE_TIMEOUT_MS` (10 s, `html-audio-backend.js`), which throws into
+  `_loadItem`'s catch → `E.error` → idle → pause. **Do not merge the three 10,000 ms
+  deadlines:** WebKit's audible-activity clear is **5 s** (measured, and the beat
+  crossed it while playback continued), WebKit's foreground-assertion release is
+  10 s, and `LOAD_SETTLE_TIMEOUT_MS` is 10 s and is #224's stated cause. The
+  measured 9,153 ms is **92% of ours**; it is also 847 ms short of WebKit's, the same
+  figure only because the constants match. To verify #227: dispatch `ios-build` on `main` and read `observedGapMs`
+  — **expect ~2,000–3,000 ms**. Two traps: a **bridged** Foray is deliberately not
+  warmed (eligibility is `seamGapSec > 0`), so "no change" there is not a failed
+  fix; and `SEAM_MIN_PLAUSIBLE_MS = 500` stays meaningful because the beat is still
+  2.0 s — do not relax it to accommodate a good number.
+- **OPEN, and more serious than the gap — do not let it decay into a footnote.**
+  The record stops at **+25.2 s of a 90 s hidden window**, 1 s after the second
+  segment became audible, with the 1000 ms timer samples ending at the same instant
+  and ~32 subsequent 2-second saves never landing. Either **the page stopped being
+  scheduled** after a 9.15 s silence (which would make a hidden page descheduable
+  mid-Foray and the shell approach unsafe) or **its writes stopped reaching disk**.
+  Ruled out: the 90 s budget (~45 s needed, ~65 s unused), the screenshot (device
+  screen, not the WebView), and the log (truncated at 20 MB before this pass began).
+  `probe-seam.js` now records `saveSeq`/`firstSavedAtWall` so the next run decides
+  it from the record alone. Both branches: `docs/ios-ci.md` §4c.
+- **Three harness defects fixed on the way, all found by reading the artifact
+  rather than the summary:** the log capture's 20 MB cap was spent by pass 1 so the
+  seam pass had **no log coverage at all**; its predicate (`CONTAINS "App"`) spent
+  the cap on the system (**1,153 of 99,491** lines were ours, ~1.2%); and **zero
+  `FORAY_PROBE_` lines
+  have ever been captured**, so `collectProbes`' console fallback has never once
+  worked and `localStorage` is the only proven channel. Per-pass captures, a
+  bundle-id predicate, and an explicit "unproven, not clean" note now ship.
+- **SECURITY, fixed here: the evidence artifact was publishing a live credential.**
+  `ls-rows-*.json` dumped the whole `localStorage` hex-encoded, and the raw
+  `.localstorage` SQLite copies were uploaded too — so `cp_sb_session` (a Supabase
+  `access_token` **and a `refresh_token`**, which does not expire in an hour) was
+  downloadable by anyone from a public repo. Redaction is an allowlist
+  (`/^foray_probe_/`), the raw DBs no longer enter the artifact at all, and a
+  redaction failure is fail-closed and loud. **Revoking the leaked anonymous user
+  and deleting run 32036295743's `ios-shell-evidence` artifact are founder actions
+  and are NOT done here** —
+  and the artifact must be deleted only *after* the docs carry its numbers, since
+  it is currently the only place the measurement exists.
+- **THE OUT-POINT HEADLINE IS A RETRACTION.** `fired-on-resume` from run **32023924627** was
+  quoted onward as "the iOS out-point only fires on resume — MP1 §8's failure
+  mode". It was a harness race with a **3 ms** overshoot, not a finding. Run
+  **32026332637** is authoritative: overshoot **0.0045 s** over a **15.056 s**
+  hidden window, 61 hidden `timeupdate` samples at a 252 ms median, `resumedAtWall:
+  null`. **iOS needs no native out-point, and no Swift was added.** The same record
+  also confirms MP1 §7.5's unverified 1 s DOM-timer alignment (median **1000 ms**),
+  which is exactly why the *transition* — a `setTimeout` beat — still needed asking.
+- **Owned files:** `tools/mobile/probe/probe-seam.{html,js}` (new).
+  **Modified:** `.github/workflows/ios-build.yml` (a second probe pass),
+  `tools/mobile/ios-ci.mjs` (+`seamTransitionVerdict`, `pickSeam`),
+  `tools/mobile/probe/install-probe.mjs` (a `--phase` flag and two more tones),
+  `tools/mobile/probe/probe-bridge.js` (phase routing), the three `tools/mobile`
+  suites, `docs/ios-ci.md`, `docs/research/mp1-background-audio.md`.
+  **Shared:** `test/suite-integrity.test.js` (three FLOORS raised), this file.
+  **Untouched on purpose:** `player/**`, `app.js`, `index.html`, `mobile/**`,
+  `ios/**`, `data/**`, `.github/workflows/ci.yml`.
+- **NO NATIVE CODE, deliberately.** An AVPlayer stop-owner was started and thrown
+  away once run 32026332637 was read: a native backend nobody needs is a
+  maintenance burden and an invitation for the web and native players to diverge.
+  If probe C comes back `seam-stalls-in-background`, *that* is when something
+  native owns the transition — and the record will say which stage failed.
+- **Touches `.github/`, which `tools/ci/path-policy.mjs` DENIES.** Correct and
+  expected: the PR waits for a founder rather than auto-merging.
+
+### MP4 — iOS builds on a runner, and three claims get measured (2026-08-17, one PR, founder-gated, no follow-up)
+
+- **What:** `ci/ios-build`, issue **#38**. A `macos-latest` workflow that
+  generates the Capacitor iOS project, adds the one `Info.plist` background-audio
+  key, and builds it **unsigned** — plus two Simulator probes that settle
+  questions nothing on this machine can reach. Doc: `docs/ios-ci.md`.
+- **STACKS ON #209 (`feat/capacitor-shell`), AND MUST MERGE AFTER IT.** Branched
+  from that branch, not from `main`: everything here builds the `mobile/`
+  scaffold, which is still awaiting a founder. If #209 changes shape, this needs
+  a rebase, not a rewrite.
+- **New files:** `.github/workflows/ios-build.yml`,
+  `tools/mobile/inject-background-audio.mjs`, `tools/mobile/ios-ci.mjs`,
+  `tools/mobile/probe/**`, `docs/ios-ci.md`, and four suites
+  (`inject-background-audio`, `ios-ci`, `ios-workflow`, `probe/install-probe`).
+  **Shared files it touches:** `test/suite-integrity.test.js` (four FLOORS
+  entries, isolated final commit), `HUMAN-ACTIONS.md` (new item **#19**, plus a
+  dated note under **#16** and **#18** — no status changed), this file.
+  **Untouched on purpose:** `.github/workflows/ci.yml`, `mobile/**`, `app.js`,
+  `index.html`, `player/**`, `ios/**`, `data/**`.
+- **IT TOUCHES `.github/`, WHICH `tools/ci/path-policy.mjs` DENIES.** That is
+  correct and expected: the PR waits for a founder rather than auto-merging, and
+  a workflow that can auto-merge a change to its own gates is not a gate.
+- **DO NOT MAKE IT A REQUIRED CHECK, and do not widen its path filter.** macOS
+  runners bill at 10x. This repo is public so standard runners are free today —
+  but at ~12–18 minutes of wall clock a run is ~120–180 billable minutes the day
+  it stops being public, and a sister project already suspected
+  Actions-minutes exhaustion behind a build freeze. Trigger set is
+  `workflow_dispatch` + a path filter on `mobile/`, `tools/mobile/`,
+  `index.html`, `app.js`, `player/` and the workflow itself. No `push`, no
+  `schedule`. `tools/mobile/ios-workflow.test.mjs` holds every one of those.
+- **A SIMULATOR IS NOT A DEVICE, and a pass from one is weaker evidence than a
+  failure.** It models neither power management nor true suspension. Anything
+  the backgrounding probe reports as *fine* is one removed way of being wrong,
+  not a settled question — `HUMAN-ACTIONS.md` #11 and #16 still want a phone.
+  The sentence is `SIMULATOR_CAVEAT` in `tools/mobile/ios-ci.mjs` and ships with
+  every report on purpose; do not paraphrase it away.
+- **Deliberately NOT done:** committing `mobile/ios/` (that is #16 step 7, a
+  founder call); Android anything (#18 stays open — a different injection
+  mechanism, and this workflow says nothing about it); and the signing/TestFlight
+  path is **written and never executed**, gated on seven secrets that do not
+  exist (**#19**). Treat its first real run as debugging, not as a release.
+### seam prefetch — a Foray becomes listenable on a locked phone (2026-08-17, one PR, no follow-up)
+
+- **What:** `feat/seam-prefetch`. The 2.0 s seam beat is **not 2.0 s** —
+  measured on a device-class run it is **9,153 ms**, and every millisecond of the
+  excess is the media load. The next segment now loads on a **second `<audio>`
+  element while the current one is still audible**, and the boundary hands the
+  player role to an element that is already `canplay` at its in-point. A warmed
+  seam is exactly the authored beat.
+- **THE MEASUREMENT, so nobody re-derives it.** Run **32036295743**
+  (`ios-build` on PR #220, iOS Simulator, app genuinely backgrounded, real
+  `PlayerQueueManager` over real `HtmlAudioBackend`), `foray_probe_seam`:
+  `askedGapMs: 2000` → **`observedGapMs: 9153`**. Stage trace: `boundary` +0 ms
+  → `beat-armed` **+2 ms** → `load-started` +12 ms → **`stalled` +3,173 ms** →
+  `loadedmetadata` **+9,127 ms** → `canplay` +9,142 ms → `beat-ended` +9,142 ms
+  → `playing` +9,153 ms. **The JS timer is exonerated** (2 ms) and so is
+  `seam-gap.js`. Out-point overshoot on the same transition: **3 ms**. Hidden
+  DOM timers in that run: **1,000 ms median** (asked 250).
+- **Two things that trace tells you and the headline number does not.**
+  (1) The seam is `max(SEAM_GAP_SEC, load)`, so it was never 2.0 s.
+  (2) **9,153 ms is 92% of `LOAD_SETTLE_TIMEOUT_MS`.** Cross 10 s and `load()`
+  rejects and the segment is DROPPED — and on Chromium that already happens:
+  `docs/research/mp1-background-audio.md` §4.4 measured 3 of 5 hidden-page loads
+  failing with "did not settle within 10000ms". A slow seam and a dropped
+  segment are the same defect at two loads.
+- **The cause is SILENCE, not the CDN — this is the design input.** The boundary
+  pauses the element, the page stops being audible, and audibility is what keeps
+  the process out of suspension: WebKit takes a foreground assertion *because* a
+  view is playing audio (§7.4), and Blink is **measured** to throttle a hidden
+  page ~21× the moment the element pauses while leaving an audible one alone
+  (§4.1: 111 ms median for a 100 ms timer, identical to visible). The file in
+  the measured run was `probe-tone-b.wav`, **bundled in the app** — so this is
+  not network latency and a warm HTTP cache would not have helped. A load issued
+  after the boundary runs in the worst window the platform has.
+- **Owned files:** none new. **Shared files it touches:**
+  `player/html-audio-backend.js` (+ test), `player/queue-manager.js` (+ test),
+  `player/seam-gap.js` (header only — it documented a 2.0 s seam the product did
+  not have), `player/client.js` (three lines), `test/suite-integrity.test.js`
+  (two floors raised, isolated final commit) and this file. **No `docs/` change:
+  the argument, the measurement and the trace live in
+  `player/html-audio-backend.js`'s header, which is where someone editing this
+  will actually read them.**
+  **Nothing in `data/`, nothing in `tools/`, nothing in `index.html`, nothing in
+  `sw.js`, no CSP change, no dependency.** `player/queue-state.js` is
+  **unchanged** — no new state, no new event.
+- **Heads-up — THERE ARE TWO `<audio>` ELEMENTS NOW, and exactly one may make
+  sound.** `backend.el` is the player and owns the audio session;
+  `backend._warmEl` is a loader that is never played, never un-paused and never
+  given a volume, and a handover pauses the outgoing element **before** the
+  swap, so at no instant are two elements un-paused. On iOS a second element
+  that begins playing takes the session and silences the first, and **a
+  foreground test would never show it**. If you touch this file, that invariant
+  is the one to preserve; it has a named test.
+- **Heads-up — NEVER `backend.el.addEventListener` AGAIN.** The role moves
+  between elements at every cross-episode seam, so a listener bound to one
+  element is stranded on a paused, src-less element for the rest of the Foray
+  and the UI silently stops repainting. `client.js` did exactly this for
+  `render` and now calls **`backend.addMediaListener(type, fn)`**, which
+  migrates. Both `backend.el.playbackRate` reads are fine — they resolve the
+  live element at call time.
+- **Heads-up — the lead time is 12 s and it is derived, not chosen.**
+  `PREFETCH_LEAD_SEC` = `LOAD_SETTLE_TIMEOUT_MS` (10 s, the longest a load is
+  allowed to take before this backend calls it broken) + ~2 s for the trigger's
+  own lateness (the widest `timeupdate` interval this repo has recorded is
+  1,825 ms against a 250 ms nominal). The measured 9,153 ms load fits with 2.8 s
+  to spare. Upper bound is content: no segment may be under **30 s**
+  (`segment-length-rules.md` hard floor) and Foray #1's run 51–238 s, median
+  103 s — so warming never starts before the current segment is audible and
+  costs the last ~11% of a typical one. It is divided by playback rate at the
+  point of use, because a load takes wall clock and not content.
+- **Heads-up — ONE segment ahead, and same-episode seams are deliberately NOT
+  warmed.** **16 of Foray #1's 31 seams cross to a different episode**; the
+  other 15 stay inside one and are already served by `load()`'s same-source
+  seek, which keeps the buffer. Warming those would refetch a whole podcast to
+  reach a position we already hold, and on an ad-stitched host the refetch can
+  come back differently stitched — the exact hazard the shortcut exists to
+  avoid. (Foray #2: 10 of 21 cross-file.)
+- **Heads-up — A BRIDGED FORAY GETS NO WARMING AT ALL, so do not read "no
+  change" as a failed fix.** Eligibility is `seamGapSec(...) > 0` and that
+  returns 0 for a bridged seam, so if the next queue entry is a narration
+  bridge, nothing is warmed — and the load after the bridge is unwarmed too,
+  because by then the bridge is the current item. Neither shipped Foray has any
+  narration, so today this is theory; the moment one does, its seams revert to
+  the old cost and the ear test in `HUMAN-ACTIONS.md` #11 will honestly report
+  no improvement. Warming a bridge is a small change (a bridge is our own small
+  asset) and is deliberately not in this PR.
+- **Heads-up — ONLY an autoplay refusal is recovered, and the check is
+  load-bearing.** `AbortError` is the ordinary rejection of a pending `play()`
+  that a `pause()` or a fresh `load()` interrupted, and the manager emits
+  `pausePlayback` before `loadItem` on both a pause and a skip — so that window
+  is reachable by an ordinary tap. Recovering there would re-load the segment,
+  re-arm the boundary and CALL PLAY: audio restarting right after the listener
+  stopped it, with every surface showing paused. Found by the reviewer pass, not
+  by the tests; it now has its own named test.
+- **Heads-up — the beat is STILL 2.0 s and that is deliberate.** It is an
+  authored pause between two voices (`segment-length-rules.md` §6b), not an
+  artifact of loading, so the manager still waits out its remainder after the
+  handover. The fix makes the listener hear the 2.0 s the product documents
+  instead of 9.2 s of nothing. It also keeps the #220 probe's
+  `SEAM_MIN_PLAUSIBLE_MS` (500 ms) floor meaningful.
+- **Heads-up — losing the race costs exactly what today costs, by construction.**
+  If the warm element is not ready when the out-point fires, `load()` takes the
+  identical path it takes today. `load()` also ends with the warm element either
+  promoted or **holding nothing** — never a third state — so a buffer warmed for
+  a segment the listener skipped past can never be promoted for the wrong item.
+  Nothing here can delay or move the boundary; the out-point path is untouched.
+- **Heads-up — two safety nets, because the two ways this could fail on iOS are
+  both invisible in a foreground test.**
+  (1) **Autoplay policy is per ELEMENT.** The element the listener tapped is the
+  other one, so a promoted element can be refused. In the Capacitor shells it
+  cannot happen (`mediaTypesRequiringUserActionForPlayback = []`, MP1 §7.3) and
+  in the web PWA exactly one handover per session is exposed — the first, after
+  which both elements have played. A refusal is **recovered**, not reported: the
+  player falls back to the element holding the gesture, at the same offset,
+  **re-arming the same boundary** (a recovery that forgot it would run a median
+  936.5 s of the wrong episode), and warming stops for the session.
+  (2) A `pause` **nobody asked for** while a prefetch is in flight is what losing
+  the audio session looks like from JS. It is never resumed through — a phone
+  call arrives the same way — it is recorded and warming stops for good.
+- **Heads-up — NO NEW TIMERS. Not one.** The trigger is `timeupdate` (a media
+  event, 252 ms median while hidden); completion is
+  `loadedmetadata`/`seeked`/`canplay`. Nothing in this feature depends on a DOM
+  timer, which is the point on a platform that aligns hidden-page timers to 1 s.
+- **NOT VERIFIED ON A DEVICE — this is the honest gap.** Every number above is
+  from run 32036295743 or the Blink measurements in
+  `docs/research/mp1-background-audio.md`; the *fix* is proven by 41 new
+  mutation-tested unit tests and by a virtual-clock measurement of the seam
+  (9,153 ms → 2,000 ms), on a Windows box with no simulator. **The rig to settle
+  it already exists and needs no new code:** `ios-build` (on PR #220) triggers on
+  `player/**`, and `tools/mobile/probe/probe-seam.js` drives the real manager
+  over the real backend across three DIFFERENT files, so it exercises the
+  handover as-is. Once #220 lands, dispatch `ios-build` on `main` and read
+  `observedGapMs` — expect ~2,000–3,000 ms, not ~9,000. Noted on
+  `HUMAN-ACTIONS.md` #11, which is the ear test this makes concrete.
+- **For whoever owns #220:** the mechanism your probe measures has changed under
+  it. Its header still describes the seam as "wait a 2.0 s beat → load a
+  DIFFERENT episode", which is now "load during the tail → hand over → wait out
+  the beat". The numbers it records are still the right numbers and the verdict
+  logic still holds; only the prose is stale.
+- **Related:** #111, #65, #28, #35, #220, #211 (open, edits
+  `player/html-audio-backend.test.js` — this branch appends to that file rather
+  than editing it, so the two do not collide).
+
+### MP2 — the native app shell (2026-08-17, one PR, founder-gated, no follow-up)
+
+- **What:** `feat/capacitor-shell`, issue **#36**. The Capacitor scaffold and the
+  four architecture changes it forces. Architecture doc: `docs/mobile-shell.md`.
+- **Owned files:** `mobile/**` (new), `tools/mobile/**` (new),
+  `docs/mobile-shell.md` (new). **Shared files it touches:** `app.js` (one
+  guarded service-worker registration at the very end of the file),
+  `index.html` (one CSP token), `test/suite-integrity.test.js` (two FLOORS
+  entries), `ios/README.md` (a status box at the top), `CLAUDE.md` § Layout,
+  `docs/DECISIONS.md`, `HUMAN-ACTIONS.md` (new items **#15**, **#16**, **#17**,
+  **#18**),
+  this file. **Untouched on purpose:** `sw.js`, `data/**`, `player/**`,
+  `backend/**`, `.github/**`.
+- **THE `ios/` VERDICT — READ THIS BEFORE YOU TOUCH ANYTHING iOS.** `ios/` is now
+  **reference material, not the shipping app.** The shipping iOS app is the
+  Capacitor shell in **`mobile/`**. `ios/` is **not moved and not renamed** —
+  #36 recommended `ios-native-reference/`; `ios.path` in
+  `mobile/capacitor.config.json` isolates the generated project for free, so the
+  rename was skipped. **That is a deviation from an explicit issue recommendation
+  and is cheap to overturn** (one `ci.yml` path + two issue bodies).
+  **Get the duplication right — the loose version of this is wrong and was in an
+  earlier draft of these docs.** `ios/ForayKit` is alive and CI compiles AND
+  TESTS it (`ios-kit`, macOS): `ForayKit/…/PlayerQueueState.swift` ↔
+  `player/queue-state.js` is a **maintained mirror, tested on both sides** — change
+  both. Only `ios/App/Player/PlayerQueueManager.swift` ↔ `player/queue-manager.js`
+  is one-sided, and the two bugs that port surfaced were **fixed** in the Swift by
+  PR #50, so it is uncompiled-by-CI rather than known-wrong.
+  `IntentGrammar.swift` has no JS counterpart at all. The real argument for the
+  web player: `foray-resolve`, `foray-queue`, `seam-gap`, `seek-policy`,
+  `html-audio-backend` and `durable-store` have **no Swift counterpart**. Retiring
+  the Swift copies belongs to #28.
+- **Heads-up — the repo root is still dependency-free, and there is now a test
+  that will fail you for changing that.** Capacitor lives entirely in `mobile/`
+  with its own `package.json`. `tools/mobile/shell-invariants.test.mjs` asserts the
+  root declares **no** dependencies/devDependencies/peerDependencies/
+  optionalDependencies, has **exactly one** script (`test`), and has no lockfile
+  and no `node_modules`. If you legitimately need to change that, it is a visible
+  edit in a PR — which is the point.
+- **Heads-up — `mobile/www/` is a BUILD ARTEFACT and is gitignored. Never edit
+  anything in it.** It is a *copy* of `index.html`/`app.js`/`styles.css`/`player/`
+  plus the runtime `data/` subset, rebuilt by
+  `node tools/mobile/prepare-webdir.mjs`. Editing it forks the player, which is
+  the specific failure mode that script's header exists to prevent.
+- **Heads-up — the bundle's data list is DERIVED from `app.js`'s `fetchJson`
+  calls.** Add a `fetchJson("data/new.json")` and the next bundle carries it, no
+  edit needed. But the bundle is capped at **3 MB and today it is 2.52 MB** (30
+  files; `discover.json` alone is 1.63 MB). If you make the client fetch something
+  large, `prepare-webdir` **fails the build**. Do not raise the cap to make it
+  pass — that cap is what keeps the 16 MB `breadth-classification.json` out.
+- **Heads-up — `app.js` no longer registers the service worker unconditionally.**
+  It asks `shouldRegisterServiceWorker(window)`: off inside the shell, on
+  everywhere else. Gated on `window.Capacitor.isNativePlatform()` and the
+  `capacitor:` origin, and **deliberately not on the hostname** — Capacitor's
+  Android default origin is `https://localhost`, so a hostname check would kill the
+  service worker for anyone serving the real site from a local dev server, and
+  **deliberately not on the user-agent** — every real listener is on a phone, so a
+  UA sniff would switch the offline shell off for the whole audience. The two
+  signals are in **separate `try` blocks**: sharing one made the guard fail OPEN
+  when the bridge threw. Six tests execute the real `app.js` in six environments.
+- **Heads-up — `index.html`'s CSP gained `'self'` on `img-src`, and it fixes a
+  latent iOS-only bug.** The iOS shell's origin is `capacitor://localhost`, so the
+  app's **own bundled icons** matched neither `https:` nor `data:` and would have
+  been blocked. Android's `https://localhost` default would never have shown it.
+  `media-src https:` was **already** present from #24 — #36 assumed it still needed
+  adding; it did not, and it is now pinned by a test. `connect-src` was
+  deliberately **not** widened; that belongs with #40's refresh code.
+- **NEVER set the Cordova preference `KeepRunning` to anything but `true`** (MP1's
+  finding, now mechanical). Note it is an **allowlist**, not a denylist: Cordova
+  reads the preference with `Boolean.parseBoolean`, so `0`, `no` and `off` are all
+  false too, and an earlier draft of the guard only rejected the literal `false`.
+  Two tests: one over the parsed config at any depth, case-insensitively, and one
+  that parses the Cordova-compat `config.xml` files `cap add` will generate —
+  which is why `mobile/.gitignore` deliberately does **not** ignore Android's
+  `res/xml/config.xml`, though Capacitor's own template does. An ignored file
+  cannot be checked.
+- **THE TOP OPEN RISK IS ANDROID'S INJECTED BRIDGE vs OUR CSP.** Capacitor Android
+  injects `native-bridge.js` as an **inline `<script>`**, and our CSP is
+  `script-src 'self'` with no `'unsafe-inline'` — which a `<meta>` CSP cannot fix
+  with a nonce. If it is blocked, `window.Capacitor` never exists, all four plugins
+  are dead, **and the service worker registers inside the Android shell** because
+  the origin there is an ordinary `https://localhost`. Unproven (nothing was
+  built), and iOS injects via `WKUserScript` so it is likely Android-only. It is
+  the first thing to check on a device, and the fix may not be one token — see
+  `docs/mobile-shell.md` §5. MP1's spike APK did not load the real `index.html`, so
+  it never exercised this either.
+- **NOTHING WAS GENERATED, INSTALLED, COMPILED OR LAUNCHED — do not report
+  otherwise.** No `cap init`, no `cap add`, no `mobile/node_modules`,
+  no `mobile/ios/`, no `mobile/android/`. All seven `@capacitor/*` packages were
+  checked against the npm registry and resolve to **8.5.0**, but nothing was
+  installed locally. Every claim about a *running* app is unverified, and the CSP
+  change specifically is reasoned from WebKit's scheme behaviour rather than
+  observed. Committing a few hundred unverifiable generated native files was
+  rejected; a founder runs one command on a Mac instead (`HUMAN-ACTIONS.md` **#16**).
+- **Heads-up — bundled data is FROZEN at build time.** Nothing in the shell
+  re-fetches data, so a shipped app would show its build day's session forever.
+  That is #40's remaining half and it is now a named release gate
+  (`HUMAN-ACTIONS.md` **#17**).
+- **This PR waits for a founder and that is expected.** It touches `ios/`,
+  `CLAUDE.md`, `docs/DECISIONS.md`, `index.html` and `mobile/` — `CLAUDE.md` and
+  `docs/DECISIONS.md` are auto-merge **DENIED**; the rest are simply unlisted. No
+  `hold` label needed.
+- **Related:** #36, #34, #35 (the spike that shaped it), #28, #27, #40, #38.
 ### delete my data — the control Play's deletion question needs (2026-08-17, one PR, no follow-up)
 
 - **What:** `feat/delete-my-data`, issue **#42 (MP8)**. The menu now carries
@@ -94,12 +472,26 @@ docs/. Completed workstreams move to their plan doc's retro section.
      Median overrun **936.5 s**; worst 42 min. Miss only the FIRST out-point and
      the listener gets 2.5 min of Foray then **20.4 min of one Origin Stories
      episode**, with the UI still highlighting segment 1.
-- **Heads-up — the 2.0 s seam beat is SAFE backgrounded, and this was the
-  specific worry.** The beat pauses the element, which withdraws the audibility
+- **SUPERSEDED 2026-08-17 by a real iOS measurement — READ THIS BEFORE THE
+  PARAGRAPH BELOW.** Run 32036295743 measured the beat at **9,153 ms against 2,000
+  ms asked**, backgrounded, on a **local bundled file**. The Chromium figures below
+  (2.8–4.6 s) are still correct *for Chromium*, and the "do not redesign the beat"
+  ruling still holds — the beat's own `setTimeout` armed in **2 ms** and is
+  exonerated. But "SAFE" is no longer the right word: the beat is
+  `max(gap, load)` and the LOAD took nine seconds, leaving **~850 ms** of margin
+  against WebKit's `audibleActivityClearDelay` — **measured at 5 s, so the beat
+  crossed it outright** — rather than the comfortable
+  window the paragraph below implies. The "one unmeasured risk" it names at the end
+  is therefore no longer unmeasured and was very nearly realised. Details:
+  `docs/ios-ci.md` §4c, `docs/research/mp1-background-audio.md` §0b.
+- **Heads-up — the 2.0 s seam beat is SAFE ON CHROMIUM backgrounded, and this was
+  the specific worry.** The beat pauses the element, which withdraws the audibility
   everything else depends on — but both engines carry a far longer grace window:
   **30 s** on Chromium (`kRecentAudioDelay`, whose source comment reads "A page
   cannot be throttled or frozen 30 seconds after playing audio") and **10 s** on
-  WebKit (`audibleActivityClearDelay`). Measured on Chromium the beat stretches
+  WebKit (`audibleActivityClearDelay` — **measured 2026-08-17 as 5 s, not 10 s**;
+  the 10 s constant is a different timer, WebKit's foreground-assertion release).
+  Measured on Chromium the beat stretches
   to 2.8–4.6 s in a hidden page. Baggy, not broken. **Do not redesign the beat
   for backgrounding.** The one unmeasured risk: a slow cross-episode advance
   (`LOAD_SETTLE_TIMEOUT_MS` is 10 s) could push the silent window past WebKit's

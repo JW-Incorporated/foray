@@ -63,7 +63,7 @@ const FLOORS = {
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 42,
   "player/foray-sources.test.js": 24,
-  "player/html-audio-backend.test.js": 44,
+  "player/html-audio-backend.test.js": 76,
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
@@ -75,7 +75,7 @@ const FLOORS = {
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
   "player/media-session.test.js": 129,
-  "player/queue-manager.test.js": 76,
+  "player/queue-manager.test.js": 89,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
@@ -101,6 +101,27 @@ const FLOORS = {
   "tools/classify/shard.test.mjs": 23,
   "tools/classify/transcript-label.test.mjs": 29,
   "tools/foray/check-forays.test.mjs": 81,
+  /* The native shell (#36). `shell-invariants` is the one to be most careful
+     with: four of the five things it pins are properties of files OUTSIDE
+     tools/ — the root package.json staying dependency-free, index.html's CSP,
+     app.js not registering a service worker in the shell, and the repo's ios/
+     scaffold surviving. Nothing else in the repo checks any of those, so
+     deleting this suite would silently un-guard all four. */
+  "tools/mobile/prepare-webdir.test.mjs": 17,
+  "tools/mobile/shell-invariants.test.mjs": 27,
+  /* iOS on a runner (#38). These four are the only tests in the repo that can be
+     run for a macOS-only feature by someone with no Mac, which makes their
+     deletion unusually attractive to a future session that finds them
+     inconvenient. `ios-workflow` is the one to be most careful with: it is the
+     only thing in the repo asserting that the iOS job stays OFF the required-check
+     list, that its path filter stays narrow (macOS runners bill at 10x), that
+     every `xcodebuild ... build` stays unsigned so the job can run with no Apple
+     credentials, and that `ci.yml`'s `ios-kit` — the repo's only compiled Swift —
+     is still there. Nothing else covers any of that. */
+  "tools/mobile/inject-background-audio.test.mjs": 26,
+  "tools/mobile/ios-ci.test.mjs": 89,
+  "tools/mobile/ios-workflow.test.mjs": 34,
+  "tools/mobile/probe/install-probe.test.mjs": 39,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,

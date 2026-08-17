@@ -900,3 +900,681 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   assert.equal(el.paused, true);
   m.dispose();
 });
+
+/* ---------- prefetch: two elements, one audio session ----------
+
+   Everything below is about the seam measured in run 32036295743: a 2.0 s beat
+   that the listener experienced as 9,153 ms, all of it the media load, because
+   the load ran after the boundary had paused the element and silenced the page.
+
+   NO WALL-CLOCK BUDGETS IN HERE. Not one. The whole section is driven by hand —
+   `currentTime` is assigned and `timeupdate` is fired by the test — so every
+   assertion is a one-sided fact or an ordering, and a starved box cannot change
+   any of them. `PREFETCH_LEAD_SEC` is imported and compared against, never
+   re-stated as a number. */
+
+import { PREFETCH_LEAD_SEC } from "./html-audio-backend.js";
+
+/** Two fakes that record into ONE ordering log, because the load-bearing claims
+    are about the sequence ACROSS the pair — "the outgoing element was paused
+    before the incoming one played" is not observable on either alone.
+
+    `paused`, `playing` and `pause` are modelled here and not in `FakeAudio`
+    because this is the first section that needs them: a handover turns on which
+    element is paused, and `_notePause`/`_handoverUnproven` react to the events. */
+class PairAudio extends FakeAudio {
+  constructor(name, pairLog, opts = {}) {
+    super(opts);
+    this.name = name;
+    this.pairLog = pairLog;
+    this.paused = true;
+    /** Refuse to play, the way autoplay policy refuses an element that has
+        never been touched by a gesture. A refused play fires no `playing`. */
+    this.refuse = Boolean(opts.refuse);
+    /** Which rejection. `NotAllowedError` is autoplay policy; `AbortError` is
+        what a real element gives you when a `pause()` or a fresh `load()`
+        interrupts a pending `play()`, and the two must be handled differently. */
+    this.refuseWith = opts.refuseWith ?? "NotAllowedError";
+    /** Defer the seek, so `canplay` can arrive while the playhead is still at
+        the head of the file — the case that would start the next segment at
+        0:00 of somebody else's episode if "ready" were read off `canplay`. */
+    this.laggySeek = Boolean(opts.laggySeek);
+    this._pendingSeek = null;
+  }
+  get currentTime() { return this._time ?? 0; }
+  set currentTime(v) {
+    if (this.laggySeek) { this._pendingSeek = v; return; }
+    this._time = v;
+  }
+  /** Land a seek this element deferred. */
+  settleSeek() {
+    if (this._pendingSeek != null) this._time = this._pendingSeek;
+    this._pendingSeek = null;
+    this._fire("seeked");
+    this._fire("canplay");
+  }
+  load() { this.pairLog.push(`${this.name}:load`); super.load(); }
+  play() {
+    this.pairLog.push(`${this.name}:play`);
+    this.calls.push("play");
+    if (this.refuse) {
+      return Promise.reject(Object.assign(new Error("blocked"), { name: this.refuseWith }));
+    }
+    this.paused = false;
+    this._fire("playing");
+    return Promise.resolve();
+  }
+  pause() {
+    this.pairLog.push(`${this.name}:pause`);
+    this.calls.push("pause");
+    this.paused = true;
+    this._fire("pause");
+  }
+  removeAttribute(a) { this.pairLog.push(`${this.name}:drop`); super.removeAttribute(a); }
+  /** Advance the playhead and deliver the tick a decoder would. */
+  tickTo(t) { this._time = t; this._fire("timeupdate"); }
+}
+
+function pair({ a: aOpts = {}, warm: wOpts = {} } = {}) {
+  const pairLog = [];
+  const a = new PairAudio("A", pairLog, aOpts);
+  const w = new PairAudio("B", pairLog, wOpts);
+  const log = [];
+  const b = new HtmlAudioBackend({ element: a, warmElement: w, telemetry: (m) => log.push(m) });
+  const ends = [];
+  b.onItemEnded = (r) => ends.push(r ?? "natural");
+  return { a, w, b, log, ends, pairLog };
+}
+
+/** A backend that has already handed over once: A played, B was warmed and
+    promoted, so `b.el` is the warm element and its boundary is armed. The state
+    every test about the handover's aftermath starts from. */
+async function handedOver() {
+  const p = pair();
+  await p.b.load(item("a", A_URL), { startOffset: 100 });
+  p.b.play();
+  p.b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await p.b.load(item("b", B_URL), { startOffset: 12 });
+  p.b.setOutPoint(20);
+  assert.equal(p.b.el, p.w, "precondition: the handover happened");
+  return p;
+}
+
+const A_URL = "https://cdn.example/a.mp3";
+const B_URL = "https://cdn.example/b.mp3";
+const C_URL = "https://cdn.example/c.mp3";
+/** Drain microtasks — a warm load settles across a couple of them. */
+const settle = async () => {
+  for (let i = 0; i < 4; i++) await Promise.resolve();
+  await new Promise((r) => setImmediate(r));
+};
+
+/* ---- the capability, and its absence ---- */
+
+test("with no second element prefetch is unavailable and every path is unchanged", async () => {
+  // Every pre-existing test in this file runs in exactly this configuration,
+  // which is why they are all still valid: without a warm element the backend
+  // is the one-element backend it has always been.
+  const { b, el } = mk();
+  assert.equal(b.canPrefetch, false);
+  assert.match(b.prefetchOffReason ?? "", /no second element/);
+  assert.equal(b.prefetch(item("b", B_URL), { startOffset: 12 }), false);
+  await b.load(item("a", A_URL));
+  assert.equal(el.src, A_URL, "the ordinary load must still work");
+});
+
+/* ---- warming ---- */
+
+test("prefetch loads the next episode on the OTHER element, leaving the player alone", async () => {
+  const { b, a, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  const playerLoads = a.calls.filter((c) => c === "load").length;
+
+  assert.equal(b.prefetch(item("b", B_URL), { startOffset: 12 }), true);
+  await settle();
+
+  assert.equal(w.src, B_URL);
+  assert.equal(w.currentTime, 12, "the warm element is parked at the next in-point");
+  assert.equal(a.calls.filter((c) => c === "load").length, playerLoads, "the player element must not reload");
+  assert.equal(a.src, A_URL);
+  assert.equal(b.warmState?.ready, true);
+});
+
+test("the warm element is NEVER played — one element owns the audio session", async () => {
+  // The iOS failure this rules out: a second element that begins playing takes
+  // the audio session and silences the first, and a foreground test never shows
+  // it. So the invariant is asserted over a whole warm-and-hand-over cycle.
+  const { b, a, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+
+  // Precondition, or this asserts nothing: a prefetch that did not happen
+  // trivially never played anything.
+  assert.equal(w.src, B_URL, "precondition: the warm element really is loaded");
+  assert.deepStrictEqual(w.calls.filter((c) => c === "play"), [], "the warm element must never be played");
+  assert.equal(w.paused, true);
+  assert.equal(a.paused, false, "and the player must still be the one making sound");
+});
+
+test("a warm element is ready only at the in-point, never on canplay for the file's head", async () => {
+  // Reading "ready" off `canplay` would hand over an element sitting at 0:00 of
+  // somebody else's episode — the seam would be gone and replaced by something
+  // far worse than a slow one.
+  const { b } = pair({ warm: { laggySeek: true } });
+  await b.load(item("a", A_URL));
+  b.prefetch(item("b", B_URL), { startOffset: 900 });
+  await settle();
+  assert.equal(b.warmState?.ready, false, "canplay alone must not mean ready");
+
+  b._warmEl.settleSeek();
+  await settle();
+  assert.equal(b.warmState?.ready, true, "and once the playhead is at the in-point, it is");
+});
+
+test("a next segment in the SAME episode is refused — the seek shortcut already covers it", async () => {
+  // 15 of Foray #1's 31 seams stay inside one episode. Warming those would
+  // refetch a whole podcast to reach a position the element already holds, and
+  // on an ad-stitched host the refetch can come back differently stitched.
+  const { b, w, log } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  assert.equal(b.prefetch(item("a2", A_URL), { startOffset: 300 }), false);
+  assert.equal(w.src, "", "the warm element must not have been touched");
+  assert.ok(log.some((l) => /prefetch\.skipped .*same episode/.test(l)));
+});
+
+test("a warm load that errors is not fatal and does not stand warming down", async () => {
+  const { b, log } = pair({ warm: { failWith: 4 } });
+  await b.load(item("a", A_URL));
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  assert.ok(log.some((l) => /prefetch\.failed/.test(l)));
+  assert.equal(b.canPrefetch, true, "one bad episode is not a broken mechanism");
+});
+
+test("a warm element that errored AFTER becoming ready is not promoted", async () => {
+  /* Found by mutation: with `warm.failed` unset, an element whose media load
+     failed is still "ready", and the boundary hands the player role to an
+     element that can produce no audio — silence with no error path, because the
+     manager was told the load succeeded. `readyState` alone does not cover it:
+     `canplay` can arrive and an `error` follow, which is exactly this. */
+  const { b, a, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  assert.equal(b.warmState?.ready, true, "precondition: it did become ready");
+
+  w.error = { code: 4 };
+  w._fire("error");
+
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  assert.equal(b.el, a, "a broken warm element must never become the player");
+  assert.equal(a.src, B_URL, "the boundary loads it the ordinary way instead");
+});
+
+/* ---- the handover ---- */
+
+test("a boundary hands over to the warm element instead of loading anything", async () => {
+  const { b, a, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  const warmLoads = w.calls.filter((c) => c === "load").length;
+
+  await b.load(item("b", B_URL), { startOffset: 12 });
+
+  assert.equal(b.el, w, "the warm element is now the player");
+  assert.equal(b.currentTime, 12, "already at the in-point");
+  assert.equal(w.calls.filter((c) => c === "load").length, warmLoads, "no load happened at the boundary");
+  assert.equal(a.paused, true);
+});
+
+test("the outgoing element is paused BEFORE the incoming one plays, never both at once", async () => {
+  const { b, a, w, pairLog } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  assert.equal(a.paused, true, "the outgoing element must be paused by the time the swap is done");
+  b.play();
+
+  const pausedA = pairLog.lastIndexOf("A:pause");
+  const playedB = pairLog.lastIndexOf("B:play");
+  assert.ok(pausedA >= 0 && playedB >= 0, `expected both events, got ${pairLog.join(" ")}`);
+  assert.ok(pausedA < playedB, `A must be paused before B plays: ${pairLog.join(" ")}`);
+});
+
+test("the demoted element's buffer is dropped rather than left decoding", async () => {
+  const { b, a } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  assert.ok(a.calls.includes("removeAttribute:src"), "the demoted element must let go of its buffer");
+});
+
+test("a handover carries the rate and the duck onto the element that inherits the role", async () => {
+  // Neither survives the swap on its own, and a duck that silently reset to 1.0
+  // on the next segment would be a bug with no visible cause.
+  const { b, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.setRate(1.5);
+  b.setVolume(0.3);
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  b.play();
+  assert.equal(w.volume, 0.3, "the duck must follow the role");
+  assert.equal(w.playbackRate, 1.5, "and so must the rate");
+});
+
+test("an out-point armed after a handover still fires — the watch moved with the role", async () => {
+  // THE regression that would be worse than the bug being fixed. A missed
+  // out-point runs a median 936.5 s of the wrong episode. If the element's
+  // listeners were stranded on the demoted element, this is where it shows.
+  const { b, w, ends } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  b.play();
+  b.setOutPoint(20);
+
+  w.tickTo(19);
+  assert.deepStrictEqual(ends, [], "not early");
+  w.tickTo(20.01);
+  assert.deepStrictEqual(ends, ["outPoint"], "the boundary must land on the promoted element");
+  assert.equal(w.paused, true);
+});
+
+test("a surface's own listeners survive a handover", async () => {
+  // `player/client.js` repaints off `timeupdate`. Attached to one element
+  // directly, it would stop repainting for the rest of the Foray at the first
+  // cross-episode seam.
+  const { b, w } = pair();
+  let paints = 0;
+  b.addMediaListener("timeupdate", () => { paints++; });
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+
+  w.tickTo(13);
+  assert.ok(paints > 0, "the surface must still hear the element that is now playing");
+});
+
+/* ---- losing the race: this is the case that must not regress ---- */
+
+test("a warm load that has not finished by the boundary falls back to the ordinary load", async () => {
+  const { b, a, w } = pair({ warm: { laggySeek: true } });
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 900 });
+  await settle();
+  assert.equal(b.warmState?.ready, false, "precondition: the warm load has not finished");
+
+  await b.load(item("b", B_URL), { startOffset: 900 });
+
+  assert.equal(b.el, a, "the player element must not change when the race is lost");
+  assert.equal(a.src, B_URL, "the boundary loads it the way it always has");
+  assert.equal(b.warmState, null, "and the warm element is left holding nothing");
+  assert.equal(w.src, "");
+});
+
+test("a warm element ready for a DIFFERENT item is discarded, never promoted", async () => {
+  // The "next segment starts mid-word" failure: a listener who skips must not
+  // inherit a buffer warmed for the segment they skipped past.
+  const { b, a } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+
+  await b.load(item("c", C_URL), { startOffset: 40 });
+  assert.equal(b.el, a, "no handover for an item nobody warmed");
+  assert.equal(a.src, C_URL);
+  assert.equal(b.warmState, null);
+});
+
+test("a warm element at the wrong OFFSET of the right episode is not promoted", async () => {
+  const { b, a } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+
+  await b.load(item("b2", B_URL), { startOffset: 600 });
+  assert.equal(b.el, a, "same episode, wrong in-point: that is not the segment we warmed");
+});
+
+test("a warm element whose buffer went away is not promoted on a stale ready flag", async () => {
+  /* `ready` can be twelve seconds old, and an element can go backwards in that
+     time without ever firing `error`: a backgrounded media element whose buffer
+     is evicted drops `readyState` and fires `emptied`/`abort`. Promoting there
+     resolves `load()` on a lie — the manager spends the beat, arms the out-point
+     and plays, and the listener then waits out the WHOLE load after the beat has
+     already been spent, with the player believing audio is running. That is
+     strictly worse than losing the race, which is the one direction this feature
+     must never produce. So readiness is re-asserted at the moment it is used. */
+  const { b, a, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  assert.equal(b.warmState?.ready, true, "precondition: it did become ready");
+
+  w.readyState = 1;              // the buffer went away; no `error` fires for this
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  assert.equal(b.el, a, "an element that regressed must not become the player");
+  assert.equal(a.src, B_URL, "the boundary loads it the ordinary way instead");
+
+  // The other half of the same re-assertion: ready enough, but no longer parked
+  // at the in-point.
+  b.prefetch(item("c", C_URL), { startOffset: 40 });
+  await settle();
+  w.readyState = 4;
+  w._time = 0;
+  await b.load(item("c", C_URL), { startOffset: 40 });
+  assert.equal(b.el, a, "nor must one that has drifted off its in-point");
+});
+
+/* ---- the two safety nets ---- */
+
+test("a promoted element that refuses to play falls back to the one holding the gesture", async () => {
+  /* Autoplay policy is per ELEMENT, and the element the listener tapped is the
+     other one. In the Capacitor shells this cannot happen; in the web PWA
+     exactly one handover per session is exposed. Reporting an error would stop
+     the Foray, and a listener with a locked screen cannot tap — so this must
+     degrade to today's behaviour instead, and keep the boundary. */
+  const { b, a, w, log } = pair({ warm: { refuse: true } });
+  let reported = null;
+  b.onError = (m) => { reported = m; };
+
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  b.setOutPoint(20);
+  b.play();          // refused by the promoted element
+  await settle();
+
+  assert.equal(reported, null, "a recoverable refusal must not reach the manager's degrade path");
+  assert.equal(b.el, a, "the element that holds the gesture is the player again");
+  assert.equal(a.src, B_URL, "and it loaded the segment the listener was owed");
+  assert.equal(b.outPoint, 20, "the boundary MUST survive the recovery");
+  assert.equal(a.paused, false, "audio is running again");
+  assert.equal(b.canPrefetch, false, "and warming is off for the rest of the session");
+  assert.ok(log.some((l) => /handover\.refused/.test(l)));
+  assert.equal(w.paused, true);
+});
+
+test("only an autoplay refusal is recovered — a pause mid-handover must not restart audio", async () => {
+  /* The recovery's guard is `err.name === "NotAllowedError"`, and that is not
+     belt and braces. `AbortError` is the ORDINARY rejection of a pending
+     `play()` that a `pause()` interrupted, and the manager emits `pausePlayback`
+     before `loadItem` on both a pause and a skip — so the window between
+     `play()` and the first `playing` event is reachable by an ordinary tap.
+     Recovering there would re-load the segment, re-arm the boundary and CALL
+     PLAY: audio starting again right after the listener stopped it, with every
+     surface showing paused, and warming switched off permanently on the way. */
+  /* TWO GUARDS, TWO TESTS, and that split is the point: each one independently
+     masks the other, so a single test covering both passes with either removed.
+     Here, the ONLY thing standing in the way is the `err.name` check — nothing
+     has cleared `_handoverUnproven`. */
+  const { b, w, log } = await handedOver();
+  let reported = null;
+  b.onError = (m) => { reported = m; };
+
+  w.refuse = true;
+  w.refuseWith = "AbortError";   // what an interrupted play() actually gives you
+  b.play();
+  await settle();
+
+  assert.equal(b.el, w, "no swap-back: this was not an autoplay refusal");
+  assert.equal(b.canPrefetch, true, "and it must not cost the rest of the Foray");
+  assert.equal(log.some((l) => /handover\.refused/.test(l)), false);
+  assert.match(reported ?? "", /AbortError/, "it reports, exactly as it did before this feature");
+});
+
+test("an autoplay refusal that lands after the listener paused must not restart audio", async () => {
+  /* The other guard, isolated: the rejection IS a `NotAllowedError`, so only
+     `pause()` clearing the recovery window stands between the listener's tap and
+     the recovery calling `play()` on their behalf. */
+  const { b, w } = await handedOver();
+  b.onError = () => {};
+
+  w.refuse = true;
+  b.play();
+  b.pause();          // the listener stops it before `playing` ever lands
+  await settle();
+
+  assert.equal(w.paused, true, "above all: audio did NOT start again");
+  assert.equal(b.el, w, "and no recovery ran");
+});
+
+test("a skip during the recovery does not re-arm the previous segment's boundary", async () => {
+  /* Nothing awaits the recovery's load — the manager already believes the
+     handover succeeded — so a listener who skips while it is in flight would
+     otherwise get the OLD segment's out-point armed over the new one. A wrong
+     out-point is the most expensive failure this player has: a median 936.5 s
+     of the wrong episode. */
+  /* The race is DRIVEN, not hoped for. `laggySeek` on the gesture-holding
+     element means the recovery's own load cannot settle until this test fires
+     the event, so the skip is guaranteed to land while it is in flight. A first
+     draft without that passed for the wrong reason — the recovery happened to
+     settle before the skip, and the assertion about the boundary held by luck. */
+  const { b, a, log } = pair({ a: { laggySeek: true }, warm: { refuse: true } });
+  await b.load(item("a0", A_URL), { startOffset: 0 });   // offset 0 needs no seek
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });   // handover
+  b.setOutPoint(20);
+  b.play();                                              // refused; recovery starts
+  await settle();
+  assert.equal(b.el, a, "precondition: the recovery swapped back");
+  // The recovery disarms before re-loading and re-arms only once its load
+  // settles — which, thanks to `laggySeek`, has not happened yet.
+  assert.equal(b.outPoint, null, "precondition: the recovery is still in flight");
+
+  // The listener skips, and this load DOES settle (offset 0 needs no seek).
+  await b.load(item("c", C_URL), { startOffset: 0 });
+  b.setOutPoint(1000);
+
+  // Now let the recovery's load settle, far too late to be relevant: the seek
+  // it was waiting on lands, which is the one thing that can resolve it.
+  a.settleSeek();
+  await settle();
+
+  assert.equal(b.outPoint, 1000, "the new segment's boundary must survive");
+  assert.equal(b.currentItem?.id, "c");
+  assert.ok(log.some((l) => /handover\.recovery\.superseded/.test(l)));
+});
+
+test("a recovery that FAILS after being superseded reports nothing to the manager", async () => {
+  /* The rejection branch needs the same two guards the success branch has, for a
+     sharper reason: reporting an error for an item nobody is on sends the manager
+     to `idle` and pauses the segment the listener actually skipped TO. */
+  const { b, a, log } = pair({ a: { laggySeek: true }, warm: { refuse: true } });
+  b.onError = () => {};                      // the element-level error also reports; not what this is about
+  await b.load(item("a0", A_URL), { startOffset: 0 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  b.setOutPoint(20);
+  b.play();                                  // refused; recovery starts and cannot settle
+  await settle();
+
+  await b.load(item("c", C_URL), { startOffset: 0 });   // the listener skips
+  a.error = { code: 4 };
+  a._fire("error");                          // now the stale recovery load fails
+  await settle();
+
+  assert.ok(log.some((l) => /handover\.recovery\.superseded/.test(l)));
+  assert.equal(log.some((l) => /handover\.recovery\.failed/.test(l)), false,
+    "a stale recovery must not report a failure for an item nobody is on");
+});
+
+test("a refusal on the fallback element is a real error and is reported", async () => {
+  // Recovery happens once. A second refusal is the ordinary autoplay failure
+  // this backend has always surfaced, and it must not loop.
+  const { b, log } = pair({ a: { refuse: true }, warm: { refuse: true } });
+  let reported = null;
+  b.onError = (m) => { reported = m; };
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  b.play();
+  await settle();
+  assert.match(reported ?? "", /NotAllowedError/);
+  assert.ok(log.some((l) => /handover\.refused/.test(l)));
+});
+
+test("playback stopping while a prefetch is in flight stands warming down for good", async () => {
+  // On iOS, losing the audio session looks exactly like an unexplained `pause`,
+  // and a second element loading media while the first plays is the one thing
+  // warming could plausibly cause. We cannot prevent it and must not resume
+  // through it — a phone call arrives the same way — so it becomes a recorded
+  // failure and warming stops.
+  // `laggySeek` keeps the warm load IN FLIGHT, which is the causal window: the
+  // hypothesis is that a second element LOADING media took the session, so a
+  // buffer that is already sitting ready is not evidence of anything.
+  const { b, a, log } = pair({ warm: { laggySeek: true } });
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  assert.equal(b.warmState?.ready, false, "precondition: the warm load is still in flight");
+
+  a._fire("pause");   // nobody asked for this
+  assert.equal(b.canPrefetch, false);
+  assert.ok(log.some((l) => /pausedUnexpectedly/.test(l)));
+  assert.equal(b.warmState, null);
+});
+
+test("a warm buffer that is already ready is not evidence of a stolen session", async () => {
+  // The narrower window, stated as its own fact: once the load is done, an
+  // unexplained pause is an ordinary interruption (a call, headphones out) and
+  // must not cost the rest of the hour's seams.
+  const { b, a } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  assert.equal(b.warmState?.ready, true, "precondition: warming finished");
+
+  a._fire("pause");
+  assert.equal(b.canPrefetch, true, "an interruption after the load is not a steal");
+  assert.equal(b.warmState?.ready, true, "and the buffer is still there to hand over");
+});
+
+test("a file that simply ran out does not stand warming down", async () => {
+  /* The end-of-media steps fire `pause` BEFORE `ended`, and a segment whose
+     `end_sec` runs past the real audio takes that path routinely — `setOutPoint`
+     logs `outPoint.beyondDuration` for exactly this. Read as a stolen session it
+     would switch warming off for the whole Foray on the first short file, AND
+     discard a buffer the next `load()` was about to promote. */
+  const { b, a, w } = pair({ warm: { laggySeek: true } });
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+
+  a.ended = true;     // positional, and already true when `pause` fires
+  a._fire("pause");
+  a._fire("ended");
+
+  assert.equal(b.canPrefetch, true, "a file running out is not a stolen session");
+  assert.equal(b.warmState?.id, "b", "and the warm load it was doing survives");
+  assert.equal(w.src, B_URL);
+});
+
+test("the player's OWN pause at the boundary does not stand warming down", async () => {
+  // The out-point pauses the element at every seam, with a prefetch normally in
+  // flight. A detector that could not tell that apart would switch itself off
+  // on the first healthy seam and this whole feature would be dead code.
+  const { b, a } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
+  b.setOutPoint(120);
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+
+  a.tickTo(120.01);            // the boundary lands, and pauses the element
+  assert.equal(b.canPrefetch, true, "our own boundary pause must not read as a lost session");
+});
+
+test("release lets go of the warm element's buffer too", async () => {
+  const { b, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  b.release();
+  assert.ok(w.calls.includes("removeAttribute:src"), "a released backend must not leave a warm buffer decoding");
+  assert.equal(b.canPrefetch, false);
+});
+
+/* ---- the window: WHEN warming starts ---- */
+
+test("the window opens inside the lead, stays shut outside it, and fires once per boundary", async () => {
+  const { b, a } = pair();
+  let windows = 0;
+  b.onPrefetchWindow = () => { windows++; };
+  await b.load(item("a", A_URL), { startOffset: 0 });
+  b.play();
+
+  b.setOutPoint(1000);
+  a.tickTo(1000 - PREFETCH_LEAD_SEC - 1);
+  assert.equal(windows, 0, "outside the lead, nothing is warmed and no bandwidth is spent");
+
+  a.tickTo(1000 - PREFETCH_LEAD_SEC + 1);
+  assert.equal(windows, 1, "inside the lead, exactly one notification");
+  a.tickTo(1000 - PREFETCH_LEAD_SEC + 2);
+  a.tickTo(1000 - PREFETCH_LEAD_SEC + 3);
+  assert.equal(windows, 1, "once per boundary, not once per tick");
+});
+
+test("the lead is WALL clock, so a faster rate opens the window earlier in the episode", async () => {
+  // The load takes wall clock, not content. At 2x, `PREFETCH_LEAD_SEC` of wall
+  // clock is twice as much of the episode.
+  const { b, a } = pair();
+  let windows = 0;
+  b.onPrefetchWindow = () => { windows++; };
+  await b.load(item("a", A_URL), { startOffset: 0 });
+  b.play();
+  b.setOutPoint(1000);
+
+  const justOutsideAt1x = 1000 - PREFETCH_LEAD_SEC - 2;
+  a.tickTo(justOutsideAt1x);
+  assert.equal(windows, 0, "precondition: at 1x this playhead is outside the lead");
+
+  a.playbackRate = 2;
+  a.tickTo(justOutsideAt1x + 0.01);
+  assert.equal(windows, 1, "at 2x the same distance is half the wall clock, so the window is open");
+});
+
+test("a paused element opens no window — nothing is approaching a boundary", async () => {
+  const { b, a } = pair();
+  let windows = 0;
+  b.onPrefetchWindow = () => { windows++; };
+  await b.load(item("a", A_URL), { startOffset: 0 });
+  b.setOutPoint(1000);
+  assert.equal(a.paused, true, "precondition: never played");
+  a.tickTo(999);
+  assert.equal(windows, 0);
+});
+
+test("a window handler that throws cannot take the audio down with it", async () => {
+  const { b, a, ends } = pair();
+  b.onPrefetchWindow = () => { throw new Error("surface bug"); };
+  await b.load(item("a", A_URL), { startOffset: 0 });
+  b.play();
+  b.setOutPoint(1000);
+  a.tickTo(999);
+  a.tickTo(1000.01);
+  assert.deepStrictEqual(ends, ["outPoint"], "the out-point still lands");
+});
