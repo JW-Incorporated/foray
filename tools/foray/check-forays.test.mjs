@@ -62,14 +62,32 @@ test("the CLI exits 0 on the committed data", () => {
   assert.match(out, /forays ok/);
 });
 
-test("the committed Forays are the two documented ones, and both are #134's kind", () => {
-  // Pinned by id rather than by count so that adding a third is a deliberate
+test("the committed Forays are the three documented ones, and all are #134's kind", () => {
+  // Pinned by id rather than by count so that adding a fourth is a deliberate
   // edit here, and so a RENAME cannot pass as an addition.
+  //
+  // `grilling-history-2` landed 2026-08-17 (#226) as the on-plot rebuild of #1.
+  // #1 is kept and marked `superseded_by` rather than replaced in place: its
+  // exact shape is this file's fixture for the D1 and D5 proofs below, and an
+  // 8-segment Foray with D1 headroom cannot express "the budget exactly met",
+  // the 620.5 s span, or the GRID-3 reinstatement. ORDER MATTERS — `foray0` is
+  // `forays[0]`, so #1 must stay first or every proof below silently retargets.
   assert.deepEqual(
     files.forays.forays.map((f) => f.id),
-    ["grilling-history-1", "capital-types-1"]
+    ["grilling-history-1", "grilling-history-2", "capital-types-1"]
   );
   for (const f of files.forays.forays) assert.equal(f.kind, "deep-dive", f.id);
+});
+
+test("Foray #1 is labelled superseded, so nobody re-tests the drift by accident", () => {
+  /* Both grilling Forays are drafts reachable by `?foray=<id>`, and the older
+   * link still works. A stale draft that nothing labels stale is how the wrong
+   * one gets tested next week (#226). Neither field is read by the player. */
+  const one = forayBy(files, "grilling-history-1");
+  assert.equal(one.superseded_by, "grilling-history-2");
+  assert.match(one.superseded_note, /Superseded 2026-08-17/);
+  assert.ok(forayBy(files, "grilling-history-2"), "the successor must exist");
+  assert.equal(forayBy(files, "grilling-history-2").superseded_by, undefined);
 });
 
 test("Foray #1 is draft, so no client may surface it yet", () => {
@@ -200,6 +218,7 @@ test("every label resolves to exactly one segment by (episode, duration)", () =>
  * true of #1 and false of #2 for one commit. */
 const RUNNING_ORDER_DOCS = [
   { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order", rows: 32 },
+  { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", rows: 8 },
   { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", rows: 22 },
 ];
 
@@ -469,7 +488,8 @@ test("L2/L3 hold for every played segment, per §4's role table", () => {
     }
   }
   // A loop that silently iterates nothing is the failure this guards against.
-  assert.equal(checked, 54, "every played segment of every Foray must be checked");
+  // 32 (#1) + 8 (grilling-history-2, #226) + 22 (capital-types-1).
+  assert.equal(checked, 62, "every played segment of every Foray must be checked");
 });
 
 test("no segment played by Foray #1 passes L4's 240 s soft maximum", () => {
@@ -516,10 +536,20 @@ test("L4's escape hatch is reachable — needs_review + long_reason clears it", 
   const f = clone();
   const seg = f.segments.segments.find((s) => s.id === "moreish-jerk-jamaica#266");
   seg.end_sec = seg.start_sec + 250;
-  delete foray0(f).runtime_sec;
-  const item = foray0(f).items.find((i) => i.label === "JERK-1");
-  item.needs_review = true;
-  item.long_reason = "One continuous three-community answer; every cut lands mid-claim.";
+  /* `moreish-jerk-jamaica#266` is played by BOTH grilling Forays since #226, so
+   * stretching the pooled segment reaches every Foray that references it — and
+   * this assertion is "no L4 error ANYWHERE", so clearing the hatch on #1 alone
+   * would leave grilling-history-2's copy failing and the test red for a reason
+   * that is not about the escape hatch. Every Foray playing the segment gets the
+   * hatch and drops its stated runtime, which is the same edit #1 always got,
+   * applied wherever the segment now appears. */
+  for (const foray of f.forays.forays) {
+    const item = foray.items.find((i) => i.segment_id === "moreish-jerk-jamaica#266");
+    if (!item) continue;
+    delete foray.runtime_sec;
+    item.needs_review = true;
+    item.long_reason = "One continuous three-community answer; every cut lands mid-claim.";
+  }
   assert.deepEqual(errorsFor(f).filter((e) => /L4/.test(e)), []);
 });
 
@@ -661,10 +691,12 @@ test("every item_id in the segment pool resolves to a source", () => {
   }
 });
 
-test("source ids are exactly the item_ids the two curation docs name", () => {
+test("source ids are exactly the item_ids the curation docs name", () => {
   assert.deepEqual(
     files.sources.sources.map((s) => s.id).sort(),
     [
+      // grilling-history-assembly.md §2a — minted for grilling-history-2 (#226)
+      "satay-okay-e01-satay-myth",
       // grilling-foray.md §1
       "bbqc-moss-school",
       "bbqc-traeger-history",

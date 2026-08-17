@@ -1,12 +1,12 @@
 {
   "version": 1,
   "notes": "Anchored segment pool (issue #106). Schema: docs/adr/0007-segment-anchoring.md; field-by-field reference in tools/segments/README.md. Written ONLY by tools/segments/merge-segments.mjs — never by hand, because every record here has been checked against the transcript its anchors were authored from, and a hand-edited one has not. First populated 2026-08-16 by the hand-run BFH hearth batch (docs/curation/grilling-foray-batch-1.md); the Lane C extraction fan-out (docs/curation/segment-extraction-pipeline.md) appends to it.",
-  "built_at": "2026-08-17T01:34:54.139Z",
+  "built_at": "2026-08-17T19:50:29.627Z",
   "provenance": {
     "produced_by": "tools/segments/merge-segments.mjs",
     "method": "Claude Code segment-extraction agent (Max-plan routine) — see docs/curation/segment-extraction-pipeline.md",
     "schema": "docs/adr/0007-segment-anchoring.md",
-    "last_batch_id": "seg-2026-08-16-foray2-capital-a"
+    "last_batch_id": "seg-2026-08-17-grilling-satay"
   },
   "segments": [
     {
@@ -857,6 +857,23 @@
       "dai_suspected": false,
       "source": "agent-v1",
       "batch_id": "seg-2026-08-16-foray2-capital-a",
+      "needs_review": false
+    },
+    {
+      "id": "satay-okay-e01-satay-myth#736",
+      "item_id": "satay-okay-e01-satay-myth",
+      "topic": "food",
+      "start_sec": 735.8,
+      "end_sec": 815.6,
+      "reference_duration_sec": 2323,
+      "start_anchor": "so many Malaysians and Southeast Asians and Asians in general are so obsessed with food",
+      "end_anchor": "wherever humans have gone, they've probably put meat on a stick",
+      "why": "Three rival origin theories for satay, then the point that skewered meat is universal",
+      "confidence": "high",
+      "transcript_source": "publisher",
+      "dai_suspected": false,
+      "source": "agent-v1",
+      "batch_id": "seg-2026-08-17-grilling-satay",
       "needs_review": false
     },
     {

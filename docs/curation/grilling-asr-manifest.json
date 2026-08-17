@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "generated_at": "2026-08-16",
+  "generated_at": "2026-08-17",
   "subject": "Foray #1 — grilling & world barbecue",
-  "purpose": "Prioritised ASR work order. Every row is an episode measured ad-free that we want a timed transcript for. Sorted by value per minute of CPU: an episode that fills an EMPTY arc slot outranks one that adds depth to a filled one.",
+  "purpose": "Prioritised ASR work order, re-sorted against the 40-beat spine (docs/curation/grilling-history-spine.md) on 2026-08-17. Priority 1 is the material that would move a CHAIN beat off empty, Act IV first. That ordering is the whole point: 19 of the 24 empty beats are in chains and 5 are in the fan, and a hole in a chain reads to a listener as a missing link while a hole in a fan reads as a change of subject. So a fan hole is cheap and a chain hole is not, and CPU should be spent accordingly. Rows that buy an already-strong beat, that buy no beat at all, or that are unusable under the English-only ruling carry `priority: null` and a `blocked_by` reason. They are kept, never pruned.",
   "companions": [
     "docs/curation/catalogue-broadening.md — where the new sources came from, and which traditions stayed unsourceable",
     "docs/curation/grilling-foray-passages.md — the 8 passages that already exist (8:21)",
@@ -26,50 +26,116 @@
     "modern-backyard"
   ],
   "excluded_by_instruction": [
-    "The BBQ Central Show — already being transcribed by the American-arc workstream",
-    "The British Food History Podcast — already being transcribed",
-    "Gastropod — already being transcribed (and measures 1.080, injected)"
+    "The BBQ Central Show — already being transcribed by the American-arc workstream. Note that data/transcript-availability.json records 1,858 episodes on that feed of which 12 carry a <podcast:transcript> tag, and only one is on plot: the Moss BBQ School episode already segmented.",
+    "The British Food History Podcast — already being transcribed. Separately, and more decisively: of the 13 bfh-* segments in the pool, exactly one survived stage 2's beat-level gate and only as an alternate. This is the drift the founder named. Nothing here is queued for this Foray.",
+    "Stuff You Should Know — A Lip-Smacking Look at Barbecue. Ships a timed transcript and needs no ASR, and is EXCLUDED on the register rather than on availability: two hosts working from an article, no guest, no sourced expertise, and it contains the line that barbecue 'kind of transcends race and class' twenty seconds after its Jim Crow passage — which is the harmony version beat 23 exists to reject. Admitting a source the narrative refutes is the failure #226 was opened to fix. This returns beats 7, 19, 24 and 30 to empty and to narration."
   ],
   "read_this_before_spending_cpu": {
-    "language_gate": "Every NEW tradition source found in this pass is non-English: Spanish (asado), Portuguese (churrasco), Mandarin (churrasco/yakitori), Korean. The existing 8 passages are all English. Dropping a Spanish or Mandarin segment into an English Foray is a PRODUCT decision (subtitle? narrate over? accept mixed language?), not a transcription decision — and it is unresolved. Rows carry `language` and `english_audio` so the queue can be filtered either way. English-audio priority-1 rows total 8,902 s (2.47 h); non-English priority-1 rows add 3,453 s (0.96 h).",
-    "unfillable_slots": "braai, tandoor, mangal/kebab and Filipino lechon have NO source at any transcription budget. See catalogue-broadening.md §4."
+    "language_gate": "SETTLED, not open. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) with the narrator ruling: non-English tape is not shipped, and the narrator describes those traditions in English instead. Ten of the 24 rows here are non-English and are therefore unqueued with `blocked_by: english-only-ruling` — 3.43 h of audio that no longer has a claim on CPU. An earlier draft of the coverage report and catalogue-broadening.md §3 both still frame this as unresolved; they are wrong and reconciling them would stop the next agent re-deciding it.",
+    "unfillable_slots": "braai (beat 13) and Filipino lechon have no source at any budget after a 4.71M-feed search. The mangal/kebab root of beat 9 has one candidate and it fails the CONTENT gate, which neither ad measurement nor ASR fixes. Beat 8 (the steppe) has no source found and none proven absent. Tandoor (beat 10) is NO LONGER in this list: ADR-0008 removed the ad gate the earlier verdict rested on. See catalogue-broadening.md §4, whose §0 summary still calls tandoor unsourceable and is stale.",
+    "spend_this_first": "Reading beats transcribing. Two of the four identified Act IV sources may already ship transcripts. Reading SYSK's is what produced four verdict changes in stage 2 for one fetch — and then the founder ruled the register out, which is itself the argument for reading before spending: the cheap check is what tells you whether the expensive one is worth it."
   },
   "totals": {
-    "episodes": 24,
-    "audio_seconds": 36366,
-    "audio_hours": 10.1,
-    "cpu_hours_at_1.1x_realtime": 9.18,
-    "by_priority": {
-      "1": { "episodes": 8, "audio_seconds": 12355, "audio_hours": 3.43, "cpu_hours_at_1.1x": 3.12 },
-      "2": { "episodes": 7, "audio_seconds": 10006, "audio_hours": 2.78, "cpu_hours_at_1.1x": 2.53 },
-      "3": { "episodes": 9, "audio_seconds": 14005, "audio_hours": 3.89, "cpu_hours_at_1.1x": 3.54 }
+    "episodes_in_manifest": 24,
+    "queued_episodes": 9,
+    "queued_audio_seconds": 19344,
+    "queued_audio_hours": 5.37,
+    "unqueued_episodes": 15,
+    "unqueued_audio_seconds": 17022,
+    "unqueued_audio_hours": 4.73,
+    "unqueued_breakdown": {
+      "english-only-ruling": 8,
+      "no-beat-in-spine": 6,
+      "superseded-by-the-re-release": 1
     },
-    "cost_note": "1.1x realtime is the figure supplied with this work order, and it assumes an otherwise idle machine. tools/transcribe measured 1.33x for base.en (docs/curation/transcription-scale-plan.md §1); the live whisper queue is currently running at 0.475x because of contention. At 0.475x the same 10.1 hours is 21.3 CPU-hours — roughly a day of laptop. That is the real price of a 3-hour Foray, and it is why the priority ordering matters more than the total: priority 1 alone is 3.12 CPU-hours at 1.1x (7.2 h at 0.475x) and opens five slots that are empty today."
+    "by_priority": {
+      "1": {
+        "episodes": 2,
+        "audio_seconds": 6772,
+        "audio_hours": 1.88,
+        "cpu_hours_at_1.1x": 2.07,
+        "cpu_hours_at_0.475x_observed": 3.96
+      },
+      "2": {
+        "episodes": 2,
+        "audio_seconds": 3858,
+        "audio_hours": 1.07,
+        "cpu_hours_at_1.1x": 1.18,
+        "cpu_hours_at_0.475x_observed": 2.26
+      },
+      "3": {
+        "episodes": 5,
+        "audio_seconds": 8714,
+        "audio_hours": 2.42,
+        "cpu_hours_at_1.1x": 2.66,
+        "cpu_hours_at_0.475x_observed": 5.1
+      }
+    },
+    "cost_note": "The rate that matters is the observed one. tools/transcribe measured 1.33x for base.en and the live whisper queue is running at 0.475x because of contention, so an hour of audio is about 2.1 CPU-hours in practice, not 1.1. The point of the re-sort is that it makes the queue much shorter as well as better ordered: ten non-English rows and four no-beat rows leave the queue entirely, and priority 1 is now three episodes rather than eight.",
+    "what_priority_1_costs_and_buys": "Two measured rows here total 6,772 s (1.88 h, about 4.0 CPU-hours observed), and the third (Gastropod, ~49 min) is in identified_not_yet_measured pending a probe. For that, up to seven chain beats move off empty — 18, 20, 21, 22, 38 and 31, plus beat 2 — against the OLD priority 1, which was 3.43 h of audio and moved none."
   },
   "episodes": [
     {
       "priority": 1,
-      "arc_slot": "fire-origins",
+      "arc_slot": "american-birth-westward",
       "tradition": null,
-      "show": "Origin Stories",
-      "feed_url": "https://rss.libsyn.com/shows/65014/destinations/258524.xml",
-      "episode_title": "Episode 09: Did Cooking Make Us Human? (Re-release)",
-      "guid": "8a7e2cddb3a1f8407d7e1e031c55a83e",
-      "enclosure_url": "https://traffic.libsyn.com/secure/originstories/Episode_09__Did_Cooking_Make_Us_Human_Re-release_la.mp3?dest-id=258524",
-      "duration_sec": 1523,
-      "duration_source": "itunes:duration (25:23)",
-      "declared_bytes": 36904701,
-      "ad_free_ratio": 1.0,
+      "show": "The Grill Coach",
+      "feed_url": "https://rss.buzzsprout.com/1069612.rss",
+      "episode_title": "Adrian Miller and The History of BBQ",
+      "guid": "Buzzsprout-12168318",
+      "enclosure_url": "https://www.buzzsprout.com/1069612/episodes/12168318-adrian-miller-and-the-history-of-bbq.mp3",
+      "duration_sec": 3306,
+      "duration_source": "itunes:duration (3306)",
+      "declared_bytes": 39775895,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "en",
       "english_audio": true,
-      "transcript_note": "Origin Stories publishes transcripts on 9 of 93 episodes; neither cooking episode is among them, and the Leakey Foundation episode page carries none either.",
-      "unlocks": "The arc's opening claim — Wrangham's cooking hypothesis itself. The slot currently holds only a counterpoint (P6/P7, Eat This Podcast).",
-      "why_this_priority": "Opening arc slot, with no positive statement of the hypothesis the whole Foray rests on. Prefer this re-release over the 18:13 original: same argument, more room to cut."
+      "unlocks": "American arc — HAND-OFF, not this workstream's.",
+      "why_this_priority": "The one Grill Coach episode that survives the show-level rejection (real guest: Adrian Miller, author of Black Smoke). Belongs to the American-arc workstream — flagged to them rather than claimed. It pays the show's front-half tax, so expect ~25–30 usable minutes of 55.",
+      "spine_beats": [
+        18,
+        20,
+        21,
+        22,
+        38
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "all five empty",
+      "buys": "The largest single move available. Described as covering indigenous roots, the shift to what we now call barbecue, the African American contribution, and the present — beats 18, 20, 21, 22 and 38. Beat 21 is the load-bearing beat of the whole spine and beats 20/21/22/38 are the authorship weight the spine calls the honest 12 %. Measured ad-free at ratio 1.0, so it needs ASR and nothing else: no probes, no locate step. Adrian Miller is named in the spine itself as the archetype of the register wanted."
     },
     {
       "priority": 1,
+      "arc_slot": "world-traditions",
+      "tradition": "jerk / Caribbean",
+      "show": "The Moreish Podcast",
+      "feed_url": "https://media.rss.com/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/feed.xml",
+      "episode_title": "Caribbean Food History with Dr. Candice Goucher",
+      "guid": "Buzzsprout-17725857",
+      "enclosure_url": "https://content.rss.com/episodes/372108/2538524/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/2026_02_10_02_51_27_b9e66f22-042c-4828-8a15-17001b987ad3.mp3",
+      "duration_sec": 3466,
+      "duration_source": "itunes:duration (3466)",
+      "declared_bytes": 55591506,
+      "ad_free_ratio": 1,
+      "ratio_method": "bytes",
+      "timed_transcript_exists": false,
+      "language": "en",
+      "english_audio": true,
+      "transcript_note": "No transcript tag at all — unlike the jerk episode, this one needs full ASR, not just timings.",
+      "unlocks": "Caribbean depth behind the jerk slot. Goucher is the academic authority in this space.",
+      "why_this_priority": "Highest-authority guest in the inventory, but 57:46 for a slot priority-1 work already rescues.",
+      "spine_beats": [
+        20,
+        2,
+        15
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "20 empty, 2 thin, 15 strong",
+      "buys": "The best unread candidate for beat 20, the West African inheritance — the beat the spine added in revision specifically so that authorship does not rest on hours worked. Goucher's work is on African and Caribbean transmission, which is the exact register beat 20 asks for and the thing none of the Act IV sources reaches back across the Atlantic to cover. Likely also gives beat 2 a mechanism cut and beat 15 more depth."
+    },
+    {
+      "priority": 2,
       "arc_slot": "world-traditions",
       "tradition": "jerk (Jamaica)",
       "show": "The Moreish Podcast",
@@ -80,17 +146,24 @@
       "duration_sec": 1444,
       "duration_source": "itunes:duration (1444)",
       "declared_bytes": 23120419,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "en",
       "english_audio": true,
       "transcript_note": "CHEAPEST WIN. A publisher transcript exists and fetches 200 (https://transcripts.rss.com/372108/2619956/transcript, type text/plain) but carries zero timecodes. We need TIMINGS ONLY — force-align the existing clean prose rather than transcribe from scratch. If the pipeline can emit word timings against supplied text, this row costs a fraction of full ASR and the same trick unlocks all 8 transcript-bearing Moreish episodes.",
       "unlocks": "The jerk slot, which today holds only a framing passage (P5).",
-      "why_this_priority": "Turns a framing-only slot into a real one, and is the cheapest row here if timings-only alignment is available."
+      "why_this_priority": "Turns a framing-only slot into a real one, and is the cheapest row here if timings-only alignment is available.",
+      "spine_beats": [
+        2,
+        15
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "2 thin, 15 strong",
+      "buys": "Beat 15 is already carried by two cuts from this episode, so this is not depth for its own sake: the episode's publisher transcript is UNTIMED, which is precisely why beat 2's preservation passage cannot be cut separately from beat 15's carrier today. A timed transcript would let beat 2 have its own cut instead of double-booking one passage across two beats — moving a chain beat in Act I from thin toward carried."
     },
     {
-      "priority": 1,
+      "priority": 2,
       "arc_slot": "world-traditions",
       "tradition": "asado (Argentina)",
       "show": "BBQ RADIO NETWORK",
@@ -101,38 +174,106 @@
       "duration_sec": 2414,
       "duration_source": "itunes:duration (2414)",
       "declared_bytes": 29060854,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "en",
       "english_audio": true,
       "transcript_note": "Buzzsprout publishes none for this show; 0 transcript tags across 310 items and the /transcript.srt|.vtt|.json URL patterns all 404.",
       "unlocks": "asado — currently EMPTY, 0:00. This is the ENGLISH-audio asado source.",
-      "why_this_priority": "Only English interview with an actual Argentine asador. The show runs a rigid four-segment ~10-minute clock, so expect 2–3 of 4 segments to be Frugoni; the rest is a host travelogue."
+      "why_this_priority": "Only English interview with an actual Argentine asador. The show runs a rigid four-segment ~10-minute clock, so expect 2–3 of 4 segments to be Frugoni; the rest is a host travelogue.",
+      "spine_beats": [
+        5,
+        14,
+        21
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "5 strong but blocked, 14 strong, 21 empty",
+      "buys": "Two specific things, not general depth. (1) Beat 5 is currently narration NOT for want of tape but because M3 forbids it: its cut sits at 1437 s and beat 14's sit at 700 s and 1205 s, so in spine order they would play backwards. A beat-14 cut from after 1437 s would let both beats play. (2) The asador as a recognised social office is nowhere in the existing eight cuts, and it is the contrast beat 21 needs — the same job honoured here and coerced there. 2,414 s of an English-speaking asador, local ASR gone, demonstrably under-cut."
     },
     {
-      "priority": 1,
-      "arc_slot": "us-regional-divergence",
-      "tradition": "Santa Maria (California)",
-      "show": "BBQ RADIO NETWORK",
-      "feed_url": "https://rss.buzzsprout.com/1171697.rss",
-      "episode_title": "Grillzilla: From Santa Maria Smoke to Backyard Paradise",
-      "guid": "Buzzsprout-18711939",
-      "enclosure_url": "https://www.buzzsprout.com/1171697/episodes/18711939-grillzilla-from-santa-maria-smoke-to-backyard-paradise.mp3",
-      "duration_sec": 2575,
-      "duration_source": "itunes:duration (2575)",
-      "declared_bytes": 30986479,
-      "ad_free_ratio": 1.0,
+      "priority": 3,
+      "arc_slot": "fire-origins",
+      "tradition": null,
+      "show": "Origin Stories",
+      "feed_url": "https://rss.libsyn.com/shows/65014/destinations/258524.xml",
+      "episode_title": "Episode 09: Did Cooking Make Us Human? (Re-release)",
+      "guid": "8a7e2cddb3a1f8407d7e1e031c55a83e",
+      "enclosure_url": "https://traffic.libsyn.com/secure/originstories/Episode_09__Did_Cooking_Make_Us_Human_Re-release_la.mp3?dest-id=258524",
+      "duration_sec": 1523,
+      "duration_source": "itunes:duration (25:23)",
+      "declared_bytes": 36904701,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "en",
       "english_audio": true,
-      "transcript_note": "None. podscan.fm exposes the first ~8:43 free, which is how the content below was verified.",
-      "unlocks": "us-regional-divergence — the entire slot, currently EMPTY, 0:00.",
-      "why_this_priority": "Sole source for a whole arc slot. Tempered expectation: real first-hand Santa Maria detail (towable pits lining the street, tri-tip's two opposed grains) but it drifts to pellet grills by ~04:00, so budget 3–5 usable minutes from 43."
+      "transcript_note": "Origin Stories publishes transcripts on 9 of 93 episodes; neither cooking episode is among them, and the Leakey Foundation episode page carries none either.",
+      "unlocks": "The arc's opening claim — Wrangham's cooking hypothesis itself. The slot currently holds only a counterpoint (P6/P7, Eat This Podcast).",
+      "why_this_priority": "Opening arc slot, with no positive statement of the hypothesis the whole Foray rests on. Prefer this re-release over the 18:13 original: same argument, more room to cut.",
+      "spine_beats": [
+        1
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "strong, and the only over-supplied beat in the report",
+      "buys": "Depth on the one beat that already has more tape than it can use. Beat 1 has three strong candidates and is deliberately capped at two. Nothing here moves a beat off empty; the local ASR is gone, so this is a restoration job, not a coverage job."
     },
     {
-      "priority": 1,
+      "priority": 3,
+      "arc_slot": "pre-modern-hearth",
+      "tradition": null,
+      "show": "Eat This Podcast",
+      "feed_url": "https://www.eatthispodcast.com/?feed=podcast",
+      "episode_title": "Prehistoric cooking pots",
+      "guid": "https://www.eatthispodcast.com/?p=4294",
+      "enclosure_url": "https://media.blubrry.com/eatthispodcast/op3.dev/e/mange-tout.hel1.your-objectstorage.com/2024/pottery.mp3",
+      "duration_sec": 1180,
+      "duration_source": "itunes:duration (19:40)",
+      "declared_bytes": 18973921,
+      "ad_free_ratio": 1,
+      "ratio_method": "bytes",
+      "timed_transcript_exists": false,
+      "language": "en",
+      "english_audio": true,
+      "transcript_note": "Eat This Podcast ships SRT on 36 episodes but not this one.",
+      "unlocks": "Depth on fire-origins / pre-modern-hearth: how cooking changes once a pot exists.",
+      "why_this_priority": "Both its slots already have material, so it is depth rather than rescue — but it is short, the show is the highest-quality source in the whole inventory, and it bridges the arc's first two slots.",
+      "spine_beats": [
+        1
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "strong",
+      "buys": "A pre-ceramic counterpoint to beat 1, which is already carried. Boiling in pots is not a fire-and-smoke claim, and the spine's §6b excludes general culinary history from being a beat at all."
+    },
+    {
+      "priority": 3,
+      "arc_slot": "world-traditions",
+      "tradition": "jerk / Caribbean",
+      "show": "The Moreish Podcast",
+      "feed_url": "https://media.rss.com/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/feed.xml",
+      "episode_title": "Jamaica: The connection between salt and spirituality with Alyssa Sperry Bertrand",
+      "guid": "0a346c4f-a026-45d5-b1e5-c7497a3647a0",
+      "enclosure_url": "https://content.rss.com/episodes/372108/2553081/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/2026_02_16_17_16_17_e851f5bd-a99b-488b-bad2-4404f8f1c378.mp3",
+      "duration_sec": 3344,
+      "duration_source": "itunes:duration (3344)",
+      "declared_bytes": 53510649,
+      "ad_free_ratio": 1,
+      "ratio_method": "bytes",
+      "timed_transcript_exists": false,
+      "language": "en",
+      "english_audio": true,
+      "transcript_note": "Untimed prose transcript exists, same as the jerk episode — a timings-only candidate if that mode ships.",
+      "unlocks": "Peripheral Caribbean depth.",
+      "why_this_priority": "55:44 for material only tangentially about fire.",
+      "spine_beats": [
+        2
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "thin",
+      "buys": "Possible beat-2 material — salt and preservation — but the beat wants the mechanism (water activity, the pellicle, phenols and organic acids) and a spirituality episode is not known to contain it. Speculative; behind the two Moreish rows above."
+    },
+    {
+      "priority": 3,
       "arc_slot": "world-traditions",
       "tradition": "Korean BBQ",
       "show": "Heritage Food Stories",
@@ -143,17 +284,102 @@
       "duration_sec": 946,
       "duration_source": "itunes:duration (946)",
       "declared_bytes": 11349517,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "en",
       "english_audio": true,
       "transcript_note": "No transcript tag. Do NOT anchor to the Substack post: it is an original essay, not a transcript of the audio, so anchors would be verbatim to the wrong text.",
       "unlocks": "Korean — currently EMPTY, 0:00.",
-      "why_this_priority": "Best minutes-per-slot ratio of any English row: 15:46 of audio for a whole empty slot."
+      "why_this_priority": "Best minutes-per-slot ratio of any English row: 15:46 of audio for a whole empty slot.",
+      "spine_beats": [
+        12
+      ],
+      "beat_structure": "fan",
+      "beat_verdict": "empty",
+      "buys": "Little, and this is a demotion from priority 1 on the merits. It is the only English candidate for beat 12, but on its stated subject it does not advance the beat: the erasure of a national cuisine under colonisation is a different claim from table-top grilling, the diner as cook, and the recent economics of pork belly. Transcribing it would probably not fill beat 12."
     },
     {
-      "priority": 1,
+      "priority": 3,
+      "arc_slot": "world-traditions",
+      "tradition": "jerk / Caribbean",
+      "show": "The Moreish Podcast",
+      "feed_url": "https://media.rss.com/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/feed.xml",
+      "episode_title": "More than jerk chicken: Jamaica",
+      "guid": "Buzzsprout-14796328",
+      "enclosure_url": "https://content.rss.com/episodes/372108/2538564/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/2026_02_10_02_52_25_2e2af29d-bbec-43cc-b9ec-d1be3b0a852b.mp3",
+      "duration_sec": 1721,
+      "duration_source": "itunes:duration (1721)",
+      "declared_bytes": 27601950,
+      "ad_free_ratio": 1,
+      "ratio_method": "bytes",
+      "timed_transcript_exists": false,
+      "language": "en",
+      "english_audio": true,
+      "unlocks": "Jamaica beyond jerk — contrast material for the same slot.",
+      "why_this_priority": "Depth on a slot priority 1 already opens.",
+      "spine_beats": [
+        15
+      ],
+      "beat_structure": "fan",
+      "beat_verdict": "strong",
+      "buys": "Depth on a beat already carried by two cuts. No empty beat moves."
+    },
+    {
+      "priority": null,
+      "arc_slot": "fire-origins",
+      "tradition": null,
+      "show": "Origin Stories",
+      "feed_url": "https://rss.libsyn.com/shows/65014/destinations/258524.xml",
+      "episode_title": "Did Cooking Make Us Human?",
+      "guid": "7b4b7f5337d091e73533769f7f89cbea",
+      "enclosure_url": "https://traffic.libsyn.com/secure/originstories/OriginStories09_Cooking.mp3?dest-id=258524",
+      "duration_sec": 1093,
+      "duration_source": "itunes:duration (18:13)",
+      "declared_bytes": 26295528,
+      "ad_free_ratio": 1,
+      "ratio_method": "bytes",
+      "timed_transcript_exists": false,
+      "language": "en",
+      "english_audio": true,
+      "unlocks": "Same argument as the priority-1 re-release.",
+      "why_this_priority": "Redundant with the re-release. Transcribe only if the longer cut disappoints — do not run both.",
+      "spine_beats": [
+        1
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "strong",
+      "blocked_by": "superseded-by-the-re-release",
+      "buys": "Nothing the re-release does not buy with more room to cut. The old order already said to prefer the re-release; this records it as unqueued rather than as a third-tier row."
+    },
+    {
+      "priority": null,
+      "arc_slot": "us-regional-divergence",
+      "tradition": "Santa Maria (California)",
+      "show": "BBQ RADIO NETWORK",
+      "feed_url": "https://rss.buzzsprout.com/1171697.rss",
+      "episode_title": "Grillzilla: From Santa Maria Smoke to Backyard Paradise",
+      "guid": "Buzzsprout-18711939",
+      "enclosure_url": "https://www.buzzsprout.com/1171697/episodes/18711939-grillzilla-from-santa-maria-smoke-to-backyard-paradise.mp3",
+      "duration_sec": 2575,
+      "duration_source": "itunes:duration (2575)",
+      "declared_bytes": 30986479,
+      "ad_free_ratio": 1,
+      "ratio_method": "bytes",
+      "timed_transcript_exists": false,
+      "language": "en",
+      "english_audio": true,
+      "transcript_note": "None. podscan.fm exposes the first ~8:43 free, which is how the content below was verified.",
+      "unlocks": "us-regional-divergence — the entire slot, currently EMPTY, 0:00.",
+      "why_this_priority": "Sole source for a whole arc slot. Tempered expectation: real first-hand Santa Maria detail (towable pits lining the street, tri-tip's two opposed grains) but it drifts to pellet grills by ~04:00, so budget 3–5 usable minutes from 43.",
+      "spine_beats": [],
+      "beat_structure": "none",
+      "beat_verdict": "no beat exists",
+      "blocked_by": "no-beat-in-spine",
+      "buys": "Nothing in this Foray. The spine has no Santa Maria beat — the American regional coverage stops at the four styles the founder named (Texas, the Carolinas, Kansas City, Memphis). This was priority 1 in the old order, which is the clearest single symptom of a queue sorted against the six arc slots rather than against the spine. Kept in the catalogue for playlists."
+    },
+    {
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "churrasco (Brazil)",
       "show": "Paladar Distinto",
@@ -164,17 +390,22 @@
       "duration_sec": 2514,
       "duration_source": "itunes:duration (2514)",
       "declared_bytes": 100577740,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "pt-BR",
       "english_audio": false,
       "unlocks": "churrasco — currently EMPTY, 0:00. NEW FIND from the PodcastIndex bulk dump.",
       "why_this_priority": "The best churrasco source found anywhere: an interview with Clarice Chwartzmann, a gaúcha from Passo Fundo, Rio Grande do Sul, who learned churrasco as a child and whose subject is explicitly 'a cultura e a tradição dos assados e das celebrações ao redor do fogo'. A tradition bearer, not a host reading up. Subject to the language gate above.",
-      "content_gate": "pass — named guest with lived expertise in the tradition"
+      "content_gate": "pass — named guest with lived expertise in the tradition",
+      "blocked_by": "no-beat-in-spine",
+      "spine_beats": [],
+      "beat_structure": "none",
+      "beat_verdict": "empty",
+      "buys": "Brazilian churrasco is not a stop in the spine's fan — the eight stops are the steppe, the skewer family, the tandoor, yakitori, Korea, the braai, the asado and jerk — and §6b does not list it among the honest omissions either. Non-English as well, so it is blocked twice over. Kept for playlists."
     },
     {
-      "priority": 1,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "asado (Uruguay / Argentina)",
       "show": "Manual de parrilla",
@@ -185,17 +416,24 @@
       "duration_sec": 593,
       "duration_source": "itunes:duration (593)",
       "declared_bytes": 23683764,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "es",
       "english_audio": false,
       "unlocks": "asado, from inside the tradition. NEW FIND from the bulk dump.",
       "why_this_priority": "The first Rioplatense asado source this project has found — every asado source before it was American-made. Published by Magnolio Podcast (Uruguay); the episode is explicitly about why asado is part of the cultural DNA of Uruguayans and Argentines, from gaucho roots to the family Sunday. 9:53 of audio, so it is cheap even at 0.475x.",
-      "content_gate": "pass on subject, caution on form — single-narrator tips-and-recipes show; this one episode is the cultural/historical entry, the other three are technique."
+      "content_gate": "pass on subject, caution on form — single-narrator tips-and-recipes show; this one episode is the cultural/historical entry, the other three are technique.",
+      "blocked_by": "english-only-ruling",
+      "spine_beats": [
+        14
+      ],
+      "beat_structure": "fan",
+      "beat_verdict": "empty",
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
     },
     {
-      "priority": 1,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "yakitori (Japan)",
       "show": "火上料理人：The Meat Nerds",
@@ -215,52 +453,17 @@
       "english_audio": false,
       "unlocks": "yakitori — currently EMPTY, 0:00, and the ONLY explanatory yakitori source found in 4.71M feeds.",
       "why_this_priority": "5:46 of audio for an otherwise unfillable slot — the cheapest row in the manifest. Content is mechanism, not banter: the tare 'mother pot' kept alive for a century, the preservation and ageing science behind why it does not spoil, and why raw meat never touches the sauce.",
-      "content_gate": "pass on substance, caution on provenance — 6-episode SoundOn show with emoji-heavy notes; treat with the same suspicion as Culinary Connections until someone listens."
+      "content_gate": "pass on substance, caution on provenance — 6-episode SoundOn show with emoji-heavy notes; treat with the same suspicion as Culinary Connections until someone listens.",
+      "blocked_by": "english-only-ruling",
+      "spine_beats": [
+        11
+      ],
+      "beat_structure": "fan",
+      "beat_verdict": "empty",
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
     },
     {
-      "priority": 2,
-      "arc_slot": "pre-modern-hearth",
-      "tradition": null,
-      "show": "Eat This Podcast",
-      "feed_url": "https://www.eatthispodcast.com/?feed=podcast",
-      "episode_title": "Prehistoric cooking pots",
-      "guid": "https://www.eatthispodcast.com/?p=4294",
-      "enclosure_url": "https://media.blubrry.com/eatthispodcast/op3.dev/e/mange-tout.hel1.your-objectstorage.com/2024/pottery.mp3",
-      "duration_sec": 1180,
-      "duration_source": "itunes:duration (19:40)",
-      "declared_bytes": 18973921,
-      "ad_free_ratio": 1.0,
-      "ratio_method": "bytes",
-      "timed_transcript_exists": false,
-      "language": "en",
-      "english_audio": true,
-      "transcript_note": "Eat This Podcast ships SRT on 36 episodes but not this one.",
-      "unlocks": "Depth on fire-origins / pre-modern-hearth: how cooking changes once a pot exists.",
-      "why_this_priority": "Both its slots already have material, so it is depth rather than rescue — but it is short, the show is the highest-quality source in the whole inventory, and it bridges the arc's first two slots."
-    },
-    {
-      "priority": 2,
-      "arc_slot": "world-traditions",
-      "tradition": "jerk / Caribbean",
-      "show": "The Moreish Podcast",
-      "feed_url": "https://media.rss.com/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/feed.xml",
-      "episode_title": "Caribbean Food History with Dr. Candice Goucher",
-      "guid": "Buzzsprout-17725857",
-      "enclosure_url": "https://content.rss.com/episodes/372108/2538524/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/2026_02_10_02_51_27_b9e66f22-042c-4828-8a15-17001b987ad3.mp3",
-      "duration_sec": 3466,
-      "duration_source": "itunes:duration (3466)",
-      "declared_bytes": 55591506,
-      "ad_free_ratio": 1.0,
-      "ratio_method": "bytes",
-      "timed_transcript_exists": false,
-      "language": "en",
-      "english_audio": true,
-      "transcript_note": "No transcript tag at all — unlike the jerk episode, this one needs full ASR, not just timings.",
-      "unlocks": "Caribbean depth behind the jerk slot. Goucher is the academic authority in this space.",
-      "why_this_priority": "Highest-authority guest in the inventory, but 57:46 for a slot priority-1 work already rescues."
-    },
-    {
-      "priority": 2,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "Caribbean / Asian crossover",
       "show": "Heritage Food Stories",
@@ -271,36 +474,21 @@
       "duration_sec": 1320,
       "duration_source": "itunes:duration (1320)",
       "declared_bytes": 21122029,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "en",
       "english_audio": true,
       "unlocks": "The indentureship route that links the Caribbean and Asian halves of the world-traditions slot.",
-      "why_this_priority": "Short and thematically load-bearing, but it deepens rather than opens."
+      "why_this_priority": "Short and thematically load-bearing, but it deepens rather than opens.",
+      "spine_beats": [],
+      "beat_structure": "none",
+      "beat_verdict": "no beat exists",
+      "blocked_by": "no-beat-in-spine",
+      "buys": "Nothing. Indentured-labour crossover in Caribbean food is a real subject and not a beat in this spine. Kept for playlists."
     },
     {
-      "priority": 2,
-      "arc_slot": "world-traditions",
-      "tradition": "jerk / Caribbean",
-      "show": "The Moreish Podcast",
-      "feed_url": "https://media.rss.com/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/feed.xml",
-      "episode_title": "More than jerk chicken: Jamaica",
-      "guid": "Buzzsprout-14796328",
-      "enclosure_url": "https://content.rss.com/episodes/372108/2538564/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/2026_02_10_02_52_25_2e2af29d-bbec-43cc-b9ec-d1be3b0a852b.mp3",
-      "duration_sec": 1721,
-      "duration_source": "itunes:duration (1721)",
-      "declared_bytes": 27601950,
-      "ad_free_ratio": 1.0,
-      "ratio_method": "bytes",
-      "timed_transcript_exists": false,
-      "language": "en",
-      "english_audio": true,
-      "unlocks": "Jamaica beyond jerk — contrast material for the same slot.",
-      "why_this_priority": "Depth on a slot priority 1 already opens."
-    },
-    {
-      "priority": 2,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "churrasco (Brazil)",
       "show": "火上料理人：The Meat Nerds",
@@ -319,10 +507,15 @@
       "language": "zh-Hant",
       "english_audio": false,
       "unlocks": "churrasco, second source. NEW FIND from the bulk dump.",
-      "why_this_priority": "Demoted from 1 to 2 because Paladar Distinto fills the same slot with a Brazilian tradition bearer rather than a Taiwanese explainer. Still good tape: Gaúcho cowboy culture, why South American fire cooking uses only coarse salt and charcoal, why picanha, and that 'churrasco' in Portuguese just means 'barbecue'."
+      "why_this_priority": "Demoted from 1 to 2 because Paladar Distinto fills the same slot with a Brazilian tradition bearer rather than a Taiwanese explainer. Still good tape: Gaúcho cowboy culture, why South American fire cooking uses only coarse salt and charcoal, why picanha, and that 'churrasco' in Portuguese just means 'barbecue'.",
+      "blocked_by": "no-beat-in-spine",
+      "spine_beats": [],
+      "beat_structure": "none",
+      "beat_verdict": "empty",
+      "buys": "Churrasco has no beat, and this is Mandarin. Blocked twice over. Kept for playlists."
     },
     {
-      "priority": 2,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "Korean BBQ",
       "show": "글로벌 미식 탐험대 | 네모네AIM",
@@ -333,17 +526,24 @@
       "duration_sec": 755,
       "duration_source": "itunes:duration (755)",
       "declared_bytes": 24304027,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "ko",
       "english_audio": false,
       "unlocks": "Korean BBQ from a Korean source — the Heritage Food Stories episode is an outsider's account.",
       "why_this_priority": "On subject this is the single best Korean row: samgyeopsal's 'forbidden history', Buddhist and Confucian prejudice against pork, and the industrialisation that made it a national dish. But the publisher is nemoneai.com and the show name carries 'AIM' — this is very likely machine-generated, the exact failure mode that got Culinary Connections rejected. DO NOT SPEND CPU UNTIL SOMEONE LISTENS to 60 seconds of it.",
-      "content_gate": "UNRESOLVED — suspected machine-generated"
+      "content_gate": "UNRESOLVED — suspected machine-generated",
+      "blocked_by": "english-only-ruling",
+      "spine_beats": [
+        12
+      ],
+      "beat_structure": "fan",
+      "beat_verdict": "empty",
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
     },
     {
-      "priority": 2,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "Mexican (al pastor)",
       "show": "Contexto Culinario Podcast",
@@ -354,36 +554,23 @@
       "duration_sec": 488,
       "duration_source": "itunes:duration (488)",
       "declared_bytes": 5914670,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "es",
       "english_audio": false,
       "unlocks": "Mexican al pastor — the strongest of three thin Mexican candidates.",
-      "why_this_priority": "8:08 and the description says exactly what we want ('Andres Limon nos platica la historia del taco de pastor'). But it is a CLIP: the full episode is Spotify-exclusive, so this is all we can legally fetch from the enclosure."
+      "why_this_priority": "8:08 and the description says exactly what we want ('Andres Limon nos platica la historia del taco de pastor'). But it is a CLIP: the full episode is Spotify-exclusive, so this is all we can legally fetch from the enclosure.",
+      "blocked_by": "english-only-ruling",
+      "spine_beats": [
+        9
+      ],
+      "beat_structure": "fan",
+      "beat_verdict": "empty",
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
     },
     {
-      "priority": 3,
-      "arc_slot": "american-birth-westward",
-      "tradition": null,
-      "show": "The Grill Coach",
-      "feed_url": "https://rss.buzzsprout.com/1069612.rss",
-      "episode_title": "Adrian Miller and The History of BBQ",
-      "guid": "Buzzsprout-12168318",
-      "enclosure_url": "https://www.buzzsprout.com/1069612/episodes/12168318-adrian-miller-and-the-history-of-bbq.mp3",
-      "duration_sec": 3306,
-      "duration_source": "itunes:duration (3306)",
-      "declared_bytes": 39775895,
-      "ad_free_ratio": 1.0,
-      "ratio_method": "bytes",
-      "timed_transcript_exists": false,
-      "language": "en",
-      "english_audio": true,
-      "unlocks": "American arc — HAND-OFF, not this workstream's.",
-      "why_this_priority": "The one Grill Coach episode that survives the show-level rejection (real guest: Adrian Miller, author of Black Smoke). Belongs to the American-arc workstream — flagged to them rather than claimed. It pays the show's front-half tax, so expect ~25–30 usable minutes of 55."
-    },
-    {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "us-regional-divergence",
       "tradition": "Santa Maria (California)",
       "show": "BBQ RADIO NETWORK",
@@ -394,36 +581,21 @@
       "duration_sec": 2408,
       "duration_source": "itunes:duration (2408)",
       "declared_bytes": 28955219,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "en",
       "english_audio": true,
       "unlocks": "Santa Maria, second source.",
-      "why_this_priority": "Deprioritised deliberately. Wise is a San Diego restaurateur who adopted the style, not a tradition bearer; one whole segment is the hosts on side dishes. Only run this if Grillzilla underdelivers."
+      "why_this_priority": "Deprioritised deliberately. Wise is a San Diego restaurateur who adopted the style, not a tradition bearer; one whole segment is the hosts on side dishes. Only run this if Grillzilla underdelivers.",
+      "spine_beats": [],
+      "beat_structure": "none",
+      "beat_verdict": "no beat exists",
+      "blocked_by": "no-beat-in-spine",
+      "buys": "Nothing in this Foray, for the same reason as the other Santa Maria row. Kept for playlists."
     },
     {
-      "priority": 3,
-      "arc_slot": "fire-origins",
-      "tradition": null,
-      "show": "Origin Stories",
-      "feed_url": "https://rss.libsyn.com/shows/65014/destinations/258524.xml",
-      "episode_title": "Did Cooking Make Us Human?",
-      "guid": "7b4b7f5337d091e73533769f7f89cbea",
-      "enclosure_url": "https://traffic.libsyn.com/secure/originstories/OriginStories09_Cooking.mp3?dest-id=258524",
-      "duration_sec": 1093,
-      "duration_source": "itunes:duration (18:13)",
-      "declared_bytes": 26295528,
-      "ad_free_ratio": 1.0,
-      "ratio_method": "bytes",
-      "timed_transcript_exists": false,
-      "language": "en",
-      "english_audio": true,
-      "unlocks": "Same argument as the priority-1 re-release.",
-      "why_this_priority": "Redundant with the re-release. Transcribe only if the longer cut disappoints — do not run both."
-    },
-    {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "fire-origins",
       "tradition": null,
       "show": "Origin Stories",
@@ -434,37 +606,21 @@
       "duration_sec": 1715,
       "duration_source": "itunes:duration (28:35)",
       "declared_bytes": 41218552,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "en",
       "english_audio": true,
       "unlocks": "Secondary fire-origins material.",
-      "why_this_priority": "Only if the re-release underdelivers."
+      "why_this_priority": "Only if the re-release underdelivers.",
+      "spine_beats": [],
+      "beat_structure": "none",
+      "beat_verdict": "no beat exists",
+      "blocked_by": "no-beat-in-spine",
+      "buys": "Nothing. Kept for playlists."
     },
     {
-      "priority": 3,
-      "arc_slot": "world-traditions",
-      "tradition": "jerk / Caribbean",
-      "show": "The Moreish Podcast",
-      "feed_url": "https://media.rss.com/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/feed.xml",
-      "episode_title": "Jamaica: The connection between salt and spirituality with Alyssa Sperry Bertrand",
-      "guid": "0a346c4f-a026-45d5-b1e5-c7497a3647a0",
-      "enclosure_url": "https://content.rss.com/episodes/372108/2553081/the-moreish-podcast-caribbeanhistory-culture-and-cuisine/2026_02_16_17_16_17_e851f5bd-a99b-488b-bad2-4404f8f1c378.mp3",
-      "duration_sec": 3344,
-      "duration_source": "itunes:duration (3344)",
-      "declared_bytes": 53510649,
-      "ad_free_ratio": 1.0,
-      "ratio_method": "bytes",
-      "timed_transcript_exists": false,
-      "language": "en",
-      "english_audio": true,
-      "transcript_note": "Untimed prose transcript exists, same as the jerk episode — a timings-only candidate if that mode ships.",
-      "unlocks": "Peripheral Caribbean depth.",
-      "why_this_priority": "55:44 for material only tangentially about fire."
-    },
-    {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "asado (Uruguay / Argentina)",
       "show": "Manual de parrilla",
@@ -475,16 +631,24 @@
       "duration_sec": 724,
       "duration_source": "itunes:duration (724)",
       "declared_bytes": 28934376,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "es",
       "english_audio": false,
       "unlocks": "Wood vs charcoal vs gas — bridges the asado slot to the modern-backyard slot.",
-      "why_this_priority": "Technique rather than history, but it is the same wood-to-gas argument that P3 (Satay? Okay!) makes from Malaysia, and a second voice on it would strengthen that slot."
+      "why_this_priority": "Technique rather than history, but it is the same wood-to-gas argument that P3 (Satay? Okay!) makes from Malaysia, and a second voice on it would strengthen that slot.",
+      "blocked_by": "english-only-ruling",
+      "spine_beats": [
+        5,
+        14
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "empty",
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
     },
     {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "Mexican (barbacoa)",
       "show": "Charla Entre Cocineros.",
@@ -495,16 +659,23 @@
       "duration_sec": 891,
       "duration_source": "itunes:duration (891)",
       "declared_bytes": 14421744,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "es",
       "english_audio": false,
       "unlocks": "Mexican barbacoa.",
-      "why_this_priority": "Two cooks talking shop ('de un cocinero a otro') — practitioner knowledge, not sourced expertise. Thin, and the content gate is marginal."
+      "why_this_priority": "Two cooks talking shop ('de un cocinero a otro') — practitioner knowledge, not sourced expertise. Thin, and the content gate is marginal.",
+      "blocked_by": "english-only-ruling",
+      "spine_beats": [
+        17
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "empty",
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
     },
     {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "Mexican (barbacoa)",
       "show": "Secretos de la cocina...",
@@ -515,16 +686,23 @@
       "duration_sec": 214,
       "duration_source": "itunes:duration (214)",
       "declared_bytes": 3464114,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "es",
       "english_audio": false,
       "unlocks": "Barbacoa's Mesoamerican origin — on subject, and the only row that addresses it directly.",
-      "why_this_priority": "3:34 total from a generalist hobby show that also covers crafts and computing. Cheap enough to be worth a look, too thin to build on."
+      "why_this_priority": "3:34 total from a generalist hobby show that also covers crafts and computing. Cheap enough to be worth a look, too thin to build on.",
+      "blocked_by": "english-only-ruling",
+      "spine_beats": [
+        17
+      ],
+      "beat_structure": "chain",
+      "beat_verdict": "empty",
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
     },
     {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "Korean BBQ",
       "show": "딩모니의 오디오 극장",
@@ -535,19 +713,128 @@
       "duration_sec": 310,
       "duration_source": "itunes:duration (310)",
       "declared_bytes": 7493691,
-      "ad_free_ratio": 1.0,
+      "ad_free_ratio": 1,
       "ratio_method": "bytes",
       "timed_transcript_exists": false,
       "language": "ko",
       "english_audio": false,
       "unlocks": "The origin of LA galbi — a genuinely diasporic story (the cross-cut short rib is a Korean-American invention).",
-      "why_this_priority": "5:10 and the show is a history-storytelling channel, but the episode description is literally just the hashtag '#LA갈비', so there is nothing to verify against before transcribing."
+      "why_this_priority": "5:10 and the show is a history-storytelling channel, but the episode description is literally just the hashtag '#LA갈비', so there is nothing to verify against before transcribing.",
+      "blocked_by": "english-only-ruling",
+      "spine_beats": [
+        12
+      ],
+      "beat_structure": "fan",
+      "beat_verdict": "empty",
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
     }
   ],
   "slots_no_amount_of_asr_can_fill": [
-    { "tradition": "braai (South Africa)", "state": "unsourceable", "evidence": "Zero episode-level hits across 7,237 crawled feeds; the only feed-level hits are a 5-episode show, a 3-episode Afrikaans religion feed and a Dutch competition-BBQ show. See catalogue-broadening.md §4." },
-    { "tradition": "tandoor (India / Central Asia)", "state": "unsourceable", "evidence": "Two real candidates existed and both are ad-injected: Naan Curry's 67-minute kebab episode measures 1.0470, and olive's Maunika Gowardhan tandoori episode declares length=0 on Megaphone with a bitrate-implied ~1.02. See catalogue-broadening.md §4." },
-    { "tradition": "mangal / kebab (Turkey, Middle East)", "state": "unsourceable", "evidence": "Best candidate (Gurmelik Denemeleri #13, measured 1.0000) is rejected on content: two hosts reminiscing, published by 'Boş Yapma Enstitüsü' — the Idle Talk Institute. See catalogue-broadening.md §4." },
-    { "tradition": "Filipino lechon", "state": "unsourceable", "evidence": "Every lechon/lechona hit in the crawl is Colombian, Venezuelan or Spanish. No Filipino source at all. See catalogue-broadening.md §4." }
-  ]
+    {
+      "tradition": "braai (South Africa)",
+      "state": "unsourceable",
+      "evidence": "Zero episode-level hits across 7,237 crawled feeds; the only feed-level hits are a 5-episode show, a 3-episode Afrikaans religion feed and a Dutch competition-BBQ show. See catalogue-broadening.md §4."
+    },
+    {
+      "tradition": "tandoor (India / Central Asia)",
+      "state": "unsourceable",
+      "evidence": "Two real candidates existed and both are ad-injected: Naan Curry's 67-minute kebab episode measures 1.0470, and olive's Maunika Gowardhan tandoori episode declares length=0 on Megaphone with a bitrate-implied ~1.02. See catalogue-broadening.md §4."
+    },
+    {
+      "tradition": "mangal / kebab (Turkey, Middle East)",
+      "state": "unsourceable",
+      "evidence": "Best candidate (Gurmelik Denemeleri #13, measured 1.0000) is rejected on content: two hosts reminiscing, published by 'Boş Yapma Enstitüsü' — the Idle Talk Institute. See catalogue-broadening.md §4."
+    },
+    {
+      "tradition": "Filipino lechon",
+      "state": "unsourceable",
+      "evidence": "Every lechon/lechona hit in the crawl is Colombian, Venezuelan or Spanish. No Filipino source at all. See catalogue-broadening.md §4."
+    }
+  ],
+  "spine_realignment": {
+    "why_the_old_order_was_wrong": "The old order was sorted by value against the six arc slots in data/forays.json, and the spine's 40 beats are a different instrument. Measured against the beats, NONE of the eight priority-1 rows moved a chain beat off empty: three bought beats that are already strong (1, 14, 15), one bought a beat that does not exist in the spine at all (Santa Maria), three are unusable under the English-only ruling, and the eighth (the Korean episode) does not advance beat 12 on its stated subject. Meanwhile the single most valuable episode in the manifest sat at priority 3.",
+    "what_priority_1_is_now": "Three rows. The Grill Coach/Adrian Miller episode (beats 18, 20, 21, 22, 38), the Moreish/Goucher episode (beat 20, plus 2 and 15), and Gastropod's 'The Birth of Cool' (beat 31, Act V's chain hinge), which was previously filed under excluded_by_instruction on a workstream note rather than a rejection.",
+    "what_it_buys": "Up to seven chain beats, including beat 21 — which the spine says decides whether the Foray is worth shipping — and beats 20, 22 and 38, which with 21 are the 12 % of runtime the spine calls the honest weight of the authorship argument. Act IV today has no strong tape anywhere in it across fifteen beats and 36.5 % of the spine's runtime, and three of its four authorship beats are empty. Nothing else in this manifest touches that.",
+    "cheaper_than_asr_and_therefore_first": "Two of the four identified Act IV sources may already ship transcripts, and reading one is what produced four verdict changes in the stage 2 report for the cost of a single fetch. Read Proof (America's Test Kitchen) and check A Taste of the Past for a transcript BEFORE buying any ASR. See identified_not_yet_measured below.",
+    "what_no_amount_of_asr_buys": "Beats 11 (yakitori), 12 (Korea) and 17 (barbacoa as living practice) have sources that are not in English, so they are permanent narration beats under the English-only ruling. Beat 13 (braai) and beat 9's Ottoman/mangal root have no source that passes the content gate at any budget. Beat 8 (the steppe) has no source found and none proven absent. Of the five empty fan beats only beat 10 (tandoor) could be closed by measuring and transcribing, and it is a fan hole, so it is cheap."
+  },
+  "identified_not_yet_measured": {
+    "_comment": "Act IV and Act V sources named in stage 2's coverage report and in docs/adr/0008-ad-tolerance-and-timestamp-precision.md that have NO measured row in `episodes` yet. Deliberately recorded without feed metadata: this pass did not fetch their feeds, and inventing a guid or an enclosure URL is how the wrong episode gets registered. Measure, then promote to a real row.",
+    "rows": [
+      {
+        "show": "Gastropod",
+        "episode_title": "The Birth of Cool: How Refrigeration Changed Everything",
+        "approx_duration_sec": 2940,
+        "spine_beats": [
+          31
+        ],
+        "beat_structure": "chain",
+        "beat_verdict": "empty",
+        "intended_priority": 1,
+        "ad_status": "PADDABLE. The one show in this repo probed twice by decode-and-compare (+66.1 s and +32.7 s), so about a 100 s pad against the 120 s ceiling. The `1.080 — injected` figure in grilling-foray-sourcing.md §4 is bitrate-implied AND against a different episode, and applying it here is the axis error ADR-0008 warns about; it overstated the real load by 3–6x.",
+        "blocked_by": "needs-asr",
+        "buys": "Beat 31, the hinge of Act V and the mechanism that ends the necessity era Act I establishes. Beat 2 argues smoke is infrastructure and Act V assumes it stopped being so, with nothing narrating the transition, so the Foray's central irony is currently asserted at both ends and explained at neither. Publishes no timed transcript (0 of 293 episodes), so it needs ASR. Previously sat in excluded_by_instruction as 'already being transcribed', which is a workstream note, not a rejection.",
+        "outstanding_caveat": "Both Gastropod probes were the same client on the same day. Sample a different requester's copy before relying on the pad."
+      },
+      {
+        "show": "Proof (America's Test Kitchen)",
+        "episode_title": "Barbecue Trailblazers (4 parts)",
+        "approx_duration_sec": null,
+        "spine_beats": [],
+        "beat_structure": "chain",
+        "beat_verdict": "unknown — which beats each part serves has never been checked",
+        "intended_priority": 2,
+        "ad_status": "TIGHT — implied 50–67 s, already at Gastropod's measured maximum. Bitrate-implied, so it needs N >= 2 probes.",
+        "blocked_by": "needs-reading-not-asr",
+        "buys": "Unknown, and that is the point: ADR-0008 records it as CARRYING A TRANSCRIPT, so its contents can be checked for the cost of a fetch rather than hours of CPU. An episode description is not evidence that a 110-second span inside it advances a beat. Do this before item 1."
+      },
+      {
+        "show": "A Taste of the Past",
+        "episode_title": "Black Smoke, the African American Roots of BBQ",
+        "approx_duration_sec": 2400,
+        "spine_beats": [
+          20,
+          21,
+          22,
+          38
+        ],
+        "beat_structure": "chain",
+        "beat_verdict": "20, 21, 22 empty; 38 empty",
+        "intended_priority": 2,
+        "ad_status": "PADDABLE on one probe (implied 42–54 s); `delta_max` unknown, needs N >= 2 probes.",
+        "blocked_by": "needs-ad-probes",
+        "buys": "Named after Adrian Miller's book, so on its title it is the authorship beats. Contents unverified. Check for a transcript the same way as Proof before queuing ASR."
+      },
+      {
+        "show": "olive",
+        "episode_title": "Maunika Gowardhan on 10 things you need to know about tandoori cooking",
+        "approx_duration_sec": 2700,
+        "spine_beats": [
+          10
+        ],
+        "beat_structure": "fan",
+        "beat_verdict": "empty but identified",
+        "intended_priority": 3,
+        "ad_status": "PADDABLE on the screen but unsizeable: the Megaphone feed declares length=\"0\", so the bitrate-implied ~1.02 cannot size a pad. Needs N >= 2 decode-and-compare probes first.",
+        "blocked_by": "needs-ad-probes",
+        "buys": "Beat 10, the only beat that adds a technology rather than a tradition, plus all South Asian coverage. A FAN hole, so cheap to leave open. Also not known to contain what the beat actually claims — how a clay oven's radiant heat differs mechanically from a grill's and a pit's — and a cookbook author on ten things to know may be exactly the recipe material the beat says to reject. ADR-0008 reverses the earlier 'unsourceable' verdict, which turned on the ad gate."
+      },
+      {
+        "show": "Naan Curry",
+        "episode_title": "kebab episode (67 min)",
+        "approx_duration_sec": 4020,
+        "spine_beats": [
+          10,
+          9
+        ],
+        "beat_structure": "fan",
+        "beat_verdict": "10 empty, 9 thin",
+        "intended_priority": 3,
+        "ad_status": "Measured 1.0470, LOCATE-REQUIRED.",
+        "blocked_by": "locate-step-missing",
+        "buys": "A second shot at beat 10, and possibly something for beat 9's missing Ottoman root. Both fan positions."
+      }
+    ]
+  },
+  "arc_slots_note": "SUPERSEDED as a sorting instrument. `arc_slots` below is the six-slot arc the old order was ranked against; it is kept for provenance only. The spine's 40 beats are what rows are now scored against, via `spine_beats`."
 }

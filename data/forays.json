@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-16T00:00:00.000Z",
+  "built_at": "2026-08-17T00:00:00.000Z",
   "notes": "Ordered Forays (#182, #134). A Foray is a total order of SEGMENT spans played back to back — not a ladder, which is a prerequisite DAG over whole episodes. `items` is the ordered list and is the only record of the sequence; narration bridges will enter it as `{ type: \"narration\", ... }` entries between segments, which is why it is a typed list rather than a bare array of ids (#134's shape). Nothing here duplicates a field that lives in data/segments.json: a segment is referenced by id so a corrected segment fixes every Foray using it. Checked by tools/foray/check-forays.mjs, which CI runs via tools/foray/check-forays.test.mjs.",
   "forays": [
     {
@@ -9,6 +9,8 @@
       "title": "The history of grilling",
       "topic": "food/grilling-bbq",
       "status": "draft",
+      "superseded_by": "grilling-history-2",
+      "superseded_note": "Superseded 2026-08-17 (#226). This is the 61-minute assembly the founder reported as drifting off plot into bakestones, Welsh cakes and 18th-century dinner parties. Use grilling-history-2. Kept, not deleted: its exact shape is the fixture for 103 tests across player/, test/ and tools/, including #182 D1/D5 acceptance proofs that only this order can express. See docs/curation/grilling-history-assembly.md.",
       "summary": "Fire, hearth and grill: how cooking over flame shaped us, from Homo erectus to the pellet boom.",
       "runtime_sec": 3673.03,
       "source_doc": "docs/curation/grilling-foray.md",
@@ -273,6 +275,117 @@
           "label": "TRA-3",
           "segment_id": "bbqc-traeger-history#2340",
           "role": "explanation"
+        }
+      ]
+    },
+    {
+      "id": "grilling-history-2",
+      "kind": "deep-dive",
+      "title": "Barbecue: six beats of a forty-beat history",
+      "topic": "food/grilling-bbq",
+      "status": "draft",
+      "summary": "Fire, satay, asado and jerk, then America's civic barbecue. A fragment: most of the history is missing.",
+      "runtime_sec": 1054.55,
+      "source_doc": "docs/curation/grilling-history-assembly.md",
+      "spine_doc": "docs/curation/grilling-history-spine.md",
+      "beats_total": 40,
+      "beats_represented": [
+        1,
+        9,
+        14,
+        15,
+        23,
+        37
+      ],
+      "label_prefixes": {
+        "ORI": "origin-stories-cooking-human",
+        "SATAY": "satay-okay-e01-satay-myth",
+        "ARG": "bbqrn-argentina-open-fire",
+        "JERK": "moreish-jerk-jamaica",
+        "MOSS": "bbqc-moss-school"
+      },
+      "slots": [
+        {
+          "id": "fire-and-mechanism",
+          "title": "Fire, smoke and the mechanism"
+        },
+        {
+          "id": "world-parallel-answers",
+          "title": "The world's parallel answers"
+        },
+        {
+          "id": "the-american-case",
+          "title": "The American case"
+        },
+        {
+          "id": "the-re-pricing",
+          "title": "The re-pricing"
+        }
+      ],
+      "items": [
+        {
+          "type": "segment",
+          "slot": "fire-and-mechanism",
+          "label": "ORI-1",
+          "segment_id": "origin-stories-cooking-human#147",
+          "role": "explanation",
+          "beat": 1
+        },
+        {
+          "type": "segment",
+          "slot": "fire-and-mechanism",
+          "label": "ORI-2",
+          "segment_id": "origin-stories-cooking-human#678",
+          "role": "explanation",
+          "beat": 1
+        },
+        {
+          "type": "segment",
+          "slot": "world-parallel-answers",
+          "label": "SATAY-1",
+          "segment_id": "satay-okay-e01-satay-myth#736",
+          "role": "explanation",
+          "beat": 9
+        },
+        {
+          "type": "segment",
+          "slot": "world-parallel-answers",
+          "label": "ARG-1",
+          "segment_id": "bbqrn-argentina-open-fire#700",
+          "role": "explanation",
+          "beat": 14
+        },
+        {
+          "type": "segment",
+          "slot": "world-parallel-answers",
+          "label": "ARG-2",
+          "segment_id": "bbqrn-argentina-open-fire#1005",
+          "role": "explanation",
+          "beat": 14
+        },
+        {
+          "type": "segment",
+          "slot": "world-parallel-answers",
+          "label": "JERK-1",
+          "segment_id": "moreish-jerk-jamaica#266",
+          "role": "exchange",
+          "beat": 15
+        },
+        {
+          "type": "segment",
+          "slot": "the-american-case",
+          "label": "MOSS-1",
+          "segment_id": "bbqc-moss-school#2572",
+          "role": "explanation",
+          "beat": 23
+        },
+        {
+          "type": "segment",
+          "slot": "the-re-pricing",
+          "label": "MOSS-2",
+          "segment_id": "bbqc-moss-school#2779",
+          "role": "explanation",
+          "beat": 37
         }
       ]
     },
