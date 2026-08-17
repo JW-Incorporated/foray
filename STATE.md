@@ -28,8 +28,21 @@ docs/. Completed workstreams move to their plan doc's retro section.
   the PR gives it equal weight: **the 2.0 s beat took 9,153 ms** — the timer armed
   in 2 ms, the *load* took nine seconds, on a **local bundled file**, and
   `beat-ended` landed on the same millisecond as `canplay`, so the silence is
-  `max(beat, load)`. Filed as its own issue; **nothing in `player/` is touched
-  here.**
+  `max(beat, load)`. Filed as **#223** and **already fixed by #227** the same day
+  (prefetch on a second element, 12 s before the out-point, while audio still
+  flows); `seam-gap.js` is now explicit that its number is the BEAT, not the
+  silence. **Nothing in `player/` is touched here, before or after that fix.**
+- **THIS PROBE IS NOW #227'S ONLY VERIFIER, and #224 is why that matters.** Wyatt
+  heard it on a real phone: *"transitions worked ok while my phone was unlocked, but
+  when my screen was off then it would just pause"* — the load crossing
+  `LOAD_SETTLE_TIMEOUT_MS = 10_000` → `queue-manager.js:470` → `E.error` → pause.
+  The measured beat was 9,153 ms and the foreground-assertion cliff is 10 s, so the
+  **847 ms** margin this PR found was the difference between a slow seam and the app
+  stopping. To verify #227: dispatch `ios-build` on `main` and read `observedGapMs`
+  — **expect ~2,000–3,000 ms**. Two traps: a **bridged** Foray is deliberately not
+  warmed (eligibility is `seamGapSec > 0`), so "no change" there is not a failed
+  fix; and `SEAM_MIN_PLAUSIBLE_MS = 500` stays meaningful because the beat is still
+  2.0 s — do not relax it to accommodate a good number.
 - **OPEN, and more serious than the gap — do not let it decay into a footnote.**
   The record stops at **+25.2 s of a 90 s hidden window**, 1 s after the second
   segment became audible, with the 1000 ms timer samples ending at the same instant

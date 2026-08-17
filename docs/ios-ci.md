@@ -18,7 +18,7 @@ each of them blocking a decision:
 | The Capacitor shell compiles at all | `docs/mobile-shell.md` §0 | **Never generated, never installed, never compiled.** Its author said so in a table |
 | Our CSP does not block Capacitor's injected bridge *on iOS* | `docs/mobile-shell.md` §5 | Reasoned from WKWebView's `WKUserScript` injection. `HUMAN-ACTIONS.md` #16 step 6.2 asks a human to type `Capacitor` into a console |
 | Our out-point still fires when the app is backgrounded | `docs/research/mp1-background-audio.md` §8 | "**The single most load-bearing untested claim** in this document" — its words. **SETTLED, run 32026332637: it holds.** See §4b |
-| A Foray's 31 seam **transitions** survive backgrounding — the 2.0 s beat's `setTimeout`, then a fresh cross-episode load | `docs/research/mp1-background-audio.md` §8, last paragraph | Named as a risk and left unmeasured. The out-point result does **not** cover it: different mechanism, and the beat runs on the clock the same run measured at 1 s alignment. Probe C (§3). **STILL OPEN after run 32036295743** — one hidden transition completed, which is below this workflow's own floor of two, so the verdict is `too-few-transitions`. And the one that completed took **9.2 s against a 2.0 s beat**. See §4c |
+| A Foray's 31 seam **transitions** survive backgrounding — the 2.0 s beat's `setTimeout`, then a fresh cross-episode load | `docs/research/mp1-background-audio.md` §8, last paragraph | Named as a risk and left unmeasured. The out-point result does **not** cover it: different mechanism, and the beat runs on the clock the same run measured at 1 s alignment. Probe C (§3). **STILL OPEN after run 32036295743** — one hidden transition completed, which is below this workflow's own floor of two, so the verdict is `too-few-transitions`. And the one that completed took **9.2 s against a 2.0 s beat** — since fixed by #227, which this probe is now the only thing that can verify. See §4c |
 
 **The fourth row is the one to read carefully.** A green `ios-build` run does not
 mean the seam is sound, and this document's own machinery says so: a single
@@ -270,9 +270,13 @@ that only completed on resume. A test in `ios-workflow.test.mjs` asserts that no
   an unsigned one.
 - **#15:** rule on the permanent bundle id. It is baked into the generated
   project; changing it after a store release means a new listing.
-- **A founder decision this PR does NOT make:** whether the 9.2 s measured seam
-  silence (§4c) is acceptable, and whether `player/seam-gap.js`'s 2.0 s should be
-  re-documented as a floor. Filed as its own issue; nothing here changes the player.
+- **Nothing, on the seam gap — it is already fixed.** The 9.2 s this PR measured
+  (§4c) was filed as **#223** and fixed by **#227** the same day. What is left is
+  *verification*, and it needs a dispatch of this workflow on `main` rather than a
+  founder: expect `observedGapMs` ~2,000–3,000 ms. See §4c.
+- **The one thing only a phone can settle is now `HUMAN-ACTIONS.md` #11 step 6** —
+  at each change of voice, does it sound like a two-second pause or like the app
+  stopped? #224 is a founder report that it sounded like the latter.
 - **#16 / #18:** still open. #16's *build* is now automated, but its device
   questions — icons visible, a Foray advancing with the phone locked, stale-content
   behaviour after an update — are device questions and a simulator cannot answer
@@ -444,23 +448,68 @@ from the boundary, localises it and exonerates the timer:
 `beat-ended` landing on `canplay` is the mechanism: the silence is
 **`max(beat, load)`**, and the load dominated by 7 seconds.
 
-**This is not undocumented behaviour, and do not report it as a bug in the beat.**
-`player/queue-manager.js` §10 states it deliberately — *"total silence is
-`max(gap, load)`, never `gap + load`"* — and ordering it that way is correct: the
-alternative is `gap + load`, which is worse. Two things are nonetheless wrong:
+**This was not undocumented behaviour, and it was never a bug in the beat.**
+`player/queue-manager.js` §10 already stated it deliberately — *"total silence is
+`max(gap, load)`, never `gap + load`"* — and that ordering is correct; the
+alternative is `gap + load`, which is worse. What was wrong was the *size* it
+assumed (§10 sized the cold-CDN case at *"the difference between 2 s and 5 s"*,
+against 9.2 s on a bundled file) and the fact that `player/seam-gap.js` read as
+though its `SEAM_GAP_SEC = 2.0` were the silence rather than a floor.
 
-1. **§10's own cost estimate is optimistic by about 2x.** It says the ordering is,
-   on a cold CDN, *"the difference between 2 s and 5 s."* This was a **local file in
-   the app bundle** and it cost **9.2 s**. That is the floor, not the tail.
-2. **`player/seam-gap.js` answers the question "how long is the silence at this
-   seam?" with `SEAM_GAP_SEC = 2.0`**, and defines the gap as *"wall clock between
-   the moment one segment's out-point stops the element and the moment the next
-   segment's `startPlayback` runs"* — which is precisely the 9,153 ms this run
-   measured. 2.0 s is a **floor**, not the silence, and that module reads as though
-   it were the silence. Filed as its own issue; it is not fixed here.
+**Both have since been fixed, by #227, using this run's numbers.** Filed as #223,
+addressed the same day. `seam-gap.js` now opens with *"THE SEAM THIS FILE DESCRIBES
+WAS NOT THE SEAM THE PRODUCT HAD"* and says to read its number as the length of the
+**beat**; and `html-audio-backend.js` moves the load off the boundary entirely,
+warming the next segment on a second element `PREFETCH_LEAD_SEC` (12 s) before the
+out-point while the current one is still audible. **The beat is still spent in full**
+— 2.0 s between two voices is authored, not an artifact of loading.
 
-And a real Foray is worse than this measurement in two compounding ways: the file
-was **local**, and Foray #1 has **31 seams**, not one.
+So a real Foray is no longer worse than this measurement in the way it was. What
+remains true is the compounding: the file here was **local**, and Foray #1 has
+**31 seams**, not one — which is what made the fix worth doing rather than
+tolerating.
+
+### This probe is now the regression test for #227, and that is its job on `main`
+
+Nothing on this machine can verify a prefetch that exists to win a race inside a
+backgrounded WebView. This workflow can, and it is the only thing that can.
+
+**Dispatch `ios-build` on `main` and read `observedGapMs` in the seam record.
+Against this run's 9,153 ms baseline, expect ~2,000–3,000 ms.** Two things to check
+before reading a number as a verdict:
+
+- **A bridged Foray gets no warming at all.** Eligibility is `seamGapSec(...) > 0`,
+  the same call that decides the beat, so a narrated seam is deliberately not warmed.
+  **"No change" on a bridged Foray is not a failed fix** — the run must be read at an
+  **unbridged cross-episode** seam. The probe's own queue is three unbridged bounded
+  segments over three files, so a dispatch of this workflow is the right shape by
+  construction; the caveat matters for anyone reading a *product* Foray instead.
+- **`SEAM_MIN_PLAUSIBLE_MS = 500` stays meaningful.** The beat is still 2.0 s, so a
+  transition completing in under 500 ms still means the beat did not happen rather
+  than that the prefetch was fast, and `seamTransitionVerdict` should still call that
+  `inconclusive`. Do not relax that floor to accommodate a good result.
+
+### The founder's own ears found the failure mode this predicted — #224
+
+Recorded here because it is the strongest argument for keeping this workflow.
+
+Wyatt listened to `grilling-history-1` on a real phone: *"The transitions worked ok
+while my phone was unlocked, but when my screen was off then it would just pause."*
+
+**That is exactly the two-cliff structure above, realised.** The traced cause is the
+load crossing `LOAD_SETTLE_TIMEOUT_MS = 10_000` → `queue-manager.js:470` → `E.error`
+→ idle and pause. The measured beat was **9,153 ms**. The **847 ms** of headroom
+noted above was not an academic margin — it was the difference between a slow seam
+and *the app stopping*, and on a real device with a real CDN it went the other way.
+
+Two consequences worth stating plainly:
+
+1. **The Simulator pass was the weak direction of the evidence, and this is what
+   that means in practice.** `SIMULATOR_CAVEAT` says a pass here cannot promise a
+   device. A device then failed. The caveat earned its keep.
+2. **The seam probe stops being a research curiosity.** It is now the regression test
+   for a founder-reported bug (#224) and for the fix (#227), and it is the only rig
+   that can exercise either one backgrounded.
 
 ### The open question this run could not answer, and it is the more serious one
 
@@ -546,8 +595,13 @@ That is a stronger pass on the mechanism than the wrong version claimed: the pag
 lost its audible-activity assertion mid-seam and still loaded, seeked and played.
 It also relocates the cliff. The thing to fear is the **10 s** foreground-assertion
 release, and the measured beat came within **847 ms** of it — **on a local file**.
-A cross-origin fetch has under a second of headroom before crossing a threshold
-nothing in this run probed.
+A cross-origin fetch has under a second of headroom before crossing that threshold.
+
+**And a real phone then crossed it.** #224: a founder heard a Foray *pause* at a
+seam with the screen off, traced to the load exceeding
+`LOAD_SETTLE_TIMEOUT_MS = 10_000` and the manager erroring to idle. So this margin
+is not a theoretical one — it was measured at 847 ms here and consumed in the
+field. #227's prefetch exists to take the load out of that window altogether.
 
 ### What the log DOES say, and a claim it walks back
 

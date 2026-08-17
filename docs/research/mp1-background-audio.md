@@ -120,8 +120,16 @@ Two things follow, and the second one supersedes a "SAFE" reading in `STATE.md`.
    **10 s** foreground-assertion release, and the measured beat came within **847
    ms** of it, on a *local* file. The beat is `max(gap, load)`
    (`player/queue-manager.js` §10) and the load dominated by seven seconds, so a real
-   cross-origin fetch has under a second of headroom before crossing a threshold
-   nothing in this run probed.
+   cross-origin fetch had under a second of headroom before crossing that threshold.
+
+   **A real phone then crossed it, which settles the direction of this risk.**
+   Issue **#224**: a founder heard `grilling-history-1` *pause* at a seam with the
+   screen off — the load exceeding `LOAD_SETTLE_TIMEOUT_MS = 10_000`, so
+   `queue-manager.js:470` reports `E.error` and the player goes idle and pauses.
+   The 847 ms measured here was the whole margin, and on a real network it was
+   spent. **#227** moves the load off the boundary (prefetch on a second element,
+   12 s ahead, while audio still flows) so the silent window is no longer where the
+   fetch happens.
 
 **And the second transition — the one that would have tested whether audibility
 lapses after that silence — is exactly the one this run did not get.** The record
