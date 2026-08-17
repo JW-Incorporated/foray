@@ -18,8 +18,6 @@ const state = {
   forayResume: null,        // its stored resume point, or null — see paintForay
   forayPlaying: null,       // id of the Foray the player is inside, or null
   forayPainted: null,       // last segment index painted onto the running order
-  forayLiveSec: 0,          // furthest point this page has actually HEARD — the
-                            // retry position after a failed start (#225)
   cardSlots: [],            // the four dealt suggestions
   itemIndex: {},            // id -> snapshot
   ready: false,
@@ -1247,7 +1245,6 @@ async function renderForay(id) {
   }
   state.foray = r;
   state.forayPainted = null;   // fresh DOM: the paint guard must not skip it
-  state.forayLiveSec = 0;      // nothing has been heard on this page yet
 
   const draft = r.foray.status !== "published";
   const lost = r.unplayable.length;
@@ -1506,30 +1503,21 @@ function bindForayTransport(r, player, resume = null) {
      FIRST thing inside it — no await, no lookup, nothing between the tap and
      `playForay`. Safari only lets audio start inside the gesture that asked for
      it, and the gesture is spent by the first thing that waits (#225). Clearing
-     the failure line is the one thing that happens first, because the message
-     from the last attempt is not evidence about this one. */
-  const start = (index) => (paintForayFailure(null), guardForayStart(() => player.playForay(r, { startIndex: index, ...forayOpts })));
-  const startAt = (elapsedSec) => (paintForayFailure(null), guardForayStart(() => player.playForay(r, { startElapsedSec: elapsedSec, ...forayOpts })));
+     the failure line is cleared in the same breath, because the message from the
+     last attempt is not evidence about this one — inside the guard, so even that
+     cannot become the unhandled rejection this whole thing is about. */
+  const start = (index) => guardForayStart(() => (paintForayFailure(null), player.playForay(r, { startIndex: index, ...forayOpts })));
+  const startAt = (elapsedSec) => guardForayStart(() => (paintForayFailure(null), player.playForay(r, { startElapsedSec: elapsedSec, ...forayOpts })));
   /* The main button, pressed cold. With a stored position that means RESUME —
      the whole point of the feature — and an explicit index (a row, the strip)
-     always wins, because the listener just named a segment.
-
-     `state.forayLiveSec` before the stored point: a start that failed halfway
-     through an hour has to retry from where the listener actually got to, not
-     from the position the page happened to open on. Without it, one refused
-     segment at 25:00 sends the next press back to the 19:40 the banner was
-     written with. */
-  const startOrResume = () => {
-    const at = state.forayLiveSec || resume?.elapsedSec || 0;
-    return at > 0 ? startAt(at) : start(0);
-  };
+     always wins, because the listener just named a segment. */
+  const startOrResume = () => resume ? startAt(resume.elapsedSec) : start(0);
 
   $("#fy-restart")?.addEventListener("click", async () => {
     if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
     logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(resume?.elapsedSec || 0) });
     resume = null;
     state.forayResume = null;
-    state.forayLiveSec = 0;      // "start over" means zero, not the last failure
     $("#fy-resume")?.remove();
     await start(0);
   });
@@ -1619,6 +1607,14 @@ function playerHasForay(r) {
     and drop focus. */
 function paintForay(s) {
   if (!state.foray) return;
+  /* SOMEBODY ELSE'S FORAY IS NOT THIS PAGE'S NEWS. `watchForay` points the live
+     player's callback at whichever page rendered last, so with Foray A playing in
+     the mini bar, opening Foray B's page (the home rail does exactly this) fed
+     A's ticks into B's paint: B's button read "Pause" and pressing it paused A.
+     The first paint has always been gated this way — `renderForay` compares
+     `live.forayId === r.id` — and the ticks after it were not. `FORAY_IDLE`
+     carries no id and must still get through: it is this page saying "nothing". */
+  if (s.forayId && s.forayId !== state.foray.id) return;
   /* A START THAT FAILED IS NOT A LIVE FORAY (#225).
 
      `playForay` paints its intent before it awaits the load — deliberately, so a
@@ -1636,9 +1632,6 @@ function paintForay(s) {
   const failed = Boolean(s.error) && !s.playing && !s.loading && !s.gap;
   const live = s.index >= 0 && !failed;
   state.forayPlaying = live ? state.foray.id : null;
-  // Where this page has actually got to, kept because a failed start has to
-  // retry from here rather than from the position the page opened on.
-  if (s.playing && s.elapsedSec > 0) state.forayLiveSec = s.elapsedSec;
 
   /* Nothing loaded — cold, or the mini bar was just closed. Fall back to the
      stored resume point rather than repainting the page as untouched: the
@@ -1646,13 +1639,15 @@ function paintForay(s) {
      resumes there, so a clock reading 0:00 underneath it would be the page
      contradicting itself. */
   const resume = live ? null : state.forayResume;
-  /* `forayLiveSec` ahead of the stored point, and for the same reason the retry
-     prefers it: what this page has HEARD beats what it opened with. The clock and
-     the button have to name the same destination or the page is lying about where
-     pressing it goes. */
-  const elapsed = live
-    ? (s.elapsedSec || 0)
-    : (s.elapsedSec || state.forayLiveSec || resume?.elapsedSec || 0);
+  /* THE COLD CLOCK IS THE STORED POINT, AND ONLY THAT — the same expression the
+     main button starts from, so the two cannot disagree.
+
+     It used to read `s.elapsedSec` first, which is right while something is live
+     and wrong the moment a start fails: `forayPosition()` answers with the failed
+     segment's own start, so a refused jump to segment 20 left the clock reading
+     37:31 over a button that goes to 19:40. A phantom position is worse than a
+     stale one, because the listener can act on it. */
+  const elapsed = live ? (s.elapsedSec || 0) : (resume?.elapsedSec || 0);
 
   const now = $("#fy-now");
   if (now && window.ForayPlayer) now.textContent = window.ForayPlayer.fmtClock(elapsed);
@@ -1664,14 +1659,11 @@ function paintForay(s) {
   const mark = live ? s.index : (resume?.index ?? -1);
   paintSegFill(mark >= 0, elapsed);
 
-  /* The offer only means anything while stopped; once it is playing, the
-     transport IS the progress and a second "jump back in" is noise.
-
-     And once this page has heard anything, the stored offer is out of date: the
-     button now resumes from `forayLiveSec`, so a banner still naming the position
-     the page opened with would be advertising a destination nothing goes to. */
+  // The offer only means anything while stopped; once it is playing, the
+  // transport IS the progress and a second "jump back in" is noise. A start that
+  // failed is stopped, so the offer — and the "Start over" inside it — comes back.
   const banner = $("#fy-resume");
-  if (banner) banner.hidden = live || state.forayLiveSec > 0;
+  if (banner) banner.hidden = live;
 
   const playBtn = $("#fy-play");
   if (playBtn) {
@@ -2232,7 +2224,6 @@ async function deleteMyData({ deviceOnly = false } = {}) {
     state.forayPlaying = null;
     state.foray = null;
     state.forayPainted = null;
-    state.forayLiveSec = 0;
     /* And this is the one action the app does not log. `logEvent` writes
        `cp_events` and mints `cp_profile_id`, and the next sync would create a
        fresh anonymous account — telling our server about a deletion by starting a
@@ -2309,7 +2300,6 @@ function route() {
      next time someone reuses the sheet. */
   fbTarget = null;
   state.forayResume = null;
-  state.forayLiveSec = 0;
   const h = location.hash || "#/";
   const forayId = forayRouteId();
   let m;
