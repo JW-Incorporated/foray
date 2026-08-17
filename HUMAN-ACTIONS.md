@@ -859,6 +859,8 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 
 **Worked if:** there is a comment on #36 answering the four questions in step 6, and `mobile/ios/` is committed with `UIBackgroundModes: audio` in its `Info.plist`.
 
+**Note added by #38 (2026-08-17) — steps 1–4 and 6.2 no longer need a Mac, but this item is not done.** `.github/workflows/ios-build.yml` runs on a GitHub macOS runner and does the toolchain install, `npm run add:ios`, the `Info.plist` edit (via a unit-tested script, not by hand) and an unsigned build of both the simulator and the device architecture — and it boots the iOS Simulator to answer step 6.2's `Capacitor` question with a measurement. See `docs/ios-ci.md`. **What is still yours:** step 6.1, 6.3, 6.4 and 6.5 are *device* questions — a simulator models neither power management nor true suspension, so a clean run there does not settle a locked phone — plus step 7 (whether to commit `mobile/ios/`) and the app id in #13. Read the workflow's verdict before spending the 30 minutes; it may have found the failure for you.
+
 **Status:** OPEN
 
 ---
@@ -928,6 +930,61 @@ iOS is probably unaffected — it injects via a mechanism that runs outside the 
 6. Either way, also say whether the four cards render and whether search works.
 
 **Worked if:** there is a comment on #36 quoting what `Capacitor` evaluated to in the Android console, plus any CSP error text verbatim.
+
+**Note added by #38 (2026-08-17) — the iOS half is now measured; this item is the ANDROID half and it is untouched.** `.github/workflows/ios-build.yml` boots the iOS Simulator and reads `typeof window.Capacitor` off the real page under the real CSP. That says nothing about Android: WKWebView injects via `WKUserScript`, Android's WebView injects an inline `<script>` into the served HTML, and it is the second mechanism this item is about. Whichever way the iOS answer came out, this stays open — and if iOS came out *blocked*, expect Android to be worse rather than better.
+
+**Status:** OPEN
+
+---
+
+### 17. Get an Apple Developer account and add seven secrets, so CI can put a build on TestFlight
+
+**Tag:** `[BLOCKING]` for any iOS tester build · **Time:** ~20 minutes of clicking, plus up to 48 hours of Apple's review of the membership itself · **Owner:** whoever will own the Apple Developer Program membership · **Cost:** **$99/year** — this is a spend decision, so it is the founders' call and not an agent's (CLAUDE.md decision-authority item 3)
+
+**Why it matters.** #38 built the iOS build in CI, and **it works without any of this**: `.github/workflows/ios-build.yml` compiles the shell unsigned on every run, for both the simulator and a real device's architecture, and that is deliberate — an unsigned build that always runs is worth more than a signing job that never does. But an unsigned build **cannot be installed on a phone**. Everything past "it compiles" — TestFlight, a tester, the locked-screen test that items #11 and #14 actually want — needs an Apple identity, and no amount of engineering substitutes for it.
+
+**Decide first, in one line:** is $99/year worth spending now, or does iOS wait? If it waits, mark this `SKIP` with a few words and the workflow keeps doing the unsigned build; nothing breaks. Do **#13** (the permanent bundle id) before this either way — the App ID you register here is the one you live with.
+
+**Steps.**
+
+1. Join the Apple Developer Program at **`https://developer.apple.com/programs/enroll/`** ($99/year). Apple may take a day or two to approve.
+2. In **App Store Connect** (`https://appstoreconnect.apple.com`) → **Users and Access** → **Integrations** → **App Store Connect API** → **+**, create a key with the **App Manager** role. You get three things, and the `.p8` file **downloads exactly once**:
+   - the **Key ID** (10 characters)
+   - the **Issuer ID** (a UUID, shown above the key list)
+   - the file `AuthKey_<KeyID>.p8`
+3. In the developer portal → **Certificates, Identifiers & Profiles**:
+   - **Identifiers → +** → App IDs → App → Bundle ID **`com.jwincorporated.foray`** exactly (this is #13's value; if #13 rules differently, use that instead and say so here). Tick **Background Modes** under Capabilities.
+   - **Certificates → +** → **Apple Distribution**. Follow Apple's instructions to create the CSR, download the `.cer`, open it so it lands in your Keychain, then in **Keychain Access** right-click the certificate → **Export** → `.p12`, and set a password. Keep both the file and the password.
+   - **Profiles → +** → **App Store Connect** distribution profile for that App ID and that certificate. Download the `.mobileprovision`.
+   - Note your **Team ID** (10 characters, top right of the developer portal, or under Membership details).
+4. Base64-encode the three files. On a Mac:
+
+   ```bash
+   base64 -i Certificates.p12 | pbcopy
+   base64 -i Foray_AppStore.mobileprovision | pbcopy
+   base64 -i AuthKey_ABC1234567.p8 | pbcopy
+   ```
+
+5. At **`https://github.com/JW-Incorporated/foray/settings/secrets/actions`**, click **New repository secret** seven times and create **exactly these names** (the workflow reads these and no others — a typo means the gate reports the secret as missing):
+
+   | Secret name | Value |
+   |---|---|
+   | `IOS_DIST_CERT_P12_BASE64` | base64 of the `.p12` |
+   | `IOS_DIST_CERT_PASSWORD` | the password you set when exporting the `.p12` |
+   | `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the `.mobileprovision` |
+   | `APPLE_TEAM_ID` | your 10-character Team ID |
+   | `APP_STORE_CONNECT_KEY_ID` | the 10-character Key ID |
+   | `APP_STORE_CONNECT_ISSUER_ID` | the Issuer ID UUID |
+   | `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | base64 of the `AuthKey_*.p8` |
+
+6. Run the workflow: **`https://github.com/JW-Incorporated/foray/actions/workflows/ios-build.yml`** → **Run workflow**.
+
+**Two things to know before you start.**
+
+- **Set all seven or none.** The workflow deliberately **fails** when only some are set, rather than skipping the upload quietly — a green run with no build on TestFlight is the failure nobody notices for a release cycle. So if you get interrupted halfway, either finish or delete what you added.
+- **The upload path has never executed.** Every line of the archive/export/upload step is written from Apple's documentation, because no one here has ever had an account to test it against. Treat the first run as debugging, not as a release, and expect one or two fixes. Said plainly rather than discovered later.
+
+**Worked if:** a run of `ios-build` shows `state=ready` at the "Is signing configured?" step and a build appears in App Store Connect → TestFlight. If it gets as far as `altool` and then fails, that is the expected first-run outcome and the log is the useful part — paste it and a session will fix the step.
 
 **Status:** OPEN
 

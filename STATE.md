@@ -7,6 +7,48 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### MP4 — iOS builds on a runner, and three claims get measured (2026-08-17, one PR, founder-gated, no follow-up)
+
+- **What:** `ci/ios-build`, issue **#38**. A `macos-latest` workflow that
+  generates the Capacitor iOS project, adds the one `Info.plist` background-audio
+  key, and builds it **unsigned** — plus two Simulator probes that settle
+  questions nothing on this machine can reach. Doc: `docs/ios-ci.md`.
+- **STACKS ON #209 (`feat/capacitor-shell`), AND MUST MERGE AFTER IT.** Branched
+  from that branch, not from `main`: everything here builds the `mobile/`
+  scaffold, which is still awaiting a founder. If #209 changes shape, this needs
+  a rebase, not a rewrite.
+- **New files:** `.github/workflows/ios-build.yml`,
+  `tools/mobile/inject-background-audio.mjs`, `tools/mobile/ios-ci.mjs`,
+  `tools/mobile/probe/**`, `docs/ios-ci.md`, and four suites
+  (`inject-background-audio`, `ios-ci`, `ios-workflow`, `probe/install-probe`).
+  **Shared files it touches:** `test/suite-integrity.test.js` (four FLOORS
+  entries, isolated final commit), `HUMAN-ACTIONS.md` (new item **#17**, plus a
+  dated note under **#14** and **#16** — no status changed), this file.
+  **Untouched on purpose:** `.github/workflows/ci.yml`, `mobile/**`, `app.js`,
+  `index.html`, `player/**`, `ios/**`, `data/**`.
+- **IT TOUCHES `.github/`, WHICH `tools/ci/path-policy.mjs` DENIES.** That is
+  correct and expected: the PR waits for a founder rather than auto-merging, and
+  a workflow that can auto-merge a change to its own gates is not a gate.
+- **DO NOT MAKE IT A REQUIRED CHECK, and do not widen its path filter.** macOS
+  runners bill at 10x. This repo is public so standard runners are free today —
+  but at ~12–18 minutes of wall clock a run is ~120–180 billable minutes the day
+  it stops being public, and a sister project already suspected
+  Actions-minutes exhaustion behind a build freeze. Trigger set is
+  `workflow_dispatch` + a path filter on `mobile/`, `tools/mobile/`,
+  `index.html`, `app.js`, `player/` and the workflow itself. No `push`, no
+  `schedule`. `tools/mobile/ios-workflow.test.mjs` holds every one of those.
+- **A SIMULATOR IS NOT A DEVICE, and a pass from one is weaker evidence than a
+  failure.** It models neither power management nor true suspension. Anything
+  the backgrounding probe reports as *fine* is one removed way of being wrong,
+  not a settled question — `HUMAN-ACTIONS.md` #11 and #14 still want a phone.
+  The sentence is `SIMULATOR_CAVEAT` in `tools/mobile/ios-ci.mjs` and ships with
+  every report on purpose; do not paraphrase it away.
+- **Deliberately NOT done:** committing `mobile/ios/` (that is #14 step 7, a
+  founder call); Android anything (#16 stays open — a different injection
+  mechanism, and this workflow says nothing about it); and the signing/TestFlight
+  path is **written and never executed**, gated on seven secrets that do not
+  exist (**#17**). Treat its first real run as debugging, not as a release.
+
 ### MP2 — the native app shell (2026-08-17, one PR, founder-gated, no follow-up)
 
 - **What:** `feat/capacitor-shell`, issue **#36**. The Capacitor scaffold and the

@@ -1,0 +1,424 @@
+# Build the iOS shell on a macOS runner, and settle three things we only believe.
+#
+# Issue #38 (MP4). Stacks on #209 (#36's `mobile/` scaffold), which must merge first.
+#
+# ── WHY THIS IS WORTH MORE THAN A BUILD ──────────────────────────────────────
+#
+# Nothing in #209 was ever generated, installed or compiled — its own §0 says so
+# in a table. GitHub's macOS runners have Xcode AND the iOS Simulator, which
+# means CI can do three things no one can do from the Windows machine this
+# project is developed on, each of which is currently an unverified assumption
+# blocking a decision:
+#
+#   1. PROVE THE SHELL BUILDS. `npx cap add ios` then `xcodebuild` turns "should
+#      work" into "does work", and any failure found here is one a founder does
+#      not have to discover on their own Mac.
+#   2. SETTLE #209's TOP OPEN RISK. Capacitor injects its bridge as an INLINE
+#      script and our CSP is `script-src 'self'` with no `'unsafe-inline'`. If it
+#      is blocked there is no `window.Capacitor`, four plugins are dead, and the
+#      service worker registers inside the shell. #209 flags it as
+#      Android-only-and-unproven. The bridge probe measures the iOS half.
+#   3. ATTACK MP1's MOST LOAD-BEARING INFERENCE. MP1 (#207) concluded iOS keeps
+#      backgrounded audio with one Info.plist line, but whether our OUT-POINT
+#      still fires rests on `timeupdate` surviving backgrounding — explicitly the
+#      least-verified claim in that document. A missed out-point costs a median
+#      936.5 s: 15.6 minutes of the wrong episode. The out-point probe backgrounds
+#      the Simulator and measures how far past `end_sec` playback gets.
+#
+# A SIMULATOR IS NOT A DEVICE. It does not model power management or true
+# suspension, so a PASS on (3) is weaker evidence than a FAILURE would be. That
+# caveat ships with every number this workflow prints; it is in
+# `tools/mobile/ios-ci.mjs` as `SIMULATOR_CAVEAT` so it cannot be dropped from
+# one report and kept in another.
+#
+# ── COST, AND WHY THIS IS NOT A REQUIRED CHECK ───────────────────────────────
+#
+# ~12-18 minutes of wall clock per run, and macOS runners bill at 10x Linux
+# minutes — so ~120-180 billable minutes if this repo were private. It is
+# PUBLIC, and GitHub charges nothing for standard runners on public repos, which
+# is also why `ci.yml`'s `ios-kit` job can run `macos-latest` on every PR today.
+# Both numbers are stated because the second one changes the moment the repo
+# does: a sister project already suspected Actions-minutes exhaustion as the root
+# cause of a build freeze, and "it was free when we wrote it" is not a design.
+#
+# So it is designed for infrequency: manual dispatch, plus a path filter narrow
+# enough that ordinary data/docs/backend PRs never trigger it. It is NOT in the
+# `protect-main` ruleset and must not become required — `backend` and
+# `data-and-site` are the required checks, and adding a 15-minute macOS job to
+# that set would put every content PR behind an iOS build.
+#
+# It also does not touch `ci.yml`. `ios-kit` (`swift test --package-path
+# ios/ForayKit`) keeps running exactly as before: `ios/` is the separate SwiftUI
+# target #209 deliberately left in place, and `mobile/ios/` is the shell.
+#
+# ── WHAT IS BLOCKED ON A HUMAN ───────────────────────────────────────────────
+#
+# The BUILD is unsigned and always runs. Signing and the TestFlight upload need
+# an Apple Developer account, a distribution certificate, a provisioning profile
+# and an App Store Connect API key — none of which exist (`HUMAN-ACTIONS.md`
+# #17). Those steps are gated on the secrets being present, and the gate has
+# three outcomes rather than two: all set -> upload, none set -> skip loudly,
+# SOME set -> fail the job. A half-configured signing setup that silently skips
+# the upload on a green run is the worst of the three.
+
+name: ios-build
+
+on:
+  workflow_dispatch:
+    inputs:
+      probes:
+        description: "Boot the iOS Simulator and run the bridge + out-point probes"
+        type: boolean
+        default: true
+  pull_request:
+    # Narrow on purpose — see the cost note above. `.github/workflows/ios-build.yml`
+    # is in the list so a change to this file is exercised by the PR that makes it,
+    # which is the only way a CI-only change can be reviewed against real output.
+    paths:
+      - "mobile/**"
+      - "tools/mobile/**"
+      - "index.html"
+      - "app.js"
+      - "player/**"
+      - ".github/workflows/ios-build.yml"
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ios-shell:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      APP_ID: com.jwincorporated.foray
+      WORKSPACE: mobile/ios/App/App.xcworkspace
+      INFO_PLIST: mobile/ios/App/App/Info.plist
+      DD_SIM: ${{ runner.temp }}/dd-sim
+      DD_DEV: ${{ runner.temp }}/dd-dev
+      ART: ${{ runner.temp }}/ios-ci
+      # `false` only via an explicit dispatch input; every other trigger probes.
+      PROBES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.probes || 'true' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Toolchain versions (the first thing to read when this breaks)
+        run: |
+          set -euo pipefail
+          mkdir -p "$ART"
+          { sw_vers; xcodebuild -version; echo "sqlite3 $(sqlite3 --version)"; pod --version; } \
+            | tee "$ART/toolchain.txt"
+
+      # ── the parts a Mac is actually needed for ──────────────────────────────
+
+      - name: Install the shell's dependencies
+        # `mobile/` carries its own package.json precisely so the repo root stays
+        # dependency-free (#209 §2.4). There is no committed lockfile, so this is
+        # `npm install`, not `npm ci` — and that is the first thing that would
+        # make this job non-reproducible, so it prints the resolved versions.
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm ls --depth=0 | tee "$ART/mobile-deps.txt"
+
+      - name: Build the webDir and generate the iOS project
+        # `npm run add:ios` is the committed script (prepare:webdir && cap add ios),
+        # used rather than re-spelling the commands so this workflow cannot drift
+        # from what HUMAN-ACTIONS.md #14 tells a human on a Mac to run.
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          npm run add:ios 2>&1 | tee "$ART/cap-add-ios.log"
+          test -f ios/App/App.xcworkspace/contents.xcworkspacedata
+
+      - name: Assert the generated project did NOT land on the SwiftUI scaffold
+        # #209's invariant 2, checked against reality instead of against config.
+        # `ios/` is a separate target that `ios-kit` compiles; two iOS codebases
+        # in one directory is the failure the whole scaffold exists to avoid.
+        run: |
+          set -euo pipefail
+          for bad in ios/App/App ios/App/Podfile ios/App/App.xcodeproj ios/capacitor.config.json; do
+            if [ -e "$bad" ]; then echo "Capacitor generated into the SwiftUI scaffold: $bad"; exit 1; fi
+          done
+          test -f ios/ForayKit/Package.swift
+
+      - name: Add UIBackgroundModes -> audio, and have Apple's parser check it
+        # MP1 §7.3: this is the ENTIRE iOS background-audio requirement. WebKit
+        # sets the AVAudioSession category itself for an audible <audio> element,
+        # so there is no plugin, no AppDelegate edit and no Swift. Capacitor has
+        # no config option for the key, so something has to edit the generated
+        # plist — and that something is a unit-tested pure function
+        # (tools/mobile/inject-background-audio.test.mjs, 22 tests, all runnable
+        # without a Mac) rather than a sed a regex change could silently no-op.
+        #
+        # THREE independent confirmations, because the failure is invisible: the
+        # function re-parses its own output, `plutil -lint` says the file is still
+        # valid, and PlistBuddy — Apple's own reader — prints the value.
+        run: |
+          set -euo pipefail
+          node tools/mobile/inject-background-audio.mjs "$INFO_PLIST"
+          plutil -lint "$INFO_PLIST"
+          /usr/libexec/PlistBuddy -c "Print :UIBackgroundModes" "$INFO_PLIST" | tee "$ART/uibackgroundmodes.txt"
+          grep -q "audio" "$ART/uibackgroundmodes.txt"
+          node tools/mobile/inject-background-audio.mjs "$INFO_PLIST" --check
+          cp "$INFO_PLIST" "$ART/Info.plist"
+
+      - name: Build for the iOS Simulator (unsigned by construction)
+        # The primary build verdict, and the artefact the probes run in. A
+        # simulator build needs no signing identity at all, which is why it is
+        # first: it is the build that can always run.
+        id: build_sim
+        run: |
+          set -euo pipefail
+          if ! xcodebuild \
+              -workspace "$WORKSPACE" -scheme App -configuration Debug \
+              -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+              -derivedDataPath "$DD_SIM" \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+              build > "$ART/xcodebuild-simulator.log" 2>&1; then
+            echo "::group::xcodebuild (simulator) tail"; tail -300 "$ART/xcodebuild-simulator.log"; echo "::endgroup::"
+            exit 1
+          fi
+          grep -E "^\*\* BUILD (SUCCEEDED|FAILED)" "$ART/xcodebuild-simulator.log" | tail -1
+          APP="$DD_SIM/Build/Products/Debug-iphonesimulator/App.app"
+          test -d "$APP"
+          test -f "$APP/public/index.html"
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+          du -sh "$APP" | tee -a "$ART/app-size.txt"
+
+      - name: Build for a real device's architecture, unsigned
+        id: build_dev
+        # Not the same compile as the simulator one — arm64-device, Release, and
+        # the configuration a TestFlight build would use. It proves the shipping
+        # target compiles without needing any of the credentials that do not
+        # exist yet. It cannot prove it INSTALLS; that needs signing.
+        run: |
+          set -euo pipefail
+          if ! xcodebuild \
+              -workspace "$WORKSPACE" -scheme App -configuration Release \
+              -sdk iphoneos -destination 'generic/platform=iOS' \
+              -derivedDataPath "$DD_DEV" \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+              build > "$ART/xcodebuild-device.log" 2>&1; then
+            echo "::group::xcodebuild (device) tail"; tail -300 "$ART/xcodebuild-device.log"; echo "::endgroup::"
+            exit 1
+          fi
+          grep -E "^\*\* BUILD (SUCCEEDED|FAILED)" "$ART/xcodebuild-device.log" | tail -1
+
+      # ── the two measurements ────────────────────────────────────────────────
+
+      - name: Choose and boot a simulator
+        id: sim
+        if: env.PROBES != 'false'
+        run: |
+          set -euo pipefail
+          xcrun simctl list devices available -j > "$ART/simctl-devices.json"
+          node tools/mobile/ios-ci.mjs pick-simulator "$ART/simctl-devices.json" | tee "$ART/simulator.txt"
+          UDID=$(sed -n 's/^udid=//p' "$ART/simulator.txt")
+          test -n "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Install the probed app
+        # The probe goes into a COPY of the built .app, not into `mobile/www`:
+        # the build verdict above is therefore of the CLEAN bundle, and this needs
+        # no second xcodebuild. `install-probe.mjs` refuses to write anywhere that
+        # looks like a source checkout.
+        id: probe_install
+        if: env.PROBES != 'false' && steps.sim.outcome == 'success'
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          PROBED="${{ runner.temp }}/App-probe.app"
+          rm -rf "$PROBED"
+          cp -R "${{ steps.build_sim.outputs.app }}" "$PROBED"
+          node tools/mobile/probe/install-probe.mjs "$PROBED/public"
+          # Editing resources invalidates the ad-hoc signature. The Simulator does
+          # not enforce it, but re-signing costs nothing and removes a variable.
+          codesign --force --sign - "$PROBED" || true
+          xcrun simctl install "$UDID" "$PROBED"
+          echo "probed=$PROBED" >> "$GITHUB_OUTPUT"
+
+      - name: Run the probes (launch, background, resume)
+        id: probe_run
+        if: env.PROBES != 'false' && steps.probe_install.outcome == 'success'
+        continue-on-error: true
+        # THE TIMELINE, and every number in it is load-bearing:
+        #   t+0   launch. probe-bridge.js snapshots window.Capacitor immediately,
+        #         re-checks at 3 s (in case the bridge is injected late), reads
+        #         navigator.serviceWorker.getRegistrations(), then navigates to
+        #         the out-point probe.
+        #   t+14  audio is playing and the out-point is armed at end_sec=25 s of
+        #         media time.
+        #   t+16  BACKGROUNDED by foregrounding Settings. There is no simctl
+        #         "press home"; launching another app is how you background one.
+        #   t+66  50 s backgrounded. end_sec falls at roughly t+39, so a working
+        #         out-point fires deep inside this window and a broken one does
+        #         not fire at all.
+        #   t+66+ screenshot, then read the numbers out of WebKit's local storage.
+        # The app is NOT relaunched to read the results: `simctl launch` on a
+        # running app can restart it, and a restart would erase the very
+        # measurement it was launched to collect. (probe-outpoint.js also refuses
+        # to clobber a completed record, so a restart is survivable — but not
+        # relying on that is cheaper than relying on it.)
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          xcrun simctl spawn "$UDID" log stream --style compact --level debug \
+            > "$ART/simulator-log.txt" 2>&1 &
+          LOG_PID=$!
+          trap 'kill $LOG_PID 2>/dev/null || true' EXIT
+
+          xcrun simctl launch "$UDID" "$APP_ID"
+          sleep 14
+          xcrun simctl io "$UDID" screenshot "$ART/01-playing.png" || true
+          echo "--- backgrounding by foregrounding Settings ---"
+          xcrun simctl launch "$UDID" com.apple.Preferences \
+            || xcrun simctl launch "$UDID" com.apple.mobilesafari
+          sleep 50
+          xcrun simctl io "$UDID" screenshot "$ART/02-backgrounded.png" || true
+
+          # WebKit batches localStorage writes, so give it a beat, then copy the
+          # databases before reading them — never read a file another process has
+          # open.
+          sleep 3
+          CONTAINER=$(xcrun simctl get_app_container "$UDID" "$APP_ID" data)
+          echo "container=$CONTAINER"
+          mkdir -p "$ART/ls"
+          find "$CONTAINER" \( -name '*.localstorage' -o -name 'local-storage.sqlite3' \) -print \
+            > "$ART/ls-files.txt" || true
+          cat "$ART/ls-files.txt"
+          i=0
+          while IFS= read -r db; do
+            [ -n "$db" ] || continue
+            i=$((i+1))
+            cp "$db" "$ART/ls/db-$i.sqlite" || continue
+            sqlite3 -json "$ART/ls/db-$i.sqlite" "select key, hex(value) as hexval from ItemTable" \
+              > "$ART/ls-rows-$i.json" 2>>"$ART/ls-errors.txt" || true
+          done < "$ART/ls-files.txt"
+          echo "read $i local-storage database(s)"
+          ls -l "$ART" || true
+
+      - name: Report what the probes established
+        id: verdict
+        if: always()
+        continue-on-error: true
+        env:
+          IOS_BUILD_STATUS: >-
+            simulator=${{ steps.build_sim.outcome }},
+            device=${{ steps.build_dev.outcome }},
+            probes=${{ steps.probe_run.outcome }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          rows=( "$ART"/ls-rows-*.json )
+          if [ ${#rows[@]} -gt 0 ]; then
+            node tools/mobile/ios-ci.mjs decode-localstorage "${rows[@]}" > "$ART/localstorage.json"
+          else
+            echo '{}' > "$ART/localstorage.json"
+          fi
+          grep -a -o 'FORAY_PROBE_[A-Z]*.*' "$ART/simulator-log.txt" > "$ART/probe-console.txt" 2>/dev/null || true
+          grep -a -i -o '.\{0,120\}Content Security Policy.\{0,200\}' "$ART/simulator-log.txt" \
+            > "$ART/csp-messages.txt" 2>/dev/null || true
+          node tools/mobile/ios-ci.mjs verdict "$ART/localstorage.json"
+
+      # ── signing and TestFlight: gated, and never yet executed ───────────────
+
+      - name: Is signing configured?
+        id: signing
+        env:
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+        # `state=absent` is the expected answer today and exits 0. `state=partial`
+        # exits 1 on purpose — see tools/mobile/ios-ci.mjs signingReadiness().
+        run: node tools/mobile/ios-ci.mjs signing-gate
+
+      - name: Archive, export and upload to TestFlight
+        # NEVER EXECUTED. There is no Apple Developer account on this project, so
+        # every line below is written from Apple's documentation and is unverified
+        # — treat the first real run as a debugging session, not as a release.
+        # Said plainly here rather than discovered later: this repo has been burned
+        # by inferences presented as measurements.
+        if: steps.signing.outputs.ready == 'true'
+        env:
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="${{ runner.temp }}/signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$IOS_DIST_CERT_P12_BASE64" | base64 --decode > "${{ runner.temp }}/cert.p12"
+          security import "${{ runner.temp }}/cert.p12" -k "$KEYCHAIN" -P "$IOS_DIST_CERT_PASSWORD" \
+            -T /usr/bin/codesign -A
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+
+          PROFILES="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES"
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILES/foray.mobileprovision"
+
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode \
+            > "$HOME/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+
+          # Written with node rather than a heredoc: a YAML block scalar plus a
+          # shell heredoc plus XML is three quoting rules stacked, and this file
+          # has to survive edits by people who cannot run it.
+          node -e '
+            const fs = require("node:fs");
+            fs.writeFileSync(process.argv[1],
+              `<?xml version="1.0" encoding="UTF-8"?>\n` +
+              `<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n` +
+              `<plist version="1.0"><dict>` +
+              `<key>method</key><string>app-store-connect</string>` +
+              `<key>teamID</key><string>${process.env.APPLE_TEAM_ID}</string>` +
+              `<key>uploadSymbols</key><true/>` +
+              `</dict></plist>\n`);
+          ' "${{ runner.temp }}/ExportOptions.plist"
+          plutil -lint "${{ runner.temp }}/ExportOptions.plist"
+
+          xcodebuild -workspace "$WORKSPACE" -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -archivePath "${{ runner.temp }}/Foray.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            archive | tail -20
+          xcodebuild -exportArchive \
+            -archivePath "${{ runner.temp }}/Foray.xcarchive" \
+            -exportOptionsPlist "${{ runner.temp }}/ExportOptions.plist" \
+            -exportPath "${{ runner.temp }}/export" | tail -20
+          xcrun altool --upload-app -f "${{ runner.temp }}/export/App.ipa" -t ios \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+
+      - name: Upload everything this run learned
+        # Always: a failed build's log is the most useful thing in the run, and
+        # the probe screenshots are the only human-readable form of the two
+        # measurements.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-shell-evidence
+          path: ${{ runner.temp }}/ios-ci
+          if-no-files-found: warn
+          retention-days: 14
