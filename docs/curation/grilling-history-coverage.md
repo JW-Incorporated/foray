@@ -48,6 +48,7 @@ catalogue suggests, and the shape of it explains most of this report.
 | Segments in `data/segments.json` on grilling subjects | 36 (32 of them in the current `grilling-history-1`) | Yes — `why` plus verbatim in/out anchors |
 | Playable source episodes in `data/segment-sources.json` | 9 English grilling episodes | Only where a transcript can be read |
 | Publisher transcripts readable today | **2 of the 9** — `bbqc-moss-school` (timed SRT), `moreish-jerk-jamaica` (plain text) | Yes, fully |
+| Readable transcripts outside the 9, found in this pass | 1 — `Stuff You Should Know — A Lip-Smacking Look at Barbecue` (timed WebVTT, 3,052 s) | Yes, fully — see §2b |
 | Anchor-validated passages in `grilling-foray-passages.json` | 8 (501 s), never merged into the pool | Yes, as documented candidates |
 | Episodes in `grilling-asr-manifest.json` | 24, of which **none** is transcribed | No — content unverifiable at beat level |
 
@@ -112,6 +113,49 @@ three quite different things, and a reader should not read them as equivalent:
 
 Where a beat is empty for one of these reasons rather than another, the beat says so.
 
+### 2b. A third readable transcript, found late, that changes four verdicts
+
+A review pass on the first draft of this report pointed out that ADR-0008's
+LOCATE-REQUIRED tier means *authored, not played* — extraction proceeds, and playback
+waits for the locate step. Checking that against
+`data/transcript-availability.json` turned up something the first draft had missed:
+**Stuff You Should Know ships timed transcripts on 2,850 of its 2,858 episodes**, and
+one of them is `A Lip-Smacking Look at Barbecue` (3,052 s), named in ADR-0008's
+arc-slot notes. I fetched the WebVTT and read it end to end. It is the third readable
+transcript in this pass and the only readable one that touches Act IV.
+
+**Two caveats have to travel with every cut proposed from it, and the second is the
+one a human has to rule on.**
+
+- **It is LOCATE-REQUIRED, so nothing from it plays yet.** SYSK measures +8 to +10
+  minutes of ad insertion, far past ADR-0008's 120 s padding ceiling, so cuts are
+  authorable now and playable once the locate step exists. Timestamps below are
+  against the publisher's own transcript timeline.
+- **It fails the content gate this project has applied to other shows, and the report
+  does not pretend otherwise.** SYSK is two hosts working from a HowStuffWorks
+  article, with no guest and no sourced expertise — the same register that got
+  Gurmelik Denemeleri rejected for mangal ("hosts riffing with no sourced
+  expertise"), and the same register `catalogue-broadening.md` §3 rejects repeatedly.
+  It is loose where it matters: it has Columbus meeting the Taíno and de Soto both
+  bringing pigs and reporting *barbacoa* back to Europe, it dates the first North
+  American barbecue to Tupelo in 1540 on a "supposedly", and it drops a 200,000-year
+  Israeli site into the same breath. It also contains, twenty seconds after its
+  Jim Crow segregation passage, the line that barbecue "kind of transcends race and
+  class" — which is the harmony version beat 23 exists to reject.
+
+**So the honest reading is that SYSK is admissible on relevance and weak on
+authority.** Every cut below is graded **thin** and none is graded strong, however
+squarely it hits its beat, and each would carry `confidence: low`. Where the beat's
+own reject criteria exclude it, I have excluded it — beats 16, 18 and 23 — rather
+than taking the tape because it was the only tape. **Whether a show of this register
+belongs in this Foray at all is a founder call, not mine**, and it is worth making
+explicitly, because the alternative to these four cuts is four narration beats and
+the same facts stated better.
+
+Four verdicts move from empty to thin on this find — **7, 19, 24 and 30** — and beats
+5 and 32 gain second segments that close gaps narration would otherwise have had to
+fill. Act IV goes from thirteen empty beats to ten.
+
 ---
 
 ## 3. Act I — fire, smoke and the mechanism (chain, beats 1–5)
@@ -172,6 +216,11 @@ vigil beat 39 interrogates. With beat 3 empty, the Foray asserts that barbecue i
 slow without ever explaining why, and every later beat that depends on the
 explanation is weaker.
 
+**Also considered and rejected.** SYSK (§2b) has, at 607–617 s, the observation that
+tough lean meat has to be cooked over low heat for a long time to become tender. That
+is the beat's *conclusion* with none of its mechanism, and the passage is committed to
+beat 19 in any case.
+
 **What is missing.** Collagen converting to gelatin, the two clocks the cook runs at
 once, the evaporative stall and what wrapping does about it, Maillard and the bark,
 why smoke deposits on a moist surface. §5 predicted this beat would be
@@ -231,15 +280,21 @@ property rather than praising one — which is the beat's stated preference — 
 actively refuses the flavour poetry the beat says to reject. At 79 s it is at the
 bottom of the target band, which suits a hinge beat that hands into the fan.
 
-**What narration still owes.** The beat's second clause, that availability rather
-than preference explains the world map, is not in the tape. One sentence of
-narration on the way into Act III closes it, and the fan then supplies the evidence.
+**Second, from SYSK (see §2b):** **1313.12 → 1358.12 (45.0 s)**. In on *"But
+starting out, if you want to talk barbecue, Hickory in the South was widely used"*;
+out on *"apparently fruit wood is good for things like chicken and seafood."* This is
+the one thing §5 of the spine predicted no tape would contain — **the rule stated
+outright**: hickory in the South, mesquite in Texas, *"and most of these regionally
+were used because that obviously was the wood they had near there."* Availability
+determining tradition, in one clause. At 45 s it is a short supporting cut, above the
+30 s floor and below the target band, and it carries §2b's authority caveat.
 
-**Note against §5's prediction.** The spine predicted this beat would be hard —
-"partial tape from many traditions is likely; tape that states the rule is not."
-The prediction was right about the second half and the beat is carried anyway,
-because the tape states the *mechanism* clearly enough that the rule can be
-narrated on top of it.
+**Note against §5's prediction, revised.** The spine ranked this beat eighth-hardest
+on the reasoning that partial tape from many traditions would exist but tape stating
+the rule would not. With `#1437` supplying the mechanism from inside a tradition and
+the SYSK cut supplying the rule across traditions, the beat is carried and narration
+owes it nothing. That is the prediction most clearly falsified in the optimistic
+direction.
 
 ---
 
@@ -257,28 +312,50 @@ this is a social form and not a cooking method — which is the beat's conclusio
 does not contain the beat's argument, and the segment is also beat 14's best second
 cut, so admitting it here competes with Act III.
 
-**What is missing.** All of the economics: fuel and labour arithmetic for a whole
-carcass, why slaughter was an event, why the feast is the storage technology when
-you cannot preserve everything, how many people a hog feeds and what happens to the
-leftovers. Beat 6 is the load-bearing middle term of the through-line and it should
-be narrated properly rather than gestured at.
+**A better candidate for the argument, from SYSK (§2b):** roughly **1061 → 1097
+(36 s)** states the economics the beat is actually about — slaughtering a pig was a big
+deal, they used everything from snout to tail, *"so you had a lot of stuff and it was
+way more than your family was going to eat. So it was an occasion for the whole
+community, or at least all the neighbors, to be invited over"* — and it names the
+consequence: that is where barbecue being a social gathering came from. Beat 6 says to
+reject *"generic 'food brings people together' sentiment with no economics under it"*,
+and this has the economics under it. At 36 s it is barely over the floor, so the useful
+shape is probably this as a short cut ahead of `#700`, or its content folded into
+narration.
 
-### Beat 7 — feeding a crowd is a claim to authority — **empty**
+**What is still missing.** Fuel and labour arithmetic for a whole carcass, the
+explicit pre-refrigeration framing, and why the feast *is* the storage technology when
+you cannot preserve everything. Beat 6 is the load-bearing middle term of the
+through-line and it is still better narrated than assembled from two partial cuts.
 
-**Nothing.** `bfh-medieval-meals-manners#944` (rank at a medieval table measured in
-distance from the salt cellar) is hierarchy at a dinner table, and beat 7 says in
-terms that *"a lavish dinner party is not this beat."* Rejected. This is precisely
-the boundary the previous Foray crossed.
+### Beat 7 — feeding a crowd is a claim to authority — **thin**
 
-**Chain hole.** Without beat 7, the through-line's second clause — that who tends
-the fire is a question about power — arrives for the first time inside the American
-act, where it will read as a grievance imported into the story rather than as a
-pattern the story is an instance of. Narrate it.
+**Candidate, from SYSK (see §2b):** **2278.08 → 2415.92 (137.8 s)**. In on *"Politics
+has often has long been linked to barbecue"*; out on *"I want you to sign this
+bill."*
 
-**What is missing.** Sacrifice and distribution, hospitality obligation,
-aristocratic patronage through meat, or the 19th-century American campaign barbecue
-treated as a machine for assembling voters. The claim to look for is reciprocity —
-the crowd owes something for the meat.
+**Why it advances beat 7.** It is the beat's American case with named specifics and,
+more importantly, with the reciprocity claim stated rather than implied: politicians
+found that a good way to get a lot of people together and talk to them was to promise
+them food, and the hosts name it *"almost bribe them, both food and booze."* Beat 7
+says the claim to look for is *reciprocity or obligation — the crowd owes something
+for the meat*, and that is exactly what this says. It supplies the Fourth of July as
+a barbecue-and-Declaration occasion, Daniel Webster's two-hour speech at a St. Louis
+barbecue in 1836, William Henry Harrison campaigning the same way, and Lyndon
+Johnson's "barbecue diplomacy" at the ranch — VIPs invited, and a bill to sign.
+
+**What is missing.** Everything before America, which is most of the beat: sacrifice
+and distribution in the ancient Mediterranean or Near East, hospitality obligation,
+aristocratic patronage through meat. Beat 7 exists so that the power clause arrives
+*before* the American act, and a cut consisting entirely of American electioneering
+does not do that. Used as-is it would need narration ahead of it establishing the
+pattern, and it will sit oddly early if it is 19th-century American material placed
+before beat 8's fan.
+
+**Rejected here:** `bfh-medieval-meals-manners#944` (rank at a medieval table measured
+in distance from the salt cellar) is hierarchy at a dinner table, and beat 7 says in
+terms that *"a lavish dinner party is not this beat."* This is precisely the boundary
+the previous Foray crossed.
 
 ### Beat 8 — the steppe as the control case — **empty** (fan)
 
@@ -469,10 +546,11 @@ The act is also where the spine says the editorial test of the whole document li
 and where beats 20, 21, 22 and 30 — 12 % of runtime, the honest weight of the
 authorship argument — are all empty at once.
 
-**Four English sources for the core of this act are identified, and none is
-readable today.** The act is empty because nothing has been transcribed, not because
-nothing exists — this is the "identified but not playable yet" tier of §2a, and it is
-the most improvable finding in the report.
+**Four English sources for the core of this act are identified. One is readable, and
+reading it moved three beats in this act off empty.** The act is thin rather than
+covered because almost nothing has been transcribed, not because nothing exists — this
+is the "identified but not playable yet" tier of §2a, and it is the most improvable
+finding in the report.
 
 | Source | Length | Ad status | What is known about its content |
 |---|---|---|---|
@@ -485,15 +563,18 @@ Rows two to four are named in ADR-0008's unlock table against exactly this arc s
 "American barbecue's birth and westward spread". Adrian Miller is named in the spine
 itself as the archetype of the register wanted, alongside Michael Twitty.
 
-**None of their content is verified at beat level**, which is why every beat below is
-empty rather than provisional. I checked for a Grill Coach transcript on the feed, on
-the show's episode page and on three Buzzsprout endpoints; there is none. So no cut
-can be proposed from any of the four, and an episode description is not evidence that
-a 110-second span inside it advances a beat — that is the standard this whole report
-is applying, and it has to apply to promising sources as well as to disappointing
-ones. **What can be said is that Act IV's holes are a transcription and
-ad-measurement problem rather than a sourcing one, and that closing them is the
-cheapest large improvement available to the project.** See §9.
+**Only SYSK's content is verified at beat level.** It ships a timed transcript, I read
+it, and §2b records what it contains and the serious reservations that come with it: it
+carries beats 19, 24 and 30 as thin, and it is excluded on those beats' own terms at 16,
+18 and 23. For the other three, an episode description is not evidence that a
+110-second span inside it advances a beat — that is the standard this whole report
+applies, and it has to apply to promising sources as much as to disappointing ones. I
+checked for a Grill Coach transcript on the feed, on the show's episode page and on
+three Buzzsprout endpoints; there is none. **Act IV's remaining holes are a
+transcription and ad-measurement problem rather than a sourcing one, and closing them
+is the cheapest large improvement available to the project.** Two of the four sources
+plausibly need no ASR at all — Proof is recorded as carrying a transcript, and SYSK
+demonstrably does — which makes reading them the first thing to try. See §9.
 
 ### Beat 16 — the word named a frame — **empty**
 
@@ -502,6 +583,16 @@ barbecue, but it is committed to beat 15 and it carries none of what beat 16 cla
 the Taíno attestation for a raised wooden framework, the 1620s English usage as a
 structure against the 1661 cooking sense, or the explicit rejection of "barbe à
 queue".
+
+**Also considered and rejected.** SYSK (§2b) reaches this beat twice — the Taíno
+green-sapling method at 977–1017 s, and at 2776–2811 s the claim that *barbacoa* is
+"the word that De Soto reported back to Europe" and "a corrupted Taíno word", closing
+on the observation that nobody thought to ask the Taíno before the Europeans killed
+them all. The second half of that is the right register for beat 16 and the first half
+is wrong on the record: it attributes the reporting to de Soto, offers no attestation
+and no date, and does not touch the "barbe à queue" story the beat exists partly to
+demolish. Beat 16 says *"reject: assertion of either etymology with no source"*, so
+this is rejected on the beat's own terms rather than on register.
 
 **Chain hole, and it is the first link.** Act IV opens on the assertion that the
 technique and its name are indigenous American, and that assertion is the first half
@@ -525,20 +616,37 @@ fork to be two branches of.
 
 ### Beat 18 — the adopted indigenous apparatus — **empty**
 
-**Nothing.** The Grill Coach episode is the only one of the four Act IV sources
-described as covering indigenous roots, and it is untranscribed.
+**Nothing that passes.** The Grill Coach episode is the only one of the four Act IV
+sources described as covering indigenous roots, and it is untranscribed. SYSK (§2b)
+has one clause at 1132–1139 s — Native Americans *"eventually would make these wooden
+frames that they would put the meat on"* — which is the apparatus with no region, no
+peoples, no date and no source, and no account of the transmission. Beat 18 says
+explicitly to reject *"'Native Americans invented barbecue' as a slogan with no
+apparatus, no region and no source"*; this has the apparatus and nothing else.
 
 **Chain hole.** This is the transmission event that connects the Caribbean word to
 the mainland. Without it the act jumps from a Taíno word to a Southern pork
 tradition across a two-century gap.
 
-### Beat 19 — pork won the South for ecological reasons — **empty**
+### Beat 19 — pork won the South for ecological reasons — **thin**
 
-**Nothing.** No segment or identified source addresses semi-feral swine husbandry,
-the corn-and-hog complex, or the contrast with cattle.
+**Candidate, from SYSK (see §2b):** **563.36 → 624.48 (61.1 s)**. In on *"And the
+reason why they were cooking pig was because that's what they had available to
+them"*; out on *"That's the origin of barbecue."*
 
-**Chain hole.** It is beat 5's logic applied to the animal, and it is what makes
-beats 27 and 28 explicable rather than merely regional.
+**Why it advances beat 19.** It makes the beat's causal claim and then closes the loop
+into technique, which is more than the beat asks for: the pigs were turned out into the
+woods to fend for themselves, so they came back leaner and tougher with less fat, *"so
+to cook that kind of food and make it tender, you have to cook it over low heat for a
+very long time. And that's where barbecuing pig in the South originally came from."*
+Free-range husbandry as the reason pork was available, and the animal's economics
+determining the technique's shape — which is the beat's strong signal.
+
+**What is missing.** The corn-and-hog complex, seasonal slaughter before
+refrigeration, per-capita consumption figures, and the explicit contrast with cattle
+needing land and management. The segment is also 61 s, under the 75 s target floor,
+because the passage immediately after it turns into a 200,000-year-old Israeli site
+and cannot be included.
 
 ### Beat 20 — the West African inheritance — **empty**
 
@@ -605,26 +713,50 @@ version. It is admissible only *underneath* narration that supplies the seating,
 and if stage 4 cannot write that, the segment should be dropped rather than
 softened.
 
+**The SYSK alternative, and why it does not resolve this.** SYSK's political-barbecue
+passage (§2b) is better tape for beat 23's first half than `#2572` is, and it is
+committed to beat 7 above. Worse for this beat, SYSK's one passage on the racial
+arrangement — the Jim Crow segregation of barbecue restaurants — runs within twenty
+seconds into *"barbecue kind of transcends race and class"*, so the show supplies the
+harmony version and the seating in the same breath. Beat 23's whole editorial demand is
+holding both halves at once, and neither available source does.
+
 **A separate finding about this segment — the spine, not the tape, has the gap.**
 `#2572`'s actual subject is the 19th-century westward diffusion of Southern
 barbecue, and **the spine has no beat for it.** Beat 25 covers the 20th-century
 Black Migration only. This is the strongest single piece of American tape in the
 pool and there is no beat it fits squarely. See §8.
 
-### Beat 24 — emancipation into enterprise — **empty**
+### Beat 24 — emancipation into enterprise — **thin**
 
-**Nothing, and I rejected a tempting near-miss.** In the Moss transcript at roughly
-2876–2941 s he dates the earliest barbecue stands to "just on either side of 1900"
-and the permanent barbecue restaurants of Lexington, Lockhart and Owensboro to the
-early 20th century. That is beat 24's chronology of the move to fixed premises with
-the *entire* claim removed: nothing about who, nothing about pit skill being capital
-that freedpeople already owned, nothing about the absence of credit. Cutting it
-would produce precisely the failure beat 21 warns against — the history arriving as
-a date while the authorship is dropped. Not cut.
+**Candidate, from SYSK (see §2b):** **2505.20 → 2583.28 (78.1 s)**. In on *"barbecue
+joints were almost exclusively take out"*; out on *"And then that's how the barbecue
+joints developed."*
 
-**Chain hole.** This is the causal link between beat 21 and every commercial beat
-after it, and the beat that makes the act a history of agency rather than only of
-extraction. Juneteenth and Emancipation Day barbecues are lost with it.
+**Why it advances beat 24.** This is the beat's argument, start to finish, in 78
+seconds. The pitmaster role on a plantation *"usually went to a slave"*; after
+emancipation *"all of a sudden you found yourself with extremely unique talent"* —
+which is beat 24's strong signal, an explicit statement that the asset was skill; then
+the ladder, in the order the beat claims it: sharecropping in the week, pitmaster for
+the church at the weekend, then a shack built around the pit, a couple of stools and a
+window, and then the car arrives and the joint becomes a destination. It even supplies
+the low-capital mechanism the beat turns on, since a shack around an existing pit is
+the whole capital requirement.
+
+**What is missing.** Named early proprietors and the cities they worked in; the
+absence of credit stated as a constraint rather than implied; and Emancipation Day and
+Juneteenth barbecues as institutions with their own committees and finances, which are
+half the beat and are absent entirely. The register caveat in §2b applies with force
+here, because this is hosts reconstructing a plausible sequence — the passage is built
+out of *"maybe"* — rather than a historian citing cases.
+
+**Also rejected here, and worth recording.** In the Moss transcript at roughly
+2876–2941 s he dates the earliest barbecue stands to "just on either side of 1900" and
+the permanent restaurants of Lexington, Lockhart and Owensboro to the early 20th
+century. That is beat 24's chronology with the *entire* claim removed: nothing about
+who, nothing about skill as capital, nothing about credit. Cutting it would produce
+precisely the failure beat 21 warns against, the history arriving as a date while the
+authorship is dropped. Not cut.
 
 ### Beat 25 — the style map as Black migration — **empty**
 
@@ -682,15 +814,34 @@ that if runtime is short, shorten 26–28 and keep 29. With 26 and 28 empty and 
 thin, that instruction resolves cleanly: **narrate 29 well and let it carry the
 region material on its own.** It is one of the beats most worth narrating.
 
-### Beat 30 — policy produced the invisibility — **empty**
+### Beat 30 — policy produced the invisibility — **thin**
 
-**Nothing**, and §5 predicted it, correctly noting the material lives in urban
-history rather than food podcasting.
+**Candidate, from SYSK (see §2b):** **2679.24 → 2764.20 (85.0 s)**. In on *"In
+Atlanta, we had a very famous restaurant here"*; out on *"But yeah, it's a Walmart."*
 
-**Chain hole, and it is the act's endpoint.** Without beat 30 the listener is left
-to invent an answer to the question the act has been building — if Black cooks
-authored this, why does the famous map not look like it — and Act V's revival has
-nothing specific to be a revival from.
+**Why it advances beat 30.** The beat's strong signal is a specific city, a specific
+road, a specific address, and this is one: Aleck's Barbecue Heaven in Atlanta, one of
+the headquarters for Martin Luther King Jr, taken by eminent domain and now a Walmart —
+with the coda that the shrine to King maintained inside the store was removed because
+it did not represent the brand the right way. A named Black barbecue business
+destroyed by a public taking, and the memory of it removed afterwards, which is beat
+30's mechanism and its archival pairing in one anecdote.
+
+**What is missing, and it is most of the beat.** Lending and insurance discrimination,
+the inability to capitalise or bequeath a business, the succession problem, and the
+interstate and urban-renewal clearances as a *pattern* across cities rather than one
+Atlanta case. The beat claims that the commercial invisibility of Black barbecue was
+*produced by law and public works*, and one eminent-domain story illustrates that
+claim without establishing it. §5 predicted this beat would be hard because the
+material lives in urban history rather than food podcasting, and that is still right —
+what turned up is an anecdote from a general-interest show, not the policy history.
+
+**Note for stage 4.** Immediately before this passage SYSK has the Jim Crow
+segregation of barbecue restaurants, which is also beat 30 material. It is not
+included because twenty seconds later the same passage says barbecue *"kind of
+transcends race and class"*, and a cut that runs into that line ships the harmony
+version beat 23 exists to reject. Cutting tightly around the segregation content
+alone is possible and would need care.
 
 ---
 
@@ -755,9 +906,22 @@ to California, and then all the way back to New York and into what we call grill
 today."* It is the first re-pricing with a documented mechanism, and it is the only
 strong beat in Act V.
 
-**What narration owes.** The beat's briquette detail — mill waste sold as a 1920s
-by-product — is named in the tape only as "Henry Ford and Kingsford charcoal came
-along", so the origin story itself is a narration line.
+**Second, from SYSK (see §2b):** **1139.28 → 1242.16 (102.9 s)**. In on *"And then in
+a man named Elsworth, his warrior, patented the charcoal briquette"*; out on *"I have a
+giant webber grill in my deck."* This closes the exact gap `#2941` leaves. Moss names
+"Henry Ford and Kingsford charcoal came along" and moves on; SYSK supplies the origin
+story the beat asks for — Kingsford was Henry Ford's cousin-in-law, Ford was looking for
+a use for the stumps and sawdust left over from making running boards and dashboards
+for the Model T, and so he began mass-producing briquettes — and then the 1950s Weber
+kettle, a metalworker attaching legs to half a spherical nautical buoy and using the
+other half as the lid. **Mill waste sold as a household product, which is beat 32's
+briquette detail, from the one readable source that has it.** It also lands a note
+against itself worth keeping: the hosts observe that the article they are reading may
+be underwritten by Weber, which is a small piece of evidence for the beat's own claim
+that the cookout was promoted into existence.
+
+**What narration still owes.** The suburban backyard as a new domestic room, and the
+advertising construction of the cookout as a ritual, are in neither cut.
 
 ### Beat 33 — gendered fire, inconsistent credit — **empty**
 
@@ -795,8 +959,8 @@ publishes no transcript. `data/transcript-availability.json` records 1,858 episo
 `<podcast:transcript>` tag, and only one of those is on plot: the Moss BBQ School
 episode already segmented here.
 
-**Chain hole.** §5 predicted beat 36 would be over-supplied. It is empty — see §5 of
-this report.
+**Chain hole.** §5 of the spine predicted beat 36 would be over-supplied. It is empty —
+see §7.
 
 ### Beat 37 — poverty food to luxury — **thin**
 
@@ -859,11 +1023,19 @@ No action.
 | Verdict | Beats | Which |
 |---|---|---|
 | **Strong** | **6** | 1, 4, 5, 14, 15, 32 |
-| **Thin** | **6** | 2, 6, 9, 23, 27, 37 |
-| **Empty** | **28** | 3, 7, 8, 10, 11, 12, 13, 16–22, 24–26, 28–31, 33–36, 38, 39, 40 |
+| **Thin** | **10** | 2, 6, 7, 9, 19, 23, 24, 27, 30, 37 |
+| **Empty** | **24** | 3, 8, 10, 11, 12, 13, 16, 17, 18, 20, 21, 22, 25, 26, 28, 29, 31, 33, 34, 35, 36, 38, 39, 40 |
 
-Beat 4's strong verdict depends on minting the proposed new cut. On the existing
-`#3315` alone it is thin, which would make the counts 5 / 7 / 28.
+Two caveats on those numbers, and both push the other way from each other.
+
+**Four of the ten thin verdicts — 7, 19, 24 and 30 — rest entirely on Stuff You Should
+Know**, which passes the relevance gate and fails the authority gate (§2b), and which
+cannot be played at all until the locate step exists. A founder who rules that register
+out returns those four beats to empty and the counts to **6 / 6 / 28**. A founder who
+rules it in gets four Act IV beats and one of them, 24, is close to strong.
+
+**Beat 4's strong verdict depends on minting the proposed new cut.** On the existing
+`#3315` alone it is thin, which would make the counts 5 / 11 / 24.
 
 ### Where the holes fall — chain versus fan
 
@@ -872,32 +1044,37 @@ This is the part of the report that matters most, and it inverts the spine's hop
 | Act | Structure | Strong | Thin | Empty |
 |---|---|---|---|---|
 | I (1–5) | chain | 3 | 1 | 1 |
-| II (6–7) | chain | 0 | 1 | 1 |
+| II (6–7) | chain | 0 | 2 | 0 |
 | III (8–15) | **fan** | 2 | 1 | 5 |
-| IV (16–30) | chain | **0** | 2 | **13** |
+| IV (16–30) | chain | **0** | 5 | **10** |
 | V (31–40) | chain | 1 | 1 | 8 |
 
-**Of the 28 empty beats, 23 are in chains and 5 are in the fan.** The spine
+**Of the 24 empty beats, 19 are in chains and 5 are in the fan.** The spine
 established that a fan break reads as a change of subject and a chain break reads as
 a hole, and concluded that Act III is the safest place to come back thin and Act IV
 the most dangerous. Both halves of that are now measured, and the news is bad in the
 predicted direction:
 
 - **Act IV is a fifteen-beat chain with no strong tape at all**, 36.5 % of the
-  spine's runtime, and its four authorship beats — 20, 21, 22, 30, the 12 % the spine
-  calls the honest weight — are empty simultaneously. As a listening experience this
-  is not thirteen small holes; it is one hole where the act was.
+  spine's runtime. Its four authorship beats — 20, 21, 22, 30, the 12 % the spine calls
+  the honest weight — are three empty and one thin, and the thin one is a single Atlanta
+  anecdote from a show with no sourced expertise. As a listening experience this is not
+  ten small holes; it is one hole where the act was, with a few planks laid across it.
+  **Beats 21 and 22, which the spine calls load-bearing, have nothing at all.**
 - **Act V is a ten-beat chain with one strong beat**, and the empty beats include
   its hinge (31) and its peak (38).
 - **Act III's five empty beats are the least of the problem**, exactly as designed,
-  and they divide by the three tiers in §2a rather than being one kind of hole. Only
-  **13 (braai)** is unsourceable outright, and the negative there is unusually clean.
-  **11 (yakitori)** and **12 (Korea)** are empty under the English-only ruling, which
-  is decided, so they are permanent narration beats. **10 (tandoor)** and **beat 9's
-  mangal root** are identified-but-not-playable: tandoor has two candidates unlocked
-  by ADR-0008 and awaiting probes and ASR, and the mangal root has one candidate that
-  fails this beat's content gate. Nothing in Act III can be closed by searching
-  harder; two of the five could be closed by measuring and transcribing.
+  and they divide by the tiers in §2a rather than being one kind of hole. **13 (braai)**
+  is unsourceable outright and the negative there is unusually clean. **11 (yakitori)**
+  and **12 (Korea)** are empty under the English-only ruling, which is decided, so they
+  are permanent narration beats. **10 (tandoor)** is identified-but-not-playable, with
+  two candidates unlocked by ADR-0008 and awaiting probes and ASR. **8 (the steppe)** is
+  the one Act III beat never resolved either way: no source has been found and none has
+  been proven absent the way braai was, so it sits closest to plain unsourced. Of the
+  five, **only beat 10 could be closed by measuring and transcribing.** Beat 9's mangal
+  root is a sixth Act III hole, inside a thin beat, and it is a different case again — a
+  candidate exists and fails the *content* gate, which neither ad measurement nor ASR
+  fixes.
 - **Act I holds up**, which matches the founder's field report that the content
   started good. Three of its five beats are strong and its one empty beat (3) is
   narratable.
@@ -908,27 +1085,40 @@ predicted direction:
 |---|---|---|
 | 1 | `origin-stories-cooking-human#147` + `#678` | 239 |
 | 4 | proposed `bbqc-moss-school` 3106.36 → 3215.23 | 109 |
-| 5 | `bbqrn-argentina-open-fire#1437` | 79 |
+| 5 | `bbqrn-argentina-open-fire#1437` + proposed SYSK 1313.12 → 1358.12 | 124 |
 | 14 | `bbqrn-argentina-open-fire#1205` + `#700` | 277 |
 | 15 | `moreish-jerk-jamaica#266` + `#555` | 322 |
-| 32 | `bbqc-moss-school#2941` | 127 |
-| | **9 segments** | **1,153 s — 19.2 min** |
+| 32 | `bbqc-moss-school#2941` + proposed SYSK 1139.28 → 1242.16 | 230 |
+| | **11 segments** | **1,301 s — 21.7 min** |
 
-**Nineteen minutes of tape, honestly on plot, across 6 of 40 beats.** Admitting the
-thin beats' partial cuts underneath narration adds `#2572` (151 s) and `#2779` (98 s)
-and, if the satay passage is minted, 80 s — **about 24.7 min across 12 segments**.
-Neither figure is a runtime for the Foray: the other 28 beats are narration, and
+**Twenty-two minutes of tape, honestly on plot, across 6 of 40 beats.** Three of those
+eleven segments do not exist yet and have to be minted, and one of the three cannot be
+played until the locate step exists. **Stripped back to segments that exist in the pool
+today and play today, the strong beats are 9 segments and 1,153 s — 19.2 minutes.**
+That is the number to quote if only one number is quoted.
+
+Admitting every thin beat's partial cut underneath narration adds `#2572` (151 s),
+`#2779` (98 s), the satay passage (80 s) and the five SYSK thin cuts (138 + 61 + 78 +
+85 + 36 s) for **about 33.8 min across 19 segments** — the ceiling on what tape could
+carry, if the founder admits both the SYSK register and the thin tier, and neither
+should be assumed.
+
+None of these is a runtime for the Foray: 24 beats are narration either way, and
 narration length is stage 4's to estimate.
 
-The cut budget is not a constraint at this size, which is worth stating because §4a
-of the spine is written on the assumption that it would be. At a runtime under 45
-minutes `d1Budget()` allows **8** starts per rolling 600 s, and twelve segments
-across roughly 25 minutes averages about 4.8. D3's mean of ≥ 90 s passes
-comfortably — 128 s on the strong beats alone, 124 s with the thin cuts added — and
-D5's whole-Foray IQR of ≥ 45 s passes at about 63 s on the strong nine. **The spine
-was sized for a scarcity of runtime and what it met was a scarcity of tape.**
+The cut budget is not a constraint at any of these sizes, which is worth stating
+because §4a of the spine is written on the assumption that it would be. At a runtime
+under 45 minutes `d1Budget()` allows **8** starts per rolling 600 s; nineteen segments
+across 33.8 minutes averages 5.6, and eleven across 21.7 minutes averages 5.1. D3's
+mean of ≥ 90 s passes in every configuration — 128 s on the nine that exist today, 118
+s on the strong eleven, 107 s on all nineteen — and D5's whole-Foray IQR of ≥ 45 s
+passes at about 63 s on the strong nine. **The spine was sized for a scarcity of
+runtime and what it met was a scarcity of tape.**
 
 ### The 32 existing segments, scored
+
+This table scores only the segments already in `data/segments.json`; the proposed new
+cuts from `bbqc-moss-school` and SYSK are not pool segments yet and are excluded.
 
 | Outcome | Count | Segments |
 |---|---|---|
@@ -1002,6 +1192,12 @@ is eleven. Two were inverted:
 **Over-supply predictions: 1 of 5 correct.** §5 named beats 3, 26, 36, 37 and 1 as
 the places the Foray would bloat if anyone let it. **Beat 1 is over-supplied and was
 capped at two segments. Beats 3, 26 and 36 are empty and beat 37 is thin.**
+
+**One prediction worth singling out as wrong in the useful direction.** §5 ranked beat
+5 eighth-hardest on the reasoning that no tape would state the fuel rule. Two
+independent sources state it — a practitioner from inside one tradition
+(`bbqrn#1437`) and a general-interest show across traditions (the SYSK cut) — and beat
+5 is the only beat in the report where narration ends up owing nothing.
 
 This is the single most useful thing the predictions revealed, and it changes what
 stage 4 should be defending against. The spine reasoned from what English-language
@@ -1085,22 +1281,33 @@ Not decisions — this report does not own them. Ordered by how many beats each 
    English-only ruling now makes unusable, which is itself a reason to re-sort. The
    ranking was built against the six old arc slots, and the spine's 40 beats are a
    different instrument.
-3. **Transcribe `The Moreish Podcast — Caribbean Food History with Dr. Candice
+3. **Read the two Act IV transcripts that may already exist, before buying any ASR.**
+   Proof is recorded in ADR-0008 as carrying a transcript, and SYSK demonstrably ships
+   one — reading SYSK is what produced §2b and four verdict changes for the cost of one
+   fetch. `A Taste of the Past` should be checked the same way. This is the cheapest
+   action in the list and it comes before items 1 and 2 on cost, if not on expected
+   value.
+4. **Transcribe `The Moreish Podcast — Caribbean Food History with Dr. Candice
    Goucher` (3,466 s, English, priority 2).** Best unread candidate for beat 20, and
    likely useful to beats 2 and 15.
-4. **Probe Gastropod's "The Birth of Cool" and transcribe it.** Gastropod is already
+5. **Probe Gastropod's "The Birth of Cool" and transcribe it.** Gastropod is already
    PADDABLE on two measured probes, so beat 31 — an Act V chain hinge — is closer to
    filled than any other empty beat. ADR-0008's outstanding caveat applies: sample a
    different requester's copy before relying on the pad.
-5. **Re-transcribe `bbqrn-argentina-open-fire` and `origin-stories-cooking-human`.**
+6. **Re-transcribe `bbqrn-argentina-open-fire` and `origin-stories-cooking-human`.**
    Their local ASR is gone, they are the two episodes whose existing cuts already
    carry strong beats, and beat 14 is demonstrably under-cut — the asador as a social
    office is the thing beat 21's contrast needs and no existing cut contains it.
-6. **Mint the beat 4 cut** specified in §3, through `merge-segments.mjs` with the
+7. **Mint the beat 4 cut** specified in §3, through `merge-segments.mjs` with the
    published SRT as the transcript body, so the pool's anchor conventions stay
    consistent.
-7. **Decide the three §8 questions** before stage 4 writes narration, because two of
+8. **Decide the three §8 questions** before stage 4 writes narration, because two of
    them change what the narration says.
+9. **Rule on the SYSK register (§2b).** It is the only decision in this list that
+   changes the verdict counts rather than the odds of improving them: in it, four Act IV
+   beats are thin; out, they are empty and four more narration scripts are needed. It is
+   also the decision most likely to recur, because general-interest shows with
+   transcripts are abundant and food-history shows with transcripts are not.
 
 **Not recommended: broadening the sourcing again to close Act IV.** The 4.71M-feed
 pass has been run and its answers are recorded, and the temptation to widen the net
