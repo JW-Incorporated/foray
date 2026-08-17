@@ -378,6 +378,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
   measurement showing a hidden-page load completing inside a lead a real segment
   can afford — not a second inference from the timer numbers. The machinery and
   its 44 tests stay, exercised behind `prefetch: true`, for whoever does that.
+- **Heads-up for the #220 probe: it now measures the SHIPPED default, which is
+  one element.** `tools/mobile/probe/probe-seam.js` constructs
+  `new HtmlAudioBackend({ element, telemetry })`, so from this PR on it exercises
+  the pre-handover path — which is what you want for a baseline, and is why the
+  next `ios-build` run should report a ~9-11 s seam again rather than a drop. To
+  re-measure the handover itself, that line needs `prefetch: true`, and the probe
+  should then log `canPrefetch` so a run cannot be misread as testing something it
+  did not.
 - **THE FOLLOW-UP, authorised and separate: make `LOAD_SETTLE_TIMEOUT_MS`
   visibility-aware.** A hidden load is **structurally ~11 s on a small LOCAL
   bundled file** against a 10,000 ms deadline, so **dropped segments at seams
