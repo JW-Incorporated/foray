@@ -65,7 +65,8 @@
         tagDF=1/corpusDF=0.00102 -- it was always the hand-removed,
         one-tangential-mention case the next clause describes, and pretending
         it was strictly zero is what made "no NBA content in catalog" look
-        true enough to assert in §3 for a month.
+        true enough to assert in §3 for the three weeks between 040c9f6
+        (2026-07-24) and the refresh that broke it (24 days).
 
    Usage: node tools/test-search.mjs
    Exit code 0 = all pass, 1 = at least one failure (readable report to stdout). */
@@ -290,19 +291,21 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
    league. This is the half with teeth, and the half the old guard was really
    protecting. Verified by reproduction, not by argument: re-adding
    `nba`/`basketball` to the `sports` concept in data/semantic-index.json
-   recreates the pre-cleanup flood, and this check fails loudly on it, naming
-   "The Fascist World Cup: Mussolini's Football Dictatorship", "Can the LA
-   Olympics in 2028 be a catalyst for clean energy" and six more sports-
-   science items. Ungated on purpose: it is trivially true when nothing comes
-   back, so it costs nothing in the empty world, and an ungated check cannot
-   be switched off by a gate that guesses wrong.
+   recreates the pre-cleanup flood, and this check fails loudly on it -- 9
+   off-topic picks of 10 on main's pool, 8 of 10 on the 2026-08-17 refresh's,
+   and they are not all sports science either: "The Fascist World Cup:
+   Mussolini's Football Dictatorship", "Can the LA Olympics in 2028 be a
+   catalyst for clean energy", "The Non-BS Science of Manifestation". Ungated
+   on purpose: it is trivially true when nothing comes back, so it costs
+   nothing in the empty world, and an ungated check cannot be switched off by
+   a gate that guesses wrong.
 
    HONEST EMPTY, gated on coverage counted from the catalog: below
    classifyResults' two-strong floor the honest answer is nothing at all.
    Gated rather than pinned to a tier, because a pinned tier is exactly what
-   broke -- three times in three weeks, twice as a pinned tier ("how bbq
-   works" 2026-07-30, "plane crashes" 2026-08-06) and once as a pinned pick
-   count (bbq again, 2026-07-29 -- see §4). The nightly grows the catalog by
+   broke -- three times in nine days, twice as a pinned tier ("how bbq works"
+   2026-07-30, "plane crashes" 2026-08-06) and once as a pinned pick count
+   (bbq again, 2026-07-29 -- see §4). The nightly grows the catalog by
    design. Assert the behaviour, never the count.
 
    THERE IS DELIBERATELY NO RECALL ASSERTION -- no "2 items name the league,
@@ -326,29 +329,74 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
    catch. */
 {
   const needle = "nba";
-  /* Hook-inclusive on purpose, and this is the one place in the file that
-     needs to be. itemHas() reads tags/title/show/topics but NOT the hook (§2),
-     while scoreMatch() scores hitText(hook, t) at 1.5 x 1.35 = 2.025 -- enough
-     to clear minScore alone. So a hook-only mention is invisible to a coverage
-     count built on itemHas and fully visible to the ranker, and the catalogue
-     already holds an item in exactly that shape (the Gary Gulman episode names
-     basketball only in its hook). A gate blind to hooks would assert
-     honest-empty against a query that legitimately returned picks -- the same
-     false red this whole case exists to stop. Word-boundary rather than
-     `includes`, to stay no looser than the ranker's own short-term path: `nba`
-     must not match inside `NBAA`. Widening the shared itemHas() instead would
-     loosen every §1/§2 on-topic check in the file, which is a separate
-     decision with a 51-needle blast radius. */
+  /* SELF-CONTAINED, and it has to be. This started as
+     `itemHas(i, needle) || nbaWord.test(hook)`, which was wrong in a way worth
+     recording: the word boundary guarded the hook clause and NOTHING else,
+     because itemHas() matches tags/title/show/topics by bare substring -- and
+     those are the fields that dominate the count. So the predicate over-counted,
+     and over-counting is the dangerous direction: it switches the gate OFF.
+     One plausible refresh does it. A Flight Safety Detectives episode titled
+     "NBAA Business Aviation Convention" -- NBAA is the National Business
+     Aviation Association, that show is ALREADY in the catalog (it is the one §2
+     credits for the plane-crashes flip), and `"nbaa".includes("nba")` is true --
+     takes `covered` 1 -> 2, deactivates the honest-empty claim, leaves purity
+     vacuous at 0 picks, and the battery then asserts NOTHING about "nba" while
+     staying green. Not a contrived mutation; one nightly away.
+     So it mirrors hitTag/hitText's `length < 4` branches itself rather than
+     borrowing half of one: tags by exact-or-hyphen-segment, prose by word
+     boundary. It also reads `hook`, which itemHas() does not (§2) but
+     scoreMatch() scores at 1.5 x 1.35 = 2.025 -- a hook-only mention would
+     otherwise be invisible to the count and fully visible to the ranker, and the
+     catalog already holds an item in that shape (the Gary Gulman episode names
+     basketball only in its hook). Widening the shared itemHas() instead would
+     loosen every §1/§2 on-topic check, a separate decision with a 51-needle
+     blast radius.
+     COLLAPSE THIS INTO THE SHARED MATCHER once search-engine.js exports
+     hitText/hitTag (PR #211 does exactly that, and is waiting only on a label).
+     The duplication is the price of not exporting them, and it should be paid
+     back, not kept. */
   const nbaWord = new RegExp("\\b" + needle + "\\b");
+  const taggedLeague = (i) => {
+    const tags = itemTags.tags?.[i.id] || [];
+    return tags.some((t) => t === needle || t.split("-").includes(needle));
+  };
   const namesLeague = (i) =>
-    itemHas(i, needle) || nbaWord.test((i.hook || "").toLowerCase());
+    taggedLeague(i) ||
+    nbaWord.test([i.title, i.show, i.hook, (i.topics || []).join(" ")].join(" ").toLowerCase());
 
   const covered = pool.filter(namesLeague).length;
-  const { status, picks } = search(needle);
+  const { status, picks, results } = search(needle);
 
   const offTopic = picks.filter((p) => !namesLeague(p.i));
   check(`"nba" returns only items that name the league`, offTopic.length === 0,
     `got status=${status}, picks=${picks.length}; off-topic: ${offTopic.map((p) => `${p.i.id} "${p.i.title}"`).join(", ")}`);
+
+  /* RETRIEVAL, asserted on the RAW `results` array rather than on `picks`, and
+     that distinction is the whole reason this can exist at all. `results` is
+     what searchWithRelaxation returns: gated on the primary token and
+     `sum > minScore`, sorted, untruncated, and computed BEFORE classifyResults
+     derives its relative `bar`. So this structurally cannot reproduce the
+     landmine that got the old recall assertion deleted -- no relative bar is
+     involved, and an item's presence here does not depend on how well any OTHER
+     item scored.
+     Restricted to STRONG-signal items, which is a claim about scoreMatch's own
+     weights: a tag hit is 2.5 x 1.35 = 3.375, topics 3 -> 4.05, title 2 -> 2.7,
+     all comfortably past minScore 2. Deliberately excluded: show-only (1.0,
+     which never clears the 1.2 per-group threshold, so it is not retrievable by
+     design) and hook-only (1.5 -> 2.025, which clears minScore by 1.25% and
+     would become a false red the day that constant moves).
+     Honest about its own reach: the suite catches the flood mutation below by
+     other means too, so this is not the only net. But when `covered` is wrong
+     and purity is vacuous -- the NBAA scenario above -- it is the only thing
+     left asserting anything about this query. */
+  const stronglySignalled = pool.filter((i) =>
+    taggedLeague(i) ||
+    nbaWord.test(i.title.toLowerCase()) ||
+    nbaWord.test((i.topics || []).join(" ").toLowerCase()));
+  const unretrieved = stronglySignalled.filter((i) => !results.some((r) => r.i.id === i.id));
+  check(`"nba" retrieves all ${stronglySignalled.length} item(s) carrying a strong signal (tag/title/topics)`,
+    unretrieved.length === 0,
+    `never reached the result set: ${unretrieved.map((i) => `${i.id} "${i.title}"`).join(", ")} -- these clear minScore on one field alone, so a miss is a scoring or gating regression, not a tiering choice`);
 
   if (covered < 2) {
     check(`"nba" is honestly empty (only ${covered} catalog item(s) name the league, below the two-strong floor)`,
