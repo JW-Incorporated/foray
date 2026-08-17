@@ -919,3 +919,230 @@ address. Reject: generalised decline narratives, and anything that attributes th
 change to consumer preference without evidence.
 
 **Share.** 2.5 % (~3.75 min).
+
+---
+
+### Act V — The re-pricing (chain, 21 %)
+
+1945 to now, and the act has a single argument running under it: **the same
+labour gets repriced four times.** It becomes suburban leisure, then competitive
+sport, then chef prestige, then a contested inheritance. Nothing about the
+technique changes much. What changes is what the hours are worth and who is paid
+for them.
+
+That framing is what stops this act from being a run of "and then this happened."
+Every beat should be audibly an answer to *what is the work worth now, and to
+whom.*
+
+#### 30. Postwar backyard grilling was a manufactured ritual, sold with the house
+
+**Claim.** The American cookout as we know it is a product of the postwar suburban
+boom — a new kind of outdoor domestic space, a cheap purpose-built appliance, and
+mass-marketed briquettes made from industrial wood waste — promoted into existence
+by advertising and magazines within about a decade, which is also when American
+speech split the leisure activity from the slow-cooked food and gave both the same
+name.
+
+**Why it belongs.** It is the first re-pricing, and the biggest single change in
+who does fire cooking: within a generation, the overnight labour of Act IV had a
+suburban counterpart that was a *hobby*. It also explains most listeners' own
+relationship to the subject, which is worth giving them explicitly rather than
+leaving as an unexamined assumption running under the whole Foray.
+
+**Evidence that counts.** A historian of postwar America or of consumer culture
+on: suburban housing and the backyard as a new room, the design and marketing of
+the kettle grill, the origin of briquettes as a use for mill waste and how they
+were sold, and the advertising construction of the cookout as a ritual. Strong
+signal: someone dating the shift and attributing it to marketing rather than to
+organic tradition. Reject: nostalgia pieces, and grill-gear history with no
+social argument.
+
+**Share.** 3 % (~4.5 min).
+
+#### 31. Fire cooking is gendered almost everywhere, and the assignments do not agree with each other
+
+**Claim.** The prestigious fire role is coded male across a striking range of
+unconnected traditions — the asador, the braai master, the competition and
+restaurant pitmaster, the suburban father at the grill — while the same work done
+without status is frequently women's, including in the Black barbecue businesses
+where women ran pits, kitchens and books largely without being called pitmasters,
+so what generalises is not a division of labour but a division of *credit*.
+
+**Why it belongs.** It is a cross-cutting beat that pays off Act III and Act IV
+at once, and it is the second answer to the through-line's central question: not
+only who tends the fire, but who gets called the person who tends the fire. Cut
+it and the Foray's authorship argument is available only in a racial register when
+it clearly operates in a gendered one too — which a well-read listener will notice
+as an omission.
+
+**Evidence that counts.** A historian, anthropologist or journalist making the
+comparative claim, or making the specific one: women in Black barbecue
+businesses and how they were credited, the gendering of the postwar grill in
+advertising, or the male social office of the asador or braai master examined as an
+office rather than described as a custom. Comparative tape is ideal and probably
+scarce; single-tradition tape that examines the *credit* rather than reporting the
+custom serves the beat. Reject: "grilling is a guy thing" colour.
+
+**Share.** 2 % (~3 min).
+
+#### 32. The gas grill is what finally separated grilling from barbecue, and the argument about the word is downstream of an appliance
+
+**Claim.** Piped and bottled-gas grills turned outdoor cooking into a weeknight
+convenience with no fire to build and nothing to tend, and as they became the
+majority appliance they left "barbecue" to mean the slow, wood-fired, effortful
+thing — so the definitional dispute in beat 4 has a specific and recent
+technological cause in American life.
+
+**Why it belongs.** It closes the loop on beat 4 with a mechanism, which is much
+better than leaving the word confusion as a curiosity. It is also the beat that
+sets up beat 37's automation question by establishing the precedent: this is the
+first time a technology removed the tending, and the culture responded by
+redefining the word rather than by accepting the appliance.
+
+**Evidence that counts.** Someone on the arrival and market takeover of gas
+grills, with dates and ideally with share figures, and on the consequence for
+usage and for what people cook outdoors on a weekday. Strong signal: an explicit
+link from the appliance to the vocabulary. Reject: charcoal-versus-gas flavour
+advocacy, which is a different and much less interesting argument.
+
+**Share.** 2 % (~3 min).
+
+#### 33. Commodification moved barbecue's identity from smoke to sauce, because sauce is the part that fits in a jar
+
+**Claim.** Regional barbecue became a national retail category through bottled
+sauce and chain restaurants, and since smoke and time cannot be packaged while
+sauce can, the marketable signifier of a style became its condiment — which is
+why Americans now identify regions by sauce, and why the flavour that once came
+from wood and hours arrives for most people from a shelf.
+
+**Why it belongs.** It is the beat that explains the gap between what barbecue is
+in Acts I–IV and what most listeners have eaten, and it makes beat 28's economic
+argument run forward as well as backward: the map was made by supply, then sold
+back as identity. It also does necessary work for beat 36, because a commodified
+tradition is easier to detach from its authors.
+
+**Evidence that counts.** A food historian or business journalist on: the
+emergence of bottled barbecue sauce as a supermarket category, a named sauce brand
+and its sale into a large food company, the barbecue chain-restaurant era, and the
+argument that packaging selects for the packageable. Strong signal: an explicit
+statement that sauce became the identity because smoke could not travel. Reject:
+sauce tasting and brand comparison.
+
+**Share.** 2 % (~3 min).
+
+#### 34. Competition professionalised the technique and standardised the flavour toward something nobody actually eats
+
+**Claim.** The organised barbecue circuit that grew from the late 1970s created a
+shared body of technique, vocabulary and equipment and a route to a professional
+reputation without a restaurant — and because it is judged on a single bite scored
+for appearance, taste and tenderness, it selected for a sweeter, softer, more
+uniform product optimised for one mouthful, which then flowed back into
+restaurants and home cooking as "how barbecue should taste."
+
+**Why it belongs.** It is the second re-pricing — the labour becomes sport — and
+it is the only beat that explains why modern American barbecue tastes the way it
+does across places with different histories. It is also a genuinely
+counterintuitive claim, in that the institution that raised the technical floor
+also narrowed the range, and the Foray is better for making it rather than
+treating competition as harmless colour.
+
+**Evidence that counts.** A competitor, judge or writer on: the founding of the
+major sanctioning bodies and the flagship contests, the mechanics of the box and
+the scoring criteria, the specific ways competition style diverges from restaurant
+style, and the feedback into commercial and home practice. Strong signal: someone
+naming the one-bite artefact as an artefact. Reject: contest-day narrative with no
+argument, and rub-and-injection technique content.
+
+**Share.** 3 % (~4.5 min).
+
+#### 35. Within about fifteen years barbecue inverted from poverty food to luxury, and the price of brisket is the measurement
+
+**Claim.** In the late 2000s and 2010s American barbecue acquired the apparatus of
+fine dining — dedicated critics, national awards, hours-long queues, destination
+travel — and its emblem became a cut that was chosen in the first place because it
+was cheap and difficult, so the inversion can be read directly off what brisket
+costs now against what it cost when the tradition adopted it.
+
+**Why it belongs.** Third re-pricing, and the sharpest single irony in the Foray:
+Act I established barbecue as a technology for making cheap protein worth eating,
+and here it becomes a reason to stand in line for four hours. That is the arc
+closing, and a listener who has been paying attention will feel it. Cut it and Act
+V has no peak.
+
+**Evidence that counts.** A critic, journalist or chef on: the emergence of
+barbecue criticism as a beat, a specific restaurant whose queue became the story,
+national awards arriving in the category, brisket's price history and what changed
+it, and the international spread of the Central Texas format. Strong signal:
+someone stating the cheap-to-expensive inversion outright. Reject: restaurant
+worship, and technique interviews with no economics.
+
+**Share.** 3 % (~4.5 min).
+
+#### 36. The craft revival is an argument about authorship, and it has not concluded
+
+**Claim.** The same period that made barbecue prestigious also produced a
+sustained and public argument about who is credited for it — restoring Black
+pitmasters to the centre of the story through major awards, scholarship and
+reissued histories, while contesting the pattern in which a technique with Black
+authors becomes a white-owned prestige product — and that argument is live rather
+than settled.
+
+**Why it belongs.** It is the fourth re-pricing and the beat that makes the whole
+Foray current rather than antiquarian: everything beats 20, 21 and 29 established
+is being actively litigated in restaurants, prizes and print now. It is also the
+Foray's structural answer to itself — the erasure was described, and this is the
+correction being attempted, with the honest note that it is incomplete.
+
+**Evidence that counts.** A historian, writer or pitmaster on: the recent
+restoration of Black barbecue to the centre of the American story, named
+practitioners receiving major recognition and what that changed, the scholarship
+that reopened the record, and directly on the contested questions — who is called
+a pitmaster, whose tradition it is said to be, who profits. Strong signal: a
+speaker who states the argument as unresolved. Reject: a single sentence of credit
+inside a segment about something else, which is the exact failure this beat exists
+to correct.
+
+**Share.** 3.5 % (~5.25 min).
+
+#### 37. Thermostatic cookers are a real challenge to what barbecue means, not merely a convenience
+
+**Claim.** Pellet and thermostatically controlled cookers hold temperature and
+feed fuel without a person present, which removes the vigil that this Foray has
+argued was the source of barbecue's meaning — so the question of whether a
+machine-tended fire still counts is a substantive one; and it is being asked at
+exactly the moment the opposite instinct is booming, with live-fire cooking
+becoming a global fine-dining language.
+
+**Why it belongs.** It is the beat that turns the through-line back on the
+listener's own equipment and makes the argument testable rather than historical.
+The pairing is deliberate: automation and live-fire revivalism are simultaneous and
+contradictory, and holding both is more honest than picking the tidy trend. Cut it
+and the Foray ends in the past.
+
+**Evidence that counts.** Someone taking a position on automation with reasoning —
+a pitmaster, an engineer or a critic on what thermostatic control does and does not
+replace, and whether attention is part of the definition. Also strong: the global
+live-fire restaurant movement discussed as a movement, with named practitioners or
+regions. Reject: cooker product comparison.
+
+**Share.** 1.5 % (~2.25 min).
+
+#### 38. Coda: the invariants
+
+**Claim.** Across every tradition in this Foray the constants are four — long
+time, smoke, more meat than one household can eat, and a crowd — and the only one
+no appliance or fuel or market has managed to remove is that somebody has to stay
+with the fire.
+
+**Why it belongs.** The listener has been given a chain, a fan and a set of
+arguments, and the coda is where the through-line is restated as something they now
+have the evidence for rather than as a promise made at the start. It is also the
+right place to acknowledge what the Foray left out. Keep it short: this is a
+landing, not a summary.
+
+**Evidence that counts.** Almost certainly narration, and that is fine — a coda in
+someone else's words is usually worse. If tape is used, the only kind that serves
+is a practitioner or historian articulating the constant across traditions rather
+than within one.
+
+**Share.** 1 % (~1.5 min).
