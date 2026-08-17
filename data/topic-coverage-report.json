@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-07-28T20:41:30.409Z",
+  "built_at": "2026-08-17T07:58:19.003Z",
   "provenance": {
     "produced_by": "topic-coverage-report.mjs",
     "method": "deterministic cross-reference (mirrors app.js query matching); no LLM",
@@ -18,22 +18,21 @@
     "topics_evaluated": 155,
     "by_priority": {
       "1": 2,
-      "2": 47,
-      "3": 27,
-      "4": 24,
-      "6": 55
+      "2": 46,
+      "3": 28,
+      "4": 5,
+      "5": 5,
+      "6": 69
     },
     "by_semantic_status": {
-      "covered": 82,
-      "missing": 33,
-      "misrouted": 27,
-      "no-node": 13
+      "covered": 80,
+      "missing": 37,
+      "misrouted": 38
     },
     "by_content_depth": {
-      "deep": 59,
-      "thin": 47,
-      "absent": 36,
-      "no-node": 13
+      "deep": 71,
+      "absent": 50,
+      "thin": 34
     },
     "concept_misroutes_found": 1
   },
@@ -45,15 +44,15 @@
       "taxonomy_nodes": [
         "true-crime"
       ],
-      "catalog_count": 45,
-      "tag_count": 52,
-      "text_hits": 43,
+      "catalog_count": 68,
+      "tag_count": 91,
+      "text_hits": 66,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "true-crime"
       ],
-      "breadth_supply": 214,
+      "breadth_supply": 326,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -65,17 +64,18 @@
       "label": "Unsolved mysteries & cold cases",
       "tier": 2,
       "taxonomy_nodes": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
-      "catalog_count": 45,
-      "tag_count": 25,
-      "text_hits": 35,
+      "catalog_count": 68,
+      "tag_count": 36,
+      "text_hits": 59,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "true-crime"
       ],
-      "breadth_supply": 214,
+      "breadth_supply": 326,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -89,101 +89,15 @@
       "taxonomy_nodes": [
         "comedy"
       ],
-      "catalog_count": 110,
-      "tag_count": 114,
-      "text_hits": 19,
+      "catalog_count": 163,
+      "tag_count": 161,
+      "text_hits": 28,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "comedy"
       ],
-      "breadth_supply": 913,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "society-culture",
-      "label": "Society & culture",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "society"
-      ],
-      "catalog_count": 56,
-      "tag_count": 32,
-      "text_hits": 12,
-      "content_depth": "deep",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 605,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix"
-      ],
-      "priority": 1
-    },
-    {
-      "id": "serial-killers",
-      "label": "Serial killers",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "true-crime"
-      ],
-      "catalog_count": 45,
-      "tag_count": 11,
-      "text_hits": 8,
-      "content_depth": "deep",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 214,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "comedy-interviews-hangs",
-      "label": "Comedy interviews & hangs",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "comedy/interviews",
-        "comedy/casual-hangs"
-      ],
-      "catalog_count": 104,
-      "tag_count": 119,
-      "text_hits": 73,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "comedy",
-        "celebrities"
-      ],
-      "breadth_supply": 395,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "sports",
-      "label": "Sports",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "sports"
-      ],
-      "catalog_count": 24,
-      "tag_count": 37,
-      "text_hits": 16,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "sports"
-      ],
-      "breadth_supply": 2924,
+      "breadth_supply": 1273,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -197,15 +111,15 @@
       "taxonomy_nodes": [
         "music"
       ],
-      "catalog_count": 41,
-      "tag_count": 71,
-      "text_hits": 29,
+      "catalog_count": 50,
+      "tag_count": 89,
+      "text_hits": 36,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "music"
       ],
-      "breadth_supply": 704,
+      "breadth_supply": 890,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -213,86 +127,22 @@
       "priority": 6
     },
     {
-      "id": "cults",
-      "label": "Cults",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "true-crime"
-      ],
-      "catalog_count": 45,
-      "tag_count": 67,
-      "text_hits": 13,
-      "content_depth": "deep",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "storytelling -> [history/military-ancient, history/technology]"
-      ],
-      "breadth_supply": 214,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "wrongful-convictions-forensics",
-      "label": "Wrongful convictions & forensics",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "true-crime"
-      ],
-      "catalog_count": 45,
-      "tag_count": 14,
-      "text_hits": 5,
-      "content_depth": "deep",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 214,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "financial-fraud-scams",
-      "label": "Financial fraud & scams",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "true-crime"
-      ],
-      "catalog_count": 45,
-      "tag_count": 0,
-      "text_hits": 2,
-      "content_depth": "deep",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 214,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "stand-up-comedy",
-      "label": "Stand-up comedy",
+      "id": "serial-killers",
+      "label": "Serial killers",
       "tier": 2,
       "taxonomy_nodes": [
-        "comedy/stand-up"
+        "true-crime"
       ],
-      "catalog_count": 12,
-      "tag_count": 116,
-      "text_hits": 55,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "comedy"
-      ],
-      "breadth_supply": 200,
+      "catalog_count": 68,
+      "tag_count": 12,
+      "text_hits": 10,
+      "content_depth": "deep",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 326,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "promote-from-breadth"
+        "semantic-concept-fix"
       ],
       "priority": 2
     },
@@ -304,12 +154,12 @@
         "news"
       ],
       "catalog_count": 0,
-      "tag_count": 6,
-      "text_hits": 13,
+      "tag_count": 9,
+      "text_hits": 26,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 1210,
+      "breadth_supply": 1807,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -324,15 +174,213 @@
         "news/politics"
       ],
       "catalog_count": 0,
-      "tag_count": 40,
-      "text_hits": 17,
+      "tag_count": 55,
+      "text_hits": 23,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 210,
+      "breadth_supply": 513,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "society-culture",
+      "label": "Society & culture",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "society"
+      ],
+      "catalog_count": 76,
+      "tag_count": 64,
+      "text_hits": 17,
+      "content_depth": "deep",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 823,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix"
+      ],
+      "priority": 1
+    },
+    {
+      "id": "stand-up-comedy",
+      "label": "Stand-up comedy",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "comedy/stand-up"
+      ],
+      "catalog_count": 18,
+      "tag_count": 163,
+      "text_hits": 79,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "comedy"
+      ],
+      "breadth_supply": 160,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "comedy-interviews-hangs",
+      "label": "Comedy interviews & hangs",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "comedy/interviews",
+        "comedy/casual-hangs"
+      ],
+      "catalog_count": 153,
+      "tag_count": 177,
+      "text_hits": 98,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "comedy",
+        "celebrities"
+      ],
+      "breadth_supply": 710,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "relationships",
+      "label": "Relationships",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "relationships"
+      ],
+      "catalog_count": 37,
+      "tag_count": 42,
+      "text_hits": 17,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "relationships"
+      ],
+      "breadth_supply": 451,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "philosophy-big-ideas",
+      "label": "Philosophy & big ideas",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "philosophy",
+        "philosophy/ideas"
+      ],
+      "catalog_count": 26,
+      "tag_count": 46,
+      "text_hits": 69,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "philosophy"
+      ],
+      "breadth_supply": 628,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "sports",
+      "label": "Sports",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "sports"
+      ],
+      "catalog_count": 38,
+      "tag_count": 56,
+      "text_hits": 20,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "sports"
+      ],
+      "breadth_supply": 3142,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "cults",
+      "label": "Cults",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "true-crime/fraud-cults",
+        "true-crime"
+      ],
+      "catalog_count": 68,
+      "tag_count": 93,
+      "text_hits": 21,
+      "content_depth": "deep",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "storytelling -> [history/military-ancient, history/technology]"
+      ],
+      "breadth_supply": 326,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "wrongful-convictions-forensics",
+      "label": "Wrongful convictions & forensics",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "true-crime/justice-forensics",
+        "true-crime"
+      ],
+      "catalog_count": 68,
+      "tag_count": 23,
+      "text_hits": 9,
+      "content_depth": "deep",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 326,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "financial-fraud-scams",
+      "label": "Financial fraud & scams",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "true-crime/fraud-cults",
+        "true-crime"
+      ],
+      "catalog_count": 68,
+      "tag_count": 0,
+      "text_hits": 3,
+      "content_depth": "deep",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 326,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix"
       ],
       "priority": 2
     },
@@ -344,12 +392,12 @@
         "news/daily"
       ],
       "catalog_count": 0,
-      "tag_count": 6,
-      "text_hits": 14,
+      "tag_count": 9,
+      "text_hits": 24,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 200,
+      "breadth_supply": 278,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -364,12 +412,12 @@
         "news/commentary"
       ],
       "catalog_count": 0,
-      "tag_count": 34,
-      "text_hits": 12,
+      "tag_count": 44,
+      "text_hits": 17,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 202,
+      "breadth_supply": 398,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -384,14 +432,14 @@
         "news/tech"
       ],
       "catalog_count": 0,
-      "tag_count": 109,
-      "text_hits": 40,
+      "tag_count": 143,
+      "text_hits": 52,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "computing -> [computing]"
       ],
-      "breadth_supply": 217,
+      "breadth_supply": 428,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -405,15 +453,15 @@
       "taxonomy_nodes": [
         "personal-journals"
       ],
-      "catalog_count": 40,
-      "tag_count": 221,
-      "text_hits": 8,
+      "catalog_count": 53,
+      "tag_count": 267,
+      "text_hits": 12,
       "content_depth": "deep",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "storytelling -> [history/military-ancient, history/technology]"
       ],
-      "breadth_supply": 198,
+      "breadth_supply": 318,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix"
@@ -428,14 +476,14 @@
         "sports/football"
       ],
       "catalog_count": 0,
-      "tag_count": 4,
-      "text_hits": 3,
+      "tag_count": 5,
+      "text_hits": 4,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "sports -> [sports, sports/biomechanics]"
       ],
-      "breadth_supply": 199,
+      "breadth_supply": 273,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -451,145 +499,13 @@
       ],
       "catalog_count": 0,
       "tag_count": 1,
-      "text_hits": 1,
+      "text_hits": 2,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 200,
+      "breadth_supply": 197,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "fantasy-sports",
-      "label": "Fantasy sports",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "sports/fantasy"
-      ],
-      "catalog_count": 0,
-      "tag_count": 32,
-      "text_hits": 9,
-      "content_depth": "absent",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "sports -> [sports, sports/biomechanics]"
-      ],
-      "breadth_supply": 203,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "improv-comedy",
-      "label": "Improv comedy",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "comedy"
-      ],
-      "catalog_count": 110,
-      "tag_count": 139,
-      "text_hits": 19,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "comedy"
-      ],
-      "breadth_supply": 913,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "sketch-satire",
-      "label": "Sketch & satire",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "comedy"
-      ],
-      "catalog_count": 110,
-      "tag_count": 112,
-      "text_hits": 19,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "comedy"
-      ],
-      "breadth_supply": 913,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "relationships",
-      "label": "Relationships",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "relationships"
-      ],
-      "catalog_count": 28,
-      "tag_count": 26,
-      "text_hits": 12,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "relationships"
-      ],
-      "breadth_supply": 204,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "philosophy-big-ideas",
-      "label": "Philosophy & big ideas",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "philosophy",
-        "philosophy/ideas"
-      ],
-      "catalog_count": 20,
-      "tag_count": 37,
-      "text_hits": 50,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "philosophy"
-      ],
-      "breadth_supply": 205,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "government-policy",
-      "label": "Government & policy",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "society/government"
-      ],
-      "catalog_count": 1,
-      "tag_count": 140,
-      "text_hits": 4,
-      "content_depth": "thin",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 190,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix",
         "promote-from-breadth"
       ],
       "priority": 2
@@ -602,12 +518,12 @@
         "sports/baseball"
       ],
       "catalog_count": 0,
-      "tag_count": 1,
+      "tag_count": 2,
       "text_hits": 0,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 198,
+      "breadth_supply": 187,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -622,349 +538,16 @@
         "sports/soccer"
       ],
       "catalog_count": 0,
-      "tag_count": 37,
-      "text_hits": 68,
+      "tag_count": 54,
+      "text_hits": 93,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "sports -> [sports, sports/biomechanics]"
       ],
-      "breadth_supply": 202,
+      "breadth_supply": 183,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "motorsport-f1",
-      "label": "Motorsport / F1",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "automotive/racing"
-      ],
-      "catalog_count": 15,
-      "tag_count": 13,
-      "text_hits": 15,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "motorsport"
-      ],
-      "breadth_supply": 4,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "business",
-      "label": "Business",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "business"
-      ],
-      "catalog_count": 56,
-      "tag_count": 55,
-      "text_hits": 108,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "business"
-      ],
-      "breadth_supply": 1413,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "startups-entrepreneurship",
-      "label": "Startups & entrepreneurship",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "business/startups",
-        "business/founders"
-      ],
-      "catalog_count": 56,
-      "tag_count": 60,
-      "text_hits": 42,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "startups",
-        "founders"
-      ],
-      "breadth_supply": 209,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "investing-the-stock-market",
-      "label": "Investing & the stock market",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "economics/markets"
-      ],
-      "catalog_count": 26,
-      "tag_count": 62,
-      "text_hits": 19,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "economics",
-        "markets"
-      ],
-      "breadth_supply": 249,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "personal-finance",
-      "label": "Personal finance",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "economics/markets"
-      ],
-      "catalog_count": 26,
-      "tag_count": 40,
-      "text_hits": 22,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "economics",
-        "markets"
-      ],
-      "breadth_supply": 249,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "health-fitness",
-      "label": "Health & fitness",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "health"
-      ],
-      "catalog_count": 54,
-      "tag_count": 72,
-      "text_hits": 20,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "medicine"
-      ],
-      "breadth_supply": 1325,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "mental-health",
-      "label": "Mental health",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "health/mental"
-      ],
-      "catalog_count": 35,
-      "tag_count": 78,
-      "text_hits": 35,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "psychology"
-      ],
-      "breadth_supply": 220,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "history",
-      "label": "History",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "history"
-      ],
-      "catalog_count": 130,
-      "tag_count": 213,
-      "text_hits": 66,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "history"
-      ],
-      "breadth_supply": 565,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "world-war-ii",
-      "label": "World War II",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "history/military-modern"
-      ],
-      "catalog_count": 26,
-      "tag_count": 52,
-      "text_hits": 101,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "war",
-        "world-war-2"
-      ],
-      "breadth_supply": 19,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "ancient-rome-greece",
-      "label": "Ancient Rome & Greece",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "history/military-ancient"
-      ],
-      "catalog_count": 34,
-      "tag_count": 36,
-      "text_hits": 29,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "ancient-history",
-        "rome",
-        "greece"
-      ],
-      "breadth_supply": 4,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "science",
-      "label": "Science",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "science"
-      ],
-      "catalog_count": 76,
-      "tag_count": 149,
-      "text_hits": 64,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "science"
-      ],
-      "breadth_supply": 1076,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "artificial-intelligence",
-      "label": "Artificial intelligence",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "engineering/ai-robotics"
-      ],
-      "catalog_count": 21,
-      "tag_count": 82,
-      "text_hits": 79,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "ai",
-        "llms"
-      ],
-      "breadth_supply": 55,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "mma-ufc",
-      "label": "MMA / UFC",
-      "tier": 2,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 0,
-      "text_hits": 0,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "needs-taxonomy-adr"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "mythology-folklore",
-      "label": "Mythology & folklore",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "culture/mythology"
-      ],
-      "catalog_count": 13,
-      "tag_count": 26,
-      "text_hits": 13,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "mythology"
-      ],
-      "breadth_supply": 26,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 3
-    },
-    {
-      "id": "fashion-beauty",
-      "label": "Fashion & beauty",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "culture/fashion"
-      ],
-      "catalog_count": 1,
-      "tag_count": 3,
-      "text_hits": 2,
-      "content_depth": "thin",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 203,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix",
         "promote-from-breadth"
       ],
       "priority": 2
@@ -978,576 +561,7 @@
       ],
       "catalog_count": 0,
       "tag_count": 0,
-      "text_hits": 1,
-      "content_depth": "absent",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 201,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "careers-job-advice",
-      "label": "Careers & job advice",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "business/careers"
-      ],
-      "catalog_count": 0,
-      "tag_count": 47,
-      "text_hits": 19,
-      "content_depth": "absent",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "business -> [business/startups]"
-      ],
-      "breadth_supply": 203,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "space-astronomy",
-      "label": "Space & astronomy",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "space",
-        "space/rockets"
-      ],
-      "catalog_count": 14,
-      "tag_count": 31,
-      "text_hits": 27,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "space",
-        "rockets",
-        "astronomy"
-      ],
-      "breadth_supply": 234,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "tv-film",
-      "label": "TV & film",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "tv-film"
-      ],
-      "catalog_count": 8,
-      "tag_count": 30,
-      "text_hits": 15,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "celebrities",
-        "filmmaking"
-      ],
-      "breadth_supply": 1499,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "meditation-mindfulness",
-      "label": "Meditation & mindfulness",
-      "tier": 2,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 4,
-      "text_hits": 8,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "needs-taxonomy-adr"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "physics",
-      "label": "Physics",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "science/physics"
-      ],
-      "catalog_count": 3,
-      "tag_count": 23,
-      "text_hits": 9,
-      "content_depth": "thin",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "physics -> [engineering/energy-fusion, science/materials]"
-      ],
-      "breadth_supply": 202,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix",
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "computing-software",
-      "label": "Computing & software",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "computing",
-        "computing/history"
-      ],
-      "catalog_count": 13,
-      "tag_count": 78,
-      "text_hits": 36,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "computing",
-        "programming"
-      ],
-      "breadth_supply": 328,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "self-improvement",
-      "label": "Self-improvement",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "education/self-improvement"
-      ],
-      "catalog_count": 17,
-      "tag_count": 67,
-      "text_hits": 36,
-      "content_depth": "deep",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "philosophy -> [philosophy/ideas, religion]"
-      ],
-      "breadth_supply": 203,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix"
-      ],
-      "priority": 1
-    },
-    {
-      "id": "neuroscience-the-brain",
-      "label": "Neuroscience & the brain",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "medicine/neuroscience"
-      ],
-      "catalog_count": 32,
-      "tag_count": 31,
-      "text_hits": 21,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "neuroscience"
-      ],
-      "breadth_supply": 8,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "climate-clean-energy",
-      "label": "Climate & clean energy",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "engineering/energy-grid"
-      ],
-      "catalog_count": 30,
-      "tag_count": 45,
-      "text_hits": 53,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "clean-energy",
-        "energy",
-        "climate"
-      ],
-      "breadth_supply": 3,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "endurance-running",
-      "label": "Endurance & running",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "sports/endurance"
-      ],
-      "catalog_count": 11,
-      "tag_count": 41,
-      "text_hits": 33,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "endurance"
-      ],
-      "breadth_supply": 317,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 3
-    },
-    {
-      "id": "sports-science-biomechanics",
-      "label": "Sports science & biomechanics",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "sports/biomechanics"
-      ],
-      "catalog_count": 13,
-      "tag_count": 157,
-      "text_hits": 67,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "sports",
-        "sports-science"
-      ],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "retag-existing"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "cryptocurrency",
-      "label": "Cryptocurrency",
-      "tier": 2,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 0,
-      "text_hits": 1,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "needs-taxonomy-adr"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "nutrition-diet",
-      "label": "Nutrition & diet",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "health/nutrition"
-      ],
-      "catalog_count": 17,
-      "tag_count": 19,
-      "text_hits": 16,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "nutrition"
-      ],
-      "breadth_supply": 203,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "fitness-workouts",
-      "label": "Fitness & workouts",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "health/fitness"
-      ],
-      "catalog_count": 3,
-      "tag_count": 22,
-      "text_hits": 23,
-      "content_depth": "thin",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "training -> [sports/biomechanics]",
-        "longevity -> [medicine/neuroscience]"
-      ],
-      "breadth_supply": 464,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix",
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "sleep",
-      "label": "Sleep",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "health/mental"
-      ],
-      "catalog_count": 35,
-      "tag_count": 11,
-      "text_hits": 26,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "sleep"
-      ],
-      "breadth_supply": 220,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "military-history-modern",
-      "label": "Military history (modern)",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "history/military-modern"
-      ],
-      "catalog_count": 26,
-      "tag_count": 222,
-      "text_hits": 102,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "war"
-      ],
-      "breadth_supply": 19,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "archaeology",
-      "label": "Archaeology",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "history/archaeology"
-      ],
-      "catalog_count": 6,
-      "tag_count": 38,
-      "text_hits": 34,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "archaeology"
-      ],
-      "breadth_supply": 1,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "retag-existing"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "biology-medicine",
-      "label": "Biology & medicine",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "medicine/biology",
-        "medicine"
-      ],
-      "catalog_count": 45,
-      "tag_count": 57,
-      "text_hits": 14,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "medicine",
-        "biology"
-      ],
-      "breadth_supply": 424,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "cooking",
-      "label": "Cooking",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "food/cooking-science"
-      ],
-      "catalog_count": 11,
-      "tag_count": 1,
-      "text_hits": 3,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "cooking"
-      ],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "movie-tv-reviews",
-      "label": "Movie & TV reviews",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "tv-film/reviews"
-      ],
-      "catalog_count": 8,
-      "tag_count": 17,
-      "text_hits": 11,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "filmmaking"
-      ],
-      "breadth_supply": 400,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "pop-culture-recaps",
-      "label": "Pop culture recaps",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "culture/pop-culture"
-      ],
-      "catalog_count": 4,
-      "tag_count": 39,
-      "text_hits": 17,
-      "content_depth": "thin",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "celebrities -> [comedy/casual-hangs, tv-film]"
-      ],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix",
-        "retag-existing"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "parenting",
-      "label": "Parenting",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "kids-family/parenting"
-      ],
-      "catalog_count": 10,
-      "tag_count": 16,
-      "text_hits": 6,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "parenting"
-      ],
-      "breadth_supply": 216,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "jazz",
-      "label": "Jazz",
-      "tier": 2,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 2,
       "text_hits": 2,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "needs-taxonomy-adr"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "hip-hop-rap",
-      "label": "Hip-hop & rap",
-      "tier": 2,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 3,
-      "text_hits": 3,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "needs-taxonomy-adr"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "language-learning",
-      "label": "Language learning",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "education/language-learning"
-      ],
-      "catalog_count": 0,
-      "tag_count": 29,
-      "text_hits": 23,
-      "content_depth": "absent",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "language -> [linguistics/language]"
-      ],
-      "breadth_supply": 207,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "how-to-explainers",
-      "label": "How-to / explainers",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "education/how-to"
-      ],
-      "catalog_count": 0,
-      "tag_count": 114,
-      "text_hits": 64,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -1559,67 +573,151 @@
       "priority": 2
     },
     {
-      "id": "stories-for-kids",
-      "label": "Stories for kids",
+      "id": "mma-ufc",
+      "label": "MMA / UFC",
       "tier": 2,
       "taxonomy_nodes": [
-        "kids-family/stories"
+        "sports/combat-sports"
       ],
-      "catalog_count": 6,
-      "tag_count": 27,
-      "text_hits": 32,
-      "content_depth": "thin",
+      "catalog_count": 0,
+      "tag_count": 1,
+      "text_hits": 1,
+      "content_depth": "absent",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "defer"
+      ],
+      "priority": 5
+    },
+    {
+      "id": "improv-comedy",
+      "label": "Improv comedy",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "comedy"
+      ],
+      "catalog_count": 163,
+      "tag_count": 213,
+      "text_hits": 30,
+      "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
-        "kids-content"
+        "comedy"
       ],
-      "breadth_supply": 201,
+      "breadth_supply": 1273,
       "fusion_bug_flagged": false,
       "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "sketch-satire",
+      "label": "Sketch & satire",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "comedy"
+      ],
+      "catalog_count": 163,
+      "tag_count": 159,
+      "text_hits": 30,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "comedy"
+      ],
+      "breadth_supply": 1273,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "motorsport-f1",
+      "label": "Motorsport / F1",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "automotive/racing"
+      ],
+      "catalog_count": 25,
+      "tag_count": 21,
+      "text_hits": 23,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "motorsport"
+      ],
+      "breadth_supply": 60,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "government-policy",
+      "label": "Government & policy",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "society/government"
+      ],
+      "catalog_count": 2,
+      "tag_count": 161,
+      "text_hits": 8,
+      "content_depth": "thin",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 178,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix",
         "promote-from-breadth"
       ],
       "priority": 2
     },
     {
-      "id": "christianity",
-      "label": "Christianity",
-      "tier": 2,
+      "id": "mythology-folklore",
+      "label": "Mythology & folklore",
+      "tier": 3,
       "taxonomy_nodes": [
-        "religion/christianity"
+        "culture/mythology"
       ],
-      "catalog_count": 0,
-      "tag_count": 2,
-      "text_hits": 10,
-      "content_depth": "absent",
-      "semantic_status": "misrouted",
+      "catalog_count": 15,
+      "tag_count": 34,
+      "text_hits": 17,
+      "content_depth": "deep",
+      "semantic_status": "covered",
       "semantic_concepts": [
-        "philosophy -> [philosophy/ideas, religion]"
+        "mythology"
       ],
-      "breadth_supply": 276,
+      "breadth_supply": 38,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "promote-from-breadth"
+        "none"
       ],
-      "priority": 2
+      "priority": 6
     },
     {
-      "id": "spirituality",
-      "label": "Spirituality",
-      "tier": 2,
+      "id": "fashion-beauty",
+      "label": "Fashion & beauty",
+      "tier": 3,
       "taxonomy_nodes": [
-        "religion/spirituality"
+        "culture/fashion"
       ],
-      "catalog_count": 0,
-      "tag_count": 7,
-      "text_hits": 6,
-      "content_depth": "absent",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "psychology -> [psychology/decision-making, health/mental]"
-      ],
-      "breadth_supply": 209,
+      "catalog_count": 1,
+      "tag_count": 4,
+      "text_hits": 4,
+      "content_depth": "thin",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 180,
       "fusion_bug_flagged": false,
       "recommended_actions": [
+        "semantic-concept-fix",
         "promote-from-breadth"
       ],
       "priority": 2
@@ -1631,59 +729,15 @@
       "taxonomy_nodes": [
         "society/law"
       ],
-      "catalog_count": 39,
-      "tag_count": 33,
-      "text_hits": 30,
+      "catalog_count": 62,
+      "tag_count": 49,
+      "text_hits": 45,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "law"
       ],
-      "breadth_supply": 17,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "bbq-grilling",
-      "label": "BBQ & grilling",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "food/cooking-science"
-      ],
-      "catalog_count": 11,
-      "tag_count": 4,
-      "text_hits": 5,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "bbq"
-      ],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "diy-home-improvement",
-      "label": "DIY & home improvement",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "craft/diy-home"
-      ],
-      "catalog_count": 18,
-      "tag_count": 42,
-      "text_hits": 26,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "diy"
-      ],
-      "breadth_supply": 199,
+      "breadth_supply": 158,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -1694,37 +748,69 @@
       "id": "immigrant-diaspora-stories",
       "label": "Immigrant & diaspora stories",
       "tier": 3,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 17,
-      "text_hits": 25,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
+      "taxonomy_nodes": [
+        "society/immigration-diaspora"
+      ],
+      "catalog_count": 1,
+      "tag_count": 30,
+      "text_hits": 36,
+      "content_depth": "thin",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "storytelling -> [history/military-ancient, history/technology]"
+      ],
       "breadth_supply": 0,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "needs-taxonomy-adr"
+        "semantic-concept-fix",
+        "retag-existing"
       ],
-      "priority": 4
+      "priority": 2
     },
     {
       "id": "lgbtq-stories-culture",
       "label": "LGBTQ+ stories & culture",
       "tier": 3,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 52,
-      "text_hits": 34,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
+      "taxonomy_nodes": [
+        "society/lgbtq"
+      ],
+      "catalog_count": 1,
+      "tag_count": 92,
+      "text_hits": 49,
+      "content_depth": "thin",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "storytelling -> [history/military-ancient, history/technology]"
+      ],
       "breadth_supply": 0,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "needs-taxonomy-adr"
+        "semantic-concept-fix",
+        "retag-existing"
       ],
-      "priority": 4
+      "priority": 2
+    },
+    {
+      "id": "fantasy-sports",
+      "label": "Fantasy sports",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "sports/fantasy"
+      ],
+      "catalog_count": 0,
+      "tag_count": 49,
+      "text_hits": 11,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "sports -> [sports, sports/biomechanics]"
+      ],
+      "breadth_supply": 179,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
     },
     {
       "id": "golf",
@@ -1735,11 +821,11 @@
       ],
       "catalog_count": 0,
       "tag_count": 1,
-      "text_hits": 8,
+      "text_hits": 14,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 200,
+      "breadth_supply": 161,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -1754,12 +840,12 @@
         "sports/tennis"
       ],
       "catalog_count": 0,
-      "tag_count": 2,
-      "text_hits": 9,
+      "tag_count": 6,
+      "text_hits": 14,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 199,
+      "breadth_supply": 162,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -1774,12 +860,12 @@
         "sports/wrestling"
       ],
       "catalog_count": 0,
-      "tag_count": 1,
+      "tag_count": 2,
       "text_hits": 5,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 200,
+      "breadth_supply": 149,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -1799,7 +885,7 @@
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 200,
+      "breadth_supply": 171,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -1819,12 +905,779 @@
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 200,
+      "breadth_supply": 160,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
       ],
       "priority": 3
+    },
+    {
+      "id": "endurance-running",
+      "label": "Endurance & running",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "sports/endurance"
+      ],
+      "catalog_count": 20,
+      "tag_count": 57,
+      "text_hits": 43,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "endurance"
+      ],
+      "breadth_supply": 367,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "sports-science-biomechanics",
+      "label": "Sports science & biomechanics",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "sports/biomechanics"
+      ],
+      "catalog_count": 18,
+      "tag_count": 231,
+      "text_hits": 98,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "sports",
+        "sports-science"
+      ],
+      "breadth_supply": 61,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "business",
+      "label": "Business",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "business"
+      ],
+      "catalog_count": 92,
+      "tag_count": 88,
+      "text_hits": 168,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "business"
+      ],
+      "breadth_supply": 1809,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "startups-entrepreneurship",
+      "label": "Startups & entrepreneurship",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "business/startups",
+        "business/founders"
+      ],
+      "catalog_count": 92,
+      "tag_count": 103,
+      "text_hits": 64,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "startups",
+        "founders"
+      ],
+      "breadth_supply": 559,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "investing-the-stock-market",
+      "label": "Investing & the stock market",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "economics/markets"
+      ],
+      "catalog_count": 43,
+      "tag_count": 98,
+      "text_hits": 43,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "economics",
+        "markets"
+      ],
+      "breadth_supply": 320,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "personal-finance",
+      "label": "Personal finance",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "economics/markets"
+      ],
+      "catalog_count": 43,
+      "tag_count": 69,
+      "text_hits": 34,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "economics",
+        "markets"
+      ],
+      "breadth_supply": 320,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "health-fitness",
+      "label": "Health & fitness",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "health"
+      ],
+      "catalog_count": 75,
+      "tag_count": 111,
+      "text_hits": 29,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "medicine"
+      ],
+      "breadth_supply": 1634,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "mental-health",
+      "label": "Mental health",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "health/mental"
+      ],
+      "catalog_count": 51,
+      "tag_count": 118,
+      "text_hits": 51,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "psychology"
+      ],
+      "breadth_supply": 447,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "history",
+      "label": "History",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "history"
+      ],
+      "catalog_count": 197,
+      "tag_count": 301,
+      "text_hits": 90,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "history"
+      ],
+      "breadth_supply": 1072,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "world-war-ii",
+      "label": "World War II",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "history/military-modern"
+      ],
+      "catalog_count": 39,
+      "tag_count": 76,
+      "text_hits": 140,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "war",
+        "world-war-2"
+      ],
+      "breadth_supply": 62,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "artificial-intelligence",
+      "label": "Artificial intelligence",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "engineering/ai-robotics"
+      ],
+      "catalog_count": 25,
+      "tag_count": 120,
+      "text_hits": 118,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "ai",
+        "llms"
+      ],
+      "breadth_supply": 302,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "computing-software",
+      "label": "Computing & software",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "computing",
+        "computing/history"
+      ],
+      "catalog_count": 20,
+      "tag_count": 119,
+      "text_hits": 49,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "computing",
+        "programming"
+      ],
+      "breadth_supply": 704,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "careers-job-advice",
+      "label": "Careers & job advice",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "business/careers"
+      ],
+      "catalog_count": 0,
+      "tag_count": 63,
+      "text_hits": 30,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "business -> [business/startups]"
+      ],
+      "breadth_supply": 237,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "tv-film",
+      "label": "TV & film",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "tv-film"
+      ],
+      "catalog_count": 11,
+      "tag_count": 44,
+      "text_hits": 24,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "celebrities",
+        "filmmaking"
+      ],
+      "breadth_supply": 1463,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "cryptocurrency",
+      "label": "Cryptocurrency",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "economics/crypto"
+      ],
+      "catalog_count": 0,
+      "tag_count": 0,
+      "text_hits": 1,
+      "content_depth": "absent",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "defer"
+      ],
+      "priority": 5
+    },
+    {
+      "id": "nutrition-diet",
+      "label": "Nutrition & diet",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "health/nutrition"
+      ],
+      "catalog_count": 22,
+      "tag_count": 28,
+      "text_hits": 23,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "nutrition"
+      ],
+      "breadth_supply": 294,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "fitness-workouts",
+      "label": "Fitness & workouts",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "health/fitness"
+      ],
+      "catalog_count": 3,
+      "tag_count": 31,
+      "text_hits": 30,
+      "content_depth": "thin",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "training -> [sports/biomechanics]",
+        "longevity -> [medicine/neuroscience]"
+      ],
+      "breadth_supply": 499,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix",
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "sleep",
+      "label": "Sleep",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "health/mental"
+      ],
+      "catalog_count": 51,
+      "tag_count": 16,
+      "text_hits": 42,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "sleep"
+      ],
+      "breadth_supply": 447,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "meditation-mindfulness",
+      "label": "Meditation & mindfulness",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "health/meditation"
+      ],
+      "catalog_count": 0,
+      "tag_count": 6,
+      "text_hits": 11,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "psychology -> [psychology/decision-making, health/mental]"
+      ],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "ancient-rome-greece",
+      "label": "Ancient Rome & Greece",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "history/military-ancient"
+      ],
+      "catalog_count": 48,
+      "tag_count": 46,
+      "text_hits": 44,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "ancient-history",
+        "rome",
+        "greece"
+      ],
+      "breadth_supply": 47,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "military-history-modern",
+      "label": "Military history (modern)",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "history/military-modern"
+      ],
+      "catalog_count": 39,
+      "tag_count": 315,
+      "text_hits": 143,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "war"
+      ],
+      "breadth_supply": 62,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "science",
+      "label": "Science",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "science"
+      ],
+      "catalog_count": 106,
+      "tag_count": 219,
+      "text_hits": 95,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "science"
+      ],
+      "breadth_supply": 1323,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "space-astronomy",
+      "label": "Space & astronomy",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "space",
+        "space/astronomy",
+        "space/rockets"
+      ],
+      "catalog_count": 22,
+      "tag_count": 46,
+      "text_hits": 40,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "space",
+        "rockets",
+        "astronomy"
+      ],
+      "breadth_supply": 334,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "self-improvement",
+      "label": "Self-improvement",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "education/self-improvement"
+      ],
+      "catalog_count": 30,
+      "tag_count": 126,
+      "text_hits": 46,
+      "content_depth": "deep",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "philosophy -> [philosophy/ideas, religion]"
+      ],
+      "breadth_supply": 318,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix"
+      ],
+      "priority": 1
+    },
+    {
+      "id": "archaeology",
+      "label": "Archaeology",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "history/archaeology"
+      ],
+      "catalog_count": 8,
+      "tag_count": 50,
+      "text_hits": 49,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "archaeology"
+      ],
+      "breadth_supply": 25,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "pop-culture-recaps",
+      "label": "Pop culture recaps",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "culture/pop-culture"
+      ],
+      "catalog_count": 7,
+      "tag_count": 76,
+      "text_hits": 25,
+      "content_depth": "thin",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "celebrities -> [comedy/casual-hangs, tv-film]"
+      ],
+      "breadth_supply": 677,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix",
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "parenting",
+      "label": "Parenting",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "kids-family/parenting"
+      ],
+      "catalog_count": 12,
+      "tag_count": 20,
+      "text_hits": 6,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "parenting"
+      ],
+      "breadth_supply": 260,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "biology-medicine",
+      "label": "Biology & medicine",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "medicine/biology",
+        "medicine"
+      ],
+      "catalog_count": 56,
+      "tag_count": 78,
+      "text_hits": 19,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "medicine",
+        "biology"
+      ],
+      "breadth_supply": 550,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "neuroscience-the-brain",
+      "label": "Neuroscience & the brain",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "medicine/neuroscience"
+      ],
+      "catalog_count": 40,
+      "tag_count": 37,
+      "text_hits": 29,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "neuroscience"
+      ],
+      "breadth_supply": 86,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "climate-clean-energy",
+      "label": "Climate & clean energy",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "engineering/energy-grid"
+      ],
+      "catalog_count": 31,
+      "tag_count": 59,
+      "text_hits": 71,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "clean-energy",
+        "energy",
+        "climate"
+      ],
+      "breadth_supply": 16,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "jazz",
+      "label": "Jazz",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "music/jazz"
+      ],
+      "catalog_count": 0,
+      "tag_count": 2,
+      "text_hits": 2,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "music -> [music/theory-production, craft/instrument-making]"
+      ],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "defer"
+      ],
+      "priority": 5
+    },
+    {
+      "id": "hip-hop-rap",
+      "label": "Hip-hop & rap",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "music/hip-hop"
+      ],
+      "catalog_count": 0,
+      "tag_count": 7,
+      "text_hits": 7,
+      "content_depth": "absent",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "cooking",
+      "label": "Cooking",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "food/cooking-science"
+      ],
+      "catalog_count": 16,
+      "tag_count": 4,
+      "text_hits": 4,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "cooking"
+      ],
+      "breadth_supply": 88,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "movie-tv-reviews",
+      "label": "Movie & TV reviews",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "tv-film/reviews"
+      ],
+      "catalog_count": 11,
+      "tag_count": 23,
+      "text_hits": 19,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "filmmaking"
+      ],
+      "breadth_supply": 535,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
     },
     {
       "id": "marketing",
@@ -1834,12 +1687,12 @@
         "business/marketing"
       ],
       "catalog_count": 0,
-      "tag_count": 3,
-      "text_hits": 5,
+      "tag_count": 11,
+      "text_hits": 13,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 202,
+      "breadth_supply": 158,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -1854,14 +1707,14 @@
         "business/management"
       ],
       "catalog_count": 0,
-      "tag_count": 13,
-      "text_hits": 3,
+      "tag_count": 20,
+      "text_hits": 5,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "business -> [business/startups]"
       ],
-      "breadth_supply": 200,
+      "breadth_supply": 219,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -1876,14 +1729,14 @@
         "health/alternative"
       ],
       "catalog_count": 0,
-      "tag_count": 84,
-      "text_hits": 17,
+      "tag_count": 124,
+      "text_hits": 27,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "medicine -> [medicine/biology, health]"
       ],
-      "breadth_supply": 200,
+      "breadth_supply": 155,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -1898,18 +1751,193 @@
         "health/sexuality"
       ],
       "catalog_count": 2,
-      "tag_count": 3,
+      "tag_count": 4,
       "text_hits": 1,
       "content_depth": "thin",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 204,
+      "breadth_supply": 187,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix",
         "promote-from-breadth"
       ],
       "priority": 2
+    },
+    {
+      "id": "physics",
+      "label": "Physics",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "science/physics"
+      ],
+      "catalog_count": 3,
+      "tag_count": 30,
+      "text_hits": 13,
+      "content_depth": "thin",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "physics -> [engineering/energy-fusion, science/materials]"
+      ],
+      "breadth_supply": 156,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix",
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "language-learning",
+      "label": "Language learning",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "education/language-learning"
+      ],
+      "catalog_count": 0,
+      "tag_count": 36,
+      "text_hits": 32,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "language -> [linguistics/language]"
+      ],
+      "breadth_supply": 215,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "how-to-explainers",
+      "label": "How-to / explainers",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "education/how-to"
+      ],
+      "catalog_count": 0,
+      "tag_count": 121,
+      "text_hits": 97,
+      "content_depth": "absent",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 266,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "stories-for-kids",
+      "label": "Stories for kids",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "kids-family/stories"
+      ],
+      "catalog_count": 8,
+      "tag_count": 49,
+      "text_hits": 53,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "kids-content"
+      ],
+      "breadth_supply": 246,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "christianity",
+      "label": "Christianity",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "religion/christianity"
+      ],
+      "catalog_count": 0,
+      "tag_count": 2,
+      "text_hits": 12,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "philosophy -> [philosophy/ideas, religion]"
+      ],
+      "breadth_supply": 354,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "spirituality",
+      "label": "Spirituality",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "religion/spirituality"
+      ],
+      "catalog_count": 0,
+      "tag_count": 13,
+      "text_hits": 12,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "psychology -> [psychology/decision-making, health/mental]"
+      ],
+      "breadth_supply": 254,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "bbq-grilling",
+      "label": "BBQ & grilling",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "food/grilling-bbq"
+      ],
+      "catalog_count": 0,
+      "tag_count": 8,
+      "text_hits": 9,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "bbq -> [food/cooking-science]"
+      ],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "diy-home-improvement",
+      "label": "DIY & home improvement",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "craft/diy-home"
+      ],
+      "catalog_count": 30,
+      "tag_count": 73,
+      "text_hits": 39,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "diy"
+      ],
+      "breadth_supply": 288,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
     },
     {
       "id": "video-games",
@@ -1919,15 +1947,15 @@
         "gaming",
         "gaming/design"
       ],
-      "catalog_count": 9,
-      "tag_count": 44,
-      "text_hits": 35,
+      "catalog_count": 11,
+      "tag_count": 59,
+      "text_hits": 46,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "game-design"
       ],
-      "breadth_supply": 376,
+      "breadth_supply": 433,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -1941,16 +1969,16 @@
       "taxonomy_nodes": [
         "history/technology"
       ],
-      "catalog_count": 56,
-      "tag_count": 236,
-      "text_hits": 75,
+      "catalog_count": 89,
+      "tag_count": 328,
+      "text_hits": 103,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "history",
         "engineering-history"
       ],
-      "breadth_supply": 1,
+      "breadth_supply": 89,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -1964,77 +1992,15 @@
       "taxonomy_nodes": [
         "espionage/cold-war-tech"
       ],
-      "catalog_count": 4,
-      "tag_count": 60,
-      "text_hits": 35,
+      "catalog_count": 7,
+      "tag_count": 96,
+      "text_hits": 49,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "espionage"
       ],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "retag-existing"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "cybersecurity",
-      "label": "Cybersecurity",
-      "tier": 3,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 2,
-      "text_hits": 0,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "needs-taxonomy-adr"
-      ],
-      "priority": 4
-    },
-    {
-      "id": "chemistry",
-      "label": "Chemistry",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "science/chemistry"
-      ],
-      "catalog_count": 9,
-      "tag_count": 13,
-      "text_hits": 8,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "chemistry"
-      ],
-      "breadth_supply": 184,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 3
-    },
-    {
-      "id": "math-puzzles",
-      "label": "Math & puzzles",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "math/puzzles"
-      ],
-      "catalog_count": 2,
-      "tag_count": 7,
-      "text_hits": 10,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "math"
-      ],
-      "breadth_supply": 1,
+      "breadth_supply": 15,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "retag-existing"
@@ -2048,21 +2014,41 @@
       "taxonomy_nodes": [
         "aviation/accidents"
       ],
-      "catalog_count": 5,
-      "tag_count": 20,
-      "text_hits": 29,
+      "catalog_count": 8,
+      "tag_count": 30,
+      "text_hits": 48,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "aviation",
         "plane-crashes"
       ],
-      "breadth_supply": 0,
+      "breadth_supply": 9,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "retag-existing"
       ],
       "priority": 4
+    },
+    {
+      "id": "cybersecurity",
+      "label": "Cybersecurity",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "computing/cybersecurity"
+      ],
+      "catalog_count": 0,
+      "tag_count": 8,
+      "text_hits": 0,
+      "content_depth": "absent",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
     },
     {
       "id": "film-history",
@@ -2072,8 +2058,8 @@
         "tv-film/history"
       ],
       "catalog_count": 0,
-      "tag_count": 254,
-      "text_hits": 91,
+      "tag_count": 357,
+      "text_hits": 127,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -2081,7 +2067,7 @@
         "history -> [history/military-ancient, history/technology]",
         "filmmaking -> [craft/filmmaking, craft/photography, tv-film, tv-film/reviews]"
       ],
-      "breadth_supply": 200,
+      "breadth_supply": 181,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2101,7 +2087,7 @@
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 202,
+      "breadth_supply": 156,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2116,12 +2102,12 @@
         "tv-film/after-shows"
       ],
       "catalog_count": 0,
-      "tag_count": 0,
-      "text_hits": 38,
+      "tag_count": 2,
+      "text_hits": 58,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 198,
+      "breadth_supply": 157,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2135,16 +2121,16 @@
       "taxonomy_nodes": [
         "music/classical"
       ],
-      "catalog_count": 15,
-      "tag_count": 77,
-      "text_hits": 41,
+      "catalog_count": 16,
+      "tag_count": 100,
+      "text_hits": 53,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "classical-music",
         "opera"
       ],
-      "breadth_supply": 1,
+      "breadth_supply": 26,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2158,20 +2144,86 @@
       "taxonomy_nodes": [
         "music/theory-production"
       ],
-      "catalog_count": 19,
-      "tag_count": 74,
-      "text_hits": 36,
+      "catalog_count": 28,
+      "tag_count": 93,
+      "text_hits": 46,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "music"
       ],
-      "breadth_supply": 0,
+      "breadth_supply": 104,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
       ],
       "priority": 6
+    },
+    {
+      "id": "cars-racing",
+      "label": "Cars & racing",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "automotive/racing"
+      ],
+      "catalog_count": 25,
+      "tag_count": 34,
+      "text_hits": 34,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "motorsport"
+      ],
+      "breadth_supply": 60,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "chemistry",
+      "label": "Chemistry",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "science/chemistry"
+      ],
+      "catalog_count": 13,
+      "tag_count": 15,
+      "text_hits": 11,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "chemistry"
+      ],
+      "breadth_supply": 148,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 3
+    },
+    {
+      "id": "math-puzzles",
+      "label": "Math & puzzles",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "math/puzzles"
+      ],
+      "catalog_count": 2,
+      "tag_count": 7,
+      "text_hits": 12,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "math"
+      ],
+      "breadth_supply": 19,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "retag-existing"
+      ],
+      "priority": 4
     },
     {
       "id": "online-courses-lectures",
@@ -2186,7 +2238,7 @@
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 178,
+      "breadth_supply": 150,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2200,13 +2252,13 @@
       "taxonomy_nodes": [
         "education/self-improvement"
       ],
-      "catalog_count": 17,
-      "tag_count": 2,
+      "catalog_count": 30,
+      "tag_count": 5,
       "text_hits": 1,
       "content_depth": "deep",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 203,
+      "breadth_supply": 318,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix"
@@ -2220,19 +2272,18 @@
       "taxonomy_nodes": [
         "kids-family/education"
       ],
-      "catalog_count": 12,
-      "tag_count": 42,
-      "text_hits": 15,
-      "content_depth": "thin",
+      "catalog_count": 19,
+      "tag_count": 55,
+      "text_hits": 26,
+      "content_depth": "deep",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "kids-content -> [kids-family/stories]"
       ],
-      "breadth_supply": 202,
+      "breadth_supply": 182,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "semantic-concept-fix",
-        "promote-from-breadth"
+        "semantic-concept-fix"
       ],
       "priority": 2
     },
@@ -2244,14 +2295,14 @@
         "religion/buddhism"
       ],
       "catalog_count": 0,
-      "tag_count": 2,
+      "tag_count": 3,
       "text_hits": 1,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "philosophy -> [philosophy/ideas, religion]"
       ],
-      "breadth_supply": 202,
+      "breadth_supply": 177,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2266,12 +2317,12 @@
         "religion/judaism"
       ],
       "catalog_count": 0,
-      "tag_count": 0,
+      "tag_count": 1,
       "text_hits": 0,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 206,
+      "breadth_supply": 178,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2286,12 +2337,12 @@
         "religion/islam"
       ],
       "catalog_count": 0,
-      "tag_count": 0,
-      "text_hits": 0,
+      "tag_count": 2,
+      "text_hits": 2,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 202,
+      "breadth_supply": 180,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2306,14 +2357,14 @@
         "religion/hinduism"
       ],
       "catalog_count": 0,
-      "tag_count": 21,
-      "text_hits": 14,
+      "tag_count": 29,
+      "text_hits": 20,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "philosophy -> [philosophy/ideas, religion]"
       ],
-      "breadth_supply": 202,
+      "breadth_supply": 152,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2327,16 +2378,16 @@
       "taxonomy_nodes": [
         "food/fermentation"
       ],
-      "catalog_count": 12,
-      "tag_count": 24,
-      "text_hits": 29,
-      "content_depth": "thin",
+      "catalog_count": 17,
+      "tag_count": 38,
+      "text_hits": 43,
+      "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "brewing",
         "fermentation"
       ],
-      "breadth_supply": 5,
+      "breadth_supply": 8,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2347,19 +2398,23 @@
       "id": "coffee",
       "label": "Coffee",
       "tier": 3,
-      "taxonomy_nodes": [],
+      "taxonomy_nodes": [
+        "food/drinks"
+      ],
       "catalog_count": 0,
       "tag_count": 3,
       "text_hits": 1,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "coffee -> [food/cooking-science, engineering/precision-mfg]"
+      ],
       "breadth_supply": 0,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "needs-taxonomy-adr"
+        "none"
       ],
-      "priority": 4
+      "priority": 6
     },
     {
       "id": "woodworking",
@@ -2368,20 +2423,20 @@
       "taxonomy_nodes": [
         "craft/woodworking"
       ],
-      "catalog_count": 9,
-      "tag_count": 15,
-      "text_hits": 12,
+      "catalog_count": 12,
+      "tag_count": 20,
+      "text_hits": 16,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "workshop"
       ],
-      "breadth_supply": 7,
+      "breadth_supply": 28,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "none"
+        "promote-from-breadth"
       ],
-      "priority": 6
+      "priority": 3
     },
     {
       "id": "photography",
@@ -2390,37 +2445,15 @@
       "taxonomy_nodes": [
         "craft/photography"
       ],
-      "catalog_count": 11,
-      "tag_count": 5,
-      "text_hits": 4,
-      "content_depth": "thin",
+      "catalog_count": 17,
+      "tag_count": 12,
+      "text_hits": 8,
+      "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "photography"
       ],
-      "breadth_supply": 10,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "cars-racing",
-      "label": "Cars & racing",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "automotive/racing"
-      ],
-      "catalog_count": 15,
-      "tag_count": 24,
-      "text_hits": 29,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "motorsport"
-      ],
-      "breadth_supply": 4,
+      "breadth_supply": 47,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2434,20 +2467,20 @@
       "taxonomy_nodes": [
         "craft/filmmaking"
       ],
-      "catalog_count": 6,
-      "tag_count": 22,
-      "text_hits": 29,
+      "catalog_count": 9,
+      "tag_count": 30,
+      "text_hits": 35,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "filmmaking"
       ],
-      "breadth_supply": 3,
+      "breadth_supply": 103,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "retag-existing"
+        "promote-from-breadth"
       ],
-      "priority": 4
+      "priority": 3
     },
     {
       "id": "instrument-making-lutherie",
@@ -2456,15 +2489,15 @@
       "taxonomy_nodes": [
         "craft/instrument-making"
       ],
-      "catalog_count": 10,
-      "tag_count": 46,
-      "text_hits": 69,
+      "catalog_count": 13,
+      "tag_count": 58,
+      "text_hits": 97,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "instruments"
       ],
-      "breadth_supply": 0,
+      "breadth_supply": 15,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "retag-existing"
@@ -2475,37 +2508,46 @@
       "id": "esports",
       "label": "Esports",
       "tier": 3,
-      "taxonomy_nodes": [],
+      "taxonomy_nodes": [
+        "gaming/esports"
+      ],
       "catalog_count": 0,
       "tag_count": 0,
-      "text_hits": 0,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
+      "text_hits": 1,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "game-design -> [gaming, gaming/design]"
+      ],
       "breadth_supply": 0,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "needs-taxonomy-adr"
+        "defer"
       ],
-      "priority": 4
+      "priority": 5
     },
     {
       "id": "board-games-tabletop",
       "label": "Board games & tabletop",
       "tier": 3,
-      "taxonomy_nodes": [],
+      "taxonomy_nodes": [
+        "gaming/tabletop"
+      ],
       "catalog_count": 0,
-      "tag_count": 18,
-      "text_hits": 29,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
+      "tag_count": 21,
+      "text_hits": 34,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "game-design -> [gaming, gaming/design]",
+        "mythology -> [culture/mythology]"
+      ],
+      "breadth_supply": 3,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "needs-taxonomy-adr"
+        "none"
       ],
-      "priority": 4
+      "priority": 6
     },
     {
       "id": "travel",
@@ -2515,12 +2557,12 @@
         "travel"
       ],
       "catalog_count": 1,
-      "tag_count": 1,
-      "text_hits": 8,
+      "tag_count": 7,
+      "text_hits": 11,
       "content_depth": "thin",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 200,
+      "breadth_supply": 272,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix",
@@ -2535,20 +2577,20 @@
       "taxonomy_nodes": [
         "adventure/exploration"
       ],
-      "catalog_count": 13,
-      "tag_count": 3,
-      "text_hits": 6,
-      "content_depth": "thin",
+      "catalog_count": 15,
+      "tag_count": 5,
+      "text_hits": 13,
+      "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "survival"
       ],
-      "breadth_supply": 170,
+      "breadth_supply": 280,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "promote-from-breadth"
+        "none"
       ],
-      "priority": 3
+      "priority": 6
     },
     {
       "id": "cities-urbanism",
@@ -2557,16 +2599,16 @@
       "taxonomy_nodes": [
         "cities/urbanism"
       ],
-      "catalog_count": 19,
-      "tag_count": 34,
-      "text_hits": 24,
+      "catalog_count": 25,
+      "tag_count": 45,
+      "text_hits": 32,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "infrastructure",
         "cities"
       ],
-      "breadth_supply": 9,
+      "breadth_supply": 21,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2588,7 +2630,7 @@
       "semantic_concepts": [
         "trains"
       ],
-      "breadth_supply": 4,
+      "breadth_supply": 17,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2602,15 +2644,15 @@
       "taxonomy_nodes": [
         "nature"
       ],
-      "catalog_count": 46,
-      "tag_count": 17,
-      "text_hits": 6,
+      "catalog_count": 57,
+      "tag_count": 23,
+      "text_hits": 9,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "animals"
       ],
-      "breadth_supply": 1072,
+      "breadth_supply": 1054,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2624,15 +2666,15 @@
       "taxonomy_nodes": [
         "paranormal"
       ],
-      "catalog_count": 15,
-      "tag_count": 23,
-      "text_hits": 32,
+      "catalog_count": 23,
+      "tag_count": 47,
+      "text_hits": 50,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "paranormal"
       ],
-      "breadth_supply": 0,
+      "breadth_supply": 228,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2646,15 +2688,15 @@
       "taxonomy_nodes": [
         "engineering"
       ],
-      "catalog_count": 92,
-      "tag_count": 61,
-      "text_hits": 59,
+      "catalog_count": 123,
+      "tag_count": 97,
+      "text_hits": 87,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "engineering"
       ],
-      "breadth_supply": 60,
+      "breadth_supply": 521,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2669,14 +2711,14 @@
         "culture/books"
       ],
       "catalog_count": 3,
-      "tag_count": 22,
-      "text_hits": 22,
+      "tag_count": 31,
+      "text_hits": 37,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "books"
       ],
-      "breadth_supply": 213,
+      "breadth_supply": 299,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2690,20 +2732,20 @@
       "taxonomy_nodes": [
         "transport/maritime"
       ],
-      "catalog_count": 8,
-      "tag_count": 37,
-      "text_hits": 13,
+      "catalog_count": 12,
+      "tag_count": 53,
+      "text_hits": 18,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "maritime"
       ],
-      "breadth_supply": 4,
+      "breadth_supply": 22,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "retag-existing"
+        "promote-from-breadth"
       ],
-      "priority": 4
+      "priority": 3
     },
     {
       "id": "ocean-marine-science",
@@ -2713,19 +2755,19 @@
         "nature/ocean-science"
       ],
       "catalog_count": 4,
-      "tag_count": 173,
-      "text_hits": 81,
+      "tag_count": 248,
+      "text_hits": 119,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "ocean"
       ],
-      "breadth_supply": 9,
+      "breadth_supply": 111,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "retag-existing"
+        "promote-from-breadth"
       ],
-      "priority": 4
+      "priority": 3
     },
     {
       "id": "dinosaurs-paleontology",
@@ -2734,15 +2776,15 @@
       "taxonomy_nodes": [
         "nature/paleontology"
       ],
-      "catalog_count": 12,
-      "tag_count": 13,
-      "text_hits": 8,
-      "content_depth": "thin",
+      "catalog_count": 16,
+      "tag_count": 17,
+      "text_hits": 10,
+      "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "dinosaurs"
       ],
-      "breadth_supply": 3,
+      "breadth_supply": 14,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2757,15 +2799,15 @@
         "nature/weather",
         "nature/earth-science"
       ],
-      "catalog_count": 21,
-      "tag_count": 164,
-      "text_hits": 82,
+      "catalog_count": 25,
+      "tag_count": 238,
+      "text_hits": 119,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "weather"
       ],
-      "breadth_supply": 208,
+      "breadth_supply": 213,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2780,15 +2822,15 @@
         "fiction/sci-fi"
       ],
       "catalog_count": 2,
-      "tag_count": 155,
-      "text_hits": 67,
+      "tag_count": 229,
+      "text_hits": 103,
       "content_depth": "thin",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "science -> [science/materials, medicine/biology]",
         "fiction -> [fiction/drama]"
       ],
-      "breadth_supply": 199,
+      "breadth_supply": 195,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix",
@@ -2803,15 +2845,15 @@
       "taxonomy_nodes": [
         "fiction/drama"
       ],
-      "catalog_count": 6,
-      "tag_count": 8,
-      "text_hits": 6,
+      "catalog_count": 9,
+      "tag_count": 12,
+      "text_hits": 13,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "fiction"
       ],
-      "breadth_supply": 213,
+      "breadth_supply": 302,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2826,15 +2868,15 @@
         "fiction/comedy"
       ],
       "catalog_count": 0,
-      "tag_count": 118,
-      "text_hits": 18,
+      "tag_count": 169,
+      "text_hits": 30,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "comedy -> [comedy/casual-hangs, comedy/stand-up]",
         "fiction -> [fiction/drama]"
       ],
-      "breadth_supply": 200,
+      "breadth_supply": 159,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -2848,15 +2890,15 @@
       "taxonomy_nodes": [
         "engineering/ai-robotics"
       ],
-      "catalog_count": 21,
-      "tag_count": 10,
-      "text_hits": 5,
+      "catalog_count": 25,
+      "tag_count": 16,
+      "text_hits": 9,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "robotics"
       ],
-      "breadth_supply": 55,
+      "breadth_supply": 302,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2870,16 +2912,16 @@
       "taxonomy_nodes": [
         "engineering/precision-mfg"
       ],
-      "catalog_count": 29,
-      "tag_count": 38,
-      "text_hits": 21,
+      "catalog_count": 38,
+      "tag_count": 49,
+      "text_hits": 27,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "manufacturing",
         "machining"
       ],
-      "breadth_supply": 0,
+      "breadth_supply": 7,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2893,15 +2935,15 @@
       "taxonomy_nodes": [
         "psychology"
       ],
-      "catalog_count": 47,
-      "tag_count": 54,
-      "text_hits": 11,
+      "catalog_count": 63,
+      "tag_count": 73,
+      "text_hits": 12,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "psychology"
       ],
-      "breadth_supply": 275,
+      "breadth_supply": 654,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -2915,15 +2957,15 @@
       "taxonomy_nodes": [
         "engineering/disasters"
       ],
-      "catalog_count": 12,
-      "tag_count": 69,
-      "text_hits": 150,
+      "catalog_count": 13,
+      "tag_count": 110,
+      "text_hits": 208,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "engineering-failures"
       ],
-      "breadth_supply": 2,
+      "breadth_supply": 12,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "retag-existing"
@@ -2937,22 +2979,22 @@
       "taxonomy_nodes": [
         "architecture/infrastructure"
       ],
-      "catalog_count": 11,
-      "tag_count": 28,
-      "text_hits": 6,
-      "content_depth": "thin",
+      "catalog_count": 18,
+      "tag_count": 40,
+      "text_hits": 10,
+      "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "construction",
         "infrastructure",
         "bridges"
       ],
-      "breadth_supply": 0,
+      "breadth_supply": 17,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "retag-existing"
+        "none"
       ],
-      "priority": 4
+      "priority": 6
     },
     {
       "id": "decision-making-behavioral-economics",
@@ -2961,19 +3003,18 @@
       "taxonomy_nodes": [
         "psychology/decision-making"
       ],
-      "catalog_count": 10,
-      "tag_count": 69,
-      "text_hits": 40,
-      "content_depth": "thin",
+      "catalog_count": 20,
+      "tag_count": 91,
+      "text_hits": 54,
+      "content_depth": "deep",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "economics -> [economics/markets, business/startups]"
       ],
-      "breadth_supply": 2,
+      "breadth_supply": 138,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "semantic-concept-fix",
-        "retag-existing"
+        "semantic-concept-fix"
       ],
       "priority": 2
     },
@@ -2984,15 +3025,15 @@
       "taxonomy_nodes": [
         "health/mental"
       ],
-      "catalog_count": 35,
-      "tag_count": 12,
-      "text_hits": 8,
+      "catalog_count": 51,
+      "tag_count": 16,
+      "text_hits": 15,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "psychology"
       ],
-      "breadth_supply": 220,
+      "breadth_supply": 447,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -3006,15 +3047,15 @@
       "taxonomy_nodes": [
         "health/mental"
       ],
-      "catalog_count": 35,
-      "tag_count": 6,
-      "text_hits": 4,
+      "catalog_count": 51,
+      "tag_count": 8,
+      "text_hits": 10,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "psychology"
       ],
-      "breadth_supply": 220,
+      "breadth_supply": 447,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -3028,15 +3069,15 @@
       "taxonomy_nodes": [
         "history/military-modern"
       ],
-      "catalog_count": 26,
-      "tag_count": 46,
-      "text_hits": 41,
+      "catalog_count": 39,
+      "tag_count": 68,
+      "text_hits": 65,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "war"
       ],
-      "breadth_supply": 19,
+      "breadth_supply": 62,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -3050,13 +3091,13 @@
       "taxonomy_nodes": [
         "education/self-improvement"
       ],
-      "catalog_count": 17,
+      "catalog_count": 30,
       "tag_count": 0,
-      "text_hits": 8,
+      "text_hits": 11,
       "content_depth": "deep",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 203,
+      "breadth_supply": 318,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix"
@@ -3070,16 +3111,16 @@
       "taxonomy_nodes": [
         "economics/markets"
       ],
-      "catalog_count": 26,
-      "tag_count": 12,
-      "text_hits": 48,
+      "catalog_count": 43,
+      "tag_count": 15,
+      "text_hits": 73,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "economics",
         "markets"
       ],
-      "breadth_supply": 249,
+      "breadth_supply": 320,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -3099,7 +3140,7 @@
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 200,
+      "breadth_supply": 219,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -3114,12 +3155,12 @@
         "culture/books"
       ],
       "catalog_count": 3,
-      "tag_count": 4,
-      "text_hits": 3,
+      "tag_count": 7,
+      "text_hits": 5,
       "content_depth": "thin",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 213,
+      "breadth_supply": 299,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix",
@@ -3134,15 +3175,15 @@
       "taxonomy_nodes": [
         "comedy/interviews"
       ],
-      "catalog_count": 34,
-      "tag_count": 114,
-      "text_hits": 45,
+      "catalog_count": 54,
+      "tag_count": 161,
+      "text_hits": 67,
       "content_depth": "deep",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "comedy -> [comedy/casual-hangs, comedy/stand-up]"
       ],
-      "breadth_supply": 195,
+      "breadth_supply": 191,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix"
@@ -3156,15 +3197,15 @@
       "taxonomy_nodes": [
         "science/materials"
       ],
-      "catalog_count": 34,
-      "tag_count": 12,
-      "text_hits": 19,
+      "catalog_count": 44,
+      "tag_count": 15,
+      "text_hits": 23,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
         "semiconductors"
       ],
-      "breadth_supply": 0,
+      "breadth_supply": 11,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "none"
@@ -3176,37 +3217,15 @@
       "label": "Electric vehicles",
       "tier": 3,
       "taxonomy_nodes": [
-        "automotive/racing"
+        "automotive/ev-future"
       ],
-      "catalog_count": 15,
-      "tag_count": 12,
-      "text_hits": 13,
-      "content_depth": "deep",
+      "catalog_count": 0,
+      "tag_count": 18,
+      "text_hits": 18,
+      "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "clean-energy -> [engineering/energy-fusion, engineering/energy-grid, automotive]"
-      ],
-      "breadth_supply": 4,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "wine-cocktails",
-      "label": "Wine & cocktails",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "food/cooking-science"
-      ],
-      "catalog_count": 11,
-      "tag_count": 1,
-      "text_hits": 1,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "cooking"
       ],
       "breadth_supply": 0,
       "fusion_bug_flagged": false,
@@ -3216,24 +3235,46 @@
       "priority": 6
     },
     {
+      "id": "wine-cocktails",
+      "label": "Wine & cocktails",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "food/drinks"
+      ],
+      "catalog_count": 0,
+      "tag_count": 1,
+      "text_hits": 1,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "cooking -> [food/cooking-science]"
+      ],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "defer"
+      ],
+      "priority": 5
+    },
+    {
       "id": "gardening",
       "label": "Gardening",
       "tier": 3,
       "taxonomy_nodes": [
-        "craft/diy-home"
+        "hobbies/gardening"
       ],
-      "catalog_count": 18,
-      "tag_count": 13,
-      "text_hits": 21,
-      "content_depth": "deep",
+      "catalog_count": 0,
+      "tag_count": 23,
+      "text_hits": 33,
+      "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 199,
+      "breadth_supply": 0,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "semantic-concept-fix"
+        "none"
       ],
-      "priority": 2
+      "priority": 6
     },
     {
       "id": "interior-design",
@@ -3242,15 +3283,15 @@
       "taxonomy_nodes": [
         "culture/design"
       ],
-      "catalog_count": 9,
-      "tag_count": 51,
-      "text_hits": 43,
+      "catalog_count": 11,
+      "tag_count": 74,
+      "text_hits": 63,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "design"
       ],
-      "breadth_supply": 203,
+      "breadth_supply": 244,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -3265,14 +3306,14 @@
         "math/puzzles"
       ],
       "catalog_count": 2,
-      "tag_count": 6,
-      "text_hits": 3,
+      "tag_count": 7,
+      "text_hits": 6,
       "content_depth": "thin",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "business -> [business/startups]"
       ],
-      "breadth_supply": 1,
+      "breadth_supply": 19,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "semantic-concept-fix",
@@ -3288,15 +3329,15 @@
         "nature/pets"
       ],
       "catalog_count": 0,
-      "tag_count": 33,
-      "text_hits": 26,
+      "tag_count": 50,
+      "text_hits": 35,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
         "animals -> [nature/animal-cognition, nature/ocean-science]",
         "training -> [sports/biomechanics]"
       ],
-      "breadth_supply": 202,
+      "breadth_supply": 221,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -3312,11 +3353,11 @@
       ],
       "catalog_count": 0,
       "tag_count": 0,
-      "text_hits": 3,
+      "text_hits": 6,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
-      "breadth_supply": 183,
+      "breadth_supply": 109,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"
@@ -3327,37 +3368,46 @@
       "id": "k-pop-global-pop-music",
       "label": "K-pop & global pop music",
       "tier": 3,
-      "taxonomy_nodes": [],
-      "catalog_count": 0,
-      "tag_count": 79,
-      "text_hits": 42,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
+      "taxonomy_nodes": [
+        "music/pop-global"
+      ],
+      "catalog_count": 3,
+      "tag_count": 110,
+      "text_hits": 52,
+      "content_depth": "thin",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "music -> [music/theory-production, craft/instrument-making]"
+      ],
       "breadth_supply": 0,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "needs-taxonomy-adr"
+        "semantic-concept-fix",
+        "retag-existing"
       ],
-      "priority": 4
+      "priority": 2
     },
     {
       "id": "combat-sports-boxing",
       "label": "Combat sports (boxing)",
       "tier": 3,
-      "taxonomy_nodes": [],
+      "taxonomy_nodes": [
+        "sports/combat-sports"
+      ],
       "catalog_count": 0,
-      "tag_count": 32,
-      "text_hits": 8,
-      "content_depth": "no-node",
-      "semantic_status": "no-node",
-      "semantic_concepts": [],
+      "tag_count": 50,
+      "text_hits": 10,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "sports -> [sports, sports/biomechanics]"
+      ],
       "breadth_supply": 0,
       "fusion_bug_flagged": false,
       "recommended_actions": [
-        "needs-taxonomy-adr"
+        "none"
       ],
-      "priority": 4
+      "priority": 6
     },
     {
       "id": "design",
@@ -3366,15 +3416,15 @@
       "taxonomy_nodes": [
         "culture/design"
       ],
-      "catalog_count": 9,
-      "tag_count": 62,
-      "text_hits": 36,
+      "catalog_count": 11,
+      "tag_count": 83,
+      "text_hits": 49,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
         "design"
       ],
-      "breadth_supply": 203,
+      "breadth_supply": 244,
       "fusion_bug_flagged": false,
       "recommended_actions": [
         "promote-from-breadth"

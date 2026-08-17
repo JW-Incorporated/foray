@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-17T05:49:54.180Z",
+  "built_at": "2026-08-17T07:57:38.967Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
@@ -77,6 +77,12 @@
       "no_agent_pass": 509,
       "superseded_rows": 6758,
       "shard_count": 6
+    },
+    "base_layer": {
+      "produced_by": "classify-breadth.mjs",
+      "method": "deterministic genre map (base layer; higher-precedence overlays enriched in place, never replaced)",
+      "input": "data/catalog-breadth.json",
+      "built_at": "2026-08-17T07:57:38.968Z"
     }
   },
   "entries": {
@@ -93042,6 +93048,7 @@
     },
     "1247146656": {
       "topics": [
+        "music/music-history",
         "music",
         "history"
       ],
@@ -197305,6 +197312,7 @@
     },
     "1507751825": {
       "topics": [
+        "space/astronomy",
         "space",
         "science"
       ],
@@ -311805,6 +311813,7 @@
     },
     "1619792353": {
       "topics": [
+        "music/music-history",
         "music",
         "history"
       ],
@@ -317985,6 +317994,7 @@
     },
     "1630292974": {
       "topics": [
+        "music/music-history",
         "music",
         "history"
       ],
@@ -389341,11 +389351,16 @@
     },
     "1723835486": {
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "confidence": "medium",
       "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "by": "breadth-refine-5",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "personal-journals/narrative-storytelling"
+      ]
     },
     "1723854480": {
       "topics": [
@@ -418605,6 +418620,7 @@
     },
     "1758062954": {
       "topics": [
+        "space/astronomy",
         "space",
         "science"
       ],
@@ -460646,6 +460662,7 @@
     },
     "1814318141": {
       "topics": [
+        "space/astronomy",
         "space",
         "science"
       ],
@@ -487257,11 +487274,16 @@
     },
     "1847709608": {
       "topics": [
+        "gaming/tabletop",
         "gaming"
       ],
       "confidence": "medium",
       "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "by": "breadth-refine-6",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "gaming/tabletop"
+      ]
     },
     "1847736017": {
       "topics": [
@@ -491015,6 +491037,7 @@
     },
     "1851853436": {
       "topics": [
+        "music/music-history",
         "music",
         "history"
       ],
@@ -498679,9 +498702,10 @@
     },
     "1867855646": {
       "topics": [
+        "travel/destinations",
         "travel"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "genre-map"
     },
     "1867875556": {
@@ -502394,9 +502418,10 @@
     },
     "1874385512": {
       "topics": [
+        "travel/destinations",
         "travel"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "genre-map"
     },
     "1874557548": {
@@ -506396,6 +506421,7 @@
     },
     "1879840988": {
       "topics": [
+        "music/music-history",
         "music",
         "history"
       ],
@@ -509209,11 +509235,16 @@
     },
     "1884364376": {
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "confidence": "medium",
       "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "by": "breadth-refine-6",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "personal-journals/narrative-storytelling"
+      ]
     },
     "1884420599": {
       "topics": [
@@ -510548,9 +510579,11 @@
     "1886017466": {
       "topics": [
         "adventure/exploration",
+        "hobbies/outdoors",
+        "hobbies",
         "nature"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "genre-map"
     },
     "1886027014": {
@@ -511025,11 +511058,16 @@
     },
     "1886650616": {
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "confidence": "medium",
       "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "by": "breadth-refine-6",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "personal-journals/narrative-storytelling"
+      ]
     },
     "1886700253": {
       "topics": [
@@ -513775,11 +513813,16 @@
     },
     "1891156880": {
       "topics": [
+        "gaming/tabletop",
         "gaming"
       ],
       "confidence": "medium",
       "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "by": "breadth-refine-6",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "gaming/tabletop"
+      ]
     },
     "1891164875": {
       "topics": [
@@ -514802,6 +514845,7 @@
     },
     "1893230054": {
       "topics": [
+        "space/astronomy",
         "space",
         "science"
       ],
@@ -517124,11 +517168,16 @@
     },
     "1895849180": {
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "confidence": "medium",
       "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "by": "breadth-refine-7",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "personal-journals/narrative-storytelling"
+      ]
     },
     "1895852819": {
       "topics": [
@@ -518855,6 +518904,7 @@
     },
     "1896507911": {
       "topics": [
+        "music/music-history",
         "music",
         "history"
       ],
@@ -520248,6 +520298,7 @@
     },
     "1896737930": {
       "topics": [
+        "space/astronomy",
         "space",
         "science"
       ],
@@ -522817,9 +522868,10 @@
     },
     "1896854036": {
       "topics": [
+        "travel/destinations",
         "travel"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "genre-map"
     },
     "1896854186": {
@@ -524475,11 +524527,16 @@
     },
     "1896886718": {
       "topics": [
+        "music/music-history",
         "music"
       ],
       "confidence": "high",
       "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "by": "breadth-refine-7",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "music/music-history"
+      ]
     },
     "1896888476": {
       "topics": [
@@ -528682,6 +528739,7 @@
     },
     "6784457756": {
       "topics": [
+        "music/music-history",
         "music",
         "history"
       ],
@@ -528805,9 +528863,10 @@
     },
     "6784802882": {
       "topics": [
+        "travel/destinations",
         "travel"
       ],
-      "confidence": "high",
+      "confidence": "medium",
       "source": "genre-map"
     },
     "6784807422": {
@@ -530667,11 +530726,16 @@
     },
     "6787827890": {
       "topics": [
+        "gaming/tabletop",
         "gaming"
       ],
       "confidence": "low",
       "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "by": "breadth-refine-7",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "gaming/tabletop"
+      ]
     },
     "6787832175": {
       "topics": [
@@ -531013,11 +531077,16 @@
     },
     "6788197016": {
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "confidence": "medium",
       "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "by": "breadth-refine-7",
+      "enriched_by": "genre-map",
+      "enriched_nodes": [
+        "personal-journals/narrative-storytelling"
+      ]
     },
     "6788227778": {
       "topics": [

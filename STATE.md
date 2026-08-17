@@ -7,6 +7,47 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### unsticking — the out-point flake, and PR #198's salvage (2026-08-17, one PR, no follow-up)
+
+- **What:** `fix/flake-and-198`. Two unrelated blockages in one PR: (1) the
+  wall-clock out-point budgets in `player/html-audio-backend.test.js` were
+  reddening the root group at random; (2) PR #198 had been `DIRTY`/`CONFLICTING`
+  for a day after #205 rewrote the file underneath it.
+- **Owned files:** `player/html-audio-backend.test.js`,
+  `data/breadth-classification.json`, `data/genre-taxonomy-map.json`,
+  `tools/classify-breadth.mjs`, `tools/classify/root-dumping-report.mjs`,
+  `test/data-topic-integrity.test.js`, `data/discover.json`,
+  `data/top-topics.json`, `data/topic-coverage-report.json`. **Shared files
+  touched:** `test/suite-integrity.test.js` (floors, isolated final commit),
+  `tools/classify/README.md`, `docs/CATALOG-PIPELINE.md`,
+  `docs/research/taxonomy-review-2026-08.md`, and this file. **Out of scope,
+  deliberately:** `ios/`, `.github/`, `index.html`, `app.js` and any new app
+  directory — a sibling session is scaffolding Capacitor there.
+- **The flake was the test, not the backend.** Two bugs, both the same mistake:
+  a budget that does not stretch with the load the measurement stretches with.
+  The comparative fix #195 introduced took `Math.min` of the naive tick cost
+  across four runs and `Math.max` of the overshoot across the same four, so the
+  budget came from the least-loaded run and the measurement from the most-loaded
+  one; and `observedTickMs` silently fell back to the **nominal** 250 ms tick
+  when a run delivered fewer than two ticks — i.e. exactly on a slow box, where
+  the real interval is wider. Reproduced at 1 run in 12 under 16 busy loops on
+  16 cores. Fixed by pairing per run, and the rate claim now needs no clock at
+  all (it reads the delay the fine timer is *armed* for). No product change.
+- **#198 is landed by re-derivation, not by rebase, and its data file is
+  discarded.** 1,000 of its 1,026 changed breadth rows had since earned a real
+  agent judgement from #205, which outranks the genre map by design — and taking
+  its data file wholesale would have **regressed** the per-item metric from
+  5,148 to 5,249. Re-running its own fixed generator on top of `main` instead
+  gives **5,148 → 5,123**, which is exactly what #205 projected for the two
+  together. Its durable half lands intact: the `classify-breadth.mjs`
+  destructive-rewrite fix (which by now would have deleted 19,278 agent rows,
+  not 1,851), the 7 genre-map corrections, `root-dumping-report.mjs`, and the
+  curated pool's 108 → 31.
+- **Not ported:** #198's `HUMAN-ACTIONS.md` item **#4** ("are the six classify
+  routines alive?"). #205 answered it — all six, never dead, they just open no
+  PR — and `main`'s item **#10** already carries the correct successor question.
+  The #4 slot stays unused rather than renumbered; item numbers are stable IDs.
+
 ### MP1 spike — background audio in a Capacitor WebView (2026-08-17, one docs PR, no follow-up)
 
 - **What:** `docs/mp1-background-audio`, issue #35 — the spike that gates #34.
