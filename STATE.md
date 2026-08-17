@@ -33,11 +33,11 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **A TRANSCRIPT IS A COST, NOT A GATE. Do not re-derive the opposite from the
   review.** `fleet-review-2026-08.md` §3 ranks transcript availability as the #1
   binding constraint; that is **wrong**, and the founder corrected it. We make
-  our own at ~1.1x realtime (~46 min of CPU per hour of audio) and on domain
-  vocabulary ours beat the publishers' — a Spotify SRT rendered "geology bites"
-  as `jala g b`. A show with no `<podcast:transcript>` is *expensive*, not
-  unusable. The one thing that genuinely gates today is a **bounded ad delta**
-  (ADR-0008): paddable below the threshold, needing a locate step above it.
+  our own — measured rate and source in `tools/classify/labels.mjs`, written down
+  once on purpose — so a show with no `<podcast:transcript>` is *expensive*, not
+  unusable. (Whether ours is *better* than a publisher's is still open: T2, #117.)
+  The one thing that genuinely gates today is a **bounded ad delta** (ADR-0008):
+  paddable below the threshold, needing a locate step above it.
 - **Heads-up — nothing filters, and there is a suite whose whole job is to keep
   it that way.** Founder ruling: *"no show should be excluded at this stage, just
   catalogued. I don't want to accidentally toss out shows that are still useful,

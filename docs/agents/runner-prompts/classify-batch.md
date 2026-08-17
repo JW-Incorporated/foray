@@ -66,7 +66,9 @@ description and a sample of its recent episodes.
    valid values are exactly `0/6` `1/6` `2/6` `3/6` `4/6` `5/6` — **never
    `6/6`**. A malformed value now makes the script exit with an error
    rather than silently processing the whole catalogue; if that happens,
-   fix the argument, do not drop the flag.
+   fix the argument, **do not drop the flag**. An empty value counts as
+   malformed for the same reason — `--shard "$SHARD"` with nothing in
+   `$SHARD` used to run the entire catalogue without saying so.
 
    Use `--mode escalate` instead when the orchestrator specifically asks
    for a Tier-2 escalation pass (re-examining shows a prior Tier-1 batch

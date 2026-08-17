@@ -28,10 +28,13 @@ Wyatt's standing decision is to leave the cadence as-is.
 
 ### The six classify routines — arguments and phase
 
-**This table is the intended configuration, not an observed one.** The
-arguments and the phase live in each routine's config on Wyatt's account, which
-no session can read or write; setting them is `HUMAN-ACTIONS.md` #5. Until that
-is done, this table documents intent and the auditor is truth (see the warning
+**This table is the intended configuration, not an observed one, and it is not a
+new decision.** It records what `HUMAN-ACTIONS.md` #5 — filed by the fleet
+review, PR #198 — already asks the owner to set; it lives here too because this
+file's own header requires updating it in the same change that changes a runner,
+and the shard argument changed. The arguments and the phase live in each
+routine's config on Wyatt's account, which no session can read or write. Until
+#5 is done, this table documents intent and the auditor is truth (see the warning
 at the top of this file).
 
 Every routine keeps a **3-runs/day, 8-hour period** — the cadence is unchanged.
@@ -56,10 +59,13 @@ Three things about that table that are easy to get wrong:
   full unsharded catalogue, which is exactly the six-way duplicate work the flag
   exists to prevent.
 - **The shard key is `fnv1a32(String(apple_collection_id)) % N`**, not
-  `Number(id) % N`. The modulo key is 2.20x unbalanced over the shows that
-  remain (shard0 1,514 against shard3 3,334) and would idle a sixth of the fleet
-  from around day 12. Do not "simplify" it back;
+  `Number(id) % N`. The modulo key is **2.20x** unbalanced over the **17,936
+  shows still needing a pass** (shard0 1,514 against shard3 3,334) and would idle
+  a sixth of the fleet from around day 12. Do not "simplify" it back;
   `tools/classify/shard.test.mjs` measures both against the real catalogue.
+  (`fleet-review-2026-08.md` §4 quotes 1,504 / 2.21x for the same key over the
+  slightly smaller **17,875 eligible** set — both are correct, over different
+  sets, so name the set whenever you quote either.)
 - **12:10 and 12:50 fall 30 and 70 minutes after `foray-nightly-enrich`
   (11:40).** The two touch disjoint files so this is fine, but if the nightly
   starts running long, move shard4/5 to `10 5,13,21` / `50 5,13,21`.

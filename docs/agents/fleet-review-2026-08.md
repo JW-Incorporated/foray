@@ -80,6 +80,12 @@ shard: get("--shard", null) // "i/N" for parallel sharded runs
 if (shardCount && Number(id) % shardCount !== shardIndex) continue;
 ```
 
+> **Superseded 2026-08-16 (`feat/fleet-cataloguing`).** That is the code as it
+> stood when this was written. The key is now a hashed, stable
+> `fnv1a32(String(id)) % N` (§4 explains why the modulo key had to go), and a
+> malformed or empty `--shard` throws instead of silently running unsharded.
+> `tools/classify/labels.mjs` is the current description.
+
 The six routines' committed prompt (`runner-prompts/classify-batch.md`) contains
 one literal command, shared by all six:
 
@@ -436,9 +442,21 @@ duration** — no injection at all.
 
 | Rank | Constraint | Why it binds | Cost if we get it wrong |
 |---|---|---|---|
-| **1** | **Transcript availability** | Blocked 9 of 9 ASR-queue rows. A `<podcast:transcript>` tag makes an episode nearly free; without one it is **1.33× realtime measured** — 32 days per 1,000 episodes on the only machine we have, or a founder-approved **~$30–75** (rented GPU) to **~$150–400** (managed ASR API) | The whole pipeline stalls; this is the funding decision |
+| **1** | **Transcript availability** — *superseded, see the note below this table: it is a COST, not a gate* | Blocked 9 of 9 ASR-queue rows. A `<podcast:transcript>` tag makes an episode nearly free; without one it is **1.33× realtime measured** — 32 days per 1,000 episodes on the only machine we have, or a founder-approved **~$30–75** (rented GPU) to **~$150–400** (managed ASR API) | The whole pipeline stalls; this is the funding decision |
 | **2** | **Content shape** | Rejected 6h 02m — more than the funded queue. The only gate ADR-0008 left standing alongside transcripts. No subject tag can see it | Wasted transcription budget on audio nobody can use |
 | **3** | **Ad load** | Not a gate. A per-episode playback *parameter* (`delta_max`, spread, N) for shows we have already decided to author | A padded segment or a skipped one — never a bad cut, because `seekPrecision()` already fails honest |
+
+> **Correction, 2026-08-16, by the founder — and this ranking is the one thing in
+> this document that should not be quoted as it stands.** Transcript availability
+> is **not a binding constraint**: we transcribe our own audio (measured rate in
+> `docs/curation/transcription-scale-plan.md` §1/§5), so a missing
+> `<podcast:transcript>` is an amount of CPU, not a blocker. Flagging it is worth
+> doing precisely because it says which shows are *cheap*, and it must therefore
+> never filter anything — no show is excluded from the catalogue on any label
+> (`tools/classify/labels.mjs`, and `tools/classify/no-exclusion.test.mjs` makes
+> that mechanical). Content shape (#2) was not built: the founder cut the scope to
+> the transcript flag alone. Ad load (#3) is correct as written, and remains the
+> one thing that genuinely gates today, per ADR-0008.
 
 ### So: which belongs in the fleet's job?
 

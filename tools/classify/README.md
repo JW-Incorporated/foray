@@ -151,7 +151,9 @@ Six routines run this pipeline in parallel, each taking a disjoint slice.
 
 - **The key is `fnv1a32(String(apple_collection_id)) % N`**, in
   `labels.mjs`. It replaced `Number(id) % N`, which is 2.20x unbalanced
-  over the shows that remain (shard0 1,514 against shard3 3,334) because
+  over the 17,936 shows still needing a pass (shard0 1,514 against
+  shard3 3,334 — the review's §4 quotes 1,504 / 2.21x over the 17,875
+  *eligible* subset; name the set when quoting either) because
   Apple collection ids are not uniform mod 6 once the already-classified
   ones, taken in ascending-id order, are removed. Finish time is the
   largest shard, so the modulo key idled a sixth of the fleet from around
@@ -182,9 +184,10 @@ Every batch entry, and every record `merge-results.mjs` writes, carries a
   "label_schema_version": 1,
   "episodes_sampled": 8,
   "transcript_present": true,
-  "transcript_tags": 3,
+  "episodes_with_transcript": 3,
   "episodes_with_timed_transcript": 2,
-  "transcript_types": { "text/vtt": 2, "text/plain": 1 }
+  "transcript_tags": 4,
+  "transcript_types": { "text/vtt": 2, "text/plain": 2 }
 }
 ```
 
@@ -192,10 +195,12 @@ Every batch entry, and every record `merge-results.mjs` writes, carries a
 `labels.mjs`'s header before writing anything that consumes it; the short
 version:
 
-- We make our own transcripts, at ~1.1x realtime — roughly **46 minutes of
-  CPU per hour of audio** — and on domain vocabulary ours have beaten the
-  publishers' (a Spotify SRT rendered "geology bites" as `jala g b`). So a
-  show with no `<podcast:transcript>` is *expensive*, not unusable.
+- We make our own transcripts. The measured rate and its source are in
+  `labels.mjs`; it is deliberately written down once rather than restated
+  here, because a number in eight files is a number that will disagree with
+  itself. A show with no `<podcast:transcript>` is *expensive*, not
+  unusable. (Transcript *quality* against a publisher's is a separate,
+  still-open question — T2, issue #117.)
 - The founder's ruling (2026-08-16) is that no show is excluded at this
   stage: *"I don't want to accidentally toss out shows that are still
   useful, for example for playlists (not forays)."* No consumer may read
@@ -208,10 +213,21 @@ version:
   is why `episodes_sampled` travels with them. `episodes_sampled: 0` means
   "the feed could not be read", not "no transcripts".
 - **Timed vs prose matters.** `text/plain` is a tag but cannot anchor a
-  segment, so it raises `transcript_tags` and not
+  segment, so it raises `episodes_with_transcript` and not
   `episodes_with_timed_transcript`. The timed-format list is imported from
   `tools/segments/sweep-transcripts.mjs` rather than restated, so it cannot
   drift from `data/transcript-availability.json`.
+- **Episodes and tags are different numbers, and the field names say which
+  is which.** Feeds publish ~2.9 `<podcast:transcript>` tags per transcribed
+  episode, so `episodes_with_transcript` (the coverage number) and
+  `transcript_tags` (which sums to `transcript_types`) differ by about that
+  factor. Both names mean exactly what they mean in
+  `data/transcript-availability.json`, deliberately, because the two files
+  describe the same quantities over overlapping show sets.
+- **A re-merge keeps the richer observation.** A Tier-2 escalation whose feed
+  fetch fails must not overwrite a real Tier-1 reading of 8 episodes with
+  "we saw 0" — `mergeTranscriptLabels` decides what the label *says*, never
+  whether the show is merged.
 - **The agent does not write it.** It comes off the batch input, where
   `prepare-batch.mjs` put it deterministically. The agent's results
   contract is unchanged.
@@ -226,8 +242,12 @@ ranged-GET probe stays the separate narrow sweep it already is in
 ## Tests
 
 ```sh
-node --test tools/classify/
+node --test "tools/classify/*.test.mjs"
 ```
+
+(The quoted glob, not `node --test tools/classify/` — the directory form errors
+on this repo's Node. CI is unaffected either way: `tools/ci/run-suites.mjs`
+enumerates the files itself.)
 
 - `shard.test.mjs` — balance, stability and the partition property, measured
   against the **real** `data/catalog-breadth.json`. Ratios and floors, never

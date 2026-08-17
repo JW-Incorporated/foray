@@ -361,9 +361,9 @@ Wyatt on the cost)
 >
 > **One framing correction worth carrying forward, because the review has it
 > wrong:** the review ranks transcript availability as the #1 binding constraint.
-> It is not a constraint at all — we make our own transcripts at ~1.1x realtime,
-> and on domain vocabulary ours have beaten the publishers'. A missing transcript
-> is a **cost** (~46 min of CPU per hour of audio), which is exactly why flagging
+> It is not a constraint at all — we make our own transcripts (measured rate and
+> source: `docs/curation/transcription-scale-plan.md` §1). A missing transcript
+> is therefore a **cost**, not a blocker, which is exactly why flagging
 > it is useful and why nothing filters on it. The one thing that genuinely gates
 > today is a bounded ad delta, per ADR-0008.
 >
