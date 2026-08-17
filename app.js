@@ -904,11 +904,16 @@ function renderPlaylists() {
    surface: it renders what that returns and drives the transport.
 
    ── The draft rule ────────────────────────────────────────────────────────
-   Foray #1 is `status: "draft"` and only a founder may publish it
-   (HUMAN-ACTIONS.md #2). So it is not listed for an ordinary visitor. It is
-   still reachable — by asking for it by id:
+   Every Foray in data/forays.json is `status: "draft"` and only a founder may
+   publish one (HUMAN-ACTIONS.md #2). So none is listed for an ordinary visitor.
+   They are still reachable — by asking for one by id:
 
-       https://jw-incorporated.github.io/foray/?foray=grilling-history-1
+       https://jw-incorporated.github.io/foray/?foray=grilling-history-2
+
+   That is the CURRENT grilling Foray (#226). `grilling-history-1` is still in
+   the file and still opens, but it is marked `superseded_by` and is the
+   61-minute assembly that drifted off plot, so it is the wrong link to hand
+   anyone testing playback.
 
    That link opens the Foray once (`enterForayFromQuery` rewrites the hash) and
    the parameter then stays in the URL as the unlock token — changing
