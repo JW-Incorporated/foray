@@ -68,6 +68,13 @@ const FLOORS = {
   "tools/ci/path-policy.test.mjs": 82,
   "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,
+  // The classify fleet. `no-exclusion` is the founder's "label, never filter"
+  // ruling made mechanical — of everything floored in this file it is the one
+  // whose deletion would be hardest to notice and most expensive to discover,
+  // because the thing it guards is an absence.
+  "tools/classify/no-exclusion.test.mjs": 20,
+  "tools/classify/shard.test.mjs": 19,
+  "tools/classify/transcript-label.test.mjs": 22,
   "tools/foray/check-forays.test.mjs": 81,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
