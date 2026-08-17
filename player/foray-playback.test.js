@@ -33,8 +33,9 @@ import {
   resolveForay, indexSegments, indexSources, findForay,
   forayElapsed, segmentAtElapsed, fmtClock,
 } from "./foray-resolve.js";
-import { ForayProgressStore, resumePoint } from "./foray-progress.js";
+import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./foray-progress.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
+import { createDurableStore } from "./durable-store.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -801,7 +802,11 @@ function fakeBridge(resolved, { resume = null } = {}) {
     // where a click will land.
     segmentAt: (playable, elapsedSec) => segmentAtElapsed(playable, elapsedSec),
     foraySeek: (sec) => { calls.push({ name: "foraySeek", args: [sec] }); },
-    forayResume: () => resume,
+    /* Records its arguments: the page has to hand the RESOLVED Foray over, or the
+       stored row is checked against nothing and a changed running order resumes
+       to the wrong audio (#40). */
+    forayResume: (id, opts = {}) => { calls.push({ name: "forayResume", args: [id, opts] }); return resume; },
+    forayDriftIsClean: (point) => !point || point.drift === "exact" || point.drift === "unverified",
     forayResumeList: () => (resume ? [{ id: resolved.id, title: resolved.title, percent: 32, label: "42 min left", finished: false }] : []),
     clearForayResume: record("clearForayResume"),
     // A real credit, so the block is actually emitted and bindSourceLinks has
@@ -819,22 +824,45 @@ function fakeBridge(resolved, { resume = null } = {}) {
 /** Mount the Foray page the way the router does, and hand back everything a
     test needs to poke it. Rejects if `renderForay` throws — which is the whole
     point, and is what the inert build did. */
-async function mountForayPage({ resume = null } = {}) {
+async function mountForayPage({
+  resume = null, durable = false, seed = {}, durableRows = {}, failLocalWrites = false,
+} = {}) {
   const resolved = realResolve();
   const dom = new StubDom(resolved);
   const bridge = fakeBridge(resolved, { resume });
-  const store = new Map();
+  const store = new Map(Object.entries(seed));
+  let failLocal = failLocalWrites;
+
+  /* The page's `localStorage`. `seed` puts `cp_` rows there BEFORE anything
+     mounts, which is how the migration is exercised through the real app.js
+     rather than only through the store's own unit tests; `failLocalWrites` is the
+     full-quota case, and the page has to stay interactive through it. */
+  const localStorageShim = {
+    get length() { return store.size; },
+    key: (i) => [...store.keys()][i] ?? null,
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => {
+      if (failLocal) { const e = new Error("The quota has been exceeded."); e.name = "QuotaExceededError"; throw e; }
+      store.set(k, String(v));
+    },
+    removeItem: (k) => store.delete(k),
+  };
+
+  /* With `durable`, app.js is given the REAL DurableStore over that shim plus a
+     fake durable tier — i.e. exactly the wiring `player/client.js` publishes,
+     which this harness cannot load (it is a module that builds DOM at import). */
+  const durableTier = durable ? fakeDurableTier(durableRows) : null;
+  const forayStorage = durable ? createDurableStore({ localStorage: localStorageShim, idbTier: durableTier }) : null;
 
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     fetch: () => new Promise(() => {}),          // parks init(), same as app-security
-    localStorage: {
-      get length() { return store.size; },
-      key: (i) => [...store.keys()][i] ?? null,
-      getItem: (k) => (store.has(k) ? store.get(k) : null),
-      setItem: (k, v) => store.set(k, String(v)),
-      removeItem: (k) => store.delete(k),
-    },
+    localStorage: localStorageShim,
+    /* Only defined when a store is being tested: `waitForStorage()` returns null
+       immediately when `window` has neither a store nor an `addEventListener` to
+       be told through, which is the honest answer for a page where the player
+       module never loaded. */
+    ...(forayStorage ? { forayStorage } : {}),
     document: {
       body: dom.body,
       documentElement: dom.body,
@@ -847,7 +875,12 @@ async function mountForayPage({ resume = null } = {}) {
     location: { hash: `#/foray/${FORAY_ID}`, search: `?foray=${FORAY_ID}`, pathname: "/", href: "https://x.test/" },
     history: { replaceState() {}, pushState() {} },
     CSS: { escape: (s) => String(s) },
-    URL, URLSearchParams, Math, Date, JSON, Promise, setTimeout, clearTimeout,
+    URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout,
+    /* Unref'd, so app.js's bounded storage wait (a 5 s `Promise.race` against a
+       fetch this harness never settles) cannot hold the test runner open. A
+       harness detail with no counterpart in a browser, where nothing waits on the
+       event loop being empty. */
+    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
     encodeURIComponent, decodeURIComponent,
   };
   ctx.window = ctx;
@@ -870,7 +903,27 @@ async function mountForayPage({ resume = null } = {}) {
   dom.setChips(vm.runInContext("FB_CHIPS", ctx));
 
   await ctx.renderForay(FORAY_ID);
-  return { dom, bridge, ctx, resolved, store, html: dom.el("view").innerHTML };
+  return {
+    dom, bridge, ctx, resolved, store, forayStorage, durableTier,
+    setFailLocal: (on) => { failLocal = on; },
+    html: dom.el("view").innerHTML,
+  };
+}
+
+/** An async "durable" tier, standing in for IndexedDB (which does not exist in
+    Node) and for the native Preferences tier the app will register later. */
+function fakeDurableTier(rows = {}) {
+  const data = new Map(Object.entries(rows));
+  return {
+    name: "idb", sync: false, durable: true, data,
+    async readAll(prefix) {
+      const out = new Map();
+      for (const [k, v] of data) if (!prefix || k.startsWith(prefix)) out.set(k, v);
+      return out;
+    },
+    async write(k, v) { data.set(k, String(v)); },
+    async remove(k) { data.delete(k); },
+  };
 }
 
 test("mounting the Foray page binds the transport — the inert-page regression", async () => {
@@ -1185,4 +1238,198 @@ test("the markup app.js emits carries every hook the harness serves", async () =
     assert.ok(html.includes(`data-chip="${ctx.esc(c.dataset.chip)}"`), `chip "${c.dataset.chip}" is not in the markup`);
   }
   assert.equal((html.match(/data-chip="/g) ?? []).length, dom.chips.length);
+});
+
+/* ================================================== durable storage (#40) ====
+
+   The store's own guarantees are unit-tested in `durable-store.test.js`. These
+   tests are the wiring: that the REAL app.js reads and writes through the store
+   when one is published, that an existing `cp_` row survives the change, and —
+   the one that matters most on an auto-merge path — that none of it can leave the
+   Foray page inert. The suite above exists because a `ReferenceError` once
+   rendered a perfect, dead page; a storage layer is exactly the kind of thing
+   that could do it again. */
+
+test("app.js reads and writes through window.forayStorage when one is published", async () => {
+  const { dom, forayStorage, durableTier, store } = await mountForayPage({ durable: true });
+  await dom.thumbs.find((t) => t.dataset.thumb === "up").click();
+  // The synchronous mirror is written before anything is awaited...
+  assert.ok(store.has("cp_foray_feedback"), "localStorage is still the fast mirror");
+  // ...and the durable tier catches up.
+  await forayStorage.flush();
+  assert.ok(durableTier.data.has("cp_foray_feedback"), "a thumb that only lives in localStorage is evictable");
+  assert.equal(forayStorage.health().ok, true);
+});
+
+test("MIGRATION through the real page: rows already in localStorage reach the durable tier", async () => {
+  // The listener who was mid-Foray when this shipped. Nothing about their state
+  // is new, nothing is renamed, and nothing is deleted.
+  const existing = {
+    cp_profile_id: '"p-legacy"',
+    cp_interests: '{"food/grilling-bbq":0.82}',
+    [progressKey(FORAY_ID)]: JSON.stringify(makeProgress({
+      forayId: FORAY_ID, title: "The history of grilling", elapsedSec: 1180, totalSec: 3673, index: 9,
+    })),
+  };
+  const { forayStorage, durableTier, store } = await mountForayPage({ durable: true, seed: existing });
+  await forayStorage.hydrate();
+  await forayStorage.flush();
+  for (const [k, v] of Object.entries(existing)) {
+    assert.equal(durableTier.data.get(k), v, `${k} did not reach the durable tier`);
+    assert.equal(store.get(k), v, `${k} was moved out of localStorage instead of copied`);
+  }
+});
+
+test("MIGRATION: the page still reads its own state through the store afterwards", async () => {
+  const { ctx, forayStorage } = await mountForayPage({
+    durable: true, seed: { cp_interests: '{"food/grilling-bbq":0.82}' },
+  });
+  await forayStorage.hydrate();
+  assert.equal(ctx.lsGet("cp_interests", {})["food/grilling-bbq"], 0.82);
+});
+
+test("EVICTION: a durable row is readable by the page after localStorage is wiped", async () => {
+  // Two mounts over one durable tier is "the same browser next week"; the empty
+  // seed is Safari's sweep.
+  const row = JSON.stringify(makeProgress({
+    forayId: FORAY_ID, title: "The history of grilling", elapsedSec: 1180, totalSec: 3673, index: 9,
+  }));
+  const first = await mountForayPage({ durable: true, seed: { [progressKey(FORAY_ID)]: row } });
+  await first.forayStorage.hydrate();
+  await first.forayStorage.flush();
+  const carried = Object.fromEntries(first.durableTier.data);
+  assert.ok(carried[progressKey(FORAY_ID)], "the first visit did not leave a durable copy");
+
+  // Second visit: same durable tier, localStorage swept.
+  const second = await mountForayPage({ durable: true, durableRows: carried });
+  await second.forayStorage.hydrate();
+  assert.equal(second.ctx.lsGet(progressKey(FORAY_ID), null).elapsed_sec, 1180);
+  assert.equal(second.store.get(progressKey(FORAY_ID)), row, "and it is mirrored back into localStorage");
+});
+
+test("a refused write is reported to the caller instead of pretending to have worked", async () => {
+  const { ctx, forayStorage } = await mountForayPage({ durable: true });
+  assert.equal(ctx.lsSet("cp_interests", { a: 1 }), true);
+  await forayStorage.flush();
+  assert.equal(forayStorage.health().ok, true);
+});
+
+test("a full quota with no durable tier makes lsSet return false, and health says why", async () => {
+  const { ctx, store } = await mountForayPage({ failLocalWrites: true });
+  // No durable store here at all: this is the pre-#40 environment, plus honesty.
+  assert.equal(ctx.lsSet("cp_interests", { a: 1 }), false);
+  assert.equal(store.has("cp_interests"), false);
+});
+
+test("STORAGE FAILURE MUST NOT MAKE THE PAGE INERT — the regression this suite exists for", async () => {
+  // Every tier refusing every write, through the real page. A storage layer that
+  // throws out of a render path is how a perfect, dead page gets shipped.
+  const { dom, forayStorage, ctx } = await mountForayPage({ durable: true, failLocalWrites: true });
+  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-strip"]) {
+    assert.ok(dom.el(id).listeners("click") > 0, `#${id} lost its handler when storage failed`);
+  }
+  await assert.doesNotReject(() => dom.thumbs.find((t) => t.dataset.thumb === "up").click());
+  await assert.doesNotReject(() => dom.el("fy-play").click());
+  assert.equal(ctx.lsGet("cp_foray_feedback", null) !== null, true, "the session still sees its own vote");
+  assert.equal(forayStorage.health().ok, false, "and the loss is recorded, not hidden");
+});
+
+test("a mount with no storage at all still renders and binds", async () => {
+  // `player/client.js` failing to load — a stale service-worker cache, a 404.
+  // lsGet/lsSet fall back to raw localStorage and the page is unchanged.
+  const { dom, ctx } = await mountForayPage();
+  assert.equal(ctx.window.forayStorage, undefined);
+  assert.ok(dom.el("fy-play").listeners("click") > 0);
+  assert.equal(ctx.lsSet("cp_interests", { a: 1 }), true);
+});
+
+/* ---------- freshness: the row against the running order ---------- */
+
+test("the page hands the RESOLVED Foray to the resume lookup, not just two numbers", async () => {
+  // Without this the stored segment id is checked against nothing, and a Foray
+  // whose order changed resumes to the wrong audio at a plausible-looking clock.
+  const { bridge, resolved } = await mountForayPage({
+    resume: { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, drift: "exact", label: "42 min left", clock: "19:40" },
+  });
+  const call = bridge.calls.find((c) => c.name === "forayResume");
+  assert.ok(call, "renderForay never asked for a resume point");
+  assert.equal(call.args[0], FORAY_ID);
+  assert.equal(call.args[1].resolved, resolved);
+  assert.equal(call.args[1].totalSec, resolved.totalSec);
+  assert.equal(call.args[1].itemCount, resolved.playable.length);
+});
+
+test("a resume whose segment no longer exists still mounts an interactive page", async () => {
+  // `drift: "dropped"`, `index: -1` — the stored segment is gone from the live
+  // document. The page must open on the clamped clock and still work.
+  const resume = { elapsedSec: 900, index: -1, remainingSec: 2773, percent: 24, finished: false, drift: "dropped", label: "46 min left", clock: "15:00" };
+  const { dom, bridge } = await mountForayPage({ resume });
+  assert.ok(dom.el("fy-play").listeners("click") > 0, "the page went inert on a stale row");
+  assert.equal(dom.el("fy-now").textContent, fmtClock(900));
+  assert.ok(!dom.rows.some((r) => r.classList.contains("is-played")),
+    "a row that cannot be identified must not mark the running order as heard");
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.find((c) => c.name === "playForay").args[1].startElapsedSec, 900);
+});
+
+test("a drifted resume is recorded as an event; a clean one is not", async () => {
+  const drifted = await mountForayPage({
+    resume: { elapsedSec: 900, index: 3, remainingSec: 2773, percent: 24, finished: false, drift: "moved", label: "46 min left", clock: "15:00" },
+  });
+  const events = JSON.parse(drifted.store.get("cp_events") ?? "[]").filter((e) => e.type === "foray_progress_drift");
+  assert.equal(events.length, 1);
+  assert.equal(events[0].payload.drift, "moved");
+  assert.equal(events[0].payload.foray_id, FORAY_ID);
+
+  const clean = await mountForayPage({
+    resume: { elapsedSec: 900, index: 3, remainingSec: 2773, percent: 24, finished: false, drift: "exact", label: "46 min left", clock: "15:00" },
+  });
+  assert.equal(JSON.parse(clean.store.get("cp_events") ?? "[]").filter((e) => e.type === "foray_progress_drift").length, 0);
+});
+
+test("an older player module that cannot answer the drift question does not break the page", async () => {
+  // app.js and the ES module deploy on their own service-worker schedules, so
+  // `forayDriftIsClean` can genuinely be absent. Optional-chained for that reason.
+  const { dom, bridge } = await mountForayPage({
+    resume: { elapsedSec: 900, index: 3, remainingSec: 2773, percent: 24, finished: false, label: "46 min left", clock: "15:00" },
+  });
+  delete bridge.forayDriftIsClean;
+  await assert.doesNotReject(() => mountForayPage({ resume: null }));
+  assert.ok(dom.el("fy-play").listeners("click") > 0);
+});
+
+/* ---------- the real Foray, reconciled against itself ---------- */
+
+test("Foray #1's own running order reconciles a row written from it as exact", async () => {
+  const r = realResolve();
+  const { progressSegments } = await import("./foray-resolve.js");
+  const segments = progressSegments(r);
+  const at = segments[9];
+  const row = makeProgress({
+    forayId: FORAY_ID, title: r.title, elapsedSec: at.startSec + 30,
+    totalSec: r.totalSec, index: 9, segmentId: at.id, intoSec: 30,
+  });
+  const point = resumePoint(row, { totalSec: r.totalSec, maxIndex: r.playable.length - 1, segments });
+  assert.equal(point.drift, "exact");
+  assert.equal(Math.round(point.elapsedSec), Math.round(at.startSec + 30));
+  assert.equal(point.index, 9);
+});
+
+test("dropping a segment from Foray #1 degrades the row rather than seeking wrong", async () => {
+  const r = realResolve();
+  const { progressSegments } = await import("./foray-resolve.js");
+  const segments = progressSegments(r);
+  const at = segments[9];
+  const row = makeProgress({
+    forayId: FORAY_ID, title: r.title, elapsedSec: at.startSec + 30,
+    totalSec: r.totalSec, index: 9, segmentId: at.id, intoSec: 30,
+  });
+  // The same Foray with segment 10 gone, re-clocked exactly as the resolver would.
+  const without = segments.filter((_, i) => i !== 9);
+  let acc = 0;
+  const reclocked = without.map((s) => { const out = { ...s, startSec: acc }; acc += s.durationSec; return out; });
+  const point = resumePoint(row, { totalSec: acc, maxIndex: reclocked.length - 1, segments: reclocked });
+  assert.equal(point.drift, "dropped");
+  assert.equal(point.index, -1);
+  assert.ok(point.elapsedSec <= acc, "a resume point can never be past the live end");
 });

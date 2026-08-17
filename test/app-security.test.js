@@ -197,6 +197,50 @@ test("localStorage keys keep the legacy cp_ prefix", () => {
   assert.deepStrictEqual(bad, [], "localStorage keys must keep the cp_ prefix");
 });
 
+test("no user state is read or written outside the storage shim (#40)", () => {
+  /* Durability is only durable if EVERYTHING goes through the shim. One
+     `localStorage.setItem` added later — by a hurried change or a bot PR — is a
+     key that lives only in the evictable tier, is never migrated, and silently
+     disappears for the listener who comes back next week. That is the original
+     defect, reintroduced one line at a time, and it is invisible in review
+     because it looks exactly like the code that used to be correct.
+
+     `lsGet`/`lsSet`/`storageBackend` are the only sanctioned readers, and
+     `storageBackend` names `localStorage` as its FALLBACK, not as a call. */
+  const calls = [...SRC.matchAll(/\blocalStorage\s*\.\s*(\w+)\s*\(/g)].map((m) => m[0]);
+  assert.deepStrictEqual(
+    calls, [],
+    "these bypass lsGet/lsSet and therefore bypass the durable store:\n" + calls.join("\n")
+  );
+});
+
+test("the shim prefers window.forayStorage, which is what makes cp_ state durable", () => {
+  // The wiring, behaviourally: player/client.js publishes a DurableStore there,
+  // and app.js has to actually use it. Falling back to localStorage when it is
+  // absent is the other half — a 404 on the module must cost durability, never
+  // the page.
+  const written = new Map();
+  app.window.forayStorage = {
+    getItem: (k) => (written.has(k) ? written.get(k) : null),
+    setItem: (k, v) => written.set(k, String(v)),
+    removeItem: (k) => written.delete(k),
+  };
+  try {
+    assert.strictEqual(app.lsSet("cp_interests", { a: 1 }), true);
+    assert.strictEqual(written.get("cp_interests"), '{"a":1}');
+    assert.deepStrictEqual(app.lsGet("cp_interests", null), { a: 1 });
+    // A store that refuses everything must be reported, not swallowed.
+    app.window.forayStorage = { getItem: () => null, setItem: () => { throw new Error("QuotaExceededError"); } };
+    assert.strictEqual(app.lsSet("cp_interests", { a: 2 }), false);
+    assert.deepStrictEqual(app.lsGet("cp_interests", "fallback"), "fallback");
+  } finally {
+    delete app.window.forayStorage;
+  }
+  // And with no store published, the legacy path still works unchanged.
+  assert.strictEqual(app.lsSet("cp_interests", { a: 3 }), true);
+  assert.deepStrictEqual(app.lsGet("cp_interests", null), { a: 3 });
+});
+
 /* ---------- smoke ----------
    Not a substitute for real render coverage; see the header. This only proves
    the escaping primitives compose the way the render path assumes. */
