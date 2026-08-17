@@ -1343,6 +1343,68 @@ test("a mount with no storage at all still renders and binds", async () => {
   assert.equal(ctx.lsSet("cp_interests", { a: 1 }), true);
 });
 
+/* ================================================ delete my data (#42) ====
+
+   The control's own suite is `test/data-deletion.test.js`, which owns the
+   enumeration, the remote half and the confirmation. What belongs HERE is the
+   question only this harness can answer: after a listener deletes everything,
+   is the Foray page still a working page, and does resume start working again?
+
+   That is not a hypothetical pairing. The clear runs while a Foray is mounted, it
+   resets in-memory state, and it re-renders through `route()` — three chances to
+   leave the perfect, inert page this suite exists to prevent. */
+
+test("DELETING EVERYTHING leaves the page interactive, and resume works again after it", async () => {
+  const row = JSON.stringify(makeProgress({
+    forayId: FORAY_ID, title: "The history of grilling", elapsedSec: 1180, totalSec: 3673, index: 9,
+  }));
+  const { dom, ctx, bridge, forayStorage, durableTier, store } = await mountForayPage({
+    durable: true,
+    seed: {
+      [progressKey(FORAY_ID)]: row,
+      cp_interests: '{"food/grilling-bbq":0.82}',
+      "cp_pos:ep-1": '{"seconds":12,"updated_at":"2026-08-17T00:00:00.000Z"}',
+      cp_events: "[]",
+    },
+    resume: { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, drift: "exact", label: "42 min left", clock: "19:40" },
+  });
+  await forayStorage.hydrate();
+  await forayStorage.flush();
+  assert.ok(durableTier.data.has(progressKey(FORAY_ID)), "fixture premise: the resume row is in both tiers");
+
+  // Driven through app.js's own control. `ddUi` is the sheet's element map, so
+  // setting the field's value is exactly what typing into it does.
+  ctx.bindDeleteControl();
+  vm.runInContext('ddUi.input.value = "DELETE";', ctx);
+  const result = await ctx.deleteMyData();
+  assert.equal(result.ok, true, `the deletion reported a problem: ${JSON.stringify(result)}`);
+
+  assert.deepEqual([...store.keys()].filter((k) => k.startsWith("cp_")), [], "localStorage is not clear");
+  assert.deepEqual([...durableTier.data.keys()].filter((k) => k.startsWith("cp_")), [], "the durable tier is not clear");
+
+  // THE PAGE. Same assertion as the inert-page regression test, after a clear.
+  for (const id of ["fy-play", "fy-next", "fy-prev", "fy-strip"]) {
+    assert.ok(dom.el(id).listeners("click") > 0, `#${id} lost its handler to the deletion`);
+  }
+  const callsBefore = bridge.calls.length;
+  await dom.el("fy-play").click();
+  assert.ok(bridge.calls.length > callsBefore, "the transport stopped reaching the player");
+  await assert.doesNotReject(() => dom.rows[3].click(), "a running-order row throws after a clear");
+
+  // RESUME. A new row written through the same store lands in both tiers and
+  // reads back — i.e. the store survived the purge rather than being emptied and
+  // broken.
+  const progress = new ForayProgressStore({ storage: forayStorage });
+  assert.equal(progress.save({
+    forayId: FORAY_ID, title: "The history of grilling", elapsedSec: 60, totalSec: 3673, index: 0, force: true,
+  }), true, "resume can no longer be recorded");
+  await forayStorage.flush();
+  assert.equal(progress.refusedWrites, 0);
+  assert.equal(ctx.lsGet(progressKey(FORAY_ID), null).elapsed_sec, 60, "the page cannot read the new row");
+  assert.ok(durableTier.data.has(progressKey(FORAY_ID)), "the new row is evictable — the durable tier missed it");
+  assert.equal(forayStorage.health().ok, true, "the purge left a fault behind");
+});
+
 /* ---------- freshness: the row against the running order ---------- */
 
 test("the page hands the RESOLVED Foray to the resume lookup, not just two numbers", async () => {
