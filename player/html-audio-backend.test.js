@@ -394,13 +394,16 @@ after(() => { for (const el of tickingBuilt) { try { el.pause(); } catch (_) {} 
 
 const ticking = (opts = {}) => {
   const el = new TickingAudio(opts);
-  /* Timestamp every delivered tick. This is the naive implementation's clock —
-     the thing the fine timer has to beat — measured under the load in the room
-     rather than assumed from TIMEUPDATE_MS. */
-  const tickAt = [];
+  /* Record every delivered tick AND the playhead it delivered. This is the naive
+     implementation's clock — the thing the fine timer has to beat — measured
+     under the load in the room rather than assumed from TIMEUPDATE_MS. The
+     playhead matters as much as the timestamp: a bare timeupdate check stops on
+     the first tick whose `currentTime` has reached the boundary, so those are
+     exactly the values it would have seen. */
+  const ticks = [];
   const fire = el._fire.bind(el);
   el._fire = (type, ...rest) => {
-    if (type === "timeupdate") tickAt.push(now());
+    if (type === "timeupdate") ticks.push({ at: now(), t: el.currentTime });
     return fire(type, ...rest);
   };
   tickingBuilt.push(el);
@@ -413,7 +416,7 @@ const ticking = (opts = {}) => {
   });
   const ends = [];
   b.onItemEnded = (reason) => ends.push(reason ?? "natural");
-  return { el, b, log, ends, tickAt };
+  return { el, b, log, ends, ticks };
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -450,21 +453,85 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
    The other rule still holds: a budget for "did the thing happen at all" is a
    ceiling, not a duration. The wait returns the moment the event lands, so a
-   green run costs the same however large it is, and only a broken build pays. */
+   green run costs the same however large it is, and only a broken build pays.
+
+   ── and then the comparative budget was still flaky, and the reason is the
+      real lesson of this file ────────────────────────────────────────────────
+
+   It reddened CI at random for a day after #195 — observed by four separate
+   sessions, twice as a bare `FAILED (1): node --test` on the root group that
+   passed on the next two runs. Reproduced at 1 run in 12 under 16 busy loops on
+   16 cores, and 6 runs in 10 under 32. The product is identical in both columns,
+   which is most of the proof that the test was measuring the box.
+
+   Two bugs were found and fixed first, and they were real:
+
+   1. **The comparison was not within one run.** It took `Math.min` of the naive
+      cost across the four phase-sweep runs and `Math.max` of the overshoot
+      across the same four — budget from the least-loaded run, measurement from
+      the most-loaded.
+   2. **The naive cost fell back to the NOMINAL tick** when a run delivered fewer
+      than two ticks, which is exactly what a slow box does, so the fallback
+      reinstated the magic number in the one case where it was certain to be too
+      small.
+
+   **Fixing both was not enough, and that is the point.** Pairing per run still
+   failed 6 runs in 10 at 32 busy loops, and asserting measurability instead of
+   falling back merely converted a wrong budget into a loud failure — it made the
+   whole root group RED 4 runs in 8, because `node --test` already runs 32 suites
+   in parallel and starves itself. Measured cause: the widest delivered tick
+   interval reached **1,825 ms against a nominal 250 ms**, while the fine timer's
+   own wake was late by a different and uncorrelated amount.
+
+   A ratio between two INDEPENDENTLY SCHEDULED OS TIMERS cannot be asserted
+   under arbitrary load, however carefully it is paired. Both timers stretch, but
+   not together, and the tail is where CI lives.
+
+   So the budget is gone rather than widened, and the claims were split by what
+   each one actually needs:
+
+   - **Real clock, asserted:** only ONE-SIDED facts — the boundary fired, and it
+     was not early. A late OS timer cannot break either; only a wrong
+     implementation can. These hold on any box under any load.
+   - **Real clock, measured and reported as a diagnostic:** how the overshoot
+     compared to what a bare timeupdate check would have cost in that same run,
+     computed from the ticks actually delivered (`naiveOvershootSec`) rather than
+     from a tick-interval proxy. Worth printing on every run; not worth failing a
+     build over.
+   - **No clock at all, asserted, and this is where the teeth are:** that the
+     fine timer is armed, for the right delay, scaled by rate — and that its wake
+     is what stops the item, while an early wake reschedules instead. Disable the
+     fine stage and SIX of those fail, in well under a second. See "the boundary's
+     below.
+
+   The rule that survives, and it generalises past this file: **a test may assert
+   an ordering or a decision on a real clock, but not a duration.** If the
+   assertion would change verdict because another process got busy, it is
+   measuring the box. Move it to a driven clock, or demote it to a diagnostic. */
 
 /** Ceiling for "an end was reported". Was 3-4 s, which a saturated box beats.
     Not larger, because ten of these in a row is what a broken out-point costs
     before the suite reports it, and there is no `--test-timeout` above us. */
 const END_BUDGET_MS = 10000;
 
-/** The widest gap between consecutive `timeupdate`s actually delivered — the
-    naive implementation's worst case, on this box, during this measurement.
-    Falls back to the nominal interval when there were too few ticks to measure
-    a gap (a very short segment), which is the conservative direction. */
-function observedTickMs(tickAt) {
-  let worst = 0;
-  for (let i = 1; i < tickAt.length; i++) worst = Math.max(worst, tickAt[i] - tickAt[i - 1]);
-  return worst > 0 ? worst : TIMEUPDATE_MS;
+/** What a bare `if (currentTime >= end) stop()` on `timeupdate` would have cost
+ *  IN THIS RUN, in seconds of content — the naive implementation the fine timer
+ *  exists to beat, measured from the ticks this run actually delivered rather
+ *  than modelled from TIMEUPDATE_MS.
+ *
+ *  A naive check can only stop ON a tick, so its overshoot is the playhead at the
+ *  first tick to reach the boundary, minus the boundary.
+ *
+ *  Returns **null** when no delivered tick ever reached the boundary. That is the
+ *  healthy case rather than a measurement failure: reaching the boundary clears
+ *  the element's interval, so "no tick saw it" means the fine timer got there
+ *  first and beat the naive check by more than this run can quantify.
+ *
+ *  This replaces a proxy — the widest gap between consecutive ticks, times a
+ *  fraction — which is what made this file flaky. See the section header. */
+function naiveOvershootSec(ticks, target) {
+  for (const { t } of ticks) if (t >= target) return t - target;
+  return null;
 }
 
 /** Wait for the backend to report an end, or give up. Returns the reason so a
@@ -487,87 +554,408 @@ test("an out-point stops the item and reports the same end a finished file repor
 });
 
 test("the stop is never early — the payoff is never clipped", async () => {
-  // The one-sided guarantee. The fine timer is a prediction; it only ever stops
-  // on a re-read of the real playhead.
+  /* The one-sided guarantee. The fine timer is a prediction; it only ever stops
+     on a re-read of the real playhead.
+
+     THIS TEST WAS FULLY VACUOUS until 2026-08-17, and the way it failed is worth
+     keeping written down because all three holes are the same species. Neuter
+     `_reachOutPoint` so the boundary never stops anything at all and it still
+     PASSED, in 30 seconds:
+
+       - `await waitForEnd(ends)` discarded its return value, so "the boundary
+         never fired" was indistinguishable from success;
+       - `currentTime >= target` is satisfied by a playhead that simply ran FREE
+         past the boundary — after the 10 s ceiling the element sits at ~110,
+         which is comfortably past 100.4;
+       - `lastOutPointOvershootSec >= 0` starts as `null`, and `null >= 0` is
+         **true**.
+
+     Each one turned an absence into a pass. `assertBoundaryHeld` was written to
+     close exactly these and this test was left behind, so it uses the helper
+     now — which also means a broken build reports in about a second instead of
+     burning 30 s to report green. */
   for (const target of [100.4, 100.75, 101.1]) {
-    const { el, b, ends } = ticking();
+    const { el, b, ends, ticks } = ticking();
     await b.load(item("seg"), { startOffset: 100 });
     b.setOutPoint(target);
     b.play();
-    await waitForEnd(ends);
-    assert.ok(el.currentTime >= target, `stopped at ${el.currentTime} before ${target}`);
-    assert.ok(b.lastOutPointOvershootSec >= 0);
+    const reason = await waitForEnd(ends);
+    assertBoundaryHeld({ target, rate: 1, reason, el, ticks, overshoot: b.lastOutPointOvershootSec });
   }
 });
 
-/** Fraction of the naive cost the fine timer must come in under. A bare
-    timeupdate check averages half a tick and peaks at a whole one, so a half is
-    already a losing score for it; measured, this backend comes in nearer a
-    twentieth. Loose enough not to flake, tight enough that "the fine watch
-    stopped working" — measured at 90-133 ms against a 250 ms nominal tick —
-    fails it. */
-const NAIVE_FRACTION = 0.5;
+/** Where to put the boundary, as WALL-CLOCK seconds after the in-point, spread
+    ACROSS a tick interval on purpose. A naive check can only fire ON a tick, so
+    its error is however far the boundary sits past the last one — which means a
+    single target can make a naive implementation look good by luck of alignment.
+    Measured: with the fine watch disabled and a lone target of 100.7, the
+    overshoot was 50 ms and the old version of this test passed a genuinely broken
+    build. Sweeping the phase exercises the naive worst case.
 
-/* The out-points are spread ACROSS a tick interval on purpose. A naive check can
-   only fire on a tick, so its error is however far the boundary sits past the
-   last one — which means a single target can make a naive implementation look
-   good by luck of alignment. Measured: with the fine watch disabled and a lone
-   target of 100.7, the overshoot was 50 ms and this test passed a genuinely
-   broken build. Sweeping the phase exercises the naive worst case (very nearly a
-   whole tick) while the fine timer, which is scheduled in wall clock rather than
-   on ticks, stays flat across all of them. */
-const PHASE_SWEEP = [100.70, 100.76, 100.82, 100.88];
+    Wall clock rather than content seconds so the sweep still spans a whole tick
+    at 2x, where content seconds would buy half the runway. */
+const PHASE_SWEEP_WALL_SEC = [0.70, 0.76, 0.82, 0.88];
 
-test("the boundary beats a bare timeupdate check, measured against one", async () => {
-  // Measured on an idle box the overshoot is 5-15 ms against a ~250 ms tick.
-  // The budget is a fraction of the tick interval THIS RUN actually delivered,
-  // so a saturated scheduler stretches both sides equally instead of being
-  // reported as a product regression — which is the flake this replaces.
-  const overshoots = [];
-  let naiveMs = Infinity;
-  for (const target of PHASE_SWEEP) {
-    const { b, ends, tickAt } = ticking();
-    await b.load(item("seg"), { startOffset: 100 });
-    b.setOutPoint(target);
-    b.play();
-    // The boundary must actually FIRE. Without this the whole test is vacuous:
-    // `lastOutPointOvershootSec` starts as null, and `null < anything` is true.
-    assert.equal(await waitForEnd(ends), "outPoint", `the out-point at ${target} never fired`);
-    assert.equal(typeof b.lastOutPointOvershootSec, "number");
-    overshoots.push(b.lastOutPointOvershootSec);
-    naiveMs = Math.min(naiveMs, observedTickMs(tickAt));
-  }
-  const worst = Math.max(...overshoots);
-  const budgetSec = (naiveMs * NAIVE_FRACTION) / 1000;
+/** Drive one boundary to completion on a real clock. */
+async function measureBoundary(wallSec, rate) {
+  const target = 100 + wallSec * rate; // content seconds from the in-point
+  const { el, b, ends, ticks } = ticking();
+  await b.load(item("seg"), { startOffset: 100 });
+  if (rate !== 1) b.setRate(rate);
+  b.setOutPoint(target);
+  b.play();
+  const reason = await waitForEnd(ends);
+  return { target, rate, reason, el, ticks, overshoot: b.lastOutPointOvershootSec };
+}
+
+/** The load-invariant half of a real-clock boundary run, asserted; the
+ *  comparative half, measured and returned for the caller to report.
+ *
+ *  WHAT IS ASSERTED IS ONE-SIDED ON PURPOSE. "It fired" and "it was not early"
+ *  cannot be broken by a late OS timer, only by a wrong implementation, so they
+ *  are safe to assert on any box under any load. A RATIO between the fine timer
+ *  and the tick interval is not: they are two independently scheduled OS timers,
+ *  and starving the box decorrelates them at the tail. See the section header for
+ *  the measurements that settled this.
+ *
+ *  The tightness claim still has teeth — they are in the clock-free tests below,
+ *  where disabling the fine watch fails six of them outright. */
+function assertBoundaryHeld(r) {
+  // The boundary must actually FIRE. Without this the whole test is vacuous:
+  // `lastOutPointOvershootSec` starts as null, and `null < anything` is true.
+  assert.equal(r.reason, "outPoint", `the out-point at ${r.target} never fired at ${r.rate}x`);
+  assert.equal(typeof r.overshoot, "number", "and it must record what the stop cost");
+  // Never early, at any rate, under any load — the payoff is never clipped.
   assert.ok(
-    worst < budgetSec,
-    `worst overshoot ${worst}s (of ${overshoots.join(", ")}) vs ${budgetSec}s ` +
-    `— a naive check would have cost up to ${naiveMs.toFixed(0)}ms`
+    r.el.currentTime >= r.target,
+    `stopped at ${r.el.currentTime} before ${r.target} (${r.rate}x) — the payoff was clipped`
+  );
+  return naiveOvershootSec(r.ticks, r.target);
+}
+
+/* These two are named for what they ASSERT, not for what they print. They used to
+   be called "the boundary beats a bare timeupdate check" — which is still the
+   claim the file makes, and still measured on every run, but it is now asserted
+   by the clock-free tests below rather than here. A test name that promises more
+   than its assertions deliver is the same failure the FLOORS in
+   test/suite-integrity.test.js exist to prevent: it reads as coverage. */
+
+test("on a real clock the boundary fires and never clips, at every phase of a tick", async (t) => {
+  // Measured on an idle box the overshoot is 5-15 ms against a ~250 ms tick, and
+  // no tick ever observes the boundary at all — the fine timer gets there first,
+  // which is the whole point of it existing.
+  let decisive = 0;
+  for (const wallSec of PHASE_SWEEP_WALL_SEC) {
+    const r = await measureBoundary(wallSec, 1);
+    const naive = assertBoundaryHeld(r);
+    if (naive === null) decisive++;
+    t.diagnostic(
+      `boundary ${r.target.toFixed(2)}: overshoot ${(r.overshoot * 1000).toFixed(0)}ms vs a bare ` +
+      `timeupdate check's ${naive === null ? "(no tick ever saw the boundary)" : `${(naive * 1000).toFixed(0)}ms`}` +
+      ` — ${r.ticks.length} ticks delivered`
+    );
+  }
+  t.diagnostic(`the fine timer beat the tick outright in ${decisive}/${PHASE_SWEEP_WALL_SEC.length} runs`);
+});
+
+test("on a real clock the boundary fires and never clips at 2x either", async (t) => {
+  // At 2x one timeupdate is half a second of CONTENT — a whole sentence. What is
+  // asserted here is only what a real clock can show and load cannot break: the
+  // boundary fires at 2x and does not stop short. That the fine timer's CONTENT
+  // window stays flat as the rate rises is proved as arithmetic below, with no
+  // clock, which is where that claim belongs.
+  const r = await measureBoundary(0.82, 2);
+  const naive = assertBoundaryHeld(r);
+  t.diagnostic(
+    `2x boundary ${r.target.toFixed(2)}: overshoot ${(r.overshoot * 1000).toFixed(0)}ms vs a bare ` +
+    `timeupdate check's ${naive === null ? "(no tick ever saw the boundary)" : `${(naive * 1000).toFixed(0)}ms`}`
   );
 });
 
-test("a faster rate does not loosen the boundary", async () => {
-  // At 2x, one timeupdate is half a second of CONTENT — a whole sentence. The
-  // fine timer is scheduled in wall clock, so the content overshoot stays flat.
-  const { b, ends, tickAt } = ticking();
-  await b.load(item("seg"), { startOffset: 100 });
-  b.setRate(2);
-  b.setOutPoint(101.2);
-  b.play();
-  assert.equal(await waitForEnd(ends), "outPoint", "the out-point never fired at 2x");
-  const worst = b.lastOutPointOvershootSec;
-  // At 2x a tick covers twice the CONTENT, which is what the naive check would
-  // overshoot by — the comparison is against content seconds either way.
-  const budgetSec = (observedTickMs(tickAt) * 2 * NAIVE_FRACTION) / 1000;
-  assert.ok(typeof worst === "number" && worst < budgetSec, `overshoot ${worst}s at 2x vs ${budgetSec}s`);
+/* ---------- the boundary's ARITHMETIC, with no clock at all ----------
+
+   Everything above measures a real scheduler, which is the only way to claim the
+   boundary is tight on a real box. It also means every budget above is a claim
+   about the SCHEDULER, and a loaded scheduler is late — which is why those tests
+   now compare only numbers gathered in the same run.
+
+   The tests below need no clock at all, because the rate claim is not really
+   about a race: it is about the delay the backend ARMS its fine timer for. The
+   fine timer is scheduled for (end - now) / rate seconds of WALL clock, so
+   doubling the rate halves the wait and the CONTENT a late wake can spill stays
+   flat. That is arithmetic. Asserting it against a real clock is what made the
+   old version of this claim fail under load; read the decision instead.
+
+   Same instinct as #196's injectable seam scheduler — drive the seam, do not
+   race it — but achieved by capturing `setTimeout`, exactly as the "every
+   deadline is ref'd" test above already does, so no product code has to grow an
+   injection point for it. */
+
+/** An <audio> stand-in whose playhead moves only when the test moves it: no
+    interval, no wall clock, `currentTime` is exactly what was last written. */
+class SteppedAudio {
+  constructor({ at = 0, rate = 1, durationSec = 3600 } = {}) {
+    this.listeners = new Map();
+    this.src = ""; this.currentSrc = "";
+    this.duration = durationSec;
+    this.playbackRate = rate;
+    this.volume = 1;
+    this.preload = "none";
+    this.readyState = 4;
+    this.error = null;
+    this.paused = false; // already rolling, so the fine watch is allowed to arm
+    this.calls = [];
+    this.playResult = Promise.resolve();
+    this._at = at;
+  }
+  get currentTime() { return this._at; }
+  set currentTime(v) { this._at = v; this._fire("seeked"); }
+  addEventListener(t, fn) {
+    if (!this.listeners.has(t)) this.listeners.set(t, new Set());
+    this.listeners.get(t).add(fn);
+  }
+  removeEventListener(t, fn) { this.listeners.get(t)?.delete(fn); }
+  _fire(t) { for (const fn of [...(this.listeners.get(t) ?? [])]) fn(); }
+  load() { this.calls.push("load"); this.currentSrc = this.src; }
+  play() { this.calls.push("play"); this.paused = false; return this.playResult; }
+  pause() { this.calls.push("pause"); this.paused = true; }
+  removeAttribute(a) { this.calls.push(`removeAttribute:${a}`); this.src = ""; }
+}
+
+/** Every wall-clock delay the backend asks for while arming a boundary at
+    `outPoint`, with the playhead standing at `at` and the element at `rate`.
+    No timer is ever created, so nothing can fire and nothing leaks. */
+function armedFineDelaysMs({ at, outPoint, rate }) {
+  const el = new SteppedAudio({ at, rate });
+  const realSetTimeout = globalThis.setTimeout;
+  const asked = [];
+  globalThis.setTimeout = (fn, ms) => { asked.push(ms); return { hasRef: () => true }; };
+  try {
+    const b = new HtmlAudioBackend({ element: el });
+    b.setOutPoint(outPoint); // arms the fine watch directly while not paused
+    return asked;
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+}
+
+/* The numbers below use dyadic content gaps (0.5 s, 0.75 s) and power-of-two
+   rates so that (end - now) / rate is EXACT in binary and the expected
+   millisecond is not a rounding coin-flip. Do not "tidy" them to 100.4 and 1.5x:
+   100.4 - 100 is 0.40000000000000568, which Math.ceil turns into 401, not 400 —
+   which would turn an exact assertion back into a flaky one. */
+
+test("the fine timer is armed in wall clock, so a faster rate shortens the wait", () => {
+  // 0.5 s of CONTENT to go, at four rates. The wall clock remaining halves each
+  // time the rate doubles; the content it guards does not move.
+  const at = 100, outPoint = 100.5;
+  assert.deepStrictEqual(armedFineDelaysMs({ at, outPoint, rate: 1 }), [500]);
+  assert.deepStrictEqual(armedFineDelaysMs({ at, outPoint, rate: 2 }), [250]);
+  assert.deepStrictEqual(armedFineDelaysMs({ at, outPoint, rate: 4 }), [125]);
+  assert.deepStrictEqual(armedFineDelaysMs({ at, outPoint, rate: 8 }), [63], "62.5 ms, rounded up");
+});
+
+test("a faster rate does not loosen the boundary: armed wall time x rate is constant", () => {
+  // The claim itself, as one identity, with no clock in it. Whatever the rate,
+  // the fine timer wakes after the SAME amount of CONTENT — so the window in
+  // which a late wake could spill the next speaker's first words does not widen
+  // as the listener speeds up. A bare timeupdate check has no such property: its
+  // window is one tick of WALL clock, which is `rate` times as much content.
+  for (const rate of [1, 2, 4, 8]) {
+    const [ms] = armedFineDelaysMs({ at: 100, outPoint: 100.5, rate });
+    const contentMs = ms * rate;
+    // Rounding the wall delay up to a whole millisecond costs at most 1 ms of
+    // wall clock, which is `rate` ms of content.
+    assert.ok(
+      Math.abs(contentMs - 500) <= rate,
+      `at ${rate}x the fine timer guards ${contentMs}ms of content, not ~500ms`
+    );
+  }
+});
+
+test("the fine watch stays out of the way until the boundary is within the lead", () => {
+  // It is deliberately NOT armed a whole segment early: timeupdate is free and
+  // already firing, and a fine timer armed minutes out would just be rescheduled
+  // hundreds of times. The lead is 0.5 s of WALL clock, so the rate changes WHEN
+  // arming happens — not how tight the boundary ends up being.
+  assert.deepStrictEqual(
+    armedFineDelaysMs({ at: 100, outPoint: 100.75, rate: 1 }), [],
+    "0.75 s of wall clock out — timeupdate's job, not the fine timer's"
+  );
+  assert.deepStrictEqual(
+    armedFineDelaysMs({ at: 100, outPoint: 100.75, rate: 2 }), [375],
+    "the same boundary at 2x is 0.375 s of wall clock out, so it arms"
+  );
+  assert.deepStrictEqual(
+    armedFineDelaysMs({ at: 100, outPoint: 100.5, rate: 1 }), [500],
+    "a boundary exactly at the lead still arms"
+  );
+});
+
+test("an out-point already behind the playhead arms no timer, at any rate", () => {
+  /* The disarmed half of the scrub-past policy, asserted without waiting on a
+     clock to fail to fire — which is the only way to tell "correctly disarmed"
+     from "the timer just has not gone off yet".
+
+     ITS POSITIVE CONTROL IS ITS SIBLINGS, and that is worth stating: `[]` is also
+     what a completely disabled fine stage returns, so this test alone passes under
+     that regression. What distinguishes the two is that the tests above assert
+     NON-empty arming for the same helper — so a disabled fine stage reddens them
+     while this one stays green, and the pair is unambiguous. Do not delete this
+     one's siblings and leave it; on its own it proves nothing.
+
+     Not merely `[]` by arithmetic accident either: with the arm gate removed the
+     remaining distance is negative, which is not `> 0.5`, so the helper would
+     return `[4]` (the timer floor) rather than `[]`. The assertion discriminates. */
+  for (const rate of [1, 2, 4]) {
+    assert.deepStrictEqual(
+      armedFineDelaysMs({ at: 200, outPoint: 100.5, rate }), [],
+      `${rate}x: the playhead is past it, so there is no crossing to wait for`
+    );
+  }
+});
+
+/** Arm a boundary and hand back the fine timer's callback, so a test can wake it
+    itself. Nothing is ever scheduled: the "timer" is the returned function.
+
+    The capture has to be re-installed around `wake()` as well as around the
+    arming, because waking re-schedules — restoring the real `setTimeout` too
+    early lets the reschedule escape into a live timer and reports the stale
+    delay. (Which it did, first time round.) */
+function armed({ at, outPoint, rate = 1 }) {
+  const el = new SteppedAudio({ at, rate });
+  const realSetTimeout = globalThis.setTimeout;
+  const asked = [];
+  const log = [];
+  let pending = null;
+  const stub = (fn, ms) => { asked.push(ms); pending = fn; return { hasRef: () => true }; };
+  const capture = (body) => {
+    globalThis.setTimeout = stub;
+    try { return body(); } finally { globalThis.setTimeout = realSetTimeout; }
+  };
+  const ends = [];
+  const b = capture(() => {
+    const backend = new HtmlAudioBackend({ element: el, telemetry: (m) => log.push(m) });
+    backend.onItemEnded = (reason) => ends.push(reason ?? "natural");
+    backend.setOutPoint(outPoint);
+    return backend;
+  });
+  return {
+    el, b, ends, asked, log,
+    /** Fire the pending fine timer. Everything here is synchronous, so nothing
+        else can arm a timer inside the capture window. */
+    wake: () => capture(() => {
+      if (typeof pending !== "function") {
+        throw new Error("wake() called with no fine timer armed — the test's premise is wrong");
+      }
+      const fn = pending; pending = null; fn();
+    }),
+    armedMs: () => asked[asked.length - 1],
+    armCount: () => asked.length,
+  };
+}
+
+test("the fine timer, not the next timeupdate, is what stops the item", () => {
+  /* THE TEETH. The wall-clock tests above can only observe that the stop was
+     early enough; this shows WHAT stopped it, and needs no clock to do it. Not a
+     single `timeupdate` is fired here, so if the fine stage were disabled — the
+     regression the comparative test was built to catch, measured at 90-133 ms
+     against a 250 ms tick — nothing would stop at all and this fails outright. */
+  const a = armed({ at: 100, outPoint: 100.5 });
+  assert.equal(a.armedMs(), 500, "the fine timer must be armed in the first place");
+  assert.deepStrictEqual(a.ends, [], "and nothing may fire before it wakes");
+
+  a.el._at = 100.5;  // the playhead reaches the boundary...
+  a.wake();          // ...and the fine timer wakes, with no tick involved
+
+  assert.deepStrictEqual(a.ends, ["outPoint"], "the fine wake must stop the item");
+  assert.equal(a.el.paused, true, "and pause it, like a file running out");
+  assert.equal(a.b.lastOutPointOvershootSec, 0, "at the boundary exactly, given an exact playhead");
+});
+
+test("an early fine wake reschedules instead of stopping short", () => {
+  // The one-sided guarantee, as a decision rather than a race: the fine timer is
+  // a PREDICTION, so it re-reads the playhead and only stops if the boundary is
+  // genuinely reached. Waking early must cost a reschedule, never a clipped
+  // payoff — and the reschedule must be for the remaining distance.
+  const a = armed({ at: 100, outPoint: 100.5 });
+  assert.equal(a.armedMs(), 500);
+
+  // 100.25, not 100.3: dyadic, so the remaining distance is exact in binary and
+  // Math.ceil is not a coin-flip. 100.5 - 100.3 is 0.20000000000000284, which
+  // rounds up to 201 — this assertion caught exactly that on the first attempt.
+  a.el._at = 100.25; // woke early: 0.25 s of content still to go
+  a.wake();
+
+  assert.deepStrictEqual(a.ends, [], "must not report an end before the boundary");
+  assert.equal(a.el.paused, false, "and must not pause the audio either");
+  assert.equal(a.armedMs(), 250, "re-armed for exactly the remaining 0.25 s");
+});
+
+test("a frozen playhead stands the fine watch down instead of spinning", () => {
+  /* The stall contract, with no clock and no rebuffering simulation: a fine wake
+     that finds the playhead exactly where the LAST wake found it is a decoder
+     stall, not timer jitter, and rescheduling on it would spin at the 4 ms timer
+     floor. The watch hands back to `timeupdate`/`playing`, which cost nothing
+     while stalled.
+
+     There is a real-clock version of this below, and it is the one that used to
+     flake: it slept 350 ms and then froze the element, with the boundary 600 ms
+     of content away — so a starved box reached the boundary legitimately BEFORE
+     the stall was applied, and the test then blamed the backend for an end it was
+     right to report. This version cannot race, because nothing here advances
+     except what the test advances. */
+  const a = armed({ at: 100, outPoint: 100.5 });
+  assert.equal(a.armedMs(), 500);
+
+  a.el._at = 100.25;   // progress, but not to the boundary: reschedule
+  a.wake();
+  assert.equal(a.armedMs(), 250, "an early wake WITH progress reschedules");
+  assert.equal(a.log.filter((m) => /outPoint\.stalled/.test(m)).length, 0, "and is not a stall");
+
+  const armsBefore = a.armCount();
+  a.wake();            // woken again, playhead has NOT moved: a stall
+  assert.deepStrictEqual(a.ends, [], "a stall must not report an end — that audio never played");
+  assert.equal(a.el.paused, false, "and must not pause");
+  assert.equal(
+    a.armCount(), armsBefore,
+    "the fine watch must arm NOTHING after a no-progress wake — rescheduling here is the spin"
+  );
+  assert.equal(a.log.filter((m) => /outPoint\.stalled/.test(m)).length, 1, "and it says so, once");
 });
 
 test("a buffering stall at the boundary neither stops early nor spins", async () => {
+  /* The real-clock companion to "a frozen playhead stands the fine watch down"
+     above. That one owns the INVARIANT and cannot race; this one owns the
+     end-to-end path — a real rebuffer, on a real interval, resuming for real.
+
+     It used to `await sleep(350)` and then freeze the element, with the boundary
+     600 ms of content away. That is a duration assumption in disguise: it needs
+     350 ms of sleep to elapse before 600 ms of content does. Measured under 32
+     busy loops on 16 cores it broke 2 runs in 10 — the playhead reached the
+     boundary first, the backend correctly reported the end, and the test called
+     it "an end for audio that never played".
+
+     Now it polls to a CONDITION, and the precondition is asserted separately with
+     its own message, so a raced setup says "the setup raced" instead of implicating
+     the backend. The fine watch has to be ARMED when the stall lands (that is the
+     whole point), and arming happens inside the last 0.5 s of wall clock, so the
+     window is inherently bounded — polling every 5 ms is the tightest detection
+     available rather than a guess at a sleep length. */
   const { el, b, log, ends } = ticking();
   await b.load(item("seg"), { startOffset: 100 });
-  b.setOutPoint(100.6);
+  b.setOutPoint(100.9);
   b.play();
-  await sleep(350);
+
+  // Into the arm lead (0.5 s of wall clock, so from 100.4) but short of 100.9.
+  const deadline = now() + END_BUDGET_MS;
+  while (el.currentTime < 100.5 && now() < deadline) await sleep(5);
+  assert.ok(
+    el.currentTime < 100.9,
+    `setup raced: the playhead was at ${el.currentTime} before the stall could be applied, ` +
+    `so the boundary had already been reached legitimately. Not a backend fault.`
+  );
+
   el.stall();
   const frozenAt = el.currentTime;
   await sleep(400);
@@ -579,7 +967,7 @@ test("a buffering stall at the boundary neither stops early nor spins", async ()
 
   el.unstall();
   assert.equal(await waitForEnd(ends), "outPoint", "must resume and still stop at the boundary");
-  assert.ok(el.currentTime >= 100.6);
+  assert.ok(el.currentTime >= 100.9, `resumed and stopped at ${el.currentTime}`);
 });
 
 test("an out-point past the real audio yields exactly one end, the natural one", async () => {
@@ -770,7 +1158,12 @@ test("consecutive same-episode slices may run BACKWARDS through the episode", as
   const deadline = now() + END_BUDGET_MS;
   while (ends.length < 2 && now() < deadline) await sleep(5);
   assert.deepStrictEqual(ends, ["outPoint", "outPoint"]);
-  assert.ok(el.currentTime >= 100.4 && el.currentTime < 101);
+  // Identity, not tightness: it stopped at the SECOND slice's boundary (100.4)
+  // rather than the first's (900.4). The upper bound used to be 101, which was a
+  // 0.6 s real-clock overshoot BUDGET in disguise — the exact thing the section
+  // header above bans. 410 separates the two boundaries with 300 s to spare and
+  // claims nothing about latency.
+  assert.ok(el.currentTime >= 100.4 && el.currentTime < 410, `stopped at ${el.currentTime}`);
 });
 
 test("arming while paused works: the boundary takes effect once play starts", async () => {
@@ -810,7 +1203,9 @@ test("back-to-back slices of one episode each stop at their own boundary", async
   const deadline = now() + END_BUDGET_MS;
   while (ends.length < 2 && now() < deadline) await sleep(5);
   assert.deepStrictEqual(ends, ["outPoint", "outPoint"]);
-  assert.ok(el.currentTime >= 400.5 && el.currentTime < 401, `second slice stopped at ${el.currentTime}`);
+  // Identity again: the second slice's own boundary (400.5), not the first's
+  // (100.5). Was `< 401` — a 0.5 s latency budget on a real clock. See above.
+  assert.ok(el.currentTime >= 400.5 && el.currentTime < 700, `second slice stopped at ${el.currentTime}`);
   assert.ok(!el.calls.includes("load"), "and never refetched the shared episode");
 });
 
@@ -830,13 +1225,22 @@ test("back-to-back slices of one episode each stop at their own boundary", async
  *  case below — happens to a player that is between segments rather than
  *  inside one. Poll-until-condition, never a sleep: a green run costs whatever
  *  the box actually needed and no more. */
-async function waitForPlaying(m, id) {
+/*  It also SAMPLES the playhead at the instant the condition holds, and callers
+ *  assert on the sample rather than re-reading `el.currentTime` later. That is not
+ *  tidiness: these slices are 0.5 s of CONTENT, so a couple of intervening
+ *  assertions on a loaded box are enough for the slice to hit its out-point and
+ *  the manager to advance — at which point `el.currentTime` is the NEXT segment's
+ *  in-point (~50) and an assertion of `>= 300` fails for a player that did
+ *  everything right. Sample once, assert on the sample. */
+async function waitForPlaying(m, id, el) {
   const deadline = now() + END_BUDGET_MS;
   while (now() < deadline) {
-    if (m.state.type === "playing" && m._currentItem()?.id === id) return true;
+    if (m.state.type === "playing" && m._currentItem()?.id === id) {
+      return { ok: true, at: el.currentTime };
+    }
     await sleep(5);
   }
-  return false;
+  return { ok: false, at: null };
 }
 
 test("integration: a three-segment Foray plays every slice and stops", async () => {
@@ -871,15 +1275,18 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   }, { resolveItem: (id) => catalogue[id] ?? null });
 
   assert.deepStrictEqual(report.skipped, []);
-  assert.equal(el.currentTime >= 100 && el.currentTime < 101, true, "opened at the first in-point, not at 3000");
+  // Identity, not latency: 100 rather than the stale saved 3000, and not slice
+  // 2's 300. A tight upper bound here would be a real-clock duration budget.
+  assert.ok(el.currentTime >= 100 && el.currentTime < 200, `opened at ${el.currentTime}, wanted the first in-point (100), not the saved 3000`);
 
   // Slice 1 -> slice 2: same episode, so a seek rather than a refetch — with
   // the seam beat in between, which is silence and not a second load.
   const loadsBefore = el.calls.filter((c) => c === "load").length;
-  assert.ok(await waitForPlaying(m, "f1#1"), `never reached slice 2 (state ${m.state.type})`);
+  const slice2 = await waitForPlaying(m, "f1#1", el);
+  assert.ok(slice2.ok, `never reached slice 2 (state ${m.state.type})`);
   assert.equal(el.calls.filter((c) => c === "load").length, loadsBefore,
     "two slices of one episode must not refetch it");
-  assert.ok(el.currentTime >= 300 && el.currentTime < 301, `second in-point, got ${el.currentTime}`);
+  assert.ok(slice2.at >= 300 && slice2.at < 301, `second in-point, got ${slice2.at}`);
 
   // A phone call mid-slice must not replay the slice.
   await m.interruptionBegan();
@@ -889,9 +1296,10 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   assert.ok(el.currentTime >= pausedAt - 0.05, `resumed at ${el.currentTime}, was at ${pausedAt}`);
 
   // Slice 2 -> slice 3: different episode, so a real load.
-  assert.ok(await waitForPlaying(m, "f1#2"), `never reached slice 3 (state ${m.state.type})`);
+  const slice3 = await waitForPlaying(m, "f1#2", el);
+  assert.ok(slice3.ok, `never reached slice 3 (state ${m.state.type})`);
   assert.equal(el.src, "https://cdn.example/b.mp3");
-  assert.ok(el.currentTime >= 50 && el.currentTime < 51);
+  assert.ok(slice3.at >= 50 && slice3.at < 51, `third in-point, got ${slice3.at}`);
 
   // ...and the Foray ends rather than rolling into anything.
   let deadline = now() + END_BUDGET_MS;

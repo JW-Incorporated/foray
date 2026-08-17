@@ -569,6 +569,13 @@ cannot come back.
   Apple's `Food` genre to the new children, but a genre label cannot tell you whether a
   food show is about baking or barbecue; that is precisely the per-show judgement the
   Tier-1 LLM pass exists for. Leaving the coarse prior coarse is correct.
+  **Partly superseded 2026-08-16** (`feat/reclassify-taxonomy`): the Food reasoning holds
+  exactly as written and `Food` still maps to the bare root, but it does not generalise.
+  Seven genres — Astronomy, Music History, Personal Journals, Sexuality, Games,
+  Places & Travel, Wilderness — name a child closely enough to map, six of them via an
+  `apple_anchor` this very review wrote. Note also that "all 110 entries still resolve"
+  undersold the map: 67 of them already reached a child before this change. See
+  `genre-map-notes.md` § 2026-08-16 for the per-genre evidence and the four declines.
 - `docs/agents/runner-prompts/foray-nightly.md` — no taxonomy references.
 - `backend/src/enrich/StubEnricher.ts` `FALLBACK_TOPICS` — stale (9 seed ids) but only
   used in keyless dry-run; noted in the PR body.
@@ -591,6 +598,57 @@ act rather than propose; that instruction overrides the standing rule for this c
 only, and the rule itself is worth keeping.
 
 ### 8.2 The back-catalogue is not re-classified
+
+> **Actioned 2026-08-16, `feat/reclassify-taxonomy` (PR #198), landed 2026-08-17 on
+> `fix/flake-and-198` after a re-derivation.** The founder asked directly whether the
+> classifying fleet had been fixed *and* its work redone; it had not. What that work did:
+> re-pointed seven genres at child nodes (§7 above), re-ran the deterministic base layer
+> over all 19,787 breadth shows, and ran an LLM refinement pass over the curated pool
+> (`data/discover.json`).
+>
+> **The breadth numbers in the original PR body are not what landed, and the difference is
+> worth understanding rather than papering over.** #198 measured itself against the file as
+> it stood on 2026-08-16: breadth root-only pairs 9,741 → 8,874, per-item 6,107 → 5,249.
+> Before it could land, PR #205 merged six stranded shard branches and took agent-classified
+> shows 1,851 → 19,278, which rewrote most of the file underneath it. Re-deriving #198's
+> base layer on top of that state — rather than taking its data file, which would have
+> *regressed* the per-item metric to 5,249 — gives:
+>
+> | metric | origin/main (post-#205) | landed |
+> |---|---:|---:|
+> | breadth per-item root-only | 5,148 | **5,123** |
+> | breadth root-only pairs | 13,468 | 13,443 |
+> | curated per-item root-only | 108 | **31** |
+> | curated root-only pairs | 305 | **161** |
+>
+> Only **26 breadth rows** changed rather than #198's 1,026: 1,000 of those rows had since
+> earned a real per-show agent judgement, which outranks the genre map by design. The
+> curated pool's improvement survived in full, because #205 never touched `discover.json`.
+> Reproducible with `node tools/classify/root-dumping-report.mjs --baseline <snapshot>`.
+>
+> **Report the per-item figure, not the pair count.** Pairs rose across the #205 merge
+> (9,741 → 13,468) *because* agent rows name more branches than genre-map rows do, so the
+> denominator grew. Per-item — carries no child node anywhere, therefore fires no interest
+> slider in the product — is the one that maps to behaviour.
+>
+> **So the paragraph immediately below no longer describes the file.** "All 19,787 shows
+> keep the topics they were assigned before this change" was true when written. The
+> bare-`food` count in it is wrong in both directions — it was 362, not 374, when this
+> review was written, and it is **217** now, because #205's agent rows reached children the
+> genre map never could. The review's Food argument still holds for the genre map
+> specifically (one Apple leaf for eight children, so no map will ever put a barbecue show
+> on `food/grilling-bbq`) — what moved the number was per-show judgement, which is
+> exactly what the argument said it would take.
+>
+> It also found the reason a re-run was not merely useless but dangerous:
+> `tools/classify-breadth.mjs` rebuilt the file from scratch, so the "cheap partial
+> alternative" recommended below would have **deleted every agent-authored
+> classification** — 1,851 when #198 diagnosed it, **19,278 by the time the fix landed**.
+> That is fixed and tested.
+>
+> What remains is a spend decision, and #205 shrank it by 97%: **~509 breadth shows** have
+> never had a tier-1 agent pass, not ~17,900. The paragraphs below stand as the reasoning
+> for that remainder, at a scale where it is now nearly moot.
 
 **`data/breadth-classification.json` is not re-classified against the new nodes.** All
 19,787 shows keep the topics they were assigned before this change, so the 374 shows on

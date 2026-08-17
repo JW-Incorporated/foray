@@ -50,10 +50,12 @@
     },
     "Astronomy": {
       "topics": [
+        "space/astronomy",
         "space",
         "science"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "note": "Apple Science > Astronomy is a direct synonym of space/astronomy (that node anchors to this exact genre)."
     },
     "Nature": {
       "topics": [
@@ -286,10 +288,12 @@
     },
     "Music History": {
       "topics": [
+        "music/music-history",
         "music",
         "history"
       ],
-      "confidence": "high"
+      "confidence": "high",
+      "note": "Apple Music > Music History anchors music/music-history exactly; history kept as the secondary angle."
     },
     "Music Interviews": {
       "topics": [
@@ -361,9 +365,11 @@
     },
     "Personal Journals": {
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
-      "confidence": "low"
+      "confidence": "low",
+      "note": "Narrative storytelling is the only child anchored to this genre; still low confidence because Apple files it as a format, not a subject."
     },
     "Relationships": {
       "topics": [
@@ -374,9 +380,11 @@
     "Sexuality": {
       "topics": [
         "health/sexuality",
+        "relationships/intimacy",
         "relationships"
       ],
-      "confidence": "medium"
+      "confidence": "medium",
+      "note": "relationships/intimacy anchors to Health & Fitness > Sexuality; sampled titles are overwhelmingly sex/intimacy shows."
     },
     "Philosophy": {
       "topics": [
@@ -386,9 +394,11 @@
     },
     "Places & Travel": {
       "topics": [
+        "travel/destinations",
         "travel"
       ],
-      "confidence": "high"
+      "confidence": "medium",
+      "note": "travel/destinations anchors to this genre. Downgraded to medium: ~25% of the genre is theme-park and cruise shows that belong on travel/theme-parks — an LLM-refinement target, not a genre-map one."
     },
     "Language Learning": {
       "topics": [
@@ -627,9 +637,12 @@
     "Wilderness": {
       "topics": [
         "adventure/exploration",
+        "hobbies/outdoors",
+        "hobbies",
         "nature"
       ],
-      "confidence": "high"
+      "confidence": "medium",
+      "note": "Apple files this under Sports, but the content is hunting, fishing, climbing, shooting and mountain biking. hobbies/outdoors is labelled \"Hunting, fishing & outdoors\" and fits ~46% of titles on hunting/fishing keywords alone; medium rather than high because the climbing/MTB half is only \"outdoors\" in the broad sense, and adventure/exploration carries that."
     },
     "Leisure": {
       "topics": [
@@ -645,10 +658,12 @@
     },
     "Games": {
       "topics": [
+        "gaming/tabletop",
         "gaming",
         "hobbies"
       ],
-      "confidence": "medium"
+      "confidence": "medium",
+      "note": "Apple Leisure > Games is the non-video-game bucket (board/RPG/card/poker); video-game shows sit in the separate Video Games genre."
     },
     "Video Games": {
       "topics": [
@@ -1297,5 +1312,7 @@
       "confidence": 0.3,
       "last_evidence_at": "2026-07-09"
     }
-  ]
+  ],
+  "revised_at": "2026-08-16T00:00:00.000Z",
+  "revision_note": "2026-08-16: seven genres re-pointed at child nodes added by the 2026-08 taxonomy review (docs/research/taxonomy-review-2026-08.md). Additive only — no existing topic was removed from any entry. 65 of the remaining 103 genres already reached a child before this change; the rest stay on a bare root because Apple genre granularity cannot reach one. See docs/research/genre-map-notes.md."
 }

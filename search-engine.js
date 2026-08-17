@@ -207,28 +207,38 @@ function passesFilters(item, filters) {
   return true;
 }
 
+/* Terms >=4 chars used to match via plain substring (text.includes(t)),
+   which collides on an unrelated word that happens to CONTAIN the term:
+   "fusion" inside "diffusion", "roman" inside "romance"/"romantic",
+   "team" inside "steam". All three known collisions add extra letters
+   BEFORE the term, never after -- so instead of a blanket switch to
+   word-boundary matching (which would also break legitimate plural
+   matches some concepts rely on, e.g. a term "rocket" matching text
+   "rockets"), this requires no letter/digit immediately before the
+   match and allows an optional trailing "s". Blocks all three known
+   collisions, keeps plural matching, touches nothing else.
+
+   MODULE SCOPE AND EXPORTED, as of 2026-08-17. These were closures inside
+   scoreMatch, and `tools/test-search.mjs` — the battery that judges whether a
+   result is "on-topic" — had its own unguarded `text.includes(needle)` instead.
+   So the ORACLE was looser than the ranker it grades: it admitted "software" and
+   "toward" for `war`, "romance" for `roman`, "confusion" for `fusion`. The last
+   two are collisions this very comment names and that the battery separately
+   asserts the ranker must not make. An oracle may not be more permissive than
+   its subject, and the only way to guarantee that is to share the matcher rather
+   than to reimplement it. Do not inline these again. */
+const longTermPattern = (t) => new RegExp("(?<![a-z0-9])" + t + "s?(?![a-z0-9])");
+const hitText = (text, t) =>
+  t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : longTermPattern(t).test(text);
+const hitTag = (tag, t) =>
+  t.length < 4 ? (tag === t || tag.split("-").includes(t)) : longTermPattern(t).test(tag);
+
 function scoreMatch(item, interp, itemTags) {
   const title = item.title.toLowerCase();
   const hook = (item.hook || "").toLowerCase();
   const show = item.show.toLowerCase();
   const topics = (item.topics || []).join(" ").toLowerCase();
   const tags = itemTags?.tags?.[item.id] || [];
-
-  /* Terms >=4 chars used to match via plain substring (text.includes(t)),
-     which collides on an unrelated word that happens to CONTAIN the term:
-     "fusion" inside "diffusion", "roman" inside "romance"/"romantic",
-     "team" inside "steam". All three known collisions add extra letters
-     BEFORE the term, never after -- so instead of a blanket switch to
-     word-boundary matching (which would also break legitimate plural
-     matches some concepts rely on, e.g. a term "rocket" matching text
-     "rockets"), this requires no letter/digit immediately before the
-     match and allows an optional trailing "s". Blocks all three known
-     collisions, keeps plural matching, touches nothing else. */
-  const longTermPattern = (t) => new RegExp("(?<![a-z0-9])" + t + "s?(?![a-z0-9])");
-  const hitText = (text, t) =>
-    t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : longTermPattern(t).test(text);
-  const hitTag = (tag, t) =>
-    t.length < 4 ? (tag === t || tag.split("-").includes(t)) : longTermPattern(t).test(tag);
 
   let sum = 0;
   let matchedGroups = 0;
@@ -467,7 +477,7 @@ function prettyConceptLabel(id) {
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
   STRONG_RATIO, RICH_MIN, PER_SHOW_CAP, LISTENED_PENALTY,
-  tokenize, branchOf, tagDF, corpusDF,
+  tokenize, branchOf, tagDF, corpusDF, hitText, hitTag,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   suggestAdjacentTopics, prettyConceptLabel,
 };

@@ -63,7 +63,7 @@ const FLOORS = {
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 42,
   "player/foray-sources.test.js": 24,
-  "player/html-audio-backend.test.js": 76,
+  "player/html-audio-backend.test.js": 83,
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
@@ -87,6 +87,11 @@ const FLOORS = {
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
   "test/data-deletion.test.js": 51,
+  /* The standing gate on topic ids in `data/*.json`. Floored because the metric
+     it protects is gameable in exactly one direction: a misspelled `food/bakin`
+     reads as "has a child" to the root-dumping report and silently erases a
+     root-only pair, so a deleted gate would make the number look better. */
+  "test/data-topic-integrity.test.js": 12,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   "tools/ci/path-policy.test.mjs": 82,
@@ -98,8 +103,18 @@ const FLOORS = {
   // because the thing it guards is an absence.
   "tools/classify/no-exclusion.test.mjs": 25,
   "tools/classify/reconcile-shards.test.mjs": 72,
+  /* Guards the metric the whole classification effort is judged on. Its per-item
+     ("fully root-only") number is the one that maps to product behaviour; the
+     pair count is not, and #205 measured why. A deleted suite here would let the
+     definition drift silently, which is how a metric stops meaning anything. */
+  "tools/classify/root-dumping-report.test.mjs": 31,
   "tools/classify/shard.test.mjs": 23,
   "tools/classify/transcript-label.test.mjs": 29,
+  /* The destructive-rewrite guard. `classify-breadth.mjs` rebuilt
+     data/breadth-classification.json from scratch until 2026-08; running that
+     version today would delete 19,278 agent rows and leave valid JSON and a
+     green CI behind it. This suite is the reason that cannot come back. */
+  "tools/classify-breadth.test.mjs": 29,
   "tools/foray/check-forays.test.mjs": 81,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE

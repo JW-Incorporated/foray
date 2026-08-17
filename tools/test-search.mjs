@@ -130,14 +130,36 @@ function search(query, opts) {
   return { status, picks, interp, results };
 }
 
-/* True if item's tags/title/show/topics contain `needle` (case-insensitive
-   substring on the combined text, or an exact tag hit). */
+/* True if item's tags/title/show/hook/topics contain `needle`.
+ *
+ * THE ORACLE MUST NOT BE LOOSER THAN THE RANKER IT GRADES. Two ways this was,
+ * both fixed 2026-08-17, and the second was found by review after the first fix
+ * was already written:
+ *
+ *   1. It could not see `hook`, which `scoreMatch` scores at +1.5. An oracle
+ *      blind to an input its subject reads is measuring the wrong object.
+ *   2. It matched with a bare `text.includes(needle)` while the ranker uses a
+ *      collision guard. So the oracle admitted `software`, `toward`, `warm` and
+ *      `Warner` as "war"; `romance` as "roman"; `confusion` as "fusion" — and
+ *      the last two are collisions this file separately asserts the RANKER must
+ *      not make (see the substring-collision checks below). The oracle was
+ *      contradicting its own test file.
+ *
+ * Both are fixed by sharing the ranker's matcher instead of reimplementing it:
+ * `hitText`/`hitTag` are now exported from search-engine.js. Reimplementing them
+ * here is what allowed the two to drift in the first place, so don't.
+ *
+ * Net effect on the whole `fullPool()` (1,516 items — NOT `discover.items`, which
+ * is 1,489 and misses 27 session episodes; see fullPool's comment), summed over
+ * the 51 topical needles: 1,292 -> 1,246. A NARROWING of 46, despite gaining a
+ * whole new field, because the collision guard removes more than `hook` adds. */
 function itemHas(item, needle) {
   const n = needle.toLowerCase();
   const tags = itemTags.tags?.[item.id] || [];
-  if (tags.some((t) => t.includes(n))) return true;
-  const text = [item.title, item.show, (item.topics || []).join(" ")].join(" ").toLowerCase();
-  return text.includes(n);
+  if (tags.some((t) => SE.hitTag(t, n))) return true;
+  const text = [item.title, item.show, item.hook, (item.topics || []).join(" ")]
+    .join(" ").toLowerCase();
+  return SE.hitText(text, n);
 }
 
 function showCounts(picks) {

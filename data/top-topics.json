@@ -3,7 +3,7 @@
   "built_at": "2026-07-25T02:53:25.311Z",
   "notes": "Ranked list of the top ~150 podcast topics/queries a GENERAL user would search, grounded in real podcast-market genre share (Apple Podcasts' own genre tree via data/genre-taxonomy-map.json, plus Edison Research 2025-26 genre-popularity data: true crime/comedy/news/society-culture/sports lead U.S. listening). tier: 1 = mega-genre, 2 = popular subgenre/league/format, 3 = long-tail-but-real. taxonomy_nodes: [] means no existing data/taxonomy.json node fits -- per personalization-and-depth-plan.md sec.5, node additions require an ADR and are NOT created here; see notes on those entries. STARTING POINT for Joey to sanity-check, same caveat as data/personas.json -- this is a data-grounded first pass, not a final ranked taxonomy.",
   "method": "Apple Podcasts genre tree (see data/genre-taxonomy-map.json, 110 genres) as the structural backbone + Edison Research / Apple & Spotify chart genre-share for tiering + example query phrasings (genre words, intent phrasings, and franchise/personality-style queries) reasoned from general podcast-market knowledge, not scraped search-console data (Foray has none yet).",
-  "needs_adr_count": 13,
+  "needs_adr_count": 0,
   "topics": [
     {
       "id": "true-crime",
@@ -31,6 +31,7 @@
         "missing persons"
       ],
       "taxonomy_nodes": [
+        "true-crime/cold-cases",
         "true-crime"
       ]
     },
@@ -57,6 +58,7 @@
         "cults podcast"
       ],
       "taxonomy_nodes": [
+        "true-crime/fraud-cults",
         "true-crime"
       ]
     },
@@ -71,6 +73,7 @@
         "dna evidence"
       ],
       "taxonomy_nodes": [
+        "true-crime/justice-forensics",
         "true-crime"
       ]
     },
@@ -85,6 +88,7 @@
         "scam podcast"
       ],
       "taxonomy_nodes": [
+        "true-crime/fraud-cults",
         "true-crime"
       ]
     },
@@ -344,8 +348,9 @@
       "example_queries": [
         "immigrant stories podcast"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node; folds under personal-journals today but not tagged as such"
+      "taxonomy_nodes": [
+        "society/immigration-diaspora"
+      ]
     },
     {
       "id": "lgbtq-stories-culture",
@@ -356,8 +361,9 @@
         "lgbtq podcast",
         "queer stories"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node"
+      "taxonomy_nodes": [
+        "society/lgbtq"
+      ]
     },
     {
       "id": "sports",
@@ -488,8 +494,9 @@
         "ufc podcast",
         "mma podcast"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node — closest is sports (general); frequent query, worth a node"
+      "taxonomy_nodes": [
+        "sports/combat-sports"
+      ]
     },
     {
       "id": "cricket",
@@ -675,8 +682,9 @@
         "bitcoin podcast",
         "cryptocurrency"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node; closest is economics/markets but crypto content is largely absent"
+      "taxonomy_nodes": [
+        "economics/crypto"
+      ]
     },
     {
       "id": "health-fitness",
@@ -755,8 +763,9 @@
         "meditation podcast",
         "mindfulness practice"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node; closest is health/mental"
+      "taxonomy_nodes": [
+        "health/meditation"
+      ]
     },
     {
       "id": "alternative-holistic-health",
@@ -904,6 +913,7 @@
       ],
       "taxonomy_nodes": [
         "space",
+        "space/astronomy",
         "space/rockets"
       ]
     },
@@ -959,8 +969,9 @@
         "cybersecurity podcast",
         "hacking podcast"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node; closest is computing"
+      "taxonomy_nodes": [
+        "computing/cybersecurity"
+      ]
     },
     {
       "id": "chemistry",
@@ -1130,8 +1141,9 @@
         "jazz podcast",
         "jazz history"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node; jazz sits inside music/theory-production undifferentiated"
+      "taxonomy_nodes": [
+        "music/jazz"
+      ]
     },
     {
       "id": "hip-hop-rap",
@@ -1142,8 +1154,9 @@
         "hip hop podcast",
         "rap podcast"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node"
+      "taxonomy_nodes": [
+        "music/hip-hop"
+      ]
     },
     {
       "id": "classical-music",
@@ -1380,7 +1393,7 @@
         "grilling tips"
       ],
       "taxonomy_nodes": [
-        "food/cooking-science"
+        "food/grilling-bbq"
       ]
     },
     {
@@ -1406,8 +1419,9 @@
         "coffee podcast",
         "specialty coffee"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node; closest is food/cooking-science"
+      "taxonomy_nodes": [
+        "food/drinks"
+      ]
     },
     {
       "id": "diy-home-improvement",
@@ -1497,8 +1511,9 @@
         "esports podcast",
         "competitive gaming"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node"
+      "taxonomy_nodes": [
+        "gaming/esports"
+      ]
     },
     {
       "id": "board-games-tabletop",
@@ -1510,8 +1525,9 @@
         "tabletop rpg",
         "dungeons and dragons"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node"
+      "taxonomy_nodes": [
+        "gaming/tabletop"
+      ]
     },
     {
       "id": "travel",
@@ -1946,7 +1962,7 @@
         "tesla"
       ],
       "taxonomy_nodes": [
-        "automotive/racing"
+        "automotive/ev-future"
       ]
     },
     {
@@ -1960,7 +1976,7 @@
         "mixology"
       ],
       "taxonomy_nodes": [
-        "food/cooking-science"
+        "food/drinks"
       ]
     },
     {
@@ -1973,7 +1989,7 @@
         "home garden tips"
       ],
       "taxonomy_nodes": [
-        "craft/diy-home"
+        "hobbies/gardening"
       ]
     },
     {
@@ -2037,8 +2053,9 @@
         "kpop podcast",
         "global pop music"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node"
+      "taxonomy_nodes": [
+        "music/pop-global"
+      ]
     },
     {
       "id": "combat-sports-boxing",
@@ -2049,8 +2066,9 @@
         "boxing podcast",
         "combat sports"
       ],
-      "taxonomy_nodes": [],
-      "notes": "no dedicated node — see also MMA/UFC entry"
+      "taxonomy_nodes": [
+        "sports/combat-sports"
+      ]
     },
     {
       "id": "design",
@@ -2066,5 +2084,7 @@
         "culture/design"
       ]
     }
-  ]
+  ],
+  "revised_at": "2026-08-16",
+  "revision_note": "2026-08-16: re-pointed at the nodes the 2026-08 taxonomy review created. The 13 topics recorded as no-node in that review (§3.3) all have homes now, and five mappings the review itself named as workarounds (bbq-grilling and wine-cocktails on food/cooking-science, gardening on craft/diy-home, electric-vehicles on automotive/racing, space-astronomy on space/rockets) point at the real nodes."
 }
