@@ -112,10 +112,10 @@ editorial ones:
   13–15 are the whole-animal communal-fire family. Other orderings are defensible;
   what is not defensible is a random walk around the map, because a listener will
   try to infer a principle from the order and will be misled by an arbitrary one.
-- **The fan's exit is engineered.** Beat 15 (jerk) is the last fan stop because
-  it belongs to both structures: it is a parallel Caribbean tradition *and* the
-  living descendant of the technique the English word came from. It hands
-  straight to beat 16. If the fan is reordered, keep jerk last.
+- **The fan's exit is engineered.** Beat 15 (jerk) is the last fan stop because it
+  belongs to both structures: it is a parallel Caribbean tradition *and* a living
+  branch of the indigenous Caribbean pit that Act IV picks up from the word onward.
+  It hands straight to beat 16. If the fan is reordered, keep jerk last.
 
 Act IV's chain has one internal division worth flagging: beats 26–28 (Texas, the
 Carolinas, Kansas City and Memphis) are themselves a small fan inside the chain —
@@ -545,7 +545,7 @@ that Argentines eat a lot of beef.
 
 **Share.** 3.0 % (~4.5 min).
 
-#### 15. Jerk is the living Caribbean descendant of the technique the English word came from, and it was refined by people who had escaped slavery
+#### 15. Jerk is a Maroon synthesis — African fire practice worked through the indigenous Caribbean pit, by people who had freed themselves
 
 **Claim.** Jamaican jerk is a syncretism made by Maroon communities of formerly
 enslaved Africans living independently in the interior — African seasoning and
