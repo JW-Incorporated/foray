@@ -629,6 +629,50 @@ tail, and §8's argument rests on the median.
 > carries the one-line recipe for re-running this experiment.
 
 
+> **4.1b-iv — WHAT HAPPENS AFTER THE SUSPENSION IS NOT DETERMINISTIC, AND THE WORST
+> OBSERVED CASE IS THE FORAY STOPPING.** Added from run **32079684184** (the
+> confirmation run, arm back at 15 s), read against the two before it. This is the part
+> that decides how bad the ceiling is, and it needs all three runs to see.
+>
+> `didChangeThrottleState(Suspended)` is WebKit's assertion bookkeeping. Whether the
+> page then *stops running* is a separate question, and the answer differs per run:
+>
+> | run | arm | suspension | what the WebContent process did next | Foray outcome |
+> |---|---|---|---|---|
+> | 32064639785 | 15 s | +27.99 s | **froze ~13 s**, then resumed | both transitions completed; out-point **11.1 s late** |
+> | **32077857553** | **60 s** | **+26.28 s** | **NOTHING for the remaining 110 s of log coverage** — its last line is `WebProcess::prepareToSuspend: Process is ready to suspend` | **stopped there** |
+> | 32079684184 | 15 s | +28.53 s | **kept executing normally** | both transitions completed; out-points **0.15 s** and **0.16 s** late |
+>
+> All **Measured**, by counting our process's own lines in each `simulator-log-seam.txt`
+> after the suspension timestamp.
+>
+> **The middle row is the bad one, and it is the run where our audio never stopped.**
+> Continuous playback, suspended at 26.3 s, and then the page was gone for the rest of
+> the window. In the other two the same event cost 13 s and 0 s respectively. So:
+>
+> - **The ceiling is real and it can stop a Foray outright.** That is the answer to
+>   "does the shell survive a locked screen" in the worst observed case: no.
+> - **It is not deterministic.** Three runs, three different consequences from the same
+>   log line, on the same code. Do not quote a single one of them as the behaviour —
+>   including the reassuring ones.
+> - **In the two runs where the page came back, the whole chain worked**: a beat, a fresh
+>   cross-file load, a seek, playback, and out-points landing within 0.16 s. Whatever the
+>   suspension does, it is not corrupting the seam logic.
+> - **Whether AUDIO continued in the middle row cannot be determined from that
+>   artifact.** The media clock (`updateNowPlayingInfo`) is emitted by the WebContent
+>   process, which is the process that went silent; the GPU process kept logging
+>   `RemoteMediaPlayerProxy::updateCachedVideoMetrics` to the end, which shows a player
+>   still existed and nothing about whether it was producing sound. Stating "the audio
+>   stopped" there would be an inference, and this document has retracted two of those
+>   today.
+>
+> **What this does NOT change:** the cause is still the Simulator-only entitlement gap
+> (§4.1b-iii), the `'View is playing audio'` activity is still held right up to the
+> suspension in every run, and `HUMAN-ACTIONS.md` #11 still settles the only version of
+> this question that matters. A device either reproduces this or it does not, and no
+> further Simulator run can tell you which.
+
+
 **4.2 — The seam beat specifically.** One `setTimeout(2000)` — the real
 `SEAM_GAP_SEC` — armed in a hidden page, 4 reps each:
 

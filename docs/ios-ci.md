@@ -703,6 +703,22 @@ is what `UIBackgroundModes: audio` buys a real signed app.
   other way: this *failure* is the weak direction of the evidence, because its mechanism
   is visibly absent here and present on a phone.
 
+**And what happens AFTER the suspension is not deterministic** — the confirmation run
+([32079684184](https://github.com/JW-Incorporated/foray/actions/runs/32079684184)) makes
+that three runs with three different consequences from the same log line:
+
+| run | arm | suspension | what our process did next | Foray outcome |
+|---|---|---|---|---|
+| 32064639785 | 15 s | +27.99 s | froze ~13 s, then resumed | both transitions completed; out-point **11.1 s late** |
+| **32077857553** | **60 s** | **+26.28 s** | **nothing, for the remaining 110 s of log** | **stopped there** |
+| 32079684184 | 15 s | +28.53 s | kept executing normally | both transitions completed; out-points **0.15 s** / **0.16 s** late |
+
+**The middle row is the one where our audio never stopped, and it is the one where the
+page never came back.** So the ceiling can stop a Foray outright — and in the other two
+runs the identical event cost 13 s and nothing at all. Quote the distribution, not a
+row. (Whether *audio* continued in the middle row is **not determinable** from that
+artifact: the media clock is emitted by the process that went silent.)
+
 **Do not report "a Foray stops advancing 26 s after the screen locks" as a device
 finding.** `HUMAN-ACTIONS.md` **#11** is now the highest-value twenty minutes available
 to this project: screen off, does the running order keep advancing past half a minute?
