@@ -14,46 +14,46 @@ node_modules/
 # committed copy would not.
 www/
 
-# ── The generated native projects ────────────────────────────────────────────
+# ── The generated native projects: BOTH IGNORED IN FULL ──────────────────────
 #
-# `mobile/ios/` and `mobile/android/` are NOT ignored. Capacitor's own guidance
-# is to commit them (they hold real project configuration — the Info.plist
-# background-audio key, signing, the app icon set), and committing them keeps CI
-# simple: no `cap add` step, no platform SDK needed to check out and build.
+# This block used to say the opposite — that `mobile/ios/` and `mobile/android/`
+# are NOT ignored, because Capacitor's own guidance is to commit them. Both
+# platforms have since been generated, and the practice the repo actually settled
+# on is the other one, so the rule now matches it. Written down rather than
+# quietly flipped, because the old argument was not silly.
 #
-# Neither exists yet: nothing here has been generated, because neither platform
-# can be BUILT on Windows and committing hundreds of unverifiable generated files
-# is how a scaffold acquires a lie. See mobile/README.md § Generating the
-# platforms. What IS ignored is what those projects produce when built.
+# WHAT SETTLED IT — the same call, twice, independently:
+#   - iOS. PR #213 (on #220) builds the shell on a macOS runner by running
+#     `npm run add:ios` in the job and building what it generates. `mobile/ios/`
+#     is not in the repo and the workflow does not want it to be.
+#   - Android. Issue #37 built `mobile/android/` on Windows and got both APKs
+#     (`docs/android-shell-build.md`). Committing it was rejected for the same
+#     reason: ~100 generated files, no reviewer, and this directory AUTO-MERGES
+#     with no post-merge review window.
+#
+# So the generate step must be reproducible from `mobile/package.json` alone, and
+# it is: `npm install && npm run add:android` (or `add:ios`) needs nothing that is
+# not committed. `capacitor.config.json` — the only file that carries a DECISION
+# (the app id, the platform paths) — is committed, and is pinned by
+# `tools/mobile/shell-invariants.test.mjs`.
+#
+# THE ONE THING THIS COSTS, stated plainly because it is a real loss. The Android
+# `res/xml/config.xml` was deliberately left un-ignored so the `KeepRunning`
+# footgun could be parsed by a test — an ignored file cannot be checked. Ignoring
+# the platform means CI never sees that file. The vector it defended against goes
+# away with it: `KeepRunning="false"` can no longer be committed, because the file
+# it would live in can no longer be committed. `cap add` regenerates it from
+# Capacitor's template on every machine, and the template sets no preference at
+# all. The guard is now a check on the machine that generated the platform —
+# which is the machine that builds the APK, so it still runs where it matters.
+# The committed half of that guard (the parsed `capacitor.config.json`, at any
+# depth, case-insensitively) is untouched and still runs in CI.
+ios/
+android/
 
-# iOS
-ios/App/App/public/
-ios/App/Pods/
-ios/App/output/
-ios/App/build/
-ios/App/App.xcworkspace/xcuserdata/
-ios/App/App.xcodeproj/xcuserdata/
-ios/capacitor-cordova-ios-plugins/
-*.xcuserstate
+# What the platforms produce, kept for anyone who un-ignores a platform above.
 DerivedData/
-
-# Android
-android/.gradle/
-android/build/
-android/app/build/
-android/app/src/main/assets/public/
-android/app/src/main/assets/capacitor.config.json
-android/app/src/main/assets/capacitor.plugins.json
-# NOT ignored, deliberately, though Capacitor's own template ignores it:
-#   android/app/src/main/res/xml/config.xml
-# That is the Cordova-compat preference file, and it is where someone would set
-# `KeepRunning="false"` to "save battery" — which calls the process-global
-# pauseTimers() and stops every JavaScript out-point in the app firing.
-# `tools/mobile/shell-invariants.test.mjs` parses it. An ignored file cannot be
-# checked, so ignoring it would make that guard permanently dead.
-android/capacitor-cordova-android-plugins/
-android/local.properties
-android/.idea/
+*.xcuserstate
 *.iml
 *.apk
 *.aab
