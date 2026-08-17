@@ -123,13 +123,27 @@
   }
 
   function loadPhaseFile(done) {
+    /* ONCE, WHATEVER HAPPENS. WebKit does fire `error` for a missing or blocked
+       script, but a callback that can be reached by neither `load` nor `error` would
+       leave the page sitting on the bridge probe forever — a green run that measured
+       nothing, which is the exact outcome the surrounding comment claims to prevent.
+       A 3 s deadline costs nothing and removes the possibility. */
+    var settled = false;
+    function once(reason) {
+      if (settled) return;
+      settled = true;
+      if (reason) out.phaseFileProblem = reason;
+      done();
+    }
+    var timer = setTimeout(function () { once("timeout"); }, 3000);
+    function finish(reason) { clearTimeout(timer); once(reason); }
     try {
       var s = document.createElement("script");
       s.src = "probe-phase.js";
-      s.onload = done;
-      s.onerror = function () { out.phaseFileMissing = true; done(); };
+      s.onload = function () { finish(null); };
+      s.onerror = function () { finish("error"); };
       document.head.appendChild(s);
-    } catch (e) { out.phaseFileMissing = true; done(); }
+    } catch (e) { finish("threw: " + (e && e.message)); }
   }
 
   /* One late re-check, because a bridge could in principle be injected after

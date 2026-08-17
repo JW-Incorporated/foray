@@ -88,7 +88,7 @@ paragraph is exactly why: the beat is a `setTimeout`, and the run above measured
 hidden DOM timers at a 1000 ms median — the one clock that *is* throttled — with a
 fresh cross-episode load inside that window. Phase C of the probe
 (`tools/mobile/probe/probe-seam.js`, #28's iOS half) drives three bounded segments
-over two files through the real `PlayerQueueManager` and reports whether each
+over three files through the real `PlayerQueueManager` and reports whether each
 transition completes while backgrounded. Its own limit is stated with every
 verdict: the next segment is a **local bundled file**, so a cold cross-origin fetch
 while hidden — the specific risk §8 names against WebKit's 10 s
@@ -768,7 +768,7 @@ keep-alive during a load — noting that a *silent* track buys nothing on
 Chromium).
 
 > **THIS IS THE PARAGRAPH THE SEAM PROBE WAS BUILT FOR** (#28's iOS half,
-> `tools/mobile/probe/probe-seam.js`). It drives three bounded segments across two
+> `tools/mobile/probe/probe-seam.js`). It drives three bounded segments across three
 > files through the real `PlayerQueueManager` and reports, per transition, whether
 > the beat fired, whether the next file loaded, and whether it became audible —
 > all with the app backgrounded and never resumed. Two completed hidden

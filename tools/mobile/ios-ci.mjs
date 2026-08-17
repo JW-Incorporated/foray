@@ -350,6 +350,15 @@ export function collectProbes({ dump, consoleText } = {}) {
         : fromConsole.outPoints.length
           ? "console"
           : "none",
+      /* REPORTED, because which channel the seam verdict came from is the first
+         thing a human needs when reading a `seam-stalls-in-background`: the console
+         channel carries many mid-run snapshots of the same run, so `pickSeam` has
+         more work to do there than over the single localStorage record. */
+      seam: (fromDump.seams ?? []).length
+        ? "localStorage"
+        : fromConsole.seams.length
+          ? "console"
+          : "none",
     },
   };
 }
@@ -772,6 +781,37 @@ export const SEAM_BAD_MS = 15000;
 export const MIN_HIDDEN_TRANSITIONS = 2;
 
 /**
+ * A beat observed below this did not happen.
+ *
+ * ADDED AFTER A REVIEW DEFEATED THIS SUITE IN ONE EDIT. Passing
+ * `seamGapSec: 0.05` to the `PlayerQueueManager` in the probe collapsed the 2.0 s
+ * beat — the throttled `setTimeout` that is the entire stated reason this phase
+ * exists — to 50 ms, and every test stayed green while the verdict still printed
+ * "the beat ran". That is the same shape as a guard suite in this repo that passed
+ * with the stopping mechanism removed.
+ *
+ * A unit test can forbid that one spelling; only a floor on the OBSERVED number
+ * makes the class of edit visible. It also catches a real bug with no edit at all:
+ * if `seamGapSec()` decides a transition is not a seam (an unbounded item on either
+ * side, a user-driven advance) the gap is 0 by design, and a 0 ms "beat" must not be
+ * reported as the 2.0 s one surviving backgrounding.
+ */
+export const SEAM_MIN_PLAUSIBLE_MS = 500;
+
+/**
+ * The least backgrounded time either direction of this verdict needs.
+ *
+ * Sibling of `MIN_HIDDEN_PLAYBACK_SEC`, and it applies BOTH ways, which is the
+ * part worth stating: a pass needs the first boundary to land at least this far
+ * into the hidden window, and a STALL needs us to have waited at least this long,
+ * hidden, with nothing audible. Without the second half a 0.3 s hidden window with
+ * an open transition would be reported as the silence defect — the same overclaim
+ * shape as the 0.446 s `fires-in-background` this repo already shipped once, just
+ * pointing the other way.
+ */
+export const MIN_HIDDEN_WINDOW_SEC = 5;
+
+/**
  * The most informative seam record.
  *
  * Ranked, and the ranking deliberately puts the DECISIVE NEGATIVE first, which is
@@ -783,13 +823,35 @@ export const MIN_HIDDEN_TRANSITIONS = 2;
  */
 export function pickSeam(records) {
   if (!Array.isArray(records) || records.length === 0) return null;
+  /* THE SCORE HAS TO BE MONOTONE IN PROGRESS, and the first version was not — a
+     review caught it and it would have produced a confident FALSE
+     `seam-stalls-in-background`.
+     The seam probe saves a fresh snapshot every few seconds, so the console channel
+     carries MANY copies of one run at different stages. A score that saturates as
+     soon as the first transition is pushed ties every later snapshot, and
+     `Array.sort` is stable, so the EARLIEST saturating snapshot won — which is
+     exactly the one written just after a boundary, with the transition still open.
+     A completed run then reads as a stall.
+     `pickOutPoint` does not have this problem because its terms (`stoppedAtSec`,
+     `stoppedWhileBackgrounded`) only appear at the END of a run. So this adds terms
+     that keep rising: closed hidden transitions, then `lastSavedAtWall` as the
+     tie-break. The backgrounded term still dominates everything, because a
+     foreground run cannot answer the question however complete it looks — that part
+     of `pickOutPoint`'s lesson stands. */
+  const closedHidden = (r) =>
+    (Array.isArray(r?.transitions) ? r.transitions : []).filter(
+      (t) => t && t.hiddenAtBoundary === true && typeof t.nextPlayingAtWall === "number"
+    ).length;
   const score = (r) =>
-    (r?.backgroundedAtWall != null ? 8 : 0) +
-    (Array.isArray(r?.transitions) && r.transitions.length ? 4 : 0) +
-    (Array.isArray(r?.items) && r.items.length > 1 ? 2 : 0) +
-    (r?.autoplayBlocked ? -4 : 0) +
-    (r?.error ? -2 : 0);
-  return [...records].sort((a, b) => score(b) - score(a))[0];
+    (r?.backgroundedAtWall != null ? 1000 : 0) +
+    (Array.isArray(r?.transitions) && r.transitions.length ? 100 : 0) +
+    (Array.isArray(r?.items) && r.items.length > 1 ? 50 : 0) +
+    closedHidden(r) * 10 +
+    (r?.autoplayBlocked ? -400 : 0) +
+    (r?.error ? -200 : 0);
+  return [...records].sort(
+    (a, b) => score(b) - score(a) || (num(b?.lastSavedAtWall) ?? 0) - (num(a?.lastSavedAtWall) ?? 0)
+  )[0];
 }
 
 /**
@@ -861,34 +923,39 @@ export function seamTransitionVerdict(probe) {
   }
 
   const bg = probe.backgroundedAtWall;
-  const resumed = typeof probe.resumedAtWall === "number" ? probe.resumedAtWall : null;
+  const resumed = num(probe.resumedAtWall);
   const transitions = Array.isArray(probe.transitions) ? probe.transitions : [];
+  const items = Array.isArray(probe.items) ? probe.items : [];
 
   /* HIDDEN THROUGHOUT, CHECKED TWO WAYS. The page's own `document.hidden` reading
      at each edge, AND the wall clock against the backgrounded/resumed stamps. Both,
      because the first is a signal from the process under suspicion and the second
-     cannot see a brief visibility blip. A transition only counts if both agree. */
+     cannot see a brief visibility blip. A transition only counts if both agree —
+     and if it carries an actual beat measurement, because a completed transition
+     with no `observedGapMs` is a transition whose central number is missing. */
   const isHidden = (t) =>
     t &&
     t.hiddenAtBoundary === true &&
     t.hiddenAtNextPlaying === true &&
-    typeof t.boundaryAtWall === "number" &&
+    num(t.boundaryAtWall) != null &&
     t.boundaryAtWall >= bg &&
-    typeof t.nextPlayingAtWall === "number" &&
+    num(t.nextPlayingAtWall) != null &&
+    num(t.observedGapMs) != null &&
     (resumed == null || t.nextPlayingAtWall < resumed);
 
   const attemptedHidden = transitions.filter(
-    (t) => t && typeof t.boundaryAtWall === "number" && t.boundaryAtWall >= bg && t.hiddenAtBoundary === true
+    (t) => t && num(t.boundaryAtWall) != null && t.boundaryAtWall >= bg && t.hiddenAtBoundary === true
   );
   const completedHidden = transitions.filter(isHidden);
-  const stalled = attemptedHidden.filter((t) => typeof t.nextPlayingAtWall !== "number");
+  const stalled = attemptedHidden.filter((t) => num(t.nextPlayingAtWall) == null);
 
-  const lastSeenWall =
-    typeof probe.lastSavedAtWall === "number" ? probe.lastSavedAtWall : probe.startedAtWall ?? bg;
-  const gaps = completedHidden.map((t) => t.observedGapMs).filter((n) => typeof n === "number");
+  const lastSeenWall = num(probe.lastSavedAtWall) ?? num(probe.startedAtWall) ?? bg;
+  const gaps = completedHidden.map((t) => num(t.observedGapMs)).filter((n) => n != null);
   const worstGap = gaps.length ? Math.max(...gaps) : null;
-  const asked = typeof probe.askedGapMs === "number" ? probe.askedGapMs : SEAM_ASKED_MS;
+  const bestGap = gaps.length ? Math.min(...gaps) : null;
+  const asked = num(probe.askedGapMs) ?? SEAM_ASKED_MS;
   const timerMedian = medianMs(probe.timerIntervalsMs);
+  const firstHiddenBoundary = attemptedHidden.length ? num(attemptedHidden[0].boundaryAtWall) : null;
 
   const base =
     `${transitions.length} transition(s) recorded, ${attemptedHidden.length} begun while hidden, ` +
@@ -903,7 +970,95 @@ export function seamTransitionVerdict(probe) {
       ? " The app was NEVER resumed during this run."
       : ` The app returned to the foreground ${((resumed - bg) / 1000).toFixed(1)}s after backgrounding.`);
 
-  /* THE FAILURE, FIRST, because it is the one that changes what gets built next. */
+  /* ── THREE THINGS THAT INVALIDATE THE WHOLE RECORD, CHECKED BEFORE ANY READING
+     OF IT. Each of these was a way the first version of this function returned
+     `seam-crosses-in-background` from data that contradicted the sentence it
+     printed; a review found all three by calling it. ── */
+
+  /* 1. THE BOUNDARY MUST BE WHAT ENDED THE SEGMENT. `html-audio-backend.js` reports
+        the same `onItemEnded` for a finished FILE as for a boundary, deliberately —
+        the manager must not be able to tell them apart. Here they are opposite
+        results: a tone that simply ran out produces a beautiful transition that
+        measures the length of the tone. `outPointVerdict` has this exact check and
+        its comment is the reason — "the tone against the window is a margin, not a
+        check, so this is the check". */
+  const wrongReason = attemptedHidden.find((t) => t.endReason != null && t.endReason !== "outPoint");
+  if (wrongReason) {
+    return {
+      verdict: "inconclusive",
+      headline: `A segment ended with reason "${wrongReason.endReason}", not at its out-point.`,
+      detail:
+        `${base} An audio file that ran out before its boundary makes the transition after it ` +
+        `measure the length of the tone rather than the seam. Lengthen the tones in ` +
+        `tools/mobile/probe/install-probe.mjs; nothing is known about backgrounding from this run.`,
+    };
+  }
+
+  /* 2. THE ARM MUST HAVE HAPPENED WHILE HIDDEN. `armedWhileHidden: false` means the
+        probe's 70 s fallback fired instead of the `visibilitychange` path — i.e. the
+        app was never backgrounded in time and the boundary was set on wall clock,
+        which is precisely the race that produced two contradictory verdicts from
+        identical code. The probe records the field; not reading it was the gap. */
+  if (probe.armedWhileHidden === false) {
+    return {
+      verdict: "inconclusive",
+      headline: "The boundary was armed by the fallback timer, while the page was still visible.",
+      detail:
+        `${base} The probe arms on the first \`visibilitychange\` to hidden and falls back at 70 s ` +
+        `only so a never-backgrounded run is reportable. Reaching the fallback means backgrounding ` +
+        `happened far later than the timeline assumes, so this run is a wall-clock race rather than ` +
+        `a measurement — check the screenshots and how long Settings took to foreground.`,
+    };
+  }
+
+  /* 3. THE NEXT SEGMENT MUST ACTUALLY BE A DIFFERENT FILE. The pass headline claims
+        "a different episode loaded", and nothing checked it. `html-audio-backend.js`
+        turns a same-URL load into a seek with no refetch, so a queue that
+        accidentally repeats a file measures a buffered seek and reports a load. The
+        probe records `src` and `expectedSrc` per item for exactly this, and reading
+        them here means the property is MEASURED rather than asserted by a unit test
+        over the queue literal — which a review defeated in one edit. */
+  const sameFile = [];
+  for (let i = 1; i < items.length; i++) {
+    const prev = String(items[i - 1]?.src ?? "");
+    const cur = String(items[i]?.src ?? "");
+    if (prev && cur && prev === cur) sameFile.push(`${items[i - 1].id} -> ${items[i].id} (${cur})`);
+  }
+  if (sameFile.length) {
+    return {
+      verdict: "inconclusive",
+      headline:
+        `A transition re-used the SAME audio file (${sameFile.join(", ")}), so no fresh media load ` +
+        `was exercised.`,
+      detail:
+        `${base} \`html-audio-backend.js\` short-circuits a same-URL load into a seek with no ` +
+        `refetch, which is correct for consecutive segments of one episode and is the one path this ` +
+        `measurement must not take: a seek inside an already-buffered file answers a far easier ` +
+        `question than "does a fresh load complete while hidden". Fix the probe's queue so ` +
+        `consecutive items use different files.`,
+    };
+  }
+
+  /* THE FAILURE, FIRST, because it is the one that changes what gets built next —
+     but it needs its own floor. See MIN_HIDDEN_WINDOW_SEC: a transition still open
+     after 0.3 s of hidden waiting is not the silence defect, it is a run that ended
+     too early, and reporting it as the defect is the same overclaim shape as the
+     0.446 s pass this repo already shipped once. */
+  if (stalled.length && (lastSeenWall - stalled[0].boundaryAtWall) / 1000 < MIN_HIDDEN_WINDOW_SEC) {
+    const waited = (lastSeenWall - stalled[0].boundaryAtWall) / 1000;
+    return {
+      verdict: "hidden-window-too-short",
+      headline:
+        `A transition was still open when the record was last written — but only ` +
+        `${waited.toFixed(1)}s after its boundary, which is not long enough to call it a stall.`,
+      detail:
+        `${base} Below the ${MIN_HIDDEN_WINDOW_SEC}s floor this workflow requires in either ` +
+        `direction. The run probably ended (or the app was killed) mid-transition rather than the ` +
+        `transition failing. Last stage reached: ${JSON.stringify(stalled[0].lastStage ?? "unreported")}.`,
+      completedHiddenTransitions: completedHidden.length,
+      worstGapMs: worstGap,
+    };
+  }
   if (stalled.length) {
     const t = stalled[0];
     const waited = (lastSeenWall - t.boundaryAtWall) / 1000;
@@ -930,6 +1085,55 @@ export function seamTransitionVerdict(probe) {
         `${base} The first boundary was expected ~15 s after the page went hidden. If it never ` +
         `fired at all that contradicts run 32026332637 and is the more interesting finding — check ` +
         `the probe's telemetry and screenshots before reading this as a timing problem.`,
+    };
+  }
+  /* THE FIRST BOUNDARY HAS TO LAND INSIDE THE HIDDEN WINDOW, not on its edge. Same
+     floor as the stall direction, and the same reason: a boundary crossed 0.4 s
+     after the page went hidden measures the harness, not backgrounding. */
+  if (firstHiddenBoundary != null && (firstHiddenBoundary - bg) / 1000 < MIN_HIDDEN_WINDOW_SEC) {
+    return {
+      verdict: "hidden-window-too-short",
+      headline:
+        `The first boundary fired only ${((firstHiddenBoundary - bg) / 1000).toFixed(1)}s after the ` +
+        `app went into the background, which is not a measurement of backgrounding.`,
+      detail:
+        `${base} Below the ${MIN_HIDDEN_WINDOW_SEC}s floor this workflow requires. The probe arms ` +
+        `15 s after the page goes hidden precisely so a healthy run clears it by 3x; landing here ` +
+        `means the arm did not happen as designed.`,
+      completedHiddenTransitions: completedHidden.length,
+      worstGapMs: worstGap,
+    };
+  }
+  /* A BEAT THAT DID NOT HAPPEN IS NOT A BEAT THAT SURVIVED. See
+     SEAM_MIN_PLAUSIBLE_MS: this catches both a `seamGapSec` override in the probe
+     (which defeated every test in this suite in one edit) and the real case where
+     `seamGapSec()` legitimately returns 0 because the transition is not a seam. */
+  if (bestGap != null && bestGap < SEAM_MIN_PLAUSIBLE_MS) {
+    return {
+      verdict: "inconclusive",
+      headline:
+        `A transition completed in ${Math.round(bestGap)} ms against a ${asked} ms beat — that is ` +
+        `not the 2.0 s beat running, it is the beat not happening.`,
+      detail:
+        `${base} Either the manager was handed a shorter \`seamGapSec\` than ` +
+        `\`player/seam-gap.js\` defines, or \`seamGapSec()\` ruled this transition not a seam at all ` +
+        `(an unbounded item on one side, or a user-driven advance). Both make the number meaningless ` +
+        `as an answer to "does the beat survive backgrounding".`,
+      completedHiddenTransitions: completedHidden.length,
+      worstGapMs: worstGap,
+    };
+  }
+  /* AND THE ITEMS HAVE TO ADD UP. N completed transitions require N+1 items to have
+     become audible; anything less means the record is describing transitions whose
+     endpoints were never observed. Cheap, and it is the kind of internal
+     contradiction a confident verdict should never print over. */
+  if (items.length < completedHidden.length + 1) {
+    return {
+      verdict: "inconclusive",
+      headline:
+        `The record is internally inconsistent: ${completedHidden.length} completed transition(s) ` +
+        `but only ${items.length} item(s) ever became audible.`,
+      detail: `${base} N transitions need N+1 audible items. Read the probe's telemetry.`,
     };
   }
   if (completedHidden.length < MIN_HIDDEN_TRANSITIONS) {
@@ -1143,7 +1347,7 @@ if (isMain) {
         `read ${Object.keys(dump).length} localStorage key(s) and ${consoleText.length} bytes of ` +
           `console log; bridge record ${bridge ? `from ${sources.bridge}` : "ABSENT"}; ` +
           `${outPoints.length} out-point record(s) from ${sources.outPoint}; ` +
-          `${seams.length} seam record(s)`
+          `${seams.length} seam record(s) from ${sources.seam}`
       );
       const report = renderReport({
         bridge,

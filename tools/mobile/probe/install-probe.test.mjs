@@ -28,10 +28,13 @@ import {
   PHASE_ASSET,
   PROBE_ASSETS,
   PROBE_DIR,
+  PROBE_PLAYER_DEPS,
   PROBE_TAG,
   REPO_ROOT,
+  TONES,
   TONE_B_NAME,
   TONE_B_SECONDS,
+  TONE_C_NAME,
   TONE_NAME,
   TONE_SECONDS,
   assertBuildArtefact,
@@ -52,7 +55,15 @@ const PAGE =
 /** The player modules the probes drive. Both phases run the REAL shipped code —
  *  phase B `HtmlAudioBackend`, phase C `PlayerQueueManager` over it, with the real
  *  `seamGapSec` decision — so a bundle missing any of them must be refused. */
-const REQUIRED_PLAYER_FILES = ["html-audio-backend.js", "queue-manager.js", "seam-gap.js"];
+const REQUIRED_PLAYER_FILES = [
+  "html-audio-backend.js",
+  "queue-manager.js",
+  "queue-state.js",
+  "queue-strategy.js",
+  "seam-gap.js",
+  "seek-policy.js",
+  "foray-queue.js",
+];
 
 function tmpBundle(page = PAGE) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-probe-"));
@@ -214,21 +225,28 @@ test("the tone outlasts the observation window by a wide margin", () => {
 test("the tone is generated, not committed", () => {
   /* This repo guards a 3 MB native bundle. A ~2.4 MB WAV in git for a CI-only
      probe would be absurd, and it is deterministic anyway. */
-  assert.equal(fs.existsSync(path.join(PROBE_DIR, TONE_NAME)), false);
-  assert.equal(fs.existsSync(path.join(PROBE_DIR, TONE_B_NAME)), false);
+  for (const t of TONES) {
+    assert.equal(fs.existsSync(path.join(PROBE_DIR, t.name)), false, `${t.name} is committed`);
+  }
 });
 
-test("the second tone is a DIFFERENT file, which is what makes the seam a real load", () => {
+test("there are THREE distinct tones, which is what makes both seams a real load", () => {
   /* THE LOAD-BEARING ASSERTION FOR PHASE C. `html-audio-backend.js` short-circuits
      a same-URL load into a seek with no refetch ("SAME SOURCE = A SEEK, NOT A
      LOAD"), which is correct for consecutive segments of one episode and is the one
      path the seam measurement must not take — a seek inside an already-buffered file
      would answer a far easier question than "does a fresh media load complete while
-     hidden". Two names, two frequencies, so they cannot silently collapse into one. */
-  assert.notEqual(TONE_B_NAME, TONE_NAME);
-  const a = makeToneWav({ seconds: 1, freq: 440 });
-  const b = makeToneWav({ seconds: 1, freq: 660 });
-  assert.notEqual(a.subarray(44).toString("hex"), b.subarray(44).toString("hex"));
+     hidden". Three names, three frequencies, so they cannot silently collapse. */
+  assert.equal(TONES.length, 3, "two tones force an A,B,A queue whose second load may hit the media cache");
+  assert.equal(new Set(TONES.map((t) => t.name)).size, 3, "two tones share a name");
+  assert.equal(new Set(TONES.map((t) => t.freq)).size, 3, "two tones share a frequency");
+  for (const name of [TONE_NAME, TONE_B_NAME, TONE_C_NAME]) {
+    assert.ok(TONES.some((t) => t.name === name), `${name} is exported but not in TONES`);
+  }
+  /* Distinct BYTES, not just distinct names — same-content files would defeat the
+     point even with different names, since the measurement is about a cold load. */
+  const rendered = TONES.map((t) => makeToneWav({ seconds: 1, freq: t.freq }).subarray(44).toString("hex"));
+  assert.equal(new Set(rendered).size, 3, "two tones render identical audio");
   /* Long enough for its own segment plus margin, and no longer: it is only used for
      ~8 s. If it were shorter than the segment it carries, `ended` would fire and a
      natural end would be recorded as a completed transition. */
@@ -296,7 +314,7 @@ test("installing puts every asset and both tones into the bundle", () => {
   const dir = tmpBundle();
   const r = installProbe(dir);
   assert.equal(r.indexPatched, true);
-  for (const asset of [...PROBE_ASSETS, TONE_NAME, TONE_B_NAME, PHASE_ASSET]) {
+  for (const asset of [...PROBE_ASSETS, ...TONES.map((t) => t.name), PHASE_ASSET]) {
     assert.ok(fs.existsSync(path.join(dir, asset)), `${asset} was not installed`);
   }
   assert.match(fs.readFileSync(path.join(dir, "index.html"), "utf8"), /probe-bridge\.js/);
@@ -320,7 +338,7 @@ test("installProbe ITSELF refuses the checkout, not just assertBuildArtefact", (
   assert.throws(() => installProbe(dir), /source checkout/);
   fs.rmSync(dir, { recursive: true, force: true });
   /* And nothing was written to the repo on the way to throwing. */
-  for (const asset of [...PROBE_ASSETS, TONE_NAME, TONE_B_NAME, PHASE_ASSET]) {
+  for (const asset of [...PROBE_ASSETS, ...TONES.map((t) => t.name), PHASE_ASSET]) {
     assert.equal(fs.existsSync(path.join(REPO_ROOT, asset)), false, `${asset} was written to the repo root`);
   }
 });
@@ -388,7 +406,7 @@ test("no probe is referenced from the committed index.html", () => {
      a probe that navigates away from the app after three seconds. Cheap to
      check, catastrophic to miss. */
   const index = fs.readFileSync(path.join(REPO_ROOT, "index.html"), "utf8");
-  for (const marker of ["probe-bridge", "probe-outpoint", "probe-seam", PHASE_ASSET, TONE_NAME, TONE_B_NAME]) {
+  for (const marker of ["probe-bridge", "probe-outpoint", "probe-seam", PHASE_ASSET, ...TONES.map((t) => t.name)]) {
     assert.equal(index.includes(marker), false, `index.html references ${marker}`);
   }
 });
@@ -457,19 +475,70 @@ test("the seam probe drives the REAL queue manager, not a copy of the seam logic
   assert.match(js, /managerItemEnded\(reason\)/);
 });
 
-test("the seam probe's queue crosses TWO files and every item is bounded", () => {
-  /* Two files because a same-URL load is a seek with no refetch (see the tone-B
-     test), and bounded because an unbounded item has no out-point, so there would be
-     no transition to measure. Read off the source rather than asserted in prose. */
+test("CONSECUTIVE queue items use DIFFERENT files, and every item is bounded", () => {
+  /* A REVIEW DEFEATED THE FIRST VERSION OF THIS TEST IN ONE EDIT. It asserted
+     `new Set(audioUrls).size >= 2` — a property of the SET — so changing seg-c from
+     tone A to tone B left it green while making the seg-b -> seg-c transition take
+     `html-audio-backend.js`'s `load.sameSource` path: "SAME SOURCE = A SEEK, NOT A
+     LOAD", the one path this probe's own header says the measurement must not take.
+     The load-bearing property is about CONSECUTIVE pairs, so that is what is
+     asserted. (`seamTransitionVerdict` also measures it at runtime off the recorded
+     `src` per item, because a test over a source literal is the weaker of the two.) */
   const js = asset("probe-seam.js");
-  const audioUrls = [...js.matchAll(/audio_url:\s*(TONE_[AB])/g)].map((m) => m[1]);
-  assert.ok(audioUrls.length >= 3, `expected at least 3 queue items, found ${audioUrls.length}`);
-  assert.ok(new Set(audioUrls).size >= 2, "every queue item uses the same file — no real load is exercised");
+  const urls = [...js.matchAll(/audio_url:\s*(TONE_[A-Z])/g)].map((m) => m[1]);
+  assert.ok(urls.length >= 3, `expected at least 3 queue items, found ${urls.length}`);
+  for (let i = 1; i < urls.length; i++) {
+    assert.notEqual(
+      urls[i],
+      urls[i - 1],
+      `queue items ${i - 1} and ${i} both use ${urls[i]}, so that transition is a seek with no refetch`
+    );
+  }
+  /* And bounded, because an unbounded item arms no out-point and produces no
+     transition to measure. */
   const items = [...js.matchAll(/\{ id: "seg-[a-z]", audio_url: [^}]*\}/g)].map((m) => m[0]);
-  assert.equal(items.length, audioUrls.length);
+  assert.equal(items.length, urls.length);
   for (const item of items) {
     assert.match(item, /start_sec:/, `queue item has no start_sec: ${item}`);
     assert.match(item, /end_sec:/, `queue item has no end_sec, so it arms no out-point: ${item}`);
+  }
+});
+
+test("the seam probe cannot shorten the beat it is measuring", () => {
+  /* THE SECOND ONE-EDIT DEFEAT A REVIEW FOUND. Adding `seamGapSec: 0.05` to the
+     `PlayerQueueManager` options collapsed the 2.0 s beat — the throttled
+     `setTimeout` that is the entire stated reason this phase exists — to 50 ms, and
+     all 133 tests stayed green while the verdict still printed "the beat ran".
+     Three things now stand against it, because one is evidently not enough: this
+     assertion, the probe reading `askedGapMs` back off `manager.seamGapSec` rather
+     than off the import so the record cannot hide the override, and
+     `SEAM_MIN_PLAUSIBLE_MS` in the verdict flooring the OBSERVED gap. */
+  const js = asset("probe-seam.js");
+  const options = /new PlayerQueueManager\(\{([\s\S]*?)\}\)/.exec(js);
+  assert.ok(options, "could not find the PlayerQueueManager construction");
+  for (const forbidden of ["seamGapSec", "scheduler"]) {
+    assert.equal(
+      new RegExp(`${forbidden}\\s*:`).test(options[1]),
+      false,
+      `the probe overrides \`${forbidden}\`, which removes the mechanism it exists to measure`
+    );
+  }
+  /* And the record must state the number actually in force. */
+  assert.match(js, /rec\.askedGapMs = Math\.round\(\(typeof manager\.seamGapSec/);
+});
+
+test("the probes' whole player import closure is required, not a spot-check", () => {
+  /* The list is read from the module rather than retyped here: two lists that must
+     agree, maintained separately, is the drift this repo keeps paying for. */
+  assert.deepEqual([...REQUIRED_PLAYER_FILES].sort(), [...PROBE_PLAYER_DEPS].sort());
+  /* And every name in it is a real file, so a typo cannot make the guard vacuous. */
+  for (const f of PROBE_PLAYER_DEPS) {
+    assert.ok(fs.existsSync(path.join(REPO_ROOT, "player", f)), `player/${f} does not exist`);
+  }
+  /* Every module `probe-seam.js` imports directly must be in the list. */
+  const js = asset("probe-seam.js");
+  for (const m of js.matchAll(/from "\.\/player\/([\w-]+\.js)"/g)) {
+    assert.ok(PROBE_PLAYER_DEPS.includes(m[1]), `probe-seam.js imports player/${m[1]}, which is not required`);
   }
 });
 

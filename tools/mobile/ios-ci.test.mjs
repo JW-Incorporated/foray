@@ -48,7 +48,9 @@ import {
   signingReadiness,
   LOCAL_MEDIA_CAVEAT,
   MIN_HIDDEN_TRANSITIONS,
+  MIN_HIDDEN_WINDOW_SEC,
   SEAM_ASKED_MS,
+  SEAM_MIN_PLAUSIBLE_MS,
   SEAM_BAD_MS,
   SEAM_OK_MS,
   seamTransitionVerdict,
@@ -719,14 +721,20 @@ function seamRecord(overrides = {}) {
     armedBoundaryAtSec: 30,
     armedWhileHidden: true,
     autoplayBlocked: false,
-    items: [{ id: "seg-a" }, { id: "seg-b" }, { id: "seg-c" }],
+    items: [
+      { id: "seg-a", src: "probe-tone.wav", expectedSrc: "probe-tone.wav" },
+      { id: "seg-b", src: "probe-tone-b.wav", expectedSrc: "probe-tone-b.wav" },
+      { id: "seg-c", src: "probe-tone-c.wav", expectedSrc: "probe-tone-c.wav" },
+    ],
     transitions: [
       {
-        fromId: "seg-a", toId: "seg-b", boundaryAtWall: 16000, hiddenAtBoundary: true,
+        fromId: "seg-a", toId: "seg-b", endReason: "outPoint",
+        boundaryAtWall: 16000, hiddenAtBoundary: true,
         nextPlayingAtWall: 18100, hiddenAtNextPlaying: true, observedGapMs: 2100, lastStage: "playing",
       },
       {
-        fromId: "seg-b", toId: "seg-c", boundaryAtWall: 26000, hiddenAtBoundary: true,
+        fromId: "seg-b", toId: "seg-c", endReason: "outPoint",
+        boundaryAtWall: 26000, hiddenAtBoundary: true,
         nextPlayingAtWall: 28200, hiddenAtNextPlaying: true, observedGapMs: 2200, lastStage: "playing",
       },
     ],
@@ -879,6 +887,137 @@ test("pickSeam ranks the decisive negative above a tidy foreground run", () => {
   assert.equal(pickSeam([backgroundedStall, foregroundOk]), backgroundedStall);
   assert.equal(pickSeam([]), null);
   assert.equal(pickSeam(null), null);
+});
+
+/* ── the five ways a review got a PASS out of contradictory data. All five now
+   return something other than `seam-crosses-in-background`, and each is here
+   because the first version of `seamTransitionVerdict` printed "the beat ran, a
+   different episode loaded, it seeked and it played" over data that said otherwise.
+   ── */
+
+test("a beat observed at ~0 ms is not a beat that survived", () => {
+  /* The one-edit defeat: `seamGapSec: 0.05` in the probe collapses the 2.0 s beat to
+     50 ms, which is the entire mechanism this phase measures. A unit test can forbid
+     that spelling; only a floor on the OBSERVED number catches the class. It also
+     catches a real bug with no edit at all — `seamGapSec()` returning 0 because the
+     transition is not a seam. */
+  for (const gap of [0, 1, SEAM_MIN_PLAUSIBLE_MS - 1]) {
+    const rec = seamRecord();
+    rec.transitions.forEach((t) => { t.observedGapMs = gap; });
+    const v = seamTransitionVerdict(rec);
+    assert.notEqual(v.verdict, "seam-crosses-in-background", `a ${gap} ms beat was accepted`);
+    assert.match(v.headline, /not the 2\.0 s beat running|not a beat/);
+  }
+  assert.ok(SEAM_MIN_PLAUSIBLE_MS > 0 && SEAM_MIN_PLAUSIBLE_MS < SEAM_ASKED_MS);
+});
+
+test("a transition with no beat measurement at all does not count as completed", () => {
+  const rec = seamRecord();
+  rec.transitions.forEach((t) => { delete t.observedGapMs; });
+  const v = seamTransitionVerdict(rec);
+  assert.notEqual(v.verdict, "seam-crosses-in-background");
+  /* And it must not silently read "worst beat n/a" as a pass. */
+  assert.equal(/worst beat n\/a/.test(v.headline), false);
+});
+
+test("a file that ran out is not an out-point, and the run is refused", () => {
+  /* `html-audio-backend.js` reports the same callback for a finished file and a
+     boundary, deliberately. Here they are opposite results: a tone that ran out
+     produces a beautiful transition measuring the length of the tone. `outPointVerdict`
+     has had this check since its own first review; the seam verdict had only the
+     margin, and a margin is not a check. */
+  const rec = seamRecord();
+  rec.transitions[0].endReason = "natural";
+  const v = seamTransitionVerdict(rec);
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.headline, /not at its out-point/);
+});
+
+test("a boundary armed by the fallback timer is refused, because that is the race", () => {
+  /* `armedWhileHidden: false` means the 70 s fallback fired instead of the
+     `visibilitychange` path — the app was not backgrounded in time, so the boundary
+     was set on wall clock. That is exactly the race that produced two contradictory
+     verdicts from identical code, and the probe recorded the field all along while
+     the verdict ignored it. */
+  const v = seamTransitionVerdict(seamRecord({ armedWhileHidden: false }));
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.headline, /fallback timer/);
+});
+
+test("a transition that re-used the same audio file is refused", () => {
+  /* MEASURED, not asserted over the queue literal. The pass headline claims "a
+     different episode loaded"; if two consecutive items report the same `src` then
+     `html-audio-backend.js` took its same-source seek shortcut and no fresh load
+     happened. A review defeated the unit-test-only version of this property in one
+     edit, so it is now checked against what the run actually recorded. */
+  const rec = seamRecord();
+  rec.items[2].src = rec.items[1].src;
+  const v = seamTransitionVerdict(rec);
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.headline, /SAME audio file/);
+  assert.match(v.detail, /seek with no ` ?refetch|seek with no refetch/);
+});
+
+test("the hidden window is floored in BOTH directions", () => {
+  /* A pass needs the first boundary to land at least MIN_HIDDEN_WINDOW_SEC into the
+     background. A STALL needs us to have waited that long, hidden, with nothing
+     audible — without which a run that simply ended mid-transition is reported as the
+     silence defect, which is the 0.446 s overclaim pointing the other way. */
+  const early = seamRecord({ backgroundedAtWall: 15000 });
+  assert.equal(seamTransitionVerdict(early).verdict, "hidden-window-too-short");
+
+  const briefStall = seamRecord({ lastSavedAtWall: 26500 });
+  briefStall.transitions[1].nextPlayingAtWall = null;
+  briefStall.transitions[1].hiddenAtNextPlaying = null;
+  briefStall.transitions[1].observedGapMs = null;
+  assert.equal(seamTransitionVerdict(briefStall).verdict, "hidden-window-too-short");
+
+  /* And a genuine long wait IS the stall. */
+  const realStall = seamRecord({ lastSavedAtWall: 60000 });
+  realStall.transitions[1].nextPlayingAtWall = null;
+  realStall.transitions[1].hiddenAtNextPlaying = null;
+  realStall.transitions[1].observedGapMs = null;
+  assert.equal(seamTransitionVerdict(realStall).verdict, "seam-stalls-in-background");
+  assert.ok(MIN_HIDDEN_WINDOW_SEC >= 5);
+});
+
+test("N completed transitions need N+1 audible items, or the record is refused", () => {
+  const rec = seamRecord({ items: [{ id: "seg-a", src: "a.wav" }] });
+  const v = seamTransitionVerdict(rec);
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.headline, /internally inconsistent/);
+});
+
+test("pickSeam is monotone in progress, so a mid-run snapshot cannot win", () => {
+  /* A REVIEW FOUND THIS PRODUCING A CONFIDENT FALSE STALL. The seam probe saves a
+     snapshot every couple of seconds, so the console channel carries many copies of
+     one run. The first scoring function saturated as soon as the first transition was
+     pushed; every later snapshot tied, `Array.sort` is stable, and the EARLIEST
+     saturating snapshot won — which is the one written just after a boundary, with
+     the transition still open. A finished run then read as `seam-stalls-in-background`.
+     Note the fix is NOT "prefer the newest": that re-introduces the bug pickOutPoint's
+     header records paying for. */
+  const complete = seamRecord({ lastSavedAtWall: 40000 });
+  const midRun = seamRecord({ lastSavedAtWall: 26100 });
+  midRun.transitions[1].nextPlayingAtWall = null;
+  midRun.transitions[1].hiddenAtNextPlaying = null;
+  midRun.transitions[1].observedGapMs = null;
+  /* Both orders, because the bug was an ordering-plus-stable-sort interaction. */
+  assert.equal(pickSeam([midRun, complete]), complete);
+  assert.equal(pickSeam([complete, midRun]), complete);
+  assert.equal(seamTransitionVerdict(pickSeam([midRun, complete])).verdict, "seam-crosses-in-background");
+});
+
+test("the seam's reporting channel is named, like the other two", () => {
+  /* Given the snapshot problem above, whether the record came from localStorage (one
+     final copy) or from the console (many mid-run copies) is the first thing a human
+     needs when reading a stall. */
+  const rec = seamRecord();
+  const fromDump = collectProbes({ dump: { foray_probe_seam: JSON.stringify(rec) } });
+  assert.equal(fromDump.sources.seam, "localStorage");
+  const fromConsole = collectProbes({ consoleText: `FORAY_PROBE_SEAM ${JSON.stringify(rec)}` });
+  assert.equal(fromConsole.sources.seam, "console");
+  assert.equal(collectProbes({}).sources.seam, "none");
 });
 
 test("the local-media limitation ships with the seam verdict, not only in a comment", () => {

@@ -351,6 +351,33 @@ test("BOTH probe phases are installed and run, and in the right order", () => {
   );
 });
 
+test("the backgrounded observation windows are long enough to measure anything", () => {
+  /* NOTHING PINNED THE SLEEPS, and `ios-ci.mjs verdict` exits 0 for every verdict by
+     design — so `sleep 90` -> `sleep 5` was a one-edit change that turned the seam
+     phase into a permanent silent `inconclusive` on a green job. The floors here are
+     derived, not taste: probe-outpoint arms 15 s after the page goes hidden, and
+     probe-seam needs 15 s plus two ~2 s beats plus an 8 s and a 6 s segment (~33 s)
+     INSIDE a window that also has to absorb however long `simctl launch
+     com.apple.Preferences` takes to actually foreground Settings (39 s, measured).
+     `ios-ci.mjs` refuses a pass below 5 s of hidden playback either way, so a short
+     sleep cannot produce a false pass — it can only produce a run that measured
+     nothing, quietly, forever. */
+  const probe = step(WF, "Run the probes") ?? "";
+  const sleeps = [...probe.matchAll(/^\s*sleep (\d+)/gm)].map((m) => Number(m[1]));
+  assert.ok(sleeps.length >= 4, `expected at least 4 sleeps across two passes, found ${sleeps.length}`);
+  const post = sleeps.filter((s) => s >= 40);
+  assert.ok(
+    post.length >= 2,
+    `expected two post-backgrounding windows of >= 40 s (one per pass), found ${JSON.stringify(sleeps)}`
+  );
+  /* The seam pass needs the longer of the two. */
+  assert.ok(
+    Math.max(...sleeps) >= 75,
+    `the longest observation window is ${Math.max(...sleeps)} s; the seam chain needs ~33 s inside ` +
+      `a window that also absorbs a ~39 s foregrounding delay`
+  );
+});
+
 test("the seam measurement is never collected by resuming the app", () => {
   /* THE CONFOUND THAT MADE THE ORIGINAL READING WRONG. A boundary that fires only on
      resume looks exactly like a working one if the collection path resumes the app.

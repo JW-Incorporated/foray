@@ -33,7 +33,7 @@
  * `PlayerQueueManager` over `HtmlAudioBackend`, with the REAL scheduler (the
  * manager's `REAL_SCHEDULER`, i.e. `setTimeout`), the real reducer, the real
  * `seamGapSec` decision and the real cross-file `load()`. Three bounded segments
- * over TWO audio files, so every transition is a genuine fresh load rather than
+ * over THREE audio files, so every transition is a genuine fresh load rather than
  * `html-audio-backend.js`'s same-source seek shortcut.
  *
  * The manager is given the queue with `loadQueue`, bypassing the Foray builder,
@@ -56,7 +56,7 @@
  * when the boundary lands, `onItemEnded` reaches the manager exactly as it would in
  * production and the manager arms the beat itself.
  *
- * Segments B and C keep AUTHORED bounds (`end_sec` 20 and 46), because by then the
+ * Segments B and C keep AUTHORED bounds (`end_sec` 20 and 26), because by then the
  * page is hidden and the whole point is that the shipped path runs untouched.
  *
  * ── WHAT WOULD MAKE THIS A LIE, AND WHAT STOPS IT ────────────────────────────
@@ -79,8 +79,15 @@ import { PlayerQueueManager } from "./player/queue-manager.js";
 import { HtmlAudioBackend } from "./player/html-audio-backend.js";
 import { SEAM_GAP_SEC } from "./player/seam-gap.js";
 
+/* THREE files, so BOTH transitions load audio the element has never held. Two would
+   force an A, B, A queue whose second load WebKit may satisfy from its media cache —
+   and the second transition is the one that matters most, because it happens after
+   the page has been silent through a beat and the audibility assertion may have
+   lapsed. Putting the easier load on the harder question is the sort of thing that
+   makes a green result mean less than it appears to. */
 const TONE_A = "probe-tone.wav";
 const TONE_B = "probe-tone-b.wav";
+const TONE_C = "probe-tone-c.wav";
 
 /** How far past the moment of going hidden the FIRST boundary is armed. Same
  *  constant and same reasoning as `probe-outpoint.js`. */
@@ -104,12 +111,12 @@ const SEGMENT_A_END_SEC = 120;
 const TICK_MS = 250;
 const MAX_SAMPLES = 600;
 
-/* THE QUEUE. Three bounded segments, two files, and every transition therefore a
+/* THE QUEUE. Three bounded segments, three files, and every transition therefore a
    real load. B's and C's bounds are authored and untouched. */
 const QUEUE = [
   { id: "seg-a", audio_url: TONE_A, start_sec: 0, end_sec: SEGMENT_A_END_SEC },
   { id: "seg-b", audio_url: TONE_B, start_sec: 12, end_sec: 20 },
-  { id: "seg-c", audio_url: TONE_A, start_sec: 40, end_sec: 46 },
+  { id: "seg-c", audio_url: TONE_C, start_sec: 20, end_sec: 26 },
 ];
 
 /* A NUMBERED SLOT, not one fixed key — `xcrun simctl launch` on a running app can
@@ -173,10 +180,10 @@ function save() {
       `queue          ${QUEUE.map((q) => q.id + "@" + q.audio_url).join("  ")}\n` +
       `armed at       ${rec.armedBoundaryAtSec == null ? "— not yet —" : rec.armedBoundaryAtSec.toFixed(2) + " s"}` +
       ` (while hidden: ${rec.armedWhileHidden})\n` +
-      `hidden         ${rec.hiddenTransitions} transition(s), backgrounded=${rec.backgroundedAtWall != null},` +
+      `visibility     ${rec.hiddenTransitions} change(s) to hidden, backgrounded=${rec.backgroundedAtWall != null},` +
       ` resumed=${rec.resumedAtWall != null}\n` +
       `items audible  ${rec.items.length} of ${QUEUE.length}\n` +
-      `transitions    ${done} completed of ${rec.transitions.length} started\n` +
+      `seams          ${done} completed of ${rec.transitions.length} started\n` +
       `beats (ms)     asked ${rec.askedGapMs}; observed ` +
       `${rec.transitions.map((t) => (t.observedGapMs == null ? "…" : Math.round(t.observedGapMs))).join(", ") || "—"}\n` +
       `last stage     ${rec.transitions.length ? rec.transitions[rec.transitions.length - 1].lastStage : "—"}\n` +
@@ -295,6 +302,17 @@ try {
     onSeamGapChange,
   });
 
+  /* READ THE BEAT BACK OFF THE MANAGER, do not trust the import.
+     `rec.askedGapMs` was initialised from `SEAM_GAP_SEC`, which is what the module
+     defines — not necessarily what this manager is using. A review defeated every
+     test in this suite with one edit by passing `seamGapSec: 0.05` here, collapsing
+     the 2.0 s beat (the throttled `setTimeout` that is the whole reason this phase
+     exists) to 50 ms; the record could not even show it, because it reported the
+     import's value. Now the record states the number actually in force, and
+     `seamTransitionVerdict` floors the observed gap at `SEAM_MIN_PLAUSIBLE_MS`. */
+  rec.askedGapMs = Math.round((typeof manager.seamGapSec === "number" ? manager.seamGapSec : 0) * 1000);
+  rec.askedGapMsFromModule = Math.round(SEAM_GAP_SEC * 1000);
+
   /* THE BOUNDARY SIGNAL, taken from the documented seam rather than by parsing
      telemetry strings.
      `onItemEnded(reason)` is "assigned by the manager" in the PlayerBackend
@@ -346,14 +364,54 @@ try {
     lastTick = now;
   }, TICK_MS);
 
-  /** Re-arm segment A's boundary relative to NOW. Once. */
+  /**
+   * Re-arm segment A's boundary relative to NOW. Once.
+   *
+   * IT WILL NOT ARM BEFORE PLAYBACK HAS ACTUALLY STARTED, and that guard is not
+   * defensive noise. `HtmlAudioBackend.load()` CLEARS any armed out-point — that is
+   * its documented contract — so an arm that lands before seg-a's load resolves
+   * would be silently discarded, the manager would then arm the authored
+   * `end_sec: 120`, and 120 s is unreachable inside the page's ~105 s life. The run
+   * would report "no seam was reached while backgrounded" with nothing to point at.
+   * `probe-outpoint.js` is immune by accident (it never calls `load()`); this is a
+   * hazard phase C introduces by driving the real manager.
+   *
+   * `rec.items.length > 0` means the element has fired `playing` at least once, so
+   * the load is done and nothing else will clear the boundary. If the app goes hidden
+   * before then, the arm is deferred to the first `playing` instead of dropped.
+   */
+  let armWhenPlaying = null;
   function arm(whileHidden) {
     if (rec.armedBoundaryAtSec !== null) return;
+    if (rec.items.length === 0) {
+      /* Too early — the load has not resolved and would clear this. Remember the
+         intent and let the `playing` handler do it. */
+      armWhenPlaying = whileHidden;
+      note(`arm deferred until playback starts (hidden=${whileHidden})`);
+      save();
+      return;
+    }
     const target = el.currentTime + ARM_AFTER_HIDDEN_SEC;
     rec.armedBoundaryAtSec = target;
     rec.armedWhileHidden = whileHidden;
+    armWhenPlaying = null;
     backend.setOutPoint(target);
     save();
+  }
+  el.addEventListener("playing", () => { if (armWhenPlaying !== null) arm(armWhenPlaying); });
+
+  /* SEEDED FROM `document.hidden` AT STARTUP, not only from the event. This page is
+     reached by a `location.replace` from `probe-bridge.js` 3 s after launch; if the
+     app were ever backgrounded before that navigation completed, this page would come
+     up ALREADY hidden, no `visibilitychange` would ever fire, and the verdict would
+     report "the app was never observed to leave the foreground" for a run that was
+     hidden throughout. Today's 15 s pre-background sleep leaves ~11 s of margin, so
+     this is insurance rather than a fix — but it removes the class. */
+  if (document.hidden === true) {
+    rec.backgroundedAtWall = Date.now();
+    rec.hiddenTransitions++;
+    note("the seam page loaded already hidden");
+    arm(true);
   }
 
   document.addEventListener("visibilitychange", () => {

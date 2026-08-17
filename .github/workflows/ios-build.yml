@@ -38,7 +38,7 @@
 #      clock the beat runs on. If the chain breaks, a locked-screen listener hears
 #      one segment and then silence for the commute, which no out-point accuracy
 #      fixes. The seam probe drives the real `PlayerQueueManager` across three
-#      bounded segments on two files and reports, per transition, whether the beat
+#      bounded segments on three files and reports, per transition, whether the beat
 #      fired, the next file loaded, and it became audible — all backgrounded, with
 #      the app never resumed before the record is read.
 #
@@ -433,7 +433,8 @@ jobs:
           background_it
           # 90 s: 15 s of hidden playback before the first boundary, then two beats
           # (2 s each) and two more segments (8 s and 6 s) — about 33 s of hidden
-          # chain — with the rest absorbing however late Settings foregrounds.
+          # chain — with the rest absorbing however late Settings foregrounds (39 s,
+          # measured, in run 32025079276). `ios-workflow.test.mjs` pins this floor.
           sleep 90
           xcrun simctl io "$UDID" screenshot "$ART/04-seam-backgrounded.png" || true
 

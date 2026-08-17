@@ -206,12 +206,12 @@ accuracy fixes.
 
 `probe-seam.js` drives the **real `PlayerQueueManager`** over the real
 `HtmlAudioBackend`, with the manager's own `REAL_SCHEDULER` — no injected clock,
-because the clock is the suspect. Three bounded segments over **two** audio files:
+because the clock is the suspect. Three bounded segments over **three** audio files:
 
 | | Why |
 |---|---|
 | Three segments, so **two** transitions | One transition can succeed inside the 10 s audibility grace and the next still fail once the page has been silent through a beat. `MIN_HIDDEN_TRANSITIONS` is 2, and a single success reports `too-few-transitions`, not a pass |
-| **Two** files, alternating | `html-audio-backend.js` turns a same-URL load into a seek with no refetch — correct for consecutive segments of one episode, and the one path this must not take. A seek inside a buffered file would answer a much easier question |
+| **Three** files, one per segment | `html-audio-backend.js` turns a same-URL load into a seek with no refetch — correct for consecutive segments of one episode, and the one path this must not take. Two files would force an A, B, A queue whose second load WebKit may satisfy from its media cache, putting the *easier* load on the transition that matters more. `seamTransitionVerdict` also checks the recorded `src` per item, so the property is measured rather than only asserted over the queue literal |
 | The first boundary armed on `visibilitychange` | Probe B's expensive lesson. A fixed `end_sec` raced `simctl launch com.apple.Preferences`, which returns before Settings is actually foregrounded (~39 s once), and produced two contradictory verdicts from identical code |
 | `hiddenAtBoundary` **and** `hiddenAtNextPlaying` **and** the wall clock vs `resumedAtWall` | A transition that completed because the app came *back* proves nothing. Two independent channels have to agree: the page's own `document.hidden` readings, and wall-clock stamps the page cannot fake by blinking |
 | `lastStage` on every pending transition | "The beat's timer never fired" and "the load never settled" are different bugs with different fixes. Every stage — `boundary`, `beat-armed`, `load-started`, `loadedmetadata`, `canplay`, `playing` — is stamped and flushed as it happens, so a stall leaves a record of **how far it got** |

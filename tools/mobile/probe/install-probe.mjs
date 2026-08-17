@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Put the two measurement probes into a BUILT app bundle's web assets (#38, MP4).
+/* Put the measurement probes into a BUILT app bundle's web assets (#38, MP4).
  *
  * WHAT THIS IS FOR
  * #38 exists to settle things nobody has been able to observe from a Windows
@@ -40,7 +40,7 @@
  *
  * USAGE
  *   node tools/mobile/probe/install-probe.mjs <dir containing index.html>
- *   node tools/mobile/probe/install-probe.mjs <dir> --phase native
+ *   node tools/mobile/probe/install-probe.mjs <dir> --phase seam
  *   node tools/mobile/probe/install-probe.mjs <dir> --list
  */
 
@@ -86,6 +86,22 @@ export const DEFAULT_PHASE = "outpoint";
  *  still no inline anything. */
 export const PHASE_ASSET = "probe-phase.js";
 
+/** Every `player/` module the probes' import closure needs present in the bundle.
+ *
+ *  Phase B imports `html-audio-backend.js`; phase C imports `queue-manager.js`,
+ *  `html-audio-backend.js` and `seam-gap.js`, and `queue-manager.js` in turn imports
+ *  `queue-state.js`, `queue-strategy.js`, `seek-policy.js` and `foray-queue.js`.
+ *  Listed in full rather than spot-checked — see `assertBuildArtefact`. */
+export const PROBE_PLAYER_DEPS = [
+  "html-audio-backend.js",
+  "queue-manager.js",
+  "queue-state.js",
+  "queue-strategy.js",
+  "seam-gap.js",
+  "seek-policy.js",
+  "foray-queue.js",
+];
+
 /** The generated tone. Not committed — a 2 MB WAV in a repo that guards a 3 MB
  *  bundle cap would be absurd, and it is deterministic anyway. */
 export const TONE_NAME = "probe-tone.wav";
@@ -101,14 +117,35 @@ export const TONE_HZ = 8000;
  *  That shortcut is correct and it is also the one path the seam measurement must
  *  NOT take: the question is whether a fresh media load completes while the page is
  *  hidden, and a seek within an already-buffered file would answer a much easier
- *  one. Two files, at two frequencies so a spectrogram of a screen recording could
- *  tell them apart if anyone ever needs to.
+ *  one. Three files (see TONE_C_NAME), at three frequencies so a spectrogram of a
+ *  screen recording could tell them apart if anyone ever needs to.
  *
  *  Shorter than the first, because it only has to outlast one segment plus margin:
  *  60 s against ~8 s of use. Both are generated, so this costs nothing in git. */
 export const TONE_B_NAME = "probe-tone-b.wav";
 export const TONE_B_SECONDS = 60;
 export const TONE_B_HZ = 660;
+
+/** A THIRD file, so BOTH of the seam probe's transitions load audio the element
+ *  has never held.
+ *
+ *  With only two tones the queue had to be A, B, A — and the second transition
+ *  re-loaded A, which WebKit may well satisfy from its media cache. That put the
+ *  EASIER load on the transition that matters more: the second one is the one
+ *  `MIN_HIDDEN_TRANSITIONS` exists to obtain, because it happens after the page has
+ *  been silent through a beat and the audibility assertion may have lapsed. Three
+ *  files make A -> B -> C, and every load a cold one. */
+export const TONE_C_NAME = "probe-tone-c.wav";
+export const TONE_C_SECONDS = 60;
+export const TONE_C_HZ = 880;
+
+/** Every generated audio file, as `{name, seconds, freq}`. One list so the writer
+ *  and the tests cannot disagree about how many there are. */
+export const TONES = [
+  { name: TONE_NAME, seconds: TONE_SECONDS, freq: 440 },
+  { name: TONE_B_NAME, seconds: TONE_B_SECONDS, freq: TONE_B_HZ },
+  { name: TONE_C_NAME, seconds: TONE_C_SECONDS, freq: TONE_C_HZ },
+];
 
 /** Exactly what gets appended to `index.html`. Pinned because "external, not
  *  inline" is the whole reason the probe can run at all. */
@@ -201,7 +238,14 @@ export function assertBuildArtefact(dir) {
      `HtmlAudioBackend`, the seam probe drives `PlayerQueueManager` on top of it —
      so a bundle missing either would have the probe measuring a reimplementation
      of the thing under test, which is worth nothing. */
-  for (const needed of ["html-audio-backend.js", "queue-manager.js", "seam-gap.js"]) {
+  /* THE WHOLE IMPORT CLOSURE, not a spot-check on three of it. A review pointed out
+     that `queue-manager.js` also pulls in `queue-state.js`, `queue-strategy.js`,
+     `seek-policy.js` and `foray-queue.js`, and a bundle missing any of them dies as
+     an unreadable module error inside a WKWebView on a CI runner — which surfaces as
+     "the probe reported nothing" and is indistinguishable from the seam genuinely
+     stalling. That is the one confusion this phase exists to avoid, so the refusal
+     belongs here, on the host, where the message can be read. */
+  for (const needed of PROBE_PLAYER_DEPS) {
     if (!fs.existsSync(path.join(abs, "player", needed))) {
       throw new Error(
         `${dir} has no player/${needed}. The probes drive the REAL player — ` +
@@ -235,12 +279,10 @@ export function installProbe(dir, { write = true, phase = DEFAULT_PHASE } = {}) 
     if (write) fs.copyFileSync(src, path.join(abs, asset));
     copied.push(asset);
   }
-  const tone = makeToneWav();
-  const toneB = makeToneWav({ seconds: TONE_B_SECONDS, freq: TONE_B_HZ });
+  const tones = TONES.map((t) => ({ ...t, bytes: makeToneWav(t) }));
   if (write) {
     fs.writeFileSync(path.join(abs, PHASE_ASSET), script);
-    fs.writeFileSync(path.join(abs, TONE_NAME), tone);
-    fs.writeFileSync(path.join(abs, TONE_B_NAME), toneB);
+    for (const t of tones) fs.writeFileSync(path.join(abs, t.name), t.bytes);
     if (patched.changed) fs.writeFileSync(indexPath, patched.html);
   }
   return {
@@ -248,8 +290,7 @@ export function installProbe(dir, { write = true, phase = DEFAULT_PHASE } = {}) 
     indexPatched: patched.changed,
     copied,
     phase,
-    tone: { name: TONE_NAME, bytes: tone.length, seconds: TONE_SECONDS },
-    toneB: { name: TONE_B_NAME, bytes: toneB.length, seconds: TONE_B_SECONDS },
+    tones: tones.map((t) => ({ name: t.name, bytes: t.bytes.length, seconds: t.seconds })),
   };
 }
 
@@ -263,18 +304,29 @@ if (isMain) {
   const listOnly = argv.includes("--list");
   const phaseIdx = argv.indexOf("--phase");
   const phase = phaseIdx >= 0 ? argv[phaseIdx + 1] : DEFAULT_PHASE;
-  const dir = argv.find((a, i) => !a.startsWith("-") && i !== phaseIdx + 1);
+  /* `phaseIdx + 1` IS ONLY THE PHASE'S ARGUMENT WHEN `--phase` IS PRESENT. Written
+     without that guard, `phaseIdx` is -1 with no flag, `phaseIdx + 1` is 0, and the
+     FIRST positional — the bundle directory — was excluded, so the documented
+     `install-probe.mjs <dir> --list` invocation printed usage and exited 2. CI never
+     saw it because both call sites pass `--phase`; a human debugging by hand would
+     have hit it immediately. */
+  const phaseArgIdx = phaseIdx >= 0 ? phaseIdx + 1 : -1;
+  const dir = argv.find((a, i) => !a.startsWith("-") && i !== phaseArgIdx);
   if (!dir) {
-    console.error("Usage: node tools/mobile/probe/install-probe.mjs <bundle dir> [--phase outpoint|native] [--list]");
+    console.error(
+      `Usage: node tools/mobile/probe/install-probe.mjs <bundle dir> [--phase ${PHASES.join("|")}] [--list]`
+    );
     process.exit(2);
   }
   try {
     const r = installProbe(dir, { write: !listOnly, phase });
     console.log(
       `${listOnly ? "would install" : "installed"} probe (phase ${r.phase}) into ${r.target}: ` +
-        `${r.copied.join(", ")}, ${r.tone.name} (${(r.tone.bytes / 1024 / 1024).toFixed(2)} MB, ` +
-        `${r.tone.seconds}s), ${r.toneB.name} (${(r.toneB.bytes / 1024 / 1024).toFixed(2)} MB, ` +
-        `${r.toneB.seconds}s); index.html ${r.indexPatched ? "patched" : "already patched"}`
+        `${r.copied.join(", ")}; tones ` +
+        r.tones
+          .map((t) => `${t.name} (${(t.bytes / 1024 / 1024).toFixed(2)} MB, ${t.seconds}s)`)
+          .join(", ") +
+        `; index.html ${r.indexPatched ? "patched" : "already patched"}`
     );
   } catch (e) {
     console.error(`install-probe failed: ${e.message}`);

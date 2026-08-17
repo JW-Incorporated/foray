@@ -10,7 +10,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
 ### #28 iOS half — the SEAM TRANSITION gets measured, and a wrong reading gets retracted (2026-08-17, one PR, founder-gated, no follow-up)
 
 - **What:** `feat/ios-native-outpoint`, issues **#28** / **#35**. A fourth probe
-  phase in the existing iOS CI harness: three bounded segments over two audio
+  phase in the existing iOS CI harness: three bounded segments over three audio
   files, driven through the **real `PlayerQueueManager`**, backgrounded, reporting
   whether each seam transition (2.0 s beat → cross-episode load → seek → play)
   completes with the app never resumed. Docs: `docs/ios-ci.md` §3 "Probe C" and
@@ -30,7 +30,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Owned files:** `tools/mobile/probe/probe-seam.{html,js}` (new).
   **Modified:** `.github/workflows/ios-build.yml` (a second probe pass),
   `tools/mobile/ios-ci.mjs` (+`seamTransitionVerdict`, `pickSeam`),
-  `tools/mobile/probe/install-probe.mjs` (a `--phase` flag and a second tone),
+  `tools/mobile/probe/install-probe.mjs` (a `--phase` flag and two more tones),
   `tools/mobile/probe/probe-bridge.js` (phase routing), the three `tools/mobile`
   suites, `docs/ios-ci.md`, `docs/research/mp1-background-audio.md`.
   **Shared:** `test/suite-integrity.test.js` (three FLOORS raised), this file.
