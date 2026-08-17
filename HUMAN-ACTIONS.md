@@ -724,6 +724,16 @@ An emulator is also not a phone for the two things that decide the Android answe
    **Report one thing above all: did it move on through new segments, or did it keep playing one episode?** If the highlighted row is still an early one after 15 minutes of listening, that is the exact failure this is about, and saying so is the whole result.
 
 5. Also say whether the audio **stopped** at any point, and roughly when.
+6. **New, 2026-08-17 — and this is now the most useful thing you can report.**
+   At each change of voice, does it sound like a **short deliberate pause** (about
+   two seconds) or like the **app stopped and came back**? Say roughly how long
+   the longest one felt. Why it is worth a sentence: the gap between two segments
+   was measured at **9.2 seconds** on a backgrounded iOS Simulator (run
+   32036295743) against the 2.0 seconds it is supposed to be, and all of the
+   excess was the next episode loading after the pause had already started. The
+   player now loads the next segment 12 seconds early, while the current one is
+   still playing, so those gaps should be short. **Your ear is the acceptance
+   test** — nothing on this machine can hear it.
 
 **Read this before drawing a conclusion from step 4.** A browser tab is **not** the same as an app. This test is genuinely informative about the engine's timer behaviour, and it is the reason it is worth five minutes — but it **cannot** settle app-level backgrounding, because a browser tab is not subject to it. A clean pass here does not mean the packaged app will pass.
 

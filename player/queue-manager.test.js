@@ -1234,3 +1234,290 @@ test("seamGapSec: 0 turns the beat off entirely, and nothing else changes", asyn
   assert.equal(h.m.inSeamGap, false);
   assert.equal(scheduler.live, 0);
 });
+
+/* ---------- prefetch: the next segment loads before the boundary ----------
+
+   The manager's whole job here is to answer "what comes next, and where does it
+   start" when the backend says the window is open. The load itself, the second
+   element and the handover are the backend's (`html-audio-backend.js`
+   §"prefetch"). What these assert is that the RIGHT item is warmed, at the right
+   in-point, only when there is a seam to cover — and that the beat survives.
+
+   Measured cause, run 32036295743: a 2.0 s beat that the listener experienced
+   as 9,153 ms, all of it a media load that ran after the boundary had paused
+   the element and silenced the page. */
+
+/* Imported down here so this whole section is an APPEND: `player/html-audio-
+   backend.test.js` and this file are both being edited by other open work
+   (#211), and an append cannot conflict with an edit above it. ES imports are
+   hoisted, so the position is a diff-hygiene choice and nothing else. */
+import { END_OUT_POINT } from "./queue-state.js";
+
+/** A backend that models the real one's prefetch contract: warming an item
+    makes its later load resolve at once, and anything else costs
+    `COLD_LOAD_MS` — the load actually measured on the device. */
+const COLD_LOAD_MS = 9153;
+
+class PrefetchBackend extends FakeBackend {
+  constructor(opts = {}) {
+    super(opts);
+    this._scheduler = opts.scheduler ?? null;
+    this._warmed = new Set();
+    this.windowsOpened = 0;
+  }
+  /** What the backend's own playhead watch does PREFETCH_LEAD_SEC before the
+      boundary. Called by the test at the moment it wants to observe. */
+  openPrefetchWindow() {
+    this.windowsOpened++;
+    if (this.onPrefetchWindow) this.onPrefetchWindow();
+  }
+  prefetch(item, { startOffset = 0 } = {}) {
+    this.calls.push(`prefetch:${item.id}@${Math.round(startOffset)}`);
+    this._warmed.add(`${item.id}@${Math.round(startOffset)}`);
+    return true;
+  }
+  prefetches() { return this.calls.filter((c) => c.startsWith("prefetch:")); }
+  async load(item, { startOffset = 0 } = {}) {
+    const warm = this._warmed.has(`${item.id}@${Math.round(startOffset)}`);
+    if (!warm && this._scheduler) {
+      // A cold load, on the virtual clock, so "how long was the seam" is a
+      // deterministic number instead of a wall-clock race.
+      await new Promise((resolve) => this._scheduler.schedule(COLD_LOAD_MS, resolve));
+    }
+    this._warmed.delete(`${item.id}@${Math.round(startOffset)}`);
+    return super.load(item, { startOffset });
+  }
+  play() {
+    // Stamped, because the question this file exists to answer is WHEN the next
+    // segment became audible relative to the boundary.
+    this.calls.push(this._scheduler ? `play@${this._scheduler.nowMs()}` : "play");
+  }
+  playedAt() {
+    return this.calls.filter((c) => c.startsWith("play@")).map((c) => Number(c.slice(5)));
+  }
+}
+
+/** Three bounded segments over three DIFFERENT episodes, so every seam is a
+    real cross-episode load — 16 of Foray #1's 31 seams are exactly this. */
+const seg = (id, start, end, url) => ({
+  id, kind: "episode", rate: 1.0, start_sec: start, end_sec: end, audio_url: url,
+});
+const THREE = [
+  seg("s0", 100, 200, "https://cdn.example/a.mp3"),
+  seg("s1", 300, 400, "https://cdn.example/b.mp3"),
+  seg("s2", 500, 600, "https://cdn.example/c.mp3"),
+];
+
+function prefetching(opts = {}) {
+  __resetInstanceForTests();
+  const scheduler = opts.scheduler ?? INSTANT_SCHEDULER;
+  const backend = new PrefetchBackend({ ...(opts.backend ?? {}), scheduler });
+  const log = [];
+  const m = new PlayerQueueManager({
+    backend, telemetry: (t) => log.push(t), scheduler,
+    seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
+  });
+  m.loadQueue(opts.queue ?? THREE.map((s) => ({ ...s })));
+  return { m, backend, log, scheduler };
+}
+
+test("the window warms the next segment, at its own in-point", async () => {
+  const { m, backend } = prefetching();
+  await m.play(0);
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"],
+    "the next segment's start_sec is the offset, not 0 and not a saved position");
+  m.dispose();
+});
+
+test("each boundary warms the item that boundary will actually advance to", async () => {
+  const { m, backend } = prefetching();
+  await m.play(0);
+  backend.openPrefetchWindow();
+  await m.skipToNext();
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300", "prefetch:s2@500"]);
+  m.dispose();
+});
+
+test("nothing is warmed on the last item — a Foray does not chain", async () => {
+  // Principle 1: no autoplay chains. There is no next episode to warm, and
+  // warming one would be the beginning of exactly the thing we refuse to build.
+  const { m, backend, log } = prefetching();
+  await m.play(2);
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), []);
+  assert.ok(log.some((l) => /prefetch\.none/.test(l)));
+  m.dispose();
+});
+
+test("a bridged seam is not warmed — narration is the marker and it is ours", async () => {
+  const queue = [THREE[0], tts("bridge"), THREE[1]].map((i) => ({ ...i }));
+  const { m, backend, log } = prefetching({ queue });
+  await m.play(0);
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), []);
+  assert.ok(log.some((l) => /prefetch\.skipped/.test(l)));
+  m.dispose();
+});
+
+test("warming follows the SAME rule as the beat, so the two cannot drift", async () => {
+  // Eligibility is `seamGapSec(...) > 0` — the one decision in seam-gap.js —
+  // rather than a second copy of "is this a segment-to-segment seam". Collapse
+  // the beat and warming goes with it, which is the observable proof they are
+  // one rule.
+  const { m, backend } = prefetching({ seamGapSec: 0 });
+  await m.play(0);
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), [], "no beat means no seam to cover");
+  m.dispose();
+});
+
+test("a window that opens while nothing is playing warms nothing", async () => {
+  const { m, backend } = prefetching();
+  await m.play(0);
+  await m.pause();
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), []);
+  m.dispose();
+});
+
+test("a backend with no prefetch is never asked for one", async () => {
+  // Every other suite in this repo drives exactly such a backend, and the
+  // native backend (#28) may never implement it.
+  const { m, backend } = make();
+  assert.equal(backend.onPrefetchWindow, undefined,
+    "the manager must not wire a hook a backend cannot honour");
+  await m.play(0);
+  m.dispose();
+});
+
+/* ---- the number this whole change exists to move ---- */
+
+/**
+ * A virtual clock that fires each timer AT ITS OWN DUE TIME.
+ *
+ * `manualScheduler` above moves the clock and then runs everything that came
+ * due, which is right for asserting on ordering and wrong for asserting on
+ * duration: a callback would read `nowMs()` as the end of the jump rather than
+ * the moment it was owed. Since the whole point of this section is a DURATION —
+ * "how long was the seam" — it needs a clock that is honest inside a callback.
+ *
+ * Still zero wall clock, still deterministic, still nothing a busy box can
+ * change. (#195: never assert on the real clock in this repo.)
+ */
+function virtualScheduler() {
+  let now = 0;
+  const pending = [];
+  const drain = () => new Promise((r) => setImmediate(r));
+  return {
+    nowMs: () => now,
+    schedule(ms, fn) {
+      const e = { at: now + ms, fn, dead: false };
+      pending.push(e);
+      return () => { e.dead = true; };
+    },
+    /** Run to `untilMs`, firing due timers in order, draining microtasks after
+        each — so work a callback queues (a load resolving, the next effect) has
+        happened before the clock moves again. */
+    async run(untilMs) {
+      /* DRAIN BEFORE MOVING THE CLOCK, and this line is the whole reason the
+         first draft of `seamCostMs` measured 9,153 ms for a warmed seam. The
+         boundary is dispatched by the test *before* `run()` — synchronously
+         starting an async chain that parks on the first `await`. Without this
+         drain, the clock jumps to `untilMs` first, and the parked chain then
+         reaches `_awaitSeamGap` with the beat's deadline already in the past:
+         the beat reads as spent and the number comes out as if nothing had been
+         warmed. The product was right; the clock was lying. */
+      await drain();
+      for (;;) {
+        const due = pending
+          .filter((e) => !e.dead && e.at <= untilMs)
+          .sort((a, b) => a.at - b.at)[0];
+        if (!due) break;
+        now = Math.max(now, due.at);
+        due.dead = true;
+        due.fn();
+        await drain();
+      }
+      now = Math.max(now, untilMs);
+      await drain();
+    },
+  };
+}
+
+/**
+ * Drive one seam and return how long it lasted: the virtual wall time from the
+ * out-point firing to the next segment becoming audible. Same quantity the
+ * device probe records as `observedGapMs`.
+ */
+async function seamCostMs({ warm }) {
+  const scheduler = virtualScheduler();
+  const { m, backend } = prefetching({ scheduler });
+  // Segment 0's own load is cold either way; get it out of the way first, so the
+  // seam is measured against the boundary and nothing else.
+  const started = m.play(0);
+  await scheduler.run(COLD_LOAD_MS);
+  await started;
+  assert.equal(m.state.type, "playing", "precondition: the first segment is audible");
+
+  if (warm) backend.openPrefetchWindow();   // PREFETCH_LEAD_SEC before the boundary
+  const boundaryAt = scheduler.nowMs();
+  const ended = backend.onItemEnded(END_OUT_POINT);
+  // The same generous run in both cases, so the two differ in the mechanism
+  // rather than in how they were driven.
+  await scheduler.run(boundaryAt + COLD_LOAD_MS);
+  await ended;
+  const audibleAt = backend.playedAt().at(-1);
+  assert.equal(m.currentIndex, 1, "the seam completed");
+  m.dispose();
+  return audibleAt - boundaryAt;
+}
+
+test("a warmed seam is the 2.0 s beat; an unwarmed one is the load — measured on the virtual clock", async () => {
+  /* THE BEFORE AND AFTER, in one test, with no wall clock anywhere: the seam is
+     `max(beat, load)` and the only way to shorten it is to move the load out
+     from under the boundary.
+
+     COLD_LOAD_MS is the load measured on the device (9,153 ms). The beat is the
+     authored 2.0 s. So the same seam costs 9,153 ms cold and 2,000 ms warmed —
+     and 2,000 ms is not an accident of the fix, it is the beat still being
+     honoured, which is the point. */
+  const coldSeamMs = await seamCostMs({ warm: false });
+  assert.equal(coldSeamMs, COLD_LOAD_MS,
+    `an unwarmed seam is the load and nothing else, got ${coldSeamMs}`);
+
+  const warmSeamMs = await seamCostMs({ warm: true });
+  assert.equal(warmSeamMs, 2000,
+    `a warmed seam is exactly the authored beat, got ${warmSeamMs}`);
+  assert.ok(warmSeamMs < coldSeamMs, "and that is the whole fix");
+});
+
+test("losing the race costs what it costs today, and never the segment", async () => {
+  /* The case that must not regress. A prefetch that has not finished by the
+     boundary means the backend's `load()` falls back to the ordinary path — so
+     the seam is long, exactly as long as it is today, and everything else is
+     unchanged: the queue advances by one, the next segment starts at its own
+     in-point, and its out-point is armed. What the listener must never get is a
+     segment that starts mid-word, a segment cut short, or a queue that walked
+     past something that never played. */
+  const scheduler = virtualScheduler();
+  const { m, backend } = prefetching({ scheduler });
+  const started = m.play(0);
+  await scheduler.run(COLD_LOAD_MS);
+  await started;
+  // The window opens, but this warm load never finishes: the manager asked, the
+  // backend has nothing ready by the boundary, and `load()` takes the slow path.
+  backend.openPrefetchWindow();
+  backend._warmed.clear();
+
+  const ended = backend.onItemEnded(END_OUT_POINT);
+  await scheduler.run(scheduler.nowMs() + COLD_LOAD_MS);
+  await ended;
+
+  assert.equal(m.state.type, "playing");
+  assert.equal(m.currentIndex, 1, "advanced by exactly one — nothing was skipped");
+  assert.ok(backend.calls.includes("load:s1@300"), "and it started at its own in-point");
+  assert.equal(backend.outPoint, 400, "with its own out-point armed");
+  m.dispose();
+});

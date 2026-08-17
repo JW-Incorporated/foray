@@ -125,6 +125,147 @@ docs/. Completed workstreams move to their plan doc's retro section.
   mechanism, and this workflow says nothing about it); and the signing/TestFlight
   path is **written and never executed**, gated on seven secrets that do not
   exist (**#19**). Treat its first real run as debugging, not as a release.
+### seam prefetch — a Foray becomes listenable on a locked phone (2026-08-17, one PR, no follow-up)
+
+- **What:** `feat/seam-prefetch`. The 2.0 s seam beat is **not 2.0 s** —
+  measured on a device-class run it is **9,153 ms**, and every millisecond of the
+  excess is the media load. The next segment now loads on a **second `<audio>`
+  element while the current one is still audible**, and the boundary hands the
+  player role to an element that is already `canplay` at its in-point. A warmed
+  seam is exactly the authored beat.
+- **THE MEASUREMENT, so nobody re-derives it.** Run **32036295743**
+  (`ios-build` on PR #220, iOS Simulator, app genuinely backgrounded, real
+  `PlayerQueueManager` over real `HtmlAudioBackend`), `foray_probe_seam`:
+  `askedGapMs: 2000` → **`observedGapMs: 9153`**. Stage trace: `boundary` +0 ms
+  → `beat-armed` **+2 ms** → `load-started` +12 ms → **`stalled` +3,173 ms** →
+  `loadedmetadata` **+9,127 ms** → `canplay` +9,142 ms → `beat-ended` +9,142 ms
+  → `playing` +9,153 ms. **The JS timer is exonerated** (2 ms) and so is
+  `seam-gap.js`. Out-point overshoot on the same transition: **3 ms**. Hidden
+  DOM timers in that run: **1,000 ms median** (asked 250).
+- **Two things that trace tells you and the headline number does not.**
+  (1) The seam is `max(SEAM_GAP_SEC, load)`, so it was never 2.0 s.
+  (2) **9,153 ms is 92% of `LOAD_SETTLE_TIMEOUT_MS`.** Cross 10 s and `load()`
+  rejects and the segment is DROPPED — and on Chromium that already happens:
+  `docs/research/mp1-background-audio.md` §4.4 measured 3 of 5 hidden-page loads
+  failing with "did not settle within 10000ms". A slow seam and a dropped
+  segment are the same defect at two loads.
+- **The cause is SILENCE, not the CDN — this is the design input.** The boundary
+  pauses the element, the page stops being audible, and audibility is what keeps
+  the process out of suspension: WebKit takes a foreground assertion *because* a
+  view is playing audio (§7.4), and Blink is **measured** to throttle a hidden
+  page ~21× the moment the element pauses while leaving an audible one alone
+  (§4.1: 111 ms median for a 100 ms timer, identical to visible). The file in
+  the measured run was `probe-tone-b.wav`, **bundled in the app** — so this is
+  not network latency and a warm HTTP cache would not have helped. A load issued
+  after the boundary runs in the worst window the platform has.
+- **Owned files:** none new. **Shared files it touches:**
+  `player/html-audio-backend.js` (+ test), `player/queue-manager.js` (+ test),
+  `player/seam-gap.js` (header only — it documented a 2.0 s seam the product did
+  not have), `player/client.js` (three lines), `test/suite-integrity.test.js`
+  (two floors raised, isolated final commit) and this file. **No `docs/` change:
+  the argument, the measurement and the trace live in
+  `player/html-audio-backend.js`'s header, which is where someone editing this
+  will actually read them.**
+  **Nothing in `data/`, nothing in `tools/`, nothing in `index.html`, nothing in
+  `sw.js`, no CSP change, no dependency.** `player/queue-state.js` is
+  **unchanged** — no new state, no new event.
+- **Heads-up — THERE ARE TWO `<audio>` ELEMENTS NOW, and exactly one may make
+  sound.** `backend.el` is the player and owns the audio session;
+  `backend._warmEl` is a loader that is never played, never un-paused and never
+  given a volume, and a handover pauses the outgoing element **before** the
+  swap, so at no instant are two elements un-paused. On iOS a second element
+  that begins playing takes the session and silences the first, and **a
+  foreground test would never show it**. If you touch this file, that invariant
+  is the one to preserve; it has a named test.
+- **Heads-up — NEVER `backend.el.addEventListener` AGAIN.** The role moves
+  between elements at every cross-episode seam, so a listener bound to one
+  element is stranded on a paused, src-less element for the rest of the Foray
+  and the UI silently stops repainting. `client.js` did exactly this for
+  `render` and now calls **`backend.addMediaListener(type, fn)`**, which
+  migrates. Both `backend.el.playbackRate` reads are fine — they resolve the
+  live element at call time.
+- **Heads-up — the lead time is 12 s and it is derived, not chosen.**
+  `PREFETCH_LEAD_SEC` = `LOAD_SETTLE_TIMEOUT_MS` (10 s, the longest a load is
+  allowed to take before this backend calls it broken) + ~2 s for the trigger's
+  own lateness (the widest `timeupdate` interval this repo has recorded is
+  1,825 ms against a 250 ms nominal). The measured 9,153 ms load fits with 2.8 s
+  to spare. Upper bound is content: no segment may be under **30 s**
+  (`segment-length-rules.md` hard floor) and Foray #1's run 51–238 s, median
+  103 s — so warming never starts before the current segment is audible and
+  costs the last ~11% of a typical one. It is divided by playback rate at the
+  point of use, because a load takes wall clock and not content.
+- **Heads-up — ONE segment ahead, and same-episode seams are deliberately NOT
+  warmed.** **16 of Foray #1's 31 seams cross to a different episode**; the
+  other 15 stay inside one and are already served by `load()`'s same-source
+  seek, which keeps the buffer. Warming those would refetch a whole podcast to
+  reach a position we already hold, and on an ad-stitched host the refetch can
+  come back differently stitched — the exact hazard the shortcut exists to
+  avoid. (Foray #2: 10 of 21 cross-file.)
+- **Heads-up — A BRIDGED FORAY GETS NO WARMING AT ALL, so do not read "no
+  change" as a failed fix.** Eligibility is `seamGapSec(...) > 0` and that
+  returns 0 for a bridged seam, so if the next queue entry is a narration
+  bridge, nothing is warmed — and the load after the bridge is unwarmed too,
+  because by then the bridge is the current item. Neither shipped Foray has any
+  narration, so today this is theory; the moment one does, its seams revert to
+  the old cost and the ear test in `HUMAN-ACTIONS.md` #11 will honestly report
+  no improvement. Warming a bridge is a small change (a bridge is our own small
+  asset) and is deliberately not in this PR.
+- **Heads-up — ONLY an autoplay refusal is recovered, and the check is
+  load-bearing.** `AbortError` is the ordinary rejection of a pending `play()`
+  that a `pause()` or a fresh `load()` interrupted, and the manager emits
+  `pausePlayback` before `loadItem` on both a pause and a skip — so that window
+  is reachable by an ordinary tap. Recovering there would re-load the segment,
+  re-arm the boundary and CALL PLAY: audio restarting right after the listener
+  stopped it, with every surface showing paused. Found by the reviewer pass, not
+  by the tests; it now has its own named test.
+- **Heads-up — the beat is STILL 2.0 s and that is deliberate.** It is an
+  authored pause between two voices (`segment-length-rules.md` §6b), not an
+  artifact of loading, so the manager still waits out its remainder after the
+  handover. The fix makes the listener hear the 2.0 s the product documents
+  instead of 9.2 s of nothing. It also keeps the #220 probe's
+  `SEAM_MIN_PLAUSIBLE_MS` (500 ms) floor meaningful.
+- **Heads-up — losing the race costs exactly what today costs, by construction.**
+  If the warm element is not ready when the out-point fires, `load()` takes the
+  identical path it takes today. `load()` also ends with the warm element either
+  promoted or **holding nothing** — never a third state — so a buffer warmed for
+  a segment the listener skipped past can never be promoted for the wrong item.
+  Nothing here can delay or move the boundary; the out-point path is untouched.
+- **Heads-up — two safety nets, because the two ways this could fail on iOS are
+  both invisible in a foreground test.**
+  (1) **Autoplay policy is per ELEMENT.** The element the listener tapped is the
+  other one, so a promoted element can be refused. In the Capacitor shells it
+  cannot happen (`mediaTypesRequiringUserActionForPlayback = []`, MP1 §7.3) and
+  in the web PWA exactly one handover per session is exposed — the first, after
+  which both elements have played. A refusal is **recovered**, not reported: the
+  player falls back to the element holding the gesture, at the same offset,
+  **re-arming the same boundary** (a recovery that forgot it would run a median
+  936.5 s of the wrong episode), and warming stops for the session.
+  (2) A `pause` **nobody asked for** while a prefetch is in flight is what losing
+  the audio session looks like from JS. It is never resumed through — a phone
+  call arrives the same way — it is recorded and warming stops for good.
+- **Heads-up — NO NEW TIMERS. Not one.** The trigger is `timeupdate` (a media
+  event, 252 ms median while hidden); completion is
+  `loadedmetadata`/`seeked`/`canplay`. Nothing in this feature depends on a DOM
+  timer, which is the point on a platform that aligns hidden-page timers to 1 s.
+- **NOT VERIFIED ON A DEVICE — this is the honest gap.** Every number above is
+  from run 32036295743 or the Blink measurements in
+  `docs/research/mp1-background-audio.md`; the *fix* is proven by 41 new
+  mutation-tested unit tests and by a virtual-clock measurement of the seam
+  (9,153 ms → 2,000 ms), on a Windows box with no simulator. **The rig to settle
+  it already exists and needs no new code:** `ios-build` (on PR #220) triggers on
+  `player/**`, and `tools/mobile/probe/probe-seam.js` drives the real manager
+  over the real backend across three DIFFERENT files, so it exercises the
+  handover as-is. Once #220 lands, dispatch `ios-build` on `main` and read
+  `observedGapMs` — expect ~2,000–3,000 ms, not ~9,000. Noted on
+  `HUMAN-ACTIONS.md` #11, which is the ear test this makes concrete.
+- **For whoever owns #220:** the mechanism your probe measures has changed under
+  it. Its header still describes the seam as "wait a 2.0 s beat → load a
+  DIFFERENT episode", which is now "load during the tail → hand over → wait out
+  the beat". The numbers it records are still the right numbers and the verdict
+  logic still holds; only the prose is stale.
+- **Related:** #111, #65, #28, #35, #220, #211 (open, edits
+  `player/html-audio-backend.test.js` — this branch appends to that file rather
+  than editing it, so the two do not collide).
 
 ### MP2 — the native app shell (2026-08-17, one PR, founder-gated, no follow-up)
 
