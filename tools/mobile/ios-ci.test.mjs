@@ -1588,3 +1588,21 @@ test("the report always carries section 3b, including when it has nothing to say
   });
   assert.match(real, /3b\. Where the record STOPS.*`suspended-while-audible`/);
 });
+
+test("a CAPPED save trail is reported as capped, not read as the record ending there", () => {
+  /* `SAVE_TRAIL_MAX` bounds the trail while `saveSeq` keeps counting, so a capped
+     trail and a stopped one are the same array. Reading the last stamp as the
+     record's end would then put the stop time tens of seconds early — in the
+     direction of the ceiling reading, which is the expensive direction. */
+  const seam = trailedSeam({ seconds: 20 });
+  seam.saveSeq = seam.saveTrail.length + 40;
+  seam.lastSavedAtWall = seam.saveTrail[seam.saveTrail.length - 1].wall + 80_000;
+  const a = saveTrailAnalysis(seam);
+  assert.equal(a.truncated, true);
+  const v = suspensionVerdict({ seam, lifecycle: null });
+  assert.match(v.detail, /THE TRAIL IS CAPPED/);
+  /* The stop time comes from `lastSavedAtWall`, so the cap must not move it. */
+  assert.equal(Math.round(v.recordEndsAtHiddenSec), Math.round((seam.lastSavedAtWall - seam.backgroundedAtWall) / 1000));
+  /* An uncapped trail must not claim to be capped. */
+  assert.equal(saveTrailAnalysis(trailedSeam({ seconds: 20 })).truncated, false);
+});

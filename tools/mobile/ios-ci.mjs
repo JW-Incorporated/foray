@@ -1389,8 +1389,19 @@ export function saveTrailAnalysis(seam) {
      *  while playing, ~0 while paused, and a number in between when it was
      *  interrupted. */
     hiddenMediaRatio: null,
+    /** The probe caps the trail (`SAVE_TRAIL_MAX`); `saveSeq` keeps counting.
+     *
+     *  REPORTED, because a capped trail and a stopped one look identical in the
+     *  array and mean opposite things. Every number derived from the trail — the
+     *  gaps, the ratio — then describes the EARLY part of the window only, and a
+     *  reader who took the last stamp for the record's end would land on exactly the
+     *  wrong conclusion. `recordEndsAtHiddenSec` deliberately comes from
+     *  `lastSavedAtWall` rather than from this trail for the same reason. */
+    truncated: false,
   };
   if (!stamps.length) return out;
+  const seq = num(seam?.saveSeq);
+  out.truncated = seq != null && stamps.length < seq;
   const last = stamps[stamps.length - 1];
   if (bg != null) out.lastStampHiddenSec = (last.wall - bg) / 1000;
   out.pausedAtLastStamp = typeof last.paused === "boolean" ? last.paused : null;
@@ -1613,6 +1624,11 @@ export function suspensionVerdict({ seam, lifecycle } = {}) {
     `(save #${num(seam.saveSeq) ?? "?"}` +
     (trail.stamps ? `, ${trail.stamps} trail stamps` : ", no save trail — a record from before it existed") +
     `). ` +
+    (trail.truncated
+      ? `THE TRAIL IS CAPPED at ${trail.stamps} of ${num(seam.saveSeq)} saves, so every trail-derived ` +
+        `number below describes the EARLY part of the window only and a gap after the cap is invisible. ` +
+        `The stop time above is not affected — it comes from \`lastSavedAtWall\`. `
+      : "") +
     (trail.pausedAtLastStamp == null
       ? ""
       : `At that last stamp the element was ${trail.pausedAtLastStamp ? "PAUSED" : "PLAYING"}` +
