@@ -37,6 +37,19 @@
    script with the same batch+results files is idempotent: shows already
    merged under the same batch_id are skipped on the second pass.
 
+   THE TRANSCRIPT LABEL. The agent's contract above is UNCHANGED by it:
+   `transcript_labels` is never read from the agent's file, it is copied off the
+   batch input, where prepare-batch.mjs wrote it deterministically from the feed
+   it fetched. There is nothing for a classifier to get wrong about it and
+   nothing new for it to judge.
+
+   IT IS NOT A FILTER (founder ruling 2026-08-16). The label never removes a show
+   from the catalogue, never touches `needs_review`, and never affects what a
+   downstream consumer can see. A show that ships no transcript merges exactly
+   like one that ships a timed VTT for every episode; the label records that the
+   first costs ~46 min of CPU per hour of audio through our own ASR and the
+   second is nearly free. See tools/classify/labels.mjs.
+
    Usage:
      node tools/classify/merge-results.mjs --batch data-local/classify-batch-<id>.json \
        --results data-local/classify-results-<id>.json
@@ -47,9 +60,10 @@
      PROGRESS_PATH                (default data-local/classify-progress.json)   */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import copyRules from "../../backend/src/copy/rules.js";
+import { LABEL_SCHEMA_VERSION, emptyTranscriptLabels } from "./labels.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const { BANNED, wordCount, MAX_DISPLAY_TITLE_WORDS, MAX_BLURB_WORDS } = copyRules;
@@ -77,8 +91,9 @@ function confidenceBucket(maxConfidence) {
   return "low";
 }
 
-/** Validates one show's agent-authored result. Returns { ok, entry, errors }. */
-function validateResult(id, showTitle, raw, taxonomyNodeIds) {
+/** Validates one show's agent-authored result. Returns { ok, entry, errors }.
+    Exported so tools/classify/no-exclusion.test.mjs can drive it directly. */
+export function validateResult(id, showTitle, raw, taxonomyNodeIds) {
   const errors = [];
 
   if (!raw || typeof raw !== "object") return { ok: false, errors: [`${id} (${showTitle}): missing result`] };
@@ -200,6 +215,18 @@ function main() {
       continue;
     }
 
+    /* The transcript label rides along from the BATCH file, not from the agent's
+       results — prepare-batch.mjs read it off the feed it fetched, so it is
+       observed rather than judged.
+
+       Unconditional on purpose. A batch prepared before the label existed gets an
+       honestly-empty one rather than a missing field, so every record has the
+       same shape — and, more to the point, there is then no branch anywhere in
+       this pipeline whose condition mentions the label at all. That is asserted
+       by tools/classify/no-exclusion.test.mjs, and it is a much easier invariant
+       to keep true than "the branch is a benign one". */
+    entry.transcript_labels = show.transcript_labels ?? emptyTranscriptLabels();
+
     entry.source = source;
     entry.tier = batch.tier;
     entry.batch_id = batch.batch_id;
@@ -213,11 +240,14 @@ function main() {
 
   classification.version = classification.version || 1;
   classification.built_at = now;
+  classification.label_schema_version = LABEL_SCHEMA_VERSION;
   classification.provenance = {
     produced_by: "tools/classify/merge-results.mjs",
     method: "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
     last_batch_id: batch.batch_id,
-    last_batch_tier: batch.tier
+    last_batch_tier: batch.tier,
+    transcript_labels_are_not_filters:
+      "transcript_labels is descriptive only, and it is a COST signal rather than a requirement: a show that ships no <podcast:transcript> costs ~46 min of CPU per hour of audio through our own ASR, and is still catalogued, still recommendable and still Foray material. No consumer may read it as an eligibility test."
   };
 
   writeFileSync(CLASSIFICATION_PATH, JSON.stringify(classification, null, 2) + "\n");
@@ -230,4 +260,7 @@ function main() {
   console.log(`CLASSIFY_MERGE_COMPLETE: batch_id=${batch.batch_id} merged=${merged}`);
 }
 
-main();
+/* Only run as a script, so validateResult can be imported by the suites. */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
