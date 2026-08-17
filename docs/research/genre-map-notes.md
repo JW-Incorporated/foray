@@ -31,9 +31,9 @@ alone (`taxonomy-review-2026-08.md` §7). That was right about the general case
 and wrong about seven specific genres, where Apple's own label *is* the child.
 
 **Get the baseline right first**, because the interesting claim is easy to
-overstate: **72 of the 110 genres already reach a child node**, and 66 of those
+overstate: **72 of the 110 genres already reach a child node**, and 67 of those
 did so before this change (`Baseball → sports/baseball`, `Books →
-culture/books`, `Daily News → news/daily` and 63 more). The problem was never
+culture/books`, `Daily News → news/daily` and 64 more). The problem was never
 that the map was uniformly coarse. It was coarse on exactly the branches the
 taxonomy review had just given children to. After this change 38 genres map to
 a bare root and nothing else.
@@ -62,7 +62,6 @@ can be the only one anchored to a *broad* genre:
 | Bad candidate | What the rule would do |
 |---|---|
 | Natural Sciences | every show → `nature/paleontology` |
-| Life Sciences | → `nature/animal-cognition` |
 | Mathematics | → `math/puzzles` |
 | Social Sciences | → `psychology/decision-making` |
 | Sports | → `sports/biomechanics` |
@@ -76,7 +75,10 @@ Journals) are in that candidate set at all. **Astronomy, Sexuality and
 Places & Travel each have two children anchored to the same genre** —
 `space/rockets` + `space/astronomy`, `health/sexuality` +
 `relationships/intimacy`, `travel/destinations` + `travel/outdoors-parks` — so
-they fail uniqueness, and Wilderness matches no anchor at all. Every one of the
+they fail uniqueness. Wilderness fails the rule's OTHER precondition instead: it was
+already carrying `adventure/exploration`, so it never was a bare root. It IS anchored
+— `adventure/exploration` names `Sports > Wilderness` — which is why "matches no
+anchor at all" was the wrong reason to give for it. Every one of the
 seven was reached by reading a title sample and asking whether the node is the
 *general* home for that genre or a niche that merely files under it. Anchor
 uniqueness is neither necessary nor sufficient; it is a hint.

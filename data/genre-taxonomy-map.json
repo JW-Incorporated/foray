@@ -1314,5 +1314,5 @@
     }
   ],
   "revised_at": "2026-08-16T00:00:00.000Z",
-  "revision_note": "2026-08-16: seven genres re-pointed at child nodes added by the 2026-08 taxonomy review (docs/research/taxonomy-review-2026-08.md). Additive only — no existing topic was removed from any entry. 66 of the remaining 103 genres already reached a child before this change; the rest stay on a bare root because Apple genre granularity cannot reach one. See docs/research/genre-map-notes.md."
+  "revision_note": "2026-08-16: seven genres re-pointed at child nodes added by the 2026-08 taxonomy review (docs/research/taxonomy-review-2026-08.md). Additive only — no existing topic was removed from any entry. 65 of the remaining 103 genres already reached a child before this change; the rest stay on a bare root because Apple genre granularity cannot reach one. See docs/research/genre-map-notes.md."
 }

@@ -501,7 +501,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
    - **No clock at all, asserted, and this is where the teeth are:** that the
      fine timer is armed, for the right delay, scaled by rate — and that its wake
      is what stops the item, while an early wake reschedules instead. Disable the
-     fine stage and three of those fail in 13 ms. See "the boundary's ARITHMETIC"
+     fine stage and SIX of those fail, in well under a second. See "the boundary's
      below.
 
    The rule that survives, and it generalises past this file: **a test may assert
@@ -554,25 +554,36 @@ test("an out-point stops the item and reports the same end a finished file repor
 });
 
 test("the stop is never early — the payoff is never clipped", async () => {
-  // The one-sided guarantee. The fine timer is a prediction; it only ever stops
-  // on a re-read of the real playhead.
+  /* The one-sided guarantee. The fine timer is a prediction; it only ever stops
+     on a re-read of the real playhead.
+
+     THIS TEST WAS FULLY VACUOUS until 2026-08-17, and the way it failed is worth
+     keeping written down because all three holes are the same species. Neuter
+     `_reachOutPoint` so the boundary never stops anything at all and it still
+     PASSED, in 30 seconds:
+
+       - `await waitForEnd(ends)` discarded its return value, so "the boundary
+         never fired" was indistinguishable from success;
+       - `currentTime >= target` is satisfied by a playhead that simply ran FREE
+         past the boundary — after the 10 s ceiling the element sits at ~110,
+         which is comfortably past 100.4;
+       - `lastOutPointOvershootSec >= 0` starts as `null`, and `null >= 0` is
+         **true**.
+
+     Each one turned an absence into a pass. `assertBoundaryHeld` was written to
+     close exactly these and this test was left behind, so it uses the helper
+     now — which also means a broken build reports in about a second instead of
+     burning 30 s to report green. */
   for (const target of [100.4, 100.75, 101.1]) {
-    const { el, b, ends } = ticking();
+    const { el, b, ends, ticks } = ticking();
     await b.load(item("seg"), { startOffset: 100 });
     b.setOutPoint(target);
     b.play();
-    await waitForEnd(ends);
-    assert.ok(el.currentTime >= target, `stopped at ${el.currentTime} before ${target}`);
-    assert.ok(b.lastOutPointOvershootSec >= 0);
+    const reason = await waitForEnd(ends);
+    assertBoundaryHeld({ target, rate: 1, reason, el, ticks, overshoot: b.lastOutPointOvershootSec });
   }
 });
 
-/** Fraction of the naive cost the fine timer must come in under. A bare
-    timeupdate check averages half a tick and peaks at a whole one, so a half is
-    already a losing score for it; measured, this backend comes in nearer a
-    twentieth. Loose enough not to flake, tight enough that "the fine watch
-    stopped working" — measured at 90-133 ms against a 250 ms nominal tick —
-    fails it. */
 /** Where to put the boundary, as WALL-CLOCK seconds after the in-point, spread
     ACROSS a tick interval on purpose. A naive check can only fire ON a tick, so
     its error is however far the boundary sits past the last one — which means a
@@ -608,7 +619,7 @@ async function measureBoundary(wallSec, rate) {
  *  the measurements that settled this.
  *
  *  The tightness claim still has teeth — they are in the clock-free tests below,
- *  where disabling the fine watch fails three assertions in 13 ms. */
+ *  where disabling the fine watch fails six of them outright. */
 function assertBoundaryHeld(r) {
   // The boundary must actually FIRE. Without this the whole test is vacuous:
   // `lastOutPointOvershootSec` starts as null, and `null < anything` is true.
@@ -731,7 +742,7 @@ function armedFineDelaysMs({ at, outPoint, rate }) {
 /* The numbers below use dyadic content gaps (0.5 s, 0.75 s) and power-of-two
    rates so that (end - now) / rate is EXACT in binary and the expected
    millisecond is not a rounding coin-flip. Do not "tidy" them to 100.4 and 1.5x:
-   100.4 - 100 is 0.39999999999999147, and that last bit decides a Math.ceil —
+   100.4 - 100 is 0.40000000000000568, which Math.ceil turns into 401, not 400 —
    which would turn an exact assertion back into a flaky one. */
 
 test("the fine timer is armed in wall clock, so a faster rate shortens the wait", () => {
@@ -782,9 +793,20 @@ test("the fine watch stays out of the way until the boundary is within the lead"
 });
 
 test("an out-point already behind the playhead arms no timer, at any rate", () => {
-  // The disarmed half of the scrub-past policy, asserted without waiting on a
-  // clock to fail to fire — which is the only way to tell "correctly disarmed"
-  // from "the timer just has not gone off yet".
+  /* The disarmed half of the scrub-past policy, asserted without waiting on a
+     clock to fail to fire — which is the only way to tell "correctly disarmed"
+     from "the timer just has not gone off yet".
+
+     ITS POSITIVE CONTROL IS ITS SIBLINGS, and that is worth stating: `[]` is also
+     what a completely disabled fine stage returns, so this test alone passes under
+     that regression. What distinguishes the two is that the tests above assert
+     NON-empty arming for the same helper — so a disabled fine stage reddens them
+     while this one stays green, and the pair is unambiguous. Do not delete this
+     one's siblings and leave it; on its own it proves nothing.
+
+     Not merely `[]` by arithmetic accident either: with the arm gate removed the
+     remaining distance is negative, which is not `> 0.5`, so the helper would
+     return `[4]` (the timer floor) rather than `[]`. The assertion discriminates. */
   for (const rate of [1, 2, 4]) {
     assert.deepStrictEqual(
       armedFineDelaysMs({ at: 200, outPoint: 100.5, rate }), [],
@@ -804,6 +826,7 @@ function armed({ at, outPoint, rate = 1 }) {
   const el = new SteppedAudio({ at, rate });
   const realSetTimeout = globalThis.setTimeout;
   const asked = [];
+  const log = [];
   let pending = null;
   const stub = (fn, ms) => { asked.push(ms); pending = fn; return { hasRef: () => true }; };
   const capture = (body) => {
@@ -812,15 +835,23 @@ function armed({ at, outPoint, rate = 1 }) {
   };
   const ends = [];
   const b = capture(() => {
-    const backend = new HtmlAudioBackend({ element: el });
+    const backend = new HtmlAudioBackend({ element: el, telemetry: (m) => log.push(m) });
     backend.onItemEnded = (reason) => ends.push(reason ?? "natural");
     backend.setOutPoint(outPoint);
     return backend;
   });
   return {
-    el, b, ends, asked,
-    wake: () => capture(() => { const fn = pending; pending = null; fn(); }),
+    el, b, ends, asked, log,
+    /** Fire the pending fine timer. Everything here is synchronous, so nothing
+        else can arm a timer inside the capture window. */
+    wake: () => capture(() => {
+      if (typeof pending !== "function") {
+        throw new Error("wake() called with no fine timer armed — the test's premise is wrong");
+      }
+      const fn = pending; pending = null; fn();
+    }),
     armedMs: () => asked[asked.length - 1],
+    armCount: () => asked.length,
   };
 }
 
@@ -861,12 +892,70 @@ test("an early fine wake reschedules instead of stopping short", () => {
   assert.equal(a.armedMs(), 250, "re-armed for exactly the remaining 0.25 s");
 });
 
+test("a frozen playhead stands the fine watch down instead of spinning", () => {
+  /* The stall contract, with no clock and no rebuffering simulation: a fine wake
+     that finds the playhead exactly where the LAST wake found it is a decoder
+     stall, not timer jitter, and rescheduling on it would spin at the 4 ms timer
+     floor. The watch hands back to `timeupdate`/`playing`, which cost nothing
+     while stalled.
+
+     There is a real-clock version of this below, and it is the one that used to
+     flake: it slept 350 ms and then froze the element, with the boundary 600 ms
+     of content away — so a starved box reached the boundary legitimately BEFORE
+     the stall was applied, and the test then blamed the backend for an end it was
+     right to report. This version cannot race, because nothing here advances
+     except what the test advances. */
+  const a = armed({ at: 100, outPoint: 100.5 });
+  assert.equal(a.armedMs(), 500);
+
+  a.el._at = 100.25;   // progress, but not to the boundary: reschedule
+  a.wake();
+  assert.equal(a.armedMs(), 250, "an early wake WITH progress reschedules");
+  assert.equal(a.log.filter((m) => /outPoint\.stalled/.test(m)).length, 0, "and is not a stall");
+
+  const armsBefore = a.armCount();
+  a.wake();            // woken again, playhead has NOT moved: a stall
+  assert.deepStrictEqual(a.ends, [], "a stall must not report an end — that audio never played");
+  assert.equal(a.el.paused, false, "and must not pause");
+  assert.equal(
+    a.armCount(), armsBefore,
+    "the fine watch must arm NOTHING after a no-progress wake — rescheduling here is the spin"
+  );
+  assert.equal(a.log.filter((m) => /outPoint\.stalled/.test(m)).length, 1, "and it says so, once");
+});
+
 test("a buffering stall at the boundary neither stops early nor spins", async () => {
+  /* The real-clock companion to "a frozen playhead stands the fine watch down"
+     above. That one owns the INVARIANT and cannot race; this one owns the
+     end-to-end path — a real rebuffer, on a real interval, resuming for real.
+
+     It used to `await sleep(350)` and then freeze the element, with the boundary
+     600 ms of content away. That is a duration assumption in disguise: it needs
+     350 ms of sleep to elapse before 600 ms of content does. Measured under 32
+     busy loops on 16 cores it broke 2 runs in 10 — the playhead reached the
+     boundary first, the backend correctly reported the end, and the test called
+     it "an end for audio that never played".
+
+     Now it polls to a CONDITION, and the precondition is asserted separately with
+     its own message, so a raced setup says "the setup raced" instead of implicating
+     the backend. The fine watch has to be ARMED when the stall lands (that is the
+     whole point), and arming happens inside the last 0.5 s of wall clock, so the
+     window is inherently bounded — polling every 5 ms is the tightest detection
+     available rather than a guess at a sleep length. */
   const { el, b, log, ends } = ticking();
   await b.load(item("seg"), { startOffset: 100 });
-  b.setOutPoint(100.6);
+  b.setOutPoint(100.9);
   b.play();
-  await sleep(350);
+
+  // Into the arm lead (0.5 s of wall clock, so from 100.4) but short of 100.9.
+  const deadline = now() + END_BUDGET_MS;
+  while (el.currentTime < 100.5 && now() < deadline) await sleep(5);
+  assert.ok(
+    el.currentTime < 100.9,
+    `setup raced: the playhead was at ${el.currentTime} before the stall could be applied, ` +
+    `so the boundary had already been reached legitimately. Not a backend fault.`
+  );
+
   el.stall();
   const frozenAt = el.currentTime;
   await sleep(400);
@@ -878,7 +967,7 @@ test("a buffering stall at the boundary neither stops early nor spins", async ()
 
   el.unstall();
   assert.equal(await waitForEnd(ends), "outPoint", "must resume and still stop at the boundary");
-  assert.ok(el.currentTime >= 100.6);
+  assert.ok(el.currentTime >= 100.9, `resumed and stopped at ${el.currentTime}`);
 });
 
 test("an out-point past the real audio yields exactly one end, the natural one", async () => {
@@ -1069,7 +1158,12 @@ test("consecutive same-episode slices may run BACKWARDS through the episode", as
   const deadline = now() + END_BUDGET_MS;
   while (ends.length < 2 && now() < deadline) await sleep(5);
   assert.deepStrictEqual(ends, ["outPoint", "outPoint"]);
-  assert.ok(el.currentTime >= 100.4 && el.currentTime < 101);
+  // Identity, not tightness: it stopped at the SECOND slice's boundary (100.4)
+  // rather than the first's (900.4). The upper bound used to be 101, which was a
+  // 0.6 s real-clock overshoot BUDGET in disguise — the exact thing the section
+  // header above bans. 410 separates the two boundaries with 300 s to spare and
+  // claims nothing about latency.
+  assert.ok(el.currentTime >= 100.4 && el.currentTime < 410, `stopped at ${el.currentTime}`);
 });
 
 test("arming while paused works: the boundary takes effect once play starts", async () => {
@@ -1109,7 +1203,9 @@ test("back-to-back slices of one episode each stop at their own boundary", async
   const deadline = now() + END_BUDGET_MS;
   while (ends.length < 2 && now() < deadline) await sleep(5);
   assert.deepStrictEqual(ends, ["outPoint", "outPoint"]);
-  assert.ok(el.currentTime >= 400.5 && el.currentTime < 401, `second slice stopped at ${el.currentTime}`);
+  // Identity again: the second slice's own boundary (400.5), not the first's
+  // (100.5). Was `< 401` — a 0.5 s latency budget on a real clock. See above.
+  assert.ok(el.currentTime >= 400.5 && el.currentTime < 700, `second slice stopped at ${el.currentTime}`);
   assert.ok(!el.calls.includes("load"), "and never refetched the shared episode");
 });
 
@@ -1129,13 +1225,22 @@ test("back-to-back slices of one episode each stop at their own boundary", async
  *  case below — happens to a player that is between segments rather than
  *  inside one. Poll-until-condition, never a sleep: a green run costs whatever
  *  the box actually needed and no more. */
-async function waitForPlaying(m, id) {
+/*  It also SAMPLES the playhead at the instant the condition holds, and callers
+ *  assert on the sample rather than re-reading `el.currentTime` later. That is not
+ *  tidiness: these slices are 0.5 s of CONTENT, so a couple of intervening
+ *  assertions on a loaded box are enough for the slice to hit its out-point and
+ *  the manager to advance — at which point `el.currentTime` is the NEXT segment's
+ *  in-point (~50) and an assertion of `>= 300` fails for a player that did
+ *  everything right. Sample once, assert on the sample. */
+async function waitForPlaying(m, id, el) {
   const deadline = now() + END_BUDGET_MS;
   while (now() < deadline) {
-    if (m.state.type === "playing" && m._currentItem()?.id === id) return true;
+    if (m.state.type === "playing" && m._currentItem()?.id === id) {
+      return { ok: true, at: el.currentTime };
+    }
     await sleep(5);
   }
-  return false;
+  return { ok: false, at: null };
 }
 
 test("integration: a three-segment Foray plays every slice and stops", async () => {
@@ -1170,15 +1275,18 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   }, { resolveItem: (id) => catalogue[id] ?? null });
 
   assert.deepStrictEqual(report.skipped, []);
-  assert.equal(el.currentTime >= 100 && el.currentTime < 101, true, "opened at the first in-point, not at 3000");
+  // Identity, not latency: 100 rather than the stale saved 3000, and not slice
+  // 2's 300. A tight upper bound here would be a real-clock duration budget.
+  assert.ok(el.currentTime >= 100 && el.currentTime < 200, `opened at ${el.currentTime}, wanted the first in-point (100), not the saved 3000`);
 
   // Slice 1 -> slice 2: same episode, so a seek rather than a refetch — with
   // the seam beat in between, which is silence and not a second load.
   const loadsBefore = el.calls.filter((c) => c === "load").length;
-  assert.ok(await waitForPlaying(m, "f1#1"), `never reached slice 2 (state ${m.state.type})`);
+  const slice2 = await waitForPlaying(m, "f1#1", el);
+  assert.ok(slice2.ok, `never reached slice 2 (state ${m.state.type})`);
   assert.equal(el.calls.filter((c) => c === "load").length, loadsBefore,
     "two slices of one episode must not refetch it");
-  assert.ok(el.currentTime >= 300 && el.currentTime < 301, `second in-point, got ${el.currentTime}`);
+  assert.ok(slice2.at >= 300 && slice2.at < 301, `second in-point, got ${slice2.at}`);
 
   // A phone call mid-slice must not replay the slice.
   await m.interruptionBegan();
@@ -1188,9 +1296,10 @@ test("integration: a three-segment Foray plays every slice and stops", async () 
   assert.ok(el.currentTime >= pausedAt - 0.05, `resumed at ${el.currentTime}, was at ${pausedAt}`);
 
   // Slice 2 -> slice 3: different episode, so a real load.
-  assert.ok(await waitForPlaying(m, "f1#2"), `never reached slice 3 (state ${m.state.type})`);
+  const slice3 = await waitForPlaying(m, "f1#2", el);
+  assert.ok(slice3.ok, `never reached slice 3 (state ${m.state.type})`);
   assert.equal(el.src, "https://cdn.example/b.mp3");
-  assert.ok(el.currentTime >= 50 && el.currentTime < 51);
+  assert.ok(slice3.at >= 50 && slice3.at < 51, `third in-point, got ${slice3.at}`);
 
   // ...and the Foray ends rather than rolling into anything.
   let deadline = now() + END_BUDGET_MS;

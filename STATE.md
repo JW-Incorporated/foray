@@ -34,7 +34,8 @@ docs/. Completed workstreams move to their plan doc's retro section.
   16 cores. Fixed by pairing per run, and the rate claim now needs no clock at
   all (it reads the delay the fine timer is *armed* for). No product change.
 - **#198 is landed by re-derivation, not by rebase, and its data file is
-  discarded.** 1,000 of its 1,026 changed breadth rows had since earned a real
+  discarded.** 1,000 of its 1,026 changed breadth rows (derived as 1,026 minus the 26
+  that still change; #205 had estimated 969 by a different route) had since earned a real
   agent judgement from #205, which outranks the genre map by design — and taking
   its data file wholesale would have **regressed** the per-item metric from
   5,148 to 5,249. Re-running its own fixed generator on top of `main` instead

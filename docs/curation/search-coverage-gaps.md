@@ -139,7 +139,7 @@ or missing semantic concept:
 > `data/topic-coverage-report.json`. The one real movement is the taxonomy
 > column: **the 13 "no node exists" topics are down to 0**, because the 2026-08
 > taxonomy review created a node for every one of them and this branch finally
-> pointed `data/top-topics.json` at them. Priority-4 fell 24 → 9 as a result.
+> pointed `data/top-topics.json` at them. Priority-4 fell 24 → 5 as a result.
 >
 > The counter-movement is honest and expected: `misrouted` rose **27 → 38** and
 > `absent` content-depth **36 → 50**, because a topic with no node could not be
@@ -151,10 +151,10 @@ Of the 155 evaluated topics (`data/topic-coverage-report.json` →
 `summary.by_priority`), as of 2026-08-16:
 
 - **2 priority-1** — fix search now (above).
-- **45 priority-2 / 25 priority-3** — a search fix and/or breadth-tier
+- **46 priority-2 / 28 priority-3** — a search fix and/or breadth-tier
   promotion closes the gap; see the headline table and the `recommended_actions`
   field per topic in the report.
-- **9 priority-4** — a re-tagging pass over items already in the catalogue
+- **5 priority-4** — a re-tagging pass over items already in the catalogue
   (e.g. Archaeology, Sports science, Aviation, where items exist but are tagged
   with adjacent words, not the query term itself). This bucket was 24 before the
   13 no-node topics were resolved.

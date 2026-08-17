@@ -364,7 +364,16 @@ function codeOf(file, { blankStrings = true } = {}) {
   return src;
 }
 
-const PIPELINE_FILES = ["prepare-batch.mjs", "merge-results.mjs", "select.mjs", "reconcile-shards.mjs"];
+/* Every file that can decide which shows the pipeline acts on. `root-dumping-report.mjs`
+   and the base layer one directory up were missing until 2026-08-17: both were added or
+   rewritten by the branch that landed PR #198, and neither was visible to the scans below
+   — so a future label-based `continue` in either would not have gone red. The report tool
+   is read-only today, which is exactly why it is cheap to cover now rather than after it
+   grows a filter. */
+const PIPELINE_FILES = [
+  "prepare-batch.mjs", "merge-results.mjs", "select.mjs", "reconcile-shards.mjs",
+  "root-dumping-report.mjs", "../classify-breadth.mjs",
+];
 const LABEL_TOKENS = ["transcript_labels", ...TRANSCRIPT_LABEL_FIELDS.filter((f) => f !== "label_schema_version")];
 
 /* Two complementary shapes, kept separate because they fail for different reasons

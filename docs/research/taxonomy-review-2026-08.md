@@ -574,7 +574,7 @@ cannot come back.
   Seven genres — Astronomy, Music History, Personal Journals, Sexuality, Games,
   Places & Travel, Wilderness — name a child closely enough to map, six of them via an
   `apple_anchor` this very review wrote. Note also that "all 110 entries still resolve"
-  undersold the map: 66 of them already reached a child before this change. See
+  undersold the map: 67 of them already reached a child before this change. See
   `genre-map-notes.md` § 2026-08-16 for the per-genre evidence and the four declines.
 - `docs/agents/runner-prompts/foray-nightly.md` — no taxonomy references.
 - `backend/src/enrich/StubEnricher.ts` `FALLBACK_TOPICS` — stale (9 seed ids) but only
@@ -633,9 +633,12 @@ only, and the rule itself is worth keeping.
 >
 > **So the paragraph immediately below no longer describes the file.** "All 19,787 shows
 > keep the topics they were assigned before this change" was true when written. The
-> bare-`food` count in it is also slightly off — measured, it was 362, not 374, and it is
-> 362 still, which is the review's own Food argument holding up exactly as predicted: no
-> genre map can reach those children.
+> bare-`food` count in it is wrong in both directions — it was 362, not 374, when this
+> review was written, and it is **217** now, because #205's agent rows reached children the
+> genre map never could. The review's Food argument still holds for the genre map
+> specifically (one Apple leaf for eight children, so no map will ever put a barbecue show
+> on `food/grilling-bbq`) — what moved the number was per-show judgement, which is
+> exactly what the argument said it would take.
 >
 > It also found the reason a re-run was not merely useless but dangerous:
 > `tools/classify-breadth.mjs` rebuilt the file from scratch, so the "cheap partial

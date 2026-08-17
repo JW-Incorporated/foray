@@ -54,7 +54,7 @@ no child node fires no slider. Root-only *pairs* are a broken yardstick once
 agent rows are in the file: a judged classification names more branches than a
 genre-map row does, so the denominator grows and the pair count rises even as the
 catalogue gets better. Measured across the #205 shard merge: pairs 9,741 →
-13,470 while per-item fell 6,107 → 5,148. Quote both if you like, but the
+13,468 while per-item fell 6,107 → 5,148. Quote both if you like, but the
 acceptance criterion is per-item.
 
 It also reports any topic id that is not a taxonomy node instead of counting it,

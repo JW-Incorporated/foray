@@ -182,7 +182,14 @@ for (const s of cat.shows) {
   if (!existing) added++;
   else if (JSON.stringify(existing.topics) !== JSON.stringify(next.topics) || existing.confidence !== next.confidence) changed++;
   else unchanged++;
-  entries[id] = next;
+  /* Spread `existing` under `next` rather than replacing the object outright.
+     Today every genre-map row carries exactly {topics, confidence, source} — censused,
+     all 359 of them — so a bare assignment loses nothing. But this file's whole
+     contract is "no entry ever loses a field", and a bare assignment makes that true
+     by coincidence of the current schema rather than by construction. The next field
+     anyone adds to a genre-map row would be dropped here silently, behind valid JSON
+     and a green CI — the exact failure mode this script was rewritten to end. */
+  entries[id] = { ...existing, ...next };
   wrote++;
 }
 
