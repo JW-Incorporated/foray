@@ -407,7 +407,7 @@ titles, blurbs and classifier rationales:
 
 | id | label | apple_anchor | Evidence |
 |---|---|---|---|
-| `food/grilling-bbq` | Grilling & barbecue | `Arts > Food` | 8 dedicated shows (HowToBBQRight, The BBQ Central Show, The Black Smoke Barbecue Podcast, This Week In Barbecue); `bbq-grilling` is a **tier-2** topic in `top-topics.json`; `search-engine.js:39` already ships a `bbq → barbecue, grill` alias and `tools/test-search.mjs:169` pins a "how bbq works" query |
+| `food/grilling-bbq` | Grilling & barbecue | `Arts > Food` | 8 dedicated shows (HowToBBQRight, The BBQ Central Show, The Black Smoke Barbecue Podcast, This Week In Barbecue); `bbq-grilling` is a **tier-2** topic in `top-topics.json`; `search-engine.js:39` already ships a `bbq → barbecue, grill` alias and `tools/test-search.mjs` pins a "how bbq works" query |
 | `food/food-history` | Food history & foodways | `Arts > Food` | 8 shows (THE HISTORY OF FOOD, The British Food History Podcast, Food Non-Fiction, Biscuits & Jam) |
 | `food/drinks` | Coffee, tea & drinks | `Arts > Food` | **47 shows** — the largest food sub-theme (WhiskyCast, Basic Brewing Radio, Wine for Normal People). Absorbs the `coffee` no-node topic and un-strands `wine-cocktails`, which was mis-filed on `food/cooking-science` |
 | `food/baking` | Baking & pastry | `Arts > Food` | 10 shows (Pastry Arts Podcast, The Crumb, Breaking Bread with Tom Papa) |
