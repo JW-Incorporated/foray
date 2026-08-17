@@ -136,6 +136,14 @@ Two things follow, and the second one supersedes a "SAFE" reading in `STATE.md`.
    short of the second — the same number, because the constants match, which is
    what makes the conflation easy and why it is spelled out here.
 
+   **As of 2026-08-17 the coincidence is gone, and only ours moved:** our deadline
+   is visibility-aware — 10 s visible, **20 s hidden** — so the 9,153 ms seam now
+   sits at 46% of its budget instead of 92%, while WebKit's two are unchanged and
+   not ours to move. One consequence worth keeping in view: at 20 s a hidden load
+   can now outlive WebKit's 10 s foreground-assertion release, which is the point
+   (a load that slow needs the extra time) but also means a slow seam and a lapsed
+   assertion can coincide. §4.1b's suspension ceiling is the real bound there.
+
    ~~**#227** moves the load off the boundary (prefetch on a second element, 12 s
    ahead, while the current segment is still audible) so the silent window is no
    longer where the fetch happens — which relieves all three.~~
@@ -347,12 +355,60 @@ tail, and §8's argument rests on the median.
 >    depends on "audio is playing, so this load will be quick" is unsound. The
 >    file in the measured run was a small asset **bundled inside the app** — this
 >    is not network latency and no cache warms it away.
-> 2. **A hidden-page load takes ~11 s, against `LOAD_SETTLE_TIMEOUT_MS` of
+> 2. **A hidden-page load takes 5-11 s, against `LOAD_SETTLE_TIMEOUT_MS` of
 >    10,000 ms in `player/html-audio-backend.js`.** So a segment DROPPED at a
 >    seam on a locked phone is structural rather than unlucky, and it predates
 >    #227. §4.4 below — 3 of 5 hidden Chromium loads failing that same deadline —
 >    is the same finding on the other engine, and its "cause is unknown" note can
->    now be read as this.
+>    now be read as this. **The deadline is visibility-aware as of 2026-08-17**
+>    (10 s visible, 20 s hidden), which converts those drops into slow seams.
+>
+>    **And the range is the finding, not the 11 s.** Three runs on the identical
+>    file: **5,114 ms** (32064639785), **9,153 ms** (32036295743) and 11,140 ms
+>    (32057395270, which had a second element's teardown sharing the task queue).
+>    The first two are the SAME code path at the SAME 15.0 s of hidden playback —
+>    a **1.8x** spread with nothing varied — and the whole difference sits in one
+>    phase, `stalled` → `loadedmetadata`, at 1,902 ms against 5,954 ms. Treat a
+>    hidden chain as a distribution with three samples, and beware of reading any
+>    cross-run delta under ~2x as an effect: two of these runs differ by that much
+>    for no reason we can name.
+
+> **4.1b — THE HIDDEN WINDOW HAS A CEILING: THE PAGE IS SUSPENDED ~26 s IN.**
+> Added 2026-08-17. This bounds every hidden measurement in this document and it
+> was not known when §4.1a was written.
+>
+> Across the three seam runs the durable `foray_probe_seam` record simply stops:
+> the last write lands **25.2 s, 26.8 s and 27.9 s** after the app went hidden
+> (runs 32036295743, 32057395270, 32064639785). `simulator-log-seam.txt` says it
+> is a real suspension rather than WebKit declining to flush:
+>
+> ```
+> WebProcessProxy::didChangeThrottleState(Suspended)
+> ProcessThrottler::uiAssertionWillExpireImminently
+> WebProcessPool::applicationIsAboutToSuspend: Terminating non-critical processes
+> WebProcessPool::setProcessesShouldSuspend: Processes should suspend 1
+> ```
+>
+> Consequences:
+>
+> - **No hidden number here describes a phone locked for more than ~26 s.** Any
+>   "does throttling deepen with time hidden?" question is currently
+>   unanswerable with this instrument: moving the probe's first boundary to 45-60 s
+>   of hidden time puts it *past the suspension*, so it would measure nothing.
+> - **`MIN_HIDDEN_TRANSITIONS = 2` has never been met.** All three runs contain
+>   ONE transition and two audible items. `seg-b`'s out-point is armed
+>   (`outPoint.set 20.00s`) and the last durable write lands ~0.3 s before that
+>   boundary was due. The workflow's own 90 s derivation reaches transition 2 at
+>   ~41 s; the app is not alive to get there.
+> - **Whether this happens on a REAL PHONE is the open question, and it dwarfs
+>   everything else in this area.** `UIBackgroundModes: audio` is supposed to keep
+>   an app alive exactly while audio plays — §1's central finding — and the
+>   harness backgrounds the app by launching Settings on a Simulator with no real
+>   audio route, which is a plausible reason for a Simulator to suspend an app the
+>   OS hears nothing from. **If it reproduces on a device, a Foray stops advancing
+>   ~26 s after the screen locks and every seam refinement is moot.**
+>   `HUMAN-ACTIONS.md` #11 answers it in twenty minutes with no build: screen off,
+>   does the running order keep advancing?
 
 **4.2 — The seam beat specifically.** One `setTimeout(2000)` — the real
 `SEAM_GAP_SEC` — armed in a hidden page, 4 reps each:
