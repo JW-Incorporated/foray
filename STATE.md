@@ -44,7 +44,10 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `player/html-audio-backend.js` (+ test), `player/queue-manager.js` (+ test),
   `player/seam-gap.js` (header only — it documented a 2.0 s seam the product did
   not have), `player/client.js` (three lines), `test/suite-integrity.test.js`
-  (three floors raised, isolated final commit), `docs/` and this file.
+  (two floors raised, isolated final commit) and this file. **No `docs/` change:
+  the argument, the measurement and the trace live in
+  `player/html-audio-backend.js`'s header, which is where someone editing this
+  will actually read them.**
   **Nothing in `data/`, nothing in `tools/`, nothing in `index.html`, nothing in
   `sw.js`, no CSP change, no dependency.** `player/queue-state.js` is
   **unchanged** — no new state, no new event.
@@ -80,6 +83,23 @@ docs/. Completed workstreams move to their plan doc's retro section.
   reach a position we already hold, and on an ad-stitched host the refetch can
   come back differently stitched — the exact hazard the shortcut exists to
   avoid. (Foray #2: 10 of 21 cross-file.)
+- **Heads-up — A BRIDGED FORAY GETS NO WARMING AT ALL, so do not read "no
+  change" as a failed fix.** Eligibility is `seamGapSec(...) > 0` and that
+  returns 0 for a bridged seam, so if the next queue entry is a narration
+  bridge, nothing is warmed — and the load after the bridge is unwarmed too,
+  because by then the bridge is the current item. Neither shipped Foray has any
+  narration, so today this is theory; the moment one does, its seams revert to
+  the old cost and the ear test in `HUMAN-ACTIONS.md` #11 will honestly report
+  no improvement. Warming a bridge is a small change (a bridge is our own small
+  asset) and is deliberately not in this PR.
+- **Heads-up — ONLY an autoplay refusal is recovered, and the check is
+  load-bearing.** `AbortError` is the ordinary rejection of a pending `play()`
+  that a `pause()` or a fresh `load()` interrupted, and the manager emits
+  `pausePlayback` before `loadItem` on both a pause and a skip — so that window
+  is reachable by an ordinary tap. Recovering there would re-load the segment,
+  re-arm the boundary and CALL PLAY: audio restarting right after the listener
+  stopped it, with every surface showing paused. Found by the reviewer pass, not
+  by the tests; it now has its own named test.
 - **Heads-up — the beat is STILL 2.0 s and that is deliberate.** It is an
   authored pause between two voices (`segment-length-rules.md` §6b), not an
   artifact of loading, so the manager still waits out its remainder after the
@@ -111,7 +131,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
   timer, which is the point on a platform that aligns hidden-page timers to 1 s.
 - **NOT VERIFIED ON A DEVICE — this is the honest gap.** Every number above is
   from run 32036295743 or the Blink measurements in
-  `docs/research/mp1-background-audio.md`; the *fix* is proven by 24 new
+  `docs/research/mp1-background-audio.md`; the *fix* is proven by 41 new
   mutation-tested unit tests and by a virtual-clock measurement of the seam
   (9,153 ms → 2,000 ms), on a Windows box with no simulator. **The rig to settle
   it already exists and needs no new code:** `ios-build` (on PR #220) triggers on

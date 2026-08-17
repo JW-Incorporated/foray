@@ -305,7 +305,7 @@ export class HtmlAudioBackend {
        interchangeable — they swap roles on every cross-episode seam, and a
        difference between them (in the document vs not, playsinline vs not)
        would be a difference the listener hears on alternate segments. */
-    this._warmEl = prefetch === false ? null : (warmElement ?? sameKindOfElement(el));
+    this._warmEl = prefetch === false ? null : (warmElement ?? makeWarmElement(el));
     if (this._warmEl) {
       this._warmEl.preload = "auto";
       // Same reasoning as above: never `crossOrigin`, on either element.
@@ -655,7 +655,11 @@ export class HtmlAudioBackend {
     }
     const offset = Number.isFinite(startOffset) && startOffset > 0 ? startOffset : 0;
     if (this._warm && this._warm.url === item.audio_url && this._warm.offset === offset && !this._warm.failed) {
-      return true; // already in flight or already warm for exactly this
+      // Already in flight or already warm for exactly this media. Two queue
+      // items can share a URL and an in-point, so re-stamp the id or every
+      // later telemetry line names the wrong segment.
+      this._warm.id = item.id;
+      return true;
     }
 
     this._discardWarm(`replacedBy:${item.id}`);
@@ -743,7 +747,20 @@ export class HtmlAudioBackend {
     if (!this._warm || !this._warm.ready || this._warm.failed) return false;
     if (this._warm.url !== url) return false;
     const want = Number.isFinite(startOffset) && startOffset > 0 ? startOffset : 0;
-    return this._warm.offset === want;
+    if (this._warm.offset !== want) return false;
+    /* RE-ASSERT, DO NOT TRUST THE SNAPSHOT. `ready` can be twelve seconds old,
+       and the element can go backwards in that time without ever firing `error`:
+       a backgrounded media element whose buffer is evicted drops `readyState`
+       and fires `emptied`/`abort`. Promoting in that state resolves `load()` on
+       a lie — the manager spends the beat, arms the out-point and plays, and the
+       listener then waits out the full load AFTER the beat, with the player
+       believing audio is running. That is strictly worse than losing the race,
+       which is the one direction this feature must never produce. These are the
+       same two facts the cold path resolves on (`onCanPlay` below), asked again
+       at the moment the answer is used. */
+    const el = this._warmEl;
+    if (!el || (el.readyState ?? 0) < READY_ENOUGH) return false;
+    return Math.abs((el.currentTime ?? 0) - want) <= 1;
   }
 
   /**
@@ -757,10 +774,13 @@ export class HtmlAudioBackend {
   _promoteWarm(item, startOffset) {
     const outgoing = this.el;
     const incoming = this._warmEl;
-    const warm = this._warm;
 
+    /* Detached FIRST, so no `_expectPause` is needed for the pause and the drop
+       below: this element's events no longer reach us at all. Setting the flag
+       here would leave it true with nothing to consume it, and a stale
+       `_expectPause` is not inert — it swallows the next pause, which is the one
+       `_notePause` exists to notice. */
     this._detach(outgoing);
-    this._expectPause = true;
     try { outgoing.pause(); } catch (_) { /* already paused */ }
     // Drop the demoted element's buffer rather than leaving it decoding — the
     // same reason `release()` does it.
@@ -773,14 +793,22 @@ export class HtmlAudioBackend {
     this._prefetchWindowKey = null;
     this._attach(this.el);
 
-    // State that lives on the BACKEND has to be re-applied to whatever element
-    // is now the player: neither of these survives the swap on its own.
-    try { this.el.volume = this._volume; } catch (_) { /* fine */ }
-    this.el.playbackRate = this._pendingRate;
-
+    /* IDENTITY BEFORE THE ELEMENT WRITES, and the order is the point. If an
+       element setter throws after the swap but before `_currentUrl` is updated,
+       `this.el` holds episode B while `_currentUrl` still names episode A — and
+       the next `load(A)` then passes the same-source test below and SEEKS INSIDE
+       B, at A's in-point, with A's boundary armed. Wrong-episode audio, from a
+       failed assignment. Setting identity first makes that unreachable however
+       the writes go. */
     this._currentItem = item;
     this._currentUrl = item.audio_url;
     this._handoverUnproven = true;
+
+    // State that lives on the BACKEND has to be re-applied to whatever element
+    // is now the player: neither of these survives the swap on its own. Both are
+    // guarded — Safari refuses some playback rates outright.
+    try { this.el.volume = this._volume; } catch (_) { /* fine */ }
+    try { this.el.playbackRate = this._pendingRate; } catch (_) { /* play() re-applies it */ }
     this._emit(
       `load.handover ${item.id} -> ${Math.round(startOffset)}s ` +
       `(prefetched: no wait at this boundary)`
@@ -822,7 +850,28 @@ export class HtmlAudioBackend {
    */
   _notePause() {
     if (this._expectPause) { this._expectPause = false; return; }
-    if (!this._warm) return; // an ordinary pause with nothing being warmed
+    /* A FILE THAT RAN OUT IS NOT A STOLEN SESSION. The end-of-media steps set
+       `paused` and fire `pause` BEFORE `ended`, and a segment whose `end_sec`
+       runs past the real audio hits that path routinely — `setOutPoint` even
+       logs `outPoint.beyondDuration` for it. Without this line the first short
+       file in a Foray would switch warming off for the whole session AND throw
+       away a buffer the very next `load()` was about to promote, making that
+       seam slow too. `ended` is positional and is already true here. */
+    if (this.el.ended) return;
+    /* AND ONLY WHILE A WARM LOAD IS ACTUALLY IN FLIGHT. The hypothesis this
+       detector exists for is "a second element LOADING media took the session",
+       so the causal window is the load, not the whole 12 s the buffer then sits
+       ready. Narrowing it this far matters because the alternative reading of an
+       unexplained pause is an ordinary interruption — a call, headphones out —
+       and one of those in the first five minutes would otherwise revert every
+       remaining seam in the hour.
+
+       What is left is genuinely ambiguous: an interruption that lands inside a
+       warm load looks exactly like a steal, and we resolve it AGAINST warming.
+       That is deliberate — the cost of being wrong here is the 9.2 s seam that
+       shipped before this feature, and the cost of being wrong the other way is
+       silence a listener cannot fix from a locked screen. */
+    if (!this._warm || this._warm.ready) return;
     this._emit("audio.pausedUnexpectedly while a prefetch was in flight");
     this._disablePrefetch("playback stopped while a prefetch was in flight — refusing to warm again");
   }
@@ -847,6 +896,20 @@ export class HtmlAudioBackend {
    */
   _recoverFromRefusedHandover(el, err) {
     if (this._released || el !== this.el || !this._handoverUnproven) return false;
+    /* AN AUTOPLAY REFUSAL, AND NOTHING ELSE. `NotAllowedError` is the only
+       rejection this recovery is for, and the check is not belt and braces — it
+       is the difference between a recovery and a bug.
+       `AbortError` is the ORDINARY rejection of a pending `play()` that a
+       `pause()` or a fresh `load()` on the same element interrupted, and the
+       manager emits `pausePlayback` before `loadItem` on both a pause and a
+       skip. So without this line, a listener who paused or skipped in the
+       window between `play()` and the first `playing` event would have the
+       recovery re-load the segment, re-arm the boundary and CALL PLAY —
+       starting audio the listener had just stopped, while every surface showed
+       paused, and switching warming off permanently on the way. Any rejection
+       that is not an autoplay refusal falls through to the reporting path that
+       shipped before this feature existed. */
+    if (err?.name !== "NotAllowedError") return false;
     const item = this._currentItem;
     const blessed = this._warmEl;
     if (!item || !blessed) return false;
@@ -861,8 +924,9 @@ export class HtmlAudioBackend {
     const offset = this.currentTime;
     this._emit(`handover.refused ${item.id} — retrying on the element that holds the gesture`);
 
+    // Detached first, so the pause and the drop below reach nobody — see the
+    // note in `_promoteWarm` about not leaving `_expectPause` stranded.
     this._detach(this.el);
-    this._expectPause = true;
     try { this.el.pause(); } catch (_) { /* fine */ }
     try { this.el.removeAttribute("src"); this.el.load(); } catch (_) { /* fine */ }
     this._warmEl = this.el;
@@ -890,6 +954,15 @@ export class HtmlAudioBackend {
         this.play();
       },
       (loadErr) => {
+        /* The same two claims the success branch makes, and for a sharper
+           reason: reporting an error for an item nobody is on sends the manager
+           to `idle` and pauses the segment the listener actually skipped TO. A
+           released backend must be silent for the same reason its success path
+           is. */
+        if (this._released) return;
+        if (this._loadSeq !== mine) {
+          return this._emit(`handover.recovery.superseded ${item.id} — a newer load owns the element`);
+        }
         // Now it is a genuine failure and the manager's degrade path is right.
         this._emit(`handover.recovery.failed ${item.id}: ${loadErr?.message ?? loadErr}`);
         if (this.onError) this.onError(`play rejected: ${err?.name ?? err}`);
@@ -911,6 +984,9 @@ export class HtmlAudioBackend {
     // After the guards, so a malformed call cannot invalidate a recovery that is
     // legitimately in flight.
     this._loadSeq++;
+    // A new load supersedes the handover it may have been recovering: the item
+    // this element was proving is no longer the item it holds.
+    this._handoverUnproven = false;
 
     // Contract: a load drops any armed boundary. See the header.
     this._disarmOutPoint();
@@ -1098,6 +1174,9 @@ export class HtmlAudioBackend {
   pause() {
     if (this._released) return;
     this._expectPause = true;
+    // A deliberate stop ends the recovery window: whatever a pending `play()`
+    // rejects with after this point, nothing may start audio again on its own.
+    this._handoverUnproven = false;
     this.el.pause();
   }
 
@@ -1151,7 +1230,6 @@ export class HtmlAudioBackend {
     // warm element is holding a buffer too, and it must not be left decoding.
     this._discardWarm("released");
     this._detach(this.el);
-    this._expectPause = true;
     this.el.pause();
     this.el.removeAttribute("src");
     this.el.load(); // drop the buffer rather than leaving it decoding
@@ -1167,7 +1245,7 @@ export class HtmlAudioBackend {
     asymmetry between them becomes a difference the listener hears on every
     other segment. In `node --test` there is no `Audio` and no `document`, so
     this returns null and prefetching is simply unavailable. */
-function sameKindOfElement(el) {
+function makeWarmElement(el) {
   let warm = null;
   if (typeof Audio !== "undefined") warm = new Audio();
   else if (typeof document !== "undefined" && document.createElement) warm = document.createElement("audio");
