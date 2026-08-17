@@ -38,6 +38,41 @@ prepare-batch.mjs ──▶ classify-batch-<id>.json ──▶ [classification a
 | `merge-results.mjs` | ✅ | Validate the classification agent's output (taxonomy node ids, confidence bounds, copy rules on `display_title`/`blurb`), merge into `data/breadth-classification.json`, advance progress state. |
 | `labels.mjs` | ✅ (pure) | The transcript label and the shard key. Dependency-free and side-effect-free. |
 | `select.mjs` | ✅ (pure) | Which shows the next fresh batch takes. Dependency-free. |
+| `root-dumping-report.mjs` | ✅ | Measure the thing this pipeline is for: how many shows sit on a bare branch that has children. `--json` snapshots, `--baseline <snapshot>` diffs. |
+
+**Take a baseline before you re-classify anything.** `root-dumping-report.mjs --json > before.json`,
+do the work, then `root-dumping-report.mjs --baseline before.json`. Without the
+snapshot there is no way to say afterwards whether a pass helped, and "it looks
+better" is not an acceptance criterion. The two flags are mutually exclusive and
+an unknown flag is refused rather than ignored — a typo that printed a table and
+exited 0 would hand you a "snapshot" that only fails later.
+
+**Report the per-item number, not the pair count.** `fully_root_only` (items
+carrying no child node anywhere) is the one that maps to product behaviour,
+because `app.js` builds interest sliders from non-root nodes only — a show with
+no child node fires no slider. Root-only *pairs* are a broken yardstick once
+agent rows are in the file: a judged classification names more branches than a
+genre-map row does, so the denominator grows and the pair count rises even as the
+catalogue gets better. Measured across the #205 shard merge: pairs 9,741 →
+13,468 while per-item fell 6,107 → 5,148. Quote both if you like, but the
+acceptance criterion is per-item.
+
+It also reports any topic id that is not a taxonomy node instead of counting it,
+because otherwise the metric is gameable in the one direction that matters: a
+misspelled `food/bakin` would read as "has a child" and erase a root-only pair.
+`test/data-topic-integrity.test.js` is the standing CI gate on the same ids.
+
+**The layer below this pipeline** is `tools/classify-breadth.mjs`, the
+deterministic genre map. It writes the same file, at lower precedence: it never
+touches a `classify-agent-*` entry at all, and it only ever *enriches* another
+overlay in place — adding the child nodes that fix a branch that overlay left
+bare, keeping its `source`, its `confidence` and every other field, and
+recording what it added in `enriched_by`/`enriched_nodes`. Full precedence table
+and the measurements behind that narrowness in `docs/CATALOG-PIPELINE.md`
+§ Classification layers. Running it is safe and free; before 2026-08 it was
+neither, because it rebuilt the file from scratch and would have deleted every
+entry this pipeline had produced — as of the #205 merge that would have been
+19,278 agent rows and 6,758 `superseded_topics`.
 
 The **judgment step** (classifying each show, writing `display_title`/
 `blurb`) is the only non-deterministic part, performed by a Claude Code

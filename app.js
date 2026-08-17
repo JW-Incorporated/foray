@@ -1680,6 +1680,467 @@ function openDrawer(open) {
   if (open) renderDrawer();
 }
 
+/* ---------- delete my data (#42) ----------
+
+   WHY THIS EXISTS
+   Google Play's Data Safety form asks whether users can request that their data
+   be deleted, and until this control existed the only honest answer was No — a
+   store-submission blocker, and long before that a real gap: a listener who
+   wanted out had nothing but their browser's site-data screen, which cannot
+   touch the rows already sent to our database.
+
+   WHAT "DELETE" MEANS HERE, exactly, because a control that clears half of it
+   and says "done" is worse than no control at all:
+
+     1. BOTH LOCAL TIERS. Every `cp_` key, in `localStorage` AND in the IndexedDB
+        database, enumerated FROM THE TIERS THEMSELVES (`DurableStore.purge`) and
+        then re-read to prove they are gone. There is deliberately no key list in
+        this file: the audit behind `docs/legal/privacy-policy.md` found **20**
+        keys where every earlier count said 11, two of them patterned
+        (`cp_foray:<id>`, `cp_pos:<id>`), and a list typed here would rot exactly
+        the way that count did.
+     2. THE SERVER ROWS. Every per-user table's row-level-security policy is
+        `for all` (`backend/migrations/supabase/0001_auth_and_rls.sql`), so this
+        client can delete its own rows under its own `auth.uid()`. It was a
+        missing request, never a missing permission.
+     3. NOT THE ANONYMOUS ACCOUNT ROW ITSELF, and the UI says so in words.
+        Deleting a Supabase auth user needs the admin API and a service-role key,
+        and a key that can delete any account cannot ship inside a public web
+        page (this repo's automation is deliberately keyless — CLAUDE.md). What
+        this control can do, and does, is cut the link: the token and the local
+        id are two of the 20 keys, so the next event creates a NEW anonymous
+        account instead of re-attaching to the old one. What stays behind is a row
+        with no name, email, phone number or password — and `app_users` plus the
+        events keyed to it are deleted, so it is an empty shell. Removing the
+        shell is `HUMAN-ACTIONS.md` #16.
+     4. NOT THE PUBLISHER AND ATTRIBUTION HOSTS. Playing a segment points an
+        `<audio>` element at the publisher's own URL, so 43 first-hop hosts —
+        several of them ad-attribution prefixes the publisher put there — saw
+        this listener's IP address directly. We never received it and cannot
+        delete it. The policy discloses that (§4) and this control must not imply
+        otherwise, which is why one line of the sheet says so.
+
+   TWO ORDERING RULES, both load bearing:
+     - PLAYBACK STOPS FIRST, without flushing. A running player writes a position
+       roughly every 15 seconds and a Foray resume row with it, so a clear
+       underneath live playback is undone one tick later.
+     - REMOTE BEFORE LOCAL. `cp_sb_session` is the only credential that can
+       delete the server rows, and clearing local destroys it. So a remote
+       failure STOPS the run with the device untouched and the token intact,
+       rather than stranding rows nothing can ever reach again. It is also why
+       nothing on that path is worded as a success: a false success is the worst
+       outcome this control can produce. */
+
+/* The per-user tables an anonymous client owns rows in, in deletion order —
+   `events` first because it is the only table this client writes and therefore
+   the one the promise rests on, `app_users` last because everything else keys to
+   it. The list is pinned against the RLS migration by
+   `test/data-deletion.test.js`, so a new per-user table cannot appear there
+   without this list failing. */
+const SB_USER_TABLES = [
+  "events", "saved_items", "user_interests", "sessions", "session_items",
+  "subscriptions", "taxonomy_nodes", "app_users",
+];
+
+/** Three outcomes per table, and the difference between them is the whole
+    honesty of this feature. `absent` is a 404: the table is not in this project's
+    API at all, so it holds no rows of ours — a true statement, not a shrug. */
+const DEL_DELETED = "deleted";
+const DEL_ABSENT = "absent";
+const DEL_FAILED = "failed";
+
+/**
+ * The account this device already has — never a new one.
+ *
+ * `ensureAnonSession()` signs up when it finds no token, which is right for
+ * syncing and absurd here: creating an account in order to delete one would
+ * leave a fresh row behind and delete nothing. A stale token is refreshed if we
+ * can; if the refresh fails we try the token we have and let the server's answer
+ * be the answer.
+ */
+async function existingAnonSession() {
+  const now = Math.floor(Date.now() / 1000);
+  const s = lsGet("cp_sb_session", null);
+  if (!s || !s.access_token || !s.user_id) return null;
+  if (s.expires_at && s.expires_at - 60 > now) return s;
+  if (s.refresh_token) {
+    const r = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    if (r && r.access_token) {
+      /* `r.user.id` is not assumed to exist. A refresh response without a `user`
+         object is not a shape we have seen, but reading through it would throw a
+         TypeError out of the whole deletion — and the id we already hold is the
+         same account by definition, since this is a refresh of its own token. */
+      return {
+        user_id: (r.user && r.user.id) || s.user_id,
+        access_token: r.access_token,
+        refresh_token: r.refresh_token || s.refresh_token,
+        expires_at: r.expires_at || now + 3600,
+      };
+    }
+  }
+  return s;
+}
+
+/** One authenticated DELETE, filtered to this account's own rows. */
+async function sbDeleteOwnRows(table, session) {
+  const url = `${SB_URL}/rest/v1/${table}?user_id=eq.${encodeURIComponent(session.user_id)}`;
+  try {
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        apikey: SB_KEY,
+        Authorization: "Bearer " + session.access_token,
+        Prefer: "return=minimal",
+      },
+    });
+    if (res.ok) return { table, state: DEL_DELETED, status: res.status };
+    // Not in the API schema => no rows of ours are in it. Anything else — 401,
+    // 403, 409, 500 — is a refusal we must not round down to success.
+    if (res.status === 404) return { table, state: DEL_ABSENT, status: 404 };
+    return { table, state: DEL_FAILED, status: res.status };
+  } catch (_) {
+    // Offline, DNS, CSP, a dropped connection: no answer at all.
+    return { table, state: DEL_FAILED, status: 0 };
+  }
+}
+
+/**
+ * Delete every server row this device's account owns.
+ *
+ * `ok` is false if ANY table refused, and the caller must then not clear local
+ * storage — see the ordering rules above.
+ */
+async function deleteRemoteData() {
+  const session = await existingAnonSession();
+  if (!session) return { ok: true, attempted: false, tables: [], deleted: 0 };
+  const tables = [];
+  for (const t of SB_USER_TABLES) tables.push(await sbDeleteOwnRows(t, session));
+  const failed = tables.filter(r => r.state === DEL_FAILED);
+  return {
+    ok: failed.length === 0,
+    attempted: true,
+    tables,
+    failed,
+    deleted: tables.filter(r => r.state === DEL_DELETED).length,
+  };
+}
+
+/**
+ * Clear both local tiers.
+ *
+ * The real work is `DurableStore.purge()`, which enumerates the tiers rather
+ * than the facade and verifies afterwards. The fallback below matters and is not
+ * decoration: app.js and `player/client.js` deploy independently through the
+ * service worker, so a page can be running with no store published — and then
+ * `localStorage` is reachable and IndexedDB is not. That case reports `ok: false`
+ * with a reason, because a cleared mirror is not cleared storage.
+ */
+async function clearLocalData() {
+  const store = storageBackend();
+  if (!store) return { ok: false, keys: [], remaining: [], reason: "no-storage" };
+  if (typeof store.purge === "function") {
+    /* `purge()` is written not to throw, but "written not to throw" is not a
+       guarantee, and a throw here would leave the control stuck mid-delete
+       (`ddBusy`) with a spinner and no way out. Report it as what it is. */
+    try { return await store.purge(); }
+    catch (err) { return { ok: false, keys: [], remaining: [], reason: "purge-failed", error: errLabel(err) }; }
+  }
+
+  /* EVERY read here is guarded, not just the writes. This branch exists for the
+     browser where storage is degraded, and `SecurityError` (blocked cookies, some
+     private modes) comes out of `length` and `getItem` exactly as readily as out
+     of `removeItem`. Review found the unguarded ones. */
+  const keys = [];
+  try {
+    const n = Number(store.length) || 0;
+    for (let i = 0; i < n; i++) {
+      const k = store.key(i);
+      if (typeof k === "string" && k.startsWith("cp_")) keys.push(k);
+    }
+  } catch (err) {
+    return { ok: false, keys: [], remaining: [], reason: "no-storage", error: errLabel(err) };
+  }
+  // Collected before removing: removing while enumerating shifts every index
+  // after it, which silently skips half the keys.
+  const remaining = [];
+  for (const k of keys) {
+    let gone = false;
+    try { store.removeItem(k); gone = store.getItem(k) === null; } catch (_) { gone = false; }
+    if (!gone) remaining.push(k);
+  }
+  return { ok: false, keys, remaining, reason: "no-durable-tier" };
+}
+
+/** An error's name, for a status line a listener reads. Never the message: a
+    browser's storage error text is not English anyone asked for. */
+function errLabel(err) {
+  return err && err.name ? String(err.name) : "error";
+}
+
+/**
+ * Everything the sheet says, in one place, so the wording is testable without a
+ * browser and cannot drift from the result.
+ *
+ * Two rules it is written to, both pinned by `test/data-deletion.test.js`:
+ *   - EVERY sentence is inside the copy budget (CLAUDE.md principle 4, ≤ 18
+ *     words), because these are the words a listener reads at the one moment
+ *     they are least inclined to re-read anything.
+ *   - IT CLAIMS ONLY WHAT WAS OBSERVED. A `DELETE` returns 204 whether or not a
+ *     row matched, so "deleted from 8 tables" would be a number we did not
+ *     measure. "Your rows on our server are deleted" is true either way.
+ */
+function deletionMessage(result) {
+  const { state, remote, local } = result;
+  if (state === "unconfirmed") return "Type DELETE to confirm.";
+  if (state === "busy") return "Deleting…";
+  if (state === "remote-failed") {
+    return "Your server rows were NOT deleted. Nothing on this device was touched, so you can try again.";
+  }
+  const server = remote && remote.deviceOnly
+    ? "Your rows on our server were left in place, as you chose."
+    : !remote || !remote.attempted
+      ? "No account token was on this device, so no server rows were reachable."
+      : "Your rows on our server are deleted.";
+  if (local && local.ok) return `Done. ${server} This device is clear.`;
+  const why = local && local.reason === "no-durable-tier"
+    ? "The durable copy is out of reach. Reload and try again."
+    : local && local.reason === "no-storage"
+      ? "This browser has taken storage away."
+      : local && local.reason === "purge-failed"
+        ? `Storage refused the delete (${local.error || "error"}).`
+        : `${(local && local.remaining ? local.remaining.length : 0)} key(s) would not clear.`;
+  return `${server} This device is NOT fully clear. ${why}`;
+}
+
+/* The sheet and the drawer button are built in JavaScript rather than written
+   into `index.html`, for the same mechanical reason `player/client.js` builds the
+   whole mini-player that way: `index.html` is outside the auto-merge allowlist
+   (`tools/ci/path-policy.mjs`), and this control should not need a founder merge
+   to reach the listener it is for. createElement + textContent throughout — the
+   page CSP is strict and none of this text is user-supplied anyway. */
+let ddUi = null;
+let ddBusy = false;
+
+function ddEl(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+/** What the control covers and what it cannot. Every line is read by a listener,
+    so every line is inside the copy budget (CLAUDE.md principle 4). */
+const DD_COVERS = [
+  "This device: every Foray key, in both storage layers.",
+  "Our server: the events this device sent, and its account rows.",
+  "Your anonymous account row stays. It holds no name, email or phone number.",
+  "Publisher and ad hosts saw your IP as audio played. We cannot delete that.",
+];
+
+function buildDeleteSheet() {
+  const root = ddEl("div", "fy-sheet");
+  root.id = "dd-sheet";
+  root.hidden = true;
+
+  const scrim = ddEl("div", "fy-scrim");
+  const panel = ddEl("div", "fy-panel dd-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+
+  const title = ddEl("h3", null, "Delete my data");
+  title.id = "dd-title";
+  panel.setAttribute("aria-labelledby", "dd-title");
+
+  const list = ddEl("ul", "dd-covers");
+  for (const line of DD_COVERS) list.append(ddEl("li", null, line));
+
+  const label = ddEl("label", "dd-label", "Type DELETE to confirm");
+  label.setAttribute("for", "dd-confirm");
+  const input = ddEl("input", "dd-input");
+  input.id = "dd-confirm";
+  input.type = "text";
+  input.setAttribute("maxlength", "12");
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("spellcheck", "false");
+
+  const actions = ddEl("div", "fy-sheet-actions");
+  const cancel = ddEl("button", "fy-sheet-cancel", "Cancel");
+  cancel.type = "button";
+  const go = ddEl("button", "fy-sheet-go dd-go", "Delete everything");
+  go.type = "button";
+  go.disabled = true;
+  actions.append(cancel, go);
+
+  /* Offered only after a remote failure, and never before: it is the honest
+     escape hatch for someone who cannot reach the server and still wants this
+     device cleared, and it states the cost on its own face. */
+  const deviceOnly = ddEl("button", "dd-device-only", "Clear this device only");
+  deviceOnly.type = "button";
+  deviceOnly.hidden = true;
+
+  const status = ddEl("p", "dd-status");
+  status.id = "dd-status";
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+
+  panel.append(
+    ddEl("div", "fy-grab"), title,
+    ddEl("p", "fy-sheet-sub", "This cannot be undone. Here is what it covers."),
+    list, label, input, actions, deviceOnly, status,
+  );
+  root.append(scrim, panel);
+  document.body.appendChild(root);
+  return { root, scrim, panel, input, go, cancel, deviceOnly, status };
+}
+
+function deleteSheet() {
+  if (!ddUi) ddUi = buildDeleteSheet();
+  return ddUi;
+}
+
+/** The confirmation itself, and the ONLY thing that permits a deletion.
+    Deliberately a typed word rather than a second click: the sheet's own buttons
+    sit where a scrim tap or a mis-hit lands, and one stray click must not be
+    able to delete a listener's account. */
+function deleteConfirmed() {
+  return Boolean(ddUi) && String(ddUi.input.value || "").trim().toUpperCase() === "DELETE";
+}
+
+function syncDeleteCta() {
+  if (!ddUi) return;
+  // BOTH destructive buttons answer to the typed word. The device-only one is
+  // still destructive — it is the same clear with the server step skipped.
+  const armed = !ddBusy && deleteConfirmed();
+  ddUi.go.disabled = !armed;
+  ddUi.deviceOnly.disabled = !armed;
+}
+
+/* Opening always DISARMS. The drawer item is the surface a stray tap lands on,
+   and a sheet that reopened still holding a typed `DELETE` would turn the second
+   stray tap into a deletion. Review found this: closing cleared the field, and
+   reopening without closing did not. */
+function openDeleteSheet() {
+  const ui = deleteSheet();
+  ui.input.value = "";
+  ui.status.textContent = "";
+  ui.deviceOnly.hidden = true;
+  ddBusy = false;
+  syncDeleteCta();
+  ui.root.hidden = false;
+  document.body.classList.add("fy-sheet-open");
+}
+
+function closeDeleteSheet() {
+  if (!ddUi || ddBusy) return;     // never vanish mid-delete
+  ddUi.root.hidden = true;
+  ddUi.input.value = "";
+  syncDeleteCta();
+  document.body.classList.remove("fy-sheet-open");
+}
+
+/**
+ * Delete it all. Returns the result rather than only painting it, so the
+ * ordering and the failure paths are testable.
+ *
+ * @param {object} [opts]
+ * @param {boolean} [opts.deviceOnly] skip the server step — offered only after a
+ *   remote failure, so that someone offline can still clear their device having
+ *   been told plainly that the rows remain.
+ */
+async function deleteMyData({ deviceOnly = false } = {}) {
+  // A second click while the first run is in flight would race two purges and
+  // two DELETEs against one token.
+  if (ddBusy) return { ok: false, state: "busy", remote: null, local: null };
+  /* The confirmation gates BOTH paths, device-only included: it is the same
+     destructive clear with the server step skipped, and its button is only ever
+     on screen after a failure — which is exactly when someone is jabbing at the
+     sheet. */
+  if (!deleteConfirmed()) {
+    const out = { ok: false, state: "unconfirmed", remote: null, local: null };
+    paintDeletion(out);
+    return out;
+  }
+  ddBusy = true;
+  syncDeleteCta();
+  if (ddUi) ddUi.status.textContent = "Deleting…";
+
+  /* try/finally, because `ddBusy` is what disables the buttons AND what stops
+     `closeDeleteSheet` dismissing a run mid-flight. Review proved the cost of
+     getting this wrong: one throw left the sheet reading "Deleting…" forever with
+     Cancel, the scrim and the confirm button all dead until a reload. */
+  try {
+    // Stop first, and write nothing on the way out.
+    try {
+      const player = window.ForayPlayer;
+      if (player && typeof player.stopForDataDeletion === "function") {
+        await player.stopForDataDeletion();
+      }
+    } catch (_) { /* an unstoppable player is not a reason to refuse a deletion */ }
+
+    const remote = deviceOnly
+      ? { ok: true, attempted: false, deviceOnly: true, tables: [], deleted: 0 }
+      : await deleteRemoteData();
+    if (remote && !remote.ok) {
+      // The device is untouched on purpose: its token is the only way back to
+      // those rows.
+      const out = { ok: false, state: "remote-failed", remote, local: null };
+      paintDeletion(out);
+      return out;
+    }
+
+    const local = await clearLocalData();
+    const out = { ok: Boolean(local.ok), state: local.ok ? "done" : "local-incomplete", remote, local };
+
+    /* In-memory state outlives storage, so a page left as it was would still show
+       a resume rail and thumbs that no longer exist anywhere. Interests are reset
+       to taxonomy defaults, which `loadInterests` does WITHOUT writing.
+       `buildCards()` is deliberately not called: it writes `cp_recent_branches`
+       and `cp_seen`, which would put two of the 20 keys straight back. */
+    state.interests = {};
+    loadInterests();
+    state.forayResume = null;
+    state.forayPlaying = null;
+    state.foray = null;
+    state.forayPainted = null;
+    /* And this is the one action the app does not log. `logEvent` writes
+       `cp_events` and mints `cp_profile_id`, and the next sync would create a
+       fresh anonymous account — telling our server about a deletion by starting a
+       new identity. */
+    paintDeletion(out);
+    route();
+    return out;
+  } finally {
+    ddBusy = false;
+    syncDeleteCta();
+  }
+}
+
+function paintDeletion(result) {
+  if (!ddUi) return;
+  ddUi.status.textContent = deletionMessage(result);
+  ddUi.deviceOnly.hidden = result.state !== "remote-failed";
+  syncDeleteCta();
+}
+
+/** Appended to the drawer at startup. Bound once — `init()` is the only caller,
+    and a second call must not stack a second button or a second listener. */
+function bindDeleteControl() {
+  const drawer = $("#drawer");
+  if (!drawer || $("#delete-data")) return;
+  const btn = ddEl("button", "drawer-item as-btn dd-open", "Delete my data");
+  btn.type = "button";
+  btn.id = "delete-data";
+  drawer.appendChild(btn);
+  btn.addEventListener("click", openDeleteSheet);
+
+  const ui = deleteSheet();
+  ui.input.addEventListener("input", syncDeleteCta);
+  ui.cancel.addEventListener("click", closeDeleteSheet);
+  ui.scrim.addEventListener("click", closeDeleteSheet);
+  ui.go.addEventListener("click", () => deleteMyData());
+  ui.deviceOnly.addEventListener("click", () => deleteMyData({ deviceOnly: true }));
+}
+
 /* ---------- router ---------- */
 
 /** Which Foray this URL asks for, or null. Routing is hash-only; `?foray=` is
@@ -1793,6 +2254,10 @@ async function init() {
     renderDrawer();
     route();
   });
+  /* The drawer's last item, appended rather than written into index.html — see
+     the § delete my data header for why, and note it is deliberately BELOW the
+     two settings toggles: it is the one control in there that cannot be undone. */
+  bindDeleteControl();
   $("#refresh-btn").addEventListener("click", () => {
     buildCards();
     logEvent("refreshed_all", {});
@@ -1804,6 +2269,50 @@ async function init() {
 
 init();
 
-if ("serviceWorker" in navigator) {
+/* Should this page register `sw.js`? On the web: yes — it is what makes the site
+   render its last-known state in a cell dead zone. Inside the native shell
+   (issue #36 §2): NO.
+
+   The shell's assets are already local files, so a cache-first service worker
+   adds a stale-cache layer in FRONT of local files and buys nothing. Worse, it
+   is the classic "the app won't update" bug: a shipped build would keep serving
+   the cached copy of its own bundle after an app-store update replaced it, and
+   the symptom is an app that ignores new versions with no error anywhere.
+
+   Two signals, and they are checked in SEPARATE `try` blocks on purpose. The
+   origin goes first because it cannot throw: on iOS the page is served from
+   `capacitor://localhost`. `window.Capacitor.isNativePlatform()` goes second —
+   the bridge is injected before page scripts, so it is normally the more precise
+   answer, but it is somebody else's object and calling into it can throw (a
+   bridge that is not ready, a plugin-proxy getter). Sharing one `try` made the
+   guard FAIL OPEN: a throwing bridge skipped the origin check too and registered
+   the worker inside the shell, which is the exact case the origin check exists
+   to cover.
+
+   Deliberately NOT a hostname check. Capacitor's Android default is
+   `https://localhost`, so testing for "localhost" would also disable the service
+   worker for anyone serving the real site from a local dev server — a live web
+   behaviour broken to fix an app one.
+
+   Deliberately NOT a user-agent check either. Every real Foray listener is on a
+   phone, so UA-sniffing here would switch the offline shell off for essentially
+   the whole audience. `shell-invariants.test.mjs` asserts a mobile-web UA still
+   registers. */
+function shouldRegisterServiceWorker(win) {
+  try {
+    const proto = (win && win.location && win.location.protocol) || "";
+    if (proto === "capacitor:" || proto === "ionic:") return false;
+  } catch (_) { /* no location: treat as the web, and let the bridge check speak */ }
+  try {
+    const cap = win && win.Capacitor;
+    if (cap) {
+      if (typeof cap.isNativePlatform === "function") { if (cap.isNativePlatform()) return false; }
+      else if (cap.isNative) return false;
+    }
+  } catch (_) { /* a bridge that throws is not an answer; the origin already spoke */ }
+  return true;
+}
+
+if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   navigator.serviceWorker.register("sw.js").catch(() => { /* progressive */ });
 }

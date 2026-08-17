@@ -10,6 +10,33 @@
    and answers it purely, so the decision table is readable in one screen and
    testable without a player. The manager owns the clock; this owns the rule.
 
+   ── THE SEAM THIS FILE DESCRIBES WAS NOT THE SEAM THE PRODUCT HAD ─────────
+
+   Read the number below as the length of the BEAT, which is all this module
+   decides. It was not, until 2026-08-17, the length of the SILENCE — and the
+   difference was most of a commute.
+
+   The manager spends the beat and the next segment's load in parallel, so the
+   silence a listener hears is `max(SEAM_GAP_SEC, load)`. Measured on a
+   backgrounded iOS Simulator (run 32036295743, real manager over real backend):
+   `askedGapMs: 2000` -> `observedGapMs: 9153`. **The beat armed 2 ms after the
+   boundary** and this module's decision was correct throughout; all 9.1 s was
+   the media load, for a file bundled inside the app.
+
+   `player/html-audio-backend.js` §"prefetch" now moves that load off the
+   boundary — it warms the next segment on a second element while the current one
+   is still audible — so a warmed seam really is 2.0 s. Two things follow for
+   anyone editing THIS file:
+
+     - The beat is still spent in full when the load finishes early. That is
+       deliberate: 2.0 s between two voices is authored (§6b below), not an
+       artifact of loading, and shortening it was never the fix.
+     - `seamGapSec()` is now ALSO the eligibility rule for warming: the manager
+       warms exactly the transitions that get a beat (`queue-manager.js` §11).
+       So a change here changes what gets prefetched. That coupling is on
+       purpose — two answers to "is this a seam" is the drift this module exists
+       to prevent — but it is wider than it looks.
+
    ── The number, and the two specs that disagree about it ──────────────────
 
    `docs/curation/segment-length-rules.md` §6b and §2e: an unbridged seam gets

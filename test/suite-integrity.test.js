@@ -56,14 +56,14 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 59,
+  "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
-  "player/foray-playback.test.js": 61,
+  "player/foray-playback.test.js": 62,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 42,
   "player/foray-sources.test.js": 24,
-  "player/html-audio-backend.test.js": 44,
+  "player/html-audio-backend.test.js": 83,
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
@@ -75,11 +75,23 @@ const FLOORS = {
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
   "player/media-session.test.js": 129,
-  "player/queue-manager.test.js": 76,
+  "player/queue-manager.test.js": 89,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
   "test/app-security.test.js": 20,
+  /* "Delete my data" (#42). Zero slack, like media-session above and for the same
+     reason: what this suite guards is a PROMISE — both tiers cleared, the server
+     rows really deleted, no success message over a failure, and a confirmation a
+     stray tap cannot satisfy. Every one of those is one edit from its opposite,
+     and the published privacy policy and Play declaration both now rest on them.
+     A deleted test here is a false statement in a store submission. */
+  "test/data-deletion.test.js": 51,
+  /* The standing gate on topic ids in `data/*.json`. Floored because the metric
+     it protects is gameable in exactly one direction: a misspelled `food/bakin`
+     reads as "has a child" to the root-dumping report and silently erases a
+     root-only pair, so a deleted gate would make the number look better. */
+  "test/data-topic-integrity.test.js": 12,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   "tools/ci/path-policy.test.mjs": 82,
@@ -91,9 +103,40 @@ const FLOORS = {
   // because the thing it guards is an absence.
   "tools/classify/no-exclusion.test.mjs": 25,
   "tools/classify/reconcile-shards.test.mjs": 72,
+  /* Guards the metric the whole classification effort is judged on. Its per-item
+     ("fully root-only") number is the one that maps to product behaviour; the
+     pair count is not, and #205 measured why. A deleted suite here would let the
+     definition drift silently, which is how a metric stops meaning anything. */
+  "tools/classify/root-dumping-report.test.mjs": 31,
   "tools/classify/shard.test.mjs": 23,
   "tools/classify/transcript-label.test.mjs": 29,
+  /* The destructive-rewrite guard. `classify-breadth.mjs` rebuilt
+     data/breadth-classification.json from scratch until 2026-08; running that
+     version today would delete 19,278 agent rows and leave valid JSON and a
+     green CI behind it. This suite is the reason that cannot come back. */
+  "tools/classify-breadth.test.mjs": 29,
   "tools/foray/check-forays.test.mjs": 81,
+  /* The native shell (#36). `shell-invariants` is the one to be most careful
+     with: four of the five things it pins are properties of files OUTSIDE
+     tools/ — the root package.json staying dependency-free, index.html's CSP,
+     app.js not registering a service worker in the shell, and the repo's ios/
+     scaffold surviving. Nothing else in the repo checks any of those, so
+     deleting this suite would silently un-guard all four. */
+  "tools/mobile/prepare-webdir.test.mjs": 17,
+  "tools/mobile/shell-invariants.test.mjs": 27,
+  /* iOS on a runner (#38). These four are the only tests in the repo that can be
+     run for a macOS-only feature by someone with no Mac, which makes their
+     deletion unusually attractive to a future session that finds them
+     inconvenient. `ios-workflow` is the one to be most careful with: it is the
+     only thing in the repo asserting that the iOS job stays OFF the required-check
+     list, that its path filter stays narrow (macOS runners bill at 10x), that
+     every `xcodebuild ... build` stays unsigned so the job can run with no Apple
+     credentials, and that `ci.yml`'s `ios-kit` — the repo's only compiled Swift —
+     is still there. Nothing else covers any of that. */
+  "tools/mobile/inject-background-audio.test.mjs": 26,
+  "tools/mobile/ios-ci.test.mjs": 89,
+  "tools/mobile/ios-workflow.test.mjs": 34,
+  "tools/mobile/probe/install-probe.test.mjs": 39,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,

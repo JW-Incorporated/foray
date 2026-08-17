@@ -724,6 +724,16 @@ An emulator is also not a phone for the two things that decide the Android answe
    **Report one thing above all: did it move on through new segments, or did it keep playing one episode?** If the highlighted row is still an early one after 15 minutes of listening, that is the exact failure this is about, and saying so is the whole result.
 
 5. Also say whether the audio **stopped** at any point, and roughly when.
+6. **New, 2026-08-17 — and this is now the most useful thing you can report.**
+   At each change of voice, does it sound like a **short deliberate pause** (about
+   two seconds) or like the **app stopped and came back**? Say roughly how long
+   the longest one felt. Why it is worth a sentence: the gap between two segments
+   was measured at **9.2 seconds** on a backgrounded iOS Simulator (run
+   32036295743) against the 2.0 seconds it is supposed to be, and all of the
+   excess was the next episode loading after the pause had already started. The
+   player now loads the next segment 12 seconds early, while the current one is
+   still playing, so those gaps should be short. **Your ear is the acceptance
+   test** — nothing on this machine can hear it.
 
 **Read this before drawing a conclusion from step 4.** A browser tab is **not** the same as an app. This test is genuinely informative about the engine's timer behaviour, and it is the reason it is worth five minutes — but it **cannot** settle app-level backgrounding, because a browser tab is not subject to it. A clean pass here does not mean the packaged app will pass.
 
@@ -784,7 +794,7 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 3. **The Supabase project's region / hosting jurisdiction**, and whether a data-processing agreement exists. Needed to say where data is stored, and required if EU users are in scope. (§3.)
 4. **Retention:** how long event rows are kept. Nothing in the code ever deletes one, and no retention job exists (ADR-0005 anticipated one).
 5. **Geo-availability:** US-only listing, or accept GDPR obligations day one? `docs/marketing/05-legal-risk-memo.md` §5 sets out the trade; it is still unresolved and it changes what the policy must promise.
-6. **The one build decision: a delete control.** There is **no in-app way to clear your data** today, so Play's "users can request that their data be deleted" is currently answered **No** and no deletion URL exists. The data layer already permits it (the row-level-security policy is `for all`, covering delete) — this is a missing button, not a missing permission. Recommended: one settings control that clears both storage tiers and issues an authenticated delete of that user's rows. It also satisfies Apple 5.1.1(v) if that ever applies.
+6. **The one build decision: a delete control.** ~~There is **no in-app way to clear your data** today~~ — **BUILT, nothing to decide here any more.** The menu now carries **Delete my data**: it clears both storage tiers (enumerated and verified, not from a list) and issues an authenticated delete of that account's rows in every per-user table, remote first so a network failure cannot strand the rows. Play's deletion answer is **Yes** — `docs/legal/data-safety.md` §A7. Two residues, both real and neither blocking this item: the **deletion URL** the form also wants (a hosting task, and item 2 above covers the same page), and the empty **auth user row** a client cannot delete, which is new item **14**.
 
 **Two things to verify in the Supabase dashboard while you are there** — neither is knowable from the repo, and both are listed as open questions in `data-safety.md`:
 
@@ -794,6 +804,320 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 **Also worth a lawyer's eye, flagged rather than decided:** two of the nine thumbs-down reason chips are "Leans too far left" and "Leans too far right", and the selected chip is transmitted. They record a reaction to an *episode*, not the listener's own politics — so Apple's "Sensitive Info" and Play's "Political or religious beliefs" are both answered **No**, which is the defensible reading. It is disclosed in the policy regardless.
 
 **Worked if:** `docs/legal/privacy-policy.md` contains no `TODO(founder)` markers, and the answers in `docs/legal/data-safety.md` can be pasted into both forms without a judgement call left in them.
+
+**Status:** OPEN
+
+---
+
+### 14. Delete the empty anonymous accounts a client cannot delete itself
+
+**Tag:** `[UPGRADE]` · **Time:** ~15 minutes in the Supabase dashboard, once · **Owner:** Wyatt
+
+**Why it matters.** The in-app **Delete my data** control (now built) deletes every row an account owns, in every per-user table, and discards the token so the next event creates a **new** anonymous account rather than re-attaching. What it cannot delete is the `auth.users` row itself: that needs the Admin API and a **service-role key**, and a key that can delete any account cannot ship inside a public web page — this repo's automation is deliberately keyless (CLAUDE.md decision-authority item 2), and putting one in `app.js` would be strictly worse for privacy than leaving the row.
+
+So after a deletion the account is an **empty shell**: no name, no email, no phone number, no password, no `app_users` row, no events. Both store declarations and the privacy policy say exactly that rather than implying the account is gone. This item is what would let them say more.
+
+**The honest framing:** this is not a data-protection hole — an identifier with nothing attached to it is not personal data in any practical sense, and it is disclosed. It matters for two narrower reasons: an Apple reviewer reading guideline 5.1.1(v) strictly may want the account record itself removed, and the table otherwise grows one dead row per deletion forever.
+
+**Steps.**
+
+1. In the Supabase dashboard, open **SQL Editor** and add a `security definer` function that deletes the caller's own auth user — the standard shape is `delete from auth.users where id = auth.uid();` inside a function owned by a privileged role, exposed as an RPC (e.g. `create function public.delete_own_account() returns void`), with `grant execute on function public.delete_own_account() to authenticated;`.
+2. Tell whoever picks up the follow-up (or reply here) that it exists, and the client will call `POST /rest/v1/rpc/delete_own_account` as the last step of the deletion — **after** the row deletes, since the token dies with the account. It is ~10 lines in `app.js` and one more `SB_USER_TABLES`-style pin in `test/data-deletion.test.js`.
+3. Decide whether the same function should also cascade the per-user tables. It does not need to — the client already deletes them — but it makes the server-side path complete on its own, which matters if a deletion request ever arrives by email instead of through the app.
+4. While in there: consider a **retention job** for anonymous accounts with no events at all (item 13, step 4, needs a number for the policy either way). The same sweep can collect shells from before this function existed.
+
+**Worked if:** calling the RPC as an ordinary anonymous user removes that user from `auth.users` and returns success, and calling it cannot remove anybody else's (test it twice, with two different anonymous tokens). Then `docs/legal/data-safety.md` §A7 and `privacy-policy.md` §7 can drop the "the account row stays" paragraph — and both must be updated in the same change that ships the client call, per the standing rule in §8 of the policy.
+### 15. Rule on the app's permanent bundle id
+
+**Tag:** `[BLOCKING]` for any store submission · **Time:** ~2 minutes · **Owner:** Wyatt (architecture)
+
+**Why it matters.** The bundle id is the app's identity in both stores and it is **permanent once published** — changing it after a release means a brand-new listing, a new URL, and zero installs carried over. It is now written into a file and into a test, so it will not drift by accident, but nobody has actually agreed to it.
+
+**The recommendation** (from #36, unchanged): **`com.jwincorporated.foray`**. It matches the GitHub org that owns the repo and pays the Actions bill.
+
+**The one thing to know before saying yes.** `ios/project.yml` — the old SwiftUI scaffold — says `com.wjduvall.foray`, which predates the org. That is a **different app** and it has never been published, so there is nothing to migrate. As of #36 that directory is reference material, not the shipping app (`docs/mobile-shell.md` §1); the shipping app is the Capacitor shell in `mobile/`. Leaving the two ids different is fine and is the current state.
+
+**Steps.**
+
+1. Open `mobile/capacitor.config.json`. Line 2 reads:
+
+   ```json
+   "appId": "com.jwincorporated.foray",
+   ```
+
+2. Reply either **"confirmed"**, or with the id you want instead.
+3. If you want a different one, a session changes it in exactly two places — that file and the pinned assertion in `tools/mobile/shell-invariants.test.mjs` ("the app id is pinned, because it is permanent once published"). Do not change one without the other; the test exists so that the change cannot be quiet.
+
+**Worked if:** the status below says DONE and `mobile/capacitor.config.json`'s `appId` is the id you intend to publish under, forever.
+
+**Status:** OPEN
+
+---
+
+### 16. On a Mac: generate the iOS shell, add one `Info.plist` line, and build it
+
+**Tag:** `[BLOCKING]` for iOS · **Time:** ~30 minutes the first time (mostly Xcode and CocoaPods downloading) · **Owner:** whoever has the Mac
+
+**Why it matters.** #36 committed the shell's configuration, the `webDir` build and the guard tests, but **no native project has been generated and nothing has been compiled** — this is a Windows machine. Everything about a *running* app is therefore unverified, including one CSP change that is reasoned from WebKit's behaviour rather than observed. One session on a Mac converts the whole thing from "should work" to "does".
+
+**Do item #15 first** if you can — the bundle id is baked into the generated project, and changing it afterwards means regenerating.
+
+**Steps.** All of these run from the repo root unless stated.
+
+1. Install the toolchain, if it is not there:
+
+   ```bash
+   brew install cocoapods
+   ```
+
+   Xcode itself must be from the App Store, opened once so it accepts its licence.
+
+2. Install the shell's dependencies and build the web bundle:
+
+   ```bash
+   cd mobile
+   npm install
+   npm run prepare:webdir
+   ```
+
+   **Worked if:** it prints something like `webDir ready: mobile/www  (30 files, 2.52 MB of 3.00 MB)`. If it prints a size *error* instead, stop and report it — that guard is doing its job and the fix is not to raise the cap.
+
+3. Generate the iOS project:
+
+   ```bash
+   npm run add:ios
+   ```
+
+   This creates `mobile/ios/`. It does **not** touch the repo's `ios/` directory — that is the old SwiftUI scaffold and it must stay untouched (`docs/mobile-shell.md` §1).
+
+4. **Add the background-audio key.** This is the single most important step, and it is the *entire* iOS background-audio requirement — no plugin, no Swift, no audio-session code. Open `mobile/ios/App/App/Info.plist` and add, inside the top-level `<dict>`:
+
+   ```xml
+   <key>UIBackgroundModes</key>
+   <array>
+       <string>audio</string>
+   </array>
+   ```
+
+   In Xcode's UI the same thing is: select the **App** target → **Signing & Capabilities** → **+ Capability** → **Background Modes** → tick **Audio, AirPlay, and Picture in Picture**.
+
+5. Open and run it:
+
+   ```bash
+   npm run open:ios
+   ```
+
+   In Xcode: select the **App** scheme, pick your device, set your team under **Signing & Capabilities** (it is blank on purpose — no Apple Team ID is committed), then Run.
+
+6. **The five things to report back**, in one comment on #36:
+   1. Does the app launch and show the four cards?
+   2. **In the Safari Web Inspector console (Safari → Develop → your device → App), type `Capacitor` and press enter. Is it defined, or does it say "Can't find variable"?** This is the single most important line of output in this whole item. Capacitor injects its bridge as an **inline script**, and the page's CSP is `script-src 'self'` with no `'unsafe-inline'`. If the bridge is blocked, the bridge is gone, all four plugins are dead, and the app silently starts caching itself. iOS probably injects in a way that bypasses the CSP; Android probably does not. Report the exact answer either way, plus **any console error containing the words "Content Security Policy"** — quote it verbatim.
+   3. **Are the app icons visible?** The other change made blind: the CSP had to gain `'self'` for `img-src`, because the iOS shell's origin is `capacitor://localhost` and the app's own bundled icons match neither `https:` nor `data:`. If you see a CSP error mentioning an image, say so.
+   4. Start a Foray, press play, **lock the phone for 15 minutes.** Does audio continue, and does the running order keep advancing through segments? (This is the real version of item #11, the one a browser tab cannot answer.)
+   5. Does the app pick up a new build, or does it seem to serve stale content? It should not cache — the shell deliberately does not register the service worker — and this is the check that confirms it.
+
+7. Commit `mobile/ios/` when it works. Capacitor's own guidance is to commit the generated project, and it keeps CI from needing a `cap add` step.
+
+**Worked if:** there is a comment on #36 answering the four questions in step 6, and `mobile/ios/` is committed with `UIBackgroundModes: audio` in its `Info.plist`.
+
+**Note added by #38 (2026-08-17) — steps 1–4 and 6.2 no longer need a Mac, but this item is not done, and TWO of the steps below are wrong as written.**
+
+`.github/workflows/ios-build.yml` now does the toolchain install, `npm run add:ios`, the `Info.plist` edit (via a unit-tested script, not by hand) and an **unsigned build of both the simulator and the arm64 device target** on a GitHub macOS runner. All of that is **verified working** — run [32021861601](https://github.com/JW-Incorporated/foray/actions/runs/32021861601) reported `** BUILD SUCCEEDED` for both, and `PlistBuddy` read the background-audio key back out of the generated plist. Full detail in `docs/ios-ci.md`.
+
+**Two corrections to the steps above, found by that run:**
+
+1. **Step 1 is wrong: `brew install cocoapods` is not needed.** Capacitor 8's iOS template uses **Swift Package Manager**. `cap add ios` writes a `Package.swift` and runs no `pod install`, and there is **no `App.xcworkspace`** — so if you open anything by hand it is **`mobile/ios/App/App.xcodeproj`**, not a workspace. Xcode resolves the local package itself.
+2. **Step 6.2 is answered.** `window.Capacitor` **is defined** in the iOS shell: `typeof` is `object`, `isNativePlatform()` returns `true`, `getPlatform()` returns `"ios"`, nine plugins are registered, and there were **zero** CSP violations and zero "Content Security Policy" lines in the system log. So our `script-src 'self'` does **not** block Capacitor's bridge on iOS. You do not need to type anything into a console for this one. (Android is a different mechanism and is still open — item #18.)
+
+**Step 6.4 now has a Simulator answer, and it is the good one — but it is the WEAK direction of the evidence.** In the backgrounded Simulator the segment's stop-point fired **4.5 milliseconds** late, with 15 seconds of genuinely hidden playback and 61 measurements behind it, and the `timeupdate` event that drives it kept running at ~252 ms while the ordinary page timers next to it were throttled to 1 second. That is the inference `docs/research/mp1-background-audio.md` §8 called its most load-bearing one, and it held. **A Simulator models neither power management nor true suspension, so this cannot promise a real phone will do the same** — a *failure* there would have settled it; a pass only removes one way of being wrong. Your 15 minutes with the screen off is still the test that counts.
+
+**What is still genuinely yours, and a simulator cannot do:** steps 6.1, 6.3, 6.4 and 6.5 are *device* questions. A simulator models neither power management nor true suspension, so however cleanly CI runs, only a real phone with the screen off answers 6.4. Plus step 7 (whether to commit `mobile/ios/` — note there is no `Podfile.lock`, so plugin versions would be pinned only by `Package.swift` and an uncommitted `mobile/package-lock.json`) and the app id in #15.
+
+**Read the workflow's job summary before spending the 30 minutes.** It may have found the failure for you already; it found two.
+
+**Status:** OPEN
+
+---
+
+### 17. Decide: does the app ship with data frozen at build time?
+
+**Tag:** `[BLOCKING]` for a public release · **Time:** ~5 minutes to decide · **Owner:** Joey (product)
+
+**Why it matters.** The app bundles `data/*.json` — the session, the discover pool, the taxonomy, the Foray running orders. That is what makes it work offline in a cell dead zone, which is the founding constraint. But **the bundle is a snapshot taken when the app was built, and nothing in the app refreshes it.** The web site picks up the nightly regeneration immediately; a shipped app would show its build day's picks forever, until someone shipped a new build.
+
+For a product whose promise is "four picks, every day", that is the difference between a demo and the actual thing.
+
+**This is #40's remaining half** ("data freshness"), whose web half already landed in #204. It is not new work discovered late — it is a known, scoped piece — but #36 makes it concrete, because it is now the specific reason a store build would feel wrong.
+
+**The decision.** Reply with one of:
+
+- **"#40 before any public release"** (recommended). The app fetches fresh data on launch with the bundled copy as the offline fallback. This is one issue, already designed. A closed-testing or internal track can ship before it.
+- **"Ship frozen, refresh later."** Acceptable only for an internal/TestFlight build where everyone knows. Do not put this on a public listing: the four cards would be visibly stale within a week and the product would read as broken rather than as unfinished.
+
+**Answer this together with item #12** if you are answering either — both are "what must be true before a store listing", and a single sitting settles the release shape.
+
+**Worked if:** #40 says whether it gates the first public release, and the status below says DONE.
+
+**Status:** OPEN
+
+---
+
+### 18. On Android: settle whether our CSP kills Capacitor's bridge
+
+**Tag:** `[BLOCKING]` for Android · **Time:** ~45 minutes, most of it downloads · **Owner:** Wyatt (or anyone with an Android phone and a USB cable)
+
+**Why it matters.** This is the **top open risk** in the whole native-app change, and it can be settled by reading one line in a console.
+
+Capacitor injects its native bridge (`native-bridge.js`, the app config, and every plugin's JavaScript) into the page as an **inline `<script>`**. Foray's page carries a strict CSP — `script-src 'self'`, with no `'unsafe-inline'`, permanently and deliberately. If Android's WebView applies that CSP to the injected script, the script is blocked, and three things follow at once:
+
+1. `window.Capacitor` never exists, so all four installed plugins are dead;
+2. **the service worker registers inside the app** — because with no bridge to ask, the page sees an origin of `https://localhost`, which is indistinguishable from the real website. That is the "app won't update after a store release" bug;
+3. anything later built on a Capacitor plugin (native storage for #40, downloads for #29) silently does nothing.
+
+iOS is probably unaffected — it injects via a mechanism that runs outside the document's CSP — so this is likely an Android-only problem, and **nobody has tested it.** MP1's Android spike built an APK around a few player modules and two tone files, not the real page, so it never carried this CSP. `docs/mobile-shell.md` §5 has the full reasoning and the two possible fixes, neither of which is a one-token change.
+
+**Steps.** No Android Studio needed, and **do not use an emulator** — MP1 spent ~75 minutes proving one will not boot on this hardware. A real phone over USB is faster and is the only thing that answers the question anyway.
+
+1. Install **JDK 21** (Capacitor 8 dies on JDK 17 with `invalid source release: 21`) and the Android **platform tools** (for `adb`).
+2. Build the app:
+
+   ```bash
+   cd mobile
+   npm install
+   npm run add:android
+   cd android
+   ./gradlew assembleDebug
+   ```
+
+   The APK lands at `mobile/android/app/build/outputs/apk/debug/app-debug.apk`.
+
+3. Turn on **Developer options → USB debugging** on the phone, plug it in, and install:
+
+   ```bash
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+4. Open the app on the phone. On the computer, open Chrome and go to **`chrome://inspect`**, then click **inspect** under the Foray app.
+5. **In that console, type `Capacitor` and press enter.** Report which you get:
+   - an object → **the bridge survived the CSP.** The risk is closed and the shell works as designed. Say so; it is the good outcome.
+   - `Uncaught ReferenceError: Capacitor is not defined` → **the bridge is blocked.** Also copy any error containing "Content Security Policy". This is the outcome that changes the shell's shape, and finding it here costs 45 minutes instead of a rejected store build.
+6. Either way, also say whether the four cards render and whether search works.
+
+**Worked if:** there is a comment on #36 quoting what `Capacitor` evaluated to in the Android console, plus any CSP error text verbatim.
+
+**Note added by #38 (2026-08-17) — iOS came out CLEAN, and that does not help you here.** `.github/workflows/ios-build.yml` booted the iOS Simulator and read `typeof window.Capacitor` off the real page under the real CSP: it is `object`, nine plugins registered, zero CSP violations. So on iOS the bridge survives.
+
+**That is not evidence about Android, and the difference is the whole point of this item.** WKWebView injects via `WKUserScript`, which runs outside the document's CSP — which is exactly why iOS was expected to pass. Android's WebView injects an **inline `<script>` into the served HTML**, where a `<meta>` CSP does apply. The iOS result confirms the *mechanism* explanation in `docs/mobile-shell.md` §5, and that explanation is precisely the reason to expect Android to behave differently. **This stays open**, and one console line on a phone still settles it.
+
+One iOS finding that does bear on your step 6, though: `navigator.serviceWorker` **does not exist at all** on `capacitor://localhost`, so the "app silently starts caching itself" half of the risk is impossible on iOS by construction. On Android the shell origin is `https://localhost`, where the API does exist — so that half of the concern is Android-specific too, and real.
+
+**Status:** OPEN
+
+---
+
+### 19. Get an Apple Developer account and add seven secrets, so CI can put a build on TestFlight
+
+**Tag:** `[BLOCKING]` for any iOS tester build · **Time:** ~20 minutes of clicking, plus up to 48 hours of Apple's review of the membership itself · **Owner:** whoever will own the Apple Developer Program membership · **Cost:** **$99/year** — this is a spend decision, so it is the founders' call and not an agent's (CLAUDE.md decision-authority item 3)
+
+**Why it matters.** #38 built the iOS build in CI, and **it works without any of this**: `.github/workflows/ios-build.yml` compiles the shell unsigned on every run, for both the simulator and a real device's architecture, and that is deliberate — an unsigned build that always runs is worth more than a signing job that never does. But an unsigned build **cannot be installed on a phone**. Everything past "it compiles" — TestFlight, a tester, the locked-screen test that items #11 and #16 actually want — needs an Apple identity, and no amount of engineering substitutes for it.
+
+**Decide first, in one line:** is $99/year worth spending now, or does iOS wait? If it waits, mark this `SKIP` with a few words and the workflow keeps doing the unsigned build; nothing breaks. Do **#15** (the permanent bundle id) before this either way — the App ID you register here is the one you live with.
+
+**Steps.**
+
+1. Join the Apple Developer Program at **`https://developer.apple.com/programs/enroll/`** ($99/year). Apple may take a day or two to approve.
+2. In **App Store Connect** (`https://appstoreconnect.apple.com`) → **Users and Access** → **Integrations** → **App Store Connect API** → **+**, create a key with the **App Manager** role. You get three things, and the `.p8` file **downloads exactly once**:
+   - the **Key ID** (10 characters)
+   - the **Issuer ID** (a UUID, shown above the key list)
+   - the file `AuthKey_<KeyID>.p8`
+3. In the developer portal → **Certificates, Identifiers & Profiles**:
+   - **Identifiers → +** → App IDs → App → Bundle ID **`com.jwincorporated.foray`** exactly (this is #15's value; if #15 rules differently, use that instead and say so here). Tick **Background Modes** under Capabilities.
+   - **Certificates → +** → **Apple Distribution**. Follow Apple's instructions to create the CSR, download the `.cer`, open it so it lands in your Keychain, then in **Keychain Access** right-click the certificate → **Export** → `.p12`, and set a password. Keep both the file and the password.
+   - **Profiles → +** → **App Store Connect** distribution profile for that App ID and that certificate. Download the `.mobileprovision`.
+   - Note your **Team ID** (10 characters, top right of the developer portal, or under Membership details).
+4. Base64-encode the three files. On a Mac:
+
+   ```bash
+   base64 -i Certificates.p12 | pbcopy
+   base64 -i Foray_AppStore.mobileprovision | pbcopy
+   base64 -i AuthKey_ABC1234567.p8 | pbcopy
+   ```
+
+5. At **`https://github.com/JW-Incorporated/foray/settings/secrets/actions`**, click **New repository secret** seven times and create **exactly these names** (the workflow reads these and no others — a typo means the gate reports the secret as missing):
+
+   | Secret name | Value |
+   |---|---|
+   | `IOS_DIST_CERT_P12_BASE64` | base64 of the `.p12` |
+   | `IOS_DIST_CERT_PASSWORD` | the password you set when exporting the `.p12` |
+   | `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the `.mobileprovision` |
+   | `APPLE_TEAM_ID` | your 10-character Team ID |
+   | `APP_STORE_CONNECT_KEY_ID` | the 10-character Key ID |
+   | `APP_STORE_CONNECT_ISSUER_ID` | the Issuer ID UUID |
+   | `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | base64 of the `AuthKey_*.p8` |
+
+6. Run the workflow: **`https://github.com/JW-Incorporated/foray/actions/workflows/ios-build.yml`** → **Run workflow**.
+
+**Two things to know before you start.**
+
+- **Set all seven or none.** The workflow deliberately **fails** when only some are set, rather than skipping the upload quietly — a green run with no build on TestFlight is the failure nobody notices for a release cycle. So if you get interrupted halfway, either finish or delete what you added.
+- **The upload path has never executed.** Every line of the archive/export/upload step is written from Apple's documentation, because no one here has ever had an account to test it against. Treat the first run as debugging, not as a release, and expect one or two fixes. Said plainly rather than discovered later.
+
+**Worked if:** a run of `ios-build` shows `state=ready` at the "Is signing configured?" step and a build appears in App Store Connect → TestFlight. If it gets as far as `altool` and then fails, that is the expected first-run outcome and the log is the useful part — paste it and a session will fix the step.
+
+**Status:** OPEN
+
+---
+
+### 20. Revoke one leaked anonymous Supabase session, and delete one CI artifact
+
+**Tag:** `[BLOCKING]` · **Time:** ~5 minutes ·
+**Owner:** Wyatt (it is a credential, so CLAUDE.md decision-authority item 2 puts
+it with a founder and not with an agent)
+
+**Why it matters.** The `ios-shell-evidence` artifact of run
+**32036295743** shipped the iOS Simulator's whole `localStorage` into a **public**
+repo, and `cp_sb_session` was in it, decodable. It contains:
+
+- an `access_token` — ES256 JWT, `role: authenticated`, `is_anonymous: true`,
+  one-hour lifetime, **already expired**;
+- a **`refresh_token`**, which does **not** expire on a timer and can be exchanged
+  for fresh access tokens until it is revoked. **This is the part that still
+  matters.**
+- the project ref `qjdllvqdcgacvujhclny` and the user id
+  `04ac9215-4acd-4067-8a1e-cf6797ace0f3`.
+
+Per this file's own item on deleting user data, `cp_sb_session` is the **only**
+credential that can reach that account's server rows. The blast radius is genuinely
+small — a throwaway anonymous account created by a Simulator on a CI runner, whose
+rows are a handful of probe events — but it is not zero while the refresh token
+lives, and "small" is not a reason to leave a live credential in public.
+
+**The leak itself is already fixed in the PR that files this** (the artifact now
+redacts every non-probe value and no longer uploads the raw SQLite store), so this
+item is *containment of the one that got out*, not a code change.
+
+**Steps.**
+
+1. In the Supabase dashboard for project **`qjdllvqdcgacvujhclny`**, open
+   **Authentication → Users**, find user **`04ac9215-4acd-4067-8a1e-cf6797ace0f3`**
+   (it will show as an anonymous user), and **delete** it. Deleting the user
+   revokes its refresh token, which is the point — signing it out alone may leave
+   the token usable depending on your session settings.
+2. **Then** delete the artifact: open
+   **`https://github.com/JW-Incorporated/foray/actions/runs/32036295743`** and use
+   the artifact's **⋯ → Delete** control on `ios-shell-evidence` (3.5 MB).
+   **ORDER MATTERS, AND SO DOES THE DELAY.** Do step 1 first — deleting the
+   artifact does not revoke anything, and anyone who already downloaded it still
+   has the token. And do not delete the artifact until `docs/ios-ci.md` §4c has
+   landed on `main`: right now that artifact is the **only** place the 9,153 ms seam
+   measurement exists, and deleting it first orphans every citation in these docs.
+3. While you are in the dashboard, it is worth confirming that **anonymous sign-in
+   is still intended to be enabled** (item #13's *first* verification note asks the
+   same question for a different reason).
+
+**Worked if:** requesting a token refresh with that `refresh_token` returns an
+error rather than a new session, and the run page shows no `ios-shell-evidence`
+artifact.
 
 **Status:** OPEN
 

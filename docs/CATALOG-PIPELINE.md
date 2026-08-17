@@ -78,6 +78,83 @@ minutes per full harvest. Expected yield: 110 genres × 200 ≈ 22k chart rows �
   rank are enough signal for the breadth tier until then.
 - **Editorial notes/hooks at scale** — reserved for what actually surfaces to users.
 
+## Classification layers and precedence
+
+`data/breadth-classification.json` is one file written by several passes. It has
+always behaved as a layered overlay; until 2026-08 that was only ever stated in a
+comment, and the bottom layer did not honour it.
+
+| Layer | `source` | Written by | Signal |
+|---|---|---|---|
+| base | `genre-map` | `tools/classify-breadth.mjs` | Apple genre only — deterministic, keyless, $0 |
+| distrusted overlay | `llm-title-genre` | the 2026-07 pass (retired) | title + genre, no description |
+| refinement | `classify-agent-tier1` | `tools/classify/` + a Claude Code agent | feed description + recent episodes |
+| escalation | `classify-agent-tier2` | ditto, `--mode escalate` | the above + a transcript excerpt |
+
+**Higher layers win.** The rules the base layer follows:
+
+1. A `classify-agent-*` entry is **never touched** — not overwritten, not
+   enriched, not re-sourced. It is a real per-show judgement and may legitimately
+   disagree with the genre (*The Dice Tower* is `gaming/design`, not the
+   `gaming/tabletop` its genre implies).
+2. Any other overlay is **enriched in place**, never replaced. The base layer
+   adds the child nodes that fix a branch the overlay left bare, and nothing
+   else. It does not restate the overlay's `confidence`, does not change its
+   `source`, and does not drop any other field it carries — it records what it
+   added in `enriched_by` / `enriched_nodes`. An entry whose `source` field is
+   *missing* is treated as an overlay too: an unrecognised layer is protected by
+   default, not by remembering to list it.
+3. Entries for shows outside the input catalog are carried through untouched.
+4. Provenance is merged, not replaced: `merge-results.mjs` owns the top-level
+   keys, this script writes `provenance.base_layer`.
+5. A genre-map topic that is not a taxonomy node aborts the run before anything
+   is written, naming the topic.
+
+**Why rule 2 is that narrow.** Two looser versions were measured and both were
+worse. **These three rows were measured on the pre-#205 file** (1,851 agent rows,
+12,563 genre-map), which is why the absolute numbers no longer match anything you
+can reproduce today — they are kept because what they establish is the *ordering*
+of the three rules, and that ordering is what rule 2 rests on:
+
+| Rule | Shows touched | Root-only pairs (on the 2026-08-16 file) |
+|---|---:|---|
+| replace on any strict superset | 2,021 | 9,741 → **10,502** (worse) |
+| …only if it fixes a bare branch | 352 | 9,741 → 9,089, but 179 new bare-root pairs rode along |
+| add only the fixing children (shipped) | 388 | 9,741 → **8,874**, no branch worse |
+
+The failure in the first two is the same: the map's topic list carries coarse
+*secondary* branches (`Games` carries `hobbies`, `Astronomy` carries `science`,
+`Social Sciences` carries psychology + society + economics), and writing the
+whole list bolts those onto shows that never asked for them. More tags, worse
+classification.
+
+**On the same file after #205 landed 19,278 agent rows**, the shipped rule touches
+26 rows rather than 388 — 17 `genre-map` and 9 `llm-title-genre` — because a real
+per-show judgement now covers the rest, and rule 1 forbids touching those. Its
+remaining value is per-item root-only **5,148 → 5,123**, plus every future
+`genre-map` row and the ~509 shows the fleet has not reached yet. Report the
+per-item figure, not the pair count: pairs rose 9,741 → 13,468 across the #205
+merge purely because agent rows name more branches, so the denominator grew.
+
+**On un-classification.** The structural protection is that `entries` starts as
+a copy of what is on disk and every write carries a non-empty `topics`, so a
+show cannot lose its tags. The script *also* asserts it and refuses to write —
+a belt-and-braces check on an unreachable path, kept because the failure it
+guards is silent: the file stays valid JSON, CI stays green, and shows simply
+lose their tags. The pass that made this concrete would have deleted 1,851
+agent-authored classifications on its next run — and because the fix sat unlanded
+on PR #198 while #205 merged the six shard branches, by the time it did land the
+same unfixed script would have deleted **19,278 agent rows and 6,758
+`superseded_topics`**. The cost of leaving a loaded gun in `tools/` grew by 10x in
+three weeks without anyone touching it. `test/data-topic-integrity.test.js` is the
+standing gate on the file itself.
+
+**Measuring it**: `node tools/classify/root-dumping-report.mjs` prints how much of
+each source sits on a bare branch that has children — the defect
+`docs/research/taxonomy-review-2026-08.md` §3.2 named. `--json` snapshots it;
+`--baseline <snapshot>` prints before/after. Take a snapshot before any
+re-classification, because "did it work?" is otherwise unanswerable after the fact.
+
 ## Breadth tier, batch 2 (international)
 
 `data/catalog-breadth-intl.json.gz` — 121,786 shows from 18 regional Apple top-chart

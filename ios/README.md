@@ -1,5 +1,42 @@
 # Foray — iOS
 
+> ## This is not the iOS app that ships. Read this box first.
+>
+> As of **2026-08-17** (issue **#36**, MP2) the shipping iOS app is a **Capacitor
+> shell around the web player**, and it lives in **`mobile/`** — see
+> `docs/mobile-shell.md`, which explains why in full. This directory is
+> **reference material plus one CI-tested Swift package**. It is deliberately not
+> moved or renamed; only its role changed.
+>
+> - **`ios/ForayKit/` is alive.** CI's `ios-kit` job runs `swift test
+>   --package-path ios/ForayKit` on a macOS runner, so this package really does
+>   compile and pass. `IntentGrammar.swift` (the Tier-1 voice grammar) exists
+>   **only** here — there is no JavaScript equivalent anywhere in the repo.
+> - **Two files are mirrored in JavaScript and must be changed together.**
+>   `ForayKit/Sources/ForayKit/PlayerQueueState.swift` ↔ `player/queue-state.js`,
+>   and `App/Player/PlayerQueueManager.swift` ↔ `player/queue-manager.js`. The
+>   port was deliberate and the two are meant to stay diffable by eye — see the
+>   header of `player/queue-state.js`. **Where they differ in status:**
+>   `PlayerQueueState` is tested on both sides (`PlayerQueueStateTests` here,
+>   `player/queue-state.test.js` there); `PlayerQueueManager` is tested **only** in
+>   JavaScript, and writing that port is what surfaced two real position bugs —
+>   which PR **#50** then fixed in this Swift (see AUDIT item 9 below, which cites
+>   issue #33, the port). So the Swift is not currently known-wrong; it is
+>   uncompiled by CI, which is a different and more permanent problem.
+> - **Nothing under `App/` is compiled by CI.** More decisively than any of the
+>   above: the machinery the product actually runs on — `foray-resolve`,
+>   `foray-queue`, `seam-gap`, `seek-policy`, `html-audio-backend`,
+>   `durable-store` — has **no Swift counterpart at all**. That, not the duplicated
+>   state machine, is why the web player is the host. Whether the Swift copies get
+>   retired belongs to **#28**.
+> - **Do not point `cap add ios` at this directory.** Capacitor's default output
+>   path is `ios`, which is why `mobile/capacitor.config.json` sets `ios.path`
+>   explicitly and `tools/mobile/shell-invariants.test.mjs` fails if the two ever
+>   resolve to the same place.
+> - **`PRODUCT_BUNDLE_IDENTIFIER` here is `com.wjduvall.foray`**, which predates
+>   the org. The shell uses `com.jwincorporated.foray`. They are different apps;
+>   this one has never been published.
+
 This was scaffolded on Windows, so **none of it has been compiled or run**.
 Every file was written with care for Swift/AVFoundation/SwiftUI correctness,
 and every spot where the exact behavior of an Apple API couldn't be

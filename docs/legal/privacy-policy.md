@@ -40,6 +40,10 @@ an ordered run of segments drawn from real podcast episodes.
   about our code, not a claim that nobody observes your playback — see §4.
 - **We do not sell or share your data**, and we do not track you across other
   companies' apps or websites.
+- **You can delete all of it from inside the app** — the menu's **Delete my
+  data**. It clears both storage layers on your device and deletes your rows on
+  our server, and it tells you if it could not. §7 is exact about what it reaches
+  and what it cannot.
 
 ---
 
@@ -156,6 +160,12 @@ That account contains **no name, no email address, no phone number and no
 password**. It is an opaque identifier. If you clear the app's storage, the token
 is gone and the app creates a new anonymous account the next time it needs one —
 the old rows remain but nothing on your device points to them any more.
+
+**That is exactly why the delete control in §7 deletes the rows first and the
+token second.** It also cuts the link deliberately: after a deletion the app
+starts a new anonymous account rather than re-attaching you to the old one. The
+old account row itself stays, because removing it needs an administrative key we
+do not ship in a public web page — §7 says so plainly.
 
 Because it is an ordinary network request, **Supabase necessarily observes the IP
 address it came from**, as any server does.
@@ -315,27 +325,63 @@ nothing.
 
 ## 7. How to delete your data
 
-**On your device.** Everything in §1 is cleared by clearing the app's site data.
-There is currently **no in-app "clear my data" button** — this is an honest gap,
-not an omission from this document.
+**Use the button.** Open the menu (☰) and choose **Delete my data**. The sheet
+lists what the deletion covers, and you confirm by typing `DELETE` (capitals
+optional) — one stray tap cannot trigger it.
 
-- **Web:** clear site data for the Foray origin in your browser's settings. This
-  removes all `cp_` keys from `localStorage`, the IndexedDB database `foray`, and
-  the `foray-v4` cache.
-- **iOS / Android app:** deleting the app removes its local storage.
+**What it deletes:**
 
-**On our server.** Clearing local storage discards your token, which stops the
-app writing anything further — but it does **not** delete rows already sent, and
-because the account is anonymous, a lost token cannot be recovered to reach them.
+- **Everything on this device.** Every `cp_` key in §1, in **both** places they
+  are kept: `localStorage` and the IndexedDB database `foray`. The control
+  enumerates the two stores and then re-reads them to check they are empty, so a
+  key added to the app in future is covered without anyone updating a list. If
+  either store refuses, or cannot be read to confirm, **the app tells you the
+  device is not fully clear** rather than claiming it is.
+- **Your rows on our server.** One authenticated `DELETE` per per-user table,
+  filtered to your own account id — the `events` rows in §2 (including any note
+  you typed), the account's own `app_users` row, and the other per-user tables the
+  database defines, whether or not they hold anything of yours. Row-level security
+  means the request can only ever reach your rows.
 
-The database policy is already permissive enough for a client to delete its own
-rows (the row-level-security policy is `for all`, covering delete), so this is a
-missing feature rather than a missing capability.
+**What it deletes in what order, and why that matters.** The server rows go
+first. Your token (`cp_sb_session`) is the only thing that can reach them, and
+clearing your device destroys it — so if the server cannot be reached, **the app
+tells you your rows were not deleted and leaves your device untouched** so you
+can try again. It will not report success for something it did not do. (If you
+would rather clear this device anyway, the sheet offers that as a separate
+choice, and says plainly that the server rows remain.)
 
-> TODO(founder): **decide whether to build a delete path**, and publish a data
-> deletion URL. Google Play's Data Safety form asks whether users can request
-> deletion and wants a URL; answering "yes" today would be false. See
-> `data-safety.md` § Security practices.
+**What it cannot delete, stated rather than implied:**
+
+- **The anonymous account row itself.** Deleting a Supabase auth user requires an
+  administrative key, which cannot ship inside a public web page. So the row
+  remains — with no name, email, phone number or password, and, after the
+  deletion, with no rows attached to it. What the button does do is **cut the
+  link**: your token and local id are deleted with everything else, so the app
+  creates a **new** anonymous account the next time it needs one rather than
+  re-attaching you to the old one. We are pursuing a server-side path to remove
+  the empty account row as well.
+- **Anything the publisher and their measurement services already saw.** §4 is
+  the detail: playing audio revealed your IP address and user-agent to the
+  publisher's host and to any prefix services in front of it. **We never received
+  that data and cannot delete it.** Their privacy policies govern it, not ours.
+- **Rows sent from a device whose storage you had already cleared.** Without that
+  token the account cannot be identified, so those rows cannot be reached — by
+  you or by us. This is the cost of having no signup, and it is the reason to use
+  the button rather than the browser's site-data screen.
+
+**Clearing site data still works** and is the belt to this braces — in your
+browser's settings for the Foray origin (web), or by deleting the app (iOS /
+Android). It removes the local copies but **not** the server rows, for the reason
+in the paragraph above.
+
+The `foray-v4` Cache Storage bucket is not touched by the button: it holds the
+app shell and the catalogue files (§1), which are the same for every listener and
+say nothing about you.
+
+> TODO(founder): publish a **data-deletion URL** for the store listings. The
+> in-app control answers Play's "can users request deletion" question, but the
+> form also wants a public web page describing it — see `data-safety.md` § A8.
 
 ## 8. Changes to this policy
 

@@ -55,6 +55,13 @@
        causing the defect it fixes.
      - `navigator.storage.persist()` is requested once, and a refusal is
        recorded rather than treated as an error. Nothing below branches on it.
+
+   ── Deleting all of it (#42) ──────────────────────────────────────────────
+   The store's `purge()` is what app.js's "delete my data" control calls, so the
+   same published object is both halves of the promise: it is where a listener's
+   state becomes durable, and where it stops existing. This module's own
+   contribution is `stopForDataDeletion()` — a stop that persists nothing, because
+   a player left running writes a position back one tick after the clear.
 */
 
 import { PlayerQueueManager } from "./queue-manager.js";
@@ -535,11 +542,20 @@ async function setRunning(want) {
   persistForayProgress({ force: true });
 }
 
-/** Take the player off screen and out of the OS's now-playing slot. */
-async function stopAndClose() {
+/**
+ * Take the player off screen and out of the OS's now-playing slot.
+ *
+ * `persist: false` exists for exactly one caller — the "delete my data" control
+ * (#42). Every other stop flushes the resume point, and must: closing the bar is
+ * "get this off my screen", not "I am done with this Foray". A stop that flushed
+ * on the way into a deletion would write the row back one tick after it was
+ * deleted, and the listener would be told their data was gone while their place
+ * in the hour sat in both tiers.
+ */
+async function stopAndClose({ persist = true } = {}) {
   // Closing the bar is not "I am done with this Foray", it is "get this off my
   // screen". Keep the resume point; the only thing that clears it is finishing.
-  persistForayProgress({ force: true });
+  if (persist) persistForayProgress({ force: true });
   await manager.stop();
   if (media) media.release();
   ui.root.hidden = true;
@@ -777,9 +793,17 @@ function ensureBooted() {
   backend.setRate(rate);
   ui.rateBtn.textContent = `${rate}×`;
 
-  backend.el.addEventListener("timeupdate", render);
-  backend.el.addEventListener("play", render);
-  backend.el.addEventListener("pause", render);
+  /* `addMediaListener`, NOT `backend.el.addEventListener`, and this is not a
+     style preference. The backend now owns two `<audio>` elements and hands the
+     player role between them at every cross-episode seam
+     (`html-audio-backend.js` §"prefetch"). A listener bound to one element
+     directly is left attached to a paused, src-less element from the first seam
+     onwards — the transport would keep playing and this surface would silently
+     stop repainting for the rest of the Foray, with no error anywhere. The
+     backend migrates anything registered this way. */
+  backend.addMediaListener("timeupdate", render);
+  backend.addMediaListener("play", render);
+  backend.addMediaListener("pause", render);
 }
 
 /* ---------- public surface ---------- */
@@ -996,6 +1020,22 @@ const ForayPlayer = {
       rather than assume nothing is playing. */
   forayStatus() {
     return forayStateSnapshot();
+  },
+
+  /**
+   * Stop everything and write NOTHING — the first step of "delete my data"
+   * (#42, `app.js`'s `deleteMyData`).
+   *
+   * A running player writes a position roughly every 15 seconds and a Foray
+   * resume row with it, so a clear that ran underneath live playback would be
+   * undone by the next tick — a success message over restored data, which is the
+   * one outcome a delete control must never produce. Nothing booted is not an
+   * error here: no element, no queue, nothing writing.
+   */
+  async stopForDataDeletion() {
+    if (!manager || !ui) { foray = null; return false; }
+    await stopAndClose({ persist: false });
+    return true;
   },
 
   /** Re-point the change callback at a freshly rendered page. */

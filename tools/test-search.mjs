@@ -16,9 +16,15 @@
         real catalog coverage, every one of the checked top results must
         carry the query's actual subject (a tag, title, or show substring
         we specify per case) -- if this fails, junk is leaking into results.
-     3. Honest empty: for topics the catalog genuinely doesn't cover (an
-        NBA team by name), status must be "empty" -- never a padded list of
-        unrelated filler.
+     3. Honest coverage: for topics the catalog genuinely doesn't cover (a
+        basketball team by name, or a sport it barely mentions), status must
+        be "empty" -- never a padded list of unrelated filler. For a topic
+        whose coverage is real but THIN, the empty claim is gated on coverage
+        counted from the catalog rather than pinned to a tier label (see the
+        "nba" case), because the nightly refresh grows the catalog by design
+        and a hard-coded tier breaks the moment it does. What is asserted
+        UNCONDITIONALLY there is purity: whatever comes back must name the
+        subject.
      4. Diversity: no single show dominates a result, EXCEPT when the
         catalog genuinely can't diversify (a single-show topic like bbq, or
         a direct show-name query like "smartless") -- there the honest
@@ -43,15 +49,24 @@
         fiction/audio-drama. Coverage-gated throughout -- topics with no
         real catalog content (e.g. gardening, chess: verified zero tag
         hits despite the coverage report listing them) got no concept.
-     9. `sports` concept cleanup: zero-coverage league/team terms (nba,
+     9. `sports` concept cleanup: near-zero-coverage league/team terms (nba,
         basketball, baseball, tennis, ...) removed so a bare "nba"/
         "basketball" query no longer floods in generic sports-science
-        content and instead stays honestly empty -- verified via the
-        validator's new zero-coverage-term WARN (tools/validate-semantic-
-        index.mjs), which flagged exactly these two as strictly zero
-        (tagDF=0 AND corpusDF=0); the rest were removed by hand after
-        direct verification they're negligible (tagDF<=1, i.e. one
-        tangential mention for an entire league name).
+        content and instead returns only items that name the league
+        themselves -- ONE item for "nba" before the 2026-08-17 refresh, two
+        after it (see §3) -- verified via the validator's zero-coverage-term
+        WARN (tools/validate-semantic-index.mjs), which flagged `basketball`
+        as strictly zero (tagDF=0 AND corpusDF=0); `nba` and the rest were
+        removed by hand after direct verification they're negligible
+        (tagDF<=1, i.e. one tangential mention for an entire league name).
+        Corrected 2026-08-17: this said the WARN flagged "exactly these two"
+        as strictly zero. It flagged one. Re-measured at the cleanup commit
+        itself (040c9f6): `basketball` tagDF=0/corpusDF=0, but `nba`
+        tagDF=1/corpusDF=0.00102 -- it was always the hand-removed,
+        one-tangential-mention case the next clause describes, and pretending
+        it was strictly zero is what made "no NBA content in catalog" look
+        true enough to assert in §3 for the 24 days between 040c9f6
+        (2026-07-24) and the refresh that broke it.
 
    Usage: node tools/test-search.mjs
    Exit code 0 = all pass, 1 = at least one failure (readable report to stdout). */
@@ -115,14 +130,36 @@ function search(query, opts) {
   return { status, picks, interp, results };
 }
 
-/* True if item's tags/title/show/topics contain `needle` (case-insensitive
-   substring on the combined text, or an exact tag hit). */
+/* True if item's tags/title/show/hook/topics contain `needle`.
+ *
+ * THE ORACLE MUST NOT BE LOOSER THAN THE RANKER IT GRADES. Two ways this was,
+ * both fixed 2026-08-17, and the second was found by review after the first fix
+ * was already written:
+ *
+ *   1. It could not see `hook`, which `scoreMatch` scores at +1.5. An oracle
+ *      blind to an input its subject reads is measuring the wrong object.
+ *   2. It matched with a bare `text.includes(needle)` while the ranker uses a
+ *      collision guard. So the oracle admitted `software`, `toward`, `warm` and
+ *      `Warner` as "war"; `romance` as "roman"; `confusion` as "fusion" — and
+ *      the last two are collisions this file separately asserts the RANKER must
+ *      not make (see the substring-collision checks below). The oracle was
+ *      contradicting its own test file.
+ *
+ * Both are fixed by sharing the ranker's matcher instead of reimplementing it:
+ * `hitText`/`hitTag` are now exported from search-engine.js. Reimplementing them
+ * here is what allowed the two to drift in the first place, so don't.
+ *
+ * Net effect on the whole `fullPool()` (1,516 items — NOT `discover.items`, which
+ * is 1,489 and misses 27 session episodes; see fullPool's comment), summed over
+ * the 51 topical needles: 1,292 -> 1,246. A NARROWING of 46, despite gaining a
+ * whole new field, because the collision guard removes more than `hook` adds. */
 function itemHas(item, needle) {
   const n = needle.toLowerCase();
   const tags = itemTags.tags?.[item.id] || [];
-  if (tags.some((t) => t.includes(n))) return true;
-  const text = [item.title, item.show, (item.topics || []).join(" ")].join(" ").toLowerCase();
-  return text.includes(n);
+  if (tags.some((t) => SE.hitTag(t, n))) return true;
+  const text = [item.title, item.show, item.hook, (item.topics || []).join(" ")]
+    .join(" ").toLowerCase();
+  return SE.hitText(text, n);
 }
 
 function showCounts(picks) {
@@ -227,17 +264,210 @@ for (const c of topicalCases) {
     `off-topic: ${offTopic.map((p) => `${p.i.id} "${p.i.title}"`).join(", ")}`);
 }
 
-/* ---------- 3. honest empty for genuinely-absent topics ---------- */
+/* ---------- 3. honest coverage for absent and thin topics ---------- */
 
-/* "nba"/"basketball" join this list in PR2 -- before the `sports` concept
-   cleanup, a bare "nba" query flooded in generic sports-science content
-   (the one real "nba"-tagged item is about an NBA performance coach's
-   biomechanics, not the league) via full concept-vocabulary expansion.
-   With the zero-coverage league terms removed, it's honestly empty. */
-for (const query of ["the lakers", "warriors", "nba", "basketball"]) {
+/* "nba"/"basketball" joined this list in PR2 -- before the `sports` concept
+   cleanup, a bare "nba" query flooded in generic sports-science content via
+   full concept-vocabulary expansion. With the near-zero-coverage league terms
+   removed, only items naming the league themselves can match. ("nba" has
+   since left this list and become a coverage-gated case of its own, directly
+   below -- the catalog grew real NBA content on 2026-08-17.)
+   The team names stay genuinely absent, and both collide with ordinary prose
+   ("warriors" reaches an episode of The Ancients about Scotland's first
+   warriors; and "team" reaches "steam", the §6 collision case below), so
+   anything returned here would be filler by construction.
+   `basketball` stays here too, for a reason worth writing down: exactly ONE
+   item in the pool carries the word (Freakonomics' Gary Gulman episode,
+   which mentions basketball in passing in a comedy/mental-health hook), and
+   one result can never clear classifyResults' two-strong-matches floor. The
+   2026-08-17 refresh's real NBA episode is tagged `nba`, not `basketball`,
+   so it does not change this -- a tagging gap, deliberately left to the
+   catalogue owner rather than patched from inside the oracle. */
+for (const query of ["the lakers", "warriors", "basketball"]) {
   const { status, picks } = search(query);
-  check(`"${query}" is honestly empty (no NBA-team content in catalog)`, status === "empty" && picks.length === 0,
+  /* The reason is "fewer than two catalog items name it", NOT "no such
+     content exists" -- `basketball` names one. Stating the mechanism in the
+     label is the whole lesson of the "nba" case below. */
+  check(`"${query}" is honestly empty (fewer than two catalog items name it)`, status === "empty" && picks.length === 0,
     `got status=${status}, picks=${picks.length}`);
+}
+
+/* "nba" was in that list until the 2026-08-17 nightly refresh (+24 episodes,
+   PR #214) turned it red -- and the label it carried there, "no NBA-team
+   content in catalog", was already wrong before that. What actually kept the
+   query empty was classifyResults' floor: it returns "empty" whenever fewer
+   than two results clear the relative strong bar, and the catalog held
+   exactly ONE item naming the league (Just Fly Performance Podcast 515, an
+   NBA performance coach on tendon biomechanics -- tagged `nba`, "NBA" in its
+   hook). The refresh added a second and squarely on-topic one (Happier's
+   Jalen Brunson episode -- tagged `nba`, "NBA" in both title and hook), which
+   flipped the query empty -> sparse with 2 picks. NEITHER pick is a ranker
+   false positive: both name the league in prose a listener reads, and both
+   match through the same `hitTag`/`hitText` the ranker scores with.
+
+   So it becomes a real topical case -- split into the two claims the old
+   one-liner had fused together, because they do not deserve the same
+   treatment:
+
+   PURITY, asserted unconditionally: whatever comes back must name the
+   league. This is the half with teeth, and the half the old guard was really
+   protecting. Verified by reproduction, not by argument: re-adding
+   `nba`/`basketball` to the `sports` concept in data/semantic-index.json
+   recreates the pre-cleanup flood, and this check fails loudly on it -- 9
+   off-topic picks of 10 on main's pool, 8 of 10 on the 2026-08-17 refresh's,
+   and they are not all sports science either: "The Fascist World Cup:
+   Mussolini's Football Dictatorship", "Can the LA Olympics in 2028 be a
+   catalyst for clean energy", "The Non-BS Science of Manifestation". Ungated
+   on purpose: it is trivially true when nothing comes back, so it costs
+   nothing in the empty world, and an ungated check cannot be switched off by
+   a gate that guesses wrong.
+
+   HONEST EMPTY, gated on coverage counted from the catalog: below
+   classifyResults' two-strong floor the honest answer is nothing at all.
+   Gated rather than pinned to a tier, because a pinned tier is exactly what
+   broke -- three times in nine days, twice as a pinned tier ("how bbq works"
+   2026-07-30, "plane crashes" 2026-08-06) and once as a pinned pick count
+   (bbq again, 2026-07-29 -- see §4). The nightly grows the catalog by
+   design. Assert the behaviour, never the count.
+
+   THERE IS DELIBERATELY NO RECALL ASSERTION -- no "2 items name the league,
+   so search must show them". It was written, and it was a landmine: the
+   strong bar is RELATIVE (results[0].sum * STRONG_RATIO), so a second item
+   whose only mention is its `nba` tag scores 2.5 x 1.35 = 3.375 against a bar
+   of 4.05 and classifyResults correctly returns empty. Deleting one "NBA"
+   from one hook -- one nightly hook-authoring edit -- turns that into a red
+   battery over behaviour that is working as designed. No static predicate can
+   forecast a relative bar, so a recall claim here can only ever be a tripwire
+   on correct behaviour. Whether search should hide real coverage this way is
+   a genuine question; it belongs in an issue against classifyResults, not in
+   a nightly-blocking assertion.
+
+   `nba` is the whole needle set on purpose. The query is one token, it
+   expands to no concept (interpretQuery yields a single own-source term), so
+   `nba` is the only thing that can match. Adding `basketball` would be worse
+   than dead weight: if someone later re-adds `nba` to a concept that also
+   carries `basketball`, a `basketball` needle would let the flood's own
+   filler satisfy the purity check and mask the exact regression it exists to
+   catch. */
+{
+  const needle = "nba";
+  /* SELF-CONTAINED, and it has to be. This started as
+     `itemHas(i, needle) || nbaWord.test(hook)`, which was wrong in a way worth
+     recording: the word boundary guarded the hook clause and NOTHING else,
+     because itemHas() matches tags/title/show/topics by bare substring -- and
+     those are the fields that dominate the count. So the predicate over-counted,
+     and over-counting is the dangerous direction: it switches the gate OFF.
+     One plausible refresh does it. A Flight Safety Detectives episode titled
+     "NBAA Business Aviation Convention" -- NBAA is the National Business
+     Aviation Association, that show is ALREADY in the catalog (it is the one §2
+     credits for the plane-crashes flip), and `"nbaa".includes("nba")` is true --
+     takes `covered` 1 -> 2, deactivates the honest-empty claim, leaves purity
+     vacuous at 0 picks, and the battery then asserts NOTHING about "nba" while
+     staying green. Not a contrived mutation; one nightly away.
+     So it mirrors hitTag/hitText's `length < 4` branches itself rather than
+     borrowing half of one: tags by exact-or-hyphen-segment, prose by word
+     boundary. It also reads `hook`, which itemHas() does not (§2) but
+     scoreMatch() scores at 1.5 x 1.35 = 2.025 -- a hook-only mention would
+     otherwise be invisible to the count and fully visible to the ranker, and the
+     catalog already holds an item in that shape (the Gary Gulman episode names
+     basketball only in its hook). Widening the shared itemHas() instead would
+     loosen every §1/§2 on-topic check, a separate decision with a 51-needle
+     blast radius.
+     `show` is deliberately NOT read. scoreMatch weights a show hit at 1.0,
+     below the 1.2 per-group threshold, so an item whose ONLY league mention is
+     its show name can never reach `results` at all -- counting it would inflate
+     `covered` and switch the gate off for an item the ranker will never return,
+     which is the NBAA failure in a different costume. No catalog show currently
+     contains the word, so this is prophylactic.
+     COLLAPSE THIS INTO THE SHARED MATCHER once search-engine.js exports
+     hitText/hitTag. PR #211 does exactly that -- and its rewritten itemHas is
+     already equivalent to this predicate, so the collapse is a pure deletion,
+     not a re-derivation. It is open and carries `needs-founder`, so it is
+     waiting on founder action rather than on any work. The duplication is the
+     price of not exporting them and should be paid back, not kept. */
+  const nbaWord = new RegExp("\\b" + needle + "\\b");
+  const taggedLeague = (i) => {
+    const tags = itemTags.tags?.[i.id] || [];
+    return tags.some((t) => t === needle || t.split("-").includes(needle));
+  };
+  const titleHit = (i) => nbaWord.test(i.title.toLowerCase());
+  const topicsHit = (i) => nbaWord.test((i.topics || []).join(" ").toLowerCase());
+  const namesLeague = (i) =>
+    taggedLeague(i) ||
+    nbaWord.test([i.title, i.hook, (i.topics || []).join(" ")].join(" ").toLowerCase());
+
+  const covered = pool.filter(namesLeague).length;
+  const { status, picks, results, interp } = search(needle);
+
+  const offTopic = picks.filter((p) => !namesLeague(p.i));
+  check(`"nba" returns only items that name the league`, offTopic.length === 0,
+    `got status=${status}, picks=${picks.length}; off-topic: ${offTopic.map((p) => `${p.i.id} "${p.i.title}"`).join(", ")}`);
+
+  /* RETRIEVAL, asserted on the RAW `results` array rather than on `picks`, and
+     that distinction is the whole reason this can exist at all. `results` is
+     what searchWithRelaxation returns: gated on the primary token and
+     `sum > minScore`, sorted, untruncated, and computed BEFORE classifyResults
+     derives its relative `bar`. So this structurally cannot reproduce the
+     landmine that got the old recall assertion deleted -- no relative bar is
+     involved, and an item's presence here does not depend on how well any OTHER
+     item scored. (It also passes `passesFilters`, vacuous here since a bare
+     "nba" carries no duration/format modifier, and never takes a relaxation
+     branch for the same reason.)
+     Restricted to STRONG-signal items, and the floor is DERIVED, not hard-coded,
+     because scoreMatch's df multiplier is itself a function of catalog size:
+     `best * (df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75)`, where df is tagDF("nba")
+     -- exactly the quantity the nightly grows. At 1.35 a tag hit is 3.375,
+     topics 4.05, title 2.7, all clear of minScore 2. But at df=11 the
+     multiplier drops to 1 and a title-only item scores EXACTLY 2.000, which the
+     strict `sum > minScore` gate rejects -- so a hard-coded field list would
+     start false-reding on pure catalog growth and blame "a scoring regression".
+     That is the failure this whole case exists to eliminate, so the field list
+     is filtered by the tier actually in force. Fields sum, so a single field is
+     a floor on the score, never a ceiling.
+     Deliberately excluded at every tier: show-only (1.0, which never clears the
+     1.2 per-group threshold, so it is not retrievable by design) and hook-only
+     (2.025, which clears minScore by 1.25% and would become a false red the day
+     that constant moves).
+     HONEST ABOUT ITS REACH, because it is easy to overrate. The suite catches
+     the flood below by other means too, so this is not the only net. On the real
+     pools it would NOT catch #219-style matcher drift: break hitTag's short
+     branch and both real items keep prose hits (Chris Chase falls to hook-only
+     2.025, still retrieved), so this check stays green -- while on the refresh's
+     pool that same drift silently flips the query sparse -> empty and the whole
+     battery still passes, because the loss happens at the relative bar this file
+     deliberately refuses to assert. It earns its place in one specific state:
+     when `covered` is wrong and purity is vacuous, it is the only thing left
+     asserting anything at all about this query. */
+  const dfMult = (() => {
+    const df = interp.groups[0]?.df ?? 0;
+    return df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75;
+  })();
+  const strongFields = [[2.5, taggedLeague], [3, topicsHit], [2, titleHit]]
+    .filter(([weight]) => weight * dfMult > 2);
+  const stronglySignalled = pool.filter((i) => strongFields.some(([, hit]) => hit(i)));
+  const unretrieved = stronglySignalled.filter((i) => !results.some((r) => r.i.id === i.id));
+  check(`"nba" retrieves every item carrying a signal strong enough to clear minScore alone`,
+    unretrieved.length === 0,
+    `${stronglySignalled.length} item(s) qualify at df multiplier ${dfMult}; never reached the result set: ${unretrieved.map((i) => `${i.id} "${i.title}"`).join(", ")} -- each clears minScore on one field alone, so a miss is a scoring or gating regression, not a tiering choice`);
+
+  if (covered < 2) {
+    check(`"nba" is honestly empty (only ${covered} catalog item(s) name the league, below the two-strong floor)`,
+      status === "empty" && picks.length === 0,
+      `got status=${status}, picks=${picks.length} -- if these picks DO name the league, the coverage count above is what is wrong, not the engine`);
+  }
+  /* THE GATE STILL HAS A DATA-ONLY OFF-SWITCH, and saying so is the point of
+     writing it down. Closing the NBAA hole closed the SUBSTRING route, not every
+     route. Two ordinary hook mentions of the league (say a Business Breakdowns
+     episode pricing an NBA jersey patch) take `covered` to 3 on main's data while
+     scoring 2.025 each -- under a 2.700 bar set by the one tagged item, so
+     `results` has three entries, `classifyResults` returns empty, and the gate
+     switches off against 0 picks. `covered >= 2` is a proxy for "two items could
+     clear the RELATIVE strong floor", and a proxy is all it can be: gating on the
+     strong-signal count instead just trades this for a false red when three
+     hook-only items arrive with no dominant tagged one. That is the same trade
+     that got the recall assertion deleted, taken the same way -- prefer silence
+     to a nightly-blocking assertion over correct behaviour -- and the retrieval
+     check above is what keeps that silence from being total. */
 }
 
 /* ---------- 4. diversity: no show dominates, except where honesty requires it ---------- */

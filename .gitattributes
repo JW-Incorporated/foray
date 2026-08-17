@@ -16,3 +16,22 @@
 tools/segments/fixtures/** -text
 tools/transcribe/fixtures/** -text
 backend/fixtures/** -text
+
+# STATE.md is the cross-session coordination board, and it is a conflict magnet:
+# every agent appends a workstream entry to the same "Active workstreams"
+# section, so two branches opened the same day almost always collide there.
+#
+# On 2026-08-16/17 that silently stalled three PRs — #192, #206 and #198 — each
+# sitting DIRTY while looking identical to a PR merely waiting on CI, because
+# nothing alerts on a conflicted PR. Every resolution was the same: keep both
+# entries, since neither supersedes the other.
+#
+# `merge=union` makes git do exactly that automatically for additive hunks.
+#
+# The limit, stated because it is real: union is right for append-only files and
+# wrong for restructuring. When an entry MOVES (Active -> Completed), union can
+# keep both copies rather than the move. That produces a visibly duplicated
+# entry, not a silent data loss, and a duplicated heading in a coordination doc
+# is a far cheaper failure than three PRs stalling unnoticed. If a restructure
+# is ever conflict-heavy, resolve that one by hand.
+STATE.md merge=union
