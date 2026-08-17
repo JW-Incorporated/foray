@@ -501,7 +501,40 @@ segments and 22.6 % of runtime, `bbqrn-argentina-open-fire` 25.0 % / 23.7 %,
 `bbqc-moss-school` 25.0 % / 23.6 %, `moreish-jerk-jamaica` 12.5 % / 22.6 %,
 `satay-okay-e01-satay-myth` 12.5 % / 7.6 %.
 
-### 8a. Seams, and why fewer is better right now
+### 8a. Three tier-A rules the checker does not implement, and one of them bites
+
+"`check-forays.mjs` passes cleanly" is not the same claim as "every tier-A rule
+holds", and the difference matters here. §9 of `segment-length-rules.md` lists
+**M1, M2, M5 and M6** as assembly-tier rules, three of them marked mechanical, and
+**none of the four is implemented in `check-forays.mjs`**. They were checked by hand
+for this Foray, and one is not satisfied.
+
+Same-episode seams, with the span of source episode each one elides:
+
+| seam | elides | verdict |
+|---|---|---|
+| `ORI-1` → `ORI-2` | 378.4 s (6.3 min) | **M6 — narration required, silence is not sufficient** |
+| `ARG-1` → `ARG-2` | 157.2 s (2.6 min) | M2 — flag, wants a `keep_separate_reason` |
+| `MOSS-1` → `MOSS-2` | 55.2 s (0.9 min) | M2 — flag, wants a `keep_separate_reason` |
+
+M1 (a gap under 45 s must be merged rather than left as two segments) is satisfied
+everywhere; the tightest seam is 55.2 s. M5 (a same-episode seam must be marked) is
+satisfied by `player/seam-gap.js`, which ships 2.0 s at every unbridged seam.
+
+**The M6 case is mine and it is a direct consequence of a correct editorial
+decision.** In `grilling-history-1` the two beat-1 segments were separated by
+`#448`, so neither gap exceeded 2.5 minutes. Refusing `#448` as padding — §2 — puts
+6.3 minutes of elided conversation into a single seam, and M6's whole point is that
+past five minutes silence stops being an honest signal: the listener needs to be
+told the conversation moved. So the right resolution is not to re-admit the padding;
+it is to write the bridge. §9 carries it as a publication gate.
+
+Recording this rather than leaving it is the point. A rule that no tool enforces and
+no document mentions is a rule that is already broken — `grilling-history-1` has
+carried an unmarked 12.6-minute elision at `TRA-1` → `TRA-2` since it was assembled,
+which nothing has ever reported.
+
+### 8b. Seams, and why fewer is better right now
 
 **Cross-episode seams drop from 16 of 31 to 4 of 7.** #224 is open and unfixed: the
 screen-off seam handover discards a prefetch at the boundary, and the fallback load
@@ -521,8 +554,8 @@ editorial rule.
 
 ## 9. Before this is published
 
-`status` is `draft` deliberately. Four things should happen first, and the first is
-a gate rather than a suggestion.
+`status` is `draft` deliberately. Five things should happen first, and the first
+two are gates rather than suggestions.
 
 1. **Beat 23 needs narration supplying the seating, or `MOSS-1` should be cut.**
    As shipped, that segment is the harmony version of the civic barbecue — the
@@ -531,15 +564,20 @@ a gate rather than a suggestion.
    Publishing without the narration ships the exact reading beat 23 exists to
    refute. If the narration cannot be written, cut `MOSS-1` and accept that
    `check-forays.mjs` will then need the Foray re-solved.
-2. **Rule on the three spine questions stage 2 raised**, because two change what
+2. **`ORI-1` → `ORI-2` needs a bridge, not silence.** That seam elides 6.3 minutes
+   of the source conversation, which is past M6's five-minute line, and no tool in
+   the repo enforces M6 (§8a). One sentence saying the conversation moved is
+   enough; 2.0 s of silence is not, and unmarked it will sound like a jump cut in
+   the stretch the founder already said was the good part.
+3. **Rule on the three spine questions stage 2 raised**, because two change what
    narration says: beat 27's mustard trace (recommend: revise to a disputed
    origin — the Foray's own best speaker rejects the settlement claim), whether the
    19th-century westward diffusion deserves a beat between 19 and 23, and whether
    §6b should acknowledge that Santa Maria and California are omitted.
-3. **Write the narration to the beats, with a gate on it.** 34 of 40 beats are
+4. **Write the narration to the beats, with a gate on it.** 34 of 40 beats are
    narration. Prose always sounds on-topic, which is why it is the likeliest place
    for #226 to recur in a form that is harder to hear.
-4. **Decide whether a fragment this shaped should be published at all**, as
+5. **Decide whether a fragment this shaped should be published at all**, as
    opposed to kept as a draft for player testing. §1 is the honest description and
    it is not a flattering one.
 
