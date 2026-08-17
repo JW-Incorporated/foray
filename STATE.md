@@ -95,8 +95,8 @@ docs/. Completed workstreams move to their plan doc's retro section.
   guarded service-worker registration at the very end of the file),
   `index.html` (one CSP token), `test/suite-integrity.test.js` (two FLOORS
   entries), `ios/README.md` (a status box at the top), `CLAUDE.md` § Layout,
-  `docs/DECISIONS.md`, `HUMAN-ACTIONS.md` (new items **#13**, **#14**, **#15**,
-  **#16**),
+  `docs/DECISIONS.md`, `HUMAN-ACTIONS.md` (new items **#15**, **#16**, **#17**,
+  **#18**),
   this file. **Untouched on purpose:** `sw.js`, `data/**`, `player/**`,
   `backend/**`, `.github/**`.
 - **THE `ios/` VERDICT — READ THIS BEFORE YOU TOUCH ANYTHING iOS.** `ios/` is now
@@ -178,16 +178,68 @@ docs/. Completed workstreams move to their plan doc's retro section.
   installed locally. Every claim about a *running* app is unverified, and the CSP
   change specifically is reasoned from WebKit's scheme behaviour rather than
   observed. Committing a few hundred unverifiable generated native files was
-  rejected; a founder runs one command on a Mac instead (`HUMAN-ACTIONS.md` **#14**).
+  rejected; a founder runs one command on a Mac instead (`HUMAN-ACTIONS.md` **#16**).
 - **Heads-up — bundled data is FROZEN at build time.** Nothing in the shell
   re-fetches data, so a shipped app would show its build day's session forever.
   That is #40's remaining half and it is now a named release gate
-  (`HUMAN-ACTIONS.md` **#15**).
+  (`HUMAN-ACTIONS.md` **#17**).
 - **This PR waits for a founder and that is expected.** It touches `ios/`,
   `CLAUDE.md`, `docs/DECISIONS.md`, `index.html` and `mobile/` — `CLAUDE.md` and
   `docs/DECISIONS.md` are auto-merge **DENIED**; the rest are simply unlisted. No
   `hold` label needed.
 - **Related:** #36, #34, #35 (the spike that shaped it), #28, #27, #40, #38.
+### delete my data — the control Play's deletion question needs (2026-08-17, one PR, no follow-up)
+
+- **What:** `feat/delete-my-data`, issue **#42 (MP8)**. The menu now carries
+  **Delete my data**: it clears **both** local tiers and deletes the account's rows
+  on the server, or says plainly that it could not. `docs/legal/data-safety.md`
+  §A7 flips from **No** to **Yes**, which was the one answer in that file that
+  blocked a store submission.
+- **New files:** `test/data-deletion.test.js` (37 tests). **Shared files it
+  touches:** `app.js` (the § delete my data block + one line in `init()`),
+  `player/durable-store.js` (`purge()`), `player/client.js`
+  (`stopForDataDeletion()`, and `stopAndClose({ persist })`), `styles.css`,
+  `player/durable-store.test.js` (+11), `player/foray-playback.test.js` (+1),
+  `test/suite-integrity.test.js` (one new floor, two raised, isolated final
+  commit), `docs/legal/{privacy-policy,data-safety}.md`, `HUMAN-ACTIONS.md`
+  (#13 step 6 answered, new **#14**), this file. **Nothing in `data/`, nothing in
+  `tools/`, nothing in `index.html`, nothing in `sw.js`, nothing in `backend/`.**
+- **Heads-up — the ORDER is the feature, and it is easy to "tidy" backwards.**
+  Remote rows go first, local second. `cp_sb_session` is the only credential that
+  can reach those rows, so clearing local first would strand them permanently. A
+  remote failure therefore STOPS the run with the device untouched, reports "your
+  server rows were NOT deleted", and offers a separate device-only clear that says
+  the rows remain. There is deliberately no success wording on that path.
+- **Heads-up — the key list is DERIVED, in the code and in the tests.**
+  `DurableStore.purge()` enumerates the tiers (not the facade — `length`/`key(i)`
+  hide `cp_storage_health`) and re-reads them afterwards; `unverified` records a
+  tier it could not read, because "I could not look" is not "it is empty". The
+  suite scans the shipped source for `cp_` literals, requires all 20 families to
+  be cleared, and pins them against the privacy policy's §1 table in **both**
+  directions. Add a 21st key and CI fails until the policy documents it.
+  `SB_USER_TABLES` is pinned against the RLS migration the same way.
+- **Heads-up — the anonymous ACCOUNT is not deleted, on purpose.** An `auth.users`
+  row needs the Admin API and a service-role key, which cannot ship in a public
+  page (CLAUDE.md item 2). Every row keyed to it is deleted and the token is
+  discarded, so the next event creates a NEW anonymous user rather than
+  re-attaching. Removing the empty shell is `HUMAN-ACTIONS.md` **#14** (a
+  `security definer` RPC); the client call is ~10 lines when it exists.
+- **Heads-up — the control is BUILT IN JS, not in `index.html`.** Same reason
+  `player/client.js` builds the mini-player: `index.html` is not auto-merge
+  allowlisted, and this should not need a founder merge. The drawer button is
+  appended to `#drawer`; the sheet is appended to `<body>` and reuses the reason
+  sheet's CSS shell.
+- **Heads-up — playback stops FIRST, without flushing.** A running player writes a
+  position every ~15 s, so a clear under live playback is undone one tick later.
+  `stopAndClose()` now takes `{ persist }` and every other caller still flushes.
+  `buildCards()` is deliberately NOT called after a clear either — it writes
+  `cp_recent_branches` and `cp_seen`, and the deletion is also the one action the
+  app does not `logEvent` (that would mint `cp_profile_id` and a new account).
+- **Left for the founder:** the **data-deletion URL** for both listings
+  (`HUMAN-ACTIONS.md` #13 step 2 — a hosting task; policy §7 is written to be that
+  page), and **#14** above. Nothing in this PR is blocked on either.
+- **Related:** #42, #40 (the tiering this had to defeat), #212 (the audit),
+  ADR-0005.
 
 ### MP1 spike — background audio in a Capacitor WebView (2026-08-17, one docs PR, no follow-up)
 
@@ -404,6 +456,49 @@ docs/. Completed workstreams move to their plan doc's retro section.
   nothing lands their output. The backlog is now only **509 shows**, so #10 is a
   small problem, but a promptly-recurring one.
 - **Related:** #198, #203 (`--shard` fails open), #175, ADR-0006.
+
+### MediaSession — the lock screen and the car (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/media-session`, issue #27 (WP7). `navigator.mediaSession` was
+  completely unimplemented, so a Foray played with the screen off showed no
+  title, no publisher, no artwork and no working hardware pause. Now it does.
+  **The only app work not gated on MP1 (#35)** — MediaSession is a web API that
+  works in mobile browsers today, a Capacitor shell inherits it, and a native
+  audio backend still needs the same metadata mapping, so it cannot be wasted.
+- **New files:** `player/media-session.js` (pure: no DOM, no `navigator`, no
+  timers) and `player/media-session.test.js` (116 tests, floored at 110).
+- **Shared files it touches:** `player/client.js` (the wiring, plus two small
+  extractions — `setRunning(want)` and `stopAndClose()` — so the lock screen and
+  the in-page button are literally one code path), `player/foray-sources.js`
+  (`artworkUrlsByShow`, beside the `collectionIdsByShow` it mirrors), `app.js`
+  (three `playForay` call sites now pass `discoverDoc`),
+  `test/suite-integrity.test.js` (one floor, isolated final commit), this file,
+  `docs/DECISIONS.md`. **Nothing in `data/`**, nothing in `index.html` — the
+  CSP was VERIFIED, not changed.
+- **Four decisions another session should not silently re-litigate** (all four
+  pinned by a named test, all four argued in the module header):
+  (1) `title` = source episode, `artist` = source SHOW, `album` = Foray title +
+  `part N of M`. The publisher gets `artist` because that field always renders.
+  (2) `previoustrack`/`nexttrack` are SEGMENT boundaries and call `forayPrevious`
+  / `forayNext` — the page’s own functions, not a second implementation.
+  (3) `setPositionState` reports the WHOLE Foray’s clock, matching the #196
+  scrubber. A car’s `seekto` therefore lands via `foraySeek`.
+  (4) **A seam beat reports `playing`, not `paused`.** 2.0 s of authored silence
+  is content; a car display that blinks paused 31 times an hour is not. The cost
+  is up to 2.0 s of OS position extrapolation, bounded by the beat and
+  self-correcting.
+- **Artwork verdict: shipped, but thin, and that is DATA not policy.** The CSP
+  (`img-src https: data:`) already permits it, so nothing was widened.
+  `data/segment-sources.json` carries no artwork field at all, and the
+  `data/discover.json` join by show name covers **1 of the 12 shows** the two
+  shipped Forays draw on; the rest fall back to `icon-512.png`. If you add an
+  `artwork_url` to a source, the mapping is already there and lights up.
+- **Heads-up — a pre-existing flake, not mine.**
+  `player/html-audio-backend.test.js` “a faster rate does not loosen the
+  boundary” fails roughly 1 run in 3 on a loaded Windows box (wall-clock
+  budget; the #195 class its own header warns about). Unrelated to this PR,
+  which touches neither that suite nor `html-audio-backend.js`. Worth its own
+  fix by whoever owns that file.
 
 ### durable storage — resume survives an eviction (2026-08-16, one PR, no follow-up)
 

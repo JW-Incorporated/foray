@@ -56,19 +56,37 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 59,
+  "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
-  "player/foray-playback.test.js": 61,
+  "player/foray-playback.test.js": 62,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 42,
   "player/foray-sources.test.js": 24,
   "player/html-audio-backend.test.js": 44,
+  /* The lock screen and the car (#27). Floored high on purpose: four product
+     decisions live in that module — publisher credit in `artist`, previous/next
+     as segments, the Foray's clock in `setPositionState`, and a seam beat that
+     reports PLAYING — and every one of them is a single-line edit away from its
+     opposite, on a surface nobody sees in a browser tab.
+
+     **Zero slack, deliberately.** The first draft floored it at 110 against 116
+     actual, and the pre-push review proved what that bought: all four pins could
+     be deleted and the floor stayed green — the exact failure this file exists to
+     make loud. Raise it when the suite grows. */
+  "player/media-session.test.js": 129,
   "player/queue-manager.test.js": 76,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
   "test/app-security.test.js": 20,
+  /* "Delete my data" (#42). Zero slack, like media-session above and for the same
+     reason: what this suite guards is a PROMISE — both tiers cleared, the server
+     rows really deleted, no success message over a failure, and a confirmation a
+     stray tap cannot satisfy. Every one of those is one edit from its opposite,
+     and the published privacy policy and Play declaration both now rest on them.
+     A deleted test here is a false statement in a store submission. */
+  "test/data-deletion.test.js": 51,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   "tools/ci/path-policy.test.mjs": 82,

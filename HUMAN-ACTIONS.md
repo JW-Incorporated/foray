@@ -766,7 +766,58 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 
 ---
 
-### 13. Rule on the app's permanent bundle id
+### 13. Six facts only you can supply before the privacy policy can be published
+
+**Tag:** `[BLOCKING]` for any store submission · **Time:** ~20 minutes to answer five of them; the sixth is a decision · **Owner:** Wyatt (infra facts), Joey (listing + legal-entity decisions)
+
+**Why it matters.** `docs/legal/privacy-policy.md` and `docs/legal/data-safety.md` now exist and are written **from the code**, not from a template — the Data Safety and App Privacy forms can be filled in by copying verified answers. Everything derivable from the software is answered. What is left is six facts no agent can invent, and a policy published with an invented one is a public, binding false statement. Each is marked `TODO(founder)` in those two files.
+
+**Two things the audit found that are worth knowing before you read further.**
+
+1. **The app does transmit.** Every page load creates an anonymous Supabase account and sends an event row, and a thumbs-down sends the free-text note you typed. That is not what an earlier reading of the code assumed, and it is why the declarations answer "Yes" rather than "No" to collection.
+2. **Playback reaches 43 hosts, and some of them are ad-attribution services.** Because we never proxy audio (product principle 3), a listener's IP and user-agent go straight to whatever the publisher put in their enclosure URL — and publishers commonly chain several measurement prefixes. One URL in our own catalogue routes through five before the audio. Alongside download counters like Podtrac there are advertising-attribution vendors (Podsights, Chartable, Podscribe, Claritas and others), three of which are in the default home cards. **We receive nothing from any of them and have no relationship with them**, so the store declarations are still "no collection, no sharing" — the reasoning is set out in `data-safety.md` §A6 — but the privacy policy now discloses it in full, because the alternative is a policy that quietly implies otherwise. Nothing here needs a decision from you; it needs you not to be surprised by it, and it is the one paragraph a lawyer should read first.
+
+**Steps — answer each in a reply, or edit it straight into the file.**
+
+1. **Legal entity name** to name as data controller. (`privacy-policy.md` §9.)
+2. **A privacy contact address.** Both stores require a working contact, and Play's Data Safety form requires a public privacy-policy URL. Nothing was invented.
+3. **The Supabase project's region / hosting jurisdiction**, and whether a data-processing agreement exists. Needed to say where data is stored, and required if EU users are in scope. (§3.)
+4. **Retention:** how long event rows are kept. Nothing in the code ever deletes one, and no retention job exists (ADR-0005 anticipated one).
+5. **Geo-availability:** US-only listing, or accept GDPR obligations day one? `docs/marketing/05-legal-risk-memo.md` §5 sets out the trade; it is still unresolved and it changes what the policy must promise.
+6. **The one build decision: a delete control.** ~~There is **no in-app way to clear your data** today~~ — **BUILT, nothing to decide here any more.** The menu now carries **Delete my data**: it clears both storage tiers (enumerated and verified, not from a list) and issues an authenticated delete of that account's rows in every per-user table, remote first so a network failure cannot strand the rows. Play's deletion answer is **Yes** — `docs/legal/data-safety.md` §A7. Two residues, both real and neither blocking this item: the **deletion URL** the form also wants (a hosting task, and item 2 above covers the same page), and the empty **auth user row** a client cannot delete, which is new item **14**.
+
+**Two things to verify in the Supabase dashboard while you are there** — neither is knowable from the repo, and both are listed as open questions in `data-safety.md`:
+
+- Whether **anonymous sign-in is enabled** on the project. If it is off, every sync silently no-ops and buffers locally forever. The declarations are written as though it is on, which is the correct posture for shipped code either way.
+- Whether the **RLS policies are actually applied and verified**. ADR-0005's own Risks section says they were written to spec but never verified against a live project, and they live in `backend/migrations/supabase/`, which the migration runner deliberately never auto-applies — someone has to paste them into the Supabase SQL editor, and nothing in the repo records whether anyone did. The per-user isolation claim in the policy depends entirely on it.
+
+**Also worth a lawyer's eye, flagged rather than decided:** two of the nine thumbs-down reason chips are "Leans too far left" and "Leans too far right", and the selected chip is transmitted. They record a reaction to an *episode*, not the listener's own politics — so Apple's "Sensitive Info" and Play's "Political or religious beliefs" are both answered **No**, which is the defensible reading. It is disclosed in the policy regardless.
+
+**Worked if:** `docs/legal/privacy-policy.md` contains no `TODO(founder)` markers, and the answers in `docs/legal/data-safety.md` can be pasted into both forms without a judgement call left in them.
+
+**Status:** OPEN
+
+---
+
+### 14. Delete the empty anonymous accounts a client cannot delete itself
+
+**Tag:** `[UPGRADE]` · **Time:** ~15 minutes in the Supabase dashboard, once · **Owner:** Wyatt
+
+**Why it matters.** The in-app **Delete my data** control (now built) deletes every row an account owns, in every per-user table, and discards the token so the next event creates a **new** anonymous account rather than re-attaching. What it cannot delete is the `auth.users` row itself: that needs the Admin API and a **service-role key**, and a key that can delete any account cannot ship inside a public web page — this repo's automation is deliberately keyless (CLAUDE.md decision-authority item 2), and putting one in `app.js` would be strictly worse for privacy than leaving the row.
+
+So after a deletion the account is an **empty shell**: no name, no email, no phone number, no password, no `app_users` row, no events. Both store declarations and the privacy policy say exactly that rather than implying the account is gone. This item is what would let them say more.
+
+**The honest framing:** this is not a data-protection hole — an identifier with nothing attached to it is not personal data in any practical sense, and it is disclosed. It matters for two narrower reasons: an Apple reviewer reading guideline 5.1.1(v) strictly may want the account record itself removed, and the table otherwise grows one dead row per deletion forever.
+
+**Steps.**
+
+1. In the Supabase dashboard, open **SQL Editor** and add a `security definer` function that deletes the caller's own auth user — the standard shape is `delete from auth.users where id = auth.uid();` inside a function owned by a privileged role, exposed as an RPC (e.g. `create function public.delete_own_account() returns void`), with `grant execute on function public.delete_own_account() to authenticated;`.
+2. Tell whoever picks up the follow-up (or reply here) that it exists, and the client will call `POST /rest/v1/rpc/delete_own_account` as the last step of the deletion — **after** the row deletes, since the token dies with the account. It is ~10 lines in `app.js` and one more `SB_USER_TABLES`-style pin in `test/data-deletion.test.js`.
+3. Decide whether the same function should also cascade the per-user tables. It does not need to — the client already deletes them — but it makes the server-side path complete on its own, which matters if a deletion request ever arrives by email instead of through the app.
+4. While in there: consider a **retention job** for anonymous accounts with no events at all (item 13, step 4, needs a number for the policy either way). The same sweep can collect shells from before this function existed.
+
+**Worked if:** calling the RPC as an ordinary anonymous user removes that user from `auth.users` and returns success, and calling it cannot remove anybody else's (test it twice, with two different anonymous tokens). Then `docs/legal/data-safety.md` §A7 and `privacy-policy.md` §7 can drop the "the account row stays" paragraph — and both must be updated in the same change that ships the client call, per the standing rule in §8 of the policy.
+### 15. Rule on the app's permanent bundle id
 
 **Tag:** `[BLOCKING]` for any store submission · **Time:** ~2 minutes · **Owner:** Wyatt (architecture)
 
@@ -793,13 +844,13 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 
 ---
 
-### 14. On a Mac: generate the iOS shell, add one `Info.plist` line, and build it
+### 16. On a Mac: generate the iOS shell, add one `Info.plist` line, and build it
 
 **Tag:** `[BLOCKING]` for iOS · **Time:** ~30 minutes the first time (mostly Xcode and CocoaPods downloading) · **Owner:** whoever has the Mac
 
 **Why it matters.** #36 committed the shell's configuration, the `webDir` build and the guard tests, but **no native project has been generated and nothing has been compiled** — this is a Windows machine. Everything about a *running* app is therefore unverified, including one CSP change that is reasoned from WebKit's behaviour rather than observed. One session on a Mac converts the whole thing from "should work" to "does".
 
-**Do item #13 first** if you can — the bundle id is baked into the generated project, and changing it afterwards means regenerating.
+**Do item #15 first** if you can — the bundle id is baked into the generated project, and changing it afterwards means regenerating.
 
 **Steps.** All of these run from the repo root unless stated.
 
@@ -866,11 +917,11 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 **Two corrections to the steps above, found by that run:**
 
 1. **Step 1 is wrong: `brew install cocoapods` is not needed.** Capacitor 8's iOS template uses **Swift Package Manager**. `cap add ios` writes a `Package.swift` and runs no `pod install`, and there is **no `App.xcworkspace`** — so if you open anything by hand it is **`mobile/ios/App/App.xcodeproj`**, not a workspace. Xcode resolves the local package itself.
-2. **Step 6.2 is answered.** `window.Capacitor` **is defined** in the iOS shell: `typeof` is `object`, `isNativePlatform()` returns `true`, `getPlatform()` returns `"ios"`, nine plugins are registered, and there were **zero** CSP violations and zero "Content Security Policy" lines in the system log. So our `script-src 'self'` does **not** block Capacitor's bridge on iOS. You do not need to type anything into a console for this one. (Android is a different mechanism and is still open — item #16.)
+2. **Step 6.2 is answered.** `window.Capacitor` **is defined** in the iOS shell: `typeof` is `object`, `isNativePlatform()` returns `true`, `getPlatform()` returns `"ios"`, nine plugins are registered, and there were **zero** CSP violations and zero "Content Security Policy" lines in the system log. So our `script-src 'self'` does **not** block Capacitor's bridge on iOS. You do not need to type anything into a console for this one. (Android is a different mechanism and is still open — item #18.)
 
 **Step 6.4 now has a Simulator answer, and it is the good one — but it is the WEAK direction of the evidence.** In the backgrounded Simulator the segment's stop-point fired **4.5 milliseconds** late, with 15 seconds of genuinely hidden playback and 61 measurements behind it, and the `timeupdate` event that drives it kept running at ~252 ms while the ordinary page timers next to it were throttled to 1 second. That is the inference `docs/research/mp1-background-audio.md` §8 called its most load-bearing one, and it held. **A Simulator models neither power management nor true suspension, so this cannot promise a real phone will do the same** — a *failure* there would have settled it; a pass only removes one way of being wrong. Your 15 minutes with the screen off is still the test that counts.
 
-**What is still genuinely yours, and a simulator cannot do:** steps 6.1, 6.3, 6.4 and 6.5 are *device* questions. A simulator models neither power management nor true suspension, so however cleanly CI runs, only a real phone with the screen off answers 6.4. Plus step 7 (whether to commit `mobile/ios/` — note there is no `Podfile.lock`, so plugin versions would be pinned only by `Package.swift` and an uncommitted `mobile/package-lock.json`) and the app id in #13.
+**What is still genuinely yours, and a simulator cannot do:** steps 6.1, 6.3, 6.4 and 6.5 are *device* questions. A simulator models neither power management nor true suspension, so however cleanly CI runs, only a real phone with the screen off answers 6.4. Plus step 7 (whether to commit `mobile/ios/` — note there is no `Podfile.lock`, so plugin versions would be pinned only by `Package.swift` and an uncommitted `mobile/package-lock.json`) and the app id in #15.
 
 **Read the workflow's job summary before spending the 30 minutes.** It may have found the failure for you already; it found two.
 
@@ -878,7 +929,7 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 
 ---
 
-### 15. Decide: does the app ship with data frozen at build time?
+### 17. Decide: does the app ship with data frozen at build time?
 
 **Tag:** `[BLOCKING]` for a public release · **Time:** ~5 minutes to decide · **Owner:** Joey (product)
 
@@ -901,7 +952,7 @@ For a product whose promise is "four picks, every day", that is the difference b
 
 ---
 
-### 16. On Android: settle whether our CSP kills Capacitor's bridge
+### 18. On Android: settle whether our CSP kills Capacitor's bridge
 
 **Tag:** `[BLOCKING]` for Android · **Time:** ~45 minutes, most of it downloads · **Owner:** Wyatt (or anyone with an Android phone and a USB cable)
 
@@ -954,13 +1005,13 @@ One iOS finding that does bear on your step 6, though: `navigator.serviceWorker`
 
 ---
 
-### 17. Get an Apple Developer account and add seven secrets, so CI can put a build on TestFlight
+### 19. Get an Apple Developer account and add seven secrets, so CI can put a build on TestFlight
 
 **Tag:** `[BLOCKING]` for any iOS tester build · **Time:** ~20 minutes of clicking, plus up to 48 hours of Apple's review of the membership itself · **Owner:** whoever will own the Apple Developer Program membership · **Cost:** **$99/year** — this is a spend decision, so it is the founders' call and not an agent's (CLAUDE.md decision-authority item 3)
 
-**Why it matters.** #38 built the iOS build in CI, and **it works without any of this**: `.github/workflows/ios-build.yml` compiles the shell unsigned on every run, for both the simulator and a real device's architecture, and that is deliberate — an unsigned build that always runs is worth more than a signing job that never does. But an unsigned build **cannot be installed on a phone**. Everything past "it compiles" — TestFlight, a tester, the locked-screen test that items #11 and #14 actually want — needs an Apple identity, and no amount of engineering substitutes for it.
+**Why it matters.** #38 built the iOS build in CI, and **it works without any of this**: `.github/workflows/ios-build.yml` compiles the shell unsigned on every run, for both the simulator and a real device's architecture, and that is deliberate — an unsigned build that always runs is worth more than a signing job that never does. But an unsigned build **cannot be installed on a phone**. Everything past "it compiles" — TestFlight, a tester, the locked-screen test that items #11 and #16 actually want — needs an Apple identity, and no amount of engineering substitutes for it.
 
-**Decide first, in one line:** is $99/year worth spending now, or does iOS wait? If it waits, mark this `SKIP` with a few words and the workflow keeps doing the unsigned build; nothing breaks. Do **#13** (the permanent bundle id) before this either way — the App ID you register here is the one you live with.
+**Decide first, in one line:** is $99/year worth spending now, or does iOS wait? If it waits, mark this `SKIP` with a few words and the workflow keeps doing the unsigned build; nothing breaks. Do **#15** (the permanent bundle id) before this either way — the App ID you register here is the one you live with.
 
 **Steps.**
 
@@ -970,7 +1021,7 @@ One iOS finding that does bear on your step 6, though: `navigator.serviceWorker`
    - the **Issuer ID** (a UUID, shown above the key list)
    - the file `AuthKey_<KeyID>.p8`
 3. In the developer portal → **Certificates, Identifiers & Profiles**:
-   - **Identifiers → +** → App IDs → App → Bundle ID **`com.jwincorporated.foray`** exactly (this is #13's value; if #13 rules differently, use that instead and say so here). Tick **Background Modes** under Capabilities.
+   - **Identifiers → +** → App IDs → App → Bundle ID **`com.jwincorporated.foray`** exactly (this is #15's value; if #15 rules differently, use that instead and say so here). Tick **Background Modes** under Capabilities.
    - **Certificates → +** → **Apple Distribution**. Follow Apple's instructions to create the CSR, download the `.cer`, open it so it lands in your Keychain, then in **Keychain Access** right-click the certificate → **Export** → `.p12`, and set a password. Keep both the file and the password.
    - **Profiles → +** → **App Store Connect** distribution profile for that App ID and that certificate. Download the `.mobileprovision`.
    - Note your **Team ID** (10 characters, top right of the developer portal, or under Membership details).

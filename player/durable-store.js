@@ -37,6 +37,10 @@
       tiers and durable-only rows back up into localStorage, and removes
       nothing. A listener mid-Foray when this ships cannot lose their place to
       the fix, because the fix only ever adds a copy.
+      The one deletion in this file is `purge()` (#42), and it is the opposite
+      case: a listener asking for all of it to go. It deletes from EVERY tier and
+      then re-reads them, because the tiering that protects a resume point from
+      eviction is the same tiering that would leave half a listener behind.
 
    2. A WRITE THIS SESSION IS NEVER CLOBBERED BY HYDRATION. Hydration races the
       first paint. Without a rule, a page that read an empty `cp_interests`
@@ -257,6 +261,8 @@ export class DurableStore {
     this._hydrating = null;
     this._inFault = false;
     this._inHealth = false;
+    /** True for the duration of `purge()`. Suppresses the health MIRROR only. */
+    this._purging = false;
 
     this._loadSync();
   }
@@ -360,6 +366,130 @@ export class DurableStore {
   async flush() {
     await this._queue;
     return this.health();
+  }
+
+  /**
+   * Delete EVERY owned key from EVERY tier, then prove it by re-reading them.
+   *
+   * This is the storage half of the in-app "delete my data" control (#42). It
+   * lives here rather than as a loop over `key(i)` in the caller because each of
+   * the three things it does is a way that loop leaves data behind:
+   *
+   *   1. IT ENUMERATES THE TIERS, NOT MEMORY. `length`/`key(i)` walk `_mem`, and
+   *      `_ownedKeys()` deliberately hides `cp_storage_health` — so a caller
+   *      iterating the facade clears 19 of the 20 keys and reports success. A
+   *      durable tier can also hold a row memory never saw: hydration may have
+   *      failed, or another tab may have written since. Only the tiers can be
+   *      asked, and only this method can ask them.
+   *   2. IT RE-READS AFTERWARDS. "I called remove" is not "it is gone". Anything
+   *      still there comes back in `remaining`, because a delete control that
+   *      reports a success it did not achieve is worse than no control at all.
+   *   3. A TIER IT CANNOT READ FORCES `ok: false`, in `unverified`. "I could not
+   *      look" is not "it is empty" — the same distinction `_doHydrate` draws,
+   *      for the same reason, and here it is the difference between a listener
+   *      being told their data is gone and their data being gone.
+   *
+   * Removal goes through `removeItem`, so every key is `_dirty` and a hydration
+   * that answers late cannot resurrect it.
+   *
+   * @returns {Promise<{ok: boolean, keys: string[], remaining: string[],
+   *   unverified: {tier: string, reason: string}[], faults: number}>}
+   */
+  async purge() {
+    const faultsBefore = this._faults.length;
+    const unverified = [];
+    /* THE DIAGNOSTIC MIRROR IS OFF FOR THE DURATION, and this is a correctness
+       rule rather than tidiness. `_recordHealth` writes `cp_storage_health` on
+       every fault, so a permanently failing tier turns the removal of that key
+       into the creation of it — the purge could never win, every failed run would
+       report a key it had written itself, and a listener who asked for deletion
+       would be left with a NEW row. The faults still land in `_faults`, still trip
+       the breaker, and still come back to the caller in `faults`/`remaining`,
+       which is where a delete control needs them. */
+    this._purging = true;
+    try {
+      return await this._purge(unverified, faultsBefore);
+    } finally {
+      this._purging = false;
+    }
+  }
+
+  async _purge(unverified, faultsBefore) {
+    /* Re-arm every tier the circuit breaker dropped. The breaker exists to stop
+       a fault loop feeding itself (see `_fault`), not to refuse a listener's
+       explicit instruction — and a tier nobody asks is a tier whose rows survive
+       a deletion. If it is really dead the verification pass below says so. */
+    this._disabled.clear();
+    const targets = new Set([...this._mem.keys()].filter((k) => this.owns(k)));
+    for (const k of await this._readTiers(unverified, "before")) targets.add(k);
+
+    const keys = [...targets].sort();
+    for (const k of keys) this.removeItem(k);
+    await this._queue;
+
+    /* Belt to the `_purging` braces: a health record written by an EARLIER
+       session (or before this call) is user-visible storage like any other row and
+       must go, and `keys` only covers what the tiers admitted to holding. */
+    if (this._mem.has(HEALTH_KEY)) {
+      this.removeItem(HEALTH_KEY);
+      await this._queue;
+    }
+
+    const remaining = new Set(await this._readTiers(unverified, "after"));
+    /* Memory is authoritative for reads, so a row still in it is still readable
+       by the app even when both tiers came back clean. The reachable case is a
+       write that lands WHILE this is verifying — see the test of that name; the
+       app stops the player before deleting precisely so it is not the common one. */
+    for (const k of this._mem.keys()) if (this.owns(k)) remaining.add(k);
+
+    /* One entry per tier per phase: a tier that is unreadable is unreadable in
+       both passes, and reporting it twice makes a single fault look like two. */
+    const seen = new Set();
+    const distinct = unverified.filter((u) => {
+      const id = `${u.tier}|${u.phase}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
+    return {
+      ok: remaining.size === 0 && distinct.length === 0,
+      keys,
+      remaining: [...remaining].sort(),
+      unverified: distinct,
+      faults: this._faults.length - faultsBefore,
+    };
+  }
+
+  /**
+   * Every owned key any tier currently admits to holding. A tier that refuses to
+   * answer is pushed to `unverified` rather than counted as empty.
+   *
+   * `phase` is `"before"` (finding what to delete — a failure here means keys may
+   * have been missed) or `"after"` (checking the deletion — a failure here means
+   * it cannot be confirmed). Both force `ok: false`, for different reasons, and a
+   * human reading the record should be able to tell which happened.
+   */
+  async _readTiers(unverified, phase) {
+    const found = new Set();
+    const take = (rows) => {
+      for (const k of rows.keys()) if (this.owns(k)) found.add(k);
+    };
+    const cannot = (name, reason) => unverified.push({ tier: name, phase, reason });
+    for (const t of this._sync) {
+      if (typeof t.snapshot !== "function") { cannot(t.name, "tier cannot be enumerated"); continue; }
+      try { take(t.snapshot(this.prefix)); }
+      catch (err) { this._fault(t.name, "read", err); cannot(t.name, errText(err)); }
+    }
+    for (const t of this._async) {
+      /* A tier the circuit breaker dropped is NOT skipped here. It may well hold
+         rows, and being unable to clear them is exactly what the caller has to
+         be told rather than have hidden behind a healthy-looking summary. */
+      if (typeof t.readAll !== "function") { cannot(t.name, "tier cannot be enumerated"); continue; }
+      try { take(await t.readAll(this.prefix)); }
+      catch (err) { this._fault(t.name, "read", err); cannot(t.name, errText(err)); }
+    }
+    return found;
   }
 
   /** Ask for eviction exemption and record the answer. Never throws; a refusal
@@ -641,7 +771,10 @@ export class DurableStore {
    * Diagnostics must not be able to become the outage.
    */
   _recordHealth() {
-    if (this._inHealth) return;
+    // Not during a purge: see the note at the top of `purge()`. The record still
+    // exists in memory-as-`health()`; what stops is MIRRORING it into storage a
+    // listener has just asked to be emptied.
+    if (this._inHealth || this._purging) return;
     this._inHealth = true;
     try {
       const blob = JSON.stringify(this.health());
