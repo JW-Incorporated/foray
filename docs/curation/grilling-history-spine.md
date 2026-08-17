@@ -1146,3 +1146,207 @@ is a practitioner or historian articulating the constant across traditions rathe
 than within one.
 
 **Share.** 1 % (~1.5 min).
+
+---
+
+## 4. Pacing, and what the share numbers imply for sourcing
+
+| # | beat | act | share | ~min @150 |
+|---|---|---|---|---|
+| 1 | cooking as external digestion | I | 3.5 % | 5.25 |
+| 2 | smoke as preservation | I | 3.5 % | 5.25 |
+| 3 | the low-and-slow bargain | I | 3.0 % | 4.5 |
+| 4 | two technologies, one word | I | 2.0 % | 3.0 |
+| 5 | fuel is the independent variable | I | 2.0 % | 3.0 |
+| 6 | a whole animal needs a crowd | II | 3.0 % | 4.5 |
+| 7 | feeding a crowd is a claim to authority | II | 3.0 % | 4.5 |
+| 8 | the steppe, and scarcity of fuel | III | 2.5 % | 3.75 |
+| 9 | mangal, kebab, the Ottoman codification | III | 3.0 % | 4.5 |
+| 10 | tandoor and the satay economy | III | 2.0 % | 3.0 |
+| 11 | yakitori: thrift made precise by fuel | III | 3.0 % | 4.5 |
+| 12 | Korea: the fire on the table | III | 3.0 % | 4.5 |
+| 13 | braai: the fire asked to do politics | III | 3.5 % | 5.25 |
+| 14 | asado: abundance moves the craft to time | III | 3.5 % | 5.25 |
+| 15 | jerk: the living descendant | III | 3.5 % | 5.25 |
+| 16 | the word named a frame | IV | 2.0 % | 3.0 |
+| 17 | barbacoa as living practice | IV | 2.0 % | 3.0 |
+| 18 | the adopted indigenous apparatus | IV | 2.0 % | 3.0 |
+| 19 | why pork won the South | IV | 2.0 % | 3.0 |
+| 20 | **slavery as the labour system** | IV | 4.0 % | 6.0 |
+| 21 | **the archive preserves work, erases workers** | IV | 3.0 % | 4.5 |
+| 22 | the political barbecue and its hierarchy | IV | 3.0 % | 4.5 |
+| 23 | emancipation into enterprise | IV | 2.5 % | 3.75 |
+| 24 | the map as Black migration | IV | 2.0 % | 3.0 |
+| 25 | Texas is four traditions | IV | 3.0 % | 4.5 |
+| 26 | the Carolinas and contested custody | IV | 2.5 % | 3.75 |
+| 27 | Kansas City and Memphis as freight | IV | 2.5 % | 3.75 |
+| 28 | the regional map is an economic map | IV | 2.0 % | 3.0 |
+| 29 | **policy produced the invisibility** | IV | 2.5 % | 3.75 |
+| 30 | the manufactured backyard | V | 3.0 % | 4.5 |
+| 31 | gendered fire, inconsistent credit | V | 2.0 % | 3.0 |
+| 32 | gas split the word | V | 2.0 % | 3.0 |
+| 33 | identity moved to the jar | V | 2.0 % | 3.0 |
+| 34 | competition standardised the flavour | V | 3.0 % | 4.5 |
+| 35 | poverty food to luxury | V | 3.0 % | 4.5 |
+| 36 | **the authorship argument, unconcluded** | V | 3.5 % | 5.25 |
+| 37 | automation as a real challenge | V | 1.5 % | 2.25 |
+| 38 | coda: the invariants | V | 1.0 % | 1.5 |
+| | | | **100 %** | **150** |
+
+### 4a. One to two segments per beat, not a pile — and this is derived, not a preference
+
+Worth running the arithmetic against `segment-length-rules.md`, because it changes
+what stage 2 should be trying to do.
+
+At over 120 minutes the cut budget (D1) allows **≤ 5 segment starts per rolling
+600 s**, so a 150-minute Foray permits at most about **75 segments**, and D3
+requires a mean of ≥ 90 s. Thirty-eight beats means at least 37 transitions
+before any beat gets a second segment. So:
+
+- **one segment per beat** is 38 segments at a mean of ~237 s — over L4's 240 s
+  soft-review line for most of them, and a Foray of unbroken four-minute blocks;
+- **two segments per beat** is 76 segments at a mean of ~118 s — dead centre of
+  the 75–180 s target band, but marginally *over* the cut budget.
+
+The workable shape is therefore **roughly 60 to 70 segments: most beats get one or
+two, the largest beats (20, 36, 13, 14, 15, 2, 1) get two or three, and the
+smallest (37, 38, 10) get one or none.**
+
+Three consequences for stage 2, and the first is the important one:
+
+- **A beat is covered by one strong segment.** Hunting for four is not diligence,
+  it is the mechanism that generates fill pressure. Stop when the beat's claim is
+  advanced.
+- **If every beat came back with strong tape the Foray would be slightly over its
+  own cut budget.** The spine is deliberately sized so that some holes are
+  *structurally fine*. Holes are not only tolerable here, they are budgeted for.
+- **Anti-uniformity (D5) is an assembly problem the spine cannot solve.** Thirty-
+  eight beats of similar share invites 38 similar-length segments, which is exactly
+  §2d's defect. Assembly should deliberately vary segment length *within* a beat's
+  allowance rather than aiming each beat at its share.
+
+### 4b. Tier assignment for the density modes (#174)
+
+Not decided here, but a default that costs nothing: **a beat's first and strongest
+segment is `spine`; additional segments on the same beat are `supporting`.** That
+makes the dense mode fall out automatically as one segment per beat in spine order,
+which is the shape §5d of the length rules predicts. Nothing in this document
+authorises a `colour` tier — if a segment is colour, it is probably not advancing a
+beat.
+
+### 4c. If the founder wants the 40-minute version
+
+Per §5d of the length rules, the short mode is fewer beats, never shortened
+segments. The minimum spine that still carries the argument, as a proposal: **1, 2,
+3, 6, 13 or 14, 15, 16, 20, 21, 23, 26, 28, 30, 35, 36, 38** — sixteen beats. Note
+what that costs: Act III collapses to the whole-animal family only, because those
+are the traditions closest to the through-line, and the entire skewer family goes.
+That is a real loss of the world coverage the founder required, which is why the
+short version should be a deliberate second product and not the fallback if
+sourcing goes badly.
+
+---
+
+## 5. Prediction: which beats will be hardest to source
+
+**This is a prediction for the coverage report, not a filter that was applied.**
+Nothing above was cut, shortened or softened on the basis of it. I have not seen
+the catalogue, so every line here is inference from what English-language podcasting
+tends to cover, and it is recorded now specifically so that stage 3 can check it —
+if these predictions are wrong, that is useful information about the sourcing
+process, and if they are right it is weak evidence the spine was written honestly.
+
+**Likely narration, in descending order of my confidence that no tape exists:**
+
+1. **Beat 10 (tandoor and satay).** Two under-covered traditions in one beat, and
+   the beat wants economics rather than recipes. Most likely to come back empty.
+2. **Beat 8 (the steppe).** English-language podcasting on Central Asian pastoral
+   cooking is thin, and what exists will mostly be the folklore this beat rejects.
+3. **Beat 9 (mangal and kebab).** #226 records that the ASR manifest already marks
+   mangal unsourceable. I have not looked at the manifest — I know this only from
+   the issue text — and per the founder's rule that is the correct outcome for the
+   beat, not a reason to substitute something adjacent.
+4. **Beat 31 (gendered fire).** Comparative and analytic. Single-tradition tape may
+   exist; tape making the cross-tradition credit argument probably does not.
+5. **Beat 28 (the map is economic).** A synthesis beat. Nobody says this in one
+   breath because it is the conclusion of an argument rather than a topic. Narrate
+   it well — it is the beat that holds 25–27 together.
+6. **Beat 21 (the archival silence).** Needs a historian discussing *method*, which
+   is a register interviews reach only occasionally.
+7. **Beat 5 (fuel as independent variable).** Partial tape from many traditions is
+   likely; tape that states the rule is not.
+8. **Beat 29 (policy and dispossession).** Specific, policy-shaped, and more likely
+   to live in urban-history material than in food podcasting.
+9. **Beat 17 (barbacoa as living practice).** Usually reduced to menu content; the
+   continuity argument is the hard part.
+10. **Beat 13 (braai).** English tape almost certainly exists, but tourism-grade
+    material will dominate and the contested-identity claim is what this beat needs.
+11. **Beat 38 (coda).** Designed as narration.
+
+**The opposite risk, which is the one that produced the original bug.** Some beats
+will be *over*-supplied: 3 (technique and chemistry), 25 (Texas), 34 and 35
+(competition and the chef era), and probably 1 (fire and human evolution) — these
+are the subjects podcasting loves. That is where this Foray will bloat if anyone
+lets it, and the share column is the defence. **An over-supplied beat has no claim
+on runtime that an under-supplied beat lost.** Time freed by an empty beat 10 does
+not transfer to beat 25; it either becomes narration on beat 10 or it becomes a
+shorter Foray, and a shorter Foray is a legitimate outcome.
+
+---
+
+## 6. Beats considered and deliberately excluded
+
+Recorded because a boundary that is written down is much harder to drift across,
+and because the sourcing agent will encounter abundant tape for several of these.
+**None of these is a beat. Tape that only serves one of them is rejected.**
+
+- **General food history** — historical baking, table manners, dinner parties,
+  culinary history at large. This is the original defect (#226) and it has no claim
+  on any beat: none of it advances an argument about fire, smoke, surplus or the
+  labour of the pit. Adjacency to "food" and "history" is not relevance.
+- **Health and carcinogens** — chars, polycyclic aromatics, processed-meat risk.
+  A real subject and a different Foray. Flagged explicitly because the tape is
+  plentiful and it would slot in beside beat 3 without looking wrong, which makes
+  it the most dangerous available filler.
+- **Sauce and rub taxonomy** — a comparative catalogue of regional condiments. The
+  analytically useful part is already inside beats 27, 28 and 33. A taxonomy is not
+  a claim.
+- **Vegetarian and vegan live-fire cooking** — genuinely interesting and current,
+  but the through-line is about the economics of tough protein and the labour of
+  tending fire, and this needs its own thesis rather than a slot in this one.
+- **The environmental and ethical case about meat** — legitimate, large, and not
+  what this Foray argues. Excluded on scope, not on merit.
+- **Equipment and gear history** beyond its role in beats 30, 32 and 37, where it
+  is carrying a social argument rather than being the subject.
+- **Barbecue festivals as tourism, competitive eating, celebrity-chef profiles.**
+
+**One honest omission, not a rejection.** The fan is not exhaustive. Chinese
+roasted and barbecued meats, Filipino and Pacific whole-animal and earth-oven
+traditions — *lechon*, *imu*, *hāngī* — and West African grill cuisines all have as
+good a claim to a beat as several stops that are in. They are out for runtime, and
+they are the first candidates if Act III is ever extended. Saying so is better than
+implying eight traditions is the world.
+
+---
+
+## 7. What this document does not decide
+
+- **Which beats have tape.** Stage 2, and the whole point of writing this first.
+- **The Foray's runtime.** An output. The 150-minute reference in §4 is arithmetic
+  scaffolding for the share column, not a target, and #226 is explicit that a tight
+  40 minutes ships over a wandering 61.
+- **Narration scripts for empty beats.** Stage 4. Written and queued, not voiced —
+  ElevenLabs spend is founder-gated.
+- **Whether Act III stays one continuous stretch.** It does here. The alternative
+  is interleaving each world tradition next to the American beat it illuminates,
+  which reads tighter and which I rejected: it makes the world traditions
+  comparative asides to the American story, and the founder asked for them as
+  coverage rather than as garnish. Reversible if the founder prefers the other
+  reading, but it is an editorial decision, not a sourcing one, and it should not be
+  made because a fan beat came back empty.
+- **Whether the fan is extended** to the traditions named at the end of §6.
+- **The `tier` vocabulary** — §4b proposes a default mapping; #174 owns the field.
+- **Anything about this spine against a real listener.** Same caveat as
+  `segment-length-rules.md` §10: nobody has heard this. The most valuable thing that
+  could happen to this document is a founder listening to the rebuilt
+  `grilling-history-1` and saying which beat lost them.
