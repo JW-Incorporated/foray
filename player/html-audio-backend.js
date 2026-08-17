@@ -330,6 +330,14 @@ export class HtmlAudioBackend {
       // The promoted element has produced audio, so the handover is proven and
       // the autoplay-refusal recovery below must not fire for it again.
       this._handoverUnproven = false;
+      /* And any pause we were expecting has either arrived or is never coming.
+         A leaked `_expectPause` is not harmless: it silently swallows the NEXT
+         pause, which is the one `_notePause` exists to notice. Loading a paused
+         element sets the flag and produces no `pause` event at all, so the leak
+         is the ordinary case rather than an edge one — found by the test that
+         fires an unexplained pause after a load. Clearing it here means the flag
+         can only ever cover a pause we caused while audio was running. */
+      this._expectPause = false;
       this._lastFineTime = null;
       this._scheduleFineWatch();
     };

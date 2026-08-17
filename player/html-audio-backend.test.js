@@ -1075,6 +1075,26 @@ test("a warm load that errors is not fatal and does not stand warming down", asy
   assert.equal(b.canPrefetch, true, "one bad episode is not a broken mechanism");
 });
 
+test("a warm element that errored AFTER becoming ready is not promoted", async () => {
+  /* Found by mutation: with `warm.failed` unset, an element whose media load
+     failed is still "ready", and the boundary hands the player role to an
+     element that can produce no audio — silence with no error path, because the
+     manager was told the load succeeded. `readyState` alone does not cover it:
+     `canplay` can arrive and an `error` follow, which is exactly this. */
+  const { b, a, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  assert.equal(b.warmState?.ready, true, "precondition: it did become ready");
+
+  w.error = { code: 4 };
+  w._fire("error");
+
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  assert.equal(b.el, a, "a broken warm element must never become the player");
+  assert.equal(a.src, B_URL, "the boundary loads it the ordinary way instead");
+});
+
 /* ---- the handover ---- */
 
 test("a boundary hands over to the warm element instead of loading anything", async () => {
