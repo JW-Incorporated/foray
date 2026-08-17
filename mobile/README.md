@@ -1,17 +1,23 @@
 # `mobile/` — the native app shell
 
-Capacitor project for the iOS and Android apps (issue **#36**, MP2, Capacitor
-**8.5.0**). The
+Capacitor project for the iOS and Android apps (issue **#36**, MP2). Capacitor
+core, CLI, `android` and `ios` are **8.5.0**; the four plugins version
+independently of the core and resolve to 8.1.1 / 8.0.1 / 8.0.2 / 8.0.3, which is
+why `package-lock.json` is committed (`docs/android-shell-build.md` §1.3). The
 architecture, the reasoning, and the decisions are in
 **[`docs/mobile-shell.md`](../docs/mobile-shell.md)** — read that first. This
 file is the commands.
 
-**Nothing here has been generated or built.** `mobile/ios/` and
-`mobile/android/` do not exist yet, `node_modules/` has never been installed,
-and no `cap` command has been run. That is deliberate, not unfinished: neither
-platform can be *built* on the Windows machine this was written on, and
-committing a few hundred generated native files that nobody has compiled is how
-a scaffold starts telling lies. See § Generating the platforms.
+**Both platforms are generated on demand and neither is committed.** `mobile/ios/`
+and `mobile/android/` are gitignored in full; `npm install && npm run add:android`
+(or `add:ios`) rebuilds either from what *is* committed. **Android builds on
+Windows and is proven to** — issue #37, `docs/android-shell-build.md`. iOS builds
+on macOS and is proven to by #213's `ios-build` workflow, which generates the
+project in the job rather than checking it out.
+
+The reason not to commit them is no longer "nobody has compiled these": it is ~100
+generated files with no reviewer, in a directory that auto-merges with no
+post-merge review window. `mobile/.gitignore` carries the full argument.
 
 ## Why this is its own directory
 
@@ -42,8 +48,8 @@ in the repo, and `mobile/www/` is gitignored so there never will be.
 
 ## Generating the platforms
 
-Android generates on Windows; iOS generates anywhere but **builds only on
-macOS**.
+Android generates **and builds** on Windows; iOS generates anywhere but **builds
+only on macOS**.
 
 ```bash
 cd mobile
@@ -52,9 +58,30 @@ npm run add:ios             # creates mobile/ios
 npm run sync                # rebuild webDir + cap sync, after any web change
 ```
 
-Commit both generated directories when they appear (Capacitor's own guidance —
-they hold real configuration, and it keeps CI from needing a `cap add` step).
-`.gitignore` here already covers what those projects *produce*.
+**Do not commit either generated directory.** Both are gitignored; the argument
+is in `mobile/.gitignore`, and `tools/mobile/shell-invariants.test.mjs` fails if
+those ignore rules are relaxed without also narrowing what it skips.
+
+## Building Android
+
+Needs **JDK 21** — Capacitor 8 fails on JDK 17 with `invalid source release: 21`
+— an Android SDK with platform **android-36** and build-tools **36.0.0**, and a
+`local.properties` that uses **forward slashes**:
+
+```bash
+cd mobile/android
+# sdk.dir MUST use forward slashes: it is a Java properties file, so C:\Users\…
+# silently loses its backslashes.
+echo 'sdk.dir=C:/path/to/android-sdk' > local.properties
+JAVA_HOME=/path/to/jdk-21 ./gradlew assembleDebug      # app-debug.apk
+JAVA_HOME=/path/to/jdk-21 ./gradlew assembleRelease    # app-release-unsigned.apk
+```
+
+Both were built for #37 on a cold Gradle cache; versions, sizes and timings are in
+`docs/android-shell-build.md` §1. **Do not reach for the emulator** —
+`docs/research/mp1-background-audio.md` §6.2 spent ~75 minutes across three cold
+API-36 boots without reaching a usable framework. To settle anything about a
+*running* app, use a phone over USB and `chrome://inspect`.
 
 ## The one line iOS needs, and the one line that would break everything
 
