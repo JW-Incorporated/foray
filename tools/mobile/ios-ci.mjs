@@ -1288,6 +1288,670 @@ export function seamTransitionVerdict(probe) {
   };
 }
 
+/* ───────────────────────────────────────────────────────────────────────────────
+ * WHERE THE RECORD STOPS — AND WHETHER THE AUDIO STOPPED WITH IT
+ *
+ * THE QUESTION, AND WHY IT NEEDED A THIRD CHANNEL. Every seam run so far produces a
+ * `foray_probe_seam` record that ends 25-28 s after the app went hidden with most of
+ * the window unused, and two incompatible stories fit that artifact exactly:
+ *
+ *   (a) a CEILING — the platform suspends a hidden WebView after ~28 s whatever it
+ *       is doing, in which case a Foray stops advancing half a minute after the
+ *       screen locks and the shell is the wrong architecture;
+ *   (b) ORDINARY BEHAVIOUR — the probe's own audio stopped (its first boundary, or a
+ *       short fixture running out), WebKit released the assertions that follow from
+ *       audio, and suspension came after as designed. Harmless, and the ~28 s is an
+ *       artifact of the probe.
+ *
+ * `saveSeq` + `lastSavedAtWall` cannot separate them and `probe-seam.js` says so in
+ * its own comment: both stamps ride in the same `setItem` blob, so a page cannot
+ * record that its own later write failed to land. Two channels that do NOT depend on
+ * the page's writes can, and this section reads both:
+ *
+ *   1. `saveTrail`, IN the record: one stamp per save carrying the WALL clock and
+ *      the MEDIA clock together. Different machinery drives them — `Date.now()`
+ *      needs the page scheduled, `currentTime` needs the audio pipeline running — so
+ *      a gap between two stamps says the page was frozen AND RESUMED, and the media
+ *      delta across that gap says whether the audio kept flowing through it.
+ *   2. `simulator-log-seam.txt`, OUTSIDE the record: WebKit's own lifecycle lines and
+ *      the media element's position, written by a different process to a different
+ *      file. This is the only channel that can see anything after the last write
+ *      reached disk, and on run 32064639785 it saw 35 s of it.
+ *
+ * ── THE FAILURE MODE THIS SECTION IS BUILT AROUND, because a review found it here
+ *    before a run could ─────────────────────────────────────────────────────────
+ *
+ * The log capture is `log stream ... | head -c 20000000` killed by the workflow, and
+ * `docs/ios-ci.md` §4c records it coming back EXACTLY 20,000,000 bytes on run
+ * 32036295743 — spent in 73 seconds, covering none of the pass it was for. A log that
+ * stops early therefore contains no suspension, and "no suspension was observed" is
+ * one careless line away from "no suspension happened". That would make the
+ * REASSURING verdict the one a lost measurement produces, on exactly the runs where
+ * the evidence went missing — the same shape as the `fires-in-background` this repo
+ * shipped from a 0.446 s hidden window.
+ *
+ * So the log's COVERAGE is computed and gated on, never assumed: `log-stops-before-
+ * record` exists precisely so that case cannot borrow `record-covers-window`'s
+ * headline. Every function here degrades to "no coverage" rather than to a confident
+ * number, and the verdict states which channel carried it.
+ * ─────────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Twice the probe's 2 s save interval, so a gap has to be a real stall.
+ *
+ * Not tighter: a save is also triggered by every stage and telemetry line, so the
+ * cadence is 2 s at its SLOWEST, and the interval timer is itself aligned to
+ * ~1000 ms while hidden (measured, run 32026332637). 3 s would flag ordinary jitter
+ * as a freeze, which is the failure mode this whole section exists to avoid.
+ */
+export const SAVE_TRAIL_GAP_MS = 4000;
+
+/**
+ * How much of a gap's wall time the media clock has to cover before the audio counts
+ * as having flowed through it. 0.5 = half.
+ *
+ * A THRESHOLD RATHER THAN AN EQUALITY, because `currentTime` is sampled by the page
+ * and the page is the thing that was frozen: the stamp after a freeze is taken
+ * whenever the page next runs, so the media delta it reports is bounded by the gap
+ * but not equal to it. Run 32064639785's own numbers are the calibration — the
+ * element advanced 19.1 media seconds across 26.9 s of wall clock spanning a
+ * suspension, i.e. 71%, which is neither "stopped" nor "unaffected".
+ */
+export const AUDIO_FLOWED_RATIO = 0.5;
+
+/**
+ * How close to the end of the observed window the last write has to land before the
+ * record counts as covering it.
+ *
+ * 8 s: the probe saves every 2 s, the collection path waits 3 s for WebKit to flush,
+ * and the hidden save interval is itself aligned to ~1000 ms. Four save intervals is
+ * slack for all of that without being wide enough to absorb the 25-28 s shortfall
+ * this section exists to explain.
+ */
+export const RECORD_TAIL_TOLERANCE_SEC = 8;
+
+/**
+ * How old a "the audio was playing" observation may be and still be paired with a
+ * suspension.
+ *
+ * THE ASYMMETRY IS THE POINT, and a review is why it exists. Claiming the page was
+ * suspended WHILE AUDIBLE is the verdict that would end the WebView shell, so it
+ * needs a FRESH positive observation — without this bound, one `isPlaying = true`
+ * sample at +1 s could be paired with a suspension at +130 s, and a trail stamp from
+ * the FOREGROUND phase (where `paused` is false for 15 s straight) could be paired
+ * with anything at all.
+ *
+ * Claiming the audio had already STOPPED needs no such bound, and that is not
+ * sloppiness: `updateNowPlayingInfo` fires on state CHANGES, so a restart would have
+ * emitted its own sample. An old `isPlaying = false` with nothing after it is
+ * evidence; an old `isPlaying = true` with nothing after it is only an absence.
+ *
+ * 5 s: two of the probe's slowest save intervals, and wider than the 5.5 s coalescing
+ * delay observed once between a media state change and its log line in run
+ * 32064639785 — so a genuinely audible page is not called unknown for being quiet in
+ * the log.
+ */
+export const AUDIO_EVIDENCE_STALE_MS = 5000;
+
+/**
+ * The record's own account of when it stopped and what the audio was doing.
+ *
+ * Pure over the record — no log, no clock — so it works on every artifact ever
+ * uploaded, including the three that predate `saveTrail` (they land in `stamps: 0`
+ * with every derived field null, which is the honest answer for them).
+ *
+ * @param {object|null} seam the `foray_probe_seam` record
+ */
+export function saveTrailAnalysis(seam) {
+  const raw = Array.isArray(seam?.saveTrail) ? seam.saveTrail : [];
+  /* SORTED BY WALL CLOCK, not trusted in array order. One backwards `Date.now()` — a
+     host clock adjustment on the runner — otherwise produces a phantom gap reported
+     as "the page was frozen AND RESUMED" and a media ratio over 100%, which is the
+     kind of number that discredits a whole section. */
+  const stamps = raw
+    .filter((s) => s && num(s.wall) != null && num(s.seq) != null)
+    .slice()
+    .sort((a, b) => a.wall - b.wall);
+  const bg = num(seam?.backgroundedAtWall);
+  const out = {
+    stamps: stamps.length,
+    /** Seconds from the app going hidden to the last stamp, which is the number the
+     *  ceiling reading is about. */
+    lastStampHiddenSec: null,
+    /** Was the element paused at the last stamp the page managed to write? */
+    pausedAtLastStamp: null,
+    mediaSecAtLastStamp: null,
+    /** Every wall gap wider than `SAVE_TRAIL_GAP_MS`, with the media clock across
+     *  it. A non-empty list is proof the page was frozen and CAME BACK. */
+    gaps: [],
+    /** The widest gap's seconds, or null. */
+    worstGapSec: null,
+    /** How much media time the element covered per second of hidden wall clock. ~1
+     *  while playing, ~0 while paused, and a number in between when it was
+     *  interrupted. Never above 1 — see `mediaStep`. */
+    hiddenMediaRatio: null,
+    /** The probe RINGS the trail at `SAVE_TRAIL_MAX`; `saveSeq` keeps counting.
+     *
+     *  REPORTED, because a ringed trail and a stopped one look identical in the array
+     *  and mean opposite things. The trail keeps its newest stamps, so the stop time
+     *  survives — but the EARLY part of the window is gone, and the gaps and the ratio
+     *  then describe only what is left. Measured off the RAW length, because that is
+     *  what the cap bounds: deriving it from the validated stamps would report "capped"
+     *  for a single malformed stamp, which is a false claim about this analysis's own
+     *  validity rather than about the probe's. */
+    truncated: false,
+  };
+  if (!stamps.length) return out;
+  const seq = num(seam?.saveSeq);
+  out.truncated = seq != null && raw.length < seq;
+  const last = stamps[stamps.length - 1];
+  if (bg != null) out.lastStampHiddenSec = (last.wall - bg) / 1000;
+  out.pausedAtLastStamp = typeof last.paused === "boolean" ? last.paused : null;
+  out.mediaSecAtLastStamp = num(last.mediaSec);
+
+  for (let i = 1; i < stamps.length; i++) {
+    const a = stamps[i - 1];
+    const b = stamps[i];
+    const gapMs = b.wall - a.wall;
+    if (gapMs < SAVE_TRAIL_GAP_MS) continue;
+    const advanced = mediaStep(a, b);
+    out.gaps.push({
+      afterSeq: a.seq,
+      atHiddenSec: bg == null ? null : (a.wall - bg) / 1000,
+      gapSec: gapMs / 1000,
+      mediaAdvancedSec: advanced,
+      audioFlowed: advanced == null ? null : advanced >= (gapMs / 1000) * AUDIO_FLOWED_RATIO,
+    });
+  }
+  if (out.gaps.length) out.worstGapSec = Math.max(...out.gaps.map((g) => g.gapSec));
+
+  if (bg != null) {
+    const hidden = stamps.filter((s) => s.wall >= bg && num(s.mediaSec) != null);
+    if (hidden.length >= 2) {
+      const wallSec = (hidden[hidden.length - 1].wall - hidden[0].wall) / 1000;
+      /* Summed per step, NOT end to end: a cross-file load resets `currentTime`, so an
+         end-to-end difference across a seam can be negative and would report a playing
+         page as a stopped one. */
+      let mediaSec = 0;
+      for (let i = 1; i < hidden.length; i++) mediaSec += mediaStep(hidden[i - 1], hidden[i]) ?? 0;
+      if (wallSec > 0) out.hiddenMediaRatio = mediaSec / wallSec;
+    }
+  }
+  return out;
+}
+
+/**
+ * How much media time passed between two samples, or null if it cannot be told.
+ *
+ * TWO CLAMPS, AND A REVIEW FOUND THE SECOND ONE MISSING.
+ *
+ *   - BACKWARDS is null, not negative. `html-audio-backend.js`'s `load()` resets
+ *     `currentTime` and then seeks to the next segment's `start_sec`, so a step across
+ *     a seam legitimately reads backwards. Scoring that as "the audio stopped" would
+ *     report a WORKING transition as a stall.
+ *   - FASTER THAN WALL CLOCK is clamped to wall clock. The same load-then-seek jump
+ *     read the other way round — a sample at `currentTime` 0 mid-load followed by one
+ *     at 12 (`seg-b`'s `start_sec`) — donates 12 seconds of "media" that was never
+ *     played. Unclamped, a healthy run of the current queue reports a media ratio of
+ *     **116%**, and `audioAdvancedAfterRecordSec` inflates in the direction that
+ *     argues FOR the ceiling reading. Playback is 1x; media cannot outrun the clock.
+ */
+function mediaStep(a, b) {
+  const from = num(a?.mediaSec ?? a?.positionSec);
+  const to = num(b?.mediaSec ?? b?.positionSec);
+  const wallSec = (num(b?.wall) ?? 0) - (num(a?.wall) ?? 0);
+  if (from == null || to == null || to < from) return null;
+  if (!(wallSec > 0)) return 0;
+  return Math.min(to - from, wallSec / 1000);
+}
+
+/** The lines this parser knows how to read, as `[kind, needle]`.
+ *
+ *  SUBSTRINGS, CHECKED WITH `includes`, NOT REGEXES OVER 20 MB. The first version of
+ *  the reporting step spent >7 minutes on a counted-context `grep -o` over a system
+ *  log (`docs/ios-ci.md` §4d); a per-line `includes` prefilter is the same lesson
+ *  applied in JavaScript. Every needle below was copied out of a real
+ *  `simulator-log-seam.txt` rather than from WebKit's source, so what is matched is
+ *  what this runner image actually emits.
+ *
+ *  ONE LIMIT WORTH STATING RATHER THAN DISCOVERING. `didChangeThrottleState(Suspended)`
+ *  carries a `[PID=…]` for the process it is about, and WebKit runs three (WebContent,
+ *  Networking, GPU). This parser does not resolve which PID is the WebContent process —
+ *  nothing in the log names it as such — so in principle a GPU-process suspension could
+ *  be read as the page being descheduled. In every run so far these lines have all been
+ *  the WebContent process's and `applicationIsAboutToSuspend`, which is app-wide and
+ *  unambiguous, has followed within a second. If a future run reports a suspension that
+ *  the record and the media clock both contradict, this is the first thing to check. */
+const LIFECYCLE_NEEDLES = [
+  ["suspended", "didChangeThrottleState(Suspended)"],
+  ["about-to-suspend", "applicationIsAboutToSuspend"],
+  ["background", "didChangeThrottleState(Background)"],
+  ["foreground", "didChangeThrottleState(Foreground)"],
+  ["assertion-expiring", "uiAssertionWillExpireImminently"],
+  ["resumed", "processDidResume"],
+  ["audible-clear-armed", "Starting timer to clear audible activity"],
+  ["audible-activity-cleared", "clearAudibleActivity"],
+  ["foreground-release-armed", "starting timer to release a foreground assertion"],
+  ["media-assertion-denied", "Failed to acquire RBS assertion 'WebKit Media Playback'"],
+  ["media-playback-assertion-taken", "Taking MediaPlayback assertion"],
+];
+
+/** `2026-08-17 20:24:22.451 Df App[...]` -> epoch ms, or null.
+ *
+ *  UTC, WHICH IS AN ASSUMPTION AND IS TREATED AS ONE. `log stream` prints the
+ *  simulator's local time with no zone, and a GitHub runner is UTC — so these line up
+ *  with the record's `Date.now()` today, and would be hours out on a runner that was
+ *  not. `parseSimulatorLifecycle` therefore reports the span it parsed and
+ *  `suspensionVerdict` refuses to use it unless it OVERLAPS the record's own hidden
+ *  window. A silently wrong offset is the one failure that could turn this channel
+ *  into a confident lie. */
+function parseLogWall(line) {
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3})/.exec(line);
+  if (!m) return null;
+  const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], +m[7]);
+  return Number.isFinite(t) ? t : null;
+}
+
+/**
+ * The out-of-band channel: WebKit's lifecycle events and the media element's own
+ * position, read out of a captured simulator log.
+ *
+ * @param {string|null} text the contents of `simulator-log-seam.txt`
+ */
+export function parseSimulatorLifecycle(text) {
+  const out = { lines: 0, timestamped: 0, firstWall: null, lastWall: null, events: [], media: [] };
+  if (typeof text !== "string" || !text) return out;
+  const lines = text.split("\n");
+  out.lines = lines.length;
+  for (const line of lines) {
+    const wall = parseLogWall(line);
+    if (wall == null) continue;
+    out.timestamped++;
+    /* MIN AND MAX, not first and last. `log stream` interleaves several processes and
+       adjacent lines can invert; `firstWall`/`lastWall` feed the overlap test and the
+       coverage gate, and an inverted final line would understate coverage. */
+    out.firstWall = out.firstWall == null ? wall : Math.min(out.firstWall, wall);
+    out.lastWall = out.lastWall == null ? wall : Math.max(out.lastWall, wall);
+    if (line.includes("updateNowPlayingInfo")) {
+      /* The media clock, from a process that is not ours, into a file the page cannot
+         write. `isPlaying` and `now` are the two fields that matter; `duration`
+         identifies WHICH tone, since the probe's three files differ in length. */
+      const m = /isPlaying = (true|false), duration = ([0-9.]+), now = ([0-9.]+)/.exec(line);
+      if (m) {
+        out.media.push({
+          wall,
+          isPlaying: m[1] === "true",
+          durationSec: Number(m[2]),
+          positionSec: Number(m[3]),
+        });
+        continue;
+      }
+    }
+    for (const [kind, needle] of LIFECYCLE_NEEDLES) {
+      if (line.includes(needle)) {
+        out.events.push({ wall, kind });
+        break;
+      }
+    }
+  }
+  out.media.sort((a, b) => a.wall - b.wall);
+  out.events.sort((a, b) => a.wall - b.wall);
+  return out;
+}
+
+/**
+ * (a) or (b): why does the record stop, and was audio still flowing when it did?
+ *
+ * ── HOW EACH VERDICT IS EARNED ───────────────────────────────────────────────
+ *
+ * `record-covers-window`      the last save lands within `RECORD_TAIL_TOLERANCE_SEC`
+ *                             of where the LOG stopped watching, no suspension
+ *                             coincided with it, and the log watched at least as far
+ *                             as the record wrote. Whatever the ~28 s figure was, it
+ *                             was not a ceiling on hidden time on THIS run.
+ * `suspended-while-audible`   a suspension at the end of the record with FRESH,
+ *                             positive evidence of audio (see
+ *                             `AUDIO_EVIDENCE_STALE_MS`). Reading (a) — the one that
+ *                             would change the architecture.
+ * `suspended-after-audio-stopped`
+ *                             the same, with the audio observed already stopped.
+ *                             Reading (b), with the lead time reported.
+ * `suspended-audio-unknown`   a suspension neither channel can pair with a fresh
+ *                             audio state. Refused rather than resolved.
+ * `log-stops-before-record`   the log was admitted but stopped watching BEFORE the
+ *                             record's last write — usually the 20 MB capture cap. It
+ *                             cannot say whether a suspension followed, and must not
+ *                             be read as saying none did.
+ * `record-ends-early-no-log`  no usable log at all, which is where the first three
+ *                             runs sat. The in-record numbers are still reported.
+ * `record-ends-early-no-suspension`
+ *                             the log watched well past the last write and saw no
+ *                             suspension: the write path is the suspect, which is a
+ *                             harness defect rather than a product one.
+ * `inconclusive`              no record, or the app never went hidden.
+ *
+ * THE ONE THING IT WILL NOT DO is prefer a tidy answer. If the log's timestamps do
+ * not overlap the record's hidden window the log is discarded entirely, because an
+ * unaligned clock would place a suspension inside a window it was never in.
+ *
+ * @param {{seam: object|null, lifecycle: object|null}} input
+ */
+export function suspensionVerdict({ seam, lifecycle } = {}) {
+  const trail = saveTrailAnalysis(seam ?? null);
+  const bg = num(seam?.backgroundedAtWall);
+  const lastSaved = num(seam?.lastSavedAtWall);
+  const base = {
+    trail,
+    recordEndsAtHiddenSec: null,
+    audioAdvancedAfterRecordSec: null,
+    /** Only a suspension can have one, but the KEY exists on every return so a caller
+     *  reading it gets `null` rather than `undefined` and cannot tell "no timer" apart
+     *  from "no suspension" by accident. */
+    releaseArmedBeforeSuspensionSec: null,
+    /** How far past the app going hidden the log kept watching. `null` when there is
+     *  no usable log. THE FIELD THE REASSURING VERDICT IS GATED ON. */
+    logCoversHiddenSec: null,
+    channels: [],
+  };
+  if (!seam || typeof seam !== "object" || bg == null || lastSaved == null) {
+    return {
+      ...base,
+      verdict: "inconclusive",
+      headline: "No hidden window was recorded, so there is nothing to say about where the record stops.",
+      detail:
+        "This needs a `foray_probe_seam` record carrying `backgroundedAtWall` and `lastSavedAtWall`. " +
+        "Read the seam verdict above first — it says why the run produced no such record.",
+    };
+  }
+  const recordEndsAtHiddenSec = (lastSaved - bg) / 1000;
+  base.recordEndsAtHiddenSec = recordEndsAtHiddenSec;
+  base.channels.push("record");
+
+  /* THE LOG IS ONLY ADMITTED IF IT OVERLAPS THE HIDDEN WINDOW. See `parseLogWall`. */
+  const lf = lifecycle && Array.isArray(lifecycle.events) ? lifecycle : null;
+  const aligned =
+    lf != null &&
+    num(lf.firstWall) != null &&
+    num(lf.lastWall) != null &&
+    lf.lastWall >= bg &&
+    lf.firstWall <= lastSaved + 60_000;
+  const events = aligned ? lf.events.filter((e) => e.wall >= bg) : [];
+  const media = aligned ? lf.media.filter((m) => m.wall >= bg) : [];
+  if (aligned) {
+    base.channels.push("simulator-log");
+    /* COVERAGE, NOT PRESENCE. This is the number that stops a log which stopped early
+       from being read as a log that saw nothing happen. */
+    base.logCoversHiddenSec = (lf.lastWall - bg) / 1000;
+  }
+
+  /* Stamps that are actually inside the hidden window, for pairing with a suspension.
+     The FOREGROUND stamps must not be usable as evidence about a hidden-window event —
+     the probe writes ~8 of them with `paused: false` before the app is backgrounded at
+     all, and a review found them being paired with a suspension 26 s later. */
+  const hiddenStamps = (Array.isArray(seam.saveTrail) ? seam.saveTrail : [])
+    .filter((x) => x && num(x.wall) != null && x.wall >= bg)
+    .slice()
+    .sort((a, b) => a.wall - b.wall);
+
+  /* WAS AUDIO STILL FLOWING AFTER THE RECORD ENDED? The strongest single number here,
+     because it is measured entirely outside the page: how far the element's own
+     position moved after the last write the page managed to persist. */
+  const after = media.filter((m) => m.wall > lastSaved + 250);
+  const beforeEnd = media.filter((m) => m.wall <= lastSaved + 250);
+  /* A SINGLE post-record sample with nothing before it cannot measure an advance — the
+     first sample only establishes a baseline. Reporting the 0.0 s that falls out of
+     seeding `prev` from it would print an absence as a measurement. */
+  if (after.length && (beforeEnd.length || after.length >= 2)) {
+    let prev = beforeEnd.length ? beforeEnd[beforeEnd.length - 1] : after[0];
+    let advance = 0;
+    for (const m of after) {
+      if (m === prev) continue;
+      advance += mediaStep(prev, m) ?? 0;
+      prev = m;
+    }
+    base.audioAdvancedAfterRecordSec = advance;
+  }
+
+  /* WHICH SUSPENSION, AND THE ONES THE RECORD OUTLIVED ARE NOT IT.
+     A review found `suspensions[0]` being reported as the finding even when the trail
+     kept writing on its 2 s cadence for 24 s afterwards — i.e. when the record itself
+     proved the page had been rescheduled. A transient blip early in the window then
+     read as the fatal verdict and `record-covers-window` was unreachable. So the
+     verdict pairs with a suspension that COINCIDES with the record ending, and the
+     survived ones are reported as what they are: evidence of freeze-and-resume. */
+  const allSuspensions = events.filter((e) => e.kind === "suspended" || e.kind === "about-to-suspend");
+  const terminal = allSuspensions.filter((e) => e.wall >= lastSaved - SAVE_TRAIL_GAP_MS);
+  const survived = allSuspensions.filter((e) => e.wall < lastSaved - SAVE_TRAIL_GAP_MS);
+
+  const numbers =
+    `The record's last durable write lands ${recordEndsAtHiddenSec.toFixed(2)}s into the hidden window ` +
+    `(save #${num(seam.saveSeq) ?? "?"}` +
+    (trail.stamps ? `, ${trail.stamps} trail stamps` : ", no save trail — a record from before it existed") +
+    `). ` +
+    (trail.truncated
+      ? `THE TRAIL IS RINGED at ${trail.stamps} of ${num(seam.saveSeq)} saves, so it keeps the END of the ` +
+        `window and every trail-derived number below describes only what survived the ring. `
+      : "") +
+    (num(seam.saveErrors) ? `The page caught ${num(seam.saveErrors)} localStorage write error(s). ` : "") +
+    (trail.pausedAtLastStamp == null
+      ? ""
+      : `At that last stamp the element was ${trail.pausedAtLastStamp ? "PAUSED" : "PLAYING"}` +
+        (trail.mediaSecAtLastStamp == null ? "" : ` at ${trail.mediaSecAtLastStamp.toFixed(2)}s of its file`) +
+        `. `) +
+    (trail.hiddenMediaRatio == null
+      ? ""
+      : `Media time covered ${(trail.hiddenMediaRatio * 100).toFixed(0)}% of hidden wall clock across ` +
+        `the trail. `) +
+    (trail.gaps.length
+      ? `The trail has ${trail.gaps.length} gap(s) wider than ${SAVE_TRAIL_GAP_MS / 1000}s — so the page ` +
+        `was frozen AND RESUMED at least that many times — worst ${trail.worstGapSec.toFixed(1)}s: ` +
+        trail.gaps
+          .map(
+            (g) =>
+              `after save #${g.afterSeq}` +
+              (g.atHiddenSec == null ? "" : ` at +${g.atHiddenSec.toFixed(1)}s`) +
+              `, ${g.gapSec.toFixed(1)}s with ` +
+              (g.mediaAdvancedSec == null
+                ? "no comparable media clock"
+                : `${g.mediaAdvancedSec.toFixed(1)}s of media (audio ` +
+                  `${g.audioFlowed ? "KEPT FLOWING" : "stalled too"})`)
+          )
+          .join("; ") +
+        ". "
+      : "") +
+    (survived.length
+      ? `${survived.length} suspension event(s) landed EARLIER in the window and the record outlived ` +
+        `them — the page was frozen and rescheduled, which is itself a finding. `
+      : "") +
+    (base.audioAdvancedAfterRecordSec == null
+      ? ""
+      : `AFTER the record ends, the simulator log's own media clock advances ` +
+        `${base.audioAdvancedAfterRecordSec.toFixed(1)}s — audio the page never got to write down. `) +
+    (aligned
+      ? `Log channel: ${lf.timestamped} timestamped line(s), ${events.length} lifecycle event(s) inside ` +
+        `the hidden window, ${media.length} media-clock sample(s), watching until ` +
+        `+${base.logCoversHiddenSec.toFixed(1)}s.`
+      : `No usable log channel: ${
+          lf == null ? "no log was parsed" : "its timestamps do not overlap the record's hidden window"
+        }, so nothing outside the page corroborates any of the above.`);
+
+  if (!aligned) {
+    return {
+      ...base,
+      verdict: "record-ends-early-no-log",
+      headline:
+        `The record stops ${recordEndsAtHiddenSec.toFixed(1)}s into the hidden window and no log covered ` +
+        `that window, so WHY it stops is unknown.`,
+      detail:
+        `${numbers} This is exactly where runs 32036295743, 32057395270 and 32064639785 sat. The two ` +
+        `readings — the page was suspended, or its writes stopped landing — have opposite consequences, ` +
+        `and only a channel outside the page can choose between them.`,
+    };
+  }
+
+  if (terminal.length) {
+    const s = terminal[0];
+    const mediaBefore = media.filter((m) => m.wall <= s.wall);
+    const lastBefore = mediaBefore.length ? mediaBefore[mediaBefore.length - 1] : null;
+    const trailStamp = hiddenStamps.filter((x) => x.wall <= s.wall).pop();
+    /* POSITIVE, FRESH EVIDENCE ONLY, and only from inside the hidden window. See
+       `AUDIO_EVIDENCE_STALE_MS` for why "was playing" needs a freshness bound and
+       "had stopped" does not. */
+    const logSaysPlaying = lastBefore ? lastBefore.isPlaying === true : null;
+    const logAgeMs = lastBefore ? s.wall - lastBefore.wall : null;
+    const recordSaysPlaying =
+      trailStamp && typeof trailStamp.paused === "boolean" ? trailStamp.paused === false : null;
+    const recordAgeMs = trailStamp ? s.wall - trailStamp.wall : null;
+    const freshlyAudible =
+      (logSaysPlaying === true && logAgeMs <= AUDIO_EVIDENCE_STALE_MS) ||
+      (recordSaysPlaying === true && recordAgeMs <= AUDIO_EVIDENCE_STALE_MS);
+    /* WHEN THE TWO CHANNELS DISAGREE, THE LOG WINS, and the disagreement is printed.
+       `paused` is the page's view of the element and `isPlaying` is the media session's
+       view of whether sound is being produced — and the page is the process under
+       suspicion here, so a page that believes it is playing while the session says
+       otherwise is the case where the page is wrong. Preferring the record would be
+       preferring the suspect's own account, in the direction of the verdict that
+       changes the architecture. */
+    const contested = logSaysPlaying === false && recordSaysPlaying === true;
+    const audible = logSaysPlaying === false ? false : freshlyAudible;
+    const stopped = logSaysPlaying === false || recordSaysPlaying === false;
+    const atSec = (s.wall - bg) / 1000;
+    /* WAS THIS SUSPENSION ALREADY IN MOTION BEFORE THE AUDIO CAME BACK?
+       The difference between "suspended regardless of audio" and "suspended by a timer
+       armed during an earlier silence, which restarting the audio failed to cancel",
+       and the two have different consequences. WebKit arms both timers when audio stops
+       (`Starting timer to clear audible activity in 5 seconds`, `starting timer to
+       release a foreground assertion in 10 seconds`), and on run 32064639785 one of
+       them fired 11.7 s after a 5.1 s beat — WITH the next segment audible — because
+       re-acquiring the media-playback assertion is DENIED on a Simulator. So a lead
+       time here means the audible-at-suspension observation is weaker than it reads,
+       and the discriminating run is one whose audio never stopped at all. */
+    const armed = events
+      .filter(
+        (e) =>
+          (e.kind === "foreground-release-armed" || e.kind === "audible-clear-armed") && e.wall <= s.wall
+      )
+      .pop();
+    const armedLeadSec = armed ? (s.wall - armed.wall) / 1000 : null;
+    const denials = events.filter((e) => e.kind === "media-assertion-denied" && e.wall <= s.wall).length;
+    base.releaseArmedBeforeSuspensionSec = armedLeadSec;
+    const why =
+      `Suspension observed ${atSec.toFixed(2)}s into the hidden window (\`${s.kind}\`), which is when the ` +
+      `record ends.` +
+      (logSaysPlaying == null
+        ? ""
+        : ` The log's last media sample before it, ${(logAgeMs / 1000).toFixed(1)}s earlier, says ` +
+          `isPlaying=${logSaysPlaying}.`) +
+      (recordSaysPlaying == null
+        ? ""
+        : ` The record's last in-window stamp, ${(recordAgeMs / 1000).toFixed(1)}s earlier, says ` +
+          `paused=${!recordSaysPlaying}.`) +
+      (contested
+        ? ` THOSE TWO DISAGREE, and the log is taken: the page thought it was playing while the media ` +
+          `session said it was not, and the page is the process under suspicion.`
+        : "");
+    const armedNote =
+      armedLeadSec == null
+        ? ` NO assertion-release timer was armed beforehand in this window, so nothing about our own ` +
+          `audio was already counting down when the suspension landed.`
+        : ` WEAKER THAN IT READS, AND SAY SO: WebKit armed an assertion-release timer ` +
+          `${armedLeadSec.toFixed(1)}s earlier (\`${armed.kind}\`), which it does when audio STOPS — so ` +
+          `this suspension was plausibly set in motion by an earlier silence and not cancelled when the ` +
+          `audio came back. On this Simulator it cannot be cancelled: re-acquiring 'WebKit Media ` +
+          `Playback' was denied ${denials} time(s) in this window for want of an entitlement a real ` +
+          `signed app holds. A run whose audio never stops before the suspension is what separates ` +
+          `"suspended regardless of audio" from "suspended because of our own beat".`;
+    if (audible) {
+      return {
+        ...base,
+        verdict: "suspended-while-audible",
+        headline:
+          `The page was SUSPENDED ${atSec.toFixed(1)}s into the hidden window WITH AUDIO STILL PLAYING — ` +
+          `the reading that changes the architecture.`,
+        detail:
+          `${why}${armedNote} ${numbers} Audio playing and the page suspended anyway means neither the ` +
+          `probe's fixtures nor its own boundaries explain it. THE NEXT STEP IS HARDWARE, not more CI: a ` +
+          `Simulator app launched by \`simctl\` cannot hold the 'WebKit Media Playback' RBS assertion at ` +
+          `all (\`originator doesn't have entitlement com.apple.runningboard.assertions.webkit\`, in this ` +
+          `same log), and that assertion is the mechanism \`UIBackgroundModes: audio\` exists to satisfy ` +
+          `on a device. HUMAN-ACTIONS.md #11 settles it in twenty minutes with no build.`,
+      };
+    }
+    if (!stopped) {
+      return {
+        ...base,
+        verdict: "suspended-audio-unknown",
+        headline:
+          `The page was suspended ${atSec.toFixed(1)}s into the hidden window, and nothing in this run ` +
+          `says FRESHLY ENOUGH whether audio was still playing at that moment.`,
+        detail:
+          `${why}${armedNote} ${numbers} Neither channel offers an audio observation inside ` +
+          `${AUDIO_EVIDENCE_STALE_MS / 1000}s of the suspension. That is the one combination this verdict ` +
+          `refuses to resolve: an unobserved silence must not wear an observed one's headline, and a stale ` +
+          `"was playing" must not wear a fresh one's, because the two readings differ in whether the ` +
+          `WebView shell can play a Foray at all.`,
+      };
+    }
+    return {
+      ...base,
+      verdict: "suspended-after-audio-stopped",
+      headline:
+        `The page was suspended ${atSec.toFixed(1)}s into the hidden window, AFTER its audio had already ` +
+        `stopped — ordinary behaviour, not a ceiling on hidden time.`,
+      detail:
+        `${why}${armedNote} ${numbers} So the suspension followed OUR silence rather than the clock, and ` +
+        `any "the page dies N seconds after going hidden" reading of this run is really "N seconds after ` +
+        `the probe stopped making sound". A product Foray is only silent for the beat.`,
+    };
+  }
+
+  /* THE GATE THE REASSURING VERDICT SITS BEHIND. A log that stopped watching before the
+     record's last write contains no suspension for the same reason an empty file does,
+     and `head -c 20000000` has already truncated one of these captures to the byte. */
+  if (base.logCoversHiddenSec < recordEndsAtHiddenSec) {
+    return {
+      ...base,
+      verdict: "log-stops-before-record",
+      headline:
+        `The log stopped watching at +${base.logCoversHiddenSec.toFixed(1)}s but the record wrote until ` +
+        `+${recordEndsAtHiddenSec.toFixed(1)}s, so nothing outside the page can say what ended it.`,
+      detail:
+        `${numbers} This is NOT "no suspension happened" — it is "no suspension was watched for". The ` +
+        `likely cause is the capture: \`log stream ... | head -c 20000000\` in the workflow, which came ` +
+        `back at exactly 20,000,000 bytes on run 32036295743. Check \`wc -c\` on ` +
+        `\`simulator-log-seam.txt\` in the artifact before reading anything into this run's silence.`,
+    };
+  }
+
+  if (base.logCoversHiddenSec - recordEndsAtHiddenSec < RECORD_TAIL_TOLERANCE_SEC) {
+    return {
+      ...base,
+      verdict: "record-covers-window",
+      headline:
+        `The record covers the window it was watched over — last write at ` +
+        `${recordEndsAtHiddenSec.toFixed(1)}s, log watching until ` +
+        `+${base.logCoversHiddenSec.toFixed(1)}s, and no suspension coincided with it.`,
+      detail:
+        `${numbers} On this run there was no ceiling on hidden time to find: the page was still being ` +
+        `scheduled when the window closed. Read the log-coverage number as part of the claim — this ` +
+        `verdict says the record kept up with what was watched, not that nothing could have happened ` +
+        `after the watching stopped.`,
+    };
+  }
+  return {
+    ...base,
+    verdict: "record-ends-early-no-suspension",
+    headline:
+      `The record stops ${recordEndsAtHiddenSec.toFixed(1)}s into a window the log watched until ` +
+      `+${base.logCoversHiddenSec.toFixed(1)}s, and no suspension coincided with the last write.`,
+    detail:
+      `${numbers} With the process alive and watched past the last write, the write path is the suspect ` +
+      `rather than the scheduler — the opposite conclusion from a suspension, and a harness defect rather ` +
+      `than a product one.`,
+  };
+}
+
+
 /** THE LIMIT OF THIS MEASUREMENT, carried with every verdict that quotes it.
  *
  *  The next segment's audio is a LOCAL file in the app bundle, so what this
@@ -1362,10 +2026,11 @@ export const SIMULATOR_CAVEAT =
  * the gate and "not configured" in the summary. A report that cannot observe what
  * it asserts should not assert it.
  */
-export function renderReport({ bridge, outPoint, seam, signingState, build }) {
+export function renderReport({ bridge, outPoint, seam, signingState, build, lifecycle }) {
   const b = bridgeVerdict(bridge);
   const o = outPointVerdict(outPoint);
   const s = seamTransitionVerdict(seam ?? null);
+  const sus = suspensionVerdict({ seam: seam ?? null, lifecycle: lifecycle ?? null });
   const lines = [];
   lines.push("## iOS shell — what this run actually established", "");
   if (build) lines.push(`**Build:** ${build}`, "");
@@ -1379,6 +2044,20 @@ export function renderReport({ bridge, outPoint, seam, signingState, build }) {
     s.detail,
     "",
     `> ${LOCAL_MEDIA_CAVEAT}`,
+    ""
+  );
+  /* SECTION 3b, ABOVE THE SIMULATOR CAVEAT AND BELOW THE SEAM, because it BOUNDS the
+     seam verdict rather than adding to it: every hidden number in section 3 was taken
+     inside a window that three runs ended 25-28 s into, and a `too-few-transitions`
+     verdict means something different if the app was not alive to reach transition 2.
+     Reported unconditionally, including `inconclusive`, because the silent version of
+     this section is what let the shortfall read as a footnote about save cadence. */
+  lines.push(
+    `### 3b. Where the record STOPS, and whether audio stopped with it — \`${sus.verdict}\``,
+    "",
+    sus.headline,
+    "",
+    sus.detail,
     ""
   );
   lines.push(`> ${SIMULATOR_CAVEAT}`, "");
@@ -1503,17 +2182,34 @@ if (isMain) {
       const dump = readMaybe(rest[0]) || {};
       const consoleText =
         rest[1] && fs.existsSync(rest[1]) ? fs.readFileSync(rest[1], "utf8") : "";
+      /* THE SEAM PASS'S SYSTEM LOG, THE ONLY CHANNEL THAT OUTLIVES THE RECORD.
+         Defaulted from the localStorage dump's own directory rather than demanded as
+         an argument, deliberately: `.github/workflows/ios-build.yml` is a GOVERNED
+         file, so a reporter that needed a new argv would need a founder label to
+         land, and this analysis is worth more than that ceremony. An explicit third
+         argument still wins if someone passes one. */
+      const seamLogPath =
+        rest[2] || (rest[0] ? path.join(path.dirname(path.resolve(rest[0])), "simulator-log-seam.txt") : null);
+      const lifecycle =
+        seamLogPath && fs.existsSync(seamLogPath)
+          ? parseSimulatorLifecycle(fs.readFileSync(seamLogPath, "utf8"))
+          : null;
       const { bridge, outPoint, outPoints, seam, seams, sources } = collectProbes({ dump, consoleText });
       console.error(
         `read ${Object.keys(dump).length} localStorage key(s) and ${consoleText.length} bytes of ` +
           `console log; bridge record ${bridge ? `from ${sources.bridge}` : "ABSENT"}; ` +
           `${outPoints.length} out-point record(s) from ${sources.outPoint}; ` +
-          `${seams.length} seam record(s) from ${sources.seam}`
+          `${seams.length} seam record(s) from ${sources.seam}; seam log ` +
+          (lifecycle
+            ? `${seamLogPath} (${lifecycle.timestamped} timestamped line(s), ${lifecycle.events.length} ` +
+              `lifecycle event(s), ${lifecycle.media.length} media sample(s))`
+            : `ABSENT at ${seamLogPath ?? "(no path)"}`)
       );
       const report = renderReport({
         bridge,
         outPoint,
         seam,
+        lifecycle,
         signingState: process.env.SIGNING_STATE || null,
         build: process.env.IOS_BUILD_STATUS || null,
       });
@@ -1522,10 +2218,11 @@ if (isMain) {
       const b = bridgeVerdict(bridge);
       const o = outPointVerdict(outPoint);
       const s = seamTransitionVerdict(seam);
+      const sus = suspensionVerdict({ seam, lifecycle });
       if (process.env.GITHUB_OUTPUT) {
         fs.appendFileSync(
           process.env.GITHUB_OUTPUT,
-          `bridge=${b.verdict}\noutpoint=${o.verdict}\nseam=${s.verdict}\n`
+          `bridge=${b.verdict}\noutpoint=${o.verdict}\nseam=${s.verdict}\nsuspension=${sus.verdict}\n`
         );
       }
       /* Deliberately exit 0 for every verdict, INCLUDING the bad ones. This step

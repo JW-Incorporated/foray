@@ -121,7 +121,16 @@ export const TONE_HZ = 8000;
  *  screen recording could tell them apart if anyone ever needs to.
  *
  *  Shorter than the first, because it only has to outlast one segment plus margin:
- *  60 s against ~8 s of use. Both are generated, so this costs nothing in git. */
+ *  60 s against **25 s** of use (`probe-seam.js`'s `seg-b` is 12 → 37 as of
+ *  2026-08-17; it was 8 s before the window grew). The 23 s of remaining margin is
+ *  load-bearing in one specific way — if `seg-b`'s out-point fails to fire while the
+ *  page is suspended, the audio has to keep flowing rather than hit the end of the
+ *  file, because "the out-point was late" and "the audio ran out" are the two readings
+ *  the seam record has to be able to tell apart. Both are generated, so this costs
+ *  nothing in git — but do NOT lengthen them for comfort: a `capacitor://` media load
+ *  goes through a UIProcess scheme handler that took 3.0 s for this 960 KB file while
+ *  hidden (run 32064639785), and a bigger file pushes a hidden load toward
+ *  `LOAD_SETTLE_TIMEOUT_HIDDEN_MS`. */
 export const TONE_B_NAME = "probe-tone-b.wav";
 export const TONE_B_SECONDS = 60;
 export const TONE_B_HZ = 660;
@@ -163,8 +172,14 @@ export const PROBE_TAG = '<script src="probe-bridge.js"></script>';
  * or reuse episode audio and a CI job hammering someone's CDN is exactly the
  * kind of thing that principle is about.
  *
- * `TONE_SECONDS` is 150 against a ~90 s window on purpose: the file must NEVER
- * be the thing that stops playback.
+ * `TONE_SECONDS` is 150 s, and BE PRECISE ABOUT WHAT PROTECTS THE FIRST SEGMENT NOW,
+ * because "150 against a ~90 s window" stopped being the reason on 2026-08-17: the
+ * seam window is 175 s, longer than the tone. What keeps the file from ending first is
+ * the BOUNDARY, which lands at ~75-114 s of media (`ARM_AFTER_HIDDEN_SEC` = 60 s after
+ * the page goes hidden, and the page goes hidden 15-54 s in), or at ~130 s via the 70 s
+ * fallback arm — all of them inside 150 s. Phase B is unaffected: its window is ~67 s.
+ * If either the arm or the seam window grows again, redo that arithmetic rather than
+ * assuming this margin.
  */
 export function makeToneWav({ seconds = TONE_SECONDS, sampleRate = TONE_HZ, freq = 440, amplitude = 0.25 } = {}) {
   const frames = Math.floor(seconds * sampleRate);

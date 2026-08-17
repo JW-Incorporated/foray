@@ -610,3 +610,85 @@ test("the seam probe arms relative to going hidden, and records whether it did",
   assert.match(js, /hiddenAtBoundary/);
   assert.match(js, /hiddenAtNextPlaying/);
 });
+
+test("the seam probe's save trail is a RING that drops the oldest, and stamps BOTH clocks", () => {
+  /* THE TRAIL IS THE ANSWER TO "did the page stop, or did its writes stop", so two
+     properties of it are load-bearing and neither is visible from `ios-ci.mjs`:
+     
+     1. EVERY STAMP CARRIES BOTH CLOCKS. `wall` needs the page scheduled and `mediaSec`
+        needs the audio pipeline running, and the whole discrimination is the two of them
+        side by side. A stamp with only a wall clock says nothing new.
+     2. IT DROPS THE OLDEST, NOT THE NEWEST. A review caught a head cap here
+        (`if (length < MAX) push`), which discards exactly the stamps that say where the
+        record stopped — in a file whose stated purpose is to say where the record
+        stopped. `ios-ci.mjs`'s report calls the trail "RINGED" when `saveSeq` outruns it,
+        so a head cap would also make that sentence false.
+     
+     Asserted on the SOURCE because the probe cannot be imported here: it runs in a
+     WKWebView and touches `document`, `localStorage` and `<audio>` at module scope. */
+  const js = asset("probe-seam.js");
+  const push = /rec\.saveTrail\.push\(\{([\s\S]*?)\}\);/.exec(js);
+  assert.ok(push, "the save trail is no longer written");
+  for (const field of ["seq:", "wall:", "mediaSec:", "paused:"]) {
+    assert.ok(
+      push[1].includes(field),
+      `the trail stamp no longer carries \`${field}\` — see this test's comment`
+    );
+  }
+  assert.match(
+    js,
+    /while \(rec\.saveTrail\.length > SAVE_TRAIL_MAX\) rec\.saveTrail\.shift\(\)/,
+    "the trail is not a ring dropping the OLDEST stamp; a head cap would discard the end of the window"
+  );
+  assert.equal(
+    /if \(rec\.saveTrail\.length < SAVE_TRAIL_MAX\)/.test(js),
+    false,
+    "a head cap is back: it drops the NEWEST stamps, which are the ones the record's end is made of"
+  );
+});
+
+test("the seam probe counts localStorage write failures instead of swallowing them", () => {
+  /* The one half of "did the writes stop landing" that a page CAN observe. A bare
+     `catch (e) {}` threw it away. */
+  const js = asset("probe-seam.js");
+  assert.match(js, /rec\.saveErrors = \(rec\.saveErrors \|\| 0\) \+ 1/, "setItem failures are swallowed again");
+});
+
+test("the middle segment's audio outlasts the Simulator's ~26 s suspension ceiling", () => {
+  /* THE AMBIGUITY THIS EXISTS TO PREVENT, and it cost this project a day and two
+     retractions. In run 32064639785 `seg-b` was 8 s long and became audible 20.2 s into
+     the hidden window, so its audio was due to run out at +28.2 s — and the record's
+     last durable write landed at +27.9 s, 0.3 s earlier. "The page was suspended" and
+     "the probe simply ran out of audio" fit that artifact equally, and separating them
+     took a second run (32077857553) and a third measurement channel.
+
+     Run 32077857553 measured the ceiling at ~26.3 s of hidden time, with the first
+     boundary at 15 s the beat puts `seg-b` audible at ~24 s, so a middle segment shorter
+     than ~10 s re-creates the coincidence. This is a floor on the FIXTURE, not on the
+     product: the seam being measured does not care how long the segment is, and the
+     window's upper bound is enforced separately by `ios-workflow.test.mjs`. */
+  const js = asset("probe-seam.js");
+  const queueSrc = /const QUEUE = \[([\s\S]*?)\];/.exec(js)?.[1];
+  assert.ok(queueSrc, "probe-seam.js no longer declares `const QUEUE = [...]`");
+  const queue = [...queueSrc.matchAll(/\{\s*id:\s*"([^"]+)"[^}]*?start_sec:\s*(\d+),\s*end_sec:\s*([^,}\s]+)/g)].map(
+    (m) => ({ id: m[1], start: Number(m[2]), end: Number(m[3]) })
+  );
+  assert.ok(queue.length >= 3, `expected three queued segments, found ${queue.length}`);
+  for (const q of queue.slice(1, -1)) {
+    assert.ok(
+      Number.isFinite(q.end) && q.end - q.start >= 10,
+      `${q.id} is ${q.end - q.start}s of audio; under 10 s its audio can run out within seconds of the ` +
+        `~26 s suspension ceiling, which is the exact confound that made run 32064639785 unreadable`
+    );
+  }
+  /* And the first segment's authored end must stay unreachable, so a missed override reads
+     as `END_NATURAL` or as no boundary rather than as a real-looking out-point. */
+  const armSec = Number(/ARM_AFTER_HIDDEN_SEC = (\d+)/.exec(js)?.[1]);
+  const firstEnd = Number(/SEGMENT_A_END_SEC = (\d+)/.exec(js)?.[1]);
+  assert.ok(Number.isFinite(armSec) && Number.isFinite(firstEnd));
+  assert.ok(
+    firstEnd > armSec + 60,
+    `SEGMENT_A_END_SEC (${firstEnd}) is close enough to the arm (${armSec}) that a missed override ` +
+      `could produce a boundary at a time nothing chose`
+  );
+});

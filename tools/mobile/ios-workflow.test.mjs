@@ -356,9 +356,14 @@ test("the backgrounded observation windows are long enough to measure anything",
      design — so `sleep 90` -> `sleep 5` was a one-edit change that turned the seam
      phase into a permanent silent `inconclusive` on a green job. The floors here are
      derived, not taste: probe-outpoint arms 15 s after the page goes hidden, and
-     probe-seam needs 15 s plus two ~2 s beats plus an 8 s and a 6 s segment (~33 s)
+     probe-seam needs its own arm plus a beat per transition plus every middle segment
      INSIDE a window that also has to absorb however long `simctl launch
      com.apple.Preferences` takes to actually foreground Settings (39 s, measured).
+     THE SEAM PASS'S ACTUAL FLOOR IS THE NEXT TEST, which derives it from
+     `probe-seam.js` rather than restating it here — this one only holds the shape (two
+     post-backgrounding windows exist at all). The numbers that used to be quoted in
+     this paragraph — "15 s plus two ~2 s beats plus an 8 s and a 6 s segment" — were
+     stale within a day, which is why the real check reads the source.
      `ios-ci.mjs` refuses a pass below 5 s of hidden playback either way, so a short
      sleep cannot produce a false pass — it can only produce a run that measured
      nothing, quietly, forever. */
@@ -370,12 +375,89 @@ test("the backgrounded observation windows are long enough to measure anything",
     post.length >= 2,
     `expected two post-backgrounding windows of >= 40 s (one per pass), found ${JSON.stringify(sleeps)}`
   );
-  /* The seam pass needs the longer of the two. */
+  /* The seam pass needs the longer of the two, and its floor is DERIVED from the
+     probe's own constants rather than typed here — see the test below. */
   assert.ok(
     Math.max(...sleeps) >= 85,
     `the longest observation window is ${Math.max(...sleeps)} s; at the MEASURED 9.2 s beat the ` +
       `seam chain needs ~45 s (15 + 9.2 + 8 + 9.2) inside a window that also absorbs a ~39 s ` +
       `foregrounding delay`
+  );
+});
+
+test("the seam window is long enough for the chain probe-seam.js actually asks for", () => {
+  /* A DERIVED FLOOR, BECAUSE THE TWO NUMBERS LIVE IN DIFFERENT FILES AND ONE OF THEM
+     IS GOVERNED.
+     `probe-seam.js` is ungoverned and `ios-build.yml` needs a founder label, so the
+     tempting order of events is to raise `ARM_AFTER_HIDDEN_SEC` in the probe, ship it
+     because it auto-merges, and leave the sleep at 90 s — which does not fail
+     anything. It produces a run whose first boundary is armed 60 s into a window that
+     closes at ~50 s, so the record contains NO transition at all, and
+     `seamTransitionVerdict` reports `inconclusive` on a GREEN job. Every seam number
+     in `docs/ios-ci.md` would then be measuring a window that no longer fits its own
+     probe.
+     So this reads the probe's constants and the workflow's sleep and asserts the
+     second covers the first. Break either and the message says which. */
+  const probe = fs.readFileSync(path.join(ROOT, "tools/mobile/probe/probe-seam.js"), "utf8");
+  const armSec = Number(/ARM_AFTER_HIDDEN_SEC\s*=\s*(\d+)/.exec(probe)?.[1]);
+  assert.ok(Number.isFinite(armSec), "ARM_AFTER_HIDDEN_SEC is no longer a plain number in probe-seam.js");
+  /* THE QUEUE LITERAL ONLY, ANCHORED ON ITS OWN DECLARATION — not "every
+     `{ id, start_sec, end_sec }` object in the file". A review pointed out that a
+     second such literal anywhere in `probe-seam.js` (a doc example, a future second
+     queue) would silently shift which bounds count as "middle", and the shape of this
+     arithmetic depends entirely on WHICH segment each bound belongs to: `seg-a`'s is
+     overridden at runtime and must not be counted, and the LAST segment's length does
+     not matter either, since the final transition completes the moment it becomes
+     audible. An earlier version summed every match positionally, picked up `seg-c`'s
+     bound as if it were `seg-b`'s, and could not see `seg-b` being lengthened past the
+     window. */
+  const queueSrc = /const QUEUE = \[([\s\S]*?)\];/.exec(probe)?.[1];
+  assert.ok(queueSrc, "probe-seam.js no longer declares `const QUEUE = [...]`, so this test cannot read it");
+  const queue = [...queueSrc.matchAll(/\{\s*id:\s*"([^"]+)"[^}]*?start_sec:\s*(\d+),\s*end_sec:\s*([^,}\s]+)/g)].map(
+    (m) => ({ id: m[1], start: Number(m[2]), end: Number(m[3]) })
+  );
+  assert.ok(queue.length >= 3, `expected at least three queued segments in probe-seam.js, found ${queue.length}`);
+  const middle = queue.slice(1, -1);
+  assert.ok(
+    middle.every((q) => Number.isFinite(q.end)),
+    `a middle segment has a non-numeric end_sec: ${JSON.stringify(middle)}`
+  );
+  const middleSec = middle.reduce((n, q) => n + (q.end - q.start), 0);
+  /* MEASURED, run 32036295743: the beat is max(gap, load) and the load dominated at
+     9.2 s. Using 2.0 s here — the number `seam-gap.js` defines — would under-budget
+     every window by 7 s per seam, which is the error the workflow's own comment was
+     corrected for. */
+  const MEASURED_BEAT_SEC = 9.2;
+  /* One beat per transition, plus every middle segment. The LAST transition completing
+     is the last thing `MIN_HIDDEN_TRANSITIONS` needs, so the final segment playing out
+     is deliberately not in the floor. */
+  const chainSec = armSec + MEASURED_BEAT_SEC * (queue.length - 1) + middleSec;
+  /* MEASURED, run 32025079276: `simctl launch com.apple.Preferences` returned
+     immediately and Settings took 39 s to actually foreground. The window starts when
+     the sleep does, not when the app goes hidden. */
+  const FOREGROUNDING_DELAY_SEC = 39;
+  /* THE SEAM PASS'S OWN SLEEP, not the longest sleep in the step. A review found this
+     taking `Math.max` over all five sleeps — two of which belong to pass 1 and one to
+     the collection wait — so raising pass 1's `sleep 60` to 200 and dropping the seam
+     window back to 90 would have passed this test while its failure message claimed
+     "the seam window sleeps 200 s". That is the exact silent drift this test exists to
+     prevent, one pass over. */
+  const probeStep = step(WF, "Run the probes") ?? "";
+  const passTwo = probeStep.split("--- pass 2:")[1];
+  assert.ok(
+    passTwo,
+    "the probe step no longer contains a `--- pass 2:` marker, so the seam window cannot be located"
+  );
+  const seamSleeps = [...passTwo.matchAll(/^\s*sleep (\d+)/gm)].map((m) => Number(m[1]));
+  assert.ok(seamSleeps.length, "pass 2 contains no `sleep` at all, so nothing waits for the seam chain");
+  const longest = Math.max(...seamSleeps);
+  assert.ok(
+    longest >= chainSec + FOREGROUNDING_DELAY_SEC,
+    `the seam window sleeps ${longest} s, but probe-seam.js asks for ${chainSec.toFixed(1)} s of hidden ` +
+      `chain (arm ${armSec} s + ${queue.length - 1} beats of ${MEASURED_BEAT_SEC} s + ${middleSec} s of ` +
+      `middle segment(s): ${middle.map((q) => `${q.id} ${q.start}-${q.end}`).join(", ")}) inside a window ` +
+      `that must also absorb the measured ${FOREGROUNDING_DELAY_SEC} s foregrounding delay. Raise the ` +
+      `sleep (governed file, founder label) or lower the arm.`
   );
 });
 
