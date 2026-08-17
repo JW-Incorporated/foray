@@ -1456,7 +1456,16 @@ export function saveTrailAnalysis(seam) {
  *  log (`docs/ios-ci.md` §4d); a per-line `includes` prefilter is the same lesson
  *  applied in JavaScript. Every needle below was copied out of a real
  *  `simulator-log-seam.txt` rather than from WebKit's source, so what is matched is
- *  what this runner image actually emits. */
+ *  what this runner image actually emits.
+ *
+ *  ONE LIMIT WORTH STATING RATHER THAN DISCOVERING. `didChangeThrottleState(Suspended)`
+ *  carries a `[PID=…]` for the process it is about, and WebKit runs three (WebContent,
+ *  Networking, GPU). This parser does not resolve which PID is the WebContent process —
+ *  nothing in the log names it as such — so in principle a GPU-process suspension could
+ *  be read as the page being descheduled. In every run so far these lines have all been
+ *  the WebContent process's and `applicationIsAboutToSuspend`, which is app-wide and
+ *  unambiguous, has followed within a second. If a future run reports a suspension that
+ *  the record and the media clock both contradict, this is the first thing to check. */
 const LIFECYCLE_NEEDLES = [
   ["suspended", "didChangeThrottleState(Suspended)"],
   ["about-to-suspend", "applicationIsAboutToSuspend"],
