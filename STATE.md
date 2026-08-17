@@ -48,6 +48,58 @@ docs/. Completed workstreams move to their plan doc's retro section.
   routines alive?"). #205 answered it — all six, never dead, they just open no
   PR — and `main`'s item **#10** already carries the correct successor question.
   The #4 slot stays unused rather than renumbered; item numbers are stable IDs.
+### delete my data — the control Play's deletion question needs (2026-08-17, one PR, no follow-up)
+
+- **What:** `feat/delete-my-data`, issue **#42 (MP8)**. The menu now carries
+  **Delete my data**: it clears **both** local tiers and deletes the account's rows
+  on the server, or says plainly that it could not. `docs/legal/data-safety.md`
+  §A7 flips from **No** to **Yes**, which was the one answer in that file that
+  blocked a store submission.
+- **New files:** `test/data-deletion.test.js` (37 tests). **Shared files it
+  touches:** `app.js` (the § delete my data block + one line in `init()`),
+  `player/durable-store.js` (`purge()`), `player/client.js`
+  (`stopForDataDeletion()`, and `stopAndClose({ persist })`), `styles.css`,
+  `player/durable-store.test.js` (+11), `player/foray-playback.test.js` (+1),
+  `test/suite-integrity.test.js` (one new floor, two raised, isolated final
+  commit), `docs/legal/{privacy-policy,data-safety}.md`, `HUMAN-ACTIONS.md`
+  (#13 step 6 answered, new **#14**), this file. **Nothing in `data/`, nothing in
+  `tools/`, nothing in `index.html`, nothing in `sw.js`, nothing in `backend/`.**
+- **Heads-up — the ORDER is the feature, and it is easy to "tidy" backwards.**
+  Remote rows go first, local second. `cp_sb_session` is the only credential that
+  can reach those rows, so clearing local first would strand them permanently. A
+  remote failure therefore STOPS the run with the device untouched, reports "your
+  server rows were NOT deleted", and offers a separate device-only clear that says
+  the rows remain. There is deliberately no success wording on that path.
+- **Heads-up — the key list is DERIVED, in the code and in the tests.**
+  `DurableStore.purge()` enumerates the tiers (not the facade — `length`/`key(i)`
+  hide `cp_storage_health`) and re-reads them afterwards; `unverified` records a
+  tier it could not read, because "I could not look" is not "it is empty". The
+  suite scans the shipped source for `cp_` literals, requires all 20 families to
+  be cleared, and pins them against the privacy policy's §1 table in **both**
+  directions. Add a 21st key and CI fails until the policy documents it.
+  `SB_USER_TABLES` is pinned against the RLS migration the same way.
+- **Heads-up — the anonymous ACCOUNT is not deleted, on purpose.** An `auth.users`
+  row needs the Admin API and a service-role key, which cannot ship in a public
+  page (CLAUDE.md item 2). Every row keyed to it is deleted and the token is
+  discarded, so the next event creates a NEW anonymous user rather than
+  re-attaching. Removing the empty shell is `HUMAN-ACTIONS.md` **#14** (a
+  `security definer` RPC); the client call is ~10 lines when it exists.
+- **Heads-up — the control is BUILT IN JS, not in `index.html`.** Same reason
+  `player/client.js` builds the mini-player: `index.html` is not auto-merge
+  allowlisted, and this should not need a founder merge. The drawer button is
+  appended to `#drawer`; the sheet is appended to `<body>` and reuses the reason
+  sheet's CSS shell.
+- **Heads-up — playback stops FIRST, without flushing.** A running player writes a
+  position every ~15 s, so a clear under live playback is undone one tick later.
+  `stopAndClose()` now takes `{ persist }` and every other caller still flushes.
+  `buildCards()` is deliberately NOT called after a clear either — it writes
+  `cp_recent_branches` and `cp_seen`, and the deletion is also the one action the
+  app does not `logEvent` (that would mint `cp_profile_id` and a new account).
+- **Left for the founder:** the **data-deletion URL** for both listings
+  (`HUMAN-ACTIONS.md` #13 step 2 — a hosting task; policy §7 is written to be that
+  page), and **#14** above. Nothing in this PR is blocked on either.
+- **Related:** #42, #40 (the tiering this had to defeat), #212 (the audit),
+  ADR-0005.
 
 ### MP1 spike — background audio in a Capacitor WebView (2026-08-17, one docs PR, no follow-up)
 

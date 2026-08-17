@@ -3,6 +3,10 @@
 **Status: DRAFT, derived from the code at `909adb5`. Not yet submitted.**
 Part of issue #42 (MP8). Companion to [`privacy-policy.md`](./privacy-policy.md).
 
+**Changed since `909adb5`:** the in-app **Delete my data** control now exists, so
+**A7's deletion answer is Yes** rather than No — the one answer in this file that
+was a submission blocker. Nothing about what the app *collects* changed with it.
+
 This file exists so that whoever fills in the two web forms is copying verified
 answers rather than guessing. Every answer carries a one-line justification and a
 code reference. **If you change the answer in a form, change it here in the same
@@ -192,27 +196,49 @@ drawn.
   (`app.js:173` `https://…supabase.co`; the CSP forbids cleartext, and audio is
   `media-src https:`).
 - **Do you provide a way for users to request that their data be deleted?**
-  **No, today.** Answering yes would be false: there is **no in-app delete or
-  reset control**, and no deletion URL. Local data is cleared through browser or
-  OS settings; server rows have no reachable delete path.
-  - The capability exists at the data layer — the row-level-security policy is
-    `for all`, which covers delete
-    (`backend/migrations/supabase/0001_auth_and_rls.sql`) — so this is a missing
-    feature, not a missing permission.
-  - > TODO(founder): **build a delete path, or answer No and publish that.**
-    Google Play expects a deletion URL where applicable, and this is the single
-    biggest gap between the app and a clean declaration. Recommended: a settings
-    control that clears both storage tiers and issues one authenticated
-    `DELETE /rest/v1/events?user_id=eq.<uid>`.
+  **Yes.** The app's menu (☰) carries **Delete my data** — the control built in
+  #42, `app.js` § delete my data. Play's question is about in-app deletion of
+  *account data*, and this deletes both halves of it:
+  - **On the device:** every `cp_` key, in **both** tiers, enumerated from the
+    tiers themselves and re-read afterwards to verify
+    (`DurableStore.purge()`, `player/durable-store.js`). No hard-coded key list —
+    that is what produced the 11-vs-20 undercount this document rests on.
+  - **On the server:** one authenticated `DELETE` per per-user table, filtered to
+    `user_id=eq.<uid>` — `events` first (the only table this client writes), and
+    `app_users` last. The row-level-security policy is `for all`, so a client can
+    always delete its own rows; the missing piece was the request, not the
+    permission.
+  - **Order and failure behaviour are part of the answer.** `cp_sb_session` is
+    the only credential that can reach those rows, so a remote failure stops the
+    run, leaves the device untouched and says the rows were **not** deleted. It
+    never reports a success it did not achieve. (Pinned by
+    `test/data-deletion.test.js`.)
+  - **What it does NOT delete, and both stores should be told the same thing:**
+    the Supabase **auth user row** itself, which needs the admin API and a
+    service-role key that cannot ship in a public client. The row is left holding
+    no name, email, phone number or password, with its `app_users` row and all its
+    events deleted, and the device's token discarded so the next event creates a
+    **new** anonymous account. Removing the empty shell is a server-side job:
+    `HUMAN-ACTIONS.md` #14. It also cannot delete what the publisher CDNs and
+    ad-attribution prefixes already observed — see §A6; the control's own UI says
+    so rather than implying otherwise.
+  - Confirmation is a typed `DELETE`, so a stray tap cannot trigger it — relevant
+    to Play only in that a deletion control that fires accidentally is its own
+    kind of data-loss complaint.
 - **Independent security review?** **No.** None has been done. Do not check it.
 - **Committed to Play Families policy?** > TODO(founder) — a listing decision.
   The app is general-audience and collects no age (policy §6).
 
 ## A8. Data deletion + policy URLs
 
+The **in-app** half of this is now built (see A7). The form additionally wants a
+**public URL** describing deletion, which is a hosting task, not a code one.
+
 > TODO(founder): the **privacy policy URL** and the **data-deletion URL** the form
 > requires. `privacy-policy.md` must be hosted somewhere public first — a path in
-> a GitHub repo is not an acceptable answer for a store listing.
+> a GitHub repo is not an acceptable answer for a store listing. Its §7 is already
+> written as the deletion page: it describes the control, the order it works in,
+> and what it cannot reach.
 
 ---
 
@@ -305,6 +331,12 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
   you *create an account*. Foray creates an anonymous account with no user
   action, which is arguably outside the rule — but the safe posture is the same
   delete control Play wants. Build it once, satisfy both.
+  - **The control now exists** (A7), which is the "build it once" half. Read the
+    limit honestly before answering Apple: it deletes every row keyed to the
+    account and discards the credential, but **not the auth user record**, which
+    needs a service-role key. If a reviewer reads 5.1.1(v) as requiring the
+    account record itself to go, the remaining work is server-side
+    (`HUMAN-ACTIONS.md` #14), not client-side.
   - > TODO(founder): confirm this reading, or just build the control.
 
 ---

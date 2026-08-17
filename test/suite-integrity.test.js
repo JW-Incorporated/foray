@@ -56,9 +56,9 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 59,
+  "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
-  "player/foray-playback.test.js": 61,
+  "player/foray-playback.test.js": 62,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 42,
@@ -80,6 +80,13 @@ const FLOORS = {
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
   "test/app-security.test.js": 20,
+  /* "Delete my data" (#42). Zero slack, like media-session above and for the same
+     reason: what this suite guards is a PROMISE — both tiers cleared, the server
+     rows really deleted, no success message over a failure, and a confirmation a
+     stray tap cannot satisfy. Every one of those is one edit from its opposite,
+     and the published privacy policy and Play declaration both now rest on them.
+     A deleted test here is a false statement in a store submission. */
+  "test/data-deletion.test.js": 51,
   /* The standing gate on topic ids in `data/*.json`. Floored because the metric
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
