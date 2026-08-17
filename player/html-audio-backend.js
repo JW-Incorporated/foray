@@ -344,6 +344,9 @@ export class HtmlAudioBackend {
     this._currentUrl = null;
     this._pendingRate = 1.0;
     this._released = false;
+    /** Whether a `play()` has been issued on this element from inside a real
+        user gesture. One-way and one-shot — see `notePlayGesture`. */
+    this._gestureNoted = false;
 
     /* out-point state — see §"the out-point" above */
     this._outPoint = null;
@@ -1149,6 +1152,51 @@ export class HtmlAudioBackend {
   }
 
   /* ---------- transport ---------- */
+
+  /**
+   * A person just tapped something that means "play". Spend the gesture on the
+   * element NOW, before the load that follows spends the tap on a network round
+   * trip (#225).
+   *
+   * THE PROBLEM THIS SOLVES. Autoplay policy is not about time, it is about
+   * TASKS: WebKit lifts an element's gesture restriction inside
+   * `HTMLMediaElement::play()` when the call is made while a user gesture is
+   * being processed, and a gesture stops being processed the moment the current
+   * task ends. Every start in this player reaches `play()` from
+   * `_loadItem` -> `await backend.load(...)` -> `itemLoaded` -> `startPlayback`,
+   * and a first load of a URL resolves on a media event — a NEW task. So the
+   * first `play()` of a session was always outside the gesture and Safari was
+   * always entitled to refuse it, on every control equally. The second tap
+   * usually worked, which is what made this look like one button being broken
+   * and another being fine: by then the element held the URL, `load()` took the
+   * same-source shortcut, that shortcut resolves without yielding, and `play()`
+   * landed back inside the tap.
+   *
+   * Calling `play()` here is the whole fix: the restriction is lifted by the
+   * CALL, not by the call succeeding, so a rejection is expected and ignored.
+   *
+   * ONLY ON AN ELEMENT HOLDING NOTHING. Priming a loaded element would start
+   * audio at whatever position it is parked at, which is the exact outcome the
+   * load contract ("nothing audible until the asset is at the right position")
+   * exists to prevent. An element that already holds a URL has also already
+   * played, or is about to be seeked in place with the gesture still in hand, so
+   * there is nothing left to prime.
+   *
+   * @returns true if a gesture was spent on the element.
+   */
+  notePlayGesture() {
+    if (this._released || this._gestureNoted) return false;
+    this._gestureNoted = true;
+    if (this._currentUrl) return false;
+    /* Nothing is audible: there is no source, so the media element ends up
+       waiting for one and the promise it hands back never resolves. The
+       following `load()` aborts it, which rejects with `AbortError` — caught
+       here, because an unhandled rejection would take the module down. */
+    const p = this.el.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+    this._emit("gesture.noted — the autoplay restriction is spent inside the tap");
+    return true;
+  }
 
   play() {
     if (this._released) return;

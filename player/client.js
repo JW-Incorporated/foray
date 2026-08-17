@@ -820,6 +820,8 @@ const ForayPlayer = {
   async play(item, { why = "" } = {}) {
     if (!this.canPlay(item)) return false;
     ensureBooted();
+    // BEFORE the first await, always. See `notePlayGesture` (#225).
+    backend.notePlayGesture();
     // Leaving a Foray for a single episode must not cost the last few seconds
     // of it — this is the only place `foray` is dropped without a flush.
     persistForayProgress({ force: true });
@@ -898,6 +900,16 @@ const ForayPlayer = {
   } = {}) {
     if (!resolved || !resolved.playable.length) return null;
     ensureBooted();
+    /* THE FIRST THING, AND BEFORE EVERY AWAIT BELOW (#225).
+
+       This method is called straight out of a click handler, so this line is the
+       last moment at which the tap can still be spent on the audio element. The
+       load that follows resolves on a media event — a new task — and by then the
+       gesture is gone and Safari is entitled to refuse the `play()` that ends
+       this call. Both entry points on the Foray page (the main button, which
+       passes `startElapsedSec`, and a running-order row, which passes
+       `startIndex`) come through here, so both are covered by one line. */
+    backend.notePlayGesture();
     foray = { resolved, index: -1, pendingFrom: null, onChange, error: null };
     setSkipButtonMode(true);
     // Once per Foray, not once per tick: this walks the whole discover pool.

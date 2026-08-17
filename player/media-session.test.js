@@ -1260,8 +1260,11 @@ test("EVERY playForay call site in app.js passes the artwork document", () => {
      so a site written `window.ForayPlayer.playForay(...)` would have been
      invisible while the count still passed on the existing three. The exact count
      is deliberate too — `>= 3` lets a fourth, artwork-less call site merge. */
+  /* Two since #225 folded the strip's cold scrub into `startAt`: the page now
+     has exactly one funnel per option shape — `start` for an index, `startAt`
+     for an elapsed — and every control routes through one of them. */
   const calls = liveLines(APP, "playForay(");
-  assert.equal(calls.length, 3, `the known call sites are three; found ${calls.length} — check the new one`);
+  assert.equal(calls.length, 2, `the known call sites are two; found ${calls.length} — check the new one`);
   const missing = calls.filter((c) => !/forayOpts|discoverDoc/.test(c));
   assert.deepEqual(missing, [], "a Foray started without discoverDoc loses the publisher's artwork");
 });
