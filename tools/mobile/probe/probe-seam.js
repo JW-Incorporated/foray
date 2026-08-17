@@ -20,7 +20,8 @@
  * a **median of 1000 ms** (`timerIntervalsMs`: 253, 925, 1000, 1000, 1001, 998, …).
  * `timeupdate` kept its 252 ms rate — that is a media event — but the beat is a
  * `setTimeout`, and `setTimeout` is exactly what was measured at 1 s alignment.
- * The load is worse: a fresh media fetch, with `LOAD_SETTLE_TIMEOUT_MS` at 10 s,
+ * The load is worse: a fresh media fetch, with `LOAD_SETTLE_TIMEOUT_MS` at 10 s
+ * visible and 20 s hidden (raised 2026-08-17 because a hidden load measures 5-11 s),
  * inside a page that has been SILENT since the boundary and may therefore have
  * lost WebKit's audibility assertion (`audibleActivityClearDelay` — measured at
  * 5 s in run 32036295743, not the 10 s once assumed).

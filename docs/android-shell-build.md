@@ -404,19 +404,26 @@ visible — while it stays audible. **Source-traced, not measured** (§5.2): tha
 Blink exempts an audible page from *freezing* as well, and the 30 s grace after
 audio stops (`kRecentAudioDelay`, whose source comment reads *"A page cannot be
 throttled or frozen 30 seconds after playing audio"*) — a constant read out of
-Chromium, not a stopwatch reading. Before #227 the app spent
-9.2 s of that 30 s window at every one of Foray #1's **16 cross-episode seams**,
-with a JS timer inside it that has to fire for the Foray to continue. Now it
-spends 2.0 s. And #227 removes a cliff, not just slack: 9,153 ms was **92% of
-`LOAD_SETTLE_TIMEOUT_MS`**, past which `load()` rejects and the segment is
-**dropped** — and MP1 §4.4 measured 3 of 5 hidden-page loads already failing that
-way. The load now happens in the unthrottled, audible window instead of the worst
-window the platform has.
+Chromium, not a stopwatch reading. The app spends
+**5–11 s** of that 30 s window at every one of Foray #1's **16 cross-episode
+seams**, with a JS timer inside it that has to fire for the Foray to continue.
 
-So: **#227 substantially weakens the engine-level case for a foreground
-service.** If the only reason we wanted one was "Blink might throttle or freeze us
-during a seam and strand the Foray in silence", 2.0 s inside a 30 s grace is a
-much easier thing to defend than 9.2 s.
+> **RETRACTED 2026-08-17 — this paragraph used to say #227 cut that to 2.0 s.**
+> #227 was measured on a device making the seam WORSE (the segment was dropped,
+> not shortened) and is parked default-off. Its premise was that warming in the
+> audible window dodges the throttle; the throttle on media-element load tasks is
+> keyed to VISIBILITY, not audibility (MP1 §4.1a). So the seam is back to its
+> measured 5–11 s and **the engine-level case for a foreground service is at full
+> strength, not weakened.**
+>
+> What DID land is the cliff, not the slack: 9,153 ms was **92% of
+> `LOAD_SETTLE_TIMEOUT_MS`**, past which `load()` rejects and the segment is
+> **dropped** — MP1 §4.4 measured 3 of 5 hidden-page Chromium loads already
+> failing exactly that way. That deadline is visibility-aware as of 2026-08-17
+> (10 s visible, **20 s hidden**), so a slow seam no longer drops a segment. It
+> does not make the seam shorter, and on Blink it now spends up to ~20 s of the
+> 30 s grace rather than 10 s — which is the right trade for a dropped segment,
+> and a point IN FAVOUR of a foreground service rather than against one.
 
 Three limits on that, because the improvement is not uniform:
 

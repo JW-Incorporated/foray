@@ -203,7 +203,7 @@ transition is a different mechanism:
 Probe B's own numbers are the reason to doubt it. `timeupdate` kept its 252 ms rate
 while hidden — that is a *media* event. The beat is a `setTimeout`, and the same
 page measured hidden DOM timers at a **median of 1000 ms**. The load is worse
-again: a fresh media fetch, `LOAD_SETTLE_TIMEOUT_MS` at 10 s, in a page that has
+again: a fresh media fetch, `LOAD_SETTLE_TIMEOUT_MS` at 10 s visible / 20 s hidden, in a page that has
 been *silent* since the boundary and may therefore have lost WebKit's audibility
 assertion (`audibleActivityClearDelay` — **measured at 5 s, see §4c**; the 10 s
 figure widely quoted for it is a different timer). If that chain breaks, a listener with
@@ -617,7 +617,7 @@ release, and the measured beat came within **847 ms** of it — **on a local fil
 A cross-origin fetch has under a second of headroom before crossing that threshold.
 
 **And a real phone then hit a 10 s deadline — but be careful WHICH one, because
-there are three and they are all 10,000 ms.** #224: a founder heard a Foray *pause*
+there are three, and they were all 10,000 ms until ours moved.** **SHIPPED 2026-08-17: the deadline is visibility-aware — 10 s visible, 20 s hidden.** WebKit's two are unchanged and not ours to move. #224: a founder heard a Foray *pause*
 at a seam with the screen off. **The report is an ear, not an artifact** — #224 is
 open, with no device log — so the mechanism below is the *traced* cause and not a
 measured one, which is the same standard §4c applies to itself. It is our **own**
@@ -634,12 +634,12 @@ The three, kept apart on purpose:
 | `LOAD_SETTLE_TIMEOUT_MS` **10 s** | **ours** | `E.error` → idle → **pause**. This is #224's stated cause |
 
 The measured 9,153 ms is **92% of our own timeout** and 847 ms short of WebKit's.
-Both arithmetics give 847 ms because both constants are 10,000 ms, which is exactly
+Both arithmetics gave 847 ms because both constants were 10,000 ms, which is exactly
 why they are easy to conflate — the earlier draft of this paragraph did. ~~#227's
 prefetch takes the load out of the silent window, which addresses all three at
 once.~~ **It does not: run 32057395270 measured the load taking ~11 s whether the
 page is audible or silent, because the throttle is on VISIBILITY (§4.1a). All
-three are still open, and the live proposal is a visibility-aware
+three are still open on WebKit's side; ours SHIPPED as a visibility-aware
 `LOAD_SETTLE_TIMEOUT_MS` so a slow load stops dropping the segment.**
 
 ### What the log DOES say, and a claim it walks back

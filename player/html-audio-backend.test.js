@@ -2172,3 +2172,168 @@ test("a window handler that throws cannot take the audio down with it", async ()
   a.tickTo(1000.01);
   assert.deepStrictEqual(ends, ["outPoint"], "the out-point still lands");
 });
+
+/* ---------- the load deadline depends on visibility ----------
+
+   A visible load is 590 ms; a hidden one is 5-11 s for the identical file,
+   because the media load algorithm runs as queued tasks that a hidden page
+   delivers seconds apart. One deadline cannot serve both: 10 s is ~17x headroom
+   visible and NEGATIVE headroom hidden, and crossing it DROPS THE SEGMENT.
+
+   These read the delay a timer is ARMED FOR rather than waiting for it — the
+   only way to assert a 20-second budget in a test that costs nothing, and the
+   rule this file exists under (never assert on the wall clock; #195). */
+
+/** Capture what `setTimeout` was asked for, without letting any of it fire. */
+function armedDelays(run) {
+  const real = globalThis.setTimeout;
+  const seen = [];
+  globalThis.setTimeout = (fn, ms, ...rest) => { seen.push(ms); return real(() => {}, 0, ...rest); };
+  try { run(); } finally { globalThis.setTimeout = real; }
+  return seen;
+}
+
+test("a HIDDEN page gets the hidden load deadline, a visible page the visible one", async () => {
+  // The whole point: a seam fires while the phone is locked, and the load it
+  // starts needs a budget sized for a hidden page.
+  const hiddenArmed = armedDelays(() => {
+    const b = new HtmlAudioBackend({ element: new FakeAudio(), isHidden: () => true });
+    b.load(item("a")).catch(() => {});
+  });
+  const visibleArmed = armedDelays(() => {
+    const b = new HtmlAudioBackend({ element: new FakeAudio(), isHidden: () => false });
+    b.load(item("a")).catch(() => {});
+  });
+
+  assert.ok(hiddenArmed.includes(20_000), `hidden should arm 20 s, armed ${hiddenArmed}`);
+  assert.ok(visibleArmed.includes(10_000), `visible should arm 10 s, armed ${visibleArmed}`);
+  assert.ok(
+    Math.max(...hiddenArmed) > Math.max(...visibleArmed),
+    "and the hidden budget must be the larger one — that is the entire change"
+  );
+});
+
+test("the in-place seek path gets the same treatment", async () => {
+  /* Consecutive segments of ONE episode take the seek shortcut instead of a
+     load, and 15 of Foray #1's 31 seams are exactly that. A seek into an
+     unbuffered region waits for a refill on the same throttled task queue, so
+     leaving this path on the visible deadline would fix half the seams. */
+  const el = new FakeAudio();
+  const b = new HtmlAudioBackend({ element: el, isHidden: () => true });
+  await b.load(item("a", "https://cdn.example/one.mp3"));
+  const armed = armedDelays(() => {
+    // Same URL, already loaded => `_seekWithinLoadedSource`.
+    b.load(item("a2", "https://cdn.example/one.mp3"), { startOffset: 1800 }).catch(() => {});
+  });
+  assert.ok(armed.includes(20_000), `the seek path should arm 20 s too, armed ${armed}`);
+});
+
+test("an injected loadTimeoutMs still wins, at either visibility", async () => {
+  // Every stall test in this file pins the deadline in milliseconds. A test that
+  // asked for 200 ms wants 200 ms, not 200 ms sometimes.
+  for (const hidden of [true, false]) {
+    const armed = armedDelays(() => {
+      const b = new HtmlAudioBackend({
+        element: new FakeAudio(), isHidden: () => hidden, loadTimeoutMs: 200,
+      });
+      b.load(item("a")).catch(() => {});
+    });
+    assert.ok(armed.includes(200), `hidden=${hidden}: injected 200 ms must win, armed ${armed}`);
+    assert.equal(armed.includes(20_000), false, `hidden=${hidden}: must not also arm 20 s`);
+  }
+});
+
+test("the deadline is read once per load, not re-read as visibility changes", async () => {
+  /* A load that begins visible keeps the 10 s it started with even if the phone
+     locks mid-load — which is exactly what shipped before this change, so that
+     case cannot regress. Stated as a test because "it depends on visibility"
+     invites the reader to assume it tracks visibility. */
+  let hidden = false;
+  const b = new HtmlAudioBackend({ element: new FakeAudio(), isHidden: () => hidden });
+  const armed = armedDelays(() => {
+    b.load(item("a")).catch(() => {});
+    hidden = true;   // the phone locks while the load is in flight
+  });
+  assert.ok(armed.includes(10_000), `armed ${armed}`);
+  assert.equal(armed.includes(20_000), false, "the running load keeps the budget it was armed with");
+});
+
+test("a throwing isHidden cannot stop a load, and falls back to the visible budget", async () => {
+  const armed = armedDelays(() => {
+    const b = new HtmlAudioBackend({
+      element: new FakeAudio(), isHidden: () => { throw new Error("surface bug"); },
+    });
+    b.load(item("a")).catch(() => {});
+  });
+  assert.ok(armed.includes(10_000), `armed ${armed}`);
+});
+
+test("with no document at all the deadline is the visible one", async () => {
+  // `node --test` has no `document`, which is also every other test in this file.
+  assert.equal(typeof document, "undefined", "precondition for the assertion below");
+  const armed = armedDelays(() => {
+    const b = new HtmlAudioBackend({ element: new FakeAudio() });
+    b.load(item("a")).catch(() => {});
+  });
+  assert.ok(armed.includes(10_000), `armed ${armed}`);
+});
+
+test("the hidden deadline says which budget it used, so an artifact can be read", async () => {
+  const log = [];
+  const b = new HtmlAudioBackend({
+    element: new FakeAudio(), isHidden: () => true, telemetry: (m) => log.push(m),
+  });
+  await b.load(item("a"));
+  assert.ok(log.some((l) => /load\.deadline 20000ms \(hidden\)/.test(l)), log.join("\n"));
+});
+
+test("a hidden load that never settles still rejects", async () => {
+  /* The one-sided fact that matters: a hidden load which never settles must
+     still reject, or the state machine sits in `loadingItem` forever. Driven at
+     20 ms rather than 20 s by pinning the budget — the mechanism under test is
+     "does the deadline fire", not "how long is it".
+
+     This test does NOT assert ref'd-ness; it used to say it did, in its name,
+     which is worse than not covering it. `hasRef` is asserted below, per path. */
+  const el = new FakeAudio();
+  const b = new HtmlAudioBackend({ element: el, isHidden: () => true, loadTimeoutMs: 20 });
+  el.load = () => { el.currentSrc = el.src; };   // a fetch that stalls silently
+  await assert.rejects(() => b.load(item("stalls")), /did not settle within 20ms/);
+});
+
+test("THE SEEK PATH'S deadline is ref'd too — the half of the seams nothing covered", async () => {
+  /* Found by the reviewer with a mutation that survived: unref'ing the
+     same-source seek deadline left the whole suite green at 100/100. The
+     pre-existing "every deadline is ref'd" test stubs `el.load`, so it only ever
+     reaches the COLD path — and the seek path is the one 15 of Foray #1's 31
+     seams take.
+
+     That gap is not theoretical here. An unref'd deadline was THE CI failure on
+     #111: an unref'd timer only fires if something else keeps the event loop
+     alive, so Node 24 stayed green and Node 22 hung. Both paths arm a deadline
+     now, so both need this. */
+  const el = new FakeAudio();
+  const b = new HtmlAudioBackend({ element: el, loadTimeoutMs: 60 });
+  await b.load(item("a", "https://cdn.example/one.mp3"));
+
+  const armed = [];
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms) => { const t = realSetTimeout(fn, ms); armed.push(t); return t; };
+  try {
+    /* Same URL and already loaded => `_seekWithinLoadedSource`. `readyState` is
+       dropped below HAVE_FUTURE_DATA first, which is what a real element does
+       when it seeks into an unbuffered region — so the seek cannot settle on
+       readiness, no further events arrive, and only its own deadline can end it. */
+    el.readyState = 1;
+    await assert.rejects(
+      () => b.load(item("a2", "https://cdn.example/one.mp3"), { startOffset: 1800 }),
+      /in-place seek to 1800s did not settle within 60ms/
+    );
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+  assert.ok(armed.length >= 1, "the seek path must arm a deadline at all");
+  for (const t of armed) {
+    assert.ok(t?.hasRef?.() !== false, "the seek deadline must never be unref'd either");
+  }
+});

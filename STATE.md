@@ -7,6 +7,110 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### hidden-page load deadline — a seam stops dropping the segment (2026-08-17, one PR, no follow-up)
+
+- **What:** `fix/hidden-load-deadline`. `LOAD_SETTLE_TIMEOUT_MS` was one number for
+  two very different machines. A **visible** load measures **590 ms**; a
+  **hidden** load runs the same algorithm as queued tasks delivered seconds apart
+  and measures **5.1–11.1 s** for the identical file. So 10 s was ~17x headroom
+  visible and *negative* headroom hidden — and crossing it does not mean "slow",
+  it means the manager degrades and **the segment is dropped**. Hidden loads now
+  get **20 s**; visible stays 10 s; an injected `loadTimeoutMs` still wins.
+- **Shared files:** `player/html-audio-backend.js` (+ test),
+  `docs/research/mp1-background-audio.md`, this file. **Nothing else** — no
+  `data/`, no `tools/`, no `.github/`, no manager change, no reducer change.
+- **THE NUMBER COMES FROM A FLOOR. THERE IS NO USABLE CEILING — a first draft of
+  this entry claimed one and the reviewer took it apart.** Floor: the worst
+  **clean** chain, 9,153 ms (32036295743), × the **1.8x run-to-run spread**, + the
+  cold-CDN allowance none of these exercised (TTFB 0.99 s median / 1.41 s worst,
+  desktop, a lower bound) ≈ 18 s → **20 s**. The 11,140 ms sample is **excluded**,
+  and saying so matters: it had a second element's teardown sharing the task queue
+  (a path now parked), and at 11.14 s the same arithmetic gives 21.5 s — so "worst
+  evidenced" without the exclusion stated is simply false.
+- **WHY THE SUSPENSION IS NOT A CEILING, though it reads like one.** It is measured
+  from when the app HIDES; this deadline starts at the BOUNDARY, which the probe
+  pins 15.0 s later. Post-boundary the page has only **10.2 / 11.8 / 12.9 s** left,
+  and in two of three runs the load finished with **under a second** to spare. So
+  nothing above ~13 s can fire in the measured configuration, 20 s included:
+  **the floor (~18 s) and the measured post-boundary window (~13 s) are
+  incompatible.** That is the finding, not a problem with the number — a value
+  below the floor guarantees the drops this exists to prevent, and 20 s means that
+  when a hidden load is slow enough to matter, what ends the Foray is the
+  SUSPENSION rather than our own impatience. One cause removed, the next exposed,
+  which is why the suspension entry below is above this one in priority.
+- **CORRECTION — THE "THROTTLING DEEPENS WITH HIDDEN TIME" TABLE DOES NOT HOLD,
+  and the reason is a cross-pass pairing.** `hiddenPlaybackSec` (3.294 s in the
+  retreat run, 15.124 s pre-#227) lives on **`foray_probe_outpoint`** — a
+  different probe pass, a different app launch — and was paired with
+  `observedGapMs` from `foray_probe_seam`. Measured on the seam records
+  themselves, hidden playback before the boundary is **15.048 s / 15.033 s /
+  15.018 s** across the three runs: identical by construction, because
+  `probe-seam.js` pins it at `ARM_AFTER_HIDDEN_SEC = 15`. **So the pair cannot
+  test the ramp — it does not vary the variable.** The hypothesis is neither
+  supported nor refuted and stays open.
+- **WHAT THE SAME PAIR DOES SHOW, and it is the more useful finding: 1.8x
+  run-to-run variance on identical code.** Retreat **5,114 ms** against pre-#227
+  **9,153 ms** — same one-element path, same 15.0 s hidden position, same local
+  bundled file. The whole difference is in one phase (`stalled` →
+  `loadedmetadata`: **1,902 ms** vs **5,954 ms**). A hidden chain is a
+  distribution we have three samples of, not a constant, which is exactly why the
+  deadline is a multiple of the worst sample rather than the worst sample.
+- **CAUTION ON THE DISCARD CORROBORATION — it is weaker than it looks, and I was
+  asked to record it as corroboration.** The retreat improving on the pre-#227
+  baseline (5.1 s vs 9.2 s) is tempting to read as "removing `_discardWarm`'s two
+  queued steps was worth ~4 s". It is not safe to read that way: those two runs
+  are the SAME code path on the discard question, so their 1.8x gap IS the
+  variance envelope, and 11.1 s (the run with the discard) sits close to it. The
+  real evidence for the serialized-queue diagnosis remains **within-run**: the
+  discard's task steps timestamped ahead of the fallback's, and the two
+  `selectMediaResource` calls 4 ms apart. Keep the mechanism, drop the arithmetic.
+
+### the page SUSPENDS ~26 s into hidden time — instrument ceiling, possibly a real defect (2026-08-17, findings only, no code)
+
+- **NOT FIXED HERE, and it is bigger than anything in the entry above.** In all
+  three seam runs the durable record ends after **25.2 s, 26.8 s and 27.9 s** of
+  hidden time, and `simulator-log-seam.txt` says why:
+  `WebProcessProxy::didChangeThrottleState(Suspended)`,
+  `ProcessThrottler::uiAssertionWillExpireImminently`,
+  `WebProcessPool::applicationIsAboutToSuspend: Terminating non-critical
+  processes`, `setProcessesShouldSuspend: Processes should suspend 1`. So it is a
+  genuine suspension, not merely WebKit declining to flush localStorage.
+- **Three consequences, in ascending order of importance.**
+  1. **Every hidden number this repo has is from a window that ends at ~26 s.**
+     Not "the first 15 s" as a matter of probe convention — a hard ceiling.
+  2. **`MIN_HIDDEN_TRANSITIONS = 2` has never been satisfiable, so NO seam run has
+     ever returned a pass.** All three record **one** transition and two audible
+     items; `seg-b`'s out-point was armed (`outPoint.set 20.00s`) and the last
+     durable write lands ~0.3 s before that boundary was due. The workflow's 90 s
+     budget is adequate on paper (its own derivation reaches transition 2 at
+     ~41 s); the app is not alive to reach it. **`seamTransitionVerdict` therefore
+     returns `too-few-transitions` — "Reported as inconclusive rather than as a
+     pass" — every time**, including for the retreat run (#235), which is better
+     read as "the transition was restored" than as "verified". And the reason that
+     rule exists is precisely the failure now evidenced: its own text says *"one
+     transition can succeed inside WebKit's `audibleActivityClearDelay` grace
+     window and the next still fail once the page has been silent long enough for
+     the audibility assertion to lapse."* The probe was designed to catch this and
+     has never been able to.
+  3. **If this also happens on a real phone, a Foray stops advancing ~26 s after
+     the screen locks, and no deadline anywhere fixes that.** It would make the
+     seam work moot. **Do not assume it does** — the harness backgrounds the app
+     by launching Settings on a Simulator with no real audio route, and
+     `UIBackgroundModes: audio` is supposed to keep an app alive precisely while
+     audio plays (MP1's central finding). A Simulator suspending a
+     silent-to-the-OS app is entirely plausible as an artifact.
+- **How to settle it, cheaply, in that order:** (a) `HUMAN-ACTIONS.md` #11 —
+  someone's phone, screen off, twenty minutes, does the running order keep
+  advancing? That answers the only question that matters and needs no build.
+  (b) In the probe, force a `save()` at every boundary *and* shorten `seg-b` so
+  transition 2 lands well inside the ~26 s window; that recovers the second data
+  point and, with a longer first arm, tests the ramp. Both are `tools/` changes
+  and belong to whoever owns #220.
+- **Why the ramp was not probed here:** the instrument cannot currently reach
+  past ~26 s of hidden time, so raising `ARM_AFTER_HIDDEN_SEC` to 45–60 s would
+  move the boundary *beyond the suspension* and measure nothing. That is a
+  finding, not a budget problem — the 90 s sleep is not the constraint.
+
 ### unsticking — the out-point flake, and PR #198's salvage (2026-08-17, one PR, no follow-up)
 
 - **What:** `fix/flake-and-198`. Two unrelated blockages in one PR: (1) the
