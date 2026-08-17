@@ -394,13 +394,16 @@ after(() => { for (const el of tickingBuilt) { try { el.pause(); } catch (_) {} 
 
 const ticking = (opts = {}) => {
   const el = new TickingAudio(opts);
-  /* Timestamp every delivered tick. This is the naive implementation's clock —
-     the thing the fine timer has to beat — measured under the load in the room
-     rather than assumed from TIMEUPDATE_MS. */
-  const tickAt = [];
+  /* Record every delivered tick AND the playhead it delivered. This is the naive
+     implementation's clock — the thing the fine timer has to beat — measured
+     under the load in the room rather than assumed from TIMEUPDATE_MS. The
+     playhead matters as much as the timestamp: a bare timeupdate check stops on
+     the first tick whose `currentTime` has reached the boundary, so those are
+     exactly the values it would have seen. */
+  const ticks = [];
   const fire = el._fire.bind(el);
   el._fire = (type, ...rest) => {
-    if (type === "timeupdate") tickAt.push(now());
+    if (type === "timeupdate") ticks.push({ at: now(), t: el.currentTime });
     return fire(type, ...rest);
   };
   tickingBuilt.push(el);
@@ -413,7 +416,7 @@ const ticking = (opts = {}) => {
   });
   const ends = [];
   b.onItemEnded = (reason) => ends.push(reason ?? "natural");
-  return { el, b, log, ends, tickAt };
+  return { el, b, log, ends, ticks };
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -452,52 +455,83 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
    ceiling, not a duration. The wait returns the moment the event lands, so a
    green run costs the same however large it is, and only a broken build pays.
 
-   ── and then the comparative fix was still flaky, for two reasons ──────────
+   ── and then the comparative budget was still flaky, and the reason is the
+      real lesson of this file ────────────────────────────────────────────────
 
    It reddened CI at random for a day after #195 — observed by four separate
    sessions, twice as a bare `FAILED (1): node --test` on the root group that
-   passed on the next two runs. Reproduced here at 1 run in 12 under 16 busy
-   loops on 16 cores. Neither cause was the product; both were in the arithmetic
-   above, and both are the same mistake in different clothes — a budget that does
-   NOT stretch with the load the measurement stretches with.
+   passed on the next two runs. Reproduced at 1 run in 12 under 16 busy loops on
+   16 cores, and 6 runs in 10 under 32. The product is identical in both columns,
+   which is most of the proof that the test was measuring the box.
 
-   1. **The comparison was not actually within one run.** It took `Math.min` of
-      the naive cost across the four phase-sweep runs and `Math.max` of the
-      overshoot across the same four, so the budget came from the least-loaded
-      run and the measurement from the most-loaded one. `assertBeatsNaive` now
-      pairs them per run.
-   2. **`observedTickMs` fell back to the NOMINAL tick** when a run delivered
-      fewer than two ticks, which is exactly what a slow box does — so the
-      fallback reinstated the magic number in the one case where it was
-      guaranteed too small. It returns null now and callers must assert.
+   Two bugs were found and fixed first, and they were real:
 
-   And the rate claim, which depended on both, no longer depends on a clock at
-   all: see "the boundary's ARITHMETIC" below. The lesson generalises past this
-   file — if a budget and a measurement do not come from the same run, on the
-   same box, under the same load, then "load-invariant" is a comment rather than
-   a property. */
+   1. **The comparison was not within one run.** It took `Math.min` of the naive
+      cost across the four phase-sweep runs and `Math.max` of the overshoot
+      across the same four — budget from the least-loaded run, measurement from
+      the most-loaded.
+   2. **The naive cost fell back to the NOMINAL tick** when a run delivered fewer
+      than two ticks, which is exactly what a slow box does, so the fallback
+      reinstated the magic number in the one case where it was certain to be too
+      small.
+
+   **Fixing both was not enough, and that is the point.** Pairing per run still
+   failed 6 runs in 10 at 32 busy loops, and asserting measurability instead of
+   falling back merely converted a wrong budget into a loud failure — it made the
+   whole root group RED 4 runs in 8, because `node --test` already runs 32 suites
+   in parallel and starves itself. Measured cause: the widest delivered tick
+   interval reached **1,825 ms against a nominal 250 ms**, while the fine timer's
+   own wake was late by a different and uncorrelated amount.
+
+   A ratio between two INDEPENDENTLY SCHEDULED OS TIMERS cannot be asserted
+   under arbitrary load, however carefully it is paired. Both timers stretch, but
+   not together, and the tail is where CI lives.
+
+   So the budget is gone rather than widened, and the claims were split by what
+   each one actually needs:
+
+   - **Real clock, asserted:** only ONE-SIDED facts — the boundary fired, and it
+     was not early. A late OS timer cannot break either; only a wrong
+     implementation can. These hold on any box under any load.
+   - **Real clock, measured and reported as a diagnostic:** how the overshoot
+     compared to what a bare timeupdate check would have cost in that same run,
+     computed from the ticks actually delivered (`naiveOvershootSec`) rather than
+     from a tick-interval proxy. Worth printing on every run; not worth failing a
+     build over.
+   - **No clock at all, asserted, and this is where the teeth are:** that the
+     fine timer is armed, for the right delay, scaled by rate — and that its wake
+     is what stops the item, while an early wake reschedules instead. Disable the
+     fine stage and three of those fail in 13 ms. See "the boundary's ARITHMETIC"
+     below.
+
+   The rule that survives, and it generalises past this file: **a test may assert
+   an ordering or a decision on a real clock, but not a duration.** If the
+   assertion would change verdict because another process got busy, it is
+   measuring the box. Move it to a driven clock, or demote it to a diagnostic. */
 
 /** Ceiling for "an end was reported". Was 3-4 s, which a saturated box beats.
     Not larger, because ten of these in a row is what a broken out-point costs
     before the suite reports it, and there is no `--test-timeout` above us. */
 const END_BUDGET_MS = 10000;
 
-/** The widest gap between consecutive `timeupdate`s actually delivered — the
-    naive implementation's worst case, on this box, during this measurement.
-    Returns **null** when fewer than two ticks landed, because n ticks measure
-    only n-1 intervals and one tick measures none.
-
-    It used to fall back to the nominal TIMEUPDATE_MS here, documented as "the
-    conservative direction". It is the opposite, and that fallback was half of
-    the flake this file was reddening CI with: the runs that deliver too few
-    ticks are exactly the runs where the box is slow, i.e. where the real
-    interval is WIDER than nominal — so the fallback quietly reinstated the magic
-    number #195 removed, and did it only in the runs where it was certain to be
-    too small. Callers assert measurability instead. */
-function observedTickMs(tickAt) {
-  let worst = 0;
-  for (let i = 1; i < tickAt.length; i++) worst = Math.max(worst, tickAt[i] - tickAt[i - 1]);
-  return worst > 0 ? worst : null;
+/** What a bare `if (currentTime >= end) stop()` on `timeupdate` would have cost
+ *  IN THIS RUN, in seconds of content — the naive implementation the fine timer
+ *  exists to beat, measured from the ticks this run actually delivered rather
+ *  than modelled from TIMEUPDATE_MS.
+ *
+ *  A naive check can only stop ON a tick, so its overshoot is the playhead at the
+ *  first tick to reach the boundary, minus the boundary.
+ *
+ *  Returns **null** when no delivered tick ever reached the boundary. That is the
+ *  healthy case rather than a measurement failure: reaching the boundary clears
+ *  the element's interval, so "no tick saw it" means the fine timer got there
+ *  first and beat the naive check by more than this run can quantify.
+ *
+ *  This replaces a proxy — the widest gap between consecutive ticks, times a
+ *  fraction — which is what made this file flaky. See the section header. */
+function naiveOvershootSec(ticks, target) {
+  for (const { t } of ticks) if (t >= target) return t - target;
+  return null;
 }
 
 /** Wait for the backend to report an end, or give up. Returns the reason so a
@@ -539,99 +573,92 @@ test("the stop is never early — the payoff is never clipped", async () => {
     twentieth. Loose enough not to flake, tight enough that "the fine watch
     stopped working" — measured at 90-133 ms against a 250 ms nominal tick —
     fails it. */
-const NAIVE_FRACTION = 0.5;
+/** Where to put the boundary, as WALL-CLOCK seconds after the in-point, spread
+    ACROSS a tick interval on purpose. A naive check can only fire ON a tick, so
+    its error is however far the boundary sits past the last one — which means a
+    single target can make a naive implementation look good by luck of alignment.
+    Measured: with the fine watch disabled and a lone target of 100.7, the
+    overshoot was 50 ms and the old version of this test passed a genuinely broken
+    build. Sweeping the phase exercises the naive worst case.
 
-/** Where to put the boundary, as WALL-CLOCK seconds after the in-point. Two
-    properties are bought here that the previous content-seconds version did not
-    have:
+    Wall clock rather than content seconds so the sweep still spans a whole tick
+    at 2x, where content seconds would buy half the runway. */
+const PHASE_SWEEP_WALL_SEC = [0.70, 0.76, 0.82, 0.88];
 
-    - **Long enough that several timeupdates land first.** The naive cost has to
-      be measured, and n ticks measure only n-1 intervals. The old 0.70-0.88 s
-      runway delivered 2-3 ticks, so one swallowed tick left a run with nothing
-      to measure — and `observedTickMs` then silently substituted the nominal
-      250 ms. See its comment.
-    - **Spread ACROSS a tick interval on purpose.** A naive check can only fire
-      ON a tick, so its error is however far the boundary sits past the last one,
-      which means a single target can make a naive implementation look good by
-      luck of alignment. Measured: with the fine watch disabled and a lone target
-      of 100.7, the overshoot was 50 ms and this test passed a genuinely broken
-      build. Sweeping the phase exercises the naive worst case (very nearly a
-      whole tick) while the fine timer, scheduled in wall clock rather than on
-      ticks, stays flat across all of them.
-
-    Wall clock rather than content seconds so that neither property degrades as
-    the rate rises: at 2x, content seconds buy half as much runway and half as
-    many ticks. */
-const PHASE_SWEEP_WALL_SEC = [0.80, 0.86, 0.92, 0.98];
-
-/** Drive one boundary to completion and report what BOTH sides of the
-    comparison measured in the SAME run. */
+/** Drive one boundary to completion on a real clock. */
 async function measureBoundary(wallSec, rate) {
   const target = 100 + wallSec * rate; // content seconds from the in-point
-  const { el, b, ends, tickAt } = ticking();
+  const { el, b, ends, ticks } = ticking();
   await b.load(item("seg"), { startOffset: 100 });
   if (rate !== 1) b.setRate(rate);
   b.setOutPoint(target);
   b.play();
   const reason = await waitForEnd(ends);
-  return {
-    target, rate, reason, el, ticks: tickAt.length,
-    overshoot: b.lastOutPointOvershootSec,
-    naiveMs: observedTickMs(tickAt),
-  };
+  return { target, rate, reason, el, ticks, overshoot: b.lastOutPointOvershootSec };
 }
 
-/** Assert one measured boundary against the naive cost from ITS OWN run.
+/** The load-invariant half of a real-clock boundary run, asserted; the
+ *  comparative half, measured and returned for the caller to report.
  *
- *  PER-RUN PAIRING IS THE WHOLE FIX, and it is worth being explicit about what
- *  it replaces. The previous version took `Math.min` of the naive cost over four
- *  runs and `Math.max` of the overshoot over the same four — the budget from the
- *  least-loaded run, the measurement from the most-loaded one. Those two
- *  decouple precisely when the box gets busy, so the test reddened on a healthy
- *  backend: measured under 16 busy loops on 16 cores it failed with overshoots
- *  of 0.058, 0.009, 0.061 and 0.219 s against a budget of 0.129 s derived from
- *  the 258 ms tick spacing of a DIFFERENT run than the 0.219 came from.
+ *  WHAT IS ASSERTED IS ONE-SIDED ON PURPOSE. "It fired" and "it was not early"
+ *  cannot be broken by a late OS timer, only by a wrong implementation, so they
+ *  are safe to assert on any box under any load. A RATIO between the fine timer
+ *  and the tick interval is not: they are two independently scheduled OS timers,
+ *  and starving the box decorrelates them at the tail. See the section header for
+ *  the measurements that settled this.
  *
- *  Paired within the run, the comparison is load-invariant by construction:
- *  starve the box and both numbers in the same comparison stretch together. */
-function assertBeatsNaive(r) {
+ *  The tightness claim still has teeth — they are in the clock-free tests below,
+ *  where disabling the fine watch fails three assertions in 13 ms. */
+function assertBoundaryHeld(r) {
   // The boundary must actually FIRE. Without this the whole test is vacuous:
   // `lastOutPointOvershootSec` starts as null, and `null < anything` is true.
   assert.equal(r.reason, "outPoint", `the out-point at ${r.target} never fired at ${r.rate}x`);
   assert.equal(typeof r.overshoot, "number", "and it must record what the stop cost");
+  // Never early, at any rate, under any load — the payoff is never clipped.
   assert.ok(
-    r.naiveMs !== null,
-    `only ${r.ticks} timeupdate(s) landed before the boundary at ${r.target} (${r.rate}x), so ` +
-    `the naive cost was not measurable in this run. The budget must never fall back to the ` +
-    `nominal ${TIMEUPDATE_MS}ms — a slow box is exactly where that fallback is too small.`
+    r.el.currentTime >= r.target,
+    `stopped at ${r.el.currentTime} before ${r.target} (${r.rate}x) — the payoff was clipped`
   );
-  // A naive check fires only on a tick, so its error in CONTENT seconds is one
-  // tick interval times the rate. The overshoot is in content seconds too.
-  const budgetSec = (r.naiveMs * r.rate * NAIVE_FRACTION) / 1000;
-  assert.ok(
-    r.overshoot < budgetSec,
-    `overshoot ${r.overshoot.toFixed(4)}s at ${r.rate}x vs ${budgetSec.toFixed(4)}s — a naive ` +
-    `check would have cost up to ${(r.naiveMs * r.rate).toFixed(0)}ms of content (widest of ` +
-    `${r.ticks} ticks delivered in THIS run: ${r.naiveMs.toFixed(0)}ms)`
-  );
+  return naiveOvershootSec(r.ticks, r.target);
 }
 
-test("the boundary beats a bare timeupdate check, measured against one", async () => {
-  // Measured on an idle box the overshoot is 5-15 ms against a ~250 ms tick.
+/* These two are named for what they ASSERT, not for what they print. They used to
+   be called "the boundary beats a bare timeupdate check" — which is still the
+   claim the file makes, and still measured on every run, but it is now asserted
+   by the clock-free tests below rather than here. A test name that promises more
+   than its assertions deliver is the same failure the FLOORS in
+   test/suite-integrity.test.js exist to prevent: it reads as coverage. */
+
+test("on a real clock the boundary fires and never clips, at every phase of a tick", async (t) => {
+  // Measured on an idle box the overshoot is 5-15 ms against a ~250 ms tick, and
+  // no tick ever observes the boundary at all — the fine timer gets there first,
+  // which is the whole point of it existing.
+  let decisive = 0;
   for (const wallSec of PHASE_SWEEP_WALL_SEC) {
-    assertBeatsNaive(await measureBoundary(wallSec, 1));
+    const r = await measureBoundary(wallSec, 1);
+    const naive = assertBoundaryHeld(r);
+    if (naive === null) decisive++;
+    t.diagnostic(
+      `boundary ${r.target.toFixed(2)}: overshoot ${(r.overshoot * 1000).toFixed(0)}ms vs a bare ` +
+      `timeupdate check's ${naive === null ? "(no tick ever saw the boundary)" : `${(naive * 1000).toFixed(0)}ms`}` +
+      ` — ${r.ticks.length} ticks delivered`
+    );
   }
+  t.diagnostic(`the fine timer beat the tick outright in ${decisive}/${PHASE_SWEEP_WALL_SEC.length} runs`);
 });
 
-test("a faster rate does not loosen the boundary, against a real clock", async () => {
-  // At 2x one timeupdate is half a second of CONTENT — a whole sentence — so the
-  // naive check gets twice as bad while the fine timer, scheduled in wall clock,
-  // does not. One run rather than a sweep, because the comparison is now paired
-  // inside the run; the SCHEDULING arithmetic this rests on is pinned with no
-  // clock at all in the section below, which is where the claim is really made.
-  const r = await measureBoundary(0.92, 2);
-  assertBeatsNaive(r);
-  assert.ok(r.el.currentTime >= r.target, `stopped at ${r.el.currentTime} before ${r.target}`);
+test("on a real clock the boundary fires and never clips at 2x either", async (t) => {
+  // At 2x one timeupdate is half a second of CONTENT — a whole sentence. What is
+  // asserted here is only what a real clock can show and load cannot break: the
+  // boundary fires at 2x and does not stop short. That the fine timer's CONTENT
+  // window stays flat as the rate rises is proved as arithmetic below, with no
+  // clock, which is where that claim belongs.
+  const r = await measureBoundary(0.82, 2);
+  const naive = assertBoundaryHeld(r);
+  t.diagnostic(
+    `2x boundary ${r.target.toFixed(2)}: overshoot ${(r.overshoot * 1000).toFixed(0)}ms vs a bare ` +
+    `timeupdate check's ${naive === null ? "(no tick ever saw the boundary)" : `${(naive * 1000).toFixed(0)}ms`}`
+  );
 });
 
 /* ---------- the boundary's ARITHMETIC, with no clock at all ----------
@@ -764,6 +791,74 @@ test("an out-point already behind the playhead arms no timer, at any rate", () =
       `${rate}x: the playhead is past it, so there is no crossing to wait for`
     );
   }
+});
+
+/** Arm a boundary and hand back the fine timer's callback, so a test can wake it
+    itself. Nothing is ever scheduled: the "timer" is the returned function.
+
+    The capture has to be re-installed around `wake()` as well as around the
+    arming, because waking re-schedules — restoring the real `setTimeout` too
+    early lets the reschedule escape into a live timer and reports the stale
+    delay. (Which it did, first time round.) */
+function armed({ at, outPoint, rate = 1 }) {
+  const el = new SteppedAudio({ at, rate });
+  const realSetTimeout = globalThis.setTimeout;
+  const asked = [];
+  let pending = null;
+  const stub = (fn, ms) => { asked.push(ms); pending = fn; return { hasRef: () => true }; };
+  const capture = (body) => {
+    globalThis.setTimeout = stub;
+    try { return body(); } finally { globalThis.setTimeout = realSetTimeout; }
+  };
+  const ends = [];
+  const b = capture(() => {
+    const backend = new HtmlAudioBackend({ element: el });
+    backend.onItemEnded = (reason) => ends.push(reason ?? "natural");
+    backend.setOutPoint(outPoint);
+    return backend;
+  });
+  return {
+    el, b, ends, asked,
+    wake: () => capture(() => { const fn = pending; pending = null; fn(); }),
+    armedMs: () => asked[asked.length - 1],
+  };
+}
+
+test("the fine timer, not the next timeupdate, is what stops the item", () => {
+  /* THE TEETH. The wall-clock tests above can only observe that the stop was
+     early enough; this shows WHAT stopped it, and needs no clock to do it. Not a
+     single `timeupdate` is fired here, so if the fine stage were disabled — the
+     regression the comparative test was built to catch, measured at 90-133 ms
+     against a 250 ms tick — nothing would stop at all and this fails outright. */
+  const a = armed({ at: 100, outPoint: 100.5 });
+  assert.equal(a.armedMs(), 500, "the fine timer must be armed in the first place");
+  assert.deepStrictEqual(a.ends, [], "and nothing may fire before it wakes");
+
+  a.el._at = 100.5;  // the playhead reaches the boundary...
+  a.wake();          // ...and the fine timer wakes, with no tick involved
+
+  assert.deepStrictEqual(a.ends, ["outPoint"], "the fine wake must stop the item");
+  assert.equal(a.el.paused, true, "and pause it, like a file running out");
+  assert.equal(a.b.lastOutPointOvershootSec, 0, "at the boundary exactly, given an exact playhead");
+});
+
+test("an early fine wake reschedules instead of stopping short", () => {
+  // The one-sided guarantee, as a decision rather than a race: the fine timer is
+  // a PREDICTION, so it re-reads the playhead and only stops if the boundary is
+  // genuinely reached. Waking early must cost a reschedule, never a clipped
+  // payoff — and the reschedule must be for the remaining distance.
+  const a = armed({ at: 100, outPoint: 100.5 });
+  assert.equal(a.armedMs(), 500);
+
+  // 100.25, not 100.3: dyadic, so the remaining distance is exact in binary and
+  // Math.ceil is not a coin-flip. 100.5 - 100.3 is 0.20000000000000284, which
+  // rounds up to 201 — this assertion caught exactly that on the first attempt.
+  a.el._at = 100.25; // woke early: 0.25 s of content still to go
+  a.wake();
+
+  assert.deepStrictEqual(a.ends, [], "must not report an end before the boundary");
+  assert.equal(a.el.paused, false, "and must not pause the audio either");
+  assert.equal(a.armedMs(), 250, "re-armed for exactly the remaining 0.25 s");
 });
 
 test("a buffering stall at the boundary neither stops early nor spins", async () => {
