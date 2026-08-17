@@ -1646,7 +1646,13 @@ function paintForay(s) {
      resumes there, so a clock reading 0:00 underneath it would be the page
      contradicting itself. */
   const resume = live ? null : state.forayResume;
-  const elapsed = live ? (s.elapsedSec || 0) : (s.elapsedSec || resume?.elapsedSec || 0);
+  /* `forayLiveSec` ahead of the stored point, and for the same reason the retry
+     prefers it: what this page has HEARD beats what it opened with. The clock and
+     the button have to name the same destination or the page is lying about where
+     pressing it goes. */
+  const elapsed = live
+    ? (s.elapsedSec || 0)
+    : (s.elapsedSec || state.forayLiveSec || resume?.elapsedSec || 0);
 
   const now = $("#fy-now");
   if (now && window.ForayPlayer) now.textContent = window.ForayPlayer.fmtClock(elapsed);

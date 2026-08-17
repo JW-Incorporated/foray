@@ -823,7 +823,21 @@ function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
     playForay: (r, opts = {}) => {
       calls.push({ name: "playForay", args: [r, opts] });
       onChange = opts.onChange ?? onChange;
-      if (startThrows) throw startThrows;
+      if (startThrows) {
+        /* THE INTENT PAINT HAPPENS FIRST, exactly as the real `playForay` does
+           it: `setForayIndex` runs before the load is awaited, so by the time
+           anything can throw the page has already been told a segment is
+           current. Without this the throw arrives on a page that never believed
+           a Foray was live, and the flag-clearing half of the guard is never
+           exercised — which is how the first draft of this fixture let a
+           mutation through. */
+        onChange?.({
+          forayId: resolved.id, index: opts.startIndex ?? 0, playing: false,
+          loading: false, gap: false, ended: false, elapsedSec: 0,
+          totalSec: resolved.totalSec, error: null,
+        });
+        throw startThrows;
+      }
       return null;
     },
     throwOnToggle: (err) => { toggleThrows = err; },
@@ -1225,6 +1239,13 @@ test("a failure after real progress retries from where the listener got to", asy
   onChange({ forayId: FORAY_ID, index: 9, playing: true, loading: false, gap: false, ended: false, elapsedSec: 1500, totalSec: resolved.totalSec, error: null });
   // Twenty-five minutes in, the next segment will not load.
   onChange(failedStart(20, "player.error: loadItem(x) failed: load failed (code 2)", resolved.totalSec));
+
+  /* And the banner has to get out of the way, or the page advertises 19:40 while
+     the only control on it goes to 25:00. A stale offer next to a button that
+     does something else is the same class of defect as the two controls in the
+     founder's report meaning two different things. */
+  assert.equal(dom.el("fy-resume").hidden, true, "the opening position is no longer where anything goes");
+  assert.equal(dom.el("fy-now").textContent, fmtClock(1500), "the clock reads where the listener actually got to");
 
   await dom.el("fy-play").click();
   const last = bridge.calls.filter((c) => c.name === "playForay").pop();
