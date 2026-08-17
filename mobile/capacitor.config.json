@@ -1,0 +1,11 @@
+{
+  "appId": "com.jwincorporated.foray",
+  "appName": "Foray",
+  "webDir": "www",
+  "ios": {
+    "path": "ios"
+  },
+  "android": {
+    "path": "android"
+  }
+}

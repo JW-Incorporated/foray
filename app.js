@@ -1712,7 +1712,7 @@ function openDrawer(open) {
         account instead of re-attaching to the old one. What stays behind is a row
         with no name, email, phone number or password — and `app_users` plus the
         events keyed to it are deleted, so it is an empty shell. Removing the
-        shell is `HUMAN-ACTIONS.md` #14.
+        shell is `HUMAN-ACTIONS.md` #16.
      4. NOT THE PUBLISHER AND ATTRIBUTION HOSTS. Playing a segment points an
         `<audio>` element at the publisher's own URL, so 43 first-hop hosts —
         several of them ad-attribution prefixes the publisher put there — saw
@@ -2269,6 +2269,50 @@ async function init() {
 
 init();
 
-if ("serviceWorker" in navigator) {
+/* Should this page register `sw.js`? On the web: yes — it is what makes the site
+   render its last-known state in a cell dead zone. Inside the native shell
+   (issue #36 §2): NO.
+
+   The shell's assets are already local files, so a cache-first service worker
+   adds a stale-cache layer in FRONT of local files and buys nothing. Worse, it
+   is the classic "the app won't update" bug: a shipped build would keep serving
+   the cached copy of its own bundle after an app-store update replaced it, and
+   the symptom is an app that ignores new versions with no error anywhere.
+
+   Two signals, and they are checked in SEPARATE `try` blocks on purpose. The
+   origin goes first because it cannot throw: on iOS the page is served from
+   `capacitor://localhost`. `window.Capacitor.isNativePlatform()` goes second —
+   the bridge is injected before page scripts, so it is normally the more precise
+   answer, but it is somebody else's object and calling into it can throw (a
+   bridge that is not ready, a plugin-proxy getter). Sharing one `try` made the
+   guard FAIL OPEN: a throwing bridge skipped the origin check too and registered
+   the worker inside the shell, which is the exact case the origin check exists
+   to cover.
+
+   Deliberately NOT a hostname check. Capacitor's Android default is
+   `https://localhost`, so testing for "localhost" would also disable the service
+   worker for anyone serving the real site from a local dev server — a live web
+   behaviour broken to fix an app one.
+
+   Deliberately NOT a user-agent check either. Every real Foray listener is on a
+   phone, so UA-sniffing here would switch the offline shell off for essentially
+   the whole audience. `shell-invariants.test.mjs` asserts a mobile-web UA still
+   registers. */
+function shouldRegisterServiceWorker(win) {
+  try {
+    const proto = (win && win.location && win.location.protocol) || "";
+    if (proto === "capacitor:" || proto === "ionic:") return false;
+  } catch (_) { /* no location: treat as the web, and let the bridge check speak */ }
+  try {
+    const cap = win && win.Capacitor;
+    if (cap) {
+      if (typeof cap.isNativePlatform === "function") { if (cap.isNativePlatform()) return false; }
+      else if (cap.isNative) return false;
+    }
+  } catch (_) { /* a bridge that throws is not an answer; the origin already spoke */ }
+  return true;
+}
+
+if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   navigator.serviceWorker.register("sw.js").catch(() => { /* progressive */ });
 }
