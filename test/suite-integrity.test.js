@@ -101,7 +101,7 @@ const FLOORS = {
      credentials, and that `ci.yml`'s `ios-kit` — the repo's only compiled Swift —
      is still there. Nothing else covers any of that. */
   "tools/mobile/inject-background-audio.test.mjs": 26,
-  "tools/mobile/ios-ci.test.mjs": 49,
+  "tools/mobile/ios-ci.test.mjs": 54,
   "tools/mobile/ios-workflow.test.mjs": 27,
   "tools/mobile/probe/install-probe.test.mjs": 24,
   "tools/refresh/dai.test.mjs": 8,
