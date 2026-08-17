@@ -324,3 +324,223 @@ This is exactly the boundary the bakestone drift crossed: a lavish dinner party
 is not this beat.
 
 **Share.** 3 % (~4.5 min).
+
+---
+
+### Act III — The world's parallel answers (fan, 24 %)
+
+Eight traditions that did not descend from each other. They are here because the
+founder required world coverage, and they earn their place structurally: they are
+the evidence for beats 4, 5 and 6. Each is an independent solution to the same
+physics under different constraints of fuel, animal, wealth and religion, and
+watching the constraint change while the problem stays fixed is the pleasure of
+this act.
+
+**Beats 8–12 are the direct-heat skewer family; 13–15 are the whole-animal
+communal-fire family.** Sourcing must not quietly reorder them into geographic
+sequence — see §2.
+
+English-language sourcing only, per #226. That is a real constraint here and it
+biases what is findable, but it does not license shrinking the act: an English
+food historian or a diaspora practitioner speaking English on any of these
+traditions serves the beat fully. What it does mean is that some of these beats
+will likely be narration, and §5 says which.
+
+#### 8. On the steppe, scarcity of fuel — not abundance — shaped the technique, and the thing sold as "Mongolian barbecue" is not it
+
+**Claim.** Central Asian and Mongolian herding cultures cooked mutton and goat
+with almost no timber, which pushed them toward boiling, steam and hot-stone
+methods — meat cooked inside the animal or in a sealed vessel with fire-heated
+rocks — while the skewered-over-coals tradition belongs more to the settled and
+Caucasus edges of that world; and the restaurant format Westerners call Mongolian
+barbecue is a mid-20th-century Taipei invention with no steppe ancestry.
+
+**Why it belongs.** It is the fan's sharpest test of beat 5. Every other stop on
+the tour has fuel; this one does not, and the technique diverges exactly as the
+rule predicts. It also lets the Foray correct a widely believed error, which is
+one of the few genuinely delightful things a history can do. Cut it and the fan
+loses its control case — the tradition where the answer is *not* a grill.
+
+**Evidence that counts.** A food historian or anthropologist on steppe pastoral
+cooking: khorkhog and boodog and how hot-stone cooking works, dung and scrub as
+fuel, why the cauldron dominates, what mobility does to a kitchen. Separately
+strong: a clean debunk of the Mongolian-barbecue restaurant's origin, ideally
+naming the Taipei provenance. Reject: Genghis-Khan-cooked-under-his-saddle
+folklore repeated straight, and any tape whose only content is a stir-fry buffet.
+
+**Share.** 2.5 % (~3.75 min).
+
+#### 9. The skewer over coals is the oldest grill technology still in daily use, and the Ottoman world industrialised it into a cuisine
+
+**Claim.** Meat on a metal or wooden skewer over a long narrow bed of charcoal —
+the mangal — is an unbroken technique with material evidence in the Bronze Age
+Aegean, and the Ottoman and wider Middle Eastern world developed it into a
+codified professional cuisine of regional kebabs, out of which even the modern
+global street food of vertical döner is a recent and traceable invention.
+
+**Why it belongs.** It is the origin point of the direct-heat family and the
+tradition with the best claim to continuity of any in the Foray. It also carries
+the fan's clearest case of a technique that stayed the same while empires changed
+around it, and its diaspora — Balkans to Berlin to every high street — is the one
+world tradition the Anglophone listener has almost certainly eaten. Cut it and the
+skewer family has no root.
+
+**Evidence that counts.** A food historian on kebab as a professional cuisine:
+the mangal as equipment and as a social occasion, regional codification of named
+kebabs, the butchery and mincing a kebab actually requires, charcoal management
+along a narrow fire. Also strong: the documented 19th-century turn of the spit
+from horizontal to vertical, and its 1970s German reinvention as a sandwich.
+Archaeological tape on Bronze Age skewer supports is a bonus, not the beat.
+Reject: restaurant-scene reportage with no history in it.
+
+**Share.** 3 % (~4.5 min).
+
+#### 10. Radiant clay and the skewer economy: South and Southeast Asia solved the same problem with an oven and with street-scale portions
+
+**Claim.** The tandoor turns the fire into a radiant enclosure rather than a bed
+of coals — a third physics, distinct from both of beat 4's families — and
+Southeast Asia's satay tradition pushed the skewer to its economic extreme, tiny
+portions cooked to order by mobile vendors, so that in both cases the technology
+follows the unit of sale as much as the food.
+
+**Why it belongs.** Without it the fan omits South and Southeast Asia entirely,
+which a well-read listener will notice, and it adds a genuine third case to beat
+4's pair: not direct coals and not an offset pit but radiant walls. It is also the
+cleanest illustration that portion size is a technological input — a satay stick
+exists because of what a customer can afford to buy at once.
+
+**Evidence that counts.** A food historian on the tandoor: how a clay oven's heat
+differs from a grill's, its distribution across Central and South Asia, and the
+well-documented mid-20th-century invention of tandoori chicken and its onward
+path into Britain. On satay: Javanese origins, the possible kebab influence, and
+street-vending economics — who cooks it, how it is sold, what a portion costs.
+Reject: recipe and menu material, and curry-house history with no fire in it.
+
+**Share.** 2 % (~3 min).
+
+#### 11. Yakitori is a thrift cuisine turned into a precision craft by its fuel
+
+**Claim.** Grilling skewered chicken — including the parts nobody else wanted —
+became a Japanese urban staple only after centuries of religiously grounded
+prohibitions on eating meat had lapsed, and its distinction lies less in the
+recipe than in fuel and control: dense white charcoal that runs very hot with very
+little smoke, which makes exactness possible and leaves the cook's judgement as
+the whole product.
+
+**Why it belongs.** It is the strongest counterexample in the Foray to the
+assumption that fire cooking means smoke and volume. Here the tradition
+deliberately engineers smoke *out*, works in grams rather than kilos, and arrives
+at prestige from thrift — which is the same arc Act V describes for brisket, a
+century or more earlier and on the other side of the world. That parallel is worth
+the runtime on its own.
+
+**Evidence that counts.** A food historian or a chef explaining: the meat
+prohibitions and their Meiji-era lifting as the precondition, the postwar street
+stall and its place in urban working life, binchōtan and why hard high-heat
+low-smoke charcoal changes what is possible, whole-bird thrift and the named
+cuts, tare versus salt. Best case is a practitioner articulating why the fuel
+dictates the technique — that ties the beat back to beat 5. Reject: izakaya
+travelogue.
+
+**Share.** 3 % (~4.5 min).
+
+#### 12. Korea's move was to put the fire on the table and hand the cooking to the guest
+
+**Claim.** Korean grilled meat is structurally unusual because the diner is the
+cook — the heat sits in the middle of the table and the meal is assembled in the
+hand from grilled meat plus wrappers and condiments — so the tradition's
+distinctive content is a social arrangement rather than a technique, and its most
+famous forms are far more recent than they feel.
+
+**Why it belongs.** It is the fan's clearest demonstration of beat 6 running in
+reverse: instead of a crowd assembling because of a long cook, the cooking itself
+is divided among the crowd. It also lets the Foray make an honest point about
+invented tradition — the marinated court-cuisine lineage is genuinely old, but the
+pork-belly restaurant culture that now defines the category is a 20th-century
+development with an economic explanation. That is the same historiographic muscle
+beats 25–27 and 36 need.
+
+**Evidence that counts.** A food historian on gogigui: the older marinated
+sliced-beef lineage and its court associations, the mid-century arrival of
+table-top grilling equipment, the specific and recent rise of pork belly and the
+meat economics behind it, ssam as a technique, charcoal versus gas in restaurants
+and what that changed. Also good: a Korean or Korean-American chef or writer on
+how the form travelled and what got fixed in translation. Reject: menu explainer.
+
+**Share.** 3 % (~4.5 min).
+
+#### 13. The braai is the case where a country asked its fire to do political work
+
+**Claim.** In South Africa the fire is not only a way to cook but an explicitly
+claimed national ritual, with its own public-holiday campaign — and that claim is
+made across a society that was legally segregated within living memory, so the
+braai is simultaneously a genuinely shared practice, a set of parallel traditions
+with different names and histories, and an argument about who "we" are.
+
+**Why it belongs.** It is the through-line's second clause stated outside the
+American act, and it is the proof that the American story is not unique in binding
+fire to identity and to race. Placing it here means Act IV arrives as an instance
+of a pattern rather than as an exception, which is both better history and better
+narrative. Cut it and the American reckoning looks parochial.
+
+**Evidence that counts.** A South African historian, food writer or practitioner
+on: braai as national ritual and the Heritage Day campaign, and honestly on the
+contest around it; the distinct lineages sitting under the one word, including
+shisa nyama and township grill culture, and sosaties as a Cape Malay inheritance
+carried by enslaved people from the Indian Ocean world; boerewors and its
+butchery. The claim to look for is fire-as-identity being asserted *and*
+contested. Reject: tourism-board material, and "South Africans love to braai"
+with nothing under it.
+
+**Share.** 3.5 % (~5.25 min).
+
+#### 14. In Argentina, meat was so cheap and wood so plentiful that the whole craft moved into time and fire management
+
+**Claim.** The pampas produced beef in quantities almost nowhere else could match,
+which removed scarcity as a constraint and left the asado's entire skill
+concentrated in fuel, distance and patience — and it formalised the person doing
+it into a social office, the asador, whose authority over the fire and the carving
+is a recognised role rather than a chore.
+
+**Why it belongs.** It is the fan's inverse of beat 8 — abundance instead of
+scarcity — and together the two bracket beat 5's rule. It is also the tradition
+that most cleanly shows the "who tends the fire" question being answered *with
+prestige*, which is exactly the contrast beat 20 needs in order to land: the same
+job, honoured here and coerced there.
+
+**Evidence that counts.** A historian or an asador on: the origins of pampas
+cattle abundance and its 19th-century export economy, gaucho fire cooking, the
+parrilla and the whole-animal cross, hardwood charcoal and coal management,
+ordering and timing across offal and cuts, and the role and authority of the
+asador. Best case explains *why* an Argentine cook thinks about fire rather than
+about seasoning. Reject: steakhouse boosterism, and anything whose only content is
+that Argentines eat a lot of beef.
+
+**Share.** 3.5 % (~5.25 min).
+
+#### 15. Jerk is the living Caribbean descendant of the technique the English word came from, and it was refined by people who had escaped slavery
+
+**Claim.** Jamaican jerk descends from the indigenous Caribbean pit-and-frame
+method the Spanish transliterated as *barbacoa*, developed under the specific
+conditions of Maroon communities of formerly enslaved Africans living
+independently in the interior — where a low pit burning aromatic local wood cooked
+tough meat slowly while giving off comparatively little visible smoke — and it
+became a commercial roadside cuisine only in the twentieth century.
+
+**Why it belongs.** Two jobs, which is why it closes the fan. It is a full
+tradition in its own right, and it is the bridge: the same technique lineage Act
+IV picks up at beat 16, carried by the same collision of indigenous technique,
+African cooks and enslavement that produced American barbecue, reached from a
+different direction. Cut it and the fan-to-chain seam becomes an abrupt subject
+change instead of a handoff.
+
+**Evidence that counts.** A Caribbean food historian or a jerk practitioner on:
+Taíno technique and the barbacoa frame, Maroon history and why concealment and
+long slow cooking suited it, pimento wood and allspice and Scotch bonnet as local
+inputs rather than as a recipe, the 20th-century move to oil-drum pans and
+roadside commerce, and the diaspora spread. The claim to look for is the
+*continuity* argument — that this is the old technique still being practised — and
+the political condition it developed under. Reject: recipe and heat-level content,
+and food-travel segments with no history.
+
+**Share.** 3.5 % (~5.25 min).
