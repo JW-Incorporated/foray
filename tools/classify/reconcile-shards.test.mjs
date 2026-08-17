@@ -22,7 +22,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -148,13 +150,53 @@ test("a re-pass with no timestamp on either side keeps the incumbent", () => {
 });
 
 test("a newer re-pass is lane-checked like any other adoption", () => {
-  /* An inherited row is exempt because it is not the shard's own work; a row
-     the shard actually re-ran is, so an unsharded run cannot hide here. */
   const base = baseFile();
   const newer = agent({ topics: ["food"], classified_at: "2026-08-20T00:00:00.000Z" });
   const { entries, errors } = run(base, [shard(1, { [ID.l3]: newer })]);
   assert.equal(entries, null);
   assert.match(errors[0], /is in lane 3, not 1/);
+});
+
+test("an INHERITED off-lane row is exempt from the lane check", () => {
+  /* Shards 1..5 carry 144 rows each inherited from `origin/reclassify`, and
+     reclassify-0 carries 1,807 — they span every lane. Byte-identical means
+     the shard never ran it, so it is not off-lane work. */
+  const base = baseFile();
+  const inherited = { ...base.entries[ID.l3] };
+  const { entries, errors, stats } = run(base, [shard(1, { [ID.l3]: inherited })]);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(entries[ID.l3], base.entries[ID.l3]);
+  assert.equal(stats.shards[0].incumbent_kept, 1);
+  assert.equal(stats.shards[0].off_lane, 0);
+});
+
+test("an off-lane row that DIFFERS is caught even when its timestamp is OLDER", () => {
+  /* The exemption is byte-identity, not "not newer". An older-but-different
+     off-lane row is still evidence the shard worked outside its slice, and
+     an earlier draft of this file let it through silently. */
+  const base = baseFile();
+  const older = agent({ topics: ["food"], classified_at: "2026-01-01T00:00:00.000Z" });
+  const { entries, errors } = run(base, [shard(1, { [ID.l3]: older })]);
+  assert.equal(entries, null, "an off-lane difference must abort, not be discarded quietly");
+  assert.match(errors[0], /is in lane 3, not 1/);
+  assert.match(errors[0], /differs from the incumbent/);
+});
+
+test("an off-lane row that differs is caught on an EQUAL timestamp too", () => {
+  const base = baseFile();
+  const same = agent({ topics: ["food"], classified_at: base.entries[ID.l3].classified_at });
+  const { entries, errors } = run(base, [shard(1, { [ID.l3]: same })]);
+  assert.equal(entries, null);
+  assert.match(errors[0], /is in lane 3, not 1/);
+});
+
+test("an IN-LANE row that differs but is not newer keeps the incumbent, quietly", () => {
+  const base = baseFile();
+  const older = agent({ topics: ["food"], classified_at: "2026-01-01T00:00:00.000Z" });
+  const { entries, errors, stats } = run(base, [shard(3, { [ID.l3]: older })]);
+  assert.deepEqual(errors, [], "in its own lane, an older re-pass is a no-op, not an error");
+  assert.deepEqual(entries[ID.l3], base.entries[ID.l3]);
+  assert.equal(stats.shards[0].incumbent_kept, 1);
 });
 
 test("the entry count never changes and no id is dropped", () => {
@@ -450,8 +492,118 @@ test("auditNoRegression accepts a topic demoted into superseded_topics", () => {
   assert.deepEqual(auditNoRegression(base, entries), []);
 });
 
+/* --------------------------------- 9. the CLI, end to end via --from-dir */
+
+/* `--from-dir` exists so the CLI can be driven with no git refs and no
+ * network. These run the real binary in a temp dir, because `parseArgs`'s
+ * refuse-rather-than-guess behaviour and the write path are the parts a unit
+ * test of `reconcile()` cannot reach. */
+const CLI = path.join(ROOT, "tools", "classify", "reconcile-shards.mjs");
+
+function cliFixture() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "reconcile-cli-"));
+  const base = baseFile();
+  fs.writeFileSync(path.join(dir, "base.json"), JSON.stringify(base, null, 2) + "\n");
+  fs.mkdirSync(path.join(dir, "shards"));
+  for (const i of [0, 1, 2, 3, 4, 5]) {
+    const entries = i === 0 ? { [ID.l0]: agent({ topics: ["space"], batch_id: "cli" }) } : {};
+    fs.writeFileSync(path.join(dir, "shards", `reclassify-${i}.json`), JSON.stringify({ version: 1, entries }, null, 2) + "\n");
+  }
+  fs.writeFileSync(path.join(dir, "taxonomy.json"), JSON.stringify({ nodes: [...TAX].map((id) => ({ id })) }, null, 2) + "\n");
+  return dir;
+}
+
+function runCli(dir, args, opts = {}) {
+  return spawnSync(process.execPath, [CLI, ...args], {
+    cwd: dir,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      BREADTH_CLASSIFICATION_PATH: path.join(dir, "base.json"),
+      TAXONOMY_PATH: path.join(dir, "taxonomy.json"),
+      ...opts.env
+    }
+  });
+}
+
+test("CLI: --from-dir merges without touching git, and writes the file", () => {
+  const dir = cliFixture();
+  const r = runCli(dir, ["--from-dir", path.join(dir, "shards")]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /agent-classified 1 -> 2/);
+  const out = JSON.parse(fs.readFileSync(path.join(dir, "base.json"), "utf8"));
+  assert.equal(out.entries[ID.l0].batch_id, "cli");
+  assert.equal(out.provenance.reconciled_shards.adopted_total, 1);
+  assert.equal(out.provenance.reconciled_shards.shards.length, 6);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("CLI: --dry-run reports the same numbers and writes nothing", () => {
+  const dir = cliFixture();
+  const before = fs.readFileSync(path.join(dir, "base.json"), "utf8");
+  const r = runCli(dir, ["--from-dir", path.join(dir, "shards"), "--dry-run"]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /--dry-run: nothing written/);
+  assert.equal(fs.readFileSync(path.join(dir, "base.json"), "utf8"), before, "--dry-run wrote to the file");
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("CLI: re-running is idempotent, byte for byte except built_at", () => {
+  const dir = cliFixture();
+  runCli(dir, ["--from-dir", path.join(dir, "shards")]);
+  const first = JSON.parse(fs.readFileSync(path.join(dir, "base.json"), "utf8"));
+  runCli(dir, ["--from-dir", path.join(dir, "shards")]);
+  const second = JSON.parse(fs.readFileSync(path.join(dir, "base.json"), "utf8"));
+  assert.deepEqual(second.entries, first.entries);
+  assert.equal(second.provenance.reconciled_shards.adopted_total, 0, "the second run adopts nothing");
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("CLI: an unknown option is refused, not ignored", () => {
+  const dir = cliFixture();
+  const r = runCli(dir, ["--from-dir", path.join(dir, "shards"), "--batch-size", "60"]);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /unknown option "--batch-size"/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("CLI: an empty --shards list is refused rather than writing a no-op file", () => {
+  /* `--shards ""` used to filter down to zero branches and then write a file
+     whose provenance recorded six shards as `[]` — a run that looks like it
+     succeeded and reconciled nothing. */
+  const dir = cliFixture();
+  const before = fs.readFileSync(path.join(dir, "base.json"), "utf8");
+  const r = runCli(dir, ["--from-dir", path.join(dir, "shards"), "--shards", ""]);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /no shard branches/i);
+  assert.equal(fs.readFileSync(path.join(dir, "base.json"), "utf8"), before);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("CLI: a non-numeric --shard-count is refused", () => {
+  const dir = cliFixture();
+  const r = runCli(dir, ["--from-dir", path.join(dir, "shards"), "--shard-count", "abc"]);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /--shard-count/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("CLI: an off-lane shard file aborts with exit 1 and writes nothing", () => {
+  const dir = cliFixture();
+  const before = fs.readFileSync(path.join(dir, "base.json"), "utf8");
+  fs.writeFileSync(
+    path.join(dir, "shards", "reclassify-1.json"),
+    JSON.stringify({ version: 1, entries: { [ID.l0]: agent({ topics: ["space"] }) } }, null, 2) + "\n"
+  );
+  const r = runCli(dir, ["--from-dir", path.join(dir, "shards")]);
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /did not stay in its slice/);
+  assert.equal(fs.readFileSync(path.join(dir, "base.json"), "utf8"), before);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 /* ================================================================ */
-/* 9. THE GATE — the committed data itself.                          */
+/* 10. THE GATE — the committed data itself.                         */
 /* ================================================================ */
 
 const FILE = readJson("data/breadth-classification.json");
@@ -501,36 +653,63 @@ test("a row carrying superseded_topics carries a non-empty list", () => {
   assert.deepEqual(bad, []);
 });
 
-test("the provenance block's numbers agree with the file it describes", () => {
-  assert.ok(REC, "data/breadth-classification.json has no provenance.reconciled_shards block");
-  const ids = Object.keys(FILE.entries);
-  const agentRows = ids.filter((id) => isAgentRow(FILE.entries[id])).length;
-  const superseded = ids.filter((id) => "superseded_topics" in FILE.entries[id]).length;
+/* FLOORS, committed as constants for the same reason `test/suite-integrity.js`
+ * commits suite counts: a number that lives only in the file it describes
+ * cannot catch that file shrinking. These are NOT read from the file.
+ *
+ * Raise them when a classify batch legitimately lands more. Never lower one
+ * without saying why in the commit message — a drop means shows lost their
+ * classification, which is the one thing this pipeline may never do. */
+const FLOOR = {
+  entries: 19787,      // the breadth catalogue. Exact: nothing may leave it.
+  agent_rows: 19278,   // reconciled 2026-08-17 from the six shard branches
+};
 
-  assert.equal(agentRows, REC.agent_rows_after, "agent_rows_after is stale");
-  assert.equal(ids.length - agentRows, REC.no_agent_pass, "no_agent_pass is stale");
-  assert.equal(superseded, REC.superseded_rows, "superseded_rows is stale");
+test("the catalogue is exactly its committed size — nothing may leave it", () => {
+  assert.equal(Object.keys(FILE.entries).length, FLOOR.entries);
+});
+
+test("agent-classified shows never drop below the committed floor", () => {
+  const agentRows = Object.keys(FILE.entries).filter((id) => isAgentRow(FILE.entries[id])).length;
+  assert.ok(
+    agentRows >= FLOOR.agent_rows,
+    `agent-classified shows fell to ${agentRows}, below the committed floor of ${FLOOR.agent_rows}. ` +
+    "A classification was lost. If this is a deliberate re-baseline, say why and raise the floor."
+  );
+});
+
+/* The rest of this block describes the reconciliation EVENT, not the current
+ * file, so it is asserted only while the record is present. It can legitimately
+ * go absent or go stale: `merge-results.mjs` rewrites `built_at` and the
+ * counts on every batch, and only spreads `provenance` (fixed in this change)
+ * rather than preserving the numbers. So these must never be gates on the
+ * live counts — the floors above are. */
+test("the reconciliation record, if present, is internally consistent", () => {
+  if (!REC) return; // a later batch may have rewritten provenance; the floors still hold
   assert.equal(REC.baseline.agent_rows + REC.adopted_total, REC.agent_rows_after, "the union does not add up");
   assert.equal(REC.shards.reduce((n, s) => n + s.adopted, 0), REC.adopted_total, "the per-shard adoptions do not sum to the total");
   assert.equal(REC.shards.reduce((n, s) => n + s.refreshed, 0), REC.refreshed_total, "the per-shard refreshes do not sum to the total");
-  assert.equal(ids.length, REC.baseline.entries, "the catalogue changed size — nothing may leave it");
+  assert.equal(REC.baseline.entries, FLOOR.entries);
+  assert.equal(REC.adopted_total + REC.refreshed_total, REC.rows_replaced, "rows_replaced must be adoptions plus refreshes");
 });
 
-test("the provenance block records all six shards, one per lane", () => {
+test("the reconciliation record, if present, names all six shards one per lane", () => {
+  if (!REC) return;
   assert.equal(REC.shard_count, DEFAULT_SHARD_COUNT);
   assert.deepEqual(REC.shards.map((s) => s.branch), DEFAULT_SHARDS);
   assert.deepEqual(REC.shards.map((s) => s.lane), [0, 1, 2, 3, 4, 5]);
   for (const s of REC.shards) assert.ok(s.head, `${s.branch} has no recorded head commit`);
 });
 
-test("every adopted row sits in the lane of a shard that claims it", () => {
+test("every agent row sits in some lane of the recorded shard count", () => {
   /* The merged object cannot show a collision, but it CAN show an id that no
      shard's lane covers — which would mean the recorded provenance is fiction. */
-  const lanes = new Set(REC.shards.map((s) => s.lane));
+  const shardCount = REC?.shard_count ?? DEFAULT_SHARD_COUNT;
+  const lanes = new Set(REC ? REC.shards.map((s) => s.lane) : [0, 1, 2, 3, 4, 5]);
   const bad = [];
   for (const id of Object.keys(FILE.entries)) {
     if (!isAgentRow(FILE.entries[id])) continue;
-    if (!lanes.has(laneOf(id, REC.shard_count))) bad.push(id);
+    if (!lanes.has(laneOf(id, shardCount))) bad.push(id);
   }
   assert.deepEqual(bad, [], "agent rows outside every recorded shard lane");
 });

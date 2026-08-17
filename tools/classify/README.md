@@ -296,8 +296,12 @@ keys, no LLM) and merges the agent rows into whatever the working tree's
 
 **Merge data; never check out a branch's file.** Shards 1–5 descend from
 `origin/reclassify`, which last moved 2026-07-25, so their `genre-map` and
-`llm-title-genre` rows are three weeks stale. Taking any single shard's file
-wholesale drops 1,707 of `main`'s agent rows and reverts the base layers.
+`llm-title-genre` rows are three weeks stale. Checking one out costs, measured
+per branch: **`reclassify-1`/`3`/`4`/`5` each lose 1,707 of `main`'s 1,851 agent
+rows**; **`reclassify-2` loses 1,815 of them and drops 16,799 entries from the
+catalogue outright** (its file holds only agent rows — see below);
+**`reclassify-0` loses none**, being `main`'s own lineage. Only shard 0 is even
+survivable, and it would still discard the other five shards' 15,951 rows.
 
 Precedence, in full:
 
@@ -313,10 +317,21 @@ Precedence, in full:
 `--shard ""` (an unset variable in a routine), an out-of-range `6/6` or a
 non-numeric value are silently ignored and the run then selects from the whole
 catalogue (issue #203 makes them refuse). A shard that ran unsharded would have
-classified other shards' shows, so this script hard-fails on any adopted id
-whose residue is not that shard's lane, and on any id two shards both claim.
-Measured 2026-08-17: **zero off-lane rows on all six branches** — the fleet
-really was disjoint.
+classified other shards' shows, so this script hard-fails on any id whose
+residue is not that shard's lane, and on any id two shards both claim.
+
+The only exemption is a row **byte-identical to the incumbent** — an inherited
+row the shard never ran. Identity, not "older timestamp": an off-lane row that
+differs from the incumbent is evidence of off-lane work whichever way its clock
+points.
+
+Measured 2026-08-17: **0 off-lane rows among each shard's own work, on all six
+branches.** Be precise about that claim, because the weaker version is false and
+a two-line script contradicts it: the branch **files** do contain off-lane agent
+rows — 115–127 each on shards 0, 1, 3, 4 and 5 — and every one is byte-identical
+to a row inherited from `origin/reclassify` or `main`. Counting all agent rows
+per file instead of each shard's own work makes it look as though five of six ran
+unsharded. They did not.
 
 ### `superseded_topics` — why a row can carry fewer topics than before
 
@@ -334,3 +349,11 @@ under the superset rule. The demoted ids stay auditable and out of `topics`.
 invocation before anything is written: no entry may disappear, end with empty
 `topics` or no `source`, lose an agent classification, or lose a topic id from
 both `topics` and `superseded_topics`. Any violation aborts the write.
+
+**The demotion is a one-generation record, not an archive.** `merge-results.mjs`
+rebuilds an entry from the agent's results file rather than spreading the
+existing row, so the next classification of that show deletes its
+`superseded_topics` and `superseded_source`. That is defensible — a fresh
+judgement supersedes the thing the previous judgement had already demoted — but
+it means the demoted ids are recoverable from git history, not from the file
+forever. Do not cite `superseded_topics` as durable provenance.

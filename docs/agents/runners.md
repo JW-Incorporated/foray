@@ -39,8 +39,8 @@ changes a runner.
 > filed it as an owner action.
 >
 > **What was actually happening:** all six were running fine and had produced
-> **17,427 classifications** nobody had merged — a real 9.4× on the agent-classified
-> count. Reconciled onto `main` 2026-08-17 (1,851 → 19,278) by
+> **17,427 classifications** nobody had merged — the agent-classified count went
+> **1,851 → 19,278, a 10.4× multiple**. Reconciled onto `main` 2026-08-17 by
 > `tools/classify/reconcile-shards.mjs`, which is committed and re-runnable
 > precisely because this will recur every time the fleet runs.
 >
@@ -54,12 +54,21 @@ changes a runner.
 > schedule a reconciliation run. Until one of those happens, every shard batch
 > accumulates off `main`. Filed as `HUMAN-ACTIONS.md` **#10**.
 >
-> **Two corrections this evidence forces, both recorded in `HUMAN-ACTIONS.md`:**
-> the six routines **do** pass `--shard i/6` correctly (their 17,427 rows are a
-> perfect partition by `Number(id) % 6` — 0 off-lane, 0 double-claimed), so #5's
-> "five of every six runs are duplicate work" is refuted and acting on it would
-> break six working configs; and #4's "are they alive?" is **yes**, all six,
-> through 2026-08-17 00:52 UTC.
+> **Two corrections this evidence forces**, both recorded in `HUMAN-ACTIONS.md`
+> (note #4 is created by PR #198 and does not exist on `main` yet — if #198
+> lands, its #4 needs the same update block before anyone acts on it):
+>
+> - **Sharding works.** Each shard's own work is a clean slice of
+>   `Number(id) % 6` — 0 off-lane, 0 double-claimed across 17,427 rows and 24
+>   active days. So #5's "five of every six runs are duplicate work" is refuted,
+>   and acting on it would edit six correct configs through a flag that fails
+>   open. What the git record shows is the *partition*, not which flag produces
+>   it; that is enough to not touch them.
+> - **All six are alive**, so #4's question is answered: yes. Per-branch tips
+>   are staggered, not uniform — s0 08-15, s1 08-16, s2 08-17, s3 08-16, s4
+>   **08-13**, s5 08-15 — and s4's three-day gap is not a fault: it has 21
+>   unclassified shows left in its lane. The fleet is running out of work, which
+>   is also why #9 is a 509-show problem now, not a 17,000-show one.
 
 ~19 runs/day, which as of 2026-07-25 was the majority of all agent spend across
 Foray and Swift2 combined (~19 of ~32). That is not a problem by itself — it is

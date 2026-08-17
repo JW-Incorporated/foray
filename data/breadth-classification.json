@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-17T03:46:27.802Z",
+  "built_at": "2026-08-17T04:27:15.760Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
@@ -65,6 +65,8 @@
       ],
       "adopted_total": 17427,
       "refreshed_total": 80,
+      "rows_replaced": 17507,
+      "display_flags_normalised": 1,
       "agent_rows_after": 19278,
       "no_agent_pass": 509,
       "superseded_rows": 6758,

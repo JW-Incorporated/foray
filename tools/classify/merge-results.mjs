@@ -241,7 +241,13 @@ function main() {
   classification.version = classification.version || 1;
   classification.built_at = now;
   classification.label_schema_version = LABEL_SCHEMA_VERSION;
+  /* SPREAD, don't replace. This used to assign a fresh object, which silently
+     deleted every other layer's provenance the next time any batch merged:
+     `base_layer` (classify-breadth.mjs) and `reconciled_shards`
+     (reconcile-shards.mjs) both live here, and both describe work this script
+     did not do and must not erase. Only the keys below are ours. */
   classification.provenance = {
+    ...(classification.provenance ?? {}),
     produced_by: "tools/classify/merge-results.mjs",
     method: "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
     last_batch_id: batch.batch_id,

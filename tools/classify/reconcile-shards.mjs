@@ -45,9 +45,20 @@
       selects from the WHOLE catalogue (issue #203 makes them refuse).
       A shard that ran unsharded would have classified other shards' shows,
       so this script hard-fails on (a) two shards adopting the same id and
-      (b) any adopted id whose residue is not that shard's lane. Both are
-      fatal, never warnings — a silent overlap is duplicated LLM work
-      resolved by coin flip.
+      (b) any id whose residue is not that shard's lane. Both are fatal,
+      never warnings — a silent overlap is duplicated LLM work resolved by
+      coin flip.
+      The ONLY exemption is a row BYTE-IDENTICAL to the incumbent, which is
+      an inherited row the shard never ran (see rule 3). Identity, not
+      "older timestamp": an off-lane row that differs from the incumbent is
+      evidence of off-lane work whichever way its clock points, and must not
+      slip through disguised as inheritance.
+      Measured 2026-08-17 across all six branches: 0 off-lane rows among
+      each shard's OWN work. Note that the branch FILES do contain off-lane
+      agent rows — 115-127 each on shards 0, 1, 3, 4, 5 — and every one is
+      byte-identical to an inherited row, which is exactly why the exemption
+      is identity-shaped. Counting all agent rows per file rather than each
+      shard's own work makes it look as if five of six ran unsharded.
    5. A DISPLACED TOPIC IS KEPT, NOT DISCARDED. When an adopted row does
       not carry a topic the row it replaced had, the displaced ids are
       recorded on it as `superseded_topics` (+ `superseded_source`).
@@ -99,7 +110,10 @@ export function isAgentRow(entry) {
   return typeof entry?.source === "string" && entry.source.startsWith("classify-agent");
 }
 
-/** The lane `--shard i/N` would have selected this id into, or null. */
+/* The lane `--shard i/N` selects this id into, or null.
+   `prepare-batch.mjs:226` uses a raw `%`; this normalises negatives, so the
+   two would disagree for a negative id. Apple collection ids are positive,
+   so the difference is unreachable — but it is a difference, not a mirror. */
 export function laneOf(id, shardCount) {
   const n = Number(id);
   if (!Number.isFinite(n) || !Number.isInteger(shardCount) || shardCount <= 0) return null;
@@ -170,14 +184,26 @@ export function reconcile({ base, shards, shardCount = DEFAULT_SHARD_COUNT, taxo
         continue;
       }
       /* Rule 3: agent vs agent is decided by `classified_at`, newest wins.
-         An inherited row a shard never re-ran is byte-identical to the
-         incumbent and lands here with an equal timestamp, so it is kept and
-         never treated as this shard's own work — which matters for the lane
-         check below: shards 1..5 each carry 144 rows inherited from
-         `origin/reclassify` that span every lane, and flagging those as
-         off-lane would be a false positive. */
+         Every shard file carries rows INHERITED from its branch point that
+         the shard never re-ran — shards 1..5 hold 144 each, reclassify-0
+         holds 1,807 — and those span every lane, so they must not be
+         lane-checked: they are not that shard's own work. The exemption is
+         therefore byte-identity, NOT "not newer". An off-lane row that
+         merely has an older or equal timestamp but DIFFERS from the
+         incumbent is real evidence the shard worked outside its slice, and
+         it must not slip through as if it were inherited — so it is still
+         lane-checked, and only then discarded in the incumbent's favour. */
       if (baseAgentIds.has(id)) {
-        const incumbentAt = base.entries[id]?.classified_at;
+        const incumbent = base.entries[id];
+        const inherited = JSON.stringify(row) === JSON.stringify(incumbent);
+        if (inherited) { stat.incumbent_kept++; continue; }
+
+        if (index !== null && laneOf(id, shardCount) !== index) {
+          stat.off_lane++;
+          errors.push(`${branch}: show ${id} is in lane ${laneOf(id, shardCount)}, not ${index}, and differs from the incumbent — this shard classified a show outside its slice (see issue #203: --shard used to fail open)`);
+          continue;
+        }
+        const incumbentAt = incumbent?.classified_at;
         const shardAt = row.classified_at;
         const newer = typeof shardAt === "string" && typeof incumbentAt === "string" && shardAt > incumbentAt;
         if (!newer) { stat.incumbent_kept++; continue; }
@@ -258,7 +284,7 @@ export function reconcile({ base, shards, shardCount = DEFAULT_SHARD_COUNT, taxo
     shards: [...perShard.values()],
     adopted_total: [...perShard.values()].reduce((n, s) => n + s.adopted, 0),
     refreshed_total: [...perShard.values()].reduce((n, s) => n + s.refreshed, 0),
-    replaced_total: candidates.length,
+    rows_replaced: candidates.length,
     agent_rows_after: agentAfter,
     no_agent_pass: Object.keys(entries).length - agentAfter,
     superseded_rows,
@@ -309,12 +335,21 @@ function parseArgs(argv) {
       if (a !== "--dry-run") i++;
     }
   }
-  return {
-    dryRun: argv.includes("--dry-run"),
-    shards: String(get("--shards", DEFAULT_SHARDS.join(","))).split(",").map((s) => s.trim()).filter(Boolean),
-    shardCount: Number(get("--shard-count", String(DEFAULT_SHARD_COUNT))),
-    fromDir: get("--from-dir", null)
-  };
+  const shards = String(get("--shards", DEFAULT_SHARDS.join(","))).split(",").map((s) => s.trim()).filter(Boolean);
+  /* Refuse rather than no-op. An empty list used to produce a successful run
+     that reconciled nothing and recorded `shards: []` in the provenance — the
+     same fail-open shape as `--shard ""` in prepare-batch.mjs (issue #203),
+     which is the bug this whole script exists to police. */
+  if (shards.length === 0) {
+    console.error("FATAL: no shard branches to read (--shards was empty). Refusing to write a file that reconciles nothing.");
+    process.exit(1);
+  }
+  const shardCount = Number(get("--shard-count", String(DEFAULT_SHARD_COUNT)));
+  if (!Number.isInteger(shardCount) || shardCount <= 0) {
+    console.error(`FATAL: --shard-count must be a positive integer, got "${get("--shard-count", "")}". Refusing to run with a lane check that cannot fire.`);
+    process.exit(1);
+  }
+  return { dryRun: argv.includes("--dry-run"), shards, shardCount, fromDir: get("--from-dir", null) };
 }
 
 function envPath(name, def) {
@@ -390,6 +425,8 @@ function main() {
         shards: stats.shards.map((s) => ({ branch: s.branch, head: s.head, lane: s.index, adopted: s.adopted, refreshed: s.refreshed, incumbent_kept: s.incumbent_kept })),
         adopted_total: stats.adopted_total,
         refreshed_total: stats.refreshed_total,
+        rows_replaced: stats.rows_replaced,
+        display_flags_normalised: stats.display_flags_normalised,
         agent_rows_after: stats.agent_rows_after,
         no_agent_pass: stats.no_agent_pass,
         superseded_rows: stats.superseded_rows,
@@ -397,8 +434,10 @@ function main() {
       }
     }
   };
-  /* Key order: keep `entries` last, as every other writer of this file does. */
-  const ordered = { version: out.version, built_at: out.built_at, provenance: out.provenance, entries: out.entries };
+  /* Key order: keep `entries` last, as every other writer of this file does,
+     but never DROP a key — spread whatever else the base carried. */
+  const { entries: _e, version, built_at, provenance, ...rest } = out;
+  const ordered = { version, built_at, provenance, ...rest, entries: out.entries };
   writeFileSync(CLASSIFICATION_PATH, JSON.stringify(ordered, null, 2) + "\n");
   console.log(`wrote ${CLASSIFICATION_PATH}`);
 }
