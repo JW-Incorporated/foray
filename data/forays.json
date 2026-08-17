@@ -6,6 +6,281 @@
     {
       "id": "grilling-history-1",
       "kind": "deep-dive",
+      "title": "The history of grilling",
+      "topic": "food/grilling-bbq",
+      "status": "draft",
+      "superseded_by": "grilling-history-2",
+      "superseded_note": "Superseded 2026-08-17 (#226). This is the 61-minute assembly the founder reported as drifting off plot into bakestones, Welsh cakes and 18th-century dinner parties. Use grilling-history-2. Kept, not deleted: its exact shape is the fixture for 103 tests across player/, test/ and tools/, including #182 D1/D5 acceptance proofs that only this order can express. See docs/curation/grilling-history-assembly.md.",
+      "summary": "Fire, hearth and grill: how cooking over flame shaped us, from Homo erectus to the pellet boom.",
+      "runtime_sec": 3673.03,
+      "source_doc": "docs/curation/grilling-foray.md",
+      "label_prefixes": {
+        "ORI": "origin-stories-cooking-human",
+        "GRID": "bfh-griddle-bakestone",
+        "MED": "bfh-medieval-meals-manners",
+        "TAV": "bfh-18c-tavern-briggs",
+        "MOSS": "bbqc-moss-school",
+        "SM": "bbqrn-santa-maria-grillzilla",
+        "JERK": "moreish-jerk-jamaica",
+        "ARG": "bbqrn-argentina-open-fire",
+        "TRA": "bbqc-traeger-history"
+      },
+      "slots": [
+        {
+          "id": "fire-origins",
+          "title": "Fire and the origins of cooking"
+        },
+        {
+          "id": "pre-modern-hearth",
+          "title": "The pre-modern hearth, griddle and spit"
+        },
+        {
+          "id": "american-birth-westward",
+          "title": "American barbecue's birth and westward spread"
+        },
+        {
+          "id": "us-regional-divergence",
+          "title": "US regional divergence"
+        },
+        {
+          "id": "world-traditions",
+          "title": "World traditions"
+        },
+        {
+          "id": "modern-backyard",
+          "title": "The modern backyard era"
+        }
+      ],
+      "items": [
+        {
+          "type": "segment",
+          "slot": "fire-origins",
+          "label": "ORI-1",
+          "segment_id": "origin-stories-cooking-human#147",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "fire-origins",
+          "label": "ORI-2",
+          "segment_id": "origin-stories-cooking-human#448",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "fire-origins",
+          "label": "ORI-3",
+          "segment_id": "origin-stories-cooking-human#678",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "GRID-1",
+          "segment_id": "bfh-griddle-bakestone#740",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "GRID-2",
+          "segment_id": "bfh-griddle-bakestone#968",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "MED-1",
+          "segment_id": "bfh-medieval-meals-manners#673",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "MED-2",
+          "segment_id": "bfh-medieval-meals-manners#944",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "GRID-4",
+          "segment_id": "bfh-griddle-bakestone#1691",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "TAV-1",
+          "segment_id": "bfh-18c-tavern-briggs#940",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "GRID-5",
+          "segment_id": "bfh-griddle-bakestone#1971",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "TAV-2",
+          "segment_id": "bfh-18c-tavern-briggs#1484",
+          "role": "quote"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "MED-3",
+          "segment_id": "bfh-medieval-meals-manners#1326",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "TAV-3",
+          "segment_id": "bfh-18c-tavern-briggs#1871",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "MED-4",
+          "segment_id": "bfh-medieval-meals-manners#1543",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "pre-modern-hearth",
+          "label": "TAV-4",
+          "segment_id": "bfh-18c-tavern-briggs#2011",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "american-birth-westward",
+          "label": "MOSS-1",
+          "segment_id": "bbqc-moss-school#2572",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "american-birth-westward",
+          "label": "MOSS-2",
+          "segment_id": "bbqc-moss-school#2779",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "american-birth-westward",
+          "label": "MOSS-3",
+          "segment_id": "bbqc-moss-school#2941",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "us-regional-divergence",
+          "label": "SM-1",
+          "segment_id": "bbqrn-santa-maria-grillzilla#134",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "MOSS-4",
+          "segment_id": "bbqc-moss-school#3315",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "JERK-1",
+          "segment_id": "moreish-jerk-jamaica#266",
+          "role": "exchange"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "JERK-2",
+          "segment_id": "moreish-jerk-jamaica#555",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "ARG-1",
+          "segment_id": "bbqrn-argentina-open-fire#700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "ARG-2",
+          "segment_id": "bbqrn-argentina-open-fire#1005",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "ARG-3",
+          "segment_id": "bbqrn-argentina-open-fire#1205",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "ARG-4",
+          "segment_id": "bbqrn-argentina-open-fire#1437",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "ARG-5",
+          "segment_id": "bbqrn-argentina-open-fire#1571",
+          "role": "exchange"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "ARG-6",
+          "segment_id": "bbqrn-argentina-open-fire#1796",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "world-traditions",
+          "label": "ARG-7",
+          "segment_id": "bbqrn-argentina-open-fire#2018",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "modern-backyard",
+          "label": "TRA-1",
+          "segment_id": "bbqc-traeger-history#1079",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "modern-backyard",
+          "label": "TRA-2",
+          "segment_id": "bbqc-traeger-history#1987",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "modern-backyard",
+          "label": "TRA-3",
+          "segment_id": "bbqc-traeger-history#2340",
+          "role": "explanation"
+        }
+      ]
+    },
+    {
+      "id": "grilling-history-2",
+      "kind": "deep-dive",
       "title": "Barbecue: six beats of a forty-beat history",
       "topic": "food/grilling-bbq",
       "status": "draft",

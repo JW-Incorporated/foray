@@ -1,4 +1,4 @@
-# Assembly record — `grilling-history-1`
+# Assembly record — `grilling-history-2`
 
 Stage 4 of #226. Stage 1 wrote the spine source-blind
 (`docs/curation/grilling-history-spine.md`, 40 beats in five acts); stage 2
@@ -11,6 +11,24 @@ exclusion.
 version now so that the player can be tested with it, and to keep transcribing in
 parallel. `status` stays `"draft"` in `data/forays.json`; publishing is a founder
 action, and §9 lists what should happen before it.
+
+**Why this is a new Foray id rather than a rebuild of `grilling-history-1`.**
+The intent was to rebuild #1 in place. That turns out to break 103 tests across
+`player/`, `test/` and `tools/`, because Foray #1's exact shape — 32 items,
+3,673 s, 31 seams, nine episodes of five shows, and its label set — is used as a
+live fixture in about 130 places. Most of that is mechanical, but
+`tools/foray/check-forays.test.mjs` carries #182's acceptance proofs, and they are
+built on properties only the old order has: D1 passing *with the budget exactly
+met*, a tightest seven-start span of 620.5 s, and D1 breaking when `GRID-3` is put
+back. An eight-segment Foray with D1 headroom cannot express any of them, and
+rewriting those proofs to fit new data would leave them green while destroying
+what they prove. So `grilling-history-1` stays exactly where it is, as the fixture
+those tests need, and **is marked superseded** (§9a); this Foray lands beside it.
+Retiring #1 and extracting the fixtures is a separate, reviewed change.
+
+**`grilling-history-1` is superseded, not current.** Anyone testing the player
+should use `?foray=grilling-history-2`. The old link plays the 61-minute version
+the founder reported as drifting.
 
 ---
 
@@ -57,46 +75,39 @@ warned was the worst available outcome.
 
 ---
 
-## 2. The rule this was assembled under
-
-From the founder, on #226:
-
-> "critically, if we have content that is irrelevant, don't distort the narrative
-> just to use more podcast content. Keep it mostly on topic"
-
-Applied here as four working tests, in the order they were applied:
-
-1. **A segment enters only against a named beat**, and only if it advances that
-   beat's claim. Not for being about food, history, cooking or barbecue.
-2. **A thin beat earns its place by advancing its claim, not by adding minutes.**
-   Six of the ten thin beats were rejected on that test; see §4.
-3. **Length is an output.** 17.6 minutes is what the tape supports. The
-   34.2-minute figure in stage 2's report is a *ceiling* computed by admitting
-   everything, and it was never a target.
-4. **Label, never exclude.** Everything rejected stays in `data/segments.json` and
-   in the ASR manifest, for playlists and for later Forays. This document chooses
-   what serves *this* Foray; it prunes nothing.
-
----
-
-## 3. The assembly
+## 2. The running order
 
 Eight segments, in spine order. `beat` is recorded on every item in
-`data/forays.json`, so the mapping is data rather than prose.
+`data/forays.json`, so the beat mapping is data rather than prose, and
+`tools/foray/check-forays.test.mjs` compares this table against that file row for
+row — position, label, duration and role — so the two cannot drift apart.
 
-| # | label | beat | act | segment | s | seam in | tier |
-|---|---|---|---|---|---|---|---|
-| 1 | `ORI-1` | **1** — cooking is external digestion | I | `origin-stories-cooking-human#147` | 152.5 | — | strong |
-| 2 | `ORI-2` | **1** | I | `origin-stories-cooking-human#678` | 85.7 | same-episode | strong |
-| 3 | `SATAY-1` | **9** — the skewer family | III | `satay-okay-e01-satay-myth#736` | 79.8 | cross-episode | thin |
-| 4 | `ARG-1` | **14** — asado | III | `bbqrn-argentina-open-fire#700` | 148.5 | cross-episode | strong |
-| 5 | `ARG-2` | **14** | III | `bbqrn-argentina-open-fire#1005` | 100.9 | same-episode | strong |
-| 6 | `JERK-1` | **15** — jerk as Maroon synthesis | III | `moreish-jerk-jamaica#266` | 237.9 | cross-episode | strong |
-| 7 | `MOSS-1` | **23** — the civic barbecue | IV | `bbqc-moss-school#2572` | 151.3 | cross-episode | thin |
-| 8 | `MOSS-2` | **37** — the revival, dated | V | `bbqc-moss-school#2779` | 97.9 | same-episode | thin |
+| # | at | label | duration | role |
+|---|---|---|---|---|
+| 1 | 0:00 | ORI-1 | 152.50 s | explanation |
+| 2 | 2:32 | ORI-2 | 85.68 s | explanation |
+| 3 | 3:58 | SATAY-1 | 79.80 s | explanation |
+| 4 | 5:17 | ARG-1 | 148.54 s | explanation |
+| 5 | 7:46 | ARG-2 | 100.94 s | explanation |
+| 6 | 9:27 | JERK-1 | 237.93 s | exchange |
+| 7 | 13:25 | MOSS-1 | 151.30 s | explanation |
+| 8 | 15:56 | MOSS-2 | 97.86 s | explanation |
 
-**Runtime 1,054.55 s — 17.58 min. Mean 131.8 s, inside the 75–180 s target band.
-Seven seams, four of them cross-episode.**
+**Runtime 1,054.55 s — 17.58 min, ending at 17:34. Mean 131.8 s, inside the
+75–180 s target band. Seven seams, four of them cross-episode.**
+
+Which beat each row advances, and which act it belongs to:
+
+| label | beat | act | segment | tier |
+|---|---|---|---|---|
+| `ORI-1` | **1** — cooking is external digestion | I | `origin-stories-cooking-human#147` | strong |
+| `ORI-2` | **1** | I | `origin-stories-cooking-human#678` | strong |
+| `SATAY-1` | **9** — the skewer family | III | `satay-okay-e01-satay-myth#736` | thin |
+| `ARG-1` | **14** — asado | III | `bbqrn-argentina-open-fire#700` | strong |
+| `ARG-2` | **14** | III | `bbqrn-argentina-open-fire#1005` | strong |
+| `JERK-1` | **15** — jerk as Maroon synthesis | III | `moreish-jerk-jamaica#266` | strong |
+| `MOSS-1` | **23** — the civic barbecue | IV | `bbqc-moss-school#2572` | thin |
+| `MOSS-2` | **37** — the revival, dated | V | `bbqc-moss-school#2779` | thin |
 
 The opening is intact and deliberate. `ORI-1` is the segment that was playing when
 the founder reported that "the content started good (with man first discovering
@@ -109,13 +120,14 @@ the spine, which is the definition of distortion even when the tape is good.
 
 Two notes a reader will otherwise trip on:
 
-- **Labels were renumbered.** The old `ORI-2` was `#448` and the old `ORI-3` was
-  `#678`; `ORI-2` is now `#678`. `label_prefixes` in `data/forays.json` is the
-  authority and `check-forays.mjs` verifies every label against its episode.
-- **The slots are the spine's acts now**, not the six arc slots the old Foray
-  used. Act II has no slot because it has no tape.
+- **Labels are not the old Foray's labels.** In `grilling-history-1`, `ORI-2` is
+  `#448` and `ORI-3` is `#678`; here `ORI-2` is `#678`. `label_prefixes` in
+  `data/forays.json` is the authority and `check-forays.mjs` verifies every label
+  against its episode.
+- **The slots are the spine's acts**, not the six arc slots `grilling-history-1`
+  uses. Act II has no slot because it has no tape.
 
-### 3a. The one new cut, and why it was minted
+### 2a. The one new cut, and why it was minted
 
 `satay-okay-e01-satay-myth#736` (735.8 → 815.6, 79.8 s) did not exist in the pool.
 Stage 2 documented it and declined to mint it, for the good reason that its
@@ -143,6 +155,29 @@ cost this Foray its strongest Act V beat, and the honest answer was that no such
 cut exists.
 
 ---
+
+## 3. The rule this was assembled under
+
+From the founder, on #226:
+
+> "critically, if we have content that is irrelevant, don't distort the narrative
+> just to use more podcast content. Keep it mostly on topic"
+
+Applied here as four working tests, in the order they were applied:
+
+1. **A segment enters only against a named beat**, and only if it advances that
+   beat's claim. Not for being about food, history, cooking or barbecue.
+2. **A thin beat earns its place by advancing its claim, not by adding minutes.**
+   Six of the ten thin beats were rejected on that test; see §4.
+3. **Length is an output.** 17.6 minutes is what the tape supports. The
+   34.2-minute figure in stage 2's report is a *ceiling* computed by admitting
+   everything, and it was never a target.
+4. **Label, never exclude.** Everything rejected stays in `data/segments.json` and
+   in the ASR manifest, for playlists and for later Forays. This document chooses
+   what serves *this* Foray; it prunes nothing.
+
+---
+
 
 ## 4. The thin tier, decided beat by beat
 
@@ -282,7 +317,7 @@ Argentina, cooking durations, Patagonian lamb terroir, grill marks as Maillard
 browning. Each fails a named beat's own reject criteria.
 
 **Beat 1's third strong segment (`origin-stories-cooking-human#448`).** Genuinely
-strong tape, deliberately not used. See §3.
+strong tape, deliberately not used. See §2.
 
 ---
 
@@ -393,7 +428,7 @@ instruction and the segment he named as good. **The opening was kept**, Act V is
 carried by beat 37's thin segment instead, and this paragraph exists so the cost is
 on the record rather than buried in an arithmetic coincidence.
 
-This is also why §3a's reading of the whole satay episode mattered. A second
+This is also why §2a's reading of the whole satay episode mattered. A second
 on-plot satay cut of even 30 seconds would have relaxed the runtime denominator
 enough to keep beat 32, beat 14's preferred carrier and possibly beat 15's second
 segment. There is no second on-plot passage in that episode. The check was worth
@@ -410,43 +445,57 @@ output passes it is the move this whole issue exists to prevent.
 
 ---
 
-## 8. What `check-forays.mjs` actually says, before and after
+## 8. What `check-forays.mjs` actually says
 
 The brief for this pass reported `grilling-history-1` as failing today with seven
 segment starts in a 600 s window against a budget of six, plus three D5
-violations. **That is not what the checker reports, and the difference is worth
-recording so the next reader is not looking for a bug that is not there.**
+violations, printed by passing tests so that CI was green while the Foray broke
+its own rules. **None of that is what the checker reports, and it was verified by
+running it rather than by reading the code.** Recording the correction here so the
+next reader does not go looking for a bug that is not there.
 
-On `main` before this change, the tool exits 0 and prints `forays ok`. D1 is **6
-starts against a budget of 6 — met exactly**, with no headroom. D5 pairwise
-violations are **zero**. The three D5 lines are **warnings under the
-mean-deviation reading, which the checker deliberately does not gate** and
-documents at length: the gated reading is pairwise because that is what the rule's
-own words say, and the mean-deviation reading is computed and printed anyway so
-the triples stay visible rather than being quietly resolved in our favour. The
-"seven starts" figure is `grilling-foray.md` §5 counting six *gaps*, which is seven
-starts; the checker's comment reconciles the two explicitly and notes both produce
-the same verdict.
+The tool exits 0 and prints `forays ok`, on `main` and now. For
+`grilling-history-1`, **D1 is 6 starts against a budget of 6 — met exactly, with
+no margin**, and **D5 pairwise violations are zero**. The three D5 lines are
+**warnings under the mean-deviation reading, which the checker deliberately does
+not gate** and documents at length: the gated reading is pairwise because that is
+what the rule's own words say, and the mean-deviation reading is computed and
+printed anyway so the triples stay visible rather than being quietly resolved in
+our favour. The "seven starts" figure is `grilling-foray.md` §5 counting six
+*gaps*, which is seven starts; the checker's own comment reconciles the two and
+notes that both produce the same verdict.
 
-So there was no green-CI-hiding-a-red-Foray. There was a Foray sitting exactly on
-its cut budget with zero margin, and three printed warnings nobody had cleared.
-Both are now gone:
+So there was no failing checker and no hidden red. **The true statement is
+narrower: `grilling-history-1` sits exactly on its D1 budget with no margin, and
+carries three uncleared non-gated warnings.** Note that `capital-types-1` prints
+the same class of warning, so this is a property of the checker's two readings and
+of how Forays get assembled, not something specific to grilling.
+
+This Foray was assembled to clear both bars rather than only the gated one:
 
 ```
-grilling-history-1 (draft): 8 segments, 17.6 min, mean 131.8 s
+grilling-history-1 (draft): 32 segments, 61.2 min, mean 114.8 s
+  D1 6/6 starts per 600 s   D5 0 triples, IQR 57.81 s
+grilling-history-2 (draft): 8 segments, 17.6 min, mean 131.8 s
   D1 6/8 starts per 600 s   D5 0 triples, IQR 56.79 s
 capital-types-1 (draft): 22 segments, 51.4 min, mean 140.1 s
   D1 5/6 starts per 600 s   D5 0 triples, IQR 71.75 s
 18 source episodes registered
+WARN foray "grilling-history-1": D5 (mean-deviation reading, not gated): MOSS-2 / MOSS-3 / SM-1 worst deviation 16.5 %
+WARN foray "grilling-history-1": D5 (mean-deviation reading, not gated): ARG-1 / ARG-2 / ARG-3 worst deviation 19.7 %
+WARN foray "grilling-history-1": D5 (mean-deviation reading, not gated): ARG-5 / ARG-6 / ARG-7 worst deviation 19.1 %
 WARN foray "capital-types-1": D5 (mean-deviation reading, not gated): CALM-1 / BOOT-2 / CALM-3 worst deviation 15.1 %
 WARN foray "capital-types-1": D5 (mean-deviation reading, not gated): VD-2 / VD-3 / VD-4 worst deviation 19.6 %
 forays ok
 ```
 
-**`grilling-history-1` now emits no warnings at all**, so it is clean under both
-readings of D5 rather than only the gated one, and D1 has two starts of headroom
-against its budget. The two remaining warnings belong to `capital-types-1`, which
-this pass did not touch and which is byte-identical.
+**`grilling-history-2` emits no warnings at all** — it is the only Foray in the
+file that is clean under both readings of D5 — and its D1 has two starts of
+headroom against its budget rather than sitting on the line. The five remaining
+warnings belong to `grilling-history-1` and `capital-types-1`, neither of which
+this pass touched; both are byte-identical to `main`. Clearing
+`grilling-history-1`'s three is not possible without re-cutting it, which is the
+retirement work §9a describes.
 
 Episode shares against M4's 25 % cap: `origin-stories-cooking-human` 25.0 % of
 segments and 22.6 % of runtime, `bbqrn-argentina-open-fire` 25.0 % / 23.7 %,
@@ -455,13 +504,19 @@ segments and 22.6 % of runtime, `bbqrn-argentina-open-fire` 25.0 % / 23.7 %,
 
 ### 8a. Seams, and why fewer is better right now
 
-**Cross-episode seams drop from 16 of 31 to 4 of 7.** #224 is open: the screen-off
-seam handover discards a prefetch at the boundary and the fallback load times out,
-so a founder testing this with the screen off will still probably hit a stall.
-Nothing here fixes that, and **no copy in this Foray claims smooth playback**.
-Fewer cross-episode seams means fewer chances to hit the bug, which is a real if
-incidental argument against padding this Foray — and one more reason the answer to
-scarce tape was a shorter Foray rather than a fuller one.
+**Cross-episode seams drop from 16 of 31 to 4 of 7.** #224 is open and unfixed: the
+screen-off seam handover discards a prefetch at the boundary, and the fallback load
+takes about 11 seconds structurally against a 10,000 ms deadline — so it does not
+merely stall, it **misses the deadline every time**, and a cross-episode seam is
+where playback drops with the screen off. Four instead of sixteen is therefore not
+a cosmetic improvement; it is four exposures instead of sixteen, and it materially
+changes the odds of a clean listen.
+
+Nothing here fixes #224, and **no copy in this Foray claims smooth playback**. This
+is also the second, independent reason not to pad: every segment added for length
+would have bought another chance to hit a known playback failure. The answer to
+scarce tape was a shorter Foray, and the player bug happens to agree with the
+editorial rule.
 
 ---
 
@@ -488,6 +543,37 @@ a gate rather than a suggestion.
 4. **Decide whether a fragment this shaped should be published at all**, as
    opposed to kept as a draft for player testing. §1 is the honest description and
    it is not a flattering one.
+
+### 9a. How to open it, and the stale-link hazard
+
+Both grilling Forays are `draft`, so neither is listed for an ordinary visitor and
+both are reachable only by asking for one by id. The unlock path is generic — it
+reads whatever id is in the query string — so no code change was needed:
+
+```
+https://jw-incorporated.github.io/foray/?foray=grilling-history-2
+```
+
+Verified against the real documents rather than assumed: without the parameter
+`findForay` returns `null` and visibility reports `draft — not published`; with it,
+visibility reports `draft, opened by id`, `listableForays` returns the Foray, and
+it resolves to **8 playable segments, 0 unplayable, 17:34, every source https**,
+with the four act slots contiguous in declared order.
+
+**The hazard is the old link.** `?foray=grilling-history-1` still works and still
+plays the 61-minute version the founder reported as drifting. Anyone who reuses
+the link they were given earlier will re-test the drift and conclude that nothing
+changed. So:
+
+- `grilling-history-1` carries `superseded_by: "grilling-history-2"` and a
+  `superseded_note` in `data/forays.json`, and its running-order document
+  (`docs/curation/grilling-foray.md`) carries a note at the top saying the same
+  thing. Neither field is read by the player, so no fixture moves.
+- It is deliberately **not deleted**. It is the fixture 103 tests depend on, and
+  under label-never-exclude its segments stay in the pool regardless.
+- Retiring it means extracting those fixtures first. That is the separate reviewed
+  change described at the top of this document, and until it lands
+  `grilling-history-1` is a stale draft that is labelled as one.
 
 ---
 
