@@ -223,6 +223,49 @@ docs/. Completed workstreams move to their plan doc's retro section.
   small problem, but a promptly-recurring one.
 - **Related:** #198, #203 (`--shard` fails open), #175, ADR-0006.
 
+### MediaSession — the lock screen and the car (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/media-session`, issue #27 (WP7). `navigator.mediaSession` was
+  completely unimplemented, so a Foray played with the screen off showed no
+  title, no publisher, no artwork and no working hardware pause. Now it does.
+  **The only app work not gated on MP1 (#35)** — MediaSession is a web API that
+  works in mobile browsers today, a Capacitor shell inherits it, and a native
+  audio backend still needs the same metadata mapping, so it cannot be wasted.
+- **New files:** `player/media-session.js` (pure: no DOM, no `navigator`, no
+  timers) and `player/media-session.test.js` (116 tests, floored at 110).
+- **Shared files it touches:** `player/client.js` (the wiring, plus two small
+  extractions — `setRunning(want)` and `stopAndClose()` — so the lock screen and
+  the in-page button are literally one code path), `player/foray-sources.js`
+  (`artworkUrlsByShow`, beside the `collectionIdsByShow` it mirrors), `app.js`
+  (three `playForay` call sites now pass `discoverDoc`),
+  `test/suite-integrity.test.js` (one floor, isolated final commit), this file,
+  `docs/DECISIONS.md`. **Nothing in `data/`**, nothing in `index.html` — the
+  CSP was VERIFIED, not changed.
+- **Four decisions another session should not silently re-litigate** (all four
+  pinned by a named test, all four argued in the module header):
+  (1) `title` = source episode, `artist` = source SHOW, `album` = Foray title +
+  `part N of M`. The publisher gets `artist` because that field always renders.
+  (2) `previoustrack`/`nexttrack` are SEGMENT boundaries and call `forayPrevious`
+  / `forayNext` — the page’s own functions, not a second implementation.
+  (3) `setPositionState` reports the WHOLE Foray’s clock, matching the #196
+  scrubber. A car’s `seekto` therefore lands via `foraySeek`.
+  (4) **A seam beat reports `playing`, not `paused`.** 2.0 s of authored silence
+  is content; a car display that blinks paused 31 times an hour is not. The cost
+  is up to 2.0 s of OS position extrapolation, bounded by the beat and
+  self-correcting.
+- **Artwork verdict: shipped, but thin, and that is DATA not policy.** The CSP
+  (`img-src https: data:`) already permits it, so nothing was widened.
+  `data/segment-sources.json` carries no artwork field at all, and the
+  `data/discover.json` join by show name covers **1 of the 12 shows** the two
+  shipped Forays draw on; the rest fall back to `icon-512.png`. If you add an
+  `artwork_url` to a source, the mapping is already there and lights up.
+- **Heads-up — a pre-existing flake, not mine.**
+  `player/html-audio-backend.test.js` “a faster rate does not loosen the
+  boundary” fails roughly 1 run in 3 on a loaded Windows box (wall-clock
+  budget; the #195 class its own header warns about). Unrelated to this PR,
+  which touches neither that suite nor `html-audio-backend.js`. Worth its own
+  fix by whoever owns that file.
+
 ### durable storage — resume survives an eviction (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/durable-progress`, issue **#40 (MP6)**. Every `cp_` key —

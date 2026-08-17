@@ -64,6 +64,17 @@ const FLOORS = {
   "player/foray-resolve.test.js": 42,
   "player/foray-sources.test.js": 24,
   "player/html-audio-backend.test.js": 44,
+  /* The lock screen and the car (#27). Floored high on purpose: four product
+     decisions live in that module — publisher credit in `artist`, previous/next
+     as segments, the Foray's clock in `setPositionState`, and a seam beat that
+     reports PLAYING — and every one of them is a single-line edit away from its
+     opposite, on a surface nobody sees in a browser tab.
+
+     **Zero slack, deliberately.** The first draft floored it at 110 against 116
+     actual, and the pre-push review proved what that bought: all four pins could
+     be deleted and the floor stayed green — the exact failure this file exists to
+     make loud. Raise it when the suite grows. */
+  "player/media-session.test.js": 129,
   "player/queue-manager.test.js": 76,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,

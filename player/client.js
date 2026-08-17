@@ -70,18 +70,29 @@ import {
   ForayProgressStore, resumePoint, remainingLabel, percentDone,
   DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED,
 } from "./foray-progress.js";
-import { forayCredits, collectionIdsByShow, creditsSummary } from "./foray-sources.js";
+import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { createDurableStore } from "./durable-store.js";
 import { makeIdbTier } from "./idb-tier.js";
+import {
+  createMediaSession, mediaSessionView, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
+} from "./media-session.js";
 
-const SEEK_BACK = 15;
-const SEEK_FWD = 30;
+/* The in-page buttons and the lock screen use ONE pair of numbers, imported
+   rather than declared twice — `04_VOICE_AUDIO_SPEC.md`'s "±30/15 s seek". */
+const SEEK_BACK = SEEK_BACKWARD_SEC;
+const SEEK_FWD = SEEK_FORWARD_SEC;
 const RATES = [1, 1.25, 1.5, 1.75, 2];
 
 let manager = null;
 let backend = null;
 let positions = null;
 let ui = null;
+/** The lock screen / car / headphone surface (#27). Built once in
+    `ensureBooted`, inert where `navigator.mediaSession` does not exist. */
+let media = null;
+/** Show name -> artwork URL, from `data/discover.json` when a caller hands it
+    over. One map per Foray, not per tick. */
+let artworkByShow = new Map();
 
 /* ---------- durable storage (#40) ----------
 
@@ -443,6 +454,10 @@ function render() {
     ? `-${foray ? fmtClock(Math.max(0, dur - pos)) : formatTimestamp(Math.max(0, dur - pos), EXACT)}`
     : "--:--";
   syncCardButtons();
+  // The lock screen is repainted from the same tick the page is, so the two can
+  // never show different states (corner case #11's "lock screen shows correct
+  // state"). It writes only when something actually changed.
+  syncMediaSession();
   if (foray) {
     persistForayProgress();
     notifyForay();
@@ -497,41 +512,142 @@ function setNowPlaying(item, why) {
   render();
 }
 
+/* ---------- transport, in one place ---------- */
+
+/**
+ * Start or stop, whoever asked.
+ *
+ * Extracted so the lock screen, the car and the headphone pinch route through
+ * EXACTLY the code the in-page button runs — including the forced position
+ * write, which matters more from a lock screen than from the page: a pause on a
+ * car display is very often the last thing that happens before the tab is gone.
+ *
+ * `want` rather than a toggle, because MediaSession delivers `play` and `pause`
+ * as two separate actions and a `play` that arrived while already playing must
+ * not pause.
+ */
+async function setRunning(want) {
+  if (!manager) return;
+  if (want === isRunning()) { render(); return; }
+  if (want) await manager.resume();
+  else await manager.pause();
+  render();
+  persistForayProgress({ force: true });
+}
+
+/** Take the player off screen and out of the OS's now-playing slot. */
+async function stopAndClose() {
+  // Closing the bar is not "I am done with this Foray", it is "get this off my
+  // screen". Keep the resume point; the only thing that clears it is finishing.
+  persistForayProgress({ force: true });
+  await manager.stop();
+  if (media) media.release();
+  ui.root.hidden = true;
+  ui.sheet.hidden = true;
+  document.body.classList.remove("fp-open", "fp-expanded");
+  current = null;
+  // Same shape the live snapshot has, so the page never has to guess which
+  // fields it got.
+  const wasForay = foray;
+  foray = null;
+  if (wasForay?.onChange) {
+    wasForay.onChange({
+      forayId: wasForay.resolved.id, index: -1, loading: false, playing: false,
+      ended: false, elapsedSec: 0, totalSec: wasForay.resolved.totalSec, error: null,
+    });
+  }
+  syncCardButtons();
+}
+
+/* ---------- the lock screen, the car, the headphone pinch (#27) ----------
+
+   `player/media-session.js` owns every decision — which field says what, what
+   previous/next mean, which clock the position is on, and what a seam beat
+   reports. This is only the wiring, and the two surfaces below are deliberately
+   nothing but delegation: a lock-screen control that re-implemented any part of
+   the transport would be a second opinion about it, and the two would diverge
+   the first time either changed. */
+
+/** In a Foray, previous/next are SEGMENTS — the same functions the ‹‹ / ››
+    buttons call, so `forayPrevious`'s restart-vs-previous window is inherited
+    rather than restated. Seeking is on the Foray's clock, through the scrubber's
+    own path. */
+const forayMediaSurface = {
+  play: () => setRunning(true),
+  pause: () => setRunning(false),
+  stop: () => stopAndClose(),
+  next: () => ForayPlayer.forayNext(),
+  previous: () => ForayPlayer.forayPrevious(),
+  seekBy: (offset) => ForayPlayer.foraySeek(Math.max(0, forayPosition() + offset)),
+  seekTo: (position) => ForayPlayer.foraySeek(position),
+};
+
+/** One episode has no next: the queue is one item (`SINGLE_ITEM`, product
+    principle 1 — no autoplay chains), so `next`/`previous` are absent and the
+    OS greys those buttons out instead of offering ones that do nothing. */
+const episodeMediaSurface = {
+  play: () => setRunning(true),
+  pause: () => setRunning(false),
+  stop: () => stopAndClose(),
+  seekBy: (offset) => manager.seek(Math.max(0, (backend?.currentTime ?? 0) + offset), { precise: true }),
+  seekTo: (position) => manager.seek(position, { precise: true }),
+};
+
+/** Live state -> the pure view the bridge writes. Called from `render()`, which
+    every media event and the seam-beat hook already drive, so there is no second
+    timer and no polling. */
+function syncMediaSession() {
+  if (!media || !media.supported) return;
+  // Nothing loaded: `render()` already returns before this, and closing the
+  // player goes through `stopAndClose`, which calls `release()` — clearing here
+  // would drop the metadata and LEAVE the handlers installed, which is the
+  // stale-handler bug wearing a tidier face.
+  if (!current) return;
+
+  if (foray) {
+    const items = foray.resolved.playable;
+    const index = foray.index >= 0 ? foray.index : 0;
+    media.update(mediaSessionView({
+      item: items[index] ?? null,
+      nextItem: items[index + 1] ?? null,
+      forayTitle: foray.resolved.title,
+      index,
+      total: items.length,
+      showArtworkUrl: artworkByShow.get(items[index]?.show ?? "") ?? null,
+      durationSec: foray.resolved.totalSec,
+      positionSec: forayPosition(),
+      playbackRate: backend?.el?.playbackRate ?? 1,
+      playing: isPlaying(),
+      // The 2.0 s authored beat reads as playing, exactly as `isRunning()` has
+      // it for the in-page buttons. `media-session.js` §4 is the argument.
+      inSeamGap: manager?.inSeamGap === true,
+      ended: manager?.state?.type === "ended",
+    }));
+    return;
+  }
+
+  media.update(mediaSessionView({
+    item: current,
+    forayTitle: "",
+    index: 0,
+    total: 0,
+    showArtworkUrl: current.artwork_url ?? null,
+    durationSec: backend?.duration ?? current.duration_sec ?? null,
+    positionSec: backend?.currentTime ?? 0,
+    playbackRate: backend?.el?.playbackRate ?? 1,
+    playing: isPlaying(),
+    ended: manager?.state?.type === "ended",
+  }));
+}
+
 /* ---------- wiring ---------- */
 
 function bind() {
-  const toggle = async () => {
-    if (isRunning()) await manager.pause();
-    else await manager.resume();
-    render();
-    // A pause may be the last thing that ever happens on this page load, so it
-    // does not get to wait for the throttle window.
-    persistForayProgress({ force: true });
-  };
+  const toggle = () => setRunning(!isRunning());
   ui.playBtn.addEventListener("click", toggle);
   ui.bigPlay.addEventListener("click", toggle);
 
-  ui.closeBtn.addEventListener("click", async () => {
-    // Closing the bar is not "I am done with this Foray", it is "get this off my
-    // screen". Keep the resume point; the only thing that clears it is finishing.
-    persistForayProgress({ force: true });
-    await manager.stop();
-    ui.root.hidden = true;
-    ui.sheet.hidden = true;
-    document.body.classList.remove("fp-open", "fp-expanded");
-    current = null;
-    // Same shape the live snapshot has, so the page never has to guess which
-    // fields it got.
-    const wasForay = foray;
-    foray = null;
-    if (wasForay?.onChange) {
-      wasForay.onChange({
-        forayId: wasForay.resolved.id, index: -1, loading: false, playing: false,
-        ended: false, elapsedSec: 0, totalSec: wasForay.resolved.totalSec, error: null,
-      });
-    }
-    syncCardButtons();
-  });
+  ui.closeBtn.addEventListener("click", () => stopAndClose());
 
   const setExpanded = (open) => {
     ui.sheet.hidden = !open;
@@ -637,6 +753,21 @@ function ensureBooted() {
     },
   });
 
+  /* The lock screen / car / headphone surface (#27). `createMediaSession`
+     returns an inert bridge where `navigator.mediaSession` is absent — desktop
+     Safari, older browsers — so nothing below ever has to check.
+
+     Built BEFORE the DOM, deliberately. `ensureBooted` is guarded by
+     `if (manager) return`, so if `buildUI()` ever threw, every later call would
+     skip re-initialisation and `play()` would die on `media.setActions` — a
+     TypeError producing a perfect, inert page, which is the exact class of
+     failure `player/foray-playback.test.js` exists to catch. Nothing here needs
+     the DOM, so nothing here waits for it. */
+  media = createMediaSession({
+    nav: typeof navigator !== "undefined" ? navigator : null,
+    MediaMetadata: typeof window !== "undefined" ? window.MediaMetadata : null,
+  });
+
   ui = buildUI();
   bind();
 
@@ -670,6 +801,10 @@ const ForayPlayer = {
     persistForayProgress({ force: true });
     foray = null;
     setSkipButtonMode(false);
+    // Installed BEFORE the metadata is written, and it replaces the Foray's set
+    // rather than adding to it: a stale `nexttrack` still pointed at a Foray
+    // nobody is on is the one wiring bug this surface can hide.
+    media.setActions(episodeMediaSurface);
     setNowPlaying(item, why);
     manager.setQueueFromPick(item);
     await manager.play(0);
@@ -728,13 +863,23 @@ const ForayPlayer = {
    * @param {Function} [opts.onChange] called with `{ index, playing, ended,
    *   elapsedSec, totalSec }` on every position tick and every segment change —
    *   the page owns the running order, so it needs to be told, not to poll.
+   * @param {object} [opts.discoverDoc] `data/discover.json`, the only document
+   *   we have that carries per-show artwork. Optional and thin — it covers one
+   *   of the twelve shows the shipped Forays draw on — so its absence costs the
+   *   lock screen the publisher's square and nothing else (#27).
    * @returns the build report, or null when nothing is playable.
    */
-  async playForay(resolved, { startIndex = 0, startElapsedSec = null, onChange = null } = {}) {
+  async playForay(resolved, {
+    startIndex = 0, startElapsedSec = null, onChange = null, discoverDoc = null,
+  } = {}) {
     if (!resolved || !resolved.playable.length) return null;
     ensureBooted();
     foray = { resolved, index: -1, pendingFrom: null, onChange, error: null };
     setSkipButtonMode(true);
+    // Once per Foray, not once per tick: this walks the whole discover pool.
+    artworkByShow = artworkUrlsByShow(discoverDoc);
+    // Previous/next become segment boundaries the moment a Foray is loaded.
+    media.setActions(forayMediaSurface);
 
     const report = manager.setQueueFromForay(resolved.hydrated, {
       resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
@@ -859,15 +1004,11 @@ const ForayPlayer = {
     return this.forayStatus();
   },
 
-  /** Play/pause the Foray without rebuilding it. */
+  /** Play/pause the Foray without rebuilding it. One code path with the mini
+      bar and the lock screen, including the forced position write. */
   async forayToggle() {
     if (!foray) return;
-    if (isRunning()) await manager.pause();
-    else await manager.resume();
-    render();
-    // The page's own pause is the one a listener actually uses; it gets the same
-    // forced write the mini bar's does.
-    persistForayProgress({ force: true });
+    await setRunning(!isRunning());
   },
 
   async forayJump(index) {
