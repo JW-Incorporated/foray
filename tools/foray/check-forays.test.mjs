@@ -38,6 +38,12 @@ const CLI = path.join(HERE, "check-forays.mjs");
 const files = loadFiles(REPO_ROOT);
 const clone = () => structuredClone(files);
 const foray0 = (f) => f.forays.forays[0];
+/* Foray #2 (`capital-types-1`) landed 2026-08-16, so `forays[0]` is no longer
+ * "the Foray" — it is Foray #1. Every assertion that is about #1 specifically
+ * keeps using `foray0`; every assertion that is about the FILE loops. Anything
+ * that pinned a whole-file count now pins it per Foray, because a count that
+ * grows with each Foray is a number nobody can maintain. */
+const forayBy = (f, id) => f.forays.forays.find((x) => x.id === id);
 const errorsFor = (f) => checkForays(f).errors;
 const durationOf = (f, segmentId) => {
   const s = f.segments.segments.find((x) => x.id === segmentId);
@@ -56,9 +62,14 @@ test("the CLI exits 0 on the committed data", () => {
   assert.match(out, /forays ok/);
 });
 
-test("there is exactly one Foray, and it is #134's kind", () => {
-  assert.equal(files.forays.forays.length, 1);
-  assert.equal(foray0(files).kind, "deep-dive");
+test("the committed Forays are the two documented ones, and both are #134's kind", () => {
+  // Pinned by id rather than by count so that adding a third is a deliberate
+  // edit here, and so a RENAME cannot pass as an addition.
+  assert.deepEqual(
+    files.forays.forays.map((f) => f.id),
+    ["grilling-history-1", "capital-types-1"]
+  );
+  for (const f of files.forays.forays) assert.equal(f.kind, "deep-dive", f.id);
 });
 
 test("Foray #1 is draft, so no client may surface it yet", () => {
@@ -81,16 +92,81 @@ test("Foray #1's mean segment duration matches the doc's 114.8 s", () => {
   assert.equal(checkForays(files).report.forays[0].mean_sec, 114.8);
 });
 
-test("the four pool segments held back in §7 are not in the running order", () => {
-  const used = new Set(foray0(files).items.map((i) => i.segment_id));
+/* ------------------------------------------------------------- Foray #2 pins
+ * Same treatment as #1: the numbers docs/curation/foray2-capital.md quotes are
+ * pinned here, because an unpinned number is what drifted last time. */
+
+test("Foray #2 is draft, and carries the 22-segment running order from foray2-capital.md §2", () => {
+  const f = forayBy(files, "capital-types-1");
+  assert.equal(f.status, "draft");
+  assert.equal(f.items.filter((i) => i.type === "segment").length, 22);
+});
+
+test("Foray #2's numbers are the ones its doc quotes", () => {
+  const r = checkForays(files).report.forays.find((x) => x.id === "capital-types-1");
+  assert.equal(r.runtime_sec, 3082.43, "51:22 of tape");
+  assert.equal(r.mean_sec, 140.1);
+  assert.equal(r.d1_budget, 6, "51.4 min puts it in the 45-120 minute band");
+  assert.equal(r.d1_max_starts_in_window, 5, "one start of headroom, unlike #1");
+  assert.equal(r.d5_pairwise_violations, 0);
+  assert.equal(r.d5_iqr_sec, 71.75);
+});
+
+test("Foray #2's only L4 segment carries both escape-hatch fields", () => {
+  // VD-1 is 259.9 s, past the 240 s soft maximum. `needs_review` and
+  // `long_reason` are not in the segment schema yet, so they live on the item.
+  const f = forayBy(files, "capital-types-1");
+  const long = f.items.filter((i) => {
+    const s = files.segments.segments.find((x) => x.id === i.segment_id);
+    return s && s.end_sec - s.start_sec > 240;
+  });
+  assert.equal(long.length, 1);
+  assert.equal(long[0].label, "VD-1");
+  assert.equal(long[0].needs_review, true);
+  assert.ok(long[0].long_reason && long[0].long_reason.length > 40, "long_reason must say what the extra minutes do");
+});
+
+test("Foray #2 draws on eight episodes, and no VC show among them", () => {
+  // The brief's balance requirement: 8 of 14 headline subjects with no VC
+  // talking about VC. Pinned as source count + the absence of the four Full
+  // Ratchet episodes, which are measured DAI and therefore unplayable (§6).
+  const f = forayBy(files, "capital-types-1");
+  const eps = new Set(
+    f.items
+      .filter((i) => i.type === "segment")
+      .map((i) => files.segments.segments.find((s) => s.id === i.segment_id).item_id)
+  );
+  assert.equal(eps.size, 8);
+  for (const id of eps) assert.ok(!id.startsWith("fr-"), `${id} is a DAI source and cannot play`);
+});
+
+test("the pool segments held back from their Foray are not in any running order", () => {
+  // The pool is a pool, not a playlist. Each Foray's doc names the segments it
+  // authored and deliberately did not play; those must stay unplayed by EVERY
+  // Foray, or the reason they were held (pacing, a rule, an expletive) is void.
+  /* type-filtered: a narration item has no `segment_id`, and letting `undefined`
+   * into this set would inflate `used.size` and quietly satisfy the identity
+   * below. None exist yet, which is exactly when this is cheap to get right. */
+  const used = new Set(
+    files.forays.forays.flatMap((f) => f.items.filter((i) => i.type === "segment").map((i) => i.segment_id))
+  );
   const held = [
-    "bbqc-moss-school#1881", // MOSS-G
+    "bbqc-moss-school#1881", // MOSS-G   — grilling-foray.md §7
     "bbqc-traeger-history#2457", // TRA-4
     "bbqrn-argentina-open-fire#2292", // ARG-8
     "bfh-griddle-bakestone#1360", // GRID-3
+    "ss-inlaw-investors#770", // FAM-3   — foray2-capital.md §7
+    "tbf-328-tringas#2299", // CALM-2
+    "ftb-89-sbir-grants#2467", // GR-4
+    "yc-how-fundraising-works#1230", // YC-4
   ];
-  for (const id of held) assert.ok(!used.has(id), `${id} should be held back`);
-  assert.equal(files.segments.segments.length, 32 + held.length);
+  for (const id of held) {
+    assert.ok(files.segments.segments.some((s) => s.id === id), `${id} should be in the pool`);
+    assert.ok(!used.has(id), `${id} should be held back`);
+  }
+  // The pool is exactly what the Forays play plus what they held back. Stated
+  // as an identity rather than as a total, so it survives the next batch.
+  assert.equal(files.segments.segments.length, used.size + held.length);
 });
 
 /* ---------------------------------------------------- the recorded mapping */
@@ -296,7 +372,9 @@ test("d5Triples mean-deviation is the stricter reading, and is warn-only", () =>
   assert.equal(d5Triples(t, { reading: "mean-deviation" }).length, 1);
   const { warnings, errors } = checkForays(files);
   assert.equal(errors.length, 0);
-  assert.equal(warnings.filter((w) => /mean-deviation/.test(w)).length, 3, "the three §5 names");
+  const md = (id) => warnings.filter((w) => /mean-deviation/.test(w) && w.includes(id)).length;
+  assert.equal(md("grilling-history-1"), 3, "the three grilling-foray.md §5 names");
+  assert.equal(md("capital-types-1"), 2, "the two foray2-capital.md §5 names");
 });
 
 test("the tightest pairwise triple is MOSS-2/MOSS-3/SM-1, not ARG-5/6/7", () => {
@@ -522,9 +600,15 @@ test("an item in an undeclared slot is rejected", () => {
 
 /* ------------------------------------------------------- the source registry */
 
-test("all nine source episodes are registered", () => {
-  assert.equal(files.sources.sources.length, 9);
-  assert.equal(checkForays(files).report.sources, 9);
+test("every registered source is reported, and every Foray's episodes are registered", () => {
+  assert.equal(checkForays(files).report.sources, files.sources.sources.length);
+  const registered = new Set(files.sources.sources.map((s) => s.id));
+  for (const f of files.forays.forays) {
+    for (const i of f.items.filter((x) => x.type === "segment")) {
+      const seg = files.segments.segments.find((s) => s.id === i.segment_id);
+      assert.ok(registered.has(seg.item_id), `${f.id}: ${seg.item_id} is not registered`);
+    }
+  }
 });
 
 test("every item_id in the segment pool resolves to a source", () => {
@@ -534,10 +618,11 @@ test("every item_id in the segment pool resolves to a source", () => {
   }
 });
 
-test("source ids are exactly the item_ids grilling-foray.md §1 names", () => {
+test("source ids are exactly the item_ids the two curation docs name", () => {
   assert.deepEqual(
     files.sources.sources.map((s) => s.id).sort(),
     [
+      // grilling-foray.md §1
       "bbqc-moss-school",
       "bbqc-traeger-history",
       "bbqrn-argentina-open-fire",
@@ -547,7 +632,16 @@ test("source ids are exactly the item_ids grilling-foray.md §1 names", () => {
       "bfh-medieval-meals-manners",
       "moreish-jerk-jamaica",
       "origin-stories-cooking-human",
-    ]
+      // foray2-capital.md §1
+      "am-sba-lender-roundtable",
+      "crowdcrux-557-atombeam",
+      "ftb-89-sbir-grants",
+      "rtn-venture-debt",
+      "ss-inlaw-investors",
+      "tbf-309-funded",
+      "tbf-328-tringas",
+      "yc-how-fundraising-works",
+    ].sort()
   );
 });
 
