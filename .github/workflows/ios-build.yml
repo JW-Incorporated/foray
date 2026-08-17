@@ -27,6 +27,20 @@
 #      least-verified claim in that document. A missed out-point costs a median
 #      936.5 s: 15.6 minutes of the wrong episode. The out-point probe backgrounds
 #      the Simulator and measures how far past `end_sec` playback gets.
+#      SETTLED, run 32026332637: overshoot 0.0045 s over a 15.056 s hidden window
+#      with the app never resumed. The inference HELD, and iOS needs no native
+#      out-point. (An earlier run's `fired-on-resume` was a harness race with a
+#      3 ms overshoot; see `docs/ios-ci.md` §4b. Do not re-quote it.)
+#   4. MEASURE THE THING (3) DOES NOT COVER — THE SEAM TRANSITION. A Foray is 32
+#      segments joined by 31 transitions, and a transition is a `setTimeout` beat
+#      plus a fresh cross-episode load, not a media event. The SAME run that
+#      settled (3) measured hidden DOM timers aligned to a median of 1000 ms — the
+#      clock the beat runs on. If the chain breaks, a locked-screen listener hears
+#      one segment and then silence for the commute, which no out-point accuracy
+#      fixes. The seam probe drives the real `PlayerQueueManager` across three
+#      bounded segments on two files and reports, per transition, whether the beat
+#      fired, the next file loaded, and it became audible — all backgrounded, with
+#      the app never resumed before the record is read.
 #
 # A SIMULATOR IS NOT A DEVICE. It does not model power management or true
 # suspension, so a PASS on (3) is weaker evidence than a FAILURE would be. That
@@ -36,13 +50,19 @@
 #
 # ── COST, AND WHY THIS IS NOT A REQUIRED CHECK ───────────────────────────────
 #
-# MEASURED, 2026-08-17: a full green run — both builds, simulator boot, both
-# probes, report and artifact upload — took 8 min 19 s of wall clock per run
-# (run 32023924627). macOS runners bill at 10x Linux minutes, so ~85 billable
-# minutes if this repo were private. The first estimate here said 12-18 minutes;
-# it is replaced rather than kept, but the distinction is why `docs/ios-ci.md`
-# labels every figure — an estimate quoted as a measurement is the specific
-# mistake `docs/research/mp1-background-audio.md` §1 keeps a whole table to avoid.
+# MEASURED, 2026-08-17: a full green run of the SINGLE-PASS version — both builds,
+# simulator boot, the bridge and out-point probes, report and artifact upload —
+# took 8 min 19 s of wall clock per run (run 32023924627). macOS runners bill at
+# 10x Linux minutes, so ~85 billable minutes if this repo were private. The first
+# estimate here said 12-18 minutes; it is replaced rather than kept, but the
+# distinction is why `docs/ios-ci.md` labels every figure — an estimate quoted as a
+# measurement is the specific mistake `docs/research/mp1-background-audio.md` §1
+# keeps a whole table to avoid.
+#
+# ESTIMATED, and deliberately labelled as such: the seam pass added below is a
+# second install + launch + a 15 s and 90 s window, about 95 s more, so ~10 minutes
+# and ~100 billable minutes. Replace this line with the measured figure from the
+# first run that includes it; do not quote it as one until then.
 #
 # It is PUBLIC, and GitHub charges nothing for standard runners on public repos,
 # which is also why `ci.yml`'s `ios-kit` job can run `macos-latest` on every PR
@@ -76,7 +96,7 @@ on:
   workflow_dispatch:
     inputs:
       probes:
-        description: "Boot the iOS Simulator and run the bridge + out-point probes"
+        description: "Boot the iOS Simulator and run the bridge, out-point and seam-transition probes"
         type: boolean
         default: true
   pull_request:
@@ -288,17 +308,44 @@ jobs:
           PROBED="${{ runner.temp }}/App-probe.app"
           rm -rf "$PROBED"
           cp -R "${{ steps.build_sim.outputs.app }}" "$PROBED"
-          node tools/mobile/probe/install-probe.mjs "$PROBED/public"
+          # `--phase outpoint` is the FIRST of two passes. See the probe step: both
+          # measurements need the same scarce resource — a window in which the app is
+          # backgrounded — and running them on one page would have a JavaScript
+          # <audio> element and a native AVPlayer audible at once, after which "what
+          # stopped the audio" stops being answerable.
+          node tools/mobile/probe/install-probe.mjs "$PROBED/public" --phase outpoint
           # Editing resources invalidates the ad-hoc signature. The Simulator does
           # not enforce it, but re-signing costs nothing and removes a variable.
           codesign --force --sign - "$PROBED" || true
           xcrun simctl install "$UDID" "$PROBED"
           echo "probed=$PROBED" >> "$GITHUB_OUTPUT"
 
-      - name: Run the probes (launch, background, resume)
+      - name: Run the probes (two passes — the out-point, then the SEAM TRANSITION)
         id: probe_run
         if: env.PROBES != 'false' && steps.probe_install.outcome == 'success'
         continue-on-error: true
+        # TWO PASSES IN ONE STEP, ONE CONTAINER READ AT THE END.
+        #
+        # Pass 1 answers "does the STOP survive backgrounding". Run 32026332637
+        # answered it: yes, 4 ms late over a 15.056 s hidden window. Pass 2 answers
+        # the question that result does NOT settle — "does the TRANSITION survive
+        # backgrounding" — and it is a different mechanism: a `setTimeout` for the
+        # 2.0 s beat, then a fresh media load of a DIFFERENT file, then a seek, then
+        # play. Pass 1's own numbers are why it is worth asking separately: the same
+        # page measured hidden DOM timers aligned to a median of 1000 ms, so the beat
+        # is scheduled on the one clock that IS throttled.
+        #
+        # They cannot share one page: both need the same scarce resource, a window in
+        # which the app is backgrounded, and pass 1 spends its whole window proving a
+        # single boundary. So the app is reinstalled with the other phase between
+        # them. The container SURVIVES the reinstall, which is why one read at the end
+        # collects both records — the localStorage keys are distinct.
+        #
+        # COST: about 95 s more than a single pass, on a runner that bills at 10x —
+        # roughly 16 more billable minutes. Stated because the alternative is one
+        # measurement and one inference, and inferences quoted as measurements are
+        # what this whole workflow exists to stop.
+        #
         # THE TIMELINE — AND NOTE WHAT IT NO LONGER DECIDES.
         #   t+0   launch. probe-bridge.js snapshots window.Capacitor immediately,
         #         re-checks at 3 s (in case the bridge is injected late), reads
@@ -344,15 +391,54 @@ jobs:
           LOG_PID=$!
           trap 'kill $LOG_PID 2>/dev/null || true' EXIT
 
+          background_it() {
+            echo "--- backgrounding by foregrounding Settings ---"
+            xcrun simctl launch "$UDID" com.apple.Preferences \
+              || xcrun simctl launch "$UDID" com.apple.mobilesafari
+          }
+
+          # ── PASS 1: the JavaScript out-point (phase `outpoint`) ───────────────
           xcrun simctl launch "$UDID" "$APP_ID"
           sleep 14
           xcrun simctl io "$UDID" screenshot "$ART/01-playing.png" || true
-          echo "--- backgrounding by foregrounding Settings ---"
-          xcrun simctl launch "$UDID" com.apple.Preferences \
-            || xcrun simctl launch "$UDID" com.apple.mobilesafari
+          background_it
           sleep 60
           xcrun simctl io "$UDID" screenshot "$ART/02-backgrounded.png" || true
 
+          # ── PASS 2: the SEAM TRANSITION (phase `seam`) ────────────────────────
+          #
+          # THE APP IS NEVER BROUGHT BACK BEFORE THE RECORD IS COLLECTED. `simctl
+          # terminate` kills the outgoing app rather than foregrounding it, and the
+          # localStorage read below touches files on disk. That matters because the
+          # failure being looked for is "playback stops after one segment while the
+          # screen is locked", and an app that gets resumed would complete the
+          # transition on resume and look fine.
+          #
+          # `probe-seam.js` carries pass 1's hard-won lesson: it arms the first
+          # boundary at `currentTime + 15` on the first `visibilitychange` to hidden,
+          # so however long `simctl launch com.apple.Preferences` takes to actually
+          # foreground Settings (39 s in run 32025079276, ~33 s in 32026332637), the
+          # whole chain — boundary, beat, cross-file load, seek, play, second
+          # boundary, second beat — happens INSIDE the hidden window, and
+          # `seamTransitionVerdict` refuses a pass on too small a hidden window.
+          echo "--- pass 2: reinstalling with the seam probe phase ---"
+          xcrun simctl terminate "$UDID" "$APP_ID" || true
+          node tools/mobile/probe/install-probe.mjs \
+            "${{ steps.probe_install.outputs.probed }}/public" --phase seam
+          codesign --force --sign - "${{ steps.probe_install.outputs.probed }}" || true
+          xcrun simctl install "$UDID" "${{ steps.probe_install.outputs.probed }}"
+          xcrun simctl launch "$UDID" "$APP_ID"
+          sleep 15
+          xcrun simctl io "$UDID" screenshot "$ART/03-seam-playing.png" || true
+          background_it
+          # 90 s: 15 s of hidden playback before the first boundary, then two beats
+          # (2 s each) and two more segments (8 s and 6 s) — about 33 s of hidden
+          # chain — with the rest absorbing however late Settings foregrounds.
+          sleep 90
+          xcrun simctl io "$UDID" screenshot "$ART/04-seam-backgrounded.png" || true
+
+          # ── collect, once, with the app still in the background ───────────────
+          #
           # WebKit batches localStorage writes, so give it a beat, then copy the
           # databases before reading them — never read a file another process has
           # open.

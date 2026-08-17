@@ -17,6 +17,13 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** This suite reads two SOURCE files to pin constants that cannot be imported
+ *  across the CI/browser boundary — see the SEAM_ASKED_MS tests. */
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 import {
   MP1_ALIGNED_TIMER_PREDICTION_SEC,
@@ -34,10 +41,17 @@ import {
   parseConsoleProbes,
   parseDump,
   pickOutPoint,
+  pickSeam,
   pickXcodeContainer,
   pickSimulator,
   renderReport,
   signingReadiness,
+  LOCAL_MEDIA_CAVEAT,
+  MIN_HIDDEN_TRANSITIONS,
+  SEAM_ASKED_MS,
+  SEAM_BAD_MS,
+  SEAM_OK_MS,
+  seamTransitionVerdict,
 } from "./ios-ci.mjs";
 
 const allSecrets = () => Object.fromEntries(SIGNING_SECRETS.map((k) => [k, "x"]));
@@ -305,9 +319,16 @@ test("localStorage wins over the console when both have an answer", () => {
 });
 
 test("collectProbes and parseConsoleProbes survive junk and truncation", () => {
-  assert.deepEqual(parseConsoleProbes(""), { bridge: [], outPoints: [] });
-  assert.deepEqual(parseConsoleProbes(null), { bridge: [], outPoints: [] });
-  assert.deepEqual(parseConsoleProbes("FORAY_PROBE_BRIDGE not json at all"), { bridge: [], outPoints: [] });
+  const none = { bridge: [], outPoints: [], seams: [] };
+  assert.deepEqual(parseConsoleProbes(""), none);
+  assert.deepEqual(parseConsoleProbes(null), none);
+  assert.deepEqual(parseConsoleProbes("FORAY_PROBE_BRIDGE not json at all"), none);
+  /* The seam phase logs on the same channel, and it must be routed to its own
+     bucket: a seam record parsed as an out-point record would be scored by
+     `pickOutPoint` and could displace the real one. */
+  const seamLine = 'FORAY_PROBE_SEAM {"phase":"seam","transitions":[]}';
+  assert.equal(parseConsoleProbes(seamLine).seams.length, 1);
+  assert.equal(parseConsoleProbes(seamLine).outPoints.length, 0);
   /* Log lines get truncated mid-record; the recoverable prefix is used. */
   const truncated = 'FORAY_PROBE_BRIDGE {"capacitorType":"object","isNativePlatform":true} tail junk {';
   assert.equal(parseConsoleProbes(truncated).bridge.length, 1);
@@ -332,9 +353,28 @@ test("parseDump finds the bridge record and every numbered out-point slot", () =
 });
 
 test("parseDump does not throw on junk", () => {
-  assert.deepEqual(parseDump({}), { bridge: null, outPoints: [], outPoint: null });
-  assert.deepEqual(parseDump(undefined), { bridge: null, outPoints: [], outPoint: null });
+  const empty = { bridge: null, outPoints: [], outPoint: null, seams: [], seam: null };
+  assert.deepEqual(parseDump({}), empty);
+  assert.deepEqual(parseDump(undefined), empty);
   assert.equal(parseDump({ foray_probe_bridge: "{not json" }).bridge, null);
+});
+
+test("parseDump reads the seam phase's numbered slots too", () => {
+  /* Same slot scheme as the out-point's, and for the same reason: `simctl launch` on
+     a running app can restart it, and a restart's empty record must not overwrite a
+     finished one. */
+  const p = parseDump({
+    foray_probe_seam: JSON.stringify({ phase: "seam", items: [], transitions: [] }),
+    foray_probe_seam_1: JSON.stringify({
+      phase: "seam",
+      items: [{ id: "seg-a" }],
+      transitions: [{ boundaryAtWall: 5 }],
+      backgroundedAtWall: 1,
+    }),
+    foray_probe_seam_bogus: "{}",
+  });
+  assert.equal(p.seams.length, 2, "the `_bogus` key is not a numbered slot");
+  assert.equal(p.seam.backgroundedAtWall, 1, "pickSeam must prefer the record that was backgrounded");
 });
 
 /* ──────────────────────── the bridge / CSP verdict ───────────────────────── */
@@ -662,6 +702,203 @@ test("medianMs handles absent, dirty and even-length input", () => {
 });
 
 /* ────────────────────────────── the report ───────────────────────────────── */
+
+/* ───────────────────── the seam transition (#28's iOS half) ──────────────── */
+
+/** A healthy backgrounded run: backgrounded at t=1000, never resumed, two
+ *  transitions that both begin and end while hidden with ~2.1 s beats. */
+function seamRecord(overrides = {}) {
+  return {
+    phase: "seam",
+    startedAtWall: 0,
+    lastSavedAtWall: 60000,
+    plannedItems: 3,
+    askedGapMs: SEAM_ASKED_MS,
+    backgroundedAtWall: 1000,
+    resumedAtWall: null,
+    armedBoundaryAtSec: 30,
+    armedWhileHidden: true,
+    autoplayBlocked: false,
+    items: [{ id: "seg-a" }, { id: "seg-b" }, { id: "seg-c" }],
+    transitions: [
+      {
+        fromId: "seg-a", toId: "seg-b", boundaryAtWall: 16000, hiddenAtBoundary: true,
+        nextPlayingAtWall: 18100, hiddenAtNextPlaying: true, observedGapMs: 2100, lastStage: "playing",
+      },
+      {
+        fromId: "seg-b", toId: "seg-c", boundaryAtWall: 26000, hiddenAtBoundary: true,
+        nextPlayingAtWall: 28200, hiddenAtNextPlaying: true, observedGapMs: 2200, lastStage: "playing",
+      },
+    ],
+    timerIntervalsMs: [1000, 1000, 998],
+    telemetry: [],
+    error: null,
+    ...overrides,
+  };
+}
+
+test("absent seam data is inconclusive, and does not borrow the out-point's result", () => {
+  /* THE SPECIFIC OVERCLAIM THIS GUARDS. Run 32026332637 proved the STOP survives
+     backgrounding, and it is tempting to read that as the seam being fine. It is a
+     different mechanism on a different clock — the same run measured hidden DOM
+     timers at a 1000 ms median — so an absent seam record must say the transition is
+     UNKNOWN, in those words, rather than inheriting the good news. */
+  for (const nothing of [null, undefined, {}, 7, "seam", { transitions: [] }]) {
+    const v = seamTransitionVerdict(nothing);
+    assert.equal(v.verdict, "inconclusive", `${JSON.stringify(nothing)} was not inconclusive`);
+    assert.match(v.headline + v.detail, /UNKNOWN|nothing|not covered|does not cover/i);
+  }
+});
+
+test("a run that never left the foreground says nothing about backgrounding", () => {
+  const v = seamTransitionVerdict(seamRecord({ backgroundedAtWall: null }));
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.detail, /foray-playback\.test\.js/, "it should point at the suite that already covers this");
+});
+
+test("autoplay refusal is a harness finding, not a seam failure", () => {
+  const v = seamTransitionVerdict(seamRecord({ autoplayBlocked: true, autoplayError: "NotAllowedError" }));
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.detail, /harness/);
+});
+
+test("two clean hidden transitions is the pass, and it names what that settles", () => {
+  const v = seamTransitionVerdict(seamRecord());
+  assert.equal(v.verdict, "seam-crosses-in-background");
+  assert.equal(v.completedHiddenTransitions, 2);
+  assert.equal(v.worstGapMs, 2200);
+  assert.match(v.headline, /COMPLETED while the app was backgrounded/);
+  assert.match(v.detail, /never resumed/i);
+});
+
+test("a boundary that fired with nothing after it is the DEFECT, reported first", () => {
+  /* The failure the whole phase exists to find: the stop works, the advance does
+     not, and a locked-screen listener hears one segment then silence. It must outrank
+     every other reading of the same record — including the one completed transition
+     sitting next to it. */
+  const rec = seamRecord();
+  rec.transitions[1].nextPlayingAtWall = null;
+  rec.transitions[1].hiddenAtNextPlaying = null;
+  rec.transitions[1].observedGapMs = null;
+  rec.transitions[1].lastStage = "beat-armed";
+  const v = seamTransitionVerdict(rec);
+  assert.equal(v.verdict, "seam-stalls-in-background");
+  assert.match(v.headline, /NEVER STARTED/);
+  /* And it must say HOW FAR it got, because "the beat's timer never fired" and "the
+     load never settled" are different bugs with different fixes. */
+  assert.match(v.detail, /beat-armed/);
+  assert.match(v.detail, /#28/);
+});
+
+test("a transition that completed only AFTER the app came back does not count", () => {
+  /* THE CONFOUND, and it is the same one that made the original `fired-on-resume`
+     reading wrong: a chain that finishes because the app was resumed proves nothing
+     about a backgrounded chain. Both transitions here land after the resume stamp, so
+     neither may be counted — and the run must not be reported as a pass. */
+  const v = seamTransitionVerdict(seamRecord({ resumedAtWall: 17000 }));
+  assert.notEqual(v.verdict, "seam-crosses-in-background");
+  assert.ok(
+    ["too-few-transitions", "seam-stalls-in-background"].includes(v.verdict),
+    `unexpected verdict ${v.verdict}`
+  );
+});
+
+test("`document.hidden` alone cannot buy a pass — the wall clock has to agree", () => {
+  /* Two channels on purpose. `hiddenAtBoundary` is a reading taken inside the
+     process under suspicion; the wall-clock comparison against `backgroundedAtWall`
+     cannot see a brief visibility blip. A record where they disagree is not evidence,
+     whichever way it leans. */
+  const flagsLie = seamRecord();
+  flagsLie.transitions.forEach((t) => { t.hiddenAtBoundary = false; });
+  assert.notEqual(seamTransitionVerdict(flagsLie).verdict, "seam-crosses-in-background");
+
+  const clockLies = seamRecord({ backgroundedAtWall: 30000 });
+  assert.notEqual(seamTransitionVerdict(clockLies).verdict, "seam-crosses-in-background");
+});
+
+test("one transition is not enough, and the reason is the audibility grace window", () => {
+  /* One can succeed inside WebKit's `audibleActivityClearDelay` (10 s) and the next
+     still fail once the page has been silent long enough for the assertion to lapse
+     — which is the risk MP1 names and leaves unmeasured. So a single success is
+     reported as inconclusive rather than as the mechanism working. */
+  const rec = seamRecord();
+  rec.transitions = [rec.transitions[0]];
+  const v = seamTransitionVerdict(rec);
+  assert.equal(v.verdict, "too-few-transitions");
+  assert.match(v.detail, /audibleActivityClearDelay/);
+  assert.ok(MIN_HIDDEN_TRANSITIONS >= 2);
+});
+
+test("a late beat is a different verdict from a stalled one", () => {
+  /* Playback continuing 8 s after a boundary is audible dead air; playback never
+     resuming is the silence defect. Collapsing them would hide which one happened,
+     and only one of them needs anything native. */
+  const late = seamRecord();
+  late.transitions[1].observedGapMs = SEAM_OK_MS + 3000;
+  assert.equal(seamTransitionVerdict(late).verdict, "seam-late-in-background");
+
+  const stalled = seamRecord();
+  stalled.transitions[1].observedGapMs = SEAM_BAD_MS + 1000;
+  assert.equal(seamTransitionVerdict(stalled).verdict, "seam-stalls-in-background");
+});
+
+test("the seam tolerance is derived from a measurement and admits it is ours", () => {
+  /* SEAM_OK_MS allows for the 1000 ms hidden-timer alignment run 32026332637
+     measured, on top of the 2000 ms the player asks for. The number is OURS, not one
+     any source document contains — the same distinction `OVERSHOOT_OK_SEC` carries a
+     paragraph about, after an earlier version of this file attributed its own
+     threshold to MP1. */
+  assert.equal(SEAM_ASKED_MS, 2000);
+  assert.ok(SEAM_OK_MS > SEAM_ASKED_MS + 1000, "the tolerance must clear the measured timer alignment");
+  assert.ok(SEAM_BAD_MS > SEAM_OK_MS);
+  const src = fs.readFileSync(path.join(HERE, "ios-ci.mjs"), "utf8");
+  assert.match(src, /OUR tolerance, not a number any\s*\*? ?source document contains|OUR tolerance/);
+});
+
+test("SEAM_ASKED_MS agrees with the player's own SEAM_GAP_SEC", () => {
+  /* This module cannot import `player/seam-gap.js` — it is a CI tool and that is
+     browser code — so the only thing keeping the two from drifting is this
+     assertion. A beat measured against the wrong asked-for value would report a
+     healthy seam as late, or a late one as healthy. */
+  const seamGap = fs.readFileSync(path.join(HERE, "..", "..", "player", "seam-gap.js"), "utf8");
+  const m = /export const SEAM_GAP_SEC = ([\d.]+)/.exec(seamGap);
+  assert.ok(m, "could not read SEAM_GAP_SEC out of player/seam-gap.js");
+  assert.equal(Number(m[1]) * 1000, SEAM_ASKED_MS);
+});
+
+test("pickSeam ranks the decisive negative above a tidy foreground run", () => {
+  /* The same lesson `pickOutPoint` records paying for. A restarted run that
+     completed its transitions in the FOREGROUND must not outrank a backgrounded run
+     that stalled, because the stall is the finding. */
+  const foregroundOk = seamRecord({ backgroundedAtWall: null });
+  const backgroundedStall = seamRecord();
+  backgroundedStall.transitions = [
+    { boundaryAtWall: 16000, hiddenAtBoundary: true, nextPlayingAtWall: null, lastStage: "beat-armed" },
+  ];
+  assert.equal(pickSeam([foregroundOk, backgroundedStall]), backgroundedStall);
+  assert.equal(pickSeam([backgroundedStall, foregroundOk]), backgroundedStall);
+  assert.equal(pickSeam([]), null);
+  assert.equal(pickSeam(null), null);
+});
+
+test("the local-media limitation ships with the seam verdict, not only in a comment", () => {
+  /* The next segment is a bundled file, so a cold cross-origin fetch while hidden is
+     NOT measured. Saying that out loud is the difference between an honest partial
+     result and a claim this run cannot support — and MP1's own §1 table exists
+     because that line got crossed once already. */
+  assert.match(LOCAL_MEDIA_CAVEAT, /LOCAL bundled file/);
+  assert.match(LOCAL_MEDIA_CAVEAT, /cross-origin fetch while hidden is still unmeasured/);
+  const md = renderReport({ seam: seamRecord(), signingState: "absent" });
+  assert.match(md, /LOCAL bundled file/);
+});
+
+test("the report carries the seam section, and reads as inconclusive with nothing measured", () => {
+  const md = renderReport({ bridge: null, outPoint: null, seam: null, signingState: "absent" });
+  assert.match(md, /SEAM TRANSITION while backgrounded/);
+  assert.match(md, /`inconclusive`/);
+  const good = renderReport({ seam: seamRecord(), signingState: "absent" });
+  assert.match(good, /`seam-crosses-in-background`/);
+});
 
 test("the simulator caveat is stated, and states the asymmetry", () => {
   /* #38 was explicit: a pass in a simulator is weaker evidence than a failure,

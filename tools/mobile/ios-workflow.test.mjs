@@ -321,6 +321,55 @@ test("xcodebuild is pointed at a DETECTED container, not a hardcoded workspace",
   );
 });
 
+test("BOTH probe phases are installed and run, and in the right order", () => {
+  /* DELETING PASS 2 WOULD OTHERWISE BE FREE. Every assertion in this file about the
+     probe step is shaped around one pass, so removing the seam pass entirely would
+     leave the suite green while dropping the only measurement of whether a Foray's
+     31 transitions survive a locked screen. The phases are named explicitly because
+     `install-probe.mjs` defaults to `outpoint`: a pass 2 that lost its `--phase seam`
+     would silently re-run pass 1 and the report would say the seam measured nothing. */
+  const probe = step(WF, "Run the probes") ?? "";
+  assert.ok(probe, "the probe step is gone");
+  const install = step(WF, "Install the probed app") ?? "";
+  assert.match(install, /install-probe\.mjs "\$PROBED\/public" --phase outpoint/, "pass 1 does not name its phase");
+  assert.match(probe, /--phase seam/, "pass 2 (the seam transition) is never installed");
+  /* Pass 2 must REPLACE the bundle on the device, or it runs pass 1's assets. */
+  assert.match(probe, /simctl terminate/, "pass 2 does not terminate the app before reinstalling");
+  assert.match(probe, /simctl install/, "pass 2 never reinstalls the probed app");
+  /* Two launches and two backgroundings — one per pass. */
+  assert.ok(
+    (probe.match(/simctl launch "\$UDID" "\$APP_ID"/g) || []).length >= 2,
+    "the app is launched fewer than twice, so one pass never ran"
+  );
+  assert.ok(
+    (probe.match(/background_it/g) || []).length >= 3,
+    "backgrounding is not invoked once per pass (one definition + two calls)"
+  );
+  assert.ok(
+    probe.indexOf("--phase seam") > probe.indexOf('simctl launch "$UDID" "$APP_ID"'),
+    "the seam phase is installed before pass 1 ever ran"
+  );
+});
+
+test("the seam measurement is never collected by resuming the app", () => {
+  /* THE CONFOUND THAT MADE THE ORIGINAL READING WRONG. A boundary that fires only on
+     resume looks exactly like a working one if the collection path resumes the app.
+     `simctl terminate` kills the outgoing app rather than foregrounding it, and the
+     container read touches files on disk — so nothing between the last backgrounding
+     and the read brings our app back to the front. The only `simctl launch` of
+     $APP_ID after the final `background_it` would be that mistake. */
+  const probe = step(WF, "Run the probes") ?? "";
+  const lastBackground = probe.lastIndexOf("background_it");
+  assert.ok(lastBackground > 0);
+  const after = probe.slice(lastBackground);
+  assert.equal(
+    /simctl launch "\$UDID" "\$APP_ID"/.test(after),
+    false,
+    "our app is relaunched after the final backgrounding, which would resume it before the read"
+  );
+  assert.match(after, /get_app_container/, "the container is never read");
+});
+
 test("the two measurements are actually invoked", () => {
   /* Deleting the simulator and probe steps outright left all 20 tests green, and
      with them both things #38 exists to settle. Nothing asserted they were

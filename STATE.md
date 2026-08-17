@@ -7,6 +7,43 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### #28 iOS half — the SEAM TRANSITION gets measured, and a wrong reading gets retracted (2026-08-17, one PR, founder-gated, no follow-up)
+
+- **What:** `feat/ios-native-outpoint`, issues **#28** / **#35**. A fourth probe
+  phase in the existing iOS CI harness: three bounded segments over two audio
+  files, driven through the **real `PlayerQueueManager`**, backgrounded, reporting
+  whether each seam transition (2.0 s beat → cross-episode load → seek → play)
+  completes with the app never resumed. Docs: `docs/ios-ci.md` §3 "Probe C" and
+  `docs/research/mp1-background-audio.md` **§0b**.
+- **STACKS ON #213 (`ci/ios-build`) AND #209 (`feat/capacitor-shell`), and must
+  merge after both.** Branched from `ci/ios-build`. #209 was `CONFLICTING` when
+  this started (`app.js`, `STATE.md`, `HUMAN-ACTIONS.md`,
+  `test/suite-integrity.test.js`) — expect a rebase; do not fix #209 from here.
+- **THE HEADLINE IS A RETRACTION.** `fired-on-resume` from run **32023924627** was
+  quoted onward as "the iOS out-point only fires on resume — MP1 §8's failure
+  mode". It was a harness race with a **3 ms** overshoot, not a finding. Run
+  **32026332637** is authoritative: overshoot **0.0045 s** over a **15.056 s**
+  hidden window, 61 hidden `timeupdate` samples at a 252 ms median, `resumedAtWall:
+  null`. **iOS needs no native out-point, and no Swift was added.** The same record
+  also confirms MP1 §7.5's unverified 1 s DOM-timer alignment (median **1000 ms**),
+  which is exactly why the *transition* — a `setTimeout` beat — still needed asking.
+- **Owned files:** `tools/mobile/probe/probe-seam.{html,js}` (new).
+  **Modified:** `.github/workflows/ios-build.yml` (a second probe pass),
+  `tools/mobile/ios-ci.mjs` (+`seamTransitionVerdict`, `pickSeam`),
+  `tools/mobile/probe/install-probe.mjs` (a `--phase` flag and a second tone),
+  `tools/mobile/probe/probe-bridge.js` (phase routing), the three `tools/mobile`
+  suites, `docs/ios-ci.md`, `docs/research/mp1-background-audio.md`.
+  **Shared:** `test/suite-integrity.test.js` (three FLOORS raised), this file.
+  **Untouched on purpose:** `player/**`, `app.js`, `index.html`, `mobile/**`,
+  `ios/**`, `data/**`, `.github/workflows/ci.yml`.
+- **NO NATIVE CODE, deliberately.** An AVPlayer stop-owner was started and thrown
+  away once run 32026332637 was read: a native backend nobody needs is a
+  maintenance burden and an invitation for the web and native players to diverge.
+  If probe C comes back `seam-stalls-in-background`, *that* is when something
+  native owns the transition — and the record will say which stage failed.
+- **Touches `.github/`, which `tools/ci/path-policy.mjs` DENIES.** Correct and
+  expected: the PR waits for a founder rather than auto-merging.
+
 ### MP4 — iOS builds on a runner, and three claims get measured (2026-08-17, one PR, founder-gated, no follow-up)
 
 - **What:** `ci/ios-build`, issue **#38**. A `macos-latest` workflow that

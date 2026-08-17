@@ -242,7 +242,21 @@ export function parseDump(dump) {
     .sort()
     .map(get)
     .filter(Boolean);
-  return { bridge, outPoints, outPoint: pickOutPoint(outPoints) };
+  /* The seam phase's record. Numbered like the out-point's, and for the same
+     reason: `simctl launch` on a running app can restart it, and a fresh empty
+     record must never overwrite a finished one. */
+  const seams = Object.keys(dump || {})
+    .filter((k) => /^foray_probe_seam(_\d+)?$/.test(k))
+    .sort()
+    .map(get)
+    .filter(Boolean);
+  return {
+    bridge,
+    outPoints,
+    outPoint: pickOutPoint(outPoints),
+    seams,
+    seam: pickSeam(seams),
+  };
 }
 
 /**
@@ -292,8 +306,9 @@ export function pickOutPoint(records) {
 export function parseConsoleProbes(text) {
   const bridge = [];
   const outPoints = [];
+  const seams = [];
   for (const line of String(text ?? "").split(/\r?\n/)) {
-    const m = /FORAY_PROBE_(BRIDGE|OUTPOINT)\s+(\{.*\})/.exec(line);
+    const m = /FORAY_PROBE_(BRIDGE|OUTPOINT|SEAM)\s+(\{.*\})/.exec(line);
     if (!m) continue;
     let rec = null;
     try {
@@ -303,9 +318,12 @@ export function parseConsoleProbes(text) {
       const cut = m[2].lastIndexOf("}");
       if (cut > 0) { try { rec = JSON.parse(m[2].slice(0, cut + 1)); } catch { rec = null; } }
     }
-    if (rec && typeof rec === "object") (m[1] === "BRIDGE" ? bridge : outPoints).push(rec);
+    if (!rec || typeof rec !== "object") continue;
+    if (m[1] === "BRIDGE") bridge.push(rec);
+    else if (m[1] === "SEAM") seams.push(rec);
+    else outPoints.push(rec);
   }
-  return { bridge, outPoints };
+  return { bridge, outPoints, seams };
 }
 
 /** Everything both channels found, and which channel each answer came from. */
@@ -318,10 +336,13 @@ export function collectProbes({ dump, consoleText } = {}) {
      one, and is preferred because it does not depend on the bridge. */
   const bridge = fromDump.bridge ?? fromConsole.bridge[fromConsole.bridge.length - 1] ?? null;
   const outPoints = [...fromDump.outPoints, ...fromConsole.outPoints];
+  const seams = [...(fromDump.seams ?? []), ...fromConsole.seams];
   return {
     bridge,
     outPoints,
     outPoint: pickOutPoint(outPoints),
+    seams,
+    seam: pickSeam(seams),
     sources: {
       bridge: fromDump.bridge ? "localStorage" : fromConsole.bridge.length ? "console" : "none",
       outPoint: fromDump.outPoints.length
@@ -706,6 +727,288 @@ export function outPointVerdict(probe) {
   };
 }
 
+/* ─────────── the seam transition: does the ADVANCE survive backgrounding ───── */
+
+/**
+ * The beat the player asks for at an unbridged seam, in ms. Mirrors
+ * `SEAM_GAP_SEC` in `player/seam-gap.js` — not imported, because this module is a
+ * CI tool and `player/` is browser code, but pinned by `ios-ci.test.mjs` against
+ * that file so the two cannot drift.
+ */
+export const SEAM_ASKED_MS = 2000;
+
+/**
+ * How long an observed beat may run before it counts as audible dead air.
+ *
+ * DERIVED FROM A MEASUREMENT, NOT PICKED. Run 32026332637 measured hidden-page
+ * DOM timers on iOS aligned to a median of **1000 ms** (`timerIntervalsMs`:
+ * 253, 925, 1000, 1000, 1001, 998, …, 25 samples), which settles MP1 §7.5's
+ * previously-unverified 1 s claim. A `setTimeout(2000)` on a 1 s-aligned clock can
+ * therefore land anywhere up to ~3000 ms, and the cross-file load runs inside the
+ * beat. 5000 ms leaves headroom above that without waving through a stall — and it
+ * is close to MP1 §4's Chromium observation that the same beat stretched to
+ * 2.8–4.6 s in a hidden page.
+ *
+ * Note which way the uncertainty runs: this is OUR tolerance, not a number any
+ * source document contains. Saying otherwise is the specific mistake
+ * `OVERSHOOT_OK_SEC` above carries a paragraph about.
+ */
+export const SEAM_OK_MS = 5000;
+
+/** Beyond this the beat is not a beat. A listener with a locked screen hears
+ *  silence and reaches for their phone, which is the whole defect. */
+export const SEAM_BAD_MS = 15000;
+
+/**
+ * The least number of COMPLETED hidden transitions a run needs before it is
+ * allowed to say the seam works.
+ *
+ * One would be a result; two is a mechanism. The specific worry two catches is a
+ * transition that succeeds inside WebKit's audibility grace window
+ * (`audibleActivityClearDelay`, 10 s) and then fails on the next one, once the
+ * page has been silent long enough for the assertion to lapse — which is exactly
+ * the risk `docs/research/mp1-background-audio.md` names and leaves unmeasured.
+ */
+export const MIN_HIDDEN_TRANSITIONS = 2;
+
+/**
+ * The most informative seam record.
+ *
+ * Ranked, and the ranking deliberately puts the DECISIVE NEGATIVE first, which is
+ * the lesson `pickOutPoint` above records paying for: a restarted run that
+ * completed its transitions in the FOREGROUND must not outrank a backgrounded run
+ * in which playback stalled, because the stall is the whole finding. A record that
+ * never left the foreground cannot answer this question at all, however tidy it
+ * looks.
+ */
+export function pickSeam(records) {
+  if (!Array.isArray(records) || records.length === 0) return null;
+  const score = (r) =>
+    (r?.backgroundedAtWall != null ? 8 : 0) +
+    (Array.isArray(r?.transitions) && r.transitions.length ? 4 : 0) +
+    (Array.isArray(r?.items) && r.items.length > 1 ? 2 : 0) +
+    (r?.autoplayBlocked ? -4 : 0) +
+    (r?.error ? -2 : 0);
+  return [...records].sort((a, b) => score(b) - score(a))[0];
+}
+
+/**
+ * Did the SEAM TRANSITION survive backgrounding?
+ *
+ * ── THE QUESTION, AND WHY IT IS NOT THE ONE ALREADY ANSWERED ─────────────────
+ *
+ * Run 32026332637 settled the STOP: the out-point fired 4 ms past `end_sec` over a
+ * 15.056 s hidden window, with `resumedAtWall: null` — the app was never brought
+ * back. MP1 §8's load-bearing inference held.
+ *
+ * That says nothing about the ADVANCE, and the advance is a different mechanism on
+ * a different clock. Each of Foray #1's 31 seams is: stop at `end_sec`, wait a
+ * JavaScript-scheduled 2.0 s beat (`player/seam-gap.js`), load a DIFFERENT
+ * episode, seek to its `start_sec`, play. The beat is a `setTimeout`, and the same
+ * probe that proved the stop also measured hidden-page DOM timers aligned to a
+ * median of 1000 ms — so the beat runs on the one clock that IS throttled, and the
+ * load is a fresh media fetch in a page WebKit may have stopped considering
+ * audible.
+ *
+ * If that chain breaks, a listener with a locked screen hears one segment and then
+ * silence for the rest of the commute. That is a different defect from playing the
+ * wrong episode, and it is not fixed by anything that fixes the stop.
+ *
+ * ── WHAT COUNTS AS AN ANSWER ─────────────────────────────────────────────────
+ *
+ * Two completed transitions, both begun and finished with the app backgrounded and
+ * before any resume. One is a result; two is a mechanism — see
+ * `MIN_HIDDEN_TRANSITIONS` for the specific failure the second one catches.
+ *
+ * @param {object|null} probe the `foray_probe_seam` record
+ */
+export function seamTransitionVerdict(probe) {
+  if (!probe || typeof probe !== "object" || !Array.isArray(probe.items)) {
+    return {
+      verdict: "inconclusive",
+      headline: "No seam data came back — whether the TRANSITION survives backgrounding is UNKNOWN.",
+      detail:
+        "Nothing was measured, so the 2.0 s beat and the cross-episode load remain untested while " +
+        "hidden. The out-point result from run 32026332637 does not cover them: it proves one " +
+        "segment STOPS on time, not that the next one starts.",
+    };
+  }
+  if (probe.autoplayBlocked) {
+    return {
+      verdict: "inconclusive",
+      headline: "Playback never started (autoplay was refused), so no seam was reached.",
+      detail:
+        `The probe reported: ${String(probe.autoplayError || "play() rejected")}. Capacitor sets ` +
+        `mediaTypesRequiringUserActionForPlayback = [] (MP1 §7.3), so this is a finding about the ` +
+        `harness rather than about backgrounding.`,
+    };
+  }
+  if (probe.error) {
+    return {
+      verdict: "inconclusive",
+      headline: "The seam probe reported an error before it could measure anything.",
+      detail: `It said: ${String(probe.error)}`,
+    };
+  }
+  if (probe.backgroundedAtWall == null) {
+    return {
+      verdict: "inconclusive",
+      headline: "The app was never observed to leave the foreground, so this measures nothing new.",
+      detail:
+        "`visibilitychange` never reported hidden. A seam completing in a FOREGROUNDED page is what " +
+        "player/foray-playback.test.js already covers, for all 31 of Foray #1's transitions.",
+    };
+  }
+
+  const bg = probe.backgroundedAtWall;
+  const resumed = typeof probe.resumedAtWall === "number" ? probe.resumedAtWall : null;
+  const transitions = Array.isArray(probe.transitions) ? probe.transitions : [];
+
+  /* HIDDEN THROUGHOUT, CHECKED TWO WAYS. The page's own `document.hidden` reading
+     at each edge, AND the wall clock against the backgrounded/resumed stamps. Both,
+     because the first is a signal from the process under suspicion and the second
+     cannot see a brief visibility blip. A transition only counts if both agree. */
+  const isHidden = (t) =>
+    t &&
+    t.hiddenAtBoundary === true &&
+    t.hiddenAtNextPlaying === true &&
+    typeof t.boundaryAtWall === "number" &&
+    t.boundaryAtWall >= bg &&
+    typeof t.nextPlayingAtWall === "number" &&
+    (resumed == null || t.nextPlayingAtWall < resumed);
+
+  const attemptedHidden = transitions.filter(
+    (t) => t && typeof t.boundaryAtWall === "number" && t.boundaryAtWall >= bg && t.hiddenAtBoundary === true
+  );
+  const completedHidden = transitions.filter(isHidden);
+  const stalled = attemptedHidden.filter((t) => typeof t.nextPlayingAtWall !== "number");
+
+  const lastSeenWall =
+    typeof probe.lastSavedAtWall === "number" ? probe.lastSavedAtWall : probe.startedAtWall ?? bg;
+  const gaps = completedHidden.map((t) => t.observedGapMs).filter((n) => typeof n === "number");
+  const worstGap = gaps.length ? Math.max(...gaps) : null;
+  const asked = typeof probe.askedGapMs === "number" ? probe.askedGapMs : SEAM_ASKED_MS;
+  const timerMedian = medianMs(probe.timerIntervalsMs);
+
+  const base =
+    `${transitions.length} transition(s) recorded, ${attemptedHidden.length} begun while hidden, ` +
+    `${completedHidden.length} completed while hidden.` +
+    (worstGap == null
+      ? ""
+      : ` Beat asked for ${asked} ms; observed ${gaps.map((g) => Math.round(g)).join(", ")} ms.`) +
+    (timerMedian == null
+      ? ""
+      : ` Median hidden DOM-timer interval this run: ${timerMedian.toFixed(0)} ms.`) +
+    (resumed == null
+      ? " The app was NEVER resumed during this run."
+      : ` The app returned to the foreground ${((resumed - bg) / 1000).toFixed(1)}s after backgrounding.`);
+
+  /* THE FAILURE, FIRST, because it is the one that changes what gets built next. */
+  if (stalled.length) {
+    const t = stalled[0];
+    const waited = (lastSeenWall - t.boundaryAtWall) / 1000;
+    return {
+      verdict: "seam-stalls-in-background",
+      headline:
+        `A segment ENDED while backgrounded and the next one NEVER STARTED — nothing became ` +
+        `audible for the remaining ${waited.toFixed(1)}s of the run.`,
+      detail:
+        `${base} This is the defect the out-point result cannot rule out: the stop works and the ` +
+        `advance does not, so a listener with a locked screen hears one segment and then silence. ` +
+        `The last thing the page recorded was ${JSON.stringify(t.lastStage ?? "unreported")}, which ` +
+        `is where to look: a throttled beat timer, or a media load that never settled inside ` +
+        `LOAD_SETTLE_TIMEOUT_MS. Something native would have to own the transition (#28).`,
+      completedHiddenTransitions: completedHidden.length,
+      worstGapMs: worstGap,
+    };
+  }
+  if (!attemptedHidden.length) {
+    return {
+      verdict: "inconclusive",
+      headline: "No seam was reached while the app was backgrounded, so this run says nothing.",
+      detail:
+        `${base} The first boundary was expected ~15 s after the page went hidden. If it never ` +
+        `fired at all that contradicts run 32026332637 and is the more interesting finding — check ` +
+        `the probe's telemetry and screenshots before reading this as a timing problem.`,
+    };
+  }
+  if (completedHidden.length < MIN_HIDDEN_TRANSITIONS) {
+    return {
+      verdict: "too-few-transitions",
+      headline:
+        `${completedHidden.length} hidden transition(s) completed, below the ` +
+        `${MIN_HIDDEN_TRANSITIONS} this workflow requires before calling the seam sound.`,
+      detail:
+        `${base} Reported as inconclusive rather than as a pass: one transition can succeed inside ` +
+        `WebKit's ${"`audibleActivityClearDelay`"} grace window and the next still fail once the page ` +
+        `has been silent long enough for the audibility assertion to lapse. The probe plans ` +
+        `${probe.plannedItems ?? "several"} items precisely so that case shows up.`,
+      completedHiddenTransitions: completedHidden.length,
+      worstGapMs: worstGap,
+    };
+  }
+  if (worstGap != null && worstGap > SEAM_BAD_MS) {
+    return {
+      verdict: "seam-stalls-in-background",
+      headline:
+        `The seam completed but took ${(worstGap / 1000).toFixed(1)}s against a ${asked} ms beat — ` +
+        `that is a stall a listener would react to, not a beat.`,
+      detail: `${base} Treat it as the negative result.`,
+      completedHiddenTransitions: completedHidden.length,
+      worstGapMs: worstGap,
+    };
+  }
+  if (worstGap != null && worstGap > SEAM_OK_MS) {
+    return {
+      verdict: "seam-late-in-background",
+      headline:
+        `Every hidden transition completed, but the worst beat ran ${Math.round(worstGap)} ms ` +
+        `against ${asked} ms asked — outside this workflow's ${SEAM_OK_MS} ms tolerance.`,
+      detail:
+        `${base} Playback continues, so this is not the silence defect; it is audible dead air at a ` +
+        `seam, and ${SEAM_OK_MS} ms was chosen to allow for the 1000 ms hidden-timer alignment this ` +
+        `run measured. Worth a look at whether the load, rather than the timer, is the slow part.`,
+      completedHiddenTransitions: completedHidden.length,
+      worstGapMs: worstGap,
+    };
+  }
+  return {
+    verdict: "seam-crosses-in-background",
+    headline:
+      `${completedHidden.length} seam transitions COMPLETED while the app was backgrounded — the ` +
+      `beat ran, a different episode loaded, it seeked and it played, worst beat ` +
+      `${worstGap == null ? "n/a" : Math.round(worstGap) + " ms"} against ${asked} ms asked.`,
+    detail:
+      `${base} So the 2.0 s beat's ${"`setTimeout`"} and the cross-episode media load both survive ` +
+      `backgrounding on iOS, which together with run 32026332637's out-point result means the whole ` +
+      `segment-to-segment chain runs with the app in the background and never resumed. #28's iOS ` +
+      `half needs nothing native for this.`,
+    completedHiddenTransitions: completedHidden.length,
+    worstGapMs: worstGap,
+  };
+}
+
+/** THE LIMIT OF THIS MEASUREMENT, carried with every verdict that quotes it.
+ *
+ *  The next segment's audio is a LOCAL file in the app bundle. That is not a
+ *  choice about rigour, it is forced twice over: product principle #3 forbids
+ *  reusing episode audio and a CI job hammering a podcast CDN is exactly what that
+ *  principle is about, and the probe page's own CSP is `media-src 'self'`. So what
+ *  this settles is the BEAT'S TIMER and a fresh cross-file media load while
+ *  hidden. A cold HTTPS fetch from a podcast host while hidden — DNS, TLS, a range
+ *  request into the middle of a 90 MB file — is NOT measured here, and it is the
+ *  part `docs/research/mp1-background-audio.md` warns could push the silent window
+ *  past WebKit's 10 s audibility grace. */
+export const LOCAL_MEDIA_CAVEAT =
+  "The seam's next segment is a LOCAL bundled file, not a podcast CDN fetch (product principle #3, " +
+  "and the probe page's own media-src 'self'). This measures the beat's timer and a fresh media " +
+  "load while hidden; a cold cross-origin fetch while hidden is still unmeasured.";
+
+/** A finite number, or null. Journals arrive as JSON with explicit nulls. */
+function num(v) {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
 export function medianMs(intervals) {
   if (!Array.isArray(intervals) || intervals.length === 0) return null;
   const nums = intervals.filter((n) => typeof n === "number" && Number.isFinite(n) && n >= 0).sort((a, b) => a - b);
@@ -736,17 +1039,28 @@ export const SIMULATOR_CAVEAT =
  * the gate and "not configured" in the summary. A report that cannot observe what
  * it asserts should not assert it.
  */
-export function renderReport({ bridge, outPoint, signingState, build }) {
+export function renderReport({ bridge, outPoint, seam, signingState, build }) {
   const b = bridgeVerdict(bridge);
   const o = outPointVerdict(outPoint);
+  const s = seamTransitionVerdict(seam ?? null);
   const lines = [];
   lines.push("## iOS shell — what this run actually established", "");
   if (build) lines.push(`**Build:** ${build}`, "");
   lines.push(`### 1. Capacitor's bridge vs our CSP — \`${b.verdict}\``, "", b.headline, "", b.detail, "");
   lines.push(`### 2. The out-point while backgrounded — \`${o.verdict}\``, "", o.headline, "", o.detail, "");
+  lines.push(
+    `### 3. The SEAM TRANSITION while backgrounded — \`${s.verdict}\``,
+    "",
+    s.headline,
+    "",
+    s.detail,
+    "",
+    `> ${LOCAL_MEDIA_CAVEAT}`,
+    ""
+  );
   lines.push(`> ${SIMULATOR_CAVEAT}`, "");
   lines.push(
-    `### 3. TestFlight upload — \`${signingState || "not reported"}\``,
+    `### 4. TestFlight upload — \`${signingState || "not reported"}\``,
     "",
     signingState
       ? SIGNING_STATE_NOTES[signingState] || `The signing gate reported \`${signingState}\`.`
@@ -824,15 +1138,17 @@ if (isMain) {
       const dump = readMaybe(rest[0]) || {};
       const consoleText =
         rest[1] && fs.existsSync(rest[1]) ? fs.readFileSync(rest[1], "utf8") : "";
-      const { bridge, outPoint, outPoints, sources } = collectProbes({ dump, consoleText });
+      const { bridge, outPoint, outPoints, seam, seams, sources } = collectProbes({ dump, consoleText });
       console.error(
         `read ${Object.keys(dump).length} localStorage key(s) and ${consoleText.length} bytes of ` +
           `console log; bridge record ${bridge ? `from ${sources.bridge}` : "ABSENT"}; ` +
-          `${outPoints.length} out-point record(s) from ${sources.outPoint}`
+          `${outPoints.length} out-point record(s) from ${sources.outPoint}; ` +
+          `${seams.length} seam record(s)`
       );
       const report = renderReport({
         bridge,
         outPoint,
+        seam,
         signingState: process.env.SIGNING_STATE || null,
         build: process.env.IOS_BUILD_STATUS || null,
       });
@@ -840,10 +1156,11 @@ if (isMain) {
       console.log(report);
       const b = bridgeVerdict(bridge);
       const o = outPointVerdict(outPoint);
+      const s = seamTransitionVerdict(seam);
       if (process.env.GITHUB_OUTPUT) {
         fs.appendFileSync(
           process.env.GITHUB_OUTPUT,
-          `bridge=${b.verdict}\noutpoint=${o.verdict}\n`
+          `bridge=${b.verdict}\noutpoint=${o.verdict}\nseam=${s.verdict}\n`
         );
       }
       /* Deliberately exit 0 for every verdict, INCLUDING the bad ones. This step

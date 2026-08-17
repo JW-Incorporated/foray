@@ -98,18 +98,55 @@
     } catch (e) { out.swRegistrationsError = String(e && e.message); done(); }
   }
 
+  /* WHICH MEASUREMENT THIS RUN IS FOR.
+     `install-probe.mjs` generates `probe-phase.js`, a one-line assignment, and it
+     is loaded DYNAMICALLY rather than from a second tag in index.html: `PROBE_TAG`
+     is pinned verbatim by install-probe.test.mjs because "external, not inline" is
+     the property the bridge measurement rests on, and this is still an external
+     same-origin script that `script-src 'self'` allows.
+
+     The default is the ORIGINAL phase, so a missing or blocked phase file degrades
+     to the behaviour this file has always had rather than to no navigation at all —
+     a probe that lands nowhere is a green run that measured nothing. */
+  var PHASES = { outpoint: "probe-outpoint.html", seam: "probe-seam.html" };
+  var DEFAULT_PHASE = "outpoint";
+
+  function phaseTarget() {
+    var name = DEFAULT_PHASE;
+    try {
+      if (typeof window.FORAY_PROBE_PHASE === "string" && PHASES[window.FORAY_PROBE_PHASE]) {
+        name = window.FORAY_PROBE_PHASE;
+      }
+    } catch (e) {}
+    out.phaseChosen = name;
+    return PHASES[name];
+  }
+
+  function loadPhaseFile(done) {
+    try {
+      var s = document.createElement("script");
+      s.src = "probe-phase.js";
+      s.onload = done;
+      s.onerror = function () { out.phaseFileMissing = true; done(); };
+      document.head.appendChild(s);
+    } catch (e) { out.phaseFileMissing = true; done(); }
+  }
+
   /* One late re-check, because a bridge could in principle be injected after
-     document start, and then hand over to phase B. 3 s is long enough for
-     app.js's own service-worker registration to have happened. */
+     document start, and then hand over to the measurement phase. 3 s is long
+     enough for app.js's own service-worker registration to have happened. */
   setTimeout(function () {
     snapshot();
     out.recheckedAfterMs = 3000;
     checkWorkers(function () {
-      out.finishedAtWall = Date.now();
-      save();
-      try {
-        if (!/probe-outpoint/.test(location.pathname)) location.replace("probe-outpoint.html");
-      } catch (e) {}
+      loadPhaseFile(function () {
+        var target = phaseTarget();
+        out.finishedAtWall = Date.now();
+        save();
+        try {
+          if (location.pathname.indexOf(target) < 0) location.replace(target);
+        } catch (e) {}
+      });
     });
   }, 3000);
 })();

@@ -23,16 +23,22 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  DEFAULT_PHASE,
+  PHASES,
+  PHASE_ASSET,
   PROBE_ASSETS,
   PROBE_DIR,
   PROBE_TAG,
   REPO_ROOT,
+  TONE_B_NAME,
+  TONE_B_SECONDS,
   TONE_NAME,
   TONE_SECONDS,
   assertBuildArtefact,
   installProbe,
   makeToneWav,
   patchIndexHtml,
+  phaseScript,
 } from "./install-probe.mjs";
 
 /* A minimal stand-in for the real page: the CSP meta tag is what the probe is
@@ -43,11 +49,18 @@ const PAGE =
   `<title>Foray</title>\n</head>\n<body>\n<div id="app"></div>\n` +
   `<script src="app.js"></script>\n</body>\n</html>\n`;
 
+/** The player modules the probes drive. Both phases run the REAL shipped code —
+ *  phase B `HtmlAudioBackend`, phase C `PlayerQueueManager` over it, with the real
+ *  `seamGapSec` decision — so a bundle missing any of them must be refused. */
+const REQUIRED_PLAYER_FILES = ["html-audio-backend.js", "queue-manager.js", "seam-gap.js"];
+
 function tmpBundle(page = PAGE) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-probe-"));
   fs.writeFileSync(path.join(dir, "index.html"), page);
   fs.mkdirSync(path.join(dir, "player"));
-  fs.writeFileSync(path.join(dir, "player", "html-audio-backend.js"), "export class HtmlAudioBackend {}\n");
+  for (const f of REQUIRED_PLAYER_FILES) {
+    fs.writeFileSync(path.join(dir, "player", f), `export const stub = ${JSON.stringify(f)};\n`);
+  }
   return dir;
 }
 
@@ -141,6 +154,21 @@ test("a bundle with no player/ is refused", () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test("EVERY player module the probes drive is required, one at a time", () => {
+  /* Not a single spot-check on html-audio-backend.js. The seam probe drives
+     `PlayerQueueManager` and the real `seamGapSec` rule, and a bundle missing either
+     would fail INSIDE the page — an import error in a WKWebView on a CI runner,
+     which surfaces as "the probe reported nothing" and is indistinguishable from the
+     seam genuinely stalling. That is the one confusion this whole phase exists to
+     avoid, so the refusal happens on the host where the message can be read. */
+  for (const f of REQUIRED_PLAYER_FILES) {
+    const dir = tmpBundle();
+    fs.rmSync(path.join(dir, "player", f), { force: true });
+    assert.throws(() => assertBuildArtefact(dir), new RegExp(f.replace(/[.]/g, "\\.")));
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("a directory with no index.html is refused", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-probe-"));
   assert.throws(() => assertBuildArtefact(dir), /no index\.html/);
@@ -187,15 +215,88 @@ test("the tone is generated, not committed", () => {
   /* This repo guards a 3 MB native bundle. A ~2.4 MB WAV in git for a CI-only
      probe would be absurd, and it is deterministic anyway. */
   assert.equal(fs.existsSync(path.join(PROBE_DIR, TONE_NAME)), false);
+  assert.equal(fs.existsSync(path.join(PROBE_DIR, TONE_B_NAME)), false);
 });
+
+test("the second tone is a DIFFERENT file, which is what makes the seam a real load", () => {
+  /* THE LOAD-BEARING ASSERTION FOR PHASE C. `html-audio-backend.js` short-circuits
+     a same-URL load into a seek with no refetch ("SAME SOURCE = A SEEK, NOT A
+     LOAD"), which is correct for consecutive segments of one episode and is the one
+     path the seam measurement must not take — a seek inside an already-buffered file
+     would answer a far easier question than "does a fresh media load complete while
+     hidden". Two names, two frequencies, so they cannot silently collapse into one. */
+  assert.notEqual(TONE_B_NAME, TONE_NAME);
+  const a = makeToneWav({ seconds: 1, freq: 440 });
+  const b = makeToneWav({ seconds: 1, freq: 660 });
+  assert.notEqual(a.subarray(44).toString("hex"), b.subarray(44).toString("hex"));
+  /* Long enough for its own segment plus margin, and no longer: it is only used for
+     ~8 s. If it were shorter than the segment it carries, `ended` would fire and a
+     natural end would be recorded as a completed transition. */
+  assert.ok(TONE_B_SECONDS >= 30, `TONE_B_SECONDS is ${TONE_B_SECONDS}`);
+});
+
+/* ─────────────────────────── the phase mechanism ──────────────────────────── */
+
+test("the phase file is a bare assignment and nothing else", () => {
+  /* It is loaded into the page under `script-src 'self'`, so it must be a real
+     external file with no inline anything, and it must not be able to fail: a phase
+     file that threw would leave `probe-bridge.js` navigating nowhere, which is a
+     green run that measured nothing. */
+  for (const phase of PHASES) {
+    const src = phaseScript(phase);
+    assert.match(src, /^window\.FORAY_PROBE_PHASE = "[a-z]+";\n$/);
+    assert.ok(src.includes(`"${phase}"`));
+  }
+});
+
+test("an unknown phase is refused BEFORE anything is written", () => {
+  /* A typo'd `--phase` must not install a probe that lands on the default and get
+     reported as the phase that was asked for — that is a run measuring one thing and
+     labelled another. */
+  for (const bad of ["native", "outpoints", "", null, undefined, 7]) {
+    assert.throws(() => phaseScript(bad), /unknown probe phase/);
+  }
+  const dir = tmpBundle();
+  const before = fs.readdirSync(dir).sort();
+  assert.throws(() => installProbe(dir, { phase: "nope" }), /unknown probe phase/);
+  assert.deepEqual(fs.readdirSync(dir).sort(), before, "a refused phase still wrote files");
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("the default phase is the out-point one, so a missing --phase changes nothing", () => {
+  assert.equal(DEFAULT_PHASE, "outpoint");
+  assert.ok(PHASES.includes("outpoint"));
+  assert.ok(PHASES.includes("seam"));
+  const dir = tmpBundle();
+  const r = installProbe(dir);
+  assert.equal(r.phase, "outpoint");
+  assert.equal(fs.readFileSync(path.join(dir, PHASE_ASSET), "utf8"), phaseScript("outpoint"));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("re-installing with a different phase rewrites only the phase file", () => {
+  /* This is how the workflow runs two passes over one built .app. If the phase file
+     were not rewritten, pass 2 would silently re-run pass 1 and the report would
+     carry a seam verdict of "nothing measured" with no error anywhere. */
+  const dir = tmpBundle();
+  installProbe(dir, { phase: "outpoint" });
+  const indexBefore = fs.readFileSync(path.join(dir, "index.html"), "utf8");
+  const r = installProbe(dir, { phase: "seam" });
+  assert.equal(r.phase, "seam");
+  assert.equal(r.indexPatched, false, "the tag must not be added twice");
+  assert.equal(fs.readFileSync(path.join(dir, "index.html"), "utf8"), indexBefore);
+  assert.match(fs.readFileSync(path.join(dir, PHASE_ASSET), "utf8"), /"seam"/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 
 /* ──────────────────────────── the whole install ───────────────────────────── */
 
-test("installing puts every asset and the tone into the bundle", () => {
+test("installing puts every asset and both tones into the bundle", () => {
   const dir = tmpBundle();
   const r = installProbe(dir);
   assert.equal(r.indexPatched, true);
-  for (const asset of [...PROBE_ASSETS, TONE_NAME]) {
+  for (const asset of [...PROBE_ASSETS, TONE_NAME, TONE_B_NAME, PHASE_ASSET]) {
     assert.ok(fs.existsSync(path.join(dir, asset)), `${asset} was not installed`);
   }
   assert.match(fs.readFileSync(path.join(dir, "index.html"), "utf8"), /probe-bridge\.js/);
@@ -219,7 +320,7 @@ test("installProbe ITSELF refuses the checkout, not just assertBuildArtefact", (
   assert.throws(() => installProbe(dir), /source checkout/);
   fs.rmSync(dir, { recursive: true, force: true });
   /* And nothing was written to the repo on the way to throwing. */
-  for (const asset of [...PROBE_ASSETS, TONE_NAME]) {
+  for (const asset of [...PROBE_ASSETS, TONE_NAME, TONE_B_NAME, PHASE_ASSET]) {
     assert.equal(fs.existsSync(path.join(REPO_ROOT, asset)), false, `${asset} was written to the repo root`);
   }
 });
@@ -282,12 +383,109 @@ test("the bridge probe asks the one question, and reports the consequence", () =
   assert.match(js, /securitypolicyviolation/);
 });
 
-test("neither probe is referenced from the committed index.html", () => {
+test("no probe is referenced from the committed index.html", () => {
   /* If a stray `install-probe` run were ever committed, the live site would ship
      a probe that navigates away from the app after three seconds. Cheap to
      check, catastrophic to miss. */
   const index = fs.readFileSync(path.join(REPO_ROOT, "index.html"), "utf8");
-  for (const marker of ["probe-bridge", "probe-outpoint", TONE_NAME]) {
+  for (const marker of ["probe-bridge", "probe-outpoint", "probe-seam", PHASE_ASSET, TONE_NAME, TONE_B_NAME]) {
     assert.equal(index.includes(marker), false, `index.html references ${marker}`);
   }
+});
+
+test("probe-bridge.js knows every phase, and defaults to one of them", () => {
+  /* The two lists live in different files by necessity — one is a Node module, the
+     other runs in the page — so nothing but a test can hold them together. A phase
+     the bridge does not know about is a navigation that never happens, which reads
+     as "the probe measured nothing" rather than as a routing bug. */
+  const js = asset("probe-bridge.js");
+  for (const phase of PHASES) {
+    assert.match(
+      js,
+      new RegExp(`${phase}:\\s*"probe-${phase}\\.html"`),
+      `probe-bridge.js has no route for the ${phase} phase`
+    );
+  }
+  assert.match(js, new RegExp(`DEFAULT_PHASE = "${DEFAULT_PHASE}"`));
+  assert.match(js, new RegExp(PHASE_ASSET.replace(/[.]/g, "\\.")), "the bridge never loads the phase file");
+  /* A dynamically inserted EXTERNAL script, never inline. `script-src 'self'` is
+     the rule this harness exists to measure and must not need an exception of its
+     own to run. */
+  assert.match(js, /createElement\("script"\)/);
+  assert.equal(/eval\(|new Function|innerHTML/.test(js), false, "the bridge must not evaluate anything inline");
+});
+
+test("the seam probe page forbids inline script and style, like every other page here", () => {
+  const html = asset("probe-seam.html");
+  const m = /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(html);
+  assert.ok(m, "the seam probe page has no Content-Security-Policy meta tag");
+  const csp = m[1];
+  assert.match(csp, /default-src 'none'/);
+  assert.match(csp, /script-src 'self'/);
+  /* `media-src 'self'` is the ONE difference from the shipped page's policy, and it
+     is what lets the two bundled tones play. The shipped page correctly refuses
+     local media. */
+  assert.match(csp, /media-src 'self'/);
+  for (const bad of ["'unsafe-inline'", "'unsafe-eval'", "'unsafe-hashes'"]) {
+    assert.equal(csp.includes(bad), false, `${bad} appeared in the seam probe page's CSP`);
+  }
+  assert.equal(/<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?<\/script>/.test(html), false, "inline <script> body");
+  assert.equal(/<style[\s>]/.test(html), false, "inline <style> block");
+  assert.equal(/\sstyle="/.test(html), false, "inline style attribute");
+  assert.match(html, /<script type="module" src="probe-seam\.js"><\/script>/);
+});
+
+test("the seam probe drives the REAL queue manager, not a copy of the seam logic", () => {
+  /* THE ASSERTION THAT MAKES PHASE C WORTH RUNNING. The thing under test is the
+     chain `queue-manager.js` runs at a seam — its own `REAL_SCHEDULER` setTimeout for
+     the beat, its own reducer, its own cross-episode `load()`. A probe that
+     reimplemented "wait 2 s then load the next one" would be measuring its own
+     ten lines and would pass while the shipped player stalled. */
+  const js = asset("probe-seam.js");
+  assert.match(js, /import \{ PlayerQueueManager \} from "\.\/player\/queue-manager\.js"/);
+  assert.match(js, /import \{ HtmlAudioBackend \} from "\.\/player\/html-audio-backend\.js"/);
+  assert.match(js, /import \{ SEAM_GAP_SEC \} from "\.\/player\/seam-gap\.js"/);
+  assert.match(js, /new PlayerQueueManager\(/);
+  assert.match(js, /manager\.loadQueue\(/);
+  assert.match(js, /manager\.play\(0\)/);
+  /* It must NOT inject a fake scheduler. The beat's real `setTimeout` is the clock
+     under suspicion — run 32026332637 measured hidden DOM timers at a 1000 ms median
+     — so a scheduler override would remove the entire question. */
+  assert.equal(/scheduler\s*:/.test(js), false, "the seam probe must not inject a scheduler");
+  /* And it must not steal `onItemEnded` from the manager, which would break the very
+     advance it is measuring. It wraps and calls through. */
+  assert.match(js, /managerItemEnded\(reason\)/);
+});
+
+test("the seam probe's queue crosses TWO files and every item is bounded", () => {
+  /* Two files because a same-URL load is a seek with no refetch (see the tone-B
+     test), and bounded because an unbounded item has no out-point, so there would be
+     no transition to measure. Read off the source rather than asserted in prose. */
+  const js = asset("probe-seam.js");
+  const audioUrls = [...js.matchAll(/audio_url:\s*(TONE_[AB])/g)].map((m) => m[1]);
+  assert.ok(audioUrls.length >= 3, `expected at least 3 queue items, found ${audioUrls.length}`);
+  assert.ok(new Set(audioUrls).size >= 2, "every queue item uses the same file — no real load is exercised");
+  const items = [...js.matchAll(/\{ id: "seg-[a-z]", audio_url: [^}]*\}/g)].map((m) => m[0]);
+  assert.equal(items.length, audioUrls.length);
+  for (const item of items) {
+    assert.match(item, /start_sec:/, `queue item has no start_sec: ${item}`);
+    assert.match(item, /end_sec:/, `queue item has no end_sec, so it arms no out-point: ${item}`);
+  }
+});
+
+test("the seam probe arms relative to going hidden, and records whether it did", () => {
+  /* THE LESSON FROM THE TWO BAD RUNS, kept in code rather than in a comment. A fixed
+     `end_sec` raced `simctl launch com.apple.Preferences` (which returns before
+     Settings is actually foregrounded — ~39 s on one run) and produced two different
+     verdicts from identical code. `armedWhileHidden` is what lets the verdict tell a
+     measurement from a race. */
+  const js = asset("probe-seam.js");
+  assert.match(js, /visibilitychange/);
+  assert.match(js, /ARM_AFTER_HIDDEN_SEC/);
+  assert.match(js, /armedWhileHidden/);
+  /* And the field that decides whether the run proves anything at all: a transition
+     that completed after the app came back proves nothing. */
+  assert.match(js, /resumedAtWall/);
+  assert.match(js, /hiddenAtBoundary/);
+  assert.match(js, /hiddenAtNextPlaying/);
 });

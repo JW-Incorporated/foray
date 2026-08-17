@@ -2,14 +2,22 @@
 /* Put the two measurement probes into a BUILT app bundle's web assets (#38, MP4).
  *
  * WHAT THIS IS FOR
- * #38 exists to settle two things nobody has been able to observe from a Windows
- * machine, and both need the real page running inside the real shell:
+ * #38 exists to settle things nobody has been able to observe from a Windows
+ * machine, and all of them need the real page running inside the real shell:
  *
  *   1. Does `window.Capacitor` exist under our CSP? (`docs/mobile-shell.md`'s
- *      top open risk, iOS half.)
+ *      top open risk, iOS half.) — ANSWERED, run 32026332637: yes, 0 violations.
  *   2. Does our out-point still fire when the app is not in the foreground?
  *      (`docs/research/mp1-background-audio.md` §8, its own "single most
- *      load-bearing untested claim".)
+ *      load-bearing untested claim".) — ANSWERED, run 32026332637: yes, 4 ms
+ *      late over a 15.056 s hidden window, with the app never resumed.
+ *   3. Does the SEAM TRANSITION survive backgrounding — the 2.0 s beat's
+ *      `setTimeout`, then a fresh load of a DIFFERENT episode, then a seek, then
+ *      play? (#28's iOS half.) That is a different mechanism from (2) on a
+ *      different clock: the same run measured hidden DOM timers aligned to a
+ *      median of 1000 ms, so the beat is scheduled on the clock that IS
+ *      throttled. If it breaks, a locked-screen listener hears one segment and
+ *      then silence — which no amount of out-point accuracy fixes.
  *
  * A WKWebView in CI has no console anyone can type into, so the page has to
  * report for itself. `probe-bridge.js` is added to `index.html` as an EXTERNAL
@@ -32,6 +40,7 @@
  *
  * USAGE
  *   node tools/mobile/probe/install-probe.mjs <dir containing index.html>
+ *   node tools/mobile/probe/install-probe.mjs <dir> --phase native
  *   node tools/mobile/probe/install-probe.mjs <dir> --list
  */
 
@@ -44,14 +53,62 @@ export const PROBE_DIR = HERE;
 export const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 
 /** The files copied in verbatim. `probe-bridge.js` is the only one referenced
- *  from `index.html`; it navigates to `probe-outpoint.html` itself. */
-export const PROBE_ASSETS = ["probe-bridge.js", "probe-outpoint.html", "probe-outpoint.js"];
+ *  from `index.html`; it navigates to `probe-<phase>.html` itself. */
+export const PROBE_ASSETS = [
+  "probe-bridge.js",
+  "probe-outpoint.html",
+  "probe-outpoint.js",
+  "probe-seam.html",
+  "probe-seam.js",
+];
+
+/** Which measurement this install is for. `probe-bridge.js` reads it and navigates
+ *  accordingly.
+ *
+ *  TWO PASSES, NOT ONE PAGE, and the reason is that both phases need the same
+ *  scarce resource: a window in which the app is backgrounded. The out-point phase
+ *  spends its whole window proving a single boundary, and the seam phase needs a
+ *  boundary plus two beats plus two cross-file loads. Sharing one page would also
+ *  put two `<audio>` elements in play and make "what stopped the audio"
+ *  unanswerable. So the workflow installs, measures, re-installs with the other
+ *  phase, and measures again — about 95 s more on a runner that bills at 10x, for
+ *  two unconfounded results instead of one ambiguous one. */
+export const PHASES = ["outpoint", "seam"];
+export const DEFAULT_PHASE = "outpoint";
+
+/** The generated one-line file that carries the phase into the page.
+ *
+ *  A FILE RATHER THAN A SECOND `<script>` TAG IN `index.html`. `PROBE_TAG` is
+ *  asserted verbatim by `install-probe.test.mjs` because "external, not inline" is
+ *  the property the whole bridge measurement rests on, and widening that tag would
+ *  weaken the thing it pins. `probe-bridge.js` loads this dynamically instead —
+ *  still an external same-origin script, still allowed by `script-src 'self'`,
+ *  still no inline anything. */
+export const PHASE_ASSET = "probe-phase.js";
 
 /** The generated tone. Not committed — a 2 MB WAV in a repo that guards a 3 MB
  *  bundle cap would be absurd, and it is deterministic anyway. */
 export const TONE_NAME = "probe-tone.wav";
 export const TONE_SECONDS = 150;
 export const TONE_HZ = 8000;
+
+/** A SECOND, DIFFERENT audio file, and the seam probe cannot work without it.
+ *
+ *  A Foray's transition loads a DIFFERENT EPISODE, and `html-audio-backend.js`
+ *  deliberately short-circuits a same-URL load into a seek with no refetch —
+ *  "SAME SOURCE = A SEEK, NOT A LOAD" in its header, because consecutive segments
+ *  frequently share an episode and re-assigning `src` would discard the buffer.
+ *  That shortcut is correct and it is also the one path the seam measurement must
+ *  NOT take: the question is whether a fresh media load completes while the page is
+ *  hidden, and a seek within an already-buffered file would answer a much easier
+ *  one. Two files, at two frequencies so a spectrogram of a screen recording could
+ *  tell them apart if anyone ever needs to.
+ *
+ *  Shorter than the first, because it only has to outlast one segment plus margin:
+ *  60 s against ~8 s of use. Both are generated, so this costs nothing in git. */
+export const TONE_B_NAME = "probe-tone-b.wav";
+export const TONE_B_SECONDS = 60;
+export const TONE_B_HZ = 660;
 
 /** Exactly what gets appended to `index.html`. Pinned because "external, not
  *  inline" is the whole reason the probe can run at all. */
@@ -140,17 +197,34 @@ export function assertBuildArtefact(dir) {
   if (!fs.existsSync(path.join(abs, "index.html"))) {
     throw new Error(`${dir} has no index.html, so it is not a web bundle`);
   }
-  if (!fs.existsSync(path.join(abs, "player", "html-audio-backend.js"))) {
-    throw new Error(
-      `${dir} has no player/html-audio-backend.js. The out-point probe drives the REAL backend — ` +
-        `a reimplementation would be measuring itself.`
-    );
+  /* Both probes drive the REAL shipped code — the out-point probe drives
+     `HtmlAudioBackend`, the seam probe drives `PlayerQueueManager` on top of it —
+     so a bundle missing either would have the probe measuring a reimplementation
+     of the thing under test, which is worth nothing. */
+  for (const needed of ["html-audio-backend.js", "queue-manager.js", "seam-gap.js"]) {
+    if (!fs.existsSync(path.join(abs, "player", needed))) {
+      throw new Error(
+        `${dir} has no player/${needed}. The probes drive the REAL player — ` +
+          `a reimplementation would be measuring itself.`
+      );
+    }
   }
   return abs;
 }
 
-export function installProbe(dir, { write = true } = {}) {
+/** The phase file's contents. A plain assignment, no logic — the page's own
+ *  default lives in `probe-bridge.js` so a missing file degrades rather than
+ *  breaks. */
+export function phaseScript(phase) {
+  if (!PHASES.includes(phase)) {
+    throw new Error(`unknown probe phase ${JSON.stringify(phase)}; expected one of ${PHASES.join(", ")}`);
+  }
+  return `window.FORAY_PROBE_PHASE = ${JSON.stringify(phase)};\n`;
+}
+
+export function installProbe(dir, { write = true, phase = DEFAULT_PHASE } = {}) {
   const abs = assertBuildArtefact(dir);
+  const script = phaseScript(phase); // validates `phase` before anything is written
   const indexPath = path.join(abs, "index.html");
   const patched = patchIndexHtml(fs.readFileSync(indexPath, "utf8"));
 
@@ -162,15 +236,20 @@ export function installProbe(dir, { write = true } = {}) {
     copied.push(asset);
   }
   const tone = makeToneWav();
+  const toneB = makeToneWav({ seconds: TONE_B_SECONDS, freq: TONE_B_HZ });
   if (write) {
+    fs.writeFileSync(path.join(abs, PHASE_ASSET), script);
     fs.writeFileSync(path.join(abs, TONE_NAME), tone);
+    fs.writeFileSync(path.join(abs, TONE_B_NAME), toneB);
     if (patched.changed) fs.writeFileSync(indexPath, patched.html);
   }
   return {
     target: abs,
     indexPatched: patched.changed,
     copied,
+    phase,
     tone: { name: TONE_NAME, bytes: tone.length, seconds: TONE_SECONDS },
+    toneB: { name: TONE_B_NAME, bytes: toneB.length, seconds: TONE_B_SECONDS },
   };
 }
 
@@ -182,17 +261,20 @@ const isMain =
 if (isMain) {
   const argv = process.argv.slice(2);
   const listOnly = argv.includes("--list");
-  const dir = argv.find((a) => !a.startsWith("-"));
+  const phaseIdx = argv.indexOf("--phase");
+  const phase = phaseIdx >= 0 ? argv[phaseIdx + 1] : DEFAULT_PHASE;
+  const dir = argv.find((a, i) => !a.startsWith("-") && i !== phaseIdx + 1);
   if (!dir) {
-    console.error("Usage: node tools/mobile/probe/install-probe.mjs <bundle dir> [--list]");
+    console.error("Usage: node tools/mobile/probe/install-probe.mjs <bundle dir> [--phase outpoint|native] [--list]");
     process.exit(2);
   }
   try {
-    const r = installProbe(dir, { write: !listOnly });
+    const r = installProbe(dir, { write: !listOnly, phase });
     console.log(
-      `${listOnly ? "would install" : "installed"} probe into ${r.target}: ` +
+      `${listOnly ? "would install" : "installed"} probe (phase ${r.phase}) into ${r.target}: ` +
         `${r.copied.join(", ")}, ${r.tone.name} (${(r.tone.bytes / 1024 / 1024).toFixed(2)} MB, ` +
-        `${r.tone.seconds}s); index.html ${r.indexPatched ? "patched" : "already patched"}`
+        `${r.tone.seconds}s), ${r.toneB.name} (${(r.toneB.bytes / 1024 / 1024).toFixed(2)} MB, ` +
+        `${r.toneB.seconds}s); index.html ${r.indexPatched ? "patched" : "already patched"}`
     );
   } catch (e) {
     console.error(`install-probe failed: ${e.message}`);

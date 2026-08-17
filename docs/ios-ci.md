@@ -1,4 +1,4 @@
-# Building iOS without a Mac — and the three things the runner settles
+# Building iOS without a Mac — and the four things the runner settles
 
 Issue **#38** (MP4), part of **#34**. Stacks on **#209** (#36's `mobile/`
 scaffold) and reads on from `docs/mobile-shell.md` and
@@ -10,14 +10,15 @@ operational detail; this file is the argument.
 ## 0. Why a CI runner is worth more here than a build
 
 Nobody on this project has a Mac. That is not a gap in the tooling, it is the
-shape of the team — and it has left three separate claims sitting unverified,
+shape of the team — and it has left four separate claims sitting unverified,
 each of them blocking a decision:
 
 | Claim | Where it lives | Status before #38 |
 |---|---|---|
 | The Capacitor shell compiles at all | `docs/mobile-shell.md` §0 | **Never generated, never installed, never compiled.** Its author said so in a table |
 | Our CSP does not block Capacitor's injected bridge *on iOS* | `docs/mobile-shell.md` §5 | Reasoned from WKWebView's `WKUserScript` injection. `HUMAN-ACTIONS.md` #14 step 6.2 asks a human to type `Capacitor` into a console |
-| Our out-point still fires when the app is backgrounded | `docs/research/mp1-background-audio.md` §8 | "**The single most load-bearing untested claim** in this document" — its words |
+| Our out-point still fires when the app is backgrounded | `docs/research/mp1-background-audio.md` §8 | "**The single most load-bearing untested claim** in this document" — its words. **SETTLED, run 32026332637: it holds.** See §4b |
+| A Foray's 31 seam **transitions** survive backgrounding — the 2.0 s beat's `setTimeout`, then a fresh cross-episode load | `docs/research/mp1-background-audio.md` §8, last paragraph | Named as a risk and left unmeasured. The out-point result does **not** cover it: different mechanism, and the beat runs on the clock the same run measured at 1 s alignment. Probe C (§3) |
 
 Be precise about the second one, because the sloppy version overclaims: §5's
 heading is *"the top open risk: **Android's** injected bridge versus this CSP"*,
@@ -46,8 +47,10 @@ column can change without anyone buying a laptop.
    architecture, unsigned** — arm64/Release, the configuration a TestFlight build
    would use. Two different compiles; the second is the one that would catch a
    Release-only or arch-specific failure.
-5. Boot a simulator, install a **probed copy** of the built app, and run the two
-   measurements (§3).
+5. Boot a simulator, install a **probed copy** of the built app, and run the
+   measurements in **two passes** (§3): the bridge + out-point probes, then a
+   reinstall with `--phase seam` and the seam-transition probe. One container read
+   at the end collects both, with the app never foregrounded in between.
 6. Report every verdict to the job summary, and upload logs, screenshots and the
    raw probe records as an artifact.
 7. **Gated on secrets that do not exist:** archive, export, upload to TestFlight.
@@ -84,13 +87,20 @@ recorded because the second one changes the day the repo stops being public. A
 sister project already suspected Actions-minutes exhaustion behind a build freeze,
 and "it was free when we wrote it" is not a design.
 
-**Measured, 2026-08-17.** A full green run — both builds, the simulator boot, both
-probes, the report and the artifact upload — took **8 min 19 s** of wall clock
-(run 32023924627, `11:13:42Z` → `11:22:01Z`). So ~8-9 minutes, not the 12-18 first
-estimated, which would be **~85 billable minutes** at the 10x multiplier if this
-repo were ever private. The estimate is left in the workflow header alongside the
-measurement rather than quietly replaced, because the gap between the two is the
-point this document keeps making.
+**Measured, 2026-08-17.** A full green run of the SINGLE-PASS version — both
+builds, the simulator boot, the bridge and out-point probes, the report and the
+artifact upload — took **8 min 19 s** of wall clock (run 32023924627,
+`11:13:42Z` → `11:22:01Z`). So ~8-9 minutes, not the 12-18 first estimated, which
+would be **~85 billable minutes** at the 10x multiplier if this repo were ever
+private. The estimate is left in the workflow header alongside the measurement
+rather than quietly replaced, because the gap between the two is the point this
+document keeps making.
+
+**Estimated, not yet measured:** probe C adds a second pass — a reinstall, a
+relaunch, and a 15 s + 90 s window — for about **95 s more**, so ~10 minutes and
+~100 billable minutes. Labelled as an estimate on purpose; the run linked from the
+PR that added it is the measurement, and this line should be replaced with that
+number rather than left to be quoted as one.
 
 So: `workflow_dispatch` plus a path filter narrow enough that nightly content
 PRs never trigger it (`mobile/`, `tools/mobile/`, `index.html`, `app.js`,
@@ -111,7 +121,7 @@ checks match by name, across workflows.
 not edited by #38 and `ios-kit` runs exactly as before. The shell generates into
 `mobile/ios/`; the workflow asserts the two never collide.
 
-## 3. The two measurements, and what they are worth
+## 3. The three measurements, and what they are worth
 
 ### Probe A — `window.Capacitor`, on the real page, under the real CSP
 
@@ -174,6 +184,61 @@ been decisive, a pass only removes one way of being wrong. That sentence is
 `SIMULATOR_CAVEAT` in `tools/mobile/ios-ci.mjs`, shipped with every report, so it
 cannot be dropped from one retelling and kept in another. `HUMAN-ACTIONS.md` #11
 and #14 still want one real phone.
+
+### Probe C — the seam transition, backgrounded
+
+**Probe B's pass does not cover this, and that is the whole reason C exists.** B
+settled the *stop*. A Foray is 32 segments joined by **31 transitions**, and each
+transition is a different mechanism:
+
+> stop at `end_sec` → wait a **2.0 s** beat (`player/seam-gap.js`, a `setTimeout`)
+> → load a **different episode** → seek to its `start_sec` → play
+
+Probe B's own numbers are the reason to doubt it. `timeupdate` kept its 252 ms rate
+while hidden — that is a *media* event. The beat is a `setTimeout`, and the same
+page measured hidden DOM timers at a **median of 1000 ms**. The load is worse
+again: a fresh media fetch, `LOAD_SETTLE_TIMEOUT_MS` at 10 s, in a page that has
+been *silent* since the boundary and may therefore have lost WebKit's audibility
+assertion (`audibleActivityClearDelay`, 10 s). If that chain breaks, a listener with
+a locked screen hears one segment and then **silence for the rest of the commute** —
+a different defect from playing the wrong episode, and one no amount of out-point
+accuracy fixes.
+
+`probe-seam.js` drives the **real `PlayerQueueManager`** over the real
+`HtmlAudioBackend`, with the manager's own `REAL_SCHEDULER` — no injected clock,
+because the clock is the suspect. Three bounded segments over **two** audio files:
+
+| | Why |
+|---|---|
+| Three segments, so **two** transitions | One transition can succeed inside the 10 s audibility grace and the next still fail once the page has been silent through a beat. `MIN_HIDDEN_TRANSITIONS` is 2, and a single success reports `too-few-transitions`, not a pass |
+| **Two** files, alternating | `html-audio-backend.js` turns a same-URL load into a seek with no refetch — correct for consecutive segments of one episode, and the one path this must not take. A seek inside a buffered file would answer a much easier question |
+| The first boundary armed on `visibilitychange` | Probe B's expensive lesson. A fixed `end_sec` raced `simctl launch com.apple.Preferences`, which returns before Settings is actually foregrounded (~39 s once), and produced two contradictory verdicts from identical code |
+| `hiddenAtBoundary` **and** `hiddenAtNextPlaying` **and** the wall clock vs `resumedAtWall` | A transition that completed because the app came *back* proves nothing. Two independent channels have to agree: the page's own `document.hidden` readings, and wall-clock stamps the page cannot fake by blinking |
+| `lastStage` on every pending transition | "The beat's timer never fired" and "the load never settled" are different bugs with different fixes. Every stage — `boundary`, `beat-armed`, `load-started`, `loadedmetadata`, `canplay`, `playing` — is stamped and flushed as it happens, so a stall leaves a record of **how far it got** |
+
+`seamTransitionVerdict` reports the stall case **first and above everything else**,
+including a completed transition sitting next to it, because the stall is the
+finding that changes what gets built.
+
+**Its limit, and it ships with every verdict** (`LOCAL_MEDIA_CAVEAT`): the next
+segment is a **local bundled file**. Product principle #3 forbids reusing episode
+audio — a CI job hammering a podcast CDN is exactly what that principle is about —
+and the probe page's CSP is `media-src 'self'`. So this settles **the beat's timer
+and a fresh media load while hidden**. It does *not* settle DNS + TLS + a range
+request into someone's CDN while hidden, which is the other half of the risk MP1 §8
+names. Saying so is the difference between an honest partial result and a claim the
+run cannot support.
+
+**Two passes, one step, ~95 s of extra runner time.** Probes B and C need the same
+scarce resource — a window in which the app is backgrounded — and B spends its whole
+window on one boundary. So the workflow measures B, reinstalls the same built `.app`
+with `--phase seam`, and measures C. The app container survives the reinstall, so one
+container read at the end collects both records; the localStorage keys are distinct.
+**Nothing between the last backgrounding and that read foregrounds the app**, which
+is the point: `simctl terminate` kills the outgoing app rather than raising it, and a
+collection path that resumed the app could not tell a working transition from one
+that only completed on resume. A test in `ios-workflow.test.mjs` asserts that no
+`simctl launch` of our app id appears after the final backgrounding.
 
 ### Two ways the probes can lie, and what stops them
 
@@ -317,6 +382,18 @@ disaster.
    40 s fallback (`armedWhileHidden: false`) and got a 6.44 s window instead of 15 s.
    If a run ever reports `hidden-window-too-short`, that is what happened, and the
    record says which path armed it.
+
+**And retract the `fired-on-resume` reading of run 32023924627 wherever it is
+quoted.** It was the same harness race, with a **3 ms** overshoot — the tell that it
+was never a real failure. It is easy to re-quote because the label names MP1 §8's
+predicted failure mode exactly, and *a native audio backend for iOS is a decision
+somebody could reasonably have made on it*. One was started on that reading and
+thrown away; `docs/research/mp1-background-audio.md` §0b carries the retraction.
+
+**What this result does NOT settle is the TRANSITION**, and that is probe C's
+question. The stop is a media event. The beat is a `setTimeout`, on the very clock
+this run measured at 1000 ms alignment, with a fresh cross-episode load inside it.
+Nothing above covers it.
 
 ### One thing that cost 18 minutes, recorded so nobody re-learns it
 

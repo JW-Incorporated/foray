@@ -21,7 +21,7 @@ segments joined by 31 JavaScript-driven transitions, not one file playing.**
 | `<audio>` keeps playing, backgrounded | **Yes**, with `UIBackgroundModes: audio` | **Yes**, while audible |
 | `<audio>` keeps playing, screen locked | **Yes**, same condition | **Yes**, while audible |
 | Survives 10 min backgrounded | Yes (no documented time limit) | **Only with a `mediaPlayback` foreground service** |
-| JS timers keep running while audio plays | Yes, but **aligned to ~1 s** (unverified — §7.5) | Yes, **at full rate** (measured, §4) |
+| JS timers keep running while audio plays | Yes, but **aligned to ~1 s** (§7.5 — **now measured**, median 1000 ms, §0b) | Yes, **at full rate** (measured, §4) |
 | JS timers when audio is *paused* and hidden | throttled | throttled to 1 Hz, then 1/min |
 | What native support is required | **one Info.plist key**, no plugin, no Swift | **a foreground service** — native code or a plugin |
 | `navigator.mediaSession` → lock-screen controls | untested (see §10, #27) | **Impossible.** Disabled in WebView by a Chromium switch |
@@ -38,6 +38,67 @@ most load-bearing untested claim in this document. If it is wrong, iOS needs a
 native backend too. One device and ten minutes settles it — `HUMAN-ACTIONS.md`
 item #11.
 
+> **UPDATE, 2026-08-17 — that gate has been executed in the iOS Simulator and it
+> PASSED.** Out-point overshoot **0.0045 s** over a **15.056 s** hidden window,
+> app never resumed (run 32026332637; full numbers and the retraction of an
+> earlier wrong reading in **§0b**). So iOS does not need a native out-point.
+> What is NOT settled by that result is the **transition** between segments —
+> a `setTimeout` beat plus a cross-episode load, on the clock the same run
+> measured at 1 s alignment. See §0b and §8's last paragraph.
+
+---
+
+## 0b. MEASURED SINCE — 2026-08-17, iOS Simulator in CI. Read before quoting §7 or §8.
+
+`.github/workflows/ios-build.yml` (#38) now builds this shell on a macOS runner
+and runs the real player inside it. **Two of this document's inferences have been
+executed, and one intermediate reading of them was wrong and is retracted here.**
+
+**Run [32026332637](https://github.com/JW-Incorporated/foray/actions/runs/32026332637),
+verdict `fires-in-background`:**
+
+| §8's inference | What ran | Result |
+|---|---|---|
+| `timeupdate` survives backgrounding, so the coarse stage keeps its ~4 Hz | The real `HtmlAudioBackend`, out-point armed 15 s after the page went hidden | **HELD.** 61 hidden `timeupdate` samples, **median 252 ms** |
+| Overshoot ~0.25 s if it holds, ~1 s if only the aligned timer does | Stopped at 45.469 s against `end_sec` 45.460 s | **0.0045 s** — better than either prediction |
+| §7.5: hidden-page DOM timers are aligned to ~1 s (documented, unverified) | A 250 ms `setInterval` sampled while hidden | **CONFIRMED. Median 1000 ms** (253, 925, 1000, 1000, 1001, 998, …, n=25) |
+
+The hidden window was **15.056 s** and `resumedAtWall` was **null** — the app was
+never brought back to the foreground, so no resume can have caused the stop. §1's
+"everything about iOS is documented only" no longer covers §7.5 or §8's first
+claim; both rows are updated below.
+
+**RETRACTED: the `fired-on-resume` reading of run 32023924627.** An earlier run
+reported that verdict, and it was quoted onward as "the out-point only fires when
+the app returns to the foreground — MP1 §8's predicted failure mode". **It was a
+harness artifact, not a finding.** `xcrun simctl launch com.apple.Preferences`
+returns as soon as the launch is *accepted*, and Settings took tens of seconds to
+actually reach the foreground, so a fixed `end_sec` was crossed while the page was
+still visible. The overshoot in that run was **3 milliseconds**, which is the tell:
+an out-point that had genuinely stopped firing in the background would overshoot by
+however long the app stayed backgrounded, not by milliseconds. Three fixes landed in
+`tools/mobile/ios-ci.mjs` and `probe-outpoint.js` — arm relative to going hidden, a
+5 s hidden-window floor, and an explicit refusal of the incoherent
+low-overshoot/`fired-on-resume` combination — and the corrected run is the one
+tabled above. **Do not cite 32023924627 for anything.**
+
+**STILL UNMEASURED, and it is the one that matters now.** The out-point result is
+about the **stop**. It says nothing about the **transition**, and §8's last
+paragraph is exactly why: the beat is a `setTimeout`, and the run above measured
+hidden DOM timers at a 1000 ms median — the one clock that *is* throttled — with a
+fresh cross-episode load inside that window. Phase C of the probe
+(`tools/mobile/probe/probe-seam.js`, #28's iOS half) drives three bounded segments
+over two files through the real `PlayerQueueManager` and reports whether each
+transition completes while backgrounded. Its own limit is stated with every
+verdict: the next segment is a **local bundled file**, so a cold cross-origin fetch
+while hidden — the specific risk §8 names against WebKit's 10 s
+`audibleActivityClearDelay` — is still not measured.
+
+**A Simulator is not a device.** It models neither power management nor true
+suspension, so a pass there is weaker evidence than a failure would be. That
+asymmetry is why these runs are worth having and why `HUMAN-ACTIONS.md` #11 stays
+open.
+
 ---
 
 ## 1. Measured versus documented — read this before quoting anything below
@@ -53,16 +114,22 @@ for every claim is labelled inline and summarised here.
 | Android WebView behaviour under HOME + screen lock (§6) | **Attempted, not obtained.** The toolchain and app were built; the emulator never became usable. §6 says exactly how far it got |
 | Android's OS-level process rules — freezer, audio focus, FGS (§5) | **Documented** — Android + AOSP docs. One step is **inferred, flagged inline**: that a `mediaPlayback` FGS prevents freezing (§5.3) |
 | MediaSession unavailable in Android WebView (§5) | **Documented** — Chromium source |
-| Everything about iOS (§7, §8) | **Documented only.** Never executed — iOS cannot be built or run from Windows. Two steps are **inferred, flagged inline**: that a foreground process assertion keeps JS timers running (§7.4), and that `timeupdate` survives backgrounding (§8) — the latter is the most load-bearing untested claim here |
+| iOS hidden-page DOM timer alignment (§7.5) | **MEASURED in the iOS Simulator**, 2026-08-17, run 32026332637 — median **1000 ms**. Was documented-only when §7.5 was written; see §0b |
+| iOS `timeupdate` survives backgrounding, and the real out-point's overshoot (§8) | **MEASURED in the iOS Simulator**, same run — 61 hidden samples at a 252 ms median, overshoot **0.0045 s**, app never resumed. Was the most load-bearing untested claim here; it HELD. See §0b |
+| The iOS SEAM TRANSITION while backgrounded — the beat's `setTimeout`, the cross-episode load (§8, last paragraph) | **Being measured** by probe phase C (#28's iOS half). Read the run linked in that PR; do not read §8's out-point result as covering it |
+| Everything else about iOS (§7) | **Documented only.** Never executed — iOS cannot be built from Windows. One step remains **inferred, flagged inline**: that a foreground process assertion keeps JS timers running (§7.4) |
 
-**Nothing in this document was tested on a phone or an emulator, on either
-platform.** The Android toolchain was installed and a Capacitor app around our
-real player was built and pushed to the emulator — but it never finished
-booting well enough to install it (§6.2), and iOS cannot be run from Windows at
-all. So the Android answer rests on Chromium's source plus measurements of the
-same engine on the desktop, and the iOS answer rests on Apple's and WebKit's
-documentation. **Neither is a device measurement, and this document does not
-claim one anywhere.**
+**Nothing in this document was tested on a PHONE, on either platform** — and as
+of 2026-08-17 some of the iOS column *was* executed, in the **iOS Simulator on a
+CI runner** (§0b). A Simulator models neither power management nor true
+suspension, so a pass there is weaker evidence than a failure would be; it is
+emphatically not a device measurement, and `HUMAN-ACTIONS.md` #11 stays open.
+
+The Android toolchain was installed and a Capacitor app around our real player
+was built and pushed to the emulator — but it never finished booting well enough
+to install it (§6.2). So the Android answer still rests on Chromium's source plus
+measurements of the same engine on the desktop, and **no part of the Android
+column has been executed anywhere.**
 
 ---
 
@@ -659,9 +726,11 @@ differently:
 - The **coarse** stage runs on `timeupdate`, which is a **media event driven by
   WebCore's own playback-progress timer, not a `DOMTimer`** — so DOM-timer
   alignment should not apply to it, and it should keep firing at its usual
-  ~4 Hz. **This is inference, and it is the single most load-bearing untested
-  claim in this document.** It is also cheap to settle on a device: log
-  `timeupdate` intervals with the app backgrounded.
+  ~4 Hz. ~~**This is inference, and it is the single most load-bearing untested
+  claim in this document.**~~ **MEASURED AND HELD** — 61 hidden samples at a
+  **252 ms** median in the iOS Simulator, run 32026332637 (§0b). The fine stage's
+  1 s alignment was confirmed in the same run, so both halves of this paragraph
+  are now measurements rather than predictions.
 - And the design helps: `html-audio-backend.js`'s stop is *"never early, at any
   rate, under any stall"* — the fine timer re-reads `currentTime` and
   reschedules rather than trusting its own prediction. A late wake overshoots; it
@@ -671,10 +740,12 @@ So the expected iOS overshoot is **one `timeupdate` interval (~0.25 s) if that
 event survives, up to ~1 s if only the aligned timer does** — against 14 ms
 today. That is a real regression, and it is one sentence of the next speaker
 bleeding into a transition, not 15.6 minutes of the wrong episode. **Tolerable
-with a caveat; nothing like the failure §3 measures.** But it is unmeasured, and
-if `timeupdate` turns out to be throttled too, the fallback is the file's
-natural `ended` event — which is §3's disaster. That is why §9 does not
-recommend shipping iOS on the shell without measuring this one thing.
+with a caveat; nothing like the failure §3 measures.**
+
+> **MEASURED, 2026-08-17 (§0b): 0.0045 s.** Better than both predictions above,
+> because `timeupdate` kept its 252 ms rate AND the fine stage's re-read-and-stop
+> design did the rest. The paragraph below this one — the load inside the beat —
+> is now the open question, not this one.
 
 **The seam beat is safe on both engines, and this was the specific worry.** The
 beat pauses the element for 2.0 s, which withdraws the audibility that everything
@@ -695,6 +766,22 @@ assertion mid-transition. Unmeasured. Worth a device check, and cheap to
 mitigate if real (start the load before pausing, or hold a short silent
 keep-alive during a load — noting that a *silent* track buys nothing on
 Chromium).
+
+> **THIS IS THE PARAGRAPH THE SEAM PROBE WAS BUILT FOR** (#28's iOS half,
+> `tools/mobile/probe/probe-seam.js`). It drives three bounded segments across two
+> files through the real `PlayerQueueManager` and reports, per transition, whether
+> the beat fired, whether the next file loaded, and whether it became audible —
+> all with the app backgrounded and never resumed. Two completed hidden
+> transitions are required before it will call the seam sound, because one can
+> succeed inside the 10 s grace window and the next still fail once the page has
+> been silent through a beat.
+>
+> Its limit, stated with every verdict: the next segment is a **local bundled
+> file**. Product principle #3 forbids reusing episode audio and the probe page's
+> CSP is `media-src 'self'`, so the *cold cross-origin fetch* half of this
+> paragraph's risk is still unmeasured. What the probe settles is the beat's timer
+> and a fresh media load; what it cannot settle is DNS + TLS + a range request
+> into someone's CDN while hidden.
 
 ---
 
@@ -733,8 +820,13 @@ exists to work around. Our product is *segments*, so this is not a detail.
 
 **So: "works on one", and the split is platform-specific.**
 
-- **iOS** — shell + `HtmlAudioBackend` is genuinely viable. Gate: measure the
-  `timeupdate` claim in §8 on a device before believing it.
+- **iOS** — shell + `HtmlAudioBackend` is genuinely viable. ~~Gate: measure the
+  `timeupdate` claim in §8 on a device before believing it.~~ **Gate cleared in
+  the iOS Simulator, 2026-08-17 (§0b): 0.0045 s overshoot over a 15.056 s hidden
+  window, app never resumed. The remaining gate is the TRANSITION, not the stop
+  — probe phase C, #28's iOS half.** A device measurement is still wanted
+  (`HUMAN-ACTIONS.md` #11); a Simulator pass is weaker evidence than a Simulator
+  failure would have been.
 - **Android** — shell + `HtmlAudioBackend` is viable for an *internal* build and
   for validating everything else in #36/#40, but **not for a Play release**.
   Android's `NativeAudioBackend` should land before any store submission.
@@ -758,7 +850,7 @@ blocked by any of this, and nothing here argues for slowing it down.
 |---|---|
 | **#35** (this spike) | **Answered from source and documentation, not from a device** — the emulator attempt is reported in §6.2. **Left open rather than closed** — this file is the verdict, and closing the issue is a founder's call |
 | **#36** MP2 scaffold | **Unblocked, proceed.** Two additions: (a) add `UIBackgroundModes: audio` to `ios/App/App/Info.plist` — one line, no plugin; (b) do **not** let anything call `WebView.pauseTimers()`, which is process-global and would kill every out-point. Also note Capacitor 8 generates `targetSdkVersion = 36`, which puts the app inside Android 15's audio-focus rule from the first build |
-| **#28** WP8 `NativeAudioBackend` | **Re-scoped, and split by platform.** No longer justified by *background audio on iOS* — that costs one plist key. Still mandatory for **Android**, now for three converging reasons: the foreground service (§5.3), MediaSession being impossible in WebView (§5.4), and downloads (#29). **Android half moves onto the critical path for a Play release; iOS half can lag.** Add the out-point argument above to its rationale, and note the ADR it must write is already named ADR-0007 in the issue but that number is taken (segment anchoring) — it needs a new number |
+| **#28** WP8 `NativeAudioBackend` | **Re-scoped, and split by platform. iOS half further narrowed by measurement, 2026-08-17 (§0b): the out-point fires backgrounded at 0.0045 s overshoot with the app never resumed, so a native stop-owner for iOS is NOT justified — the only iOS question left open is the seam TRANSITION, which probe phase C measures.** No longer justified by *background audio on iOS* — that costs one plist key. Still mandatory for **Android**, now for three converging reasons: the foreground service (§5.3), MediaSession being impossible in WebView (§5.4), and downloads (#29). **Android half moves onto the critical path for a Play release; iOS half can lag.** Add the out-point argument above to its rationale, and note the ADR it must write is already named ADR-0007 in the issue but that number is taken (segment anchoring) — it needs a new number |
 | **#27** WP7 MediaSession | **Materially changed, and it is the biggest surprise.** The plan is "wire the MediaSession API in the web client". That works on the **web** and is **impossible in the Android shell** (§5.4). So #27 splits: the web implementation stays as specified; lock-screen/steering-wheel controls *in the app* become native work owned by #28's Android half. #27's existing acceptance criterion "iOS Safari behaviour is **tested and documented in a comment on this issue**" should be widened to "and WKWebView-in-Capacitor, and Android WebView", because those are three different answers |
 | **#29** WP9 downloads | **Unchanged.** Still native-only, still blocked on #28, still for the CORS reason already recorded. This spike adds a mild reinforcement: on Android the download must survive backgrounding, which is the same foreground-service machinery #28 introduces |
 | **#40** MP6 data freshness + durable storage | **Its web half landed in #204 while this spike ran** (`player/durable-store.js`, `player/idb-tier.js`, `docs/durable-storage.md`), and that document already names the remainder as *"iOS `WKWebView` storage is not durable by default, which is the 'app tomorrow' half of #40"* — nothing here changes that design. Two additions to its test matrix from this spike: a **force-stop and a storage-pressure simulation while backgrounded**, since §5.3's freezer/kill path is a way to lose in-flight state the issue does not consider; and note that a **frozen process cannot flush a pending write at all**, which is a different failure from eviction and is not covered by the localStorage mirror |
