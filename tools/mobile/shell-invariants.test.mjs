@@ -242,15 +242,24 @@ test("both generated platforms are gitignored in full, which is what makes skipp
      test says so, rather than the walk silently starting to skip real files.
 
      Asserted against the ignore FILE rather than by shelling out to `git`, so it
-     behaves identically in a worktree, a shallow clone and CI. */
+     behaves identically in a worktree, a shallow clone and CI.
+
+     THE PLATFORM NAMES COME FROM THE SAME PLACE THE SKIP DOES — `capacitor.config.json`
+     — and not from a second hardcoded pair. A hardcoded pair is how the two halves
+     drift: rename `android.path` to `android-app` and a hardcoded test would keep
+     checking `android/`, still pass, and leave the walk skipping a directory nothing
+     asserts is unignorable. */
   const lines = fs.readFileSync(path.join(MOBILE, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
-  for (const dir of ["ios", "android"]) {
+  for (const platform of ["ios", "android"]) {
+    /* Relative to mobile/, which is where this .gitignore's patterns are rooted. */
+    const dir = (capConfig[platform]?.path ?? platform).replace(/\\/g, "/").replace(/\/+$/, "");
     assert.ok(
       lines.includes(`${dir}/`) || lines.includes(`/${dir}/`),
-      `mobile/.gitignore does not ignore ${dir}/ in full. The "only one Capacitor config" test ` +
-        `skips that directory, so anything committed inside it would be skipped too. Either restore ` +
-        `the ignore rule or narrow that skip — and if the repo has decided to commit the generated ` +
-        `platform after all, say so here and in docs/mobile-shell.md §0.`
+      `mobile/.gitignore does not ignore ${dir}/ in full (the ${platform}.path from ` +
+        `capacitor.config.json). The "only one Capacitor config" test skips that directory, so ` +
+        `anything committed inside it would be skipped too. Either restore the ignore rule or ` +
+        `narrow that skip — and if the repo has decided to commit the generated platform after ` +
+        `all, say so here and in docs/mobile-shell.md §0.`
     );
   }
 });
