@@ -101,6 +101,14 @@ const FLOORS = {
   "tools/classify/shard.test.mjs": 23,
   "tools/classify/transcript-label.test.mjs": 29,
   "tools/foray/check-forays.test.mjs": 81,
+  /* The native shell (#36). `shell-invariants` is the one to be most careful
+     with: four of the five things it pins are properties of files OUTSIDE
+     tools/ — the root package.json staying dependency-free, index.html's CSP,
+     app.js not registering a service worker in the shell, and the repo's ios/
+     scaffold surviving. Nothing else in the repo checks any of those, so
+     deleting this suite would silently un-guard all four. */
+  "tools/mobile/prepare-webdir.test.mjs": 17,
+  "tools/mobile/shell-invariants.test.mjs": 27,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,
