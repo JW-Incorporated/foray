@@ -303,6 +303,48 @@ medians — they are ordinary scheduler starvation on a busy desktop. But a late
 fine-timer wake *is* overshoot, so the exemption protects the **median**, not the
 tail, and §8's argument rests on the median.
 
+> **4.1a — THIS SECTION IS ABOUT TIMERS. DO NOT GENERALISE IT TO MEDIA LOADS.**
+> Added 2026-08-17, after the generalisation was made and shipped and cost a
+> regression (PR #227, reverted to default-off by the PR that added this note).
+>
+> The measurement above says a hidden page **that is producing audio** is not
+> throttled — for `setTimeout`. It says nothing about the HTML **media load
+> algorithm**, whose steps are queued tasks on a different path, and those ARE
+> throttled while hidden *regardless of audibility*.
+>
+> Measured on a device-class run — **32057395270**, iOS Simulator, app genuinely
+> backgrounded — from `WebKit:Media` element lifecycle in that run's
+> `simulator-log-seam.txt` (times re-based on the primary element's out-point
+> pause):
+>
+> | phase | between load-algorithm steps | total to `canplay` |
+> |---|---|---|
+> | **visible** | 0.20 s, 0.24 s, 0.13 s | **590 ms** |
+> | **hidden, audio PLAYING** | **+3.47 s, +3.90 s**, then 5.0 s with no data | never finished (11.8 s) |
+> | hidden, audio paused | +2.4 s, +3.5 s, +5.1 s | **11.14 s** |
+>
+> **The middle row is the point.** Those multi-second gaps happened while a
+> segment was playing audibly — in the same window the real `HtmlAudioBackend`
+> out-point fired **1 ms** late, so JS timers were demonstrably fine at that
+> moment. One page, one run, two schedulers:
+>
+> - **DOM timers → throttled by AUDIBILITY** (§4.1, §5.2, §7.4).
+> - **Media-element load tasks → throttled by VISIBILITY.** ~20x collapse.
+>
+> Two consequences that outlive the reverted feature, both worth more than it
+> was:
+>
+> 1. **You cannot hide a media load in the audible window.** Any design that
+>    depends on "audio is playing, so this load will be quick" is unsound. The
+>    file in the measured run was a small asset **bundled inside the app** — this
+>    is not network latency and no cache warms it away.
+> 2. **A hidden-page load takes ~11 s, against `LOAD_SETTLE_TIMEOUT_MS` of
+>    10,000 ms in `player/html-audio-backend.js`.** So a segment DROPPED at a
+>    seam on a locked phone is structural rather than unlucky, and it predates
+>    #227. §4.4 below — 3 of 5 hidden Chromium loads failing that same deadline —
+>    is the same finding on the other engine, and its "cause is unknown" note can
+>    now be read as this.
+
 **4.2 — The seam beat specifically.** One `setTimeout(2000)` — the real
 `SEAM_GAP_SEC` — armed in a hidden page, 4 reps each:
 
@@ -330,6 +372,12 @@ It is the most reassuring number here, and the honest caveat is that **n = 2**:
 this is the same run §4.4 describes, in which three of five reps failed to load
 at all. Two clean samples show the mechanism survives page-hiding; they do not
 establish a distribution.
+
+> **4.4 IS EXPLAINED NOW — see §4.1a.** The cause it says is unknown is
+> visibility-throttled media load tasks: a hidden-page load takes ~11 s on iOS
+> against this same 10 s deadline, measured in run 32057395270. The paragraph
+> below is left exactly as written, because its reasoning about what it could and
+> could not conclude was correct and is worth keeping.
 
 **4.4 — One thing this pass could not explain, recorded so nobody builds on it.** In the
 same run, 3 of 5 hidden reps failed with `load ... did not settle within

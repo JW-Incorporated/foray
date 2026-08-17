@@ -339,7 +339,59 @@ docs/. Completed workstreams move to their plan doc's retro section.
   since #211 and #220 both have that file open.
 - **Related:** #37, #34, #36, #35, #27, #28, #38, #40, #213, #220, #227.
 
-### seam prefetch — a Foray becomes listenable on a locked phone (2026-08-17, one PR, no follow-up)
+### seam prefetch — MEASURED ON A DEVICE AND RETRACTED; the handover is parked (2026-08-17, two PRs, one follow-up)
+
+- **READ THIS BEFORE THE ENTRY BELOW, WHICH IS NOW WRONG IN ITS CENTRAL CLAIM.**
+  The entry that follows describes PR #227 as shipped. It was, it was then
+  measured on an iOS Simulator (run **32057395270**), and **it made the seam worse
+  than the bug**: `observedGapMs: null`, `lastStage: canplay` — the listener hears
+  a segment end and then nothing. Wyatt reported it as *"when my screen was off
+  then it would just pause"*. `fix/seam-prefetch-off` parks it.
+- **THE PREMISE WAS FALSE, AND THE CORRECTION IS THE MOST REUSABLE THING HERE:
+  MEDIA-ELEMENT LOAD TASKS ARE THROTTLED BY VISIBILITY; DOM TIMERS BY
+  AUDIBILITY.** They are different schedulers.
+  `docs/research/mp1-background-audio.md` **§4.1a** now carries the numbers so
+  nobody repeats the generalisation — §4.1 measured *timers* and #227 read it as
+  covering *loads*. From that run's `simulator-log-seam.txt` (`WebKit:Media`
+  element lifecycle, times re-based on the out-point pause):
+  **visible** 0.20/0.24/0.13 s between load-algorithm steps, 590 ms total;
+  **hidden + AUDIBLE** +3.47 s and +3.90 s between steps, then 5.0 s with no
+  data, never finishing; **hidden + silent** +2.4/+3.5/+5.1 s, **11.14 s** total.
+  The middle row is the refutation — those gaps happened while a segment was
+  playing audibly, in the same window the out-point fired **1 ms** late.
+- **What landed to make `main` safe again:** (1) the handover is **default off**,
+  and off means the second `<audio>` element is **never constructed** — a media
+  element is a client of the same task queue the real load needs, so "off" has to
+  mean absent, not idle; (2) **a boundary never does media work on the warm
+  element**. That second one is the bug that turned a slow seam into a dropped
+  segment: `_discardWarm` called `removeAttribute("src") + load()`, and its steps
+  queued AHEAD of the cold fallback on the one queue (`WARM
+  selectMediaResource "nothing to load"` at 38.46 s, `PRIMARY
+  selectMediaResource` at 38.46 s — 4 ms apart), taking the fallback from
+  **9.14 s to 11.14 s**, across `LOAD_SETTLE_TIMEOUT_MS`.
+- **`notReadyFor` was NOT weakened and must not be.** It was the guard working
+  correctly; promoting an element that is not ready plays the wrong audio, which
+  is worse than silence.
+- **`PREFETCH_LEAD_SEC` is not a number to nudge.** 11.78 s of real lead in the
+  audible window did not reach a promotable state against an ~11 s task chain
+  with ~5 s of it before any data moves. Re-opening the handover needs a
+  measurement showing a hidden-page load completing inside a lead a real segment
+  can afford — not a second inference from the timer numbers. The machinery and
+  its 44 tests stay, exercised behind `prefetch: true`, for whoever does that.
+- **THE FOLLOW-UP, authorised and separate: make `LOAD_SETTLE_TIMEOUT_MS`
+  visibility-aware.** A hidden load is **structurally ~11 s on a small LOCAL
+  bundled file** against a 10,000 ms deadline, so **dropped segments at seams
+  predate #227** — the old path cleared that deadline by 847 ms and the log shows
+  that was luck, not headroom. 10 s is generous while visible (a real load is
+  590 ms); hidden needs to exceed a platform-imposed chain, with headroom, since a
+  cold cross-origin CDN is worse than the local case measured. Converting drops
+  into slow seams is the goal: a listener who hears a long gap still has a Foray.
+  It changes behaviour for the web PWA too, and a dead URL will then hang for the
+  hidden deadline instead of failing at 10 s — both costs go in that PR's body.
+  §4.4's "cause is unknown" (3 of 5 hidden Chromium loads failing the same
+  deadline) reads as the same finding on the other engine.
+
+### seam prefetch — the original entry, superseded above (2026-08-17, one PR, no follow-up)
 
 - **What:** `feat/seam-prefetch`. The 2.0 s seam beat is **not 2.0 s** —
   measured on a device-class run it is **9,153 ms**, and every millisecond of the
