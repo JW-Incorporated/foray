@@ -455,7 +455,8 @@ jobs:
           # transition on resume and look fine.
           #
           # `probe-seam.js` carries pass 1's hard-won lesson: it arms the first
-          # boundary at `currentTime + 15` on the first `visibilitychange` to hidden,
+          # boundary at `currentTime + ARM_AFTER_HIDDEN_SEC` (60 s as of 2026-08-17 --
+          # see the `sleep` below for why it is not 15) on the first `visibilitychange`,
           # so however long `simctl launch com.apple.Preferences` takes to actually
           # foreground Settings (39 s in run 32025079276, ~33 s in 32026332637), the
           # whole chain — boundary, beat, cross-file load, seek, play, second
@@ -477,11 +478,12 @@ jobs:
           sleep 15
           xcrun simctl io "$UDID" screenshot "$ART/03-seam-playing.png" || true
           background_it
-          # 90 s: 15 s of hidden playback before the first boundary, then two beats
-          # (2 s each) and two more segments (8 s and 6 s) — about 33 s of hidden
-          # chain — with the rest absorbing however late Settings foregrounds (39 s,
-          # measured, in run 32025079276). `ios-workflow.test.mjs` pins this floor.
-          # 90 s, AND THE DERIVATION BELOW IS THE MEASURED ONE, NOT THE DESIGNED ONE.
+          # THE DERIVATION BELOW IS THE MEASURED ONE, NOT THE DESIGNED ONE.
+          # (An earlier "90 s: 15 s of hidden playback, two 2 s beats, an 8 s and a 6 s
+          # segment, about 33 s of hidden chain" stood here until 2026-08-17. Every one
+          # of those numbers is now wrong -- the beat is 9.2 s measured, the arm is 60 s,
+          # the segments are 25 s and 20 s -- and it is deleted rather than left to be
+          # quoted, which is the whole subject of this PR.)
           # The first version of this comment budgeted "two beats (2 s each) and two
           # more segments (8 s and 6 s) - about 33 s of hidden chain". The beat is
           # not 2 s: run 32036295743 measured **9,153 ms** for it, because the beat

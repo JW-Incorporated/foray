@@ -1463,11 +1463,22 @@ test("an audible suspension with an assertion-release timer already armed is rep
 });
 
 test("a record that covers its window with no suspension is the answer the ceiling reading forbids", () => {
+  /* The log has to have WATCHED past the last write for this verdict — see the
+     truncation test below, which is the failure mode a review found here. In this one
+     it does: the record's last write is at +118 s and the log is still emitting at
+     +126 s. */
   const seam = trailedSeam({ seconds: 120 });
-  const text = [nowPlaying("20:25:50.000", { isPlaying: true, now: 40 })].join("\n");
+  const text = [
+    nowPlaying("20:25:50.000", { isPlaying: true, now: 40 }),
+    logLine("20:25:57.000", "[com.apple.WebKit:Media] some later line"),
+  ].join("\n");
   const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
   assert.equal(v.verdict, "record-covers-window");
   assert.ok(v.recordEndsAtHiddenSec > 110, `covered only ${v.recordEndsAtHiddenSec}s`);
+  assert.ok(
+    v.logCoversHiddenSec >= v.recordEndsAtHiddenSec,
+    `the log watched only ${v.logCoversHiddenSec}s of a record that wrote until ${v.recordEndsAtHiddenSec}s`
+  );
 });
 
 test("a record that stops early while the process stays ALIVE blames the write path, not the scheduler", () => {
@@ -1589,7 +1600,7 @@ test("the report always carries section 3b, including when it has nothing to say
   assert.match(real, /3b\. Where the record STOPS.*`suspended-while-audible`/);
 });
 
-test("a CAPPED save trail is reported as capped, not read as the record ending there", () => {
+test("a RINGED save trail is reported as ringed, not read as the record ending there", () => {
   /* `SAVE_TRAIL_MAX` bounds the trail while `saveSeq` keeps counting, so a capped
      trail and a stopped one are the same array. Reading the last stamp as the
      record's end would then put the stop time tens of seconds early — in the
@@ -1600,9 +1611,233 @@ test("a CAPPED save trail is reported as capped, not read as the record ending t
   const a = saveTrailAnalysis(seam);
   assert.equal(a.truncated, true);
   const v = suspensionVerdict({ seam, lifecycle: null });
-  assert.match(v.detail, /THE TRAIL IS CAPPED/);
+  assert.match(v.detail, /THE TRAIL IS RINGED/);
   /* The stop time comes from `lastSavedAtWall`, so the cap must not move it. */
   assert.equal(Math.round(v.recordEndsAtHiddenSec), Math.round((seam.lastSavedAtWall - seam.backgroundedAtWall) / 1000));
   /* An uncapped trail must not claim to be capped. */
   assert.equal(saveTrailAnalysis(trailedSeam({ seconds: 20 })).truncated, false);
+});
+
+/* ── THE NINE THINGS A REVIEW FOUND IN THIS SECTION BEFORE A RUN COULD ────────
+ *
+ * Every test below corresponds to a way the first version of `suspensionVerdict`
+ * printed a confident sentence its data did not support. They are grouped because they
+ * share one shape: the reassuring verdict, or the architecture-changing one, being
+ * reachable from evidence that was stale, misplaced, or missing.
+ */
+
+test("a TRUNCATED log cannot earn `record-covers-window` — the reassuring verdict from a lost measurement", () => {
+  /* THE WORST FINDING OF THE REVIEW. `head -c 20000000` truncated one of these captures
+     to the byte (run 32036295743, per docs/ios-ci.md §4c), and a log that stops early
+     contains no suspension for the same reason an empty one does. With the observed
+     window floored at the record's own end, the difference was always 0 and the verdict
+     was always "there was no ceiling on hidden time to find" — on exactly the runs where
+     the evidence went missing. */
+  const seam = trailedSeam({ seconds: 26 });
+  const text = nowPlaying("20:23:55.000", { isPlaying: true, now: 5 });
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.verdict, "log-stops-before-record");
+  assert.match(v.headline, /stopped watching/);
+  assert.match(v.detail, /NOT "no suspension happened"/);
+  assert.ok(v.logCoversHiddenSec < v.recordEndsAtHiddenSec);
+});
+
+test("a FOREGROUND trail stamp cannot make a suspension `while-audible`", () => {
+  /* The probe writes several stamps with `paused: false` before the app is backgrounded
+     at all. Pairing one of those with a suspension 26 s into the hidden window earned
+     the architecture-changing headline from evidence that predates the window — with
+     `recordEndsAtHiddenSec` NEGATIVE in the same object. */
+  const bg = wallAt(20, 23, 54);
+  const seam = seamRecord({
+    backgroundedAtWall: bg,
+    lastSavedAtWall: bg - 500,
+    saveSeq: 2,
+    saveTrail: [
+      { seq: 1, wall: bg - 2500, mediaSec: 12, paused: false, hidden: false },
+      { seq: 2, wall: bg - 500, mediaSec: 14, paused: false, hidden: false },
+    ],
+  });
+  const v = suspensionVerdict({
+    seam,
+    lifecycle: parseSimulatorLifecycle(logLine("20:24:20.000", SUSPENDED_LINE)),
+  });
+  assert.notEqual(v.verdict, "suspended-while-audible");
+  assert.equal(v.verdict, "suspended-audio-unknown");
+});
+
+test("a STALE `isPlaying = true` cannot make a suspension `while-audible` either", () => {
+  /* `updateNowPlayingInfo` fires on state changes, not on a timer, so "the last sample
+     was two minutes ago" is a normal state. One such sample at +1 s used to be paired
+     with a suspension at +130 s. */
+  /* The RECORD channel is silenced here (stamps with no `paused` field, as every
+     pre-2026-08-17 record has) so the log's staleness is the only thing under test. A
+     fresh `paused: false` stamp would legitimately earn the verdict on its own — that is
+     the case the test below covers. */
+  const seam = trailedSeam({ seconds: 130 });
+  seam.saveTrail = seam.saveTrail.map((s) => ({ seq: s.seq, wall: s.wall, mediaSec: s.mediaSec, hidden: true }));
+  const stale = [
+    nowPlaying("20:23:55.000", { isPlaying: true, now: 5 }),
+    logLine("20:26:04.000", SUSPENDED_LINE),
+  ].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(stale) });
+  assert.equal(v.verdict, "suspended-audio-unknown");
+  assert.match(v.headline, /FRESHLY ENOUGH/);
+  /* And it says how stale, rather than just declining. */
+  assert.match(v.detail, /129\.0s earlier/);
+  assert.match(v.detail, /refuses to resolve/);
+
+  /* And the same sample, FRESH, does earn it — otherwise the bound would just be a way
+     of never reaching the finding at all. */
+  const fresh = [
+    nowPlaying("20:26:02.000", { isPlaying: true, now: 100 }),
+    logLine("20:26:04.000", SUSPENDED_LINE),
+  ].join("\n");
+  assert.equal(
+    suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(fresh) }).verdict,
+    "suspended-while-audible"
+  );
+});
+
+test("a STALE `isPlaying = false` still earns `suspended-after-audio-stopped`, and the asymmetry is deliberate", () => {
+  /* The mirror of the test above, and it must NOT be symmetric: a restart would have
+     emitted its own sample, so an old `false` with nothing after it is evidence, while
+     an old `true` with nothing after it is only an absence. Run 32064639785's silence
+     began 12 s before its suspension; requiring freshness both ways would have made that
+     run unreadable. */
+  const seam = trailedSeam({ seconds: 28 });
+  const text = [
+    nowPlaying("20:24:10.000", { isPlaying: false, now: 31.2 }),
+    logLine("20:24:22.000", SUSPENDED_LINE),
+  ].join("\n");
+  assert.equal(
+    suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) }).verdict,
+    "suspended-after-audio-stopped"
+  );
+});
+
+test("a suspension the record OUTLIVED is not reported as the finding", () => {
+  /* `suspensions[0]` used to be the verdict's subject even when the trail kept writing
+     on its 2 s cadence for a minute afterwards — i.e. when the record itself proved the
+     page had been rescheduled. A healthy run containing one survived blip therefore
+     reported the fatal reading, and `record-covers-window` was unreachable whenever any
+     suspension existed at all. */
+  const seam = trailedSeam({ seconds: 120 });
+  const text = [
+    logLine("20:23:55.500", SUSPENDED_LINE),
+    nowPlaying("20:25:50.000", { isPlaying: true, now: 40 }),
+    logLine("20:25:57.000", "[com.apple.WebKit:Media] some later line"),
+  ].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.verdict, "record-covers-window");
+  /* And it is REPORTED rather than dropped — a page frozen and rescheduled is itself a
+     finding, just not the one that ended the record. */
+  assert.match(v.detail, /outlived/);
+});
+
+test("a load-then-seek jump cannot inflate the media clock past wall clock", () => {
+  /* `load()` resets `currentTime` and then seeks to the next segment's `start_sec`, so a
+     stamp at 0 mid-load followed by one at 12 donates 12 s of "media" that never played.
+     Unclamped, a modelled healthy run of the real queue reported 116% — and
+     `audioAdvancedAfterRecordSec` inflated in the direction that argues FOR the ceiling
+     reading. */
+  const bg = wallAt(20, 23, 54);
+  const seam = seamRecord({
+    backgroundedAtWall: bg,
+    lastSavedAtWall: bg + 8000,
+    saveSeq: 5,
+    saveTrail: [
+      { seq: 1, wall: bg, mediaSec: 34, paused: false, hidden: true },
+      { seq: 2, wall: bg + 2000, mediaSec: 36, paused: false, hidden: true },
+      { seq: 3, wall: bg + 4000, mediaSec: 0, paused: true, hidden: true },
+      { seq: 4, wall: bg + 6000, mediaSec: 12, paused: false, hidden: true },
+      { seq: 5, wall: bg + 8000, mediaSec: 14, paused: false, hidden: true },
+    ],
+  });
+  const a = saveTrailAnalysis(seam);
+  assert.ok(a.hiddenMediaRatio <= 1, `ratio was ${a.hiddenMediaRatio}, above 1x playback`);
+  assert.ok(a.hiddenMediaRatio > 0.4, `ratio was ${a.hiddenMediaRatio}; the real playback should still show`);
+
+  /* The same clamp on the out-of-band number: two samples 2 s apart cannot show 12 s of
+     audio just because a seek landed between them. */
+  const text = [
+    nowPlaying("20:24:02.000", { isPlaying: false, now: 0 }),
+    nowPlaying("20:24:04.000", { isPlaying: true, now: 12 }),
+    logLine("20:24:20.000", "[com.apple.WebKit:Media] some later line"),
+  ].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.ok(
+    v.audioAdvancedAfterRecordSec <= 2.001,
+    `${v.audioAdvancedAfterRecordSec}s of media across 2s of wall clock`
+  );
+});
+
+test("one post-record media sample reports NOTHING rather than 0.0 s", () => {
+  /* With a single sample after the last write and none before it, `prev` was seeded from
+     that sample and the advance came out exactly 0 — printed as "the media clock
+     advances 0.0s", an absence in a measurement's clothes. */
+  const seam = trailedSeam({ seconds: 26 });
+  const text = [
+    nowPlaying("20:24:40.000", { isPlaying: true, now: 40 }),
+    logLine("20:24:50.000", "[com.apple.WebKit:Media] some later line"),
+  ].join("\n");
+  const v = suspensionVerdict({ seam, lifecycle: parseSimulatorLifecycle(text) });
+  assert.equal(v.audioAdvancedAfterRecordSec, null);
+  assert.equal(/media clock advances/.test(v.detail), false);
+});
+
+test("out-of-order stamps and log lines are sorted, not read as freezes", () => {
+  /* One backwards `Date.now()` on the runner otherwise produces a phantom gap reported as
+     "the page was frozen AND RESUMED" plus a media ratio over 100%; an inverted final log
+     line understates coverage and could flip the coverage gate. */
+  const seam = trailedSeam({ seconds: 20 });
+  const swapped = seam.saveTrail.slice();
+  [swapped[3], swapped[7]] = [swapped[7], swapped[3]];
+  seam.saveTrail = swapped;
+  const a = saveTrailAnalysis(seam);
+  assert.deepEqual(a.gaps, [], "a reordered array must not read as a freeze");
+  assert.ok(a.hiddenMediaRatio <= 1, `ratio was ${a.hiddenMediaRatio}`);
+
+  const lf = parseSimulatorLifecycle(
+    [logLine("20:24:30.000", "later line first"), logLine("20:24:10.000", "earlier line second")].join("\n")
+  );
+  assert.equal(lf.firstWall, wallAt(20, 24, 10));
+  assert.equal(lf.lastWall, wallAt(20, 24, 30));
+});
+
+test("`truncated` is measured off the RAW trail, so one malformed stamp is not called a ring", () => {
+  const seam = trailedSeam({ seconds: 20 });
+  seam.saveTrail[2] = { seq: 3, wall: null, mediaSec: 6 }; // unusable, filtered out
+  const a = saveTrailAnalysis(seam);
+  assert.equal(a.stamps, seam.saveTrail.length - 1);
+  assert.equal(a.truncated, false, "a filtered stamp is not the probe's ring");
+});
+
+test("a caught localStorage write error is surfaced — the one write failure a page CAN see", () => {
+  const v = suspensionVerdict({ seam: trailedSeam({ seconds: 20, saveErrors: 3 }), lifecycle: null });
+  assert.match(v.detail, /caught 3 localStorage write error/);
+  /* And a record with none must not print a zero. */
+  const clean = suspensionVerdict({ seam: trailedSeam({ seconds: 20 }), lifecycle: null });
+  assert.equal(/localStorage write error/.test(clean.detail), false);
+});
+
+test("a stamp from just BEFORE the app went hidden is not evidence about a suspension just after", () => {
+  /* Belt AND braces, and this test is what makes the belt load-bearing. The freshness
+     bound alone happens to reject the 26 s-old foreground stamp in the test above; it
+     does NOT reject a foreground stamp 1 s before backgrounding paired with a
+     suspension 3 s after it. Only the `wall >= bg` filter does. The probe plays
+     audibly in the FOREGROUND for 15 s before the app is backgrounded, so `paused:
+     false` stamps from that phase are guaranteed to exist in every record. */
+  const bg = wallAt(20, 23, 54);
+  const seam = seamRecord({
+    backgroundedAtWall: bg,
+    lastSavedAtWall: bg - 1000,
+    saveSeq: 1,
+    saveTrail: [{ seq: 1, wall: bg - 1000, mediaSec: 14, paused: false, hidden: false }],
+  });
+  const v = suspensionVerdict({
+    seam,
+    lifecycle: parseSimulatorLifecycle(logLine("20:23:57.000", SUSPENDED_LINE)),
+  });
+  assert.notEqual(v.verdict, "suspended-while-audible");
+  assert.equal(v.verdict, "suspended-audio-unknown");
 });

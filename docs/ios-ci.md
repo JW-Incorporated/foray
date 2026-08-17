@@ -572,6 +572,10 @@ What was ruled out, so nobody re-treads it:
   `SEAM_BAD_MS` need ~59 s. 90 s clears it with ~2x headroom and is **unchanged** —
   macOS minutes bill at 10x. What was wrong was the budget's stated *derivation*,
   which assumed a 2 s beat; that is corrected in the workflow.
+  **Superseded 2026-08-17: the window IS now changed, to 175 s, and not because 90 s
+  was too small for this chain — it was not. It is because the chain itself moved
+  (`ARM_AFTER_HIDDEN_SEC` 15 → 60 s), which is what §4c-ii is about. "Unchanged" above
+  describes the reasoning of the day, kept because the reasoning was sound.**
 - **`04-seam-backgrounded.png` cannot show it.** It captures the device screen —
   Settings in the foreground, `◀ Foray` in the status bar — not the probe's WebView.
   It is good independent corroboration that the app really was backgrounded, and it

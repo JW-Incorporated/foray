@@ -292,9 +292,15 @@ const rec = {
          `paused: false`: audio starved while the page ran, which is neither of the
          two readings and would be a third finding.
 
-     Capped, because this is a ring of evidence and not a log: at a 2 s cadence 300
-     stamps is 10 minutes, several times the longest window this workflow will pay
-     for. */
+     A RING, AND THE EVICTION END MATTERS: it drops the OLDEST stamps, because the END
+     of the window is what this exists to show. A review caught the first version
+     dropping the newest, which would have silently discarded exactly the stamps that
+     say where the record stopped. 300 stamps is AT LEAST 10 minutes at the 2 s
+     interval — "at least", because a save also fires on every stage and telemetry
+     line, so the real cadence is faster and 300 buys correspondingly less wall clock.
+     It is not expected to be reached inside a 175 s window; if it is,
+     `saveTrailAnalysis` reports `truncated` rather than letting a ringed trail read as
+     a stopped one. */
   saveTrail: [],
   plannedItems: QUEUE.length,
   askedGapMs: Math.round(SEAM_GAP_SEC * 1000),
@@ -341,16 +347,31 @@ function save() {
   if (rec.firstSavedAtWall == null) rec.firstSavedAtWall = rec.lastSavedAtWall;
   /* Both clocks, in the same stamp. See `saveTrail`. `mediaSec` is rounded to
      milliseconds because a raw double per stamp is noise a reader has to skip. */
-  if (rec.saveTrail.length < SAVE_TRAIL_MAX) {
-    rec.saveTrail.push({
-      seq: rec.saveSeq,
-      wall: rec.lastSavedAtWall,
-      mediaSec: mediaEl ? Math.round(mediaEl.currentTime * 1000) / 1000 : null,
-      paused: mediaEl ? mediaEl.paused === true : null,
-      hidden: document.hidden === true,
-    });
+  /* A RING, DROPPING THE OLDEST — and a review caught this being a head cap, which
+     drops the NEWEST. The end of the window is the whole point: a head cap would
+     silently discard exactly the stamps that say where the record stopped, in a file
+     whose comment says it exists to show where the record stopped. `saveSeq` and
+     `firstSavedAtWall` already carry the beginning, so the oldest stamps are the ones
+     that can be spared. `saveTrailAnalysis` reports `truncated` when it happens. */
+  rec.saveTrail.push({
+    seq: rec.saveSeq,
+    wall: rec.lastSavedAtWall,
+    mediaSec: mediaEl ? Math.round(mediaEl.currentTime * 1000) / 1000 : null,
+    paused: mediaEl ? mediaEl.paused === true : null,
+    hidden: document.hidden === true,
+  });
+  while (rec.saveTrail.length > SAVE_TRAIL_MAX) rec.saveTrail.shift();
+  /* COUNT THE WRITE FAILURES THE PAGE CAN ACTUALLY SEE. `saveTrail`'s comment is right
+     that a page cannot record that its LAST write failed to persist — but a `setItem`
+     that THROWS is observable, and it is direct evidence for the write-path reading
+     this record exists to separate from the suspension one. It was swallowed before,
+     so the one observable half of that question was being thrown away. The count rides
+     out on the next save that does land. */
+  try {
+    localStorage.setItem(KEY, JSON.stringify(rec));
+  } catch (e) {
+    rec.saveErrors = (rec.saveErrors || 0) + 1;
   }
-  try { localStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
   try { console.log("FORAY_PROBE_SEAM " + JSON.stringify(rec)); } catch (e) {}
   if (outEl) {
     const done = rec.transitions.filter((t) => t.nextPlayingAtWall != null).length;

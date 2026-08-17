@@ -610,3 +610,63 @@ test("the seam probe arms relative to going hidden, and records whether it did",
   assert.match(js, /hiddenAtBoundary/);
   assert.match(js, /hiddenAtNextPlaying/);
 });
+
+test("the seam probe's save trail is a RING that drops the oldest, and stamps BOTH clocks", () => {
+  /* THE TRAIL IS THE ANSWER TO "did the page stop, or did its writes stop", so two
+     properties of it are load-bearing and neither is visible from `ios-ci.mjs`:
+     
+     1. EVERY STAMP CARRIES BOTH CLOCKS. `wall` needs the page scheduled and `mediaSec`
+        needs the audio pipeline running, and the whole discrimination is the two of them
+        side by side. A stamp with only a wall clock says nothing new.
+     2. IT DROPS THE OLDEST, NOT THE NEWEST. A review caught a head cap here
+        (`if (length < MAX) push`), which discards exactly the stamps that say where the
+        record stopped — in a file whose stated purpose is to say where the record
+        stopped. `ios-ci.mjs`'s report calls the trail "RINGED" when `saveSeq` outruns it,
+        so a head cap would also make that sentence false.
+     
+     Asserted on the SOURCE because the probe cannot be imported here: it runs in a
+     WKWebView and touches `document`, `localStorage` and `<audio>` at module scope. */
+  const js = asset("probe-seam.js");
+  const push = /rec\.saveTrail\.push\(\{([\s\S]*?)\}\);/.exec(js);
+  assert.ok(push, "the save trail is no longer written");
+  for (const field of ["seq:", "wall:", "mediaSec:", "paused:"]) {
+    assert.ok(
+      push[1].includes(field),
+      `the trail stamp no longer carries \`${field}\` — see this test's comment`
+    );
+  }
+  assert.match(
+    js,
+    /while \(rec\.saveTrail\.length > SAVE_TRAIL_MAX\) rec\.saveTrail\.shift\(\)/,
+    "the trail is not a ring dropping the OLDEST stamp; a head cap would discard the end of the window"
+  );
+  assert.equal(
+    /if \(rec\.saveTrail\.length < SAVE_TRAIL_MAX\)/.test(js),
+    false,
+    "a head cap is back: it drops the NEWEST stamps, which are the ones the record's end is made of"
+  );
+});
+
+test("the seam probe counts localStorage write failures instead of swallowing them", () => {
+  /* The one half of "did the writes stop landing" that a page CAN observe. A bare
+     `catch (e) {}` threw it away. */
+  const js = asset("probe-seam.js");
+  assert.match(js, /rec\.saveErrors = \(rec\.saveErrors \|\| 0\) \+ 1/, "setItem failures are swallowed again");
+});
+
+test("the seam probe's first boundary is armed well past the ~28 s the record has always stopped at", () => {
+  /* THE EXPERIMENT, PINNED. Three runs ended their record 25-28 s into the hidden window
+     and the probe stopped its own audio at 15 s, so "a ceiling on hidden time" and
+     "~12 s after OUR audio stopped" fit all three. The arm has to sit far enough past
+     28 s that the two readings produce different records; back at 15 s this probe cannot
+     tell them apart, however long the workflow's window is. */
+  const js = asset("probe-seam.js");
+  const arm = Number(/ARM_AFTER_HIDDEN_SEC = (\d+)/.exec(js)?.[1]);
+  assert.ok(Number.isFinite(arm), "ARM_AFTER_HIDDEN_SEC is no longer a plain number");
+  assert.ok(
+    arm >= 45,
+    `the first boundary is armed ${arm}s into the hidden window, which is inside the 25-28 s the record ` +
+      `has stopped at in every run — so a suspension there cannot be told apart from the probe's own ` +
+      `silence. See the constant's comment in probe-seam.js.`
+  );
+});
