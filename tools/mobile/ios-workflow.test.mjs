@@ -567,3 +567,66 @@ test("the simulator caveat is in the workflow itself, not only in the report", (
   assert.match(text, /does not model power management/i);
   assert.match(text, /weaker evidence than a FAILURE/i);
 });
+
+/* ─────────── the evidence artifact must not publish a credential ──────────── */
+
+test("the raw localStorage databases never enter the artifact directory", () => {
+  /* This repo is PUBLIC and the upload step is `if: always()`, so every path
+     under $ART is world-readable the moment the run finishes. A `.localstorage`
+     file carries every value the app wrote, `cp_sb_session` included — which is
+     the only credential that can reach that account's server rows. The copies
+     therefore go to a work dir and are read there.
+
+     Asserted as an absence, which is the only way to assert it: a future session
+     adding `cp "$db" "$ART/ls/..."` back for debugging convenience is exactly
+     the regression, and it would leave every other test green. */
+  assert.equal(
+    /cp\s+"\$db"\s+"\$ART/.test(WF),
+    false,
+    "a localStorage database is being copied into $ART — it holds cp_sb_session " +
+      "and the artifact is public. Copy it to $WORK and read it there."
+  );
+  assert.equal(
+    /\$ART\/ls\//.test(WF),
+    false,
+    "$ART/ls/ is the old raw-database directory inside the artifact; it must stay gone"
+  );
+  assert.match(
+    WF,
+    /WORK="\$RUNNER_TEMP\/ios-ci-ls-work"/,
+    "the work dir the databases are read in must be outside $ART"
+  );
+});
+
+test("every rows file is redacted before it is moved into the artifact", () => {
+  /* The ORDER is the whole property. Redacting in place at the artifact path
+     would leave an unredacted file there for as long as node takes to run, and
+     `if: always()` publishes whatever is there when the job dies. */
+  assert.match(
+    WF,
+    /redact-localstorage "\$WORK\/ls-rows-\$i\.json"/,
+    "redaction must run on the work-dir copy"
+  );
+  assert.match(
+    WF,
+    /mv "\$WORK\/ls-rows-\$i\.json" "\$ART\/ls-rows-\$i\.json"/,
+    "the rows file must be MOVED into $ART after redaction, not written there and edited"
+  );
+  /* sqlite3 must not write its output straight into the artifact. */
+  assert.equal(
+    /> "\$ART\/ls-rows-\$i\.json"/.test(WF),
+    false,
+    "sqlite3 is writing unredacted rows directly into $ART"
+  );
+});
+
+test("a failed redaction fails the job instead of quietly publishing nothing", () => {
+  assert.match(WF, /REDACT_FAILED=1/);
+  assert.match(
+    WF,
+    /::error::localStorage redaction failed/,
+    "a redaction failure must be loud: the quiet version is two inconclusive " +
+      "verdicts and a green job"
+  );
+  assert.match(WF, /exit 1/);
+});

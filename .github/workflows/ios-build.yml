@@ -446,7 +446,19 @@ jobs:
           sleep 3
           CONTAINER=$(xcrun simctl get_app_container "$UDID" "$APP_ID" data)
           echo "container=$CONTAINER"
-          mkdir -p "$ART/ls"
+          # THE RAW DATABASES STAY OUT OF $ART, AND THAT IS A SECURITY BOUNDARY,
+          # NOT TIDINESS. A `.localstorage` file holds every value the app ever
+          # wrote, including `cp_sb_session` — a live Supabase access token, and
+          # per STATE.md the only credential that can reach that account's server
+          # rows. This repo is PUBLIC and the upload step below is `if: always()`,
+          # so anything under $ART shipped to anyone who clicks the run. The
+          # databases are copied to a work directory instead, read there, and
+          # never uploaded; only the redacted JSON crosses into $ART. Do not
+          # "helpfully" put the .sqlite copies back in the artifact for
+          # debugging — ls-files.txt and container-tree.txt already answer the
+          # question they were there for (did the pattern match anything).
+          WORK="$RUNNER_TEMP/ios-ci-ls-work"
+          rm -rf "$WORK" && mkdir -p "$WORK"
           # DELIBERATELY LOOSE PATTERNS. WebKit has moved and renamed this file
           # more than once (`*.localstorage`, `local-storage.sqlite3`,
           # `localstorage.sqlite3`, under a salted WebsiteData path), and a
@@ -465,12 +477,37 @@ jobs:
             i=$((i+1))
             # `-wal`/`-shm` too: an unflushed write lives in the write-ahead log,
             # and copying the main file alone would silently drop it.
-            cp "$db" "$ART/ls/db-$i.sqlite" || continue
-            [ -f "$db-wal" ] && cp "$db-wal" "$ART/ls/db-$i.sqlite-wal" || true
-            [ -f "$db-shm" ] && cp "$db-shm" "$ART/ls/db-$i.sqlite-shm" || true
-            sqlite3 -json "$ART/ls/db-$i.sqlite" "select key, hex(value) as hexval from ItemTable" \
-              > "$ART/ls-rows-$i.json" 2>>"$ART/ls-errors.txt" || true
+            cp "$db" "$WORK/db-$i.sqlite" || continue
+            [ -f "$db-wal" ] && cp "$db-wal" "$WORK/db-$i.sqlite-wal" || true
+            [ -f "$db-shm" ] && cp "$db-shm" "$WORK/db-$i.sqlite-shm" || true
+            sqlite3 -json "$WORK/db-$i.sqlite" "select key, hex(value) as hexval from ItemTable" \
+              > "$WORK/ls-rows-$i.json" 2>>"$ART/ls-errors.txt" || true
+            # Redact IN THE WORK DIR, then move. The unredacted array never
+            # exists at any path under $ART, not even for an instant, because
+            # the upload runs `if: always()` and a failure in between would
+            # publish whatever was there.
+            #
+            # A redaction failure is FAIL-CLOSED AND LOUD, in that order. Closed
+            # because the alternative is publishing a token; loud because the
+            # quiet version of this — no rows, two `inconclusive` verdicts, a
+            # green job — is the exact silent-nothing failure the loose glob
+            # above exists to avoid. Redaction is our own tested code, so it
+            # failing is a bug here and deserves a red run, not a shrug.
+            if node tools/mobile/ios-ci.mjs redact-localstorage "$WORK/ls-rows-$i.json" \
+                 2>>"$ART/ls-errors.txt"; then
+              mv "$WORK/ls-rows-$i.json" "$ART/ls-rows-$i.json"
+            else
+              echo "REDACTION FAILED for db-$i - refusing to publish its rows" \
+                | tee -a "$ART/ls-errors.txt"
+              REDACT_FAILED=1
+            fi
           done < "$ART/ls-files.txt"
+          # `done < file` is a redirect, not a pipe, so the loop ran in this
+          # shell and the flag survives it.
+          if [ -n "${REDACT_FAILED:-}" ]; then
+            echo "::error::localStorage redaction failed; no rows were published"
+            exit 1
+          fi
           echo "read $i local-storage database(s)"
           ls -l "$ART" || true
 

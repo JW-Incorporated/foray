@@ -31,6 +31,7 @@ import {
   MP1_TIMEUPDATE_PREDICTION_SEC,
   OVERSHOOT_BAD_SEC,
   OVERSHOOT_OK_SEC,
+  ARTIFACT_VALUE_ALLOWLIST,
   SIGNING_SECRETS,
   SIMULATOR_CAVEAT,
   bridgeVerdict,
@@ -44,6 +45,7 @@ import {
   pickSeam,
   pickXcodeContainer,
   pickSimulator,
+  redactLocalStorageRows,
   renderReport,
   signingReadiness,
   LOCAL_MEDIA_CAVEAT,
@@ -1150,4 +1152,76 @@ test("the report renders the good outcomes too", () => {
   assert.match(md, /`bridge-present`/);
   assert.match(md, /`fires-in-background`/);
   assert.match(md, /`absent`/);
+});
+
+/* ───────────── redaction: the artifact is public, localStorage is not ───────── */
+
+/** The shape `sqlite3 -json "select key, hex(value) as hexval from ItemTable"`
+ *  produced in run 32036295743, with the token's bytes stood in for. */
+const REAL_WORLD_ROWS = [
+  { key: "foray_probe_seam_1", hexval: Buffer.from('{"lastStage":"playing"}', "utf8").toString("hex") },
+  { key: "foray_probe_bridge", hexval: Buffer.from('{"capacitor":"object"}', "utf8").toString("hex") },
+  { key: "cp_sb_session", hexval: Buffer.from('{"access_token":"eyJhbGciOiJFUzI1NiIs"}', "utf8").toString("hex") },
+  { key: "cp_profile_id", hexval: Buffer.from("abc-123", "utf8").toString("hex") },
+  { key: "cp_interests", hexval: Buffer.from('["history"]', "utf8").toString("hex") },
+];
+
+test("the Supabase session token is not published, and neither is any other cp_ value", () => {
+  const { rows, redacted } = redactLocalStorageRows(REAL_WORLD_ROWS);
+  const serialised = JSON.stringify(rows);
+  /* The actual defect, stated as the actual defect: no byte of the token
+     survives, in hex or in clear. */
+  assert.equal(serialised.includes("access_token"), false);
+  assert.equal(
+    serialised.includes(Buffer.from('{"access_token":"eyJhbGciOiJFUzI1NiIs"}', "utf8").toString("hex")),
+    false,
+    "the token's hex is still in the artifact rows"
+  );
+  assert.deepEqual(redacted, ["cp_sb_session", "cp_profile_id", "cp_interests"]);
+});
+
+test("the probe records survive redaction verbatim, or the artifact measures nothing", () => {
+  const { rows } = redactLocalStorageRows(REAL_WORLD_ROWS);
+  const dump = decodeLocalStorageRows(rows);
+  assert.deepEqual(dump, {
+    foray_probe_seam_1: '{"lastStage":"playing"}',
+    foray_probe_bridge: '{"capacitor":"object"}',
+  });
+  /* And the end-to-end consequence: the verdict still reads its record. */
+  assert.equal(parseDump(dump).bridge.capacitor, "object");
+});
+
+test("a redacted row keeps its key and its size, because that is the diagnostic", () => {
+  const { rows } = redactLocalStorageRows(REAL_WORLD_ROWS);
+  const row = rows.find((r) => r.key === "cp_profile_id");
+  assert.equal(row.redacted, true);
+  assert.equal(row.hexval, null);
+  assert.equal(row.value_bytes, 7, '"abc-123" is 7 bytes');
+});
+
+test("redaction is an ALLOWLIST, so a key nobody has written yet is redacted by default", () => {
+  /* The reason this is not a `cp_sb_*` denylist. A denylist is a promise about
+     every key the app will ever write; this file cannot make that promise, and
+     the failure mode of guessing wrong is a published credential. */
+  const { redacted } = redactLocalStorageRows([
+    { key: "cp_sb_refresh_token_v2", hexval: "00" },
+    { key: "some_future_oauth_blob", hexval: "00" },
+    { key: "foray_probe_outpoint", hexval: "00" },
+  ]);
+  assert.deepEqual(redacted, ["cp_sb_refresh_token_v2", "some_future_oauth_blob"]);
+  assert.deepEqual(ARTIFACT_VALUE_ALLOWLIST.map(String), ["/^foray_probe_/"]);
+});
+
+test("redaction tolerates the rows a broken read produces", () => {
+  const { rows, redacted } = redactLocalStorageRows([
+    null,
+    { key: 42, hexval: "00" },
+    { key: "cp_x" },
+    { key: "cp_y", hexval: null },
+  ]);
+  assert.deepEqual(redacted, ["cp_x", "cp_y"]);
+  assert.deepEqual(
+    rows.map((r) => r.value_bytes),
+    [0, 0]
+  );
 });

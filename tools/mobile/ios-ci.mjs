@@ -19,6 +19,7 @@
  *   node tools/mobile/ios-ci.mjs signing-gate
  *   node tools/mobile/ios-ci.mjs xcode-container mobile/ios
  *   node tools/mobile/ios-ci.mjs pick-simulator [simctl-devices.json]
+ *   node tools/mobile/ios-ci.mjs redact-localstorage <rows.json>
  *   node tools/mobile/ios-ci.mjs decode-localstorage <rows.json...>
  *   node tools/mobile/ios-ci.mjs verdict <localstorage.json> [probe-console.txt]
  */
@@ -192,6 +193,60 @@ function plainness(name = "") {
 }
 
 /* ──────────────────── getting the numbers off the simulator ───────────────── */
+
+/** The only localStorage keys whose VALUES may leave the runner.
+ *
+ *  Everything the probes write, and nothing else. Deliberately a prefix
+ *  allowlist rather than a denylist of secrets: a denylist is a promise about
+ *  every key the app will ever write, and the app is not this file's to know.
+ *  A key added to `app.js` next month is redacted here by default, which is the
+ *  only direction of failure that is safe in a public artifact. */
+export const ARTIFACT_VALUE_ALLOWLIST = [/^foray_probe_/];
+
+/**
+ * Strip every value the artifact has no business publishing.
+ *
+ * WHY THIS EXISTS. The `ios-shell-evidence` artifact was shipping the app's
+ * WHOLE `localStorage`, hex-encoded, and this repo is public — so anyone could
+ * download `ls-rows-2.json` and decode `cp_sb_session`, which is a live Supabase
+ * `access_token` (ES256 JWT, anonymous `sub`, one-hour `exp`) plus the project
+ * ref. Per `STATE.md`'s delete-my-data entry that token is **the only credential
+ * that can reach that account's server rows**. The blast radius of the one
+ * leaked token is small — a throwaway simulator account, expired within the
+ * hour — but a step that dumps all of `localStorage` leaks whatever lands there
+ * next, and that is the defect.
+ *
+ * The KEY NAMES are kept, with a byte count. That is the whole diagnostic value
+ * of the non-probe rows — "did the app run and write anything at all" — and it
+ * carries no secret. Losing the names would cost the one thing this dump is
+ * useful for when a probe record is missing.
+ *
+ * @param {Array<{key: string, hexval: string|null}>} rows
+ * @returns {{rows: Array<object>, redacted: string[]}}
+ */
+export function redactLocalStorageRows(rows) {
+  const kept = [];
+  const redacted = [];
+  for (const row of rows || []) {
+    if (!row || typeof row.key !== "string") continue;
+    const hex = row.hexval ?? row.HEX ?? row["hex(value)"];
+    if (ARTIFACT_VALUE_ALLOWLIST.some((re) => re.test(row.key))) {
+      kept.push(row);
+      continue;
+    }
+    redacted.push(row.key);
+    kept.push({
+      key: row.key,
+      hexval: null,
+      redacted: true,
+      /* Bytes, not characters: the value is a BLOB and may be UTF-16LE. Two hex
+         digits per byte, and an odd-length string means a truncated read, which
+         is worth seeing rather than rounding away. */
+      value_bytes: typeof hex === "string" ? Math.floor(hex.length / 2) : 0,
+    });
+  }
+  return { rows: kept, redacted };
+}
 
 /**
  * Decode `sqlite3 -json "select key, hex(value) from ItemTable"` into a plain
@@ -1369,6 +1424,18 @@ if (isMain) {
       appendOutput(`name=${sim.name}`);
       appendOutput(`runtime=${sim.runtime}`);
       console.error(`Chose ${sim.name} (${sim.runtime})`);
+    } else if (cmd === "redact-localstorage") {
+      /* In-place, and it must run BEFORE the file reaches the artifact
+         directory. Writes the redacted array back over the same path so the
+         workflow cannot accidentally upload the pre-redaction copy. */
+      if (!rest[0]) throw new Error("redact-localstorage needs a rows.json");
+      const parsed = readMaybe(rest[0]);
+      const { rows, redacted } = redactLocalStorageRows(Array.isArray(parsed) ? parsed : []);
+      fs.writeFileSync(rest[0], JSON.stringify(rows, null, 2) + "\n");
+      console.error(
+        `redacted ${redacted.length} value(s) from ${rest[0]}` +
+          (redacted.length ? `: ${redacted.join(", ")}` : "")
+      );
     } else if (cmd === "decode-localstorage") {
       if (!rest.length) throw new Error("decode-localstorage needs at least one rows.json");
       const rows = [];
