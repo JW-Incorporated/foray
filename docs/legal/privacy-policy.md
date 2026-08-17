@@ -30,11 +30,14 @@ an ordered run of segments drawn from real podcast episodes.
   stored against an anonymous account that contains no name, email or phone
   number.
 - **Audio plays straight from each publisher's own servers.** We never rehost or
-  proxy podcast audio. That means the publisher — and the download-measurement
-  service they use — sees your IP address and your app/browser user-agent
-  directly. **We never see it.**
-- **We do not use advertising, ad tracking, analytics SDKs, or crash reporters.**
-  There is no third-party SDK in the app at all.
+  proxy podcast audio. That means the publisher — and the measurement or
+  ad-attribution services the publisher has put in front of their own audio —
+  sees your IP address and your app/browser user-agent directly. **We never see
+  it.** This is the most important thing to understand about how Foray works, and
+  §4 explains it properly, including who those third parties actually are.
+- **Foray itself contains no advertising, ad tracking, analytics SDK or crash
+  reporter.** There is no third-party SDK in the app at all. That is a statement
+  about our code, not a claim that nobody observes your playback — see §4.
 - **We do not sell or share your data**, and we do not track you across other
   companies' apps or websites.
 
@@ -42,13 +45,20 @@ an ordered run of segments drawn from real podcast episodes.
 
 ## 1. What stays on your device
 
-Foray keeps its state under keys beginning `cp_`. **Each key is written to two
-places on your device**: `localStorage` and an IndexedDB database (name `foray`,
-object store `kv`). The second copy exists because browsers evict `localStorage`
-— Safari clears script-writable storage after about seven days without a visit —
-and losing it would silently orphan your profile. `localStorage` is kept as a
-mirror, not a staging area; nothing is deleted to migrate it.
-(`player/durable-store.js`, `player/idb-tier.js`.)
+Foray keeps its state under keys beginning `cp_`. **Nearly every key is written to
+two places on your device**: `localStorage` and an IndexedDB database (name
+`foray`, object store `kv`). The second copy exists because browsers evict
+`localStorage` — Safari clears script-writable storage after about seven days
+without a visit — and losing it would silently orphan your profile.
+`localStorage` is kept as a mirror, not a staging area; nothing is deleted to
+migrate it. (`player/durable-store.js`, `player/idb-tier.js`.)
+
+Two honest qualifications to "two places". The diagnostic record
+`cp_storage_health` is deliberately **never** written to IndexedDB — a failing
+durable write is exactly what it records, so queueing it there could make the
+diagnostic the outage (`player/durable-store.js:636–643`). And until the player
+module has loaded, writes go to plain `localStorage` only; if that module fails
+to load, they stay there for the session (`app.js:78–96`).
 
 The app also asks the browser to mark its storage as persistent
 (`navigator.storage.persist()`), and records the answer rather than assuming it.
@@ -56,10 +66,10 @@ The app also asks the browser to mark its storage as persistent
 | Key | What it holds | Does it leave your device? |
 |---|---|---|
 | `cp_interests` | A weight from 0 to 1 for each topic in the taxonomy — the learned interest profile | **No** |
-| `cp_history` | The last 200 episode ids you picked | **No** (but see `picked` in §2) |
+| `cp_history` | The last 200 episode ids you picked or played in the app | **No** (but see `picked` in §2) |
 | `cp_seen` | Episode ids already shown to you, so they are not repeated | **No** |
 | `cp_saved` | The episodes you saved | **No** (but see `saved` in §2) |
-| `cp_lastpick` | A snapshot of the last episode you picked | **No** |
+| `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
 | `cp_playlists` | Playlists you built, including the text you typed to build them | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
@@ -93,17 +103,31 @@ account id and a timestamp:
 
 | Event | Fields sent |
 |---|---|
-| `picked` | Episode slug, its topic ids, which external app you opened it in, and which of the four menu archetypes it came from |
+| `picked` | Episode slug, its topic ids, an `app` label, and a context label. See the note below — both labels carry less about you than their names suggest |
 | `finished` | Episode slug, topic ids, and a completion marker. Marked `manual_stopgap` because on the web you press Done — the app cannot observe real playback in an external app |
 | `saved` | Episode slug, topic ids |
 | `thumbs` | Up or down; the taxonomy node it applies to; optionally the episode slug, segment id and Foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
 | `session_shown` → stored as `session_built` | A session key and which builder produced it |
 
-**Not sent — recorded only on your device:** `play_started`, `position` (your
-play position, written every 15 seconds), `foray_play`, `foray_restart`,
-`foray_progress_drift`, `source_opened`, `saved`'s counterpart `unsaved`,
-`playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
+**Not sent — recorded only on your device:** `play_started`, `position` (your play
+position; stored about every 15 seconds, recorded as an event at most once a
+minute per episode — `player/position-store.js:66–75`), `foray_play`,
+`foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
+`unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
 `refreshed_all`, `storage_fault`.
+
+**The `picked` row's two labels are narrower than they sound**, and we would
+rather say so than let the field names imply more collection than happens:
+
+- The **`app` label is a hardcoded constant.** It reads a `data-app` attribute
+  that nothing in the app ever sets, so it is always the literal string
+  `"Apple Podcasts"` (`app.js:652`). It does **not** report which podcast app you
+  actually use, and your stored preference (`cp_player`) is never transmitted.
+- The **context label** is filtered against a five-value allowlist
+  (`app.js:214`), but the only values the app ever produces are `continue` — you
+  resumed something — or a subject/playlist label that the filter discards. So in
+  practice this field is `"continue"` or empty. It does not reveal which
+  recommendation archetype you were shown.
 
 Two things worth calling out plainly, because a generic policy would hide them:
 
@@ -161,19 +185,76 @@ your IP address, your user-agent, and which episode you requested, at the time
 you requested it.** What they do with it is governed by their privacy policy, not
 ours.
 
-Hosts the currently-shipped Forays stream from
-(`data/segment-sources.json`):
+### 4.1 How many parties, and who they are
 
-`traffic.libsyn.com` · `dts.podtrac.com` · `mgln.ai` · `www.buzzsprout.com` ·
-`content.rss.com` · `anchor.fm` · `media.transistor.fm` · `media.blubrry.com` ·
-`2.gum.fm`
+As of 2026-08-17 the catalogue the app downloads points at **43 distinct hosts**
+for audio, across the three data files the app fetches on load
+(`data/segment-sources.json` — the assembled Forays; `data/session.json` — the
+home cards; `data/discover.json` — the recommendation pool, ~1,480 playable
+items). Anything with a play button plays this way.
 
-Several of these are **podcast download-measurement services** — `dts.podtrac.com`,
-`mgln.ai` and `2.gum.fm` are prefix/redirect services a publisher puts in front
-of their audio to count downloads. Requesting the audio means passing through
-them. They measure on the **publisher's** behalf: we have no account with them,
-send them nothing, and receive nothing back. This list will change as the
-catalogue grows; it is a snapshot, not a closed set.
+```
+2.gum.fm  anchor.fm  aphid.fireside.fm  api.substack.com  archive.org
+audioboom.com  cdn.simplecast.com  chrt.fm  claritaspod.com  clrtpod.com
+content.rss.com  dts.podtrac.com  episodes.captivate.fm  episodes.castos.com
+feeds.soundcloud.com  injector.simplecastaudio.com  mcdn.podbean.com
+media.blubrry.com  media.transistor.fm  mgln.ai  op3.dev  pdcn.co  pdrl.fm
+pdst.fm  pfx.vpixl.com  pinecast.com  podcasts.captivate.fm  podtrac.com
+prefix.up.audio  prfx.byspotify.com  pscrb.fm  redirect.zencastr.com
+rss.art19.com  s.gum.fm  sphinx.acast.com  static1.squarespace.com
+stitcher.simplecastaudio.com  tracking.swap.fm  traffic.libsyn.com
+traffic.megaphone.fm  traffic.omny.fm  www.buzzsprout.com  www.podtrac.com
+```
+
+This list is **generated from the data files, and it changes when the catalogue
+does.** Treat it as accurate for the date above, and regenerate it rather than
+editing it by hand.
+
+### 4.2 Many of these are measurement and ad-attribution services
+
+This is the part a template would never tell you, and it is the honest reason
+this section is long.
+
+A publisher typically does not point at their audio file directly. They put one
+or more **prefix services** in front of it, each of which logs the request and
+then redirects to the next. Your device follows every hop, so **each one sees
+your IP address and user-agent.** A real URL from our own catalogue:
+
+```
+https://2.gum.fm/op3.dev/e/pdcn.co/e/pdst.fm/e/dts.podtrac.com/redirect.mp3/media.transistor.fm/…
+```
+
+That is **five** intermediaries before the audio. Another:
+`mgln.ai/e/1143/media.blubrry.com/content.blubrry.com/…`.
+
+Some of these prefixes count downloads (`podtrac.com`, `op3.dev`). **Others are
+advertising-attribution services** whose purpose is to connect a podcast
+impression to later behaviour — `pdst.fm`, `pdcn.co` and `pdrl.fm` (Podsights),
+`chrt.fm` (Chartable), `pscrb.fm` (Podscribe), `claritaspod.com` and
+`clrtpod.com` (Claritas), `prfx.byspotify.com`, `tracking.swap.fm`,
+`pfx.vpixl.com`, and the `gum.fm` hosts.
+
+**We want to be exact about what that does and does not mean.**
+
+- These services are in the path because **the publisher put them there**, as
+  part of the enclosure URL published in their RSS feed. We do not add them, we
+  have no account or contract with any of them, we send them nothing, and we
+  receive nothing back. They measure for the publisher and their advertisers, not
+  for us.
+- So when §5 says Foray does not use ad tracking, that is true of Foray: there is
+  no ad code, no ad identifier and no ad SDK in this app. It is **not** a claim
+  that no advertising-related party ever observes your playback request — because
+  once you play an episode from its own source, some do.
+- The alternative would be to proxy audio through our own servers, which would
+  hide you from the publisher and expose your entire listening behaviour to
+  **us** instead. We deliberately do not do that (product principle 3). We think
+  the trade is the right one, and you should know it is a trade.
+
+Because every hop is a redirect decided at request time, **we cannot enumerate
+the full chain in advance** — the list in §4.1 is the first hop of each URL, and
+the real chain can be longer.
+
+### 4.3 Artwork, and the page itself
 
 The app also loads **cover artwork over HTTPS from publisher and Apple-hosted
 image URLs**, which reveals the same kind of request metadata to those hosts.
@@ -185,8 +266,16 @@ catalogue are bundled, so this does not apply there.
 ## 5. What Foray does not do
 
 Verified by reading the client, not by assertion. The app's Content Security
-Policy (`index.html:13`) permits network connections to exactly two places: its
-own origin, and our Supabase project. Anything else is blocked by the browser.
+Policy (`index.html:13`) is the structural reason most of this list is not merely
+a promise: **`connect-src` names only two origins** — the app's own, and our
+Supabase project — so any data-sending request of the kind an API call, an
+analytics beacon or a crash report needs is blocked by the browser unless the
+policy is changed in code.
+
+To be precise rather than flattering: the same policy also allows `img-src https:`
+and `media-src https:`, which is *any* HTTPS host. That is exactly how §4's audio
+and artwork work, and it means the CSP is not a total network seal. It is a tight
+bound on the channel that would carry data *out*.
 
 - **No advertising and no ad tracking.** No ad SDK, no ad identifier, no IDFA
   prompt.
@@ -201,11 +290,17 @@ own origin, and our Supabase project. Anything else is blocked by the browser.
 - **No device fingerprinting.** We do not collect a device id, advertising id,
   screen size, timezone or language list.
 - **No sale of data, and no sharing for anyone else's advertising.**
-- **Nothing you do is sent to an AI provider.** Foray uses AI in its own
-  build pipeline to classify public podcast metadata and write recommendation
-  copy. That runs on our machines against public feed data, **not on your data
-  and not from your device**; the app itself makes no AI API call, and the CSP
-  could not permit one.
+- **Nothing you do is sent to an AI provider.** Foray uses AI in its own build
+  pipeline to classify public podcast metadata and write recommendation copy. That
+  runs on our machines against public feed data, **not on your data**. The app
+  itself makes no AI API call, and `connect-src` would block one.
+  - For completeness, because it is the likeliest way this could change: the
+    build pipeline *has* a code path that could include listener-derived interest
+    labels in a prompt, and today it is not wired up — it runs against a fixed
+    placeholder id with no database connection
+    (`backend/src/cli/buildSession.ts`, and `docs/DECISIONS.md` records the
+    decision not to stand it up). If that changes, this sentence changes with it;
+    see `data-safety.md` § What would change these answers.
 
 ## 6. Children
 

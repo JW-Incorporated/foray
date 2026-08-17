@@ -29,13 +29,18 @@ every answer below:
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
    Mapping: `app.js:220–256`. Transmission: `app.js:258–284`, called from
    `app.js:664, 686, 999, 1776`.
-3. **Audio streams directly from publisher CDNs** (`player/html-audio-backend.js:410`,
-   URLs from `data/segment-sources.json`). No Foray server in the path; we
-   receive nothing.
+3. **Audio streams directly from publisher hosts** (`player/html-audio-backend.js:410`;
+   URLs from `data/segment-sources.json`, `data/session.json` and
+   `data/discover.json`). **43 distinct first-hop hosts**, many of them
+   measurement or ad-attribution prefixes that redirect onward, so the real chain
+   is longer. No Foray server in the path; we receive nothing. See §A6 — this is
+   the answer most likely to be got wrong in either direction.
 
-The client's CSP (`index.html:13`) allows connections to `'self'` and the
-Supabase project only — so the transmitted set above is not merely what the code
-does today, it is the *most* the browser would permit without a code change.
+The client's CSP (`index.html:13`) sets `connect-src 'self'` plus the Supabase
+project, so the transmitted set above is the *most* the browser would permit for
+a data-sending request without a code change. Note it also allows
+`img-src https:` and `media-src https:` — any HTTPS host — which is how audio and
+artwork load. The CSP bounds outbound *data*, not all network access.
 
 ---
 
@@ -66,9 +71,9 @@ ones a template gets wrong.
 | **Files and docs** | **No** | No | — |
 | **Calendar** | **No** | No | — |
 | **Contacts** | **No** | No | — |
-| **App activity — App interactions** | **Yes** | No | The five transmitted events are interactions: picked, finished, saved, thumbs, session shown (`app.js:223–255`). |
+| **App activity — App interactions** | **Yes** | No | The five transmitted events are interactions: picked, finished, saved, thumbs, session shown (`app.js:223–255`). The `picked` row's `context` field is filtered against a five-value allowlist (`app.js:214`) but the app only ever produces `continue` or a value the filter discards, so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw. |
 | **App activity — In-app search history** | **No** | No | The playlist box (`app.js:779`, `maxlength=120`) is searched entirely on-device by `search-engine.js`; `playlist_built`/`playlist_removed` are local-only (they fall to `toEventRow`'s `default: return null`). Stored in `cp_playlists`, never sent. |
-| **App activity — Installed apps** | **No** | No | Not enumerated. `cp_player` records *your stated preference* for an external app and is local-only; the `picked` row's `app` field is that preference label (e.g. "Apple Podcasts"), not a scan of your device. |
+| **App activity — Installed apps** | **No** | No | Nothing is enumerated. `cp_player` (your preferred external app) is local-only and never transmitted. The `picked` row carries an `app` field, but it reads a `data-app` attribute **nothing in the app ever sets**, so it is always the hardcoded literal `"Apple Podcasts"` regardless of your preference (`app.js:652`) — it reports nothing about you or your device. |
 | **App activity — Other user-generated content** | **Yes** | No | The thumbs-down free-text note is transmitted (`app.js:994`; input `#fy-sheet-note`, `app.js:1087`, up to 200 chars). |
 | **App activity — Other actions** | **Yes** | No | Thumbs direction and the fixed reason codes (`app.js:966–970`, sent at `app.js:246`). |
 | **Web browsing history** | **No** | No | The app cannot see your browsing. |
@@ -128,27 +133,58 @@ other endpoint (`index.html:13`).
 
 ## A6. Playback from publisher CDNs — why it is not a Play "sharing" answer
 
-Playing a segment points an `<audio>` element at the publisher's own URL
+Playing anything points an `<audio>` element at the publisher's own URL
 (`player/html-audio-backend.js:410`). Your device therefore reveals its **IP
-address and user-agent** to that host — including `dts.podtrac.com`, `mgln.ai`
-and `2.gum.fm`, which are download-measurement prefixes operated for the
-**publisher**.
+address and user-agent** to that host.
 
-This is **not** declared as collection or sharing, for three reasons:
+**Know the real scale before you answer this.** It is not a handful of CDNs:
+**43 distinct first-hop hosts** across the three catalogue files the app fetches,
+and because most publishers front their audio with redirecting prefix services,
+the actual chain is longer than one hop. One real URL from our catalogue passes
+through five intermediaries before reaching the audio:
+`2.gum.fm → op3.dev → pdcn.co → pdst.fm → dts.podtrac.com → media.transistor.fm`.
 
-1. **We receive nothing.** Neither collection nor sharing is satisfied by data we
-   never obtain — and by design we cannot: there is no Foray server in the audio
-   path (product principle 3).
-2. **IP address is not one of Play's declarable data types.** It is not in
-   "Device or other IDs", which enumerates IMEI, MAC, Widevine, Firebase
-   installation and advertising identifiers.
-3. **It is inherent to playing audio from its source**, exactly as a browser
-   loading any URL, and it is not a transfer we perform.
+**And several of those are advertising-attribution services, not just download
+counters** — `pdst.fm`/`pdcn.co`/`pdrl.fm`, `chrt.fm`, `pscrb.fm`,
+`claritaspod.com`/`clrtpod.com`, `prfx.byspotify.com`, `tracking.swap.fm`,
+`pfx.vpixl.com`, the `gum.fm` hosts. Three of them appear in `data/session.json`,
+the default home cards — so this is the shipped default path, not an edge case.
+`index.html:9` already says as much in the CSP's own comment: "~41 different
+podcast CDNs that we neither control nor can enumerate."
 
-It **is** disclosed prominently in the privacy policy §4, because that is where
-a user is entitled to learn it and because both stores expect the policy to be
-complete even where the form has no checkbox. Do not let the absence of a form
-field become an absence of disclosure.
+**Our answer: not declared as collection, and not declared as sharing.** The
+reasoning, with the strong parts separated from the interpretive ones:
+
+1. **We receive nothing. This is the reason that does the work, and it is a
+   fact.** Both stores' definitions turn on data the developer or its partners can
+   access. There is no Foray server in the audio path and there cannot be
+   (product principle 3), so there is nothing for us to collect and no recipient
+   we transferred anything to. The prefix operators are the **publisher's**
+   vendors, chosen by the publisher in their own RSS enclosure URL; we have no
+   account, contract or data feed with any of them.
+2. **It is inherent to playing media from its source**, the same way a browser
+   loading any URL reveals the requester to the host. It is not a transfer we
+   perform.
+3. **Interpretive, and flagged as such:** IP address is not among Play's
+   enumerated declarable data types — it is absent from "Device or other IDs",
+   which lists IMEI, MAC, Widevine, Firebase installation and advertising
+   identifiers. Treat this as our reading, not a quotation: Play's list is
+   illustrative rather than closed, and IP-derived location has been treated as
+   declarable in some configurations. **Do not rest the answer on this point** —
+   rest it on (1). This is Open Question 6.
+
+**It is disclosed at length in the privacy policy §4 regardless**, naming the
+hosts and the attribution vendors explicitly, because that is where a user is
+entitled to learn it and because both stores expect the policy to be complete
+even where the form has no checkbox. **Do not let the absence of a form field
+become an absence of disclosure** — that is the one move that would turn a
+defensible position into a misleading one.
+
+One consequence to keep straight when filling in the forms: "Foray contains no ad
+tracking" is true of **our** code and is the right answer to the advertising
+questions. It is not the same statement as "no advertising-related party sees
+your playback", which would be false. The policy draws that distinction; keep it
+drawn.
 
 ## A7. Security practices section
 
@@ -224,10 +260,17 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
   identity holds no PII. Apple's question is about linkage, not about whether the
   identity is a real name; answering "not linked" would be wrong.
 - **Used for tracking?** **No** — all three. Apple defines tracking as linking
-  your data with third-party data for targeted advertising or ad measurement, or
-  sharing it with a data broker. Foray does none: no ad SDK, no data broker, no
-  third-party recipient at all. **Therefore the app needs no App Tracking
-  Transparency prompt.**
+  *the data you collect* with third-party data for targeted advertising or ad
+  measurement, or sharing it with a data broker. Foray does none: no ad SDK, no
+  data broker, and no third party receives anything from us. **Therefore the app
+  needs no App Tracking Transparency prompt.**
+  - Read together with §A6: the publisher's own attribution prefixes do observe
+    the playback request. That does not make this answer Yes — Apple's question is
+    about what *we* do with data *we* collect, and we neither obtain those
+    requests nor combine anything with third-party data. It is still disclosed in
+    the policy. If Foray ever integrated an attribution vendor itself, or received
+    reporting back from one, this answer would flip and an ATT prompt would be
+    required.
 - **Purposes:** **App Functionality** and **Product Personalization** only. Not
   Third-Party Advertising, not Developer's Advertising or Marketing, not
   Analytics.
@@ -249,10 +292,15 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
     re-checked against the list, since plugins can pull them in.
 - **Rule 5.1.2 / third-party AI disclosure.** The legal memo treats this as a
   live obligation. **On the current code it is not:** no user data reaches an AI
-  provider, and the CSP could not permit it. AI is used in our **build pipeline**
-  on public podcast metadata, off-device. Do not build a consent screen naming an
-  AI vendor for a data flow that does not exist — but see § What would change
-  these answers, because one planned feature does create it.
+  provider from the app, and `connect-src` would block a call from the device. AI
+  runs in our **build pipeline** on public podcast metadata, off-device. Do not
+  build a consent screen naming an AI vendor for a data flow that does not exist.
+  - **But it is one env var away, not one feature away.** The pipeline already
+    has a prompt field for listener context and it is currently fed a placeholder;
+    see the `userInterestsProvider` row in § What would change these answers. If
+    that is ever wired up, 5.1.2 applies and the memo's checklist item becomes
+    live. Re-check this before every submission rather than trusting this
+    paragraph.
 - **Account deletion (App Store guideline 5.1.1(v)).** Applies to apps that let
   you *create an account*. Foray creates an anonymous account with no user
   action, which is arguably outside the rule — but the safe posture is the same
@@ -297,11 +345,12 @@ forms.**
 | **Backend sync of the rest of local state** — positions, interests, history, playlists | The largest change. Play: `Other actions` broadens; `In-app search history` becomes **Yes** if `cp_playlists` queries sync. Apple: `Search History` **Yes**; `Product Interaction` widens. Policy §1's "does it leave your device" column must be rewritten row by row — it is the column most likely to go stale. |
 | **A live per-user API replacing static `data/*.json`** | Our server would then observe request patterns per user — a new collection surface with no checkbox, and it needs its own policy paragraph. `docs/DECISIONS.md` records this was deliberately *not* built. |
 | **ElevenLabs narration** (sanctioned in principle, build deferred) | If narration is **pre-generated** from our scripts and shipped as audio files, **nothing changes** — no user data leaves. If it is generated **per user or per request** from anything user-derived, then user data reaches a third-party AI vendor: Apple **rule 5.1.2 disclosure and explicit consent before first transmission**, naming the vendor; a new third-party recipient in the policy; and Play `Shared: Yes`. The distinction is the whole disclosure question — decide it deliberately. |
-| **Any AI call made from the device** | Same as above, plus the CSP must be widened — which is the tripwire. A new `connect-src` entry in `index.html` is a privacy change and should be reviewed as one. |
+| **Wiring the Postgres `userInterestsProvider` into the build pipeline** | **The likeliest silent invalidation, and it needs no client change at all.** `backend/src/enrich/AnthropicEnricher.ts:173` already sends `Listener context: …` in the why-line prompt; `sessionBuilder.ts` builds that from `resolveEffectiveTaxonomy()`, whose first tier is observed `taxonomy_nodes` rows — i.e. derived from the very `events` table the client POSTs to. Today it is inert: `buildSession.ts` passes a fixed placeholder id and no provider, and `createUserInterestsProvider.ts` is gated on `DATABASE_URL` (`docs/DECISIONS.md` records the decision not to stand it up). Setting that env var would send event-derived interest labels to a third-party AI vendor **with no CSP change and no code review of the client** — so there is no tripwire. That triggers Apple rule 5.1.2 disclosure and consent, a new third-party recipient in the policy, and Play `Shared: Yes`. |
+| **Any AI call made from the device** | Same as above, plus `connect-src` must be widened — which *is* a tripwire. A new `connect-src` entry in `index.html` is a privacy change and should be reviewed as one. |
 | **Ads or any monetization** | Advertising data, ad identifiers, tracking, ATT prompt, `Shared: Yes`, and a conflict with product principle 1. |
 | **Asking for an email to link the anonymous account** (ADR-0005's opt-in upgrade) | Play `Personal info — Email address` **Yes**; Apple `Contact Info — Email` **Yes**. Also makes account deletion unambiguously required (5.1.1(v)). |
 | **Adding a new podcast host to the catalogue** | No declaration changes, but policy §4's host list is a snapshot and should be refreshed. |
-| **Widening the CSP `connect-src`** | Treat as a privacy change by default. It is the narrowest, most reliable tripwire in the codebase: the client cannot transmit anywhere the CSP does not name. |
+| **Widening the CSP `connect-src`** | Treat as a privacy change by default. It is the narrowest reliable tripwire in the **client**: no `fetch`, XHR or WebSocket can reach an origin `connect-src` does not name. It bounds outbound data only — `img-src https:` and `media-src https:` already permit any HTTPS host, and a change on the **server** side (the row above) has no tripwire at all. |
 
 ---
 
@@ -321,8 +370,15 @@ is a fact the answers assume.
    attempts it — but it changes whether rows exist today.
 2. **Whether the RLS policies are live and verified.** ADR-0005's own Risks
    section says they were "written to spec but **not yet verified against a live
-   project**", and `0014` is recorded as not applied. The per-user isolation claim
-   in policy §3 depends on them. **Verify before any real user data lands.**
+   project**". They live in `backend/migrations/supabase/0001_auth_and_rls.sql`,
+   which the migration runner deliberately does **not** auto-apply — it globs only
+   top-level `migrations/*.sql`, so they must be run by hand in the Supabase SQL
+   editor. Nothing in the repo records whether that was done. The per-user
+   isolation claim in policy §3 depends entirely on it. **Verify before any real
+   user data lands.** (Weak circumstantial evidence that migrations generally have
+   not all been pushed: `0014` in the *portable* set is recorded as not applied in
+   `docs/DECISIONS.md`. Different directory and different series — it says nothing
+   about RLS directly.)
 3. **Retention.** No retention job exists; ADR-0005 anticipates one. Nothing in
    the code deletes an event row, ever.
 4. **How many anonymous accounts already exist** — i.e. whether real user data is

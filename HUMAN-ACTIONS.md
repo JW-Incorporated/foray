@@ -772,7 +772,10 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 
 **Why it matters.** `docs/legal/privacy-policy.md` and `docs/legal/data-safety.md` now exist and are written **from the code**, not from a template — the Data Safety and App Privacy forms can be filled in by copying verified answers. Everything derivable from the software is answered. What is left is six facts no agent can invent, and a policy published with an invented one is a public, binding false statement. Each is marked `TODO(founder)` in those two files.
 
-**The audit found one thing worth knowing before you read further:** the app **does** transmit. Every page load creates an anonymous Supabase account and sends an event row, and a thumbs-down sends the free-text note you typed. That is not what an earlier reading of the code assumed, and it is why the declarations say "Yes" rather than "No" to collection.
+**Two things the audit found that are worth knowing before you read further.**
+
+1. **The app does transmit.** Every page load creates an anonymous Supabase account and sends an event row, and a thumbs-down sends the free-text note you typed. That is not what an earlier reading of the code assumed, and it is why the declarations answer "Yes" rather than "No" to collection.
+2. **Playback reaches 43 hosts, and some of them are ad-attribution services.** Because we never proxy audio (product principle 3), a listener's IP and user-agent go straight to whatever the publisher put in their enclosure URL — and publishers commonly chain several measurement prefixes. One URL in our own catalogue routes through five before the audio. Alongside download counters like Podtrac there are advertising-attribution vendors (Podsights, Chartable, Podscribe, Claritas and others), three of which are in the default home cards. **We receive nothing from any of them and have no relationship with them**, so the store declarations are still "no collection, no sharing" — the reasoning is set out in `data-safety.md` §A6 — but the privacy policy now discloses it in full, because the alternative is a policy that quietly implies otherwise. Nothing here needs a decision from you; it needs you not to be surprised by it, and it is the one paragraph a lawyer should read first.
 
 **Steps — answer each in a reply, or edit it straight into the file.**
 
@@ -786,7 +789,7 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 **Two things to verify in the Supabase dashboard while you are there** — neither is knowable from the repo, and both are listed as open questions in `data-safety.md`:
 
 - Whether **anonymous sign-in is enabled** on the project. If it is off, every sync silently no-ops and buffers locally forever. The declarations are written as though it is on, which is the correct posture for shipped code either way.
-- Whether the **RLS policies are actually applied and verified**. ADR-0005's own Risks section says they were written to spec but never verified against a live project, and `0014` is recorded as not applied. The per-user isolation claim in the policy depends on them.
+- Whether the **RLS policies are actually applied and verified**. ADR-0005's own Risks section says they were written to spec but never verified against a live project, and they live in `backend/migrations/supabase/`, which the migration runner deliberately never auto-applies — someone has to paste them into the Supabase SQL editor, and nothing in the repo records whether anyone did. The per-user isolation claim in the policy depends entirely on it.
 
 **Also worth a lawyer's eye, flagged rather than decided:** two of the nine thumbs-down reason chips are "Leans too far left" and "Leans too far right", and the selected chip is transmitted. They record a reaction to an *episode*, not the listener's own politics — so Apple's "Sensitive Info" and Play's "Political or religious beliefs" are both answered **No**, which is the defensible reading. It is disclosed in the policy regardless.
 
