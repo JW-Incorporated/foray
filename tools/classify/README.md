@@ -36,6 +36,20 @@ prepare-batch.mjs ──▶ classify-batch-<id>.json ──▶ [classification a
 |--------|----------|------|
 | `prepare-batch.mjs` | ✅ (RSS only) | Select the next N un-(re)classified breadth shows, fetch each one's feed for description + recent episode titles/descriptions (Tier 0.5), write one batch input file. |
 | `merge-results.mjs` | ✅ | Validate the classification agent's output (taxonomy node ids, confidence bounds, copy rules on `display_title`/`blurb`), merge into `data/breadth-classification.json`, advance progress state. |
+| `root-dumping-report.mjs` | ✅ | Measure the thing this pipeline is for: how many shows sit on a bare branch that has children. `--json` snapshots, `--baseline <snapshot>` diffs. |
+
+**Take a baseline before you re-classify anything.** `root-dumping-report.mjs --json > before.json`,
+do the work, then `root-dumping-report.mjs --baseline before.json`. Without the
+snapshot there is no way to say afterwards whether a pass helped, and "it looks
+better" is not an acceptance criterion.
+
+**The layer below this pipeline** is `tools/classify-breadth.mjs`, the
+deterministic genre map. It writes the same file, at lower precedence: it never
+overwrites a `classify-agent-*` entry, and it may only add nodes to a lower-trust
+overlay, never remove one. Full precedence table in
+`docs/CATALOG-PIPELINE.md` § Classification layers. Running it is safe and free;
+before 2026-08 it was neither, because it rebuilt the file from scratch and would
+have deleted every entry this pipeline had produced.
 
 The **judgment step** (classifying each show, writing `display_title`/
 `blurb`) is the only non-deterministic part, performed by a Claude Code
