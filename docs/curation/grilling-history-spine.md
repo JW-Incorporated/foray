@@ -544,3 +544,378 @@ the political condition it developed under. Reject: recipe and heat-level conten
 and food-travel segments with no history.
 
 **Share.** 3.5 % (~5.25 min).
+
+---
+
+### Act IV — The American case (chain, 35 %)
+
+The largest act, because this is where the Foray's two clauses collide: a
+technique with an indigenous origin, performed for two centuries by people who
+were owned, in a society that then organised itself around forgetting that.
+
+**How this act is handled is the editorial test of the whole document.** Two
+failure modes, and they are symmetrical. Sanitising it — one respectful sentence
+of acknowledgement and then on to sauce regions — is the worse of the two, and it
+is also the *default*, because most barbecue content does it. Sensationalising it
+— reducing named craftspeople to a suffering backdrop — is the other. The way
+through is the one a working historian uses: treat enslaved and freed Black cooks
+as **authors with expertise**, name the coercion precisely rather than
+atmospherically, and say what the sources do and do not support. Beats 20, 21 and
+29 do that work and together they are 9.5 % of runtime, which is the honest weight.
+
+The act runs chronologically. Beats 25–27 are a small internal fan; beat 28 closes
+it. Beat 29 is the act's endpoint and hands to Act V.
+
+#### 16. The word arrived from the Caribbean and it named a wooden frame, not a party
+
+**Claim.** *Barbacoa* is a Taíno word recorded by Spanish chroniclers in the early
+16th century for a raised wooden framework — used for sleeping and for holding
+food over a slow fire — and it entered English by the late 1600s already meaning
+the apparatus and the method, which means the most confidently repeated origin
+story in barbecue, the French "beard to tail," is a folk etymology invented long
+afterwards.
+
+**Why it belongs.** It establishes on the record that the technique's name, and the
+technique, are indigenous American — which is the first half of the authorship
+argument and the thing most popular accounts skip in a clause. It also gives the
+listener a small, checkable, satisfying correction early in the act, which buys
+attention for the harder beats. Cut it and the act begins in the colonial period
+with no account of where any of it came from.
+
+**Evidence that counts.** A food historian, linguist or lexicographer on the
+etymology and its earliest attestations, ideally naming a chronicler or a dated
+English usage, and explicitly rejecting the "barbe à queue" story. Also strong:
+the semantic drift — frame, then method, then the event, then the sauce, then any
+outdoor cooking — because that drift is what makes beat 4's confusion possible.
+Reject: assertion of either etymology with no source, and the version that treats
+the Taíno origin as a single-word footnote before moving on.
+
+**Share.** 2 % (~3 min).
+
+#### 17. Barbacoa is not an etymology, it is a living practice — and the ancestor of American barbecue is closer to a buried oven than to a grill
+
+**Claim.** In Mexico *barbacoa* still means what it meant: meat wrapped in agave
+or banana leaves and cooked for many hours in a covered pit in the ground, by
+trapped heat and steam as much as by smoke — a continuous indigenous-descended
+tradition with regional forms and its own weekend ritual — and recognising that
+means recognising that the technique American barbecue descends from was
+subterranean and enclosed, not open flame.
+
+**Why it belongs.** It converts beat 16 from a word-origin note into a lineage
+with living practitioners, which is the difference between crediting indigenous
+technique and merely mentioning it. Mechanically it also matters: the pit's
+enclosure is the ancestor of the offset smoker, so this beat is where the
+technology of Act V gets its family tree. And it is the necessary setup for the
+Rio Grande lineage inside beat 25.
+
+**Evidence that counts.** A Mexican or Mexican-American food historian or cook
+on: the pit and the leaf wrap, what steam does that smoke does not, regional
+variants including the Yucatecan pit and the highland lamb and goat traditions,
+the consommé from the drippings, the Sunday-morning social pattern, and the
+continuity claim from pre-contact practice. Strong signal: someone drawing the
+distinction between barbacoa and grilling explicitly. Reject: taquería menu
+content, and anything using "barbacoa" only as a fashionable ingredient word.
+
+**Share.** 2 % (~3 min).
+
+#### 18. Colonists in the American Southeast adopted an existing indigenous apparatus, and then renamed it
+
+**Claim.** Southeastern indigenous peoples were smoking and drying venison, fish
+and other meat on raised wooden grates over low fires well before European
+settlement, and the earliest colonial accounts describe Europeans encountering and
+copying that apparatus — so the American method's core move, food held above and
+away from a slow smoky fire, was learned rather than invented.
+
+**Why it belongs.** It is the specific transmission event that connects beats 16
+and 17 to the mainland, and without it the act would jump from a Caribbean word to
+a Southern pork tradition with a two-century hole. It also puts the indigenous
+contribution in the strongest form available — a technology transfer, not an
+influence — while letting the Foray be honest that the sources for it are
+colonial, partial and self-serving.
+
+**Evidence that counts.** A historian or archaeologist on pre- and early-contact
+Southeastern foodways: the raised grate over a slow fire, drying and smoking for
+storage, which peoples and which regions, and what the early European
+accounts and illustrations do and do not reliably show. The critical-source
+handling is a plus, not a distraction — a scholar noting that the famous engravings
+were made in Europe from secondhand material is exactly the register this beat
+wants. Reject: "Native Americans invented barbecue" as a slogan with no apparatus,
+no region and no source.
+
+**Share.** 2 % (~3 min).
+
+#### 19. Pork won the American South for ecological reasons, not culinary ones
+
+**Claim.** Swine introduced by European colonists thrived semi-feral in Southern
+woodlands — foraging their own food, breeding without management, needing no
+fencing and no winter fodder — which made pork the cheapest available meat across
+the region for two centuries, and that is why the American barbecue unit became a
+whole hog rather than anything else.
+
+**Why it belongs.** It is beat 5's logic applied to the animal instead of the
+fuel, and it makes the Carolina and Memphis beats explicable rather than merely
+regional. It is also the beat that keeps the act materialist: the listener should
+leave understanding that almost every "tradition" downstream is an adaptation to
+what was free.
+
+**Evidence that counts.** An agricultural or food historian on hogs in the
+colonial and antebellum South: free-range and open-range husbandry, the corn-and-
+hog complex, seasonal slaughter before refrigeration, per-capita pork consumption
+figures if they have them, and the explicit contrast with cattle, which needed
+land and management. Strong signal: an argument that connects the animal's economics
+to the technique's shape. Reject: pork-versus-beef partisanship.
+
+**Share.** 2 % (~3 min).
+
+#### 20. Slavery was the labour system of American barbecue, and the enslaved were its authors
+
+**Claim.** For roughly two centuries the work that barbecue consists of — cutting
+and hauling the wood, digging and firing the pit, butchering, tending the fire
+through the night, cooking, carrying and serving — was performed in the American
+South by enslaved people, on top of their other compulsory labour; the expertise
+was recognised at the time, to the point that skilled pit cooks were valued,
+loaned and hired out; and the plantation barbecue that displayed an enslaver's
+generosity was in substance a display of someone else's skill.
+
+**Why it belongs.** It is the load-bearing beat of the Foray. The second clause of
+the through-line — that "who tends the fire" is a question about power — is
+abstract until here, and every beat after this one depends on it: beat 21 is its
+historiography, 22 its politics, 23 its aftermath, 29 its dispossession, and 36 is
+the argument about it still going on. If this beat is thin, the Foray is a
+different and much worse Foray, and the sanitised version of barbecue history is
+the one that ships.
+
+**Evidence that counts.** A historian of American food or of slavery making the
+argument in specifics rather than in atmosphere: what the tasks actually were, the
+overnight shift as labour extracted in addition to field work, the documented
+valuation and hiring-out of skilled cooks, the barbecue as an instrument of the
+enslaver's public standing, and — separately and carefully — the place barbecue
+occupied in the lives of enslaved people themselves, including rare occasions of
+meat abundance, without letting that soften the coercion. Michael Twitty and Adrian
+Miller are the archetype of the register wanted; the requirement is the *argument*,
+not the name. Reject, hard: any segment where slavery appears as a single
+transitional sentence on the way to a sauce discussion. Reject also: material that
+substitutes emotional intensity for what the sources say.
+
+**Share.** 4 % (~6 min).
+
+#### 21. The record preserves the labour and erases the labourer, and that is a fact about the sources rather than about the cooks
+
+**Claim.** We can document in detail that enslaved and, later, poorly paid Black
+cooks did this work, because it appears in ledgers, advertisements, newspaper
+accounts and oral testimony — but the individuals are named unevenly and often not
+at all, which is a property of who kept records and why, and it is the mechanism by
+which a cuisine with identifiable authors came to be described as anonymous
+tradition.
+
+**Why it belongs.** This is what stops beat 20 from being a claim the listener has
+to take on trust, and it is the beat that explains the *disappearance* rather than
+just asserting it. It also equips the listener to hear "old family recipe" and
+"traditional method" in later beats as historical claims that can be interrogated.
+Cut it and beat 36's revival has nothing to restore, because the loss was never
+explained.
+
+**Evidence that counts.** A historian talking about method and sources: what
+plantation records, runaway and sale advertisements, WPA-era interviews, newspaper
+notices and menus preserve, what they systematically omit, and how recovery work is
+actually done. Named recovered figures used as worked examples — an antebellum
+hired-out caterer, a named early commercial pitmaster — are strong. Also strong:
+direct discussion of how credit shifted to proprietors and to regions. Reject:
+general remarks that history forgets people, with no source practice in them.
+
+**Share.** 3 % (~4.5 min).
+
+#### 22. Barbecue was the largest recurring public gathering in the American South, which made it a stage for both contact and hierarchy
+
+**Claim.** From the 18th century into the 20th, the barbecue was the standard form
+of American mass politics and mass religion — campaign barbecues, camp meetings,
+church and community barbecues drawing crowds no other event assembled — and
+because it required a crowd and a cook, it produced one of the few regularly
+biracial public spaces in a segregated society, while reproducing the hierarchy
+inside it: Black people cooked and served, and ate apart or last.
+
+**Why it belongs.** It cashes beat 7 in American currency and it is the beat that
+explains why barbecue became *civic* — why a food gets a place in electoral
+politics and in emancipation celebration. The double-edge is the point: this is not
+a beat about barbecue bringing people together, it is a beat about a shared space
+that was also a segregated one, and holding both is the historian's job.
+
+**Evidence that counts.** A historian on political and religious barbecues:
+attendance and scale, candidates using barbecue to assemble voters, the
+19th-century campaign barbecue as a genre, church and community barbecue economies,
+and specifically on the racial arrangement of the event — who cooked, who was fed,
+in what order, and where. Anecdotes about individual politicians are useful only if
+attached to the structural claim. Reject: nostalgia; and reject the harmony version
+that omits the seating.
+
+**Share.** 3 % (~4.5 min).
+
+#### 23. After emancipation, pit skill was capital that freedpeople already owned, and barbecue became one of the first Black business ladders in America
+
+**Claim.** Barbecue required expertise, a pit and almost no money, which made it
+one of the very few enterprises open to people leaving slavery with no property or
+credit — so freedpeople converted an extracted skill into wagons, stands and then
+restaurants, and simultaneously made the barbecue the central ritual of
+emancipation celebration, most durably Juneteenth.
+
+**Why it belongs.** It is the beat that makes the act a history of agency rather
+than only of extraction, and it is the causal link between beat 20 and every
+commercial beat that follows: the American barbecue restaurant exists in the form
+it does because of who could and could not get a loan in 1880. It also gives the
+Foray its emotional turn, earned rather than asserted.
+
+**Evidence that counts.** A historian on the post-emancipation barbecue economy:
+the low capital requirement and what that meant, street pits and wagon vending, the
+transition to fixed premises, named early proprietors and the cities they worked
+in, and Emancipation Day and Juneteenth barbecues as institutions with their own
+organising committees and finances. Strong signal: an explicit statement that the
+asset was skill. Reject: single-restaurant founding legends with no economics.
+
+**Share.** 2.5 % (~3.75 min).
+
+#### 24. The style map of American barbecue is a map of Black migration as much as of Southern regionalism
+
+**Claim.** The Great Migration carried pit technique out of the South and it
+changed on arrival — northern and western cities produced their own forms, cuts,
+equipment and cooking economies rather than reproductions of a home style — so
+several of the styles now treated as canonically regional exist because people
+moved, and moved for a reason.
+
+**Why it belongs.** It is the mechanism behind beats 27 and 28, and without it
+Kansas City and Chicago look like spontaneous local inventions. It is also the beat
+that stops the act's geography from feeling like a static folk map: the map moved
+inside living memory, driven by the same pressures beat 29 describes.
+
+**Evidence that counts.** A historian or a city-specific writer on barbecue and
+the Migration: which routes fed which cities, what changed in the new setting —
+cuts, equipment, storefront format, who the customers were — and named examples of
+forms that only exist in the destination. Strong signal: an explicit causal
+statement linking migration to a style. Reject: city-by-city restaurant round-ups
+with no migration argument.
+
+**Share.** 2 % (~3 min).
+
+#### 25. "Texas barbecue" is at least four traditions, and the one that now represents it worldwide is the butcher-shop lineage
+
+**Claim.** Central Texas smoked beef sold on butcher paper descends from Central
+European immigrant meat markets that smoked unsold cuts and sold them to
+working-class, largely Mexican and Black customers; East Texas has an older,
+separate Black pork-and-sauce tradition closer to the Deep South; the Rio Grande
+region continues Mexican pit barbacoa; and West Texas cooked over direct mesquite
+coals — and brisket's arrival as the prestige cut is a recent development, not an
+ancient one.
+
+**Why it belongs.** Texas is the style with the strongest global claim right now,
+which makes it the place where a single-origin story does the most damage. Four
+lineages under one name is also the act's best illustration that regional identity
+is retrospective — and it sets up Act V, because the object the chef era made
+famous was cheap within living memory.
+
+**Evidence that counts.** A historian or pitmaster on: the meat-market origin and
+its immigrant provenance, who the early customers were, post oak, the absence of
+sauce as a butcher-shop artefact rather than a doctrine, and the separate East
+Texas and Rio Grande lineages named as such. Especially strong: anyone dating
+brisket's rise and explaining the economics of it. Reject: brisket technique
+content with no history, and origin claims that credit one lineage with all four.
+
+**Share.** 3 % (~4.5 min).
+
+#### 26. The Carolinas hold the oldest continuous American practice, and that is exactly where the authorship fight is sharpest
+
+**Claim.** Whole hog cooked over its own coals, dressed with vinegar and pepper,
+is the closest surviving thing to the colonial-era American method, with
+sub-regional variants that track settlement patterns — a tomato-inflected dip in
+the Piedmont, a mustard belt in the South Carolina midlands with a German
+settlement trace — and because whole hog is the most demanding and most
+traditional form, the question of who is credited as its custodian has been the
+most contested in American barbecue.
+
+**Why it belongs.** It is the continuity beat: the listener should be able to draw
+a line from beat 18's grate to a pig-picking in living memory. And it is where beat
+21's erasure becomes concrete and current, because the leading whole-hog
+practitioners of the last generation include Black families whose work was
+commercially and critically uncredited until very recently. That makes the
+Carolinas the natural on-ramp to beat 36.
+
+**Evidence that counts.** A historian or a whole-hog pitmaster on: the technique
+itself and why it is harder than cooking parts, burning wood down to coals and
+shovelling them, the vinegar-and-pepper dressing and its age, the sub-regional map
+and the settlement history behind it, the pig-picking as a social form, and
+directly on credit and custody — who was known, who was not, and what changed.
+Reject: sauce-preference content, and profiles with no historical frame.
+
+**Share.** 2.5 % (~3.75 min).
+
+#### 27. Kansas City and Memphis are city styles, and their defining features are explained by freight and commerce
+
+**Claim.** Kansas City's all-meats, thick sweet tomato-and-molasses style grew
+around a stockyard city where every kind of meat came through cheaply, and
+Memphis's rib-and-shoulder, dry-or-wet style grew around a river and cotton
+entrepôt — so in both cases the signature is a logistics artefact, and in both
+cases the founding commercial figures were Black proprietors of the kind beat 23
+describes.
+
+**Why it belongs.** These are two of the four styles the founder named and they
+complete the internal fan. More importantly they are the cleanest cases for beat
+28's argument, because the causal chain from freight yard to sauce recipe is short
+enough to state in a sentence. Cut them and the "four American styles" the listener
+came in with is incomplete, which is a hole they will notice.
+
+**Evidence that counts.** A historian or writer on either city: the stockyards or
+the river trade and what they made available, the named founding proprietors and
+their lineages of employees and descendants, how sauce sweetness and rub-versus-
+sauce became house signatures, and the transition from stands to institutions.
+Bottled-sauce commercialisation belongs to beat 33, not here. Reject: best-of
+restaurant lists.
+
+**Share.** 2.5 % (~3.75 min).
+
+#### 28. The regional map is an economic map, and the loyalties were fitted to it afterwards
+
+**Claim.** Which animal, which wood, which cut and which dressing define a region
+are all explained by what was locally cheap and what came through on the railway or
+the river, plus who migrated there — so the fierce regional identity American
+barbecue is famous for is a later attachment to infrastructure, which is why the
+map has the shape it has rather than any other.
+
+**Why it belongs.** This beat is what converts 25, 26 and 27 from a listicle into
+an argument, and it is the payoff of beat 5 at national scale. It also does
+something for the listener that a region-by-region tour cannot: it makes the map
+*predictable*, so they can guess the style of a place they have never heard of.
+Explicitly: **do not cut this beat to save time.** If runtime is short, shorten
+25–27 and keep 28.
+
+**Evidence that counts.** A historian or geographer stating the causal claim
+across regions — livestock availability, wood species, transport, migration — and
+ideally naming a case where taste followed supply. Comparative tape is worth more
+here than deep tape on one region. If no tape makes the comparative argument, this
+beat is narration, and it is one of the beats most worth narrating well.
+
+**Share.** 2 % (~3 min).
+
+#### 29. The commercial map under-represents the people who built the cuisine, and policy did that
+
+**Claim.** Segregation constrained where Black barbecue businesses could operate
+and whom they could serve; credit and property discrimination limited what they
+could own and pass on; and mid-20th-century urban renewal and interstate
+construction demolished Black commercial districts in city after city, taking
+long-established barbecue businesses with them — so the relative commercial
+invisibility of Black barbecue in the later 20th century was produced by law and
+public works, not by a change in skill or in taste.
+
+**Why it belongs.** It is the causal answer to the question the listener is
+holding by now: if Black cooks authored this, why does the famous map not look like
+it? Without this beat the answer is left to the listener's imagination, which will
+supply something either sentimental or wrong. It also closes the act on the
+mechanism that beat 36 responds to, so Act V's revival has something specific to be
+a revival *from*.
+
+**Evidence that counts.** A historian or journalist on: segregation's effect on
+restaurant operation, lending and insurance discrimination and the inability to
+capitalise or bequeath a business, named districts cleared by highway or renewal
+projects and named businesses lost, and the succession problem that follows from
+not owning property. Strong signal: a specific city, a specific road, a specific
+address. Reject: generalised decline narratives, and anything that attributes the
+change to consumer preference without evidence.
+
+**Share.** 2.5 % (~3.75 min).
