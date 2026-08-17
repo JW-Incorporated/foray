@@ -115,32 +115,36 @@ function search(query, opts) {
   return { status, picks, interp, results };
 }
 
-/* True if item's tags/title/show/HOOK/topics contain `needle` (case-insensitive
-   substring on the combined text, or an exact tag hit).
-
-   `hook` was missing until 2026-08-17, and it is the field `scoreMatch` gives
-   +1.5 for — so the oracle that decides "is this result on-topic?" could not see
-   a field the RANKER scores. An oracle blind to an input the thing under test
-   reads is measuring the wrong object, and it failed in the direction that looks
-   like a regression: for "the history of jazz" the catalogue holds exactly three
-   items with any jazz signal at all, and TWO of them carry it only in the hook
-   ("why it's cool to say you like jazz"; "a jazz-raised kid found his voice as a
-   composer"). The Sting episode also carries a literal `jazz` tag, which is the
-   only reason it satisfied the old oracle; the John Williams episode does not,
-   so when it legitimately rose to #2 the oracle called it off-topic.
-
-   Measured blast radius of adding `hook`, over all 51 needles the battery uses:
-   the summed on-topic count moves 1,281 -> 1,386, and exactly ONE assertion
-   changes verdict (the jazz one). Every item it adds names the needle in prose a
-   listener actually reads. It is a widening, so it is worth restating what still
-   guards quality here: the top-N on-topic checks, not this helper. */
+/* True if item's tags/title/show/hook/topics contain `needle`.
+ *
+ * THE ORACLE MUST NOT BE LOOSER THAN THE RANKER IT GRADES. Two ways this was,
+ * both fixed 2026-08-17, and the second was found by review after the first fix
+ * was already written:
+ *
+ *   1. It could not see `hook`, which `scoreMatch` scores at +1.5. An oracle
+ *      blind to an input its subject reads is measuring the wrong object.
+ *   2. It matched with a bare `text.includes(needle)` while the ranker uses a
+ *      collision guard. So the oracle admitted `software`, `toward`, `warm` and
+ *      `Warner` as "war"; `romance` as "roman"; `confusion` as "fusion" — and
+ *      the last two are collisions this file separately asserts the RANKER must
+ *      not make (see the substring-collision checks below). The oracle was
+ *      contradicting its own test file.
+ *
+ * Both are fixed by sharing the ranker's matcher instead of reimplementing it:
+ * `hitText`/`hitTag` are now exported from search-engine.js. Reimplementing them
+ * here is what allowed the two to drift in the first place, so don't.
+ *
+ * Net effect on the whole `fullPool()` (1,516 items — NOT `discover.items`, which
+ * is 1,489 and misses 27 session episodes; see fullPool's comment), summed over
+ * the 51 topical needles: 1,292 -> 1,246. A NARROWING of 46, despite gaining a
+ * whole new field, because the collision guard removes more than `hook` adds. */
 function itemHas(item, needle) {
   const n = needle.toLowerCase();
   const tags = itemTags.tags?.[item.id] || [];
-  if (tags.some((t) => t.includes(n))) return true;
+  if (tags.some((t) => SE.hitTag(t, n))) return true;
   const text = [item.title, item.show, item.hook, (item.topics || []).join(" ")]
     .join(" ").toLowerCase();
-  return text.includes(n);
+  return SE.hitText(text, n);
 }
 
 function showCounts(picks) {
