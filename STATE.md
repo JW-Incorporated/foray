@@ -32,10 +32,20 @@ docs/. Completed workstreams move to their plan doc's retro section.
   2 h 55 m — are therefore authorable but **not playable**, and the arc lost its
   taxonomy spine and its corporate-VC slot. Do not queue a feed for ASR on a
   PADDABLE tier alone; PADDABLE means authorable. §6.1.
-- **Heads-up — the six Foray-#1 snapshot tests in
+- **Heads-up — the Foray-#1 snapshot tests in
   `tools/foray/check-forays.test.mjs` are now generalised** (per-Foray pins
-  instead of whole-file counts). A third Foray should not need to touch that
-  file.
+  instead of whole-file counts, and the §2 row-for-row check is table-driven over
+  both curation docs). A third Foray still edits four per-Foray facts there —
+  the id array, the held-back list, the mean-deviation counts and the source-id
+  array — plus one row in `RUNNING_ORDER_DOCS`.
+- **Landed in two PRs, and the second is the lesson.** #200 auto-merged while the
+  reviewer subagent was still running, so its findings arrived after the merge and
+  became #202: two false claims in the write-up (a "38-second cue gap" that does
+  not exist, and a CI guarantee the test did not provide), two §2 claims quoting
+  audio outside their own segment, an S2 count measured on the cue instead of the
+  anchor, and a §6.1 "cross-check" that was an algebraic identity. **A reviewer
+  pass that can finish after the merge is not a reviewer pass** on this repo; on
+  an auto-merge path, run it in the foreground or hold the push.
 
 ### Foray UI #3 — the seam beat, and the strip becomes a scrubber (2026-08-16, one PR, no follow-up)
 

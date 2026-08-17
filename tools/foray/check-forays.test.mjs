@@ -126,10 +126,16 @@ test("Foray #2's only L4 segment carries both escape-hatch fields", () => {
   assert.ok(long[0].long_reason && long[0].long_reason.length > 40, "long_reason must say what the extra minutes do");
 });
 
-test("Foray #2 draws on eight episodes, and no VC show among them", () => {
-  // The brief's balance requirement: 8 of 14 headline subjects with no VC
-  // talking about VC. Pinned as source count + the absence of the four Full
-  // Ratchet episodes, which are measured DAI and therefore unplayable (§6).
+test("Foray #2 draws on exactly eight episodes", () => {
+  // Pinned because M4's 25 % cap is only meaningful against a known denominator,
+  // and because losing an episode is how a Foray quietly becomes an edit of one
+  // show. The editorial claim in foray2-capital.md §0 — that only one of the
+  // eight is a VC show — is NOT checked here: "is this a VC show" is not a
+  // property of the data. An earlier version of this test asserted no source id
+  // began with `fr-`, which was vacuous (no such id exists) and read as if it
+  // were checking the editorial claim. The real guard against a DAI source
+  // playing is `check-forays.mjs` itself, pinned by "a dai_suspected source
+  // cannot carry a played segment" and "no source is DAI-suspected".
   const f = forayBy(files, "capital-types-1");
   const eps = new Set(
     f.items
@@ -137,7 +143,6 @@ test("Foray #2 draws on eight episodes, and no VC show among them", () => {
       .map((i) => files.segments.segments.find((s) => s.id === i.segment_id).item_id)
   );
   assert.equal(eps.size, 8);
-  for (const id of eps) assert.ok(!id.startsWith("fr-"), `${id} is a DAI source and cannot play`);
 });
 
 test("the pool segments held back from their Foray are not in any running order", () => {
@@ -175,49 +180,78 @@ test("every label resolves to exactly one segment by (episode, duration)", () =>
   // This is the derivation the migration did once. Re-running it here is what
   // makes `label` in the data trustworthy rather than decorative: if anyone
   // hand-edits a segment_id, the label no longer picks it out uniquely.
-  const f = foray0(files);
-  for (const item of f.items) {
-    const dur = durationOf(files, item.segment_id);
-    const episode = f.label_prefixes[item.label.split("-")[0]];
-    const matches = files.segments.segments.filter(
-      (s) => s.item_id === episode && Math.abs(s.end_sec - s.start_sec - dur) <= 0.06
-    );
-    assert.equal(matches.length, 1, `${item.label}: ${matches.length} segments match`);
-    assert.equal(matches[0].id, item.segment_id, `${item.label} resolved to ${matches[0].id}`);
+  for (const f of files.forays.forays) {
+    for (const item of f.items.filter((i) => i.type === "segment")) {
+      const dur = durationOf(files, item.segment_id);
+      const episode = f.label_prefixes[item.label.split("-")[0]];
+      const matches = files.segments.segments.filter(
+        (s) => s.item_id === episode && Math.abs(s.end_sec - s.start_sec - dur) <= 0.06
+      );
+      assert.equal(matches.length, 1, `${f.id} ${item.label}: ${matches.length} segments match`);
+      assert.equal(matches[0].id, item.segment_id, `${f.id} ${item.label} resolved to ${matches[0].id}`);
+    }
   }
 });
 
-test("data/forays.json agrees with grilling-foray.md §2, row for row", () => {
-  /* #182's third consequence is that the order "silently rots": change the data
-   * and the doc goes stale, or the reverse, with nothing to detect the drift.
-   * So the doc table is parsed and compared — position, label, duration and
-   * role — and the two cannot move independently any more.
-   *
-   * If this fails because the TABLE was reformatted rather than because the
-   * order changed, update the regex below; do not delete the test. */
-  const md = fs.readFileSync(path.join(REPO_ROOT, "docs/curation/grilling-foray.md"), "utf8");
-  const section = md.split("## 2. The running order")[1]?.split("### Why the order")[0];
-  assert.ok(section, "could not find §2 in grilling-foray.md");
-  const rows = [...section.matchAll(/^\|\s*(\d+)\s*\|\s*[\d:]+\s*\|\s*([A-Z]+-\d+)\s*\|\s*([\d.]+) s\s*\|\s*(\w+)\s*\|/gm)];
-  assert.equal(rows.length, 32, "§2's table no longer parses as 32 numbered rows");
+/* Each Foray's §2 running-order table, and where it stops. Adding a Foray means
+ * adding a row here, which is the point: the doc table and `items` must not be
+ * able to move independently. Foray #2 was authored with its §2 claiming this
+ * test covered it while the test read only grilling-foray.md — the claim was
+ * true of #1 and false of #2 for one commit. */
+const RUNNING_ORDER_DOCS = [
+  { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order", rows: 32 },
+  { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", rows: 22 },
+];
 
-  const items = foray0(files).items;
-  for (const [i, [, n, label, dur, role]] of rows.entries()) {
-    assert.equal(Number(n), i + 1, "§2's rows are not numbered 1..32 in order");
-    assert.equal(items[i].label, label, `position ${n}: data says ${items[i].label}, doc says ${label}`);
-    assert.equal(items[i].role, role, `${label}: data says ${items[i].role}, doc says ${role}`);
-    assert.ok(
-      Math.abs(durationOf(files, items[i].segment_id) - Number(dur)) <= 0.06,
-      `${label}: segment is ${durationOf(files, items[i].segment_id)} s, doc says ${dur} s`
-    );
+test("every committed Foray has a running-order doc pinned above", () => {
+  /* RUNNING_ORDER_DOCS drives a loop, and `test/suite-integrity.test.js` counts
+   * top-level `test(` DECLARATIONS — so deleting an entry from that array would
+   * delete a real test without moving the floor. This assertion is what makes
+   * that deletion loud instead, and it is also what stops Foray #3 landing with
+   * its §2 table unpinned, which is the mistake Foray #2 shipped with. */
+  assert.deepEqual(
+    RUNNING_ORDER_DOCS.map((d) => d.forayId),
+    files.forays.forays.map((f) => f.id)
+  );
+  for (const { doc } of RUNNING_ORDER_DOCS) {
+    assert.ok(fs.existsSync(path.join(REPO_ROOT, doc)), `${doc} is missing`);
   }
 });
 
-test("labels are unique and every prefix is declared", () => {
-  const f = foray0(files);
-  const labels = f.items.map((i) => i.label);
-  assert.equal(new Set(labels).size, labels.length);
-  for (const l of labels) assert.ok(f.label_prefixes[l.split("-")[0]], `no prefix entry for ${l}`);
+for (const { forayId, doc, endsBefore, rows: expectedRows } of RUNNING_ORDER_DOCS) {
+  test(`data/forays.json agrees with ${path.basename(doc)} §2, row for row`, () => {
+    /* #182's third consequence is that the order "silently rots": change the data
+     * and the doc goes stale, or the reverse, with nothing to detect the drift.
+     * So the doc table is parsed and compared — position, label, duration and
+     * role — and the two cannot move independently any more.
+     *
+     * If this fails because the TABLE was reformatted rather than because the
+     * order changed, update the regex below; do not delete the test. */
+    const md = fs.readFileSync(path.join(REPO_ROOT, doc), "utf8");
+    const section = md.split("## 2. The running order")[1]?.split(endsBefore)[0];
+    assert.ok(section, `could not find §2 in ${doc}`);
+    const rows = [...section.matchAll(/^\|\s*(\d+)\s*\|\s*[\d:]+\s*\|\s*([A-Z]+-\d+)\s*\|\s*([\d.]+) s\s*\|\s*(\w+)\s*\|/gm)];
+    assert.equal(rows.length, expectedRows, `§2's table no longer parses as ${expectedRows} numbered rows`);
+
+    const items = forayBy(files, forayId).items.filter((i) => i.type === "segment");
+    for (const [i, [, n, label, dur, role]] of rows.entries()) {
+      assert.equal(Number(n), i + 1, `§2's rows are not numbered 1..${expectedRows} in order`);
+      assert.equal(items[i].label, label, `position ${n}: data says ${items[i].label}, doc says ${label}`);
+      assert.equal(items[i].role, role, `${label}: data says ${items[i].role}, doc says ${role}`);
+      assert.ok(
+        Math.abs(durationOf(files, items[i].segment_id) - Number(dur)) <= 0.06,
+        `${label}: segment is ${durationOf(files, items[i].segment_id)} s, doc says ${dur} s`
+      );
+    }
+  });
+}
+
+test("labels are unique and every prefix is declared, in every Foray", () => {
+  for (const f of files.forays.forays) {
+    const labels = f.items.filter((i) => i.type === "segment").map((i) => i.label);
+    assert.equal(new Set(labels).size, labels.length, `${f.id} has duplicate labels`);
+    for (const l of labels) assert.ok(f.label_prefixes[l.split("-")[0]], `${f.id}: no prefix entry for ${l}`);
+  }
 });
 
 test("GRID-3's incidental mapping in the doc agrees with label_prefixes", () => {
@@ -425,17 +459,26 @@ test("L2/L3 hold for every played segment, per §4's role table", () => {
   // own, and reads as coverage it does not have.
   const floors = { quote: 30, explanation: 60, exchange: 75, narrative: 120 };
   const maxes = { quote: 90, explanation: 360, exchange: 480, narrative: 480 };
-  for (const item of foray0(files).items) {
-    const d = durationOf(files, item.segment_id);
-    assert.ok(d >= floors[item.role], `${item.label} (${item.role}) is ${d} s, under ${floors[item.role]}`);
-    assert.ok(d <= maxes[item.role], `${item.label} (${item.role}) is ${d} s, over ${maxes[item.role]}`);
+  let checked = 0;
+  for (const f of files.forays.forays) {
+    for (const item of f.items.filter((i) => i.type === "segment")) {
+      const d = durationOf(files, item.segment_id);
+      assert.ok(d >= floors[item.role], `${f.id} ${item.label} (${item.role}) is ${d} s, under ${floors[item.role]}`);
+      assert.ok(d <= maxes[item.role], `${f.id} ${item.label} (${item.role}) is ${d} s, over ${maxes[item.role]}`);
+      checked += 1;
+    }
   }
+  // A loop that silently iterates nothing is the failure this guards against.
+  assert.equal(checked, 54, "every played segment of every Foray must be checked");
 });
 
-test("no played segment passes L4's 240 s soft maximum", () => {
-  // JERK-1 at 237.93 s is the closest, and §4 says it was cut 2 s under the
-  // line deliberately. Pinned, because L4's escape hatch below is the part
-  // that is easy to get wrong.
+test("no segment played by Foray #1 passes L4's 240 s soft maximum", () => {
+  // JERK-1 at 237.93 s is the closest, and grilling-foray.md §4 says it was cut
+  // 2 s under the line deliberately. Pinned, because L4's escape hatch is the
+  // part that is easy to get wrong. Deliberately Foray #1 only: Foray #2 has one
+  // segment past 240 s ON PURPOSE (VD-1, 259.88 s), and the test above named
+  // "Foray #2's only L4 segment carries both escape-hatch fields" is what holds
+  // that case to its `needs_review` + `long_reason` bargain.
   const longest = Math.max(...foray0(files).items.map((i) => durationOf(files, i.segment_id)));
   assert.ok(longest <= 240, `longest is ${longest} s`);
   assert.equal(longest, 237.93);
