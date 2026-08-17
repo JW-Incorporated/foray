@@ -22,7 +22,8 @@
  * `setTimeout`, and `setTimeout` is exactly what was measured at 1 s alignment.
  * The load is worse: a fresh media fetch, with `LOAD_SETTLE_TIMEOUT_MS` at 10 s,
  * inside a page that has been SILENT since the boundary and may therefore have
- * lost WebKit's audibility assertion (`audibleActivityClearDelay`, 10 s).
+ * lost WebKit's audibility assertion (`audibleActivityClearDelay` — measured at
+ * 5 s in run 32036295743, not the 10 s once assumed).
  *
  * If that chain breaks, a listener with a locked screen hears two minutes of Foray
  * and then silence for the rest of the commute. No amount of out-point accuracy

@@ -124,12 +124,21 @@ Two things follow, and the second one supersedes a "SAFE" reading in `STATE.md`.
 
    **A real phone then crossed it, which settles the direction of this risk.**
    Issue **#224**: a founder heard `grilling-history-1` *pause* at a seam with the
-   screen off — the load exceeding `LOAD_SETTLE_TIMEOUT_MS = 10_000`, so
-   `queue-manager.js:470` reports `E.error` and the player goes idle and pauses.
-   The 847 ms measured here was the whole margin, and on a real network it was
-   spent. **#227** moves the load off the boundary (prefetch on a second element,
-   12 s ahead, while audio still flows) so the silent window is no longer where the
-   fetch happens.
+   screen off. The cause given there is **our own** deadline, not WebKit's — the
+   load exceeding `LOAD_SETTLE_TIMEOUT_MS` (10 s, `html-audio-backend.js`), which
+   throws into `_loadItem`'s catch, dispatches `E.error`, and leaves the player
+   idle and paused.
+
+   **Three separate 10,000 ms deadlines are in play and they must not be merged:**
+   WebKit's audible-activity clear (**5 s**, measured above), WebKit's
+   foreground-assertion release (**10 s**), and our `LOAD_SETTLE_TIMEOUT_MS`
+   (**10 s**). The measured 9,153 ms is 92% of the last of those. It is also 847 ms
+   short of the second — the same number, because the constants match, which is
+   what makes the conflation easy and why it is spelled out here.
+
+   **#227** moves the load off the boundary (prefetch on a second element, 12 s
+   ahead, while the current segment is still audible) so the silent window is no
+   longer where the fetch happens — which relieves all three.
 
 **And the second transition — the one that would have tested whether audibility
 lapses after that silence — is exactly the one this run did not get.** The record
@@ -808,8 +817,9 @@ with a caveat; nothing like the failure §3 measures.**
 beat pauses the element for 2.0 s, which withdraws the audibility that everything
 above depends on — but both engines carry a grace window far longer than the
 beat: **30 s** on Chromium (`kRecentAudioDelay`, §5.2) and **10 s** on WebKit
-(`audibleActivityClearDelay`, §7.4). 2.0 s against the smaller of those is 5×
-headroom. Measured on Chromium (§4.2) the beat stretches to 2.8–4.6 s in a
+(`audibleActivityClearDelay`, §7.4 — **but see §7.4's correction: the measured
+value is 5 s, not 10 s**). 2.0 s against the smaller of those is **2.5×** headroom,
+not the 5× this paragraph originally claimed. Measured on Chromium (§4.2) the beat stretches to 2.8–4.6 s in a
 hidden page; on iOS, 1 s alignment predicts 2–3 s. **Longer than authored,
 audible as a slightly baggy pause, not a stall and not a stop.** Nobody needs to
 redesign the beat for backgrounding.

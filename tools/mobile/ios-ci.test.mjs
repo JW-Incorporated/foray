@@ -829,7 +829,8 @@ test("`document.hidden` alone cannot buy a pass — the wall clock has to agree"
 });
 
 test("one transition is not enough, and the reason is the audibility grace window", () => {
-  /* One can succeed inside WebKit's `audibleActivityClearDelay` (10 s) and the next
+  /* One can succeed inside WebKit's `audibleActivityClearDelay` (MEASURED 5 s, not
+     the 10 s once assumed here) and the next
      still fail once the page has been silent long enough for the assertion to lapse
      — which is the risk MP1 names and leaves unmeasured. So a single success is
      reported as inconclusive rather than as the mechanism working. */

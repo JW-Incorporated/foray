@@ -34,11 +34,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
   silence. **Nothing in `player/` is touched here, before or after that fix.**
 - **THIS PROBE IS NOW #227'S ONLY VERIFIER, and #224 is why that matters.** Wyatt
   heard it on a real phone: *"transitions worked ok while my phone was unlocked, but
-  when my screen was off then it would just pause"* — the load crossing
-  `LOAD_SETTLE_TIMEOUT_MS = 10_000` → `queue-manager.js:470` → `E.error` → pause.
-  The measured beat was 9,153 ms and the foreground-assertion cliff is 10 s, so the
-  **847 ms** margin this PR found was the difference between a slow seam and the app
-  stopping. To verify #227: dispatch `ios-build` on `main` and read `observedGapMs`
+  when my screen was off then it would just pause"* — the load crossing **our own**
+  `LOAD_SETTLE_TIMEOUT_MS` (10 s, `html-audio-backend.js`), which throws into
+  `_loadItem`'s catch → `E.error` → idle → pause. **Do not merge the three 10,000 ms
+  deadlines:** WebKit's audible-activity clear is **5 s** (measured, and the beat
+  crossed it while playback continued), WebKit's foreground-assertion release is
+  10 s, and `LOAD_SETTLE_TIMEOUT_MS` is 10 s and is #224's stated cause. The
+  measured 9,153 ms is **92% of ours**; it is also 847 ms short of WebKit's, the same
+  figure only because the constants match. To verify #227: dispatch `ios-build` on `main` and read `observedGapMs`
   — **expect ~2,000–3,000 ms**. Two traps: a **bridged** Foray is deliberately not
   warmed (eligibility is `seamGapSec > 0`), so "no change" there is not a failed
   fix; and `SEAM_MIN_PLAUSIBLE_MS = 500` stays meaningful because the beat is still
@@ -476,7 +479,8 @@ docs/. Completed workstreams move to their plan doc's retro section.
   ruling still holds — the beat's own `setTimeout` armed in **2 ms** and is
   exonerated. But "SAFE" is no longer the right word: the beat is
   `max(gap, load)` and the LOAD took nine seconds, leaving **~850 ms** of margin
-  against WebKit's 10 s `audibleActivityClearDelay` rather than the comfortable
+  against WebKit's `audibleActivityClearDelay` — **measured at 5 s, so the beat
+  crossed it outright** — rather than the comfortable
   window the paragraph below implies. The "one unmeasured risk" it names at the end
   is therefore no longer unmeasured and was very nearly realised. Details:
   `docs/ios-ci.md` §4c, `docs/research/mp1-background-audio.md` §0b.
@@ -485,7 +489,9 @@ docs/. Completed workstreams move to their plan doc's retro section.
   everything else depends on — but both engines carry a far longer grace window:
   **30 s** on Chromium (`kRecentAudioDelay`, whose source comment reads "A page
   cannot be throttled or frozen 30 seconds after playing audio") and **10 s** on
-  WebKit (`audibleActivityClearDelay`). Measured on Chromium the beat stretches
+  WebKit (`audibleActivityClearDelay` — **measured 2026-08-17 as 5 s, not 10 s**;
+  the 10 s constant is a different timer, WebKit's foreground-assertion release).
+  Measured on Chromium the beat stretches
   to 2.8–4.6 s in a hidden page. Baggy, not broken. **Do not redesign the beat
   for backgrounding.** The one unmeasured risk: a slow cross-episode advance
   (`LOAD_SETTLE_TIMEOUT_MS` is 10 s) could push the silent window past WebKit's

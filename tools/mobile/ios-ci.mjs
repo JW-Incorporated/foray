@@ -829,7 +829,9 @@ export const SEAM_BAD_MS = 15000;
  *
  * One would be a result; two is a mechanism. The specific worry two catches is a
  * transition that succeeds inside WebKit's audibility grace window
- * (`audibleActivityClearDelay`, 10 s) and then fails on the next one, once the
+ * (`audibleActivityClearDelay` — MEASURED at 5 s in run 32036295743, not the 10 s
+ *  this comment used to say; that is WebKit's foreground-assertion release) and then
+ *  fails on the next one, once the
  * page has been silent long enough for the assertion to lapse — which is exactly
  * the risk `docs/research/mp1-background-audio.md` names and leaves unmeasured.
  */

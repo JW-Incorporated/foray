@@ -205,7 +205,8 @@ while hidden — that is a *media* event. The beat is a `setTimeout`, and the sa
 page measured hidden DOM timers at a **median of 1000 ms**. The load is worse
 again: a fresh media fetch, `LOAD_SETTLE_TIMEOUT_MS` at 10 s, in a page that has
 been *silent* since the boundary and may therefore have lost WebKit's audibility
-assertion (`audibleActivityClearDelay`, 10 s). If that chain breaks, a listener with
+assertion (`audibleActivityClearDelay` — **measured at 5 s, see §4c**; the 10 s
+figure widely quoted for it is a different timer). If that chain breaks, a listener with
 a locked screen hears one segment and then **silence for the rest of the commute** —
 a different defect from playing the wrong episode, and one no amount of out-point
 accuracy fixes.
@@ -496,11 +497,18 @@ Recorded here because it is the strongest argument for keeping this workflow.
 Wyatt listened to `grilling-history-1` on a real phone: *"The transitions worked ok
 while my phone was unlocked, but when my screen was off then it would just pause."*
 
-**That is exactly the two-cliff structure above, realised.** The traced cause is the
-load crossing `LOAD_SETTLE_TIMEOUT_MS = 10_000` → `queue-manager.js:470` → `E.error`
-→ idle and pause. The measured beat was **9,153 ms**. The **847 ms** of headroom
-noted above was not an academic margin — it was the difference between a slow seam
-and *the app stopping*, and on a real device with a real CDN it went the other way.
+**That is the shape this section derived, realised on a device.** The cause given on
+#224 is the load crossing **our own** `LOAD_SETTLE_TIMEOUT_MS` (10 s, defined in
+`player/html-audio-backend.js`), whose expiry throws into `_loadItem`'s catch in
+`player/queue-manager.js` and dispatches `E.error` — idle, and pause. *(Named by
+function rather than by line: #227 moved these lines, and a line number in prose is
+wrong the moment anyone edits above it. It was `queue-manager.js:470` before that
+merge and is not now.)*
+
+The measured beat was **9,153 ms**, which is **92% of that timeout** — so this was
+never a comfortable margin, and on a real device with a real CDN it was spent. Read
+the deadline table below before quoting the 847 ms figure, because #224 crossed
+*ours*, not WebKit's.
 
 Two consequences worth stating plainly:
 
@@ -597,11 +605,27 @@ It also relocates the cliff. The thing to fear is the **10 s** foreground-assert
 release, and the measured beat came within **847 ms** of it — **on a local file**.
 A cross-origin fetch has under a second of headroom before crossing that threshold.
 
-**And a real phone then crossed it.** #224: a founder heard a Foray *pause* at a
-seam with the screen off, traced to the load exceeding
-`LOAD_SETTLE_TIMEOUT_MS = 10_000` and the manager erroring to idle. So this margin
-is not a theoretical one — it was measured at 847 ms here and consumed in the
-field. #227's prefetch exists to take the load out of that window altogether.
+**And a real phone then hit a 10 s deadline — but be careful WHICH one, because
+there are three and they are all 10,000 ms.** #224: a founder heard a Foray *pause*
+at a seam with the screen off. **The report is an ear, not an artifact** — #224 is
+open, with no device log — so the mechanism below is the *traced* cause and not a
+measured one, which is the same standard §4c applies to itself. It is our **own**
+application deadline, `LOAD_SETTLE_TIMEOUT_MS` in `html-audio-backend.js`, whose expiry throws
+into `_loadItem`'s catch and dispatches `E.error` — idle, and pause. That is not
+WebKit's foreground-assertion release, and it is not the 5 s audible-activity clear.
+
+The three, kept apart on purpose:
+
+| deadline | whose | what it does at expiry |
+|---|---|---|
+| `audibleActivityClearDelay` **5 s** | WebKit | drops the audible-activity assertion. **Crossed** during the measured beat; playback continued |
+| foreground-assertion release **10 s** | WebKit | `WebPageProxy::updateThrottleState` releases the foreground assertion |
+| `LOAD_SETTLE_TIMEOUT_MS` **10 s** | **ours** | `E.error` → idle → **pause**. This is #224's stated cause |
+
+The measured 9,153 ms is **92% of our own timeout** and 847 ms short of WebKit's.
+Both arithmetics give 847 ms because both constants are 10,000 ms, which is exactly
+why they are easy to conflate — the earlier draft of this paragraph did. #227's
+prefetch takes the load out of the silent window, which addresses all three at once.
 
 ### What the log DOES say, and a claim it walks back
 
@@ -657,11 +681,20 @@ reads as a formality invites someone to discharge it cheaply and believe they ha
   prohibition. (CORS is a non-issue: `html-audio-backend.js` deliberately sets no
   `crossorigin`, so a no-CORS `<audio>` load needs no header from any of the 43 hosts.)
 
-**The binding reason is the third one, and no CI change fixes it.** A
+**First, #227 narrowed the risk without removing it.** Since the prefetch landed, a
+warmed seam fetches 12 s early **while the page is audible and holds its assertion**,
+so the fetch is no longer in the silent window at all. What still fetches inside the
+silence is the **unwarmed residue**: bridged seams (deliberately not warmed), the
+first item, user-driven transitions, and a warm **miss** — a warm element whose buffer
+was evicted or whose load lost the race. So the question below is no longer "how slow
+is a seam fetch" but "**how often does a seam fall back to the cold path, and how slow
+is it when it does**".
+
+**The binding reason it cannot be answered here, and no CI change fixes it.** A
 `macos-latest` runner is a datacenter IP on a datacenter link — **the fastest network
-this app will ever see**. The risk being chased is a **slow** cold fetch pushing the
-silent window past WebKit's 10 s audibility grace. So a green cross-origin number
-from CI would be a **floor**, and a floor cannot retire a tail-latency risk. It is
+this app will ever see**. The risk being chased is a **slow** cold fetch in the silent
+window. So a green cross-origin number from CI would be a **floor**, and a floor
+cannot retire a tail-latency risk. It is
 the same asymmetry `SIMULATOR_CAVEAT` already names for power management, and it
 survives widening the CSP *and* proving the runner has egress. (Whether a runner can
 reach a podcast CDN is, separately, **unproven rather than blocked** — the
@@ -679,7 +712,13 @@ carries `media-src https:`), and has zero principle-#3 exposure. The one real ph
 `HUMAN-ACTIONS.md` #11/#16 asks for then **confirms a real number** instead of
 supplying a single anecdote.
 
-Until that exists, the correct sentence is the one the constant now carries: a cold
+**Post-#227 that instrumentation has to cover the WARM path too** — `prefetch` → the
+warm element's `canplay` — and report the **warm-miss rate**. The miss rate is now
+what decides whether a seam fetch happens in the silent window at all, so
+instrumenting only the cold path would measure the exception and report it as the
+rule.
+
+Until that exists, the correct sentence is the one the constant carries: a cold
 cross-origin fetch at a seam is **unmeasured, and unmeasurable here**.
 
 ### One thing that cost 18 minutes, recorded so nobody re-learns it
