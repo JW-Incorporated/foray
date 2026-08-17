@@ -89,17 +89,27 @@ docs/. Completed workstreams move to their plan doc's retro section.
   1,642 on the classification itself). **Nothing escalates on its own** — the six
   routines run `--mode fresh` — so the queue is latent. But a deliberate tier-2
   pass is now a ~10× bigger job than the last time anyone sized it, and tier 2
-  fetches transcripts, so it is a spend decision. Noted in `HUMAN-ACTIONS.md` #9.
+  fetches transcripts, so it is a spend decision. Noted in `HUMAN-ACTIONS.md` #10.
 - **Heads-up — this rebased over #203, and two of its findings interact.**
   (1) **#203 changed the shard key** (`Number(id) % N` → `fnv1a32(String(id)) % N`).
-  Every one of the 17,427 rows on the branches predates that, so
-  `reconcile-shards.mjs`'s lane check accepts **either** key (`lanesOf()`).
-  Tightening it to the hash alone would reject all 17,427. (2) **#203's
+  Every one of the 17,427 rows on the branches predates that, so the lane check
+  picks the key from each row's own `classified_at` against the #203 merge instant
+  (`keyForRow()` / `SHARD_KEY_CUTOVER`). Full 1/6 guard strength per row —
+  accepting *either* key would have been 1.83x weaker forever — and it is the only
+  variant that survives the next shard run, when every branch becomes a
+  legacy/hashed mixture. A per-*branch* purity rule was written and rejected for
+  exactly that reason: it refuses a mixed-era branch. (2) **#203's
   `shard.test.mjs` measured balance over the shows that REMAIN, with a floor of
   5,000** — this merge takes that set to 509, so five of its tests failed.
-  They now measure a *constructed* remainder (`drainLane()`) that reproduces the
-  real pathology permanently, which is what its own header asked for ("a pinned
-  count would be red by tomorrow lunchtime"). **And #203's stated cause was
+  They now measure a *constructed* remainder (`drainLane()` — ~53% of one modulo
+  lane classified, the real 2026-08-16 condition, reproducing 2.21x against #203's
+  measured 2.20x), which is what its own header asked for ("a pinned count would
+  be red by tomorrow lunchtime"). Draining the lane *entirely* was the first
+  attempt and was worse than useless: it makes `spread()` Infinity, so the
+  assertion could never fail. Its three "partition, not a filter" tests moved to a
+  fixed 3,000-show world for the same reason — on the live set they go vacuous at
+  509 and stop catching a shard that drops shows. Verified by mutation: reverting
+  `shardOf` to modulo turns 4 of the 23 red. **And #203's stated cause was
   wrong:** the 2.20x skew did not come from the done shows being "taken in
   ascending-id order" (draining the lowest 1,851 ids leaves modulo at 1.045x) —
   it came from **1,724 of main's 1,851 agent rows sitting in modulo residue 0**,
@@ -129,7 +139,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
   byte-identical to an inherited row. Count each shard's *own* work, or you will
   conclude five of six ran unsharded.) #4 ("are they alive?") is **yes** — though
   #4 does not exist on `main`; #198 creates it. The real defect is new **#10**:
-  nothing lands their output. The backlog is now only **509 shows**, so #9 is a
+  nothing lands their output. The backlog is now only **509 shows**, so #10 is a
   small problem, but a promptly-recurring one.
 - **Related:** #198, #203 (`--shard` fails open), #175, ADR-0006.
 

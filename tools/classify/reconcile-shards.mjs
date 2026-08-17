@@ -45,8 +45,12 @@
       that — `parseShard` now throws — but every row already on the six
       branches predates the fix, so it cannot be assumed of this data.
       #203 also changed the KEY, from `Number(id) % N` to
-      `fnv1a32(String(id)) % N`, so a branch can hold rows partitioned by
-      either. `lanesOf()` accepts both, and says why.
+      `fnv1a32(String(id)) % N`, so different branches (and eventually
+      different rows on one branch) are partitioned by different keys.
+      `keyForRow()` picks the right one from the row's own `classified_at`
+      against the #203 merge instant, so every row is checked under exactly
+      ONE key — full guard strength, and correct for the mixed-era branches
+      every branch becomes from the next shard run onward.
       A shard that ran unsharded would have classified other shards' shows,
       so this script hard-fails on (a) two shards adopting the same id and
       (b) any id whose residue is not that shard's lane. Both are fatal,
@@ -103,6 +107,15 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+/* The shard key comes from labels.mjs rather than a local copy ON PURPOSE: two
+   implementations of the key that decides who owns which show is exactly the
+   drift that would silently re-partition the fleet and re-do merged work.
+   The cost is a real import chain — labels.mjs -> segments/sweep-transcripts.mjs
+   -> refresh/{enclosure,dai}.mjs, and dai.mjs reads dai-hosts.json at module
+   scope — so this script now fails at import if that JSON is missing. Verified
+   to matter not at all for CI: the whole classify suite passes with
+   backend/node_modules absent, which is the `data-and-site` condition #203's
+   lazy `fast-xml-parser` exists for. */
 import { shardOf } from "./labels.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -126,38 +139,65 @@ export function laneOf(id, shardCount) {
   return ((n % shardCount) + shardCount) % shardCount;
 }
 
-/* EVERY lane a shard could legitimately have selected this id into.
+/* The two shard keys this repo has used, newest first.
  *
- * PR #203 changed the shard key from `Number(id) % N` to
- * `fnv1a32(String(id)) % N`, because the modulo key was 2.20x unbalanced over
- * the shows that remained and would have idled a sixth of the fleet. That means
- * a single branch can legitimately hold rows partitioned by TWO different keys:
- * everything committed before #203 by the modulo key, everything after it by the
- * hash. Checking only one would reject the other half as off-lane and abort a
- * correct merge — the guard would fire on the fleet working as intended.
+ * PR #203 replaced `Number(id) % N` with `fnv1a32(String(id)) % N`, because the
+ * modulo key was 2.20x unbalanced over the shows that remained and would have
+ * idled a sixth of the fleet. So a branch's rows are partitioned by whichever
+ * key was in force when they were selected, and BOTH eras are legitimate. */
+export const SHARD_KEYS = [
+  { name: "hashed", of: (id, n) => shardOf(id, n) },          // post-#203
+  { name: "legacy", of: (id, n) => laneOf(id, n) }            // pre-#203
+];
+
+/* WHEN THE KEY CHANGED. PR #203 (commit b9c07a4) merged at this instant, so a
+   row selected before it was sharded by `legacy`, and a row selected at or after
+   it by `hashed`. Verified against the six branches: all 19,890 agent rows carry
+   `classified_at`, spanning 2026-07-25T04:15Z .. 2026-08-17T00:52Z — every one
+   of them pre-cutover, which is why the whole existing corpus reads `legacy`. */
+export const SHARD_KEY_CUTOVER = "2026-08-17T03:29:56Z";
+
+/* THE KEY A SINGLE ROW WAS SELECTED WITH, from its own timestamp.
  *
- * So a row is in-lane if EITHER key puts it there. That is weaker than a single
- * key by exactly a factor of two in the worst case (an unsharded run's rows have
- * ~2/6 rather than ~1/6 chance of looking legitimate), and it is still decisive
- * at scale: an unsharded shard contributing ~3,000 rows would produce ~2,000
- * off-lane ones. Do not "tighten" this to the hash alone until every branch has
- * been re-cut post-#203; it would reject 17,427 valid rows. */
-export function lanesOf(id, shardCount) {
-  const lanes = new Set();
-  const legacy = laneOf(id, shardCount);
-  if (legacy !== null) lanes.add(legacy);
-  try {
-    lanes.add(shardOf(id, shardCount)); // the post-#203 key
-  } catch {
-    /* shardOf throws on a nonsensical count; the legacy lane already covers us */
-  }
-  return [...lanes];
+ * Two designs were tried first and both are worse:
+ *
+ *   - Accept a row if EITHER key places it in-lane. 1.83x weaker than one key
+ *     forever, for every row (an unsharded run's rows pass 11/36 of the time
+ *     instead of 6/36), to buy something no row in the corpus needs.
+ *   - Require each BRANCH pure under one key, detecting which. Full strength,
+ *     and it self-destructs on the next run: the first post-#203 batch makes
+ *     every branch a legacy/hashed mixture, pure under neither, and a correct
+ *     merge would be refused.
+ *
+ * A row's own `classified_at` settles it exactly, so each row is checked under
+ * exactly ONE key: full strength, no clock beyond a committed constant, and
+ * mixed-era branches — which is what every branch becomes from the next run
+ * onward — are handled row by row.
+ *
+ * A row with no timestamp reads `legacy`, which is the safe default rather than
+ * a guess: every row that predates the `classified_at` field also predates the
+ * key change, and defaulting to `hashed` would reject the entire existing
+ * corpus. */
+export function keyForRow(row) {
+  const at = row?.classified_at;
+  const isPost = typeof at === "string" && at >= SHARD_KEY_CUTOVER;
+  return isPost ? SHARD_KEYS[0] : SHARD_KEYS[1];
 }
 
 /** The shard index a branch name claims (`reclassify-3` -> 3), or null. */
 export function shardIndexOf(branch) {
   const m = /-(\d+)$/.exec(String(branch));
   return m ? Number(m[1]) : null;
+}
+
+/** The lane a row's own key puts it in, or null if that key cannot place it. */
+export function laneForRow(id, row, shardCount) {
+  try {
+    const lane = keyForRow(row).of(id, shardCount);
+    return typeof lane === "number" && Number.isFinite(lane) ? lane : null;
+  } catch {
+    return null;
+  }
 }
 
 /* A copy-gated display field that is absent cannot also be "ok" — the one
@@ -191,16 +231,21 @@ export function reconcile({ base, shards, shardCount = DEFAULT_SHARD_COUNT, taxo
 
   const baseAgentIds = new Set(Object.keys(base.entries).filter((id) => isAgentRow(base.entries[id])));
 
-  /* Pass 1 — collect every candidate adoption and enforce disjointness
-     BEFORE mutating anything, so a collision cannot be half-applied. */
-  const claimedBy = new Map(); // id -> branch
-  const candidates = []; // { id, branch, index, row }
+  /* PASS 1a — separate each branch's OWN WORK from what it merely inherited.
+     Every shard file carries rows inherited from its branch point that the shard
+     never re-ran (shards 1..5 hold 144 each, reclassify-0 holds 1,807), and
+     those span every lane. They are not that shard's work, so they must not be
+     lane-checked — the exemption is BYTE-IDENTITY, not "older timestamp": an
+     off-lane row that differs from the incumbent is evidence of off-lane work
+     whichever way its clock points. */
   const perShard = new Map();
+  const ownWork = new Map(); // branch -> [{ id, row }]
   for (const shard of shards) {
     const { branch, file } = shard;
     const index = shard.index ?? shardIndexOf(branch);
-    const stat = { branch, index, head: shard.head ?? null, entries: 0, agent_rows: 0, adopted: 0, refreshed: 0, incumbent_kept: 0, off_lane: 0, carries_base_layers: false };
+    const stat = { branch, index, head: shard.head ?? null, entries: 0, agent_rows: 0, adopted: 0, refreshed: 0, incumbent_kept: 0, off_lane: 0, carries_base_layers: false, shard_key: null, keys_seen: {} };
     perShard.set(branch, stat);
+    ownWork.set(branch, []);
 
     if (!file || typeof file !== "object" || !file.entries) {
       errors.push(`${branch}: unreadable classification file`);
@@ -212,51 +257,66 @@ export function reconcile({ base, shards, shardCount = DEFAULT_SHARD_COUNT, taxo
     for (const [id, row] of Object.entries(file.entries)) {
       if (!isAgentRow(row)) continue;
       stat.agent_rows++;
-
       if (!(id in base.entries)) {
         errors.push(`${branch}: show ${id} is not in the base catalogue — refusing to invent a row`);
         continue;
       }
-      /* Rule 3: agent vs agent is decided by `classified_at`, newest wins.
-         Every shard file carries rows INHERITED from its branch point that
-         the shard never re-ran — shards 1..5 hold 144 each, reclassify-0
-         holds 1,807 — and those span every lane, so they must not be
-         lane-checked: they are not that shard's own work. The exemption is
-         therefore byte-identity, NOT "not newer". An off-lane row that
-         merely has an older or equal timestamp but DIFFERS from the
-         incumbent is real evidence the shard worked outside its slice, and
-         it must not slip through as if it were inherited — so it is still
-         lane-checked, and only then discarded in the incumbent's favour. */
-      if (baseAgentIds.has(id)) {
-        const incumbent = base.entries[id];
-        const inherited = JSON.stringify(row) === JSON.stringify(incumbent);
-        if (inherited) { stat.incumbent_kept++; continue; }
+      if (baseAgentIds.has(id) && JSON.stringify(row) === JSON.stringify(base.entries[id])) {
+        stat.incumbent_kept++; // inherited, untouched by this shard
+        continue;
+      }
+      ownWork.get(branch).push({ id, row });
+    }
+  }
 
-        if (index !== null && !lanesOf(id, shardCount).includes(index)) {
-          stat.off_lane++;
-          errors.push(`${branch}: show ${id} is in lane ${lanesOf(id, shardCount).join(" or ")}, not ${index}, and differs from the incumbent — this shard classified a show outside its slice (see issue #203: --shard used to fail open)`);
-          continue;
-        }
-        const incumbentAt = incumbent?.classified_at;
+  /* PASS 1b — THE LANE CHECK, per row, under the one key that row was selected
+     with. A shard whose `--shard` failed open would land here with rows from
+     every lane; a shard mid-way through the #203 key change lands here with a
+     mixture of eras, and both are handled row by row. */
+  for (const shard of shards) {
+    const stat = perShard.get(shard.branch);
+    if (stat.index === null) continue; // lane-less branch name: the collision guard carries it
+    const offLane = [];
+    for (const { id, row } of ownWork.get(shard.branch)) {
+      const key = keyForRow(row);
+      const lane = laneForRow(id, row, shardCount);
+      if (lane !== stat.index) offLane.push(`${id} (${key.name} lane ${lane === null ? "unplaceable" : lane})`);
+      stat.keys_seen[key.name] = (stat.keys_seen[key.name] || 0) + 1;
+    }
+    stat.shard_key = Object.keys(stat.keys_seen).sort().join("+") || null;
+    if (offLane.length) {
+      stat.off_lane = offLane.length;
+      errors.push(
+        `${shard.branch}: ${offLane.length} of ${ownWork.get(shard.branch).length} of its own rows fall outside lane ${stat.index} under the key they were selected with ` +
+        `(e.g. ${offLane.slice(0, 5).join("; ")}). That is what an unsharded run looks like: --shard used to FAIL OPEN on an empty, out-of-range or non-numeric ` +
+        `value and select the whole catalogue instead (fixed in #203). Refusing to merge work whose ownership is unknown.`
+      );
+    }
+  }
+
+  /* PASS 1c — validate, and enforce disjointness BEFORE mutating anything so a
+     collision can never be half-applied. */
+  const claimedBy = new Map(); // id -> branch
+  const candidates = []; // { id, branch, index, row }
+  for (const shard of shards) {
+    const { branch } = shard;
+    const stat = perShard.get(branch);
+    for (const { id, row } of ownWork.get(branch)) {
+      /* Rule 3: agent vs agent is decided by `classified_at`, newest wins. The
+         row is already known to be this shard's own work and in its lane, so a
+         loss here is simply discarded in the incumbent's favour. */
+      if (baseAgentIds.has(id)) {
+        const incumbentAt = base.entries[id]?.classified_at;
         const shardAt = row.classified_at;
         const newer = typeof shardAt === "string" && typeof incumbentAt === "string" && shardAt > incumbentAt;
         if (!newer) { stat.incumbent_kept++; continue; }
         stat.refreshed++;
       }
-      /* Rule 4b: the lane check. A shard whose `--shard` failed open would
-         land here with ids from every residue. */
-      if (index !== null && !lanesOf(id, shardCount).includes(index)) {
-        stat.off_lane++;
-        errors.push(`${branch}: show ${id} is in lane ${lanesOf(id, shardCount).join(" or ")}, not ${index} — this shard did not stay in its slice (see issue #203: --shard used to fail open)`);
-        continue;
-      }
-      /* Rule 4a: two shards must never claim the same show. With the lane
-         check above this is unreachable for correctly-named `reclassify-N`
-         branches — two lanes cannot contain one id — so it is
-         defence-in-depth for a shard list whose branch names carry no lane
-         (`shardIndexOf` returns null and the lane check is skipped). It is
-         still fatal: a genuine overlap is duplicated LLM work, and picking
-         a winner by iteration order is picking one at random. */
+      /* Rule 4a: two shards must never claim the same show. Unreachable while
+         both branches shard by the same key (two lanes cannot hold one id), but
+         reachable across an era boundary and for lane-less branch names — and it
+         must stay fatal either way: a genuine overlap is duplicated LLM work,
+         and picking a winner by iteration order is picking one at random. */
       if (claimedBy.has(id)) {
         errors.push(`show ${id} is claimed by both ${claimedBy.get(id)} and ${branch} — shards are not disjoint, so which classification wins is a real decision and not this script's to guess`);
         continue;
@@ -271,7 +331,7 @@ export function reconcile({ base, shards, shardCount = DEFAULT_SHARD_COUNT, taxo
         }
       }
       claimedBy.set(id, branch);
-      candidates.push({ id, branch, index, row });
+      candidates.push({ id, branch, index: stat.index, row });
     }
   }
 
@@ -436,7 +496,7 @@ function main() {
   console.log(`agent-classified ${stats.baseline.agent_rows} -> ${stats.agent_rows_after}  (+${stats.adopted_total} new, ${stats.refreshed_total} refreshed by a newer pass)`);
   console.log(`still no agent pass: ${stats.no_agent_pass}`);
   for (const s of stats.shards) {
-    console.log(`  ${s.branch.padEnd(14)} head ${String(s.head ?? "-").padEnd(9)} agent ${String(s.agent_rows).padStart(5)}  new ${String(s.adopted).padStart(5)}  refreshed ${String(s.refreshed).padStart(3)}  incumbent-kept ${String(s.incumbent_kept).padStart(4)}  off-lane ${s.off_lane}  base-layers ${s.carries_base_layers}`);
+    console.log(`  ${s.branch.padEnd(14)} head ${String(s.head ?? "-").padEnd(9)} key ${String(s.shard_key ?? "-").padEnd(6)} agent ${String(s.agent_rows).padStart(5)}  new ${String(s.adopted).padStart(5)}  refreshed ${String(s.refreshed).padStart(3)}  incumbent-kept ${String(s.incumbent_kept).padStart(4)}  off-lane ${s.off_lane}  base-layers ${s.carries_base_layers}`);
   }
   console.log(`rows carrying superseded_topics: ${stats.superseded_rows}`);
   console.log(`display flags normalised: ${stats.display_flags_normalised}`);
@@ -456,7 +516,7 @@ function main() {
         produced_by: "tools/classify/reconcile-shards.mjs",
         method: "union of the six foray-classify-shard0-5 cloud routines' agent classifications, merged into the base layers; newest classified_at wins agent-vs-agent, displaced topics demoted to superseded_topics",
         baseline: stats.baseline,
-        shards: stats.shards.map((s) => ({ branch: s.branch, head: s.head, lane: s.index, adopted: s.adopted, refreshed: s.refreshed, incumbent_kept: s.incumbent_kept })),
+        shards: stats.shards.map((s) => ({ branch: s.branch, head: s.head, lane: s.index, shard_key: s.shard_key, adopted: s.adopted, refreshed: s.refreshed, incumbent_kept: s.incumbent_kept })),
         adopted_total: stats.adopted_total,
         refreshed_total: stats.refreshed_total,
         rows_replaced: stats.rows_replaced,

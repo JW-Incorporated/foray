@@ -246,12 +246,14 @@ much silence goes at a seam".
 > The six `reclassify-<N>` branches hold **17,427 agent classifications, and each
 > branch's own work is a clean slice of `Number(id) % 6`: 0 of 17,427 rows sit
 > outside their branch's residue, and 0 ids are claimed by two branches** —
-> sustained over 24 active classify days and ~3,300 rows per shard.
-> Independently: that is ~**758 shows/day**, against this item's own prediction of
+> sustained over **24 active classify days** (2026-07-25 .. 08-17), **~2,900 rows
+> per shard on average** (1,476 / 3,176 / 2,952 / 3,294 / 3,247 / 3,282 — shard 0
+> is the outlier because `main` already held its earlier work).
+> Independently: that is **~726 shows/day**, against this item's own prediction of
 > ~774/day *with* sharding wired and 129/day without.
 >
 > **What that does and does not prove.** It proves a `Number(id) % 6` partition is
-> in force per branch; ~3,300 rows all landing in one residue by chance is not
+> in force per branch; ~2,900 rows all landing in one residue by chance is not
 > credible. It does **not** show *which mechanism* produces the slice — the git
 > record cannot see the routine's command line, and the repo root still contains
 > `classify-shard-0.mjs`, a stale one-off with a hardcoded `/home/user/...` path,
@@ -274,9 +276,18 @@ much silence goes at a seam".
 > six, with commits through 2026-08-17 00:52 UTC.
 >
 > Left `OPEN` because only the owner changes a Status word (`CLAUDE.md`
-> § HUMAN-ACTIONS.md). **Recommended: `SKIP` — premise refuted, nothing to do.**
-> The remaining backlog is **509 shows (2.6%)**, roughly nine more shard-runs, so
-> even a real throughput fix would buy little now.
+> § HUMAN-ACTIONS.md).
+>
+> **One thing #203 changed about this, stated honestly.** #203 shipped the
+> balanced key and the fail-loud parse *in the repo*, and those only reach the
+> fleet if the routines really do invoke `prepare-batch.mjs --shard` — which, per
+> the caveat above, the git record cannot show. So this item is no longer *purely*
+> moot: doing step 1 would confirm #203's fix is live. It is still not worth it, on
+> the numbers rather than on moot-ness.
+>
+> **Recommended: `SKIP`.** The remaining backlog is **509 shows (2.6%)**, roughly
+> nine more shard-runs — a throughput fix has almost nothing left to speed up, and
+> step 2 edits six live configs through a flag that used to fail open.
 > Evidence: `tools/classify/reconcile-shards.mjs --dry-run` prints the per-branch
 > off-lane count, and `tools/classify/reconcile-shards.test.mjs` pins the check.
 
@@ -665,8 +676,10 @@ fix and change nothing.
 
 **Two things to size this against, so it is not over-prioritised.** The backlog
 is now **509 shows (2.6% of 19,787)**, ~nine shard-runs — not another 17,000; the
-shards are running out of work (`reclassify-4` has 21 shows left in its lane and
-has not committed since 08-13). And the reconciliation raised the **tier-2
+shards are running out of work, which is why `reclassify-4` has not committed
+since 08-13. (Per-lane remainders depend on WHICH key: under the retired
+`Number(id) % 6` they are 38/41/335/40/21/34; under the hashed key #203 shipped —
+what every future run uses — 87/87/80/70/86/99. Quote the second.) And the reconciliation raised the **tier-2
 escalate queue from 301 to 2,917** shows (`--mode escalate` selects
 `classify-agent-tier1 && needs_review`): 1,275 of those are flagged only for a
 copy-rule miss on the display fields, 1,642 for the classification itself.

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-17T04:59:22.655Z",
+  "built_at": "2026-08-17T05:49:54.180Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
@@ -18,6 +18,7 @@
           "branch": "reclassify-0",
           "head": "116c404",
           "lane": 0,
+          "shard_key": "legacy",
           "adopted": 1476,
           "refreshed": 44,
           "incumbent_kept": 1807
@@ -26,6 +27,7 @@
           "branch": "reclassify-1",
           "head": "8fa74ff",
           "lane": 1,
+          "shard_key": "legacy",
           "adopted": 3176,
           "refreshed": 0,
           "incumbent_kept": 144
@@ -34,6 +36,7 @@
           "branch": "reclassify-2",
           "head": "bb2aaed",
           "lane": 2,
+          "shard_key": "legacy",
           "adopted": 2952,
           "refreshed": 36,
           "incumbent_kept": 0
@@ -42,6 +45,7 @@
           "branch": "reclassify-3",
           "head": "3efd71c",
           "lane": 3,
+          "shard_key": "legacy",
           "adopted": 3294,
           "refreshed": 0,
           "incumbent_kept": 144
@@ -50,6 +54,7 @@
           "branch": "reclassify-4",
           "head": "a608c6b",
           "lane": 4,
+          "shard_key": "legacy",
           "adopted": 3247,
           "refreshed": 0,
           "incumbent_kept": 144
@@ -58,6 +63,7 @@
           "branch": "reclassify-5",
           "head": "5f55875",
           "lane": 5,
+          "shard_key": "legacy",
           "adopted": 3282,
           "refreshed": 0,
           "incumbent_kept": 144

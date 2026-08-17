@@ -66,9 +66,12 @@ changes a runner.
 >   it; that is enough to not touch them.
 > - **All six are alive**, so #4's question is answered: yes. Per-branch tips
 >   are staggered, not uniform — s0 08-15, s1 08-16, s2 08-17, s3 08-16, s4
->   **08-13**, s5 08-15 — and s4's three-day gap is not a fault: it has 21
->   unclassified shows left in its lane. The fleet is running out of work, which
->   is also why #9 is a 509-show problem now, not a 17,000-show one.
+>   **08-13**, s5 08-15 — and s4's three-day gap is not a fault: the fleet is
+>   running out of work. Only **509** shows still have no agent pass, which is
+>   also why #10 is a 509-show problem, not a 17,000-show one. (Careful quoting
+>   per-lane remainders — they differ by key. Retired `Number(id) % 6`:
+>   38/41/335/40/21/34. Hashed key #203 shipped, which every future run uses:
+>   87/87/80/70/86/99.)
 
 ~19 runs/day, which as of 2026-07-25 was the majority of all agent spend across
 Foray and Swift2 combined (~19 of ~32). That is not a problem by itself — it is

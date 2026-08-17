@@ -321,13 +321,19 @@ shard that ran unsharded would have classified other shards' shows, so this
 script hard-fails on any id whose lane is not that shard's, and on any id two
 shards both claim.
 
-**Two keys are accepted, on purpose.** #203 also replaced the shard key
-(`Number(id) % N` → `fnv1a32(String(id)) % N`), so one branch can hold rows
-partitioned by either: everything before #203 by modulo, everything after by the
-hash. `lanesOf()` accepts both. Do not tighten it to the hash alone until every
-branch has been re-cut post-#203 — it would reject all 17,427 existing rows. The
-guard is still decisive at scale: an unsharded shard contributing ~3,000 rows
-would produce ~2,000 that neither key can place in its lane.
+**Each row is checked under the one key it was selected with.** #203 also replaced the shard key
+(`Number(id) % N` → `fnv1a32(String(id)) % N`), so a branch holds rows
+partitioned by whichever key was live at the time — and from the next run onward,
+every branch holds both. `keyForRow()` picks the era from the row's own
+`classified_at` against `SHARD_KEY_CUTOVER` (the #203 merge instant,
+2026-08-17T03:29:56Z); a row with no timestamp reads `legacy`, safe because
+anything predating the field also predates the key change.
+
+Two weaker designs were tried first and are worth not repeating: accepting a row
+if *either* key places it in-lane is **1.83x weaker forever** (an unsharded run's
+rows pass 11/36 of the time instead of 6/36), and requiring each *branch* pure
+under one key is full-strength but refuses the mixed-era branches the next run
+creates.
 
 The only exemption is a row **byte-identical to the incumbent** — an inherited
 row the shard never ran. Identity, not "older timestamp": an off-lane row that

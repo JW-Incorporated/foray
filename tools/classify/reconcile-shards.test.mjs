@@ -32,8 +32,10 @@ import {
   auditNoRegression,
   isAgentRow,
   laneOf,
-  lanesOf,
+  keyForRow,
+  laneForRow,
   shardIndexOf,
+  SHARD_KEY_CUTOVER,
   DEFAULT_SHARDS,
   DEFAULT_SHARD_COUNT
 } from "./reconcile-shards.mjs";
@@ -61,12 +63,13 @@ const agent = (over = {}) => ({
 });
 const genre = (topics) => ({ topics, confidence: "low", source: "genre-map" });
 
-/* Ids chosen so their lane is UNAMBIGUOUS UNDER BOTH SHARD KEYS: for each of
-   these, `Number(id) % 6` and `fnv1a32(String(id)) % 6` agree. That matters
-   because `lanesOf()` deliberately accepts either (PR #203 changed the key
-   mid-flight and the branches hold rows from both eras), so an id whose two
-   keys disagree belongs to two lanes and cannot express "off-lane" in a
-   fixture. Verified by the two `lanesOf` tests below. */
+/* Ids chosen so their lane is THE SAME UNDER BOTH SHARD KEYS: for each of these,
+   `Number(id) % 6` and `fnv1a32(String(id)) % 6` agree. That keeps every fixture
+   below independent of which era a row is dated into, so the negative lane tests
+   mean what they say. PR #203 changed the key mid-flight, and the era-specific
+   behaviour has its own tests (`keyForRow`, `laneForRow`, and the pre/post
+   cutover pair) using ids where the two keys deliberately DISAGREE. Pinned by
+   the fixture-integrity test immediately below. */
 const ID = { l0: "1008", l1: "1003", l2: "1004", l3: "1023", l4: "1000", l5: "1007", l0b: "1026" };
 
 function baseFile(over = {}) {
@@ -100,7 +103,6 @@ test("every fixture id lands in the same lane under BOTH shard keys", () => {
      relaxing this. */
   for (const [name, id] of Object.entries(ID)) {
     assert.equal(laneOf(id, DEFAULT_SHARD_COUNT), shardOf(id, DEFAULT_SHARD_COUNT), `fixture ${name} (${id}) is ambiguous`);
-    assert.equal(lanesOf(id, DEFAULT_SHARD_COUNT).length, 1, `fixture ${name} (${id}) spans two lanes`);
   }
   // and they cover all six lanes, so "every lane rejects every other" is real
   const lanes = ["l0", "l1", "l2", "l3", "l4", "l5"].map((k) => laneOf(ID[k], DEFAULT_SHARD_COUNT));
@@ -178,7 +180,7 @@ test("a newer re-pass is lane-checked like any other adoption", () => {
   const newer = agent({ topics: ["food"], classified_at: "2026-08-20T00:00:00.000Z" });
   const { entries, errors } = run(base, [shard(1, { [ID.l3]: newer })]);
   assert.equal(entries, null);
-  assert.match(errors[0], /is in lane 3, not 1/);
+  assert.match(errors[0], /fall outside lane 1/);
 });
 
 test("an INHERITED off-lane row is exempt from the lane check", () => {
@@ -202,8 +204,8 @@ test("an off-lane row that DIFFERS is caught even when its timestamp is OLDER", 
   const older = agent({ topics: ["food"], classified_at: "2026-01-01T00:00:00.000Z" });
   const { entries, errors } = run(base, [shard(1, { [ID.l3]: older })]);
   assert.equal(entries, null, "an off-lane difference must abort, not be discarded quietly");
-  assert.match(errors[0], /is in lane 3, not 1/);
-  assert.match(errors[0], /differs from the incumbent/);
+  assert.match(errors[0], /fall outside lane 1/);
+  assert.match(errors[0], /lane 1/);
 });
 
 test("an off-lane row that differs is caught on an EQUAL timestamp too", () => {
@@ -211,7 +213,7 @@ test("an off-lane row that differs is caught on an EQUAL timestamp too", () => {
   const same = agent({ topics: ["food"], classified_at: base.entries[ID.l3].classified_at });
   const { entries, errors } = run(base, [shard(1, { [ID.l3]: same })]);
   assert.equal(entries, null);
-  assert.match(errors[0], /is in lane 3, not 1/);
+  assert.match(errors[0], /fall outside lane 1/);
 });
 
 test("an IN-LANE row that differs but is not newer keeps the incumbent, quietly", () => {
@@ -286,7 +288,7 @@ test("an off-lane show is fatal — this is the issue-#203 fail-open guard", () 
      catalogue, so its rows land in every residue, not just its own. */
   const { entries, errors } = run(baseFile(), [shard(0, { [ID.l1]: agent({ topics: ["food"] }) })]);
   assert.equal(entries, null);
-  assert.match(errors[0], /is in lane 1, not 0/);
+  assert.match(errors[0], /fall outside lane 0/);
   assert.match(errors[0], /#203/);
 });
 
@@ -296,7 +298,7 @@ test("every lane rejects every other lane's shows", () => {
       if (claim === actual || actual === 3) continue; // lane 3's fixture is an incumbent
       const { errors } = run(baseFile(), [shard(claim, { [ID["l" + actual]]: agent({ topics: ["space"] }) })]);
       assert.equal(errors.length, 1, `shard ${claim} accepted a lane-${actual} show`);
-      assert.match(errors[0], new RegExp(`is in lane ${actual}, not ${claim}`));
+      assert.match(errors[0], new RegExp(`fall outside lane ${claim}`));
     }
   }
 });
@@ -306,8 +308,9 @@ test("a shard that ran unsharded has every foreign lane reported", () => {
   for (const k of ["l0", "l1", "l2", "l4", "l5"]) wholeCatalogue[ID[k]] = agent({ topics: ["space"] });
   const { entries, errors } = run(baseFile(), [shard(2, wholeCatalogue)]);
   assert.equal(entries, null);
-  assert.equal(errors.length, 4, "lanes 0, 1, 4 and 5 are foreign; lane 2 is its own");
-  assert.ok(errors.every((e) => /did not stay in its slice/.test(e)));
+  assert.equal(errors.length, 1, "one error per branch now, listing every foreign row");
+  assert.match(errors[0], /4 of 5 of its own rows fall outside lane 2/);
+  assert.ok(errors.every((e) => /fall outside lane/.test(e)));
 });
 
 test("off-lane rows are counted per shard so the report names the culprit", () => {
@@ -315,8 +318,9 @@ test("off-lane rows are counted per shard so the report names the culprit", () =
   const { errors } = run(baseFile(), [
     shard(4, { [ID.l0]: agent({ topics: ["space"] }), [ID.l1]: agent({ topics: ["food"] }) })
   ]);
-  assert.equal(errors.length, 2);
-  assert.ok(errors.every((e) => e.startsWith("reclassify-4:")));
+  assert.equal(errors.length, 1);
+  assert.ok(errors[0].startsWith("reclassify-4:"));
+  assert.match(errors[0], /2 of 2 of its own rows/);
 });
 
 /* ------------------------------------------------- 3. refusing bad input */
@@ -464,56 +468,93 @@ test("laneOf mirrors prepare-batch's `Number(id) % N === i`", () => {
   assert.equal(laneOf("600", 0), null);
 });
 
-test("lanesOf accepts BOTH shard keys, because the branches hold both", () => {
-  /* PR #203 replaced `Number(id) % N` with `fnv1a32(String(id)) % N`. Rows
-     committed before it are partitioned by the first, rows after by the second,
-     and a single branch can hold both. */
+test("keyForRow reads the era off the row's own classified_at", () => {
+  /* PR #203 changed the shard key at SHARD_KEY_CUTOVER. A row selected before it
+     was sharded by the legacy modulo key, one selected after by the hash. */
+  assert.equal(keyForRow({ classified_at: "2026-08-16T00:00:00.000Z" }).name, "legacy");
+  assert.equal(keyForRow({ classified_at: "2026-08-18T00:00:00.000Z" }).name, "hashed");
+  assert.equal(keyForRow({ classified_at: SHARD_KEY_CUTOVER }).name, "hashed", "the cutover instant itself is post-change");
+});
+
+test("a row with no timestamp reads legacy, not hashed", () => {
+  /* Defaulting to hashed would reject the entire existing corpus: every row that
+     predates the classified_at field also predates the key change. */
+  assert.equal(keyForRow({}).name, "legacy");
+  assert.equal(keyForRow(null).name, "legacy");
+  assert.equal(keyForRow({ classified_at: 12345 }).name, "legacy");
+});
+
+test("laneForRow places a row by its own era's key", () => {
   const id = "1459232606";
-  const legacy = laneOf(id, 6);
-  const hashed = shardOf(id, 6);
-  const lanes = lanesOf(id, 6);
-  assert.ok(lanes.includes(legacy), "the legacy modulo lane must stay valid");
-  assert.ok(lanes.includes(hashed), "the post-#203 hashed lane must be valid");
-  assert.ok(lanes.length <= 2 && lanes.length >= 1);
+  assert.notEqual(laneOf(id, 6), shardOf(id, 6), "this id must differ across the keys for the test to mean anything");
+  assert.equal(laneForRow(id, { classified_at: "2026-08-16T00:00:00.000Z" }, 6), laneOf(id, 6));
+  assert.equal(laneForRow(id, { classified_at: "2026-08-18T00:00:00.000Z" }, 6), shardOf(id, 6));
 });
 
-test("lanesOf collapses to one lane when both keys agree", () => {
-  let same = null;
-  for (let n = 600; n < 900; n++) {
-    if (laneOf(String(n), 6) === shardOf(String(n), 6)) { same = String(n); break; }
-  }
-  assert.ok(same, "expected at least one id where the two keys agree");
-  assert.equal(lanesOf(same, 6).length, 1);
-});
-
-test("a row in-lane under ONLY the hashed key is accepted", () => {
-  /* The regression this guards: checking the legacy key alone would reject
-     every row a post-#203 batch produced, aborting a correct merge. */
+test("a POST-cutover row is lane-checked by the hashed key, and accepted", () => {
+  /* The regression this guards: checking the legacy key for everything would
+     reject every row a post-#203 batch produces. */
   const base = baseFile();
   let id = null;
-  for (let n = 100000; n < 200000; n++) {
+  for (let n = 100000; n < 300000; n++) {
     const k = String(n);
     if (shardOf(k, 6) === 0 && laneOf(k, 6) !== 0) { id = k; break; }
   }
   assert.ok(id, "expected an id the hash puts in lane 0 and modulo does not");
   base.entries[id] = genre(["science"]);
-  const { entries, errors } = run(base, [shard(0, { [id]: agent({ topics: ["space"] }) })]);
-  assert.deepEqual(errors, [], "a hashed-key row must not be rejected as off-lane");
+  const row = agent({ topics: ["space"], classified_at: "2026-08-20T00:00:00.000Z" });
+  const { entries, errors } = run(base, [shard(0, { [id]: row })]);
+  assert.deepEqual(errors, [], "a post-cutover row must be judged by the hashed key");
   assert.equal(entries[id].source, "classify-agent-tier1");
 });
 
-test("a row off-lane under BOTH keys is still fatal", () => {
+test("a PRE-cutover row is NOT excused by the hashed key", () => {
+  /* The whole point of per-row era rather than "either key is fine": an id the
+     hash would place in lane 0 is still off-lane for a pre-#203 row. */
   const base = baseFile();
   let id = null;
-  for (let n = 100000; n < 200000; n++) {
+  for (let n = 100000; n < 300000; n++) {
     const k = String(n);
-    if (shardOf(k, 6) !== 0 && laneOf(k, 6) !== 0) { id = k; break; }
+    if (shardOf(k, 6) === 0 && laneOf(k, 6) !== 0) { id = k; break; }
   }
-  assert.ok(id);
   base.entries[id] = genre(["science"]);
-  const { entries, errors } = run(base, [shard(0, { [id]: agent({ topics: ["space"] }) })]);
-  assert.equal(entries, null, "neither key puts this id in lane 0, so it is off-lane work");
-  assert.match(errors[0], /did not stay in its slice/);
+  const row = agent({ topics: ["space"], classified_at: "2026-08-10T00:00:00.000Z" });
+  const { entries, errors } = run(base, [shard(0, { [id]: row })]);
+  assert.equal(entries, null, "the legacy key must still govern a legacy row");
+  assert.match(errors[0], /fall outside lane 0/);
+  assert.match(errors[0], /legacy lane/);
+});
+
+test("a MIXED-ERA branch merges, because each row is judged by its own key", () => {
+  /* This is what every branch becomes from the next shard run onward, and it is
+     why a per-BRANCH purity rule was rejected: it would refuse this. */
+  const base = baseFile();
+  let hashedId = null;
+  for (let n = 100000; n < 300000; n++) {
+    const k = String(n);
+    if (shardOf(k, 6) === 0 && laneOf(k, 6) !== 0) { hashedId = k; break; }
+  }
+  base.entries[hashedId] = genre(["science"]);
+  const { entries, errors, stats } = run(base, [
+    shard(0, {
+      [ID.l0]: agent({ topics: ["space"], classified_at: "2026-08-10T00:00:00.000Z" }),   // legacy era
+      [hashedId]: agent({ topics: ["nature"], classified_at: "2026-08-20T00:00:00.000Z" }) // hashed era
+    })
+  ]);
+  assert.deepEqual(errors, [], "a legacy/hashed mixture on one branch is legitimate");
+  assert.equal(stats.adopted_total, 2);
+  assert.equal(stats.shards[0].shard_key, "hashed+legacy", "the report must name both eras");
+  assert.deepEqual(entries[ID.l0].topics, ["space"]);
+  assert.deepEqual(entries[hashedId].topics, ["nature"]);
+});
+
+test("the error message names the era, so a lane failure is diagnosable", () => {
+  const base = baseFile();
+  const { errors } = run(base, [shard(1, { [ID.l0]: agent({ topics: ["space"] }) })]);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /reclassify-1: 1 of 1 of its own rows fall outside lane 1/);
+  assert.match(errors[0], /legacy lane 0/);
+  assert.match(errors[0], /#203/);
 });
 
 test("shardIndexOf reads the lane off the branch name", () => {
@@ -576,8 +617,12 @@ test("auditNoRegression accepts a topic demoted into superseded_topics", () => {
  * test of `reconcile()` cannot reach. */
 const CLI = path.join(ROOT, "tools", "classify", "reconcile-shards.mjs");
 
-function cliFixture() {
+/* `t.after` rather than a trailing rmSync: a failing assertion used to leak the
+   mkdtemp directory, and a test suite that litters /tmp on every red run is its
+   own small mess. */
+function cliFixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "reconcile-cli-"));
+  if (t) t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const base = baseFile();
   fs.writeFileSync(path.join(dir, "base.json"), JSON.stringify(base, null, 2) + "\n");
   fs.mkdirSync(path.join(dir, "shards"));
@@ -602,8 +647,8 @@ function runCli(dir, args, opts = {}) {
   });
 }
 
-test("CLI: --from-dir merges without touching git, and writes the file", () => {
-  const dir = cliFixture();
+test("CLI: --from-dir merges without touching git, and writes the file", (t) => {
+  const dir = cliFixture(t);
   const r = runCli(dir, ["--from-dir", path.join(dir, "shards")]);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /agent-classified 1 -> 2/);
@@ -611,61 +656,55 @@ test("CLI: --from-dir merges without touching git, and writes the file", () => {
   assert.equal(out.entries[ID.l0].batch_id, "cli");
   assert.equal(out.provenance.reconciled_shards.adopted_total, 1);
   assert.equal(out.provenance.reconciled_shards.shards.length, 6);
-  fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("CLI: --dry-run reports the same numbers and writes nothing", () => {
-  const dir = cliFixture();
+test("CLI: --dry-run reports the same numbers and writes nothing", (t) => {
+  const dir = cliFixture(t);
   const before = fs.readFileSync(path.join(dir, "base.json"), "utf8");
   const r = runCli(dir, ["--from-dir", path.join(dir, "shards"), "--dry-run"]);
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /--dry-run: nothing written/);
   assert.equal(fs.readFileSync(path.join(dir, "base.json"), "utf8"), before, "--dry-run wrote to the file");
-  fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("CLI: re-running is idempotent, byte for byte except built_at", () => {
-  const dir = cliFixture();
+test("CLI: re-running is idempotent, byte for byte except built_at", (t) => {
+  const dir = cliFixture(t);
   runCli(dir, ["--from-dir", path.join(dir, "shards")]);
   const first = JSON.parse(fs.readFileSync(path.join(dir, "base.json"), "utf8"));
   runCli(dir, ["--from-dir", path.join(dir, "shards")]);
   const second = JSON.parse(fs.readFileSync(path.join(dir, "base.json"), "utf8"));
   assert.deepEqual(second.entries, first.entries);
   assert.equal(second.provenance.reconciled_shards.adopted_total, 0, "the second run adopts nothing");
-  fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("CLI: an unknown option is refused, not ignored", () => {
-  const dir = cliFixture();
+test("CLI: an unknown option is refused, not ignored", (t) => {
+  const dir = cliFixture(t);
   const r = runCli(dir, ["--from-dir", path.join(dir, "shards"), "--batch-size", "60"]);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /unknown option "--batch-size"/);
-  fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("CLI: an empty --shards list is refused rather than writing a no-op file", () => {
+test("CLI: an empty --shards list is refused rather than writing a no-op file", (t) => {
   /* `--shards ""` used to filter down to zero branches and then write a file
      whose provenance recorded six shards as `[]` — a run that looks like it
      succeeded and reconciled nothing. */
-  const dir = cliFixture();
+  const dir = cliFixture(t);
   const before = fs.readFileSync(path.join(dir, "base.json"), "utf8");
   const r = runCli(dir, ["--from-dir", path.join(dir, "shards"), "--shards", ""]);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /no shard branches/i);
   assert.equal(fs.readFileSync(path.join(dir, "base.json"), "utf8"), before);
-  fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("CLI: a non-numeric --shard-count is refused", () => {
-  const dir = cliFixture();
+test("CLI: a non-numeric --shard-count is refused", (t) => {
+  const dir = cliFixture(t);
   const r = runCli(dir, ["--from-dir", path.join(dir, "shards"), "--shard-count", "abc"]);
   assert.equal(r.status, 1);
   assert.match(r.stderr, /--shard-count/);
-  fs.rmSync(dir, { recursive: true, force: true });
 });
 
-test("CLI: an off-lane shard file aborts with exit 1 and writes nothing", () => {
-  const dir = cliFixture();
+test("CLI: an off-lane shard file aborts with exit 1 and writes nothing", (t) => {
+  const dir = cliFixture(t);
   const before = fs.readFileSync(path.join(dir, "base.json"), "utf8");
   fs.writeFileSync(
     path.join(dir, "shards", "reclassify-1.json"),
@@ -673,9 +712,8 @@ test("CLI: an off-lane shard file aborts with exit 1 and writes nothing", () => 
   );
   const r = runCli(dir, ["--from-dir", path.join(dir, "shards")]);
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /did not stay in its slice/);
+  assert.match(r.stderr, /fall outside lane/);
   assert.equal(fs.readFileSync(path.join(dir, "base.json"), "utf8"), before);
-  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 /* ================================================================ */
@@ -785,7 +823,7 @@ test("every agent row sits in some lane of the recorded shard count", () => {
   const bad = [];
   for (const id of Object.keys(FILE.entries)) {
     if (!isAgentRow(FILE.entries[id])) continue;
-    if (!lanesOf(id, shardCount).some((l) => lanes.has(l))) bad.push(id);
+    if (!lanes.has(laneForRow(id, FILE.entries[id], shardCount))) bad.push(id);
   }
   assert.deepEqual(bad, [], "agent rows outside every recorded shard lane");
 });

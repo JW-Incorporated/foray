@@ -62,12 +62,33 @@ const SHARDS = 6;
    being the branch furthest behind), so the hashed key matters MORE than when
    #203 measured it, not less. */
 
-/** The catalogue as it looks when exactly one modulo lane has been classified —
-    the condition that actually produced the 2.20x skew. Deterministic, and
-    independent of how much real work is left. */
+/* How much of the over-represented lane had actually been worked through when
+   #203 measured: 1,724 of catalogue lane 0's 3,238 shows, i.e. 53%. Draining the
+   lane ENTIRELY would be a mistake that hides the test — a modulo histogram of
+   the result has 0 in that lane, so `spread()` is Infinity for every lane and the
+   `> 1.5` assertion below could never fail whatever the key did. At 53% the
+   number is a property of the ids again: lane 0 gives 2.21x, matching the 2.20x
+   #203 measured on the real 17,936. */
+const DRAIN_FRACTION = 0.53;
+
+/** The catalogue as it looks when about half of ONE modulo lane has been
+    classified — the condition that actually produced the 2.20x skew.
+    Deterministic, and independent of how much real work is left. */
 function drainLane(lane) {
-  return catalog.shows.filter((s) => Number(s.apple_collection_id) % SHARDS !== lane);
+  let seen = 0;
+  return catalog.shows.filter((s) => {
+    if (Number(s.apple_collection_id) % SHARDS !== lane) return true;
+    seen++;
+    return seen % 100 >= DRAIN_FRACTION * 100; // drop the first 53 of every 100
+  });
 }
+
+/** A world for the partition tests: every show with a feed, and nothing
+    classified. Fixed size, so these tests cannot go vacuous as the fleet
+    finishes — which is exactly what happened to them once the shard branches
+    were reconciled and `eligible` fell from 17,875 to 448. */
+const WORLD = catalog.shows.filter((s) => s.feed_url).slice(0, 3_000);
+const NOTHING_CLASSIFIED = { version: 1, entries: {} };
 
 function histogram(shows, keyFn) {
   const counts = new Array(SHARDS).fill(0);
@@ -93,7 +114,7 @@ test("the real catalogue is present, and remaining/eligible are consistent with 
 
 /* ---------- the defect this replaces ---------- */
 
-test("Number(id) % 6 is badly unbalanced over the shows that remain — the defect", () => {
+test("Number(id) % 6 is badly unbalanced over the shows that remain — the defect", (t) => {
   // Measured 2026-08-16 over 17,936 remaining: shard0 1,514 (8.4%) against
   // shard3 3,334 (18.6%). Finish time is the LARGEST shard, so shard0 runs dry
   // around day 12 and idles for over half the blitz.
@@ -110,6 +131,8 @@ test("Number(id) % 6 is badly unbalanced over the shows that remain — the defe
   if (remaining.length >= 100) {
     const live = histogram(remaining, (id) => Number(id) % SHARDS);
     assert.ok(spread(live) > 1.5, `live modulo spread ${spread(live).toFixed(3)}: ${live.join(", ")}`);
+  } else {
+    t.diagnostic(`only ${remaining.length} shows remain; the live half of this check is not measurable`);
   }
 });
 
@@ -156,12 +179,17 @@ test("no shard is starved — every one carries at least 14% of a drained-lane r
   });
 });
 
-test("no shard is left with nothing while others still have work", () => {
+test("no shard is left with nothing while others still have work", (t) => {
   /* The size-appropriate version of the check above for the LIVE remainder.
      A 14% floor is not meaningful at n=509 (sampling noise alone spans
      70..99), but "some shards idle while work exists" is meaningful at any
      size, and it is the thing that actually wastes scheduled runs. */
-  if (remaining.length < SHARDS * 6) return; // too small for even this to mean anything
+  if (remaining.length < SHARDS * 6) {
+    // Visible in CI rather than reading as coverage: a silent `return` here
+    // would report a vacuous pass as a real one.
+    t.skip(`only ${remaining.length} shows remain — too few for a per-shard share to mean anything`);
+    return;
+  }
   const counts = histogram(remaining, (id) => shardOf(id, SHARDS));
   counts.forEach((n, i) => {
     assert.ok(n > 0, `shard ${i} has nothing to do while ${remaining.length} shows remain: ${counts.join(", ")}`);
@@ -250,14 +278,14 @@ test("the six shards cover the whole eligible set, with nothing dropped", () => 
   const progress = { in_flight: {}, failed_fetch: {} };
   const seen = new Set();
   for (let i = 0; i < SHARDS; i++) {
-    for (const s of selectFreshCandidates(eligible, classification, progress, Date.now(), Infinity, 3, `${i}/${SHARDS}`)) {
+    for (const s of selectFreshCandidates(WORLD, NOTHING_CLASSIFIED, progress, Date.now(), Infinity, 3, `${i}/${SHARDS}`)) {
       seen.add(String(s.apple_collection_id));
     }
   }
   assert.equal(
     seen.size,
-    eligible.length,
-    `sharding lost ${eligible.length - seen.size} shows. Shards must partition the catalogue, never filter it.`
+    WORLD.length,
+    `sharding lost ${WORLD.length - seen.size} shows. Shards must partition the catalogue, never filter it.`
   );
 });
 
@@ -265,7 +293,7 @@ test("the six shards are pairwise disjoint, so no show is classified twice", () 
   const progress = { in_flight: {}, failed_fetch: {} };
   const owner = new Map();
   for (let i = 0; i < SHARDS; i++) {
-    for (const s of selectFreshCandidates(eligible, classification, progress, Date.now(), Infinity, 3, `${i}/${SHARDS}`)) {
+    for (const s of selectFreshCandidates(WORLD, NOTHING_CLASSIFIED, progress, Date.now(), Infinity, 3, `${i}/${SHARDS}`)) {
       const id = String(s.apple_collection_id);
       assert.ok(!owner.has(id), `show ${id} is claimed by both shard ${owner.get(id)} and shard ${i}`);
       owner.set(id, i);
@@ -275,8 +303,8 @@ test("the six shards are pairwise disjoint, so no show is classified twice", () 
 
 test("an unsharded run still sees every eligible show", () => {
   const progress = { in_flight: {}, failed_fetch: {} };
-  const all = selectFreshCandidates(eligible, classification, progress, Date.now(), Infinity, 3, null);
-  assert.equal(all.length, eligible.length);
+  const all = selectFreshCandidates(WORLD, NOTHING_CLASSIFIED, progress, Date.now(), Infinity, 3, null);
+  assert.equal(all.length, WORLD.length);
 });
 
 /* ---------- --shard now fails LOUD, where it used to fail open ---------- */
