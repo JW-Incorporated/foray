@@ -33,6 +33,7 @@
       "duration_min": 264,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
+        "computing/software-engineering",
         "computing"
       ],
       "hook": "How FFmpeg's engineers built the codec quietly running every video on the internet.",
@@ -1596,6 +1597,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ea/64/b1/ea64b123-ac34-dcd0-10d0-2be589e9f00e/mza_13351455589098294840.jpg/600x600bb.jpg",
       "topics": [
         "business/startups",
+        "computing/history",
         "computing"
       ],
       "hook": "The inventor of the CMOS pixel sensor explains how cameras got small enough for phones.",
@@ -9311,6 +9313,7 @@
       "duration_min": 187,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "topics": [
+        "space/astronomy",
         "space"
       ],
       "hook": "Theoretical physicist Janna Levin on black holes, gravitational waves, wormholes, and extra dimensions.",
@@ -9431,6 +9434,7 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "topics": [
+        "economics/markets",
         "economics"
       ],
       "hook": "Why a third of seaborne fertilizer trade through the Strait of Hormuz threatens global food.",
@@ -10376,6 +10380,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/5b/76/d6/5b76d66b-3a13-01fb-648c-b1ca45503022/mza_2270651768496302865.jpg/600x600bb.jpg",
       "topics": [
         "health/mental",
+        "psychology/decision-making",
         "psychology"
       ],
       "hook": "Laurie Santos on why regret, used well, guides better decisions than living regret-free.",
@@ -10594,6 +10599,7 @@
       "duration_min": 56,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/7d/ca/c8/7dcac897-46db-665d-9a7e-99df3035a596/mza_4316863943411516978.jpeg/600x600bb.jpg",
       "topics": [
+        "psychology/decision-making",
         "psychology",
         "health/mental"
       ],
@@ -11868,6 +11874,7 @@
       "duration_min": 43,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5e/b2/33/5eb233d6-913f-0cf4-fae3-5fe45133ddcc/mza_15916165992809072643.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -11890,7 +11897,9 @@
       "duration_min": 41,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c5/39/b0/c539b003-2edd-a7b3-9057-eefb9df120b3/mza_7816934926105047946.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
+        "history/social-history",
         "history",
         "society/law"
       ],
@@ -11914,6 +11923,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b4/bd/03/b4bd032a-6893-a433-c934-bf4009dd9e36/mza_10770433903891171291.jpeg/600x600bb.jpg",
       "topics": [
         "true-crime",
+        "history/social-history",
         "history",
         "society/law"
       ],
@@ -11936,6 +11946,7 @@
       "duration_min": 41,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ff/90/4f/ff904fc7-5dd8-495a-6ec5-fec7ada275be/mza_17541278032225597641.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -11958,6 +11969,7 @@
       "duration_min": 22,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/97/00/b4/9700b422-363b-b5e6-8e71-680f4bb879c7/mza_16370163991934811347.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/investigative",
         "true-crime",
         "society/law"
       ],
@@ -11980,6 +11992,7 @@
       "duration_min": 143,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/conspiracies",
         "paranormal",
         "history"
       ],
@@ -12002,7 +12015,9 @@
       "duration_min": 143,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/conspiracies",
         "paranormal",
+        "history/military-modern",
         "history"
       ],
       "hook": "In 1956, a B-25 bomber crashed into a Pittsburgh river and was never recovered.",
@@ -12024,6 +12039,7 @@
       "duration_min": 124,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/conspiracies",
         "paranormal",
         "history",
         "medicine"
@@ -12047,6 +12063,7 @@
       "duration_min": 29,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/cryptids-folklore",
         "paranormal",
         "history"
       ],
@@ -12070,6 +12087,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
       "topics": [
         "paranormal",
+        "history/social-history",
         "history"
       ],
       "hook": "A handful of celebratory gatherings in history turned frightening instead of festive.",
@@ -12091,6 +12109,7 @@
       "duration_min": 25,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/cryptids-folklore",
         "paranormal",
         "history",
         "culture/mythology"
@@ -12114,6 +12133,7 @@
       "duration_min": 120,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/cd/bd/b5/cdbdb59a-f95f-0ce5-06a1-b4867fd5ce2d/mza_6291656191589825374.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/investigative",
         "true-crime",
         "history"
       ],
@@ -12136,6 +12156,7 @@
       "duration_min": 101,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2d/67/a1/2d67a157-b333-44e2-f268-57ccc1ee7233/mza_16644604990812487634.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "history"
       ],
@@ -12158,6 +12179,7 @@
       "duration_min": 34,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/69/7b/90/697b90c0-2504-2655-9825-119d7f0db9ad/mza_17011185954011837002.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/ghosts-hauntings",
         "paranormal",
         "true-crime"
       ],
@@ -12180,6 +12202,7 @@
       "duration_min": 30,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f5/33/75/f5337526-a192-513a-8b63-2dddfa709785/mza_16037363487721833509.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/conspiracies",
         "paranormal"
       ],
       "hook": "In 1959, a soldier was found unconscious near a lonely Utah road with no memory.",
@@ -12223,6 +12246,7 @@
       "duration_min": 45,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7b/c8/db/7bc8dbeb-9aff-7bb0-3867-8b2d6ab2fc6f/mza_1281941438107495115.png/600x600bb.jpg",
       "topics": [
+        "true-crime/investigative",
         "true-crime",
         "society/law"
       ],
@@ -12245,6 +12269,7 @@
       "duration_min": 39,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/6b/cf/cc/6bcfcc6b-5e2b-e2eb-2858-227e04f59c74/mza_17949278616043989223.png/600x600bb.jpg",
       "topics": [
+        "true-crime/investigative",
         "true-crime",
         "society/law"
       ],
@@ -12267,7 +12292,9 @@
       "duration_min": 56,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/08/fe/cb08fee8-57a8-171a-1c16-b73ef9bb4f60/mza_15612216171594584004.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
+        "history/social-history",
         "history",
         "society/law"
       ],
@@ -12290,6 +12317,7 @@
       "duration_min": 51,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/70/cc/3c/70cc3c75-ae3a-75fa-573a-c2cc9064d732/mza_5952747749108781960.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "history"
       ],
@@ -12313,6 +12341,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a4/69/a6/a469a64c-580d-938a-53f1-893d968e1332/mza_11675757052043432554.jpg/600x600bb.jpg",
       "topics": [
         "true-crime",
+        "history/social-history",
         "history",
         "society/law"
       ],
@@ -12357,6 +12386,7 @@
       "duration_min": 41,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/investigative",
         "true-crime",
         "society/law"
       ],
@@ -12379,6 +12409,7 @@
       "duration_min": 41,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "society/law"
       ],
@@ -12401,6 +12432,7 @@
       "duration_min": 53,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "society/law"
       ],
@@ -12423,6 +12455,7 @@
       "duration_min": 67,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/investigative",
         "true-crime",
         "history"
       ],
@@ -12445,6 +12478,7 @@
       "duration_min": 66,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/investigative",
         "true-crime"
       ],
       "hook": "Reporter Pamela Colloff on her first book, tracing a serial killer through the case record.",
@@ -12466,6 +12500,8 @@
       "duration_min": 32,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/4c/60/f4/4c60f4ce-b142-fc1e-8c4a-baec06bf0408/mza_12819136648232087001.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -12488,6 +12524,7 @@
       "duration_min": 43,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b8/d9/b0/b8d9b0e4-4747-07bb-46c6-e95ef3e1ab26/mza_9405725213502579404.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -12512,6 +12549,7 @@
       "topics": [
         "science/storytelling",
         "society",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "A 1960s TV repairman tries to cheat death with cryonics, then must own his mistakes.",
@@ -12528,7 +12566,9 @@
       "duration_min": 63,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4c/9c/a1/4c9ca136-b1eb-bd8d-c986-ed94d735cad5/mza_5241348527873234132.jpg/600x600bb.jpg",
       "topics": [
+        "society/government",
         "society",
+        "personal-journals/oral-history",
         "personal-journals"
       ],
       "hook": "Under Iran’s wartime internet blackout, people smuggle out voice memos because they want to be heard.",
@@ -12550,6 +12590,7 @@
       "duration_min": 59,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/50/1d/66/501d666a-15f5-50c9-91b1-db5c38affd25/mza_2295651926388122625.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/oral-history",
         "personal-journals",
         "science/storytelling"
       ],
@@ -12568,6 +12609,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/71/a0/80/71a0803d-638e-c3c1-a49d-a817eec4dfc4/mza_4510671049541303263.jpg/600x600bb.jpg",
       "topics": [
         "science/storytelling",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "Raised by preachers, Sammy loves bumblebees, the Bible, and boys, and Deliverance Day is coming.",
@@ -12590,6 +12632,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/22/84/b9/2284b901-97c1-5530-8e35-518e51bde8a9/mza_18306448683816466863.jpg/600x600bb.jpg",
       "topics": [
         "science/storytelling",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "A Coast Guardsman’s night watch and hula sisters at Merrie Monarch, where the gods intervene.",
@@ -12612,6 +12655,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a3/ae/d2/a3aed28a-8256-c6f3-be25-e89301e4fcbc/mza_3228088448025545232.jpg/600x600bb.jpg",
       "topics": [
         "science/storytelling",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "When words were dangerous, Grigory found a way to speak up through mime and silence.",
@@ -12656,6 +12700,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/fc/4c/b5/fc4cb53a-e93e-c476-e09a-145c9e40598f/mza_16370414116814116026.jpg/600x600bb.jpg",
       "topics": [
         "culture/performing-arts",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "Two storytellers on being surprised, dumbfounded, and blindsided in completely different ways.",
@@ -12700,7 +12745,9 @@
       "duration_min": 39,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/5c/a7/07/5ca707f9-219b-daad-428b-2ba15d0ca523/mza_15266079399494655765.jpg/600x600bb.jpg",
       "topics": [
+        "society/law",
         "society",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "Sadiq and Demarion share a painful past; a San Quentin event forces an agonizing choice.",
@@ -12722,7 +12769,9 @@
       "duration_min": 41,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/af/1a/70/af1a700e-5de0-b19a-0329-84588053a013/mza_1270783669496922579.jpeg/600x600bb.jpg",
       "topics": [
+        "society/law",
         "society",
+        "personal-journals/oral-history",
         "personal-journals"
       ],
       "hook": "Stories about how people in prison think about, and try to change, their bodies.",
@@ -12744,6 +12793,7 @@
       "duration_min": 40,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/1d/1d/38/1d1d38fc-a6ee-cce7-66c0-0ece92508677/mza_8568613976755844941.jpg/600x600bb.jpg",
       "topics": [
+        "society/law",
         "society",
         "science/storytelling"
       ],
@@ -12766,6 +12816,7 @@
       "duration_min": 27,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/88/c9/ab/88c9abd7-2e9f-a2ba-e6f5-2267a93bbe84/mza_14692526155922008071.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/oral-history",
         "personal-journals",
         "society"
       ],
@@ -12788,7 +12839,9 @@
       "duration_min": 21,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/6c/0c/38/6c0c3869-e302-e1fa-c507-d1fea30566e2/mza_12918109249377505178.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/oral-history",
         "personal-journals",
+        "society/lgbtq",
         "society"
       ],
       "hook": "Ten years after the Pulse nightclub shooting, memories of the loved ones killed that night.",
@@ -12810,6 +12863,7 @@
       "duration_min": 17,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/cc/5f/c3/cc5fc34d-6a58-8063-d43a-2f760d122b22/mza_15049531875086209740.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/oral-history",
         "personal-journals",
         "society"
       ],
@@ -12832,7 +12886,9 @@
       "duration_min": 33,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/be/88/e6/be88e67e-67bc-6461-8d78-e98f6ae6b16c/mza_15974011777416747015.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
+        "society/immigration-diaspora",
         "society"
       ],
       "hook": "Jonathan and Emily check in; then a family forced into hiding after an ICE shooting.",
@@ -12854,6 +12910,7 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7f/78/d7/7f78d774-540a-43ea-5d4f-9b3832c36f8f/mza_3954907120497927486.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
         "relationships"
       ],
@@ -12876,6 +12933,7 @@
       "duration_min": 50,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/26/d0/78/26d078e1-c556-11ed-00c3-8342583b64b5/mza_8640024377532930447.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
         "relationships"
       ],
@@ -12921,6 +12979,7 @@
       "duration_min": 50,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ab/25/c8/ab25c89d-f0ff-b241-4432-1ef06521b765/mza_16562465962407518091.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
         "society"
       ],
@@ -12945,6 +13004,7 @@
       "topics": [
         "personal-journals",
         "society",
+        "travel/destinations",
         "travel"
       ],
       "hook": "Rick Steves on visiting Iran and why travel is the antidote to fear.",
@@ -12966,6 +13026,8 @@
       "duration_min": 44,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9f/80/bc/9f80bcc7-3890-b83d-825d-80bfce6540a1/mza_11092217466841030628.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/intimacy",
+        "relationships/marriage-partnership",
         "relationships",
         "psychology",
         "health/sexuality"
@@ -12989,6 +13051,7 @@
       "duration_min": 56,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b2/68/22/b26822e2-4d3c-5aba-e236-00833aeee872/mza_14194889736897632486.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/marriage-partnership",
         "relationships",
         "psychology"
       ],
@@ -13033,6 +13096,7 @@
       "duration_min": 51,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/66/84/8e/66848eed-9016-8e48-9860-9ae470cb2b4e/mza_18026934634772792197.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
         "relationships",
         "health/mental"
@@ -13074,7 +13138,9 @@
       "duration_min": 40,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2f/61/07/2f610790-c694-c8fb-d781-d03682bc0252/mza_241560753478870744.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/dating",
         "relationships",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "Best friends for sixteen years, Elizabeth and Jeff feel an attraction quietly growing.",
@@ -13182,6 +13248,7 @@
       "duration_min": 37,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/13/86/7f/13867f22-67b6-49d0-9b74-8eaa458aab0d/mza_10920335765348487691.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/intimacy",
         "relationships",
         "health/sexuality",
         "personal-journals"
@@ -13228,6 +13295,7 @@
       "duration_min": 28,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/a2/a3/43/a2a34350-9b6b-6ffe-6444-8d24974e9350/mza_12136493384835430246.jpeg/600x600bb.jpg",
       "topics": [
+        "relationships/marriage-partnership",
         "relationships",
         "personal-journals"
       ],
@@ -13250,6 +13318,7 @@
       "duration_min": 30,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/a2/a3/43/a2a34350-9b6b-6ffe-6444-8d24974e9350/mza_12136493384835430246.jpeg/600x600bb.jpg",
       "topics": [
+        "relationships/dating",
         "relationships",
         "personal-journals",
         "society"
@@ -13661,6 +13730,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/4b/94/3f/4b943fcc-ede9-6a2e-b71c-89bba6870867/mza_1366450110780619917.jpg/600x600bb.jpg",
       "topics": [
         "culture/design",
+        "music/theory-production",
         "music"
       ],
       "hook": "Composer Joff Bush breaks down why Bluey's music feels so warm and alive.",
@@ -13682,6 +13752,7 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ae/42/c5/ae42c5bc-9016-59af-64a3-14af140c335a/mza_8537063967167831524.jpeg/600x600bb.jpg",
       "topics": [
+        "music/music-history",
         "music",
         "culture/design"
       ],
@@ -13878,6 +13949,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e1/e2/8e/e1e28ee7-c7ed-9a91-dbdf-0bac03b6fa38/mza_12090824434324250279.jpg/600x600bb.jpg",
       "topics": [
+        "music/pop-global",
         "music"
       ],
       "hook": "Phillip Bailey, Ralph Johnson and Verdine White on Earth, Wind & Fire.",
@@ -13899,6 +13971,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e1/e2/8e/e1e28ee7-c7ed-9a91-dbdf-0bac03b6fa38/mza_12090824434324250279.jpg/600x600bb.jpg",
       "topics": [
+        "music/pop-global",
         "music"
       ],
       "hook": "Carl Newman on the New Pornographers and Canada's outside-the-mainstream indie explosion.",
@@ -13920,6 +13993,7 @@
       "duration_min": 79,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/61/7d/00/617d00d4-9295-35bc-632b-7eb233263e07/mza_12638961919965937260.jpg/600x600bb.jpg",
       "topics": [
+        "music/theory-production",
         "music"
       ],
       "hook": "Radiohead's Ed O'Brien on expanding what a guitar can do in rock.",
@@ -14722,6 +14796,7 @@
       "duration_min": 38,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/7f/02/01/7f0201bd-e8fc-ad3a-ad8c-0b0e379f8b40/mza_15789320745383457071.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -14744,6 +14819,7 @@
       "duration_min": 83,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a4/6b/f7/a46bf7e9-0b76-eef9-238d-b70bf2eded91/mza_54642671907953757.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "The 1977 disappearance of 13-year-old Megumi Yokota grew into a geopolitical crisis for Japan.",
@@ -14765,6 +14841,7 @@
       "duration_min": 34,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4a/4b/14/4a4b1462-cba0-76c4-1bcc-9f47ceeb253a/mza_8576385243974466633.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/conspiracies",
         "paranormal"
       ],
       "hook": "Ted Binion's tangled Vegas life deepens as Rick Tabish enters the picture.",
@@ -14808,6 +14885,7 @@
       "duration_min": 37,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/13/86/7f/13867f22-67b6-49d0-9b74-8eaa458aab0d/mza_10920335765348487691.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/dating",
         "relationships",
         "personal-journals"
       ],
@@ -15549,6 +15627,7 @@
       "duration_min": 155,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/ghosts-hauntings",
         "paranormal",
         "history"
       ],
@@ -15571,6 +15650,7 @@
       "duration_min": 34,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/cryptids-folklore",
         "paranormal",
         "history"
       ],
@@ -15593,6 +15673,7 @@
       "duration_min": 46,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "A woman vanished days before testifying against her corrections-officer boyfriend; a new witness speaks.",
@@ -15614,6 +15695,7 @@
       "duration_min": 53,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "history"
       ],
@@ -15636,6 +15718,7 @@
       "duration_min": 72,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/dd/c0/ae/ddc0aee7-fe31-2984-a49c-2b015f5ab86c/mza_4590464273934061331.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
         "science/storytelling"
       ],
@@ -15658,6 +15741,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/99/e4/b3/99e4b36d-4f35-5b43-73d5-f3b50420b90d/mza_4407106950301679051.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/marriage-partnership",
         "relationships",
         "psychology"
       ],
@@ -16288,6 +16372,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ee/0b/78/ee0b7836-10e5-e534-6dc3-ed9e68b4a8bf/mza_17757739287205185539.jpeg/600x600bb.jpg",
       "topics": [
         "kids-family/parenting",
+        "psychology/decision-making",
         "psychology"
       ],
       "hook": "Jeff Selingo's 25 years of research: where your teen goes to college matters less than how.",
@@ -16394,6 +16479,7 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/18/65/8b/18658bc3-1fea-4899-1640-5d542ed5899e/mza_17400573148750268496.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -16438,6 +16524,7 @@
       "duration_min": 41,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "society/law"
       ],
@@ -16482,6 +16569,7 @@
       "duration_min": 29,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/00/8f/79/008f7969-8d12-7d78-a063-ea93e4584dd3/mza_6578341392429530310.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/oral-history",
         "personal-journals",
         "society"
       ],
@@ -16526,6 +16614,7 @@
       "duration_min": 58,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ec/bb/e6/ecbbe683-90d4-fc13-8272-b15781a83b3b/mza_6189591412493580396.jpeg/600x600bb.jpg",
       "topics": [
+        "relationships/dating",
         "relationships",
         "health/mental"
       ],
@@ -17348,6 +17437,7 @@
       "duration_min": 104,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/71/12/7e7112b8-a6fc-ac68-aaed-634b92046df5/mza_17578619883208404362.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "Ten-year-old Zahra Baker vanished in 2010, sparking Hickory's largest missing persons search.",
@@ -17390,6 +17480,7 @@
       "duration_min": 32,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/8e/ea/7e/8eea7e84-a3bc-4ad5-3f3b-f2f4bd335afb/mza_10885548555197940252.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -17413,6 +17504,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/4e/33/2f/4e332fec-1783-bbef-7761-5995215a014d/mza_12039737392862508746.jpg/600x600bb.jpg",
       "topics": [
         "science/storytelling",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "A hurricane, a barricade, and a live power line stand between Dad and the wedding.",
@@ -18154,6 +18246,7 @@
       "duration_min": 25,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/cryptids-folklore",
         "paranormal",
         "history"
       ],
@@ -18176,6 +18269,7 @@
       "duration_min": 45,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "Joyce LePage vanished in 1971; carpet cut from a vacant dorm was the first clue.",
@@ -18198,6 +18292,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a4/69/a6/a469a64c-580d-938a-53f1-893d968e1332/mza_11675757052043432554.jpg/600x600bb.jpg",
       "topics": [
         "true-crime",
+        "history/social-history",
         "history"
       ],
       "hook": "The Halifax Slasher and Hammersmith Ghost terrorized England, though neither attacker ever existed.",
@@ -18219,6 +18314,7 @@
       "duration_min": 61,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "history"
       ],
@@ -18241,6 +18337,7 @@
       "duration_min": 63,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/64/aa/3a/64aa3a66-a08a-947c-cf21-a5722a1b77ae/mza_11390421932467026234.png/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
         "science/storytelling"
       ],
@@ -18263,6 +18360,7 @@
       "duration_min": 52,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9f/80/bc/9f80bcc7-3890-b83d-825d-80bfce6540a1/mza_11092217466841030628.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/marriage-partnership",
         "relationships",
         "psychology"
       ],
@@ -20178,6 +20276,7 @@
       "duration_min": 40,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/bd/98/22/bd9822cc-b8e0-59de-5809-45926a0ee5f3/mza_2331604259390110897.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -20200,6 +20299,7 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "New details on the Nancy Guthrie abduction: unheard ransom notes and a theory of the case.",
@@ -20243,6 +20343,7 @@
       "duration_min": 33,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -20266,6 +20367,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e6/19/fe/e619fefa-c250-efb5-dc54-9f34d61a635f/mza_15498774594038794850.jpg/600x600bb.jpg",
       "topics": [
         "science/storytelling",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "A surfer fights a wildfire alone, and four men survive a blizzard atop a Tennessee bald.",
@@ -20309,7 +20411,9 @@
       "duration_min": 58,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/fa/0d/b5/fa0db568-0322-5ae8-4103-10049e8f251e/mza_4737289068008548133.jpg/600x600bb.jpg",
       "topics": [
+        "society/law",
         "society",
+        "personal-journals/oral-history",
         "personal-journals"
       ],
       "hook": "Serving 37 years, Linda revisits the Catholic Mass her mother hoped would change her path.",
@@ -20438,6 +20542,7 @@
       "duration_min": 47,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime"
       ],
       "hook": "A Beaumont hotel death looked natural, until an autopsy revealed catastrophic internal injuries.",
@@ -20991,6 +21096,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c5/22/85/c52285ac-83fd-81cc-6fc7-882f014a0893/mza_2207225971695805053.jpg/600x600bb.jpg",
       "topics": [
         "health/mental",
+        "psychology/decision-making",
         "psychology"
       ],
       "hook": "Laurie Santos on why we're bad at predicting how winning the lottery would really feel.",
@@ -21013,6 +21119,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
       "topics": [
         "health/mental",
+        "psychology/decision-making",
         "psychology"
       ],
       "hook": "Negotiation expert John Richardson on reading people, the two types of 'no,' and building trust.",
@@ -21162,6 +21269,7 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/cryptids-folklore",
         "paranormal",
         "history"
       ],
@@ -21184,6 +21292,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "Part two digs into case files and letters revealing new suspects in Joyce LePage's murder.",
@@ -21227,6 +21336,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "history"
       ],
@@ -21692,6 +21802,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/bd/98/22/bd9822cc-b8e0-59de-5809-45926a0ee5f3/mza_2331604259390110897.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/investigative",
         "true-crime",
         "society/law"
       ],
@@ -21736,6 +21847,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/3c/46/2b/3c462bca-3da3-fdf5-67cb-31d9bccfb02a/mza_959697194643847118.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/oral-history",
         "personal-journals",
         "society"
       ],
@@ -22308,6 +22420,7 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/ghosts-hauntings",
         "paranormal",
         "history"
       ],
@@ -22374,6 +22487,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/69/33/21/69332110-c590-00f7-5177-c38d73536d8b/mza_7301062108522319553.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/marriage-partnership",
         "relationships",
         "personal-journals"
       ],
@@ -22776,6 +22890,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
       "topics": [
         "health/mental",
+        "psychology/decision-making",
         "psychology"
       ],
       "hook": "Yara Shahidi on saying no, chasing a 'hard yes' list, and staying calm amid catastrophe.",
@@ -22905,6 +23020,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a4/69/a6/a469a64c-580d-938a-53f1-893d968e1332/mza_11675757052043432554.jpg/600x600bb.jpg",
       "topics": [
         "true-crime",
+        "history/social-history",
         "history"
       ],
       "hook": "Aaron Mahnke joins to discuss corpse medicine, folklore, and the New England vampire panic.",
@@ -22926,6 +23042,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
+        "true-crime/cold-cases",
         "true-crime",
         "society/law"
       ],
@@ -22949,6 +23067,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c6/55/1b/c6551bd8-7b3d-29a4-b3c4-db91d555ee54/mza_9546234606984757659.jpg/600x600bb.jpg",
       "topics": [
         "science/storytelling",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "Storm chasers head straight into a tornado's path in this first-hand account.",
@@ -23268,6 +23387,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/cryptids-folklore",
         "paranormal"
       ],
       "hook": "Dog-headed men haunted ancient legend for centuries; one corner of folklore still resists explanation.",
@@ -23987,6 +24107,7 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/cryptids-folklore",
         "paranormal",
         "history"
       ],
@@ -24009,6 +24130,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "Kerry O'Brien-Krueger vanished in 1989; her husband's story about a work trip never checked out.",
@@ -24030,6 +24152,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a4/69/a6/a469a64c-580d-938a-53f1-893d968e1332/mza_11675757052043432554.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "history"
       ],
@@ -24052,6 +24175,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "history"
       ],
@@ -24074,6 +24198,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5e/a6/bf/5ea6bf89-99d2-e416-a911-92bad0dd00f4/mza_3699731897991513873.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
         "science/storytelling"
       ],
@@ -24096,6 +24221,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d5/23/25/d523252a-cb48-af1d-b26b-0b6c7959518e/mza_2889982013813059296.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/marriage-partnership",
         "relationships",
         "psychology"
       ],
@@ -24605,6 +24731,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ab/25/c8/ab25c89d-f0ff-b241-4432-1ef06521b765/mza_16562465962407518091.jpg/600x600bb.jpg",
       "topics": [
         "personal-journals",
+        "relationships/intimacy",
         "relationships"
       ],
       "hook": "A listener's romantic feelings for her therapist, unpacked with psychologist Sally Openshaw.",
@@ -25111,6 +25238,7 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/ghosts-hauntings",
         "paranormal",
         "history"
       ],
@@ -25133,6 +25261,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "society/law"
       ],
@@ -25536,6 +25665,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -26003,6 +26133,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/ghosts-hauntings",
         "paranormal"
       ],
       "hook": "The story of the Scole Experiment Group, researchers investigating whether life ends at death.",
@@ -26046,6 +26177,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/70/9d/bc/709dbcf8-f2aa-4c03-275e-71d802602159/mza_358064143915929623.jpg/600x600bb.jpg",
       "topics": [
+        "relationships/marriage-partnership",
         "relationships",
         "personal-journals"
       ],
@@ -26279,6 +26411,7 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/ghosts-hauntings",
         "paranormal",
         "history"
       ],
@@ -26301,6 +26434,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "Maria Cruz vanished after a 2003 doctor's visit, leaving investigators no trace of where she went.",
@@ -26810,6 +26944,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "Bill and Peggy Stephenson were murdered in their Kentucky condo; a decade-old clue finally cracked it.",
@@ -26831,6 +26966,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "history"
       ],
@@ -26853,6 +26989,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f8/8e/ec/f88eec18-6bf4-e522-9450-7fadfeec0f93/mza_416174900963809096.jpg/600x600bb.jpg",
       "topics": [
+        "personal-journals/narrative-storytelling",
         "personal-journals",
         "science/storytelling"
       ],
@@ -28124,6 +28261,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a4/69/a6/a469a64c-580d-938a-53f1-893d968e1332/mza_11675757052043432554.jpg/600x600bb.jpg",
       "topics": [
+        "true-crime/fraud-cults",
         "true-crime",
         "history"
       ],
@@ -28146,6 +28284,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "society/law"
       ],
@@ -29289,6 +29428,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/bd/98/22/bd9822cc-b8e0-59de-5809-45926a0ee5f3/mza_2331604259390110897.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -29311,6 +29451,7 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ad/76/bc/ad76bc47-5cc2-3a33-3831-eb131d4056ed/mza_6281920426640935874.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/ghosts-hauntings",
         "paranormal",
         "history"
       ],
@@ -29333,6 +29474,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime",
         "society/law"
       ],
@@ -29397,6 +29539,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ec/3a/fc/ec3afc18-c03c-d35a-1c6c-e5bd7b3d2cd8/mza_8348181652983766430.jpg/600x600bb.jpg",
       "topics": [
+        "music/pop-global",
         "music"
       ],
       "hook": "Brittany Howard discusses Alabama Shakes' first album in 11 years and her decade of reinvention.",
@@ -29990,7 +30133,9 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4d/d5/de/4dd5de63-f18a-92fa-8cd5-3ecd9e1db08a/mza_2125352982322984014.jpg/600x600bb.jpg",
       "topics": [
+        "society/law",
         "society",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "Incarcerated storytellers at California Institution for Women debut a magazine on memory and housing rights.",
@@ -30013,6 +30158,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6d/d2/c5/6dd2c56b-07da-690f-eac5-3c32ca356ff2/mza_2936945516130019574.jpg/600x600bb.jpg",
       "topics": [
         "relationships",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "Jenny Singer traces her breathing problem from suspected lung fungus to an anxiety diagnosis.",
@@ -30563,6 +30709,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/8c/00/7a/8c007a42-e550-0214-d4cb-b59cd7edf194/mza_5305664083935674472.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/justice-forensics",
         "true-crime",
         "society/law"
       ],
@@ -30586,6 +30733,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/d1/8c/b8/d18cb82d-31a4-c23d-3dd5-c81862feb928/mza_16753060551613722708.jpg/600x600bb.jpg",
       "topics": [
         "science/storytelling",
+        "personal-journals/narrative-storytelling",
         "personal-journals"
       ],
       "hook": "A pizza delivery driver's spontaneous act of heroism earns him the Carnegie Medal of Honor.",
@@ -30906,6 +31054,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
       "topics": [
+        "paranormal/ghosts-hauntings",
         "paranormal"
       ],
       "hook": "Part two of the Scole Experiment: spirits, seances, and incredible claimed sights in 1993.",
@@ -31074,6 +31223,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
       "topics": [
+        "true-crime/cold-cases",
         "true-crime"
       ],
       "hook": "The 2018 disappearance and investigation into the death of Toyah Cordingley near Cairns, Australia.",
