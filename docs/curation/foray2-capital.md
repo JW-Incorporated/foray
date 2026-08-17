@@ -27,7 +27,7 @@ rule). Sourcing and per-episode ad measurements:
 | Mean / median segment | **140.1 s / 137.8 s** |
 | Shortest / longest | 72.7 s / 259.9 s |
 | Interquartile range | 71.75 s (R-7) |
-| Source tape read | **12 transcripts, 8 h 46 m** — 9 of our own ASR (6 h 27 m) + 3 free publisher transcripts (2 h 19 m) |
+| Source tape read | **12 transcripts, 8 h 46 m** — 9 of our own ASR (6 h 27 m) + 3 free publisher transcripts (2 h 18 m) |
 | Episodes in the Foray | **8 of 12** — four dropped whole, all for the same reason (§6.1) |
 | Yield on playable tape | **14.7 %** of 5 h 49 m |
 | Yield on all tape read | **9.8 %** of 8 h 46 m |
@@ -110,8 +110,16 @@ notes on that registry:
 
 Migrated verbatim into `data/forays.json` (`forays[1].items`, in order), where
 each entry carries the `segment_id`, the label used here, its arc slot and its
-role. `tools/foray/check-forays.test.mjs` re-derives the label mapping on every
-CI run and fails if this table and the data disagree.
+role. `tools/foray/check-forays.test.mjs` parses **this table** on every CI run
+and compares position, label, duration and role against `data/forays.json`, so
+the two cannot move independently.
+
+*That was not true when this document was first committed.* It claimed the check
+covered this table while the test read only `grilling-foray.md`, so for one
+commit Foray #2's §2 could have drifted from the data with nothing detecting
+it — the exact "silently rots" failure #182 built the check to prevent. The test
+is now table-driven over both docs, with a companion assertion that every
+committed Foray appears in that table.
 
 Times are cumulative **tape** positions; real playback shifts later by the
 narration bridge at each cut. Every claim in the right-hand column is inside its
@@ -135,14 +143,14 @@ own segment's boundaries.
 | | | **SLOT 5 — money that is not an investment** (3 segments, 5:44) | | | | |
 | 10 | 21:47 | GR-1 | 79.8 s | explanation | Feel the Boot 89 | The scale and the door. The US government has **$700 billion in federal grants and contracts**, of which **about $4 billion is the Small Business Innovation Research programme**; eligibility is **fewer than 500 employees**, **majority owned and operated in the United States**, and innovative, **R&D-focused** work with the applicant supplying the rationale. Funded verticals run from education to space to ocean to agriculture to metrology. The constraint that decides fit: **they are not funding you to do marketing, they are funding development.** |
 | 11 | 23:07 | GR-2 | 138.2 s | explanation | Feel the Boot 89 | The architecture. SBIR is a grant **and contract** programme spread across **about 11 participating agencies**; it exists because an early, risky idea an investor will not back would otherwise die — **Qualcomm started out on SBIR funding**. It has three components, of which **Phase I tests feasibility**, and applicants can be idea stage: "everyone from mom and pops who've written their idea on a napkin" to unicorns. The warning that makes it operational: **every agency has a different approach, need and expectation**, so positioning is the work. |
-| 12 | 25:25 | GR-3 | 126.7 s | explanation | Feel the Boot 89 | Phase II and the strings. Roughly **12 months** after Phase I, **Phase II awards up to $1.75 million, non-dilutive, to reach an MVP**; **STTR** is the sister programme where you partner with a research institution. Both come as **either grants or contracts** — most people say grants, but some agencies, defence among them, actually award contracts, which brings deliverables and milestones. The money **never has to be paid back either way**, and there is a **program officer** you meet against deadlines: "I tell people not to view this as free money." |
+| 12 | 25:25 | GR-3 | 126.7 s | explanation | Feel the Boot 89 | Phase II and the strings. Roughly **12 months** after Phase I, **Phase II awards up to $1.75 million, non-dilutive, to reach an MVP**; **STTR** is the sister programme where you partner with a research institution. Both come as **either grants or contracts** — most people say grants, but some agencies, defence among them, actually award contracts, which brings deliverables and milestones. The money **never has to be paid back either way**, and a contract brings deliverables, milestones and post-award supervision against deadlines. (The guest's *"I tell people not to view this as free money"* lands at 2,425.4 s, 12.4 s **after** this segment's out-point, inside the GR-3 → GR-4 elision; it is not in the segment.) |
 | | | **SLOT 6 — borrowing against the next round** (4 segments, 12:13) | | | | |
 | 13 | 27:32 | VD-1 | 259.9 s | explanation | Run the Numbers | **The load-bearing segment of the Foray.** A lender at Series B or earlier is not asking whether this becomes "the next SpaceX or Anthropic or Apple" — it is estimating **the probability the company raises its next equity round in 18 to 24 months**, which is a far easier question, and "more art than science." Then the framework that makes it true: normal commercial banking has three sources of repayment (operating cash flow, balance-sheet assets, sale of the company), and venture lending replaces the first with **cash from the next equity financing**, because in "95 %, maybe even more than that 99 %" of cases the borrower is not profitable. The third source is a sale of IP — and if the company never found product-market fit, "the odds that there's a lot of IP value there is pretty negligible." |
 | 14 | 31:52 | VD-2 | 149.8 s | explanation | Run the Numbers | Two lenders, two business models, and the answer to "how is this different from a bank loan." A **venture bank** treats the loan as customer acquisition — it wants to be your bank for the company's whole life — and funds it out of **deposits**: "banking 101, you take cash from people who have it and lend to people who need it." **Private credit** mirrors a VC structurally: third-party LP money from the same pensions and endowments, some of it in publicly traded BDCs, "so don't take the name private credit to say every fund there is private." It does no banking and does not care where you bank — which is one of its selling points. |
 | 15 | 34:22 | VD-3 | 188.8 s | explanation | Run the Numbers | What it costs, which is the number the arc needs. A private credit fund is not holding your cash and has no other products to sell you, so it has to make an IRR; the typical delta between a venture-bank deal and a same-sized private-credit deal is **about 400 to 500 basis points** in rate and fees — and **lenders take a warrant in almost every scenario**, with private credit wanting a larger one. Venture-bank deals are commonly **sub-$20M**, and private credit "doesn't get out of bed" much under **$50 or 60 million**, because it must deploy drawn capital rather than hold an undrawn line open for 6, 12 or 18 months. Closes on the actual alternative: **instead of $100M of equity, $75M of debt.** |
 | 16 | 37:30 | VD-4 | 135.1 s | explanation | Run the Numbers | The payoff, quantified. **Justin.tv** was the first company he was handed when he joined SVB in **January 2009** — "kind of when the financial world was ending, ironic given what happened to SVB about 13 years later" — it became **Twitch**, and they did **four deals** before Amazon bought it for a little under a billion dollars. Modelled afterwards, the debt preserved **$75 to $100 million of equity value** for founders, employees and existing investors versus raising the same money in equity. Then the honest frame: over-lever and it hurts, "but that's not unlike venture capital, where you can raise too much money." |
 | | | **SLOT 7 — borrowing from a bank** (4 segments, 9:02) | | | | |
-| 17 | 39:45 | SBA-1 | 91.3 s | explanation | Acquiring Minds | What an **airball** is, and why an SBA acquisition loan is not asset lending. A **$4–5 million loan** may sit against maybe **$100,000 of collateral** — an HVAC company's twelve to fifteen vehicles and a little inventory — because buyers price off cash flow and these are cash-flow lenders. Plus the norm most banks cannot compute: the buyer usually has no industry experience, so "why am I going to let this guy who doesn't know what a condenser is buy an HVAC company?" |
+| 17 | 39:45 | SBA-1 | 91.3 s | explanation | Acquiring Minds | What an **airball** is, and why an SBA acquisition loan is not asset lending. A **$4–5 million loan** may sit against maybe **$100,000 of collateral** — an HVAC company's twelve to fifteen vehicles and a little inventory — because buyers price off cash flow and these are cash-flow lenders, and the searchers pricing them do the same. (The host's *"why am I going to let this guy who doesn't know what a condenser is buy an HVAC company?"* sits at 1,682.7 s, 6.7 s **before** this segment's in-point, and is not in it.) |
 | 18 | 41:17 | SBA-2 | 130.8 s | explanation | Acquiring Minds | The underwriting test, stated as a number. Without at least **1.15 debt-service coverage on the last tax return** (the ASR drops the decimal point and renders it *“at least 115 debt service coverage”*; 115 as a coverage ratio is meaningless and 1.15 is the standard SBA figure) you are in policy-exception territory and effectively asking for a projection-based loan, which banks will not get comfortable with for an acquisition — and the reason ties back to the airball: with no hard assets, the bank's security *is* the historical pattern of cash flows. Buyers fixate on trailing-twelve-month numbers; **SBA requires underwriting off tax returns.** |
 | 19 | 43:27 | SBA-3 | 208.3 s | explanation | Acquiring Minds | The two rule changes that decide whether a buyer can afford the deal. The **10 percent equity injection is still required**, but a **seller note on full standby** — no principal, no interest, for two years — can now count for **up to 100 percent of that 10 percent**; if the note is interest-only instead, **25 % of the 10 % must be buyer cash and 75 % can be the note**. In practice one lender caps standby-note credit at about **5 %** and wants a secondary note on top. Then the second change: sellers may now **retain equity after closing**, typically **5 to 10 percent**, where the SBA previously required a 100 percent change of ownership — and one panellist says **about half** his current transactions have a seller retaining equity, because it bridges valuation and solves licence transition. |
 | 20 | 46:56 | SBA-4 | 112.5 s | explanation | Acquiring Minds | What it costs you personally, and it is not proportional. Two guarantors on one deal **both sign a 100 percent unlimited guarantee** even when one has **$2 million** of net worth and the other **$100,000** — "it's not fair… unfortunately just the way the program works." The SBA only requires a lien on a home when equity is **25 percent or more** of value. And the counter-risk of protecting yourself too well: with a $100,000 net worth you are very unlikely to get a $5 million deal done alone. It is a federal programme — **do not omit assets from the personal financial statement.** |
@@ -194,9 +202,12 @@ Two constraints shaped the inside of the slots:
 
 **The equity slot is two segments and one voice, and that is the biggest hole.**
 Everything in it comes from one YC lecture, which means the Foray explains the
-SAFE and never explains a **priced round**: the words *preferred stock*,
-*liquidation preference*, *pro rata* and *option pool* appear nowhere in the
-running order, and *valuation cap* appears once. Angels, syndicates and stage
+SAFE and never explains a **priced round**: *preferred stock*, *pro rata* and
+*option pool* appear nowhere in the running order, and *liquidation preferences*
+and *valuation cap* appear exactly once each — the first inside FAM-2 at 654.8 s,
+in a list of jargon the speaker is explicitly telling the listener to go and
+research ("I apologise for all the jargon"), and the second inside YC-2 at
+968.4 s. Named in passing is not explained. Angels, syndicates and stage
 definitions have no segment at all. The sourcing pass had all of this — Full
 Ratchet 10 (Brad Feld on the term sheet), 13 (the convertible note), 33/34
 (syndicates) and seven VC Minute rows on exactly these mechanics — and the first
@@ -277,7 +288,9 @@ clean-out defect ("it cut off"), introduced by trusting a helper's return value
 rather than the word stream. The fix was to match each anchor against the ASR
 **word** array and take the first word's start and the last word's end; it moved
 **22 boundaries — 12 starts and 10 ends** — and shortened the running order by
-56 s. **After the fix all 26
+56 s. (Those two figures, and the "0 rejected of 26" in §4's anchor bullet, are
+properties of the uncommitted batch run and cannot be recomputed from the tree;
+§10 says why the batch files are not committed.) **After the fix all 26
 `end_anchor`s land on a sentence terminal** in the transcript they were authored
 against (see below).
 
@@ -302,7 +315,7 @@ is an ideal sacrificial head: audibly not the payload, and it names the subject.
 
 | Segment | Opens on | Why it is left |
 |---|---|---|
-| VD-3 | *"the private credit funds, they're not holding your cash."* | The sentence before it is the tail of a sponsor read — the mid-roll ends ~1,794 s and this content begins at 1,800.04 s. There is no earlier clean start that is not an advertisement. |
+| VD-3 | *"the private credit funds, they're not holding your cash."* | The mid-roll ends ~1,794 s and this content begins at 1,800.04 s. A cleaner start exists 2 s earlier (*"I guess it's two things is that"*) and was rejected as 6 s of throat-clearing hard against an ad; that is an editorial call, not a constraint, and it is the weaker of the two mid-clause starts here. |
 | SBA-4 | *"and somebody who has no net worth basically have to deal with the same personal guarantee"* | The orphan is the conjunction; this is the host completing the question that makes the answer land, and starting 6 s later opens on *"Sure. I have this discussion with clients often."* |
 
 One further flag of the kind Foray #1 recorded for TAV-2: **BOOT-1 opens on
@@ -315,7 +328,15 @@ left because the identity question is what the slot is about.
 **Sixteen of the 26 `start_anchor`s open on a word in the length rules' §7
 connective/pronoun list**, and **only one is rescued** by the rule's own escape
 clause (a proper noun inside the first 12 words): SBA-2, which opens *"It goes
-back a little bit, **Will**…"*. The other fifteen would carry
+back a little bit, **Will**…"*.
+
+*One caveat on that 16, because a future validator will report a different
+number.* It counts `That's` as *that* and `It's` as *it*. The repo's only
+canonicaliser, `canonical()` in `merge-segments.mjs`, deletes apostrophes rather
+than splitting, so those become `thats` and `its` and match nothing in §7's list
+— giving **14 fire, 13 unrescued, 50 % of anchors**. The stricter reading is the
+one a human would apply and the one used above; the mechanical one is 14/13.
+Either way the conclusion below is unchanged. The other fifteen would carry
 `cold_open_ok: true` if the schema had the field: FAM-1, CALM-1, BOOT-2, CALM-2,
 CALM-3, GR-1, GR-2, GR-3, GR-4, VD-1, VD-2, SBA-1, SBA-3, SBA-4 and CF-2.
 
@@ -333,17 +354,24 @@ gate without the override field §9 of the length rules proposes.**
 Unlike Foray #1, where `base.en` produced three near-unpunctuated transcripts and
 made S2 unevaluable on a third of the episodes, every transcript here is
 punctuated: the three publisher files by construction, and the five ASR files at
-one sentence-ender per 12–19 words. **All 26 `end_anchor`s land on a sentence
+one sentence-ender per 12–19 words. **25 of 26 `end_anchor`s land on a sentence
 terminal** (`.`, `?` or `!`) in the transcript they were authored against, after
 the 22 boundary moves described above.
 
-**One end point passes the mechanical test and should still be flagged.** VD-3
-ends at a Run the Numbers cue boundary (1,988.80 s) whose text is *"…maybe that
-amount or 75 million in debt to to then use one of the."* The payload lands, and
-then about a second and a half of the host's next question begins. The SRT is cut
-at 2–4 s intervals that rarely coincide with sentence ends, and there is no word
-timing to cut against, so this is the best boundary available rather than a good
-one.
+**The one failure is VD-3, and the distinction matters.** Its `end_anchor` ends
+on *"…maybe that amount or 75 million in debt"*, and in the transcript that word
+is followed by *"to to then use one of the."* — so the **anchor** does not end at
+a terminal, even though `end_sec` (the containing cue's end, 1,988.80 s) does.
+S2 as written in `segment-length-rules.md` §9 is a test on the anchor, so this is
+a fail, not a pass with an asterisk. An earlier draft of this section claimed
+26 of 26 by measuring at `end_sec` instead, which is the cue and not the anchor —
+the same conflation §4's boundary bug is about, made a second time in the
+reporting rather than in the data.
+
+It is kept because it is the best boundary available: the SRT is cut at 2–4 s
+intervals that rarely coincide with sentence ends, there are no word timings to
+cut against, and the payload (*$100M of equity or $75M of debt*) lands intact
+with about a second and a half of the host's next question after it.
 
 ### M1/M2 same-episode gaps
 
@@ -373,7 +401,8 @@ as played.
 Tier-A rules from `segment-length-rules.md` §9, evaluated by
 `tools/foray/check-forays.mjs` on every CI run. Every number below was produced
 by that checker, not by hand. The Foray is **51:22**, which puts it in the
-**45–120 minute band, so N = 6** starts per rolling 600 s.
+**45–120 minute band, so N = 6** starts per rolling 600 s. The block below is an
+excerpt: the real run also prints Foray #1's line and its three warnings.
 
 ```
 capital-types-1 (draft): 22 segments, 51.4 min, mean 140.1 s
@@ -454,7 +483,7 @@ metronomic, and the second is inside one episode whose internal order M3 fixes.
 
 ### 6.1 Four whole episodes — and the measurement that removed them
 
-**The Full Ratchet 17, 18, 40 and 235 are dropped entirely: 2 h 55 m of tape,
+**The Full Ratchet 17, 18, 40 and 235 are dropped entirely: 2 h 57 m of tape,
 already transcribed.** All four carry **dynamically inserted advertising**, which
 makes our timestamps a foreign copy's timeline and makes the out-point
 unanchorable (#65 §2). `tools/foray/check-forays.mjs` refuses to let a
@@ -474,14 +503,23 @@ not see is *where* the insert is. Holding the audio settles it:
 
 Three things in that table are worth more than the tiering:
 
-1. **The byte method and the decoded duration agree to better than 0.5 s on all
-   four.** `delivered_bytes × 8 ÷ decoded_duration` gives a clean bitrate, and
-   the byte insert converted at that bitrate matches
-   `decoded_duration − (declared_bytes × 8 ÷ bitrate)` in every row. ADR-0008
-   asked for exactly this cross-check ("cross-check against the publisher
-   transcript's last cue before treating any single-source delta as ad load") and
-   this is the first time the repo has been able to run it against its own audio.
-   **The ranged-GET probe is measuring real inserted audio.**
+1. **The implied bitrates land on nominal CBR values to within 0.003 %** —
+   96.0036, 128.0037, 128.0031 and 160.0038 kbps against 96, 128, 128 and 160.
+   That is what shows the extra bytes are **audio at the same encode rate** rather
+   than metadata, artwork or a container difference, and it is the reason the
+   byte delta can be converted to seconds at all. **The ranged-GET probe is
+   measuring real inserted audio.**
+
+   *An earlier draft claimed something stronger and empty here:* that the byte
+   insert converted at that bitrate "matches `decoded_duration − (declared_bytes
+   × 8 ÷ bitrate)` in every row." It does — to about 1e-13 s — because bitrate is
+   *defined* as `delivered_bytes × 8 ÷ decoded_duration`, so the equality is an
+   algebraic identity that holds for any four numbers whatsoever. It is not
+   evidence, and calling it the cross-check ADR-0008 asked for was wrong. The
+   cross-check that ADR actually wants — our decoded duration against a publisher
+   transcript's last cue — **is still not available for these four**, because The
+   Full Ratchet publishes no transcript. The nominal-bitrate argument above is
+   what we have, and it is weaker than what ADR-0008 asked for.
 2. **`itunes:duration` on this feed is short by 54 to 161 seconds.** Note what
    that does to ADR-0008's own arithmetic: `delta_sec = duration × (ratio − 1)`
    uses the declared duration and therefore understates ep 18 (52.2 s against a
@@ -489,21 +527,36 @@ Three things in that table are worth more than the tiering:
    the measured bitrate, not from the declared duration.** Recorded in
    `data/segment-sources.json`'s `provenance.ad_delta_method`.
 3. **The insert is not a pre-roll, and that is what settles the tier argument.**
-   All four open with a **word-for-word identical ~26.5 s read for Ramp** — a
-   2020s vendor on episodes published in 2014, so it is inserted, not baked in.
-   But ep 17's *total* insert is only 12.6 s, which is less than that pre-roll,
-   and **ep 235 carries a second Ramp read as a mid-roll at ~1,786–1,820 s**. So
-   the offset function is not constant: it steps partway through the episode,
-   which is precisely the case ADR-0008 says "the distribution decides the
-   outcome and the distribution is exactly what a byte or duration measurement
-   cannot see."
+   All four open with the **same ~19 s read for Ramp** — 0 to 19.14 s, then *"Now
+   onto the episode"* at 19.4 s. (An earlier draft called it "~26.5 s and
+   word-for-word identical". Both were loose: 26.5 s is the *containing cue's*
+   end, not the ad's, and ep 17 says *"before **the software** is gone"* where the
+   other three say *"before **this offer** is gone"* — plausibly one ASR error on
+   identical audio, but not something to assert.) Eps 17, 18 and 40 were
+   published in 2014 and Ramp did not exist, so on those three the read is
+   inserted rather than baked in; **ep 235 is recent enough that the pre-roll
+   alone proves nothing**, which is why the mid-roll below is the load-bearing
+   observation for it.
+
+   **Ep 235 carries a second Ramp read as a mid-roll at 1,783.6–1,816.2 s**,
+   ending on *"Now back to the interview."* So the offset function is not
+   constant: it steps partway through the episode, which is precisely the case
+   ADR-0008 says "the distribution decides the outcome and the distribution is
+   exactly what a byte or duration measurement cannot see."
+
+   **And ep 17 indicts the byte method harder than point 2 does.** A ~19 s
+   pre-roll against a **12.6 s** total byte delta means the delta *understates*
+   that episode's inserted audio by more than 50 %. The declared byte length is
+   evidently not the ad-free master's — it is some earlier assembled version — so
+   `delivered − declared` is a floor on the insert, not a measurement of it. Any
+   pad sized from it is undersized by an unknown amount.
 
 **None of that makes them un-authorable.** ADR-0008 Decision 5 is explicit —
 unplayable shows are authored, not played — and ADR-0007's anchors stay true
 under any ad load. **No Full Ratchet segments were authored in this PR**, a scope
 call rather than a rule: authoring them would add records that cannot play until
 `seekPrecision()` gains a `FOREIGN` branch (ADR-0008 open question 2), and the
-passages are inventoried below so a future batch does not re-read 2 h 55 m.
+passages are inventoried below so a future batch does not re-read 2 h 57 m.
 
 They are also **not registered in `data/segment-sources.json`**, which the brief
 asked for. `tools/foray/check-forays.test.mjs` carries an invariant — "no source
@@ -766,17 +819,21 @@ re-topic first.**
   timing — see VD-3 in §4. **Eight of the 22 played segments are therefore placed
   to cue precision and fourteen to word precision, and no field in the data
   records which.**
-- **One cue gap in the Run the Numbers SRT went uninvestigated**: no cue exists
-  between 2,848.96 s and 2,886.76 s. VD-4 starts at 2,867.56 s, inside that gap,
-  and its anchor resolves cleanly because the words are present in a neighbouring
-  cue — but a 38-second hole in a publisher transcript is either a dropped cue or
-  something else, and we did not find out which.
+- ~~**One cue gap in the Run the Numbers SRT went uninvestigated.**~~
+  **Withdrawn — there is no gap.** An earlier draft of this section claimed no
+  cue existed between 2,848.96 s and 2,886.76 s. There are **15**, and both
+  quoted figures are cue *end* times that were misread as a span. The largest
+  inter-cue gap anywhere in that SRT is **11.07 s** (after 1,673.57 s), and
+  VD-4's in-point at 2,867.56 s is itself a cue start. Recorded rather than
+  deleted because the claim was committed, and because it is a good example of
+  the failure mode this document warns about elsewhere: a truncated console
+  listing read as evidence of absence.
 - **`rtn-venture-debt` is 18.2 % of the Foray's segments and 23.8 % of its
   runtime.** M4's cap is 25 %, so it passes, but one 56-minute interview supplying
   nearly a quarter of the Foray is more than any single source should carry. It
   happened because it is the only episode in the batch where a practitioner
   explains one instrument end to end.
-- **The four Full Ratchet episodes cost about 2 h 55 m of CPU that produced no
+- **The four Full Ratchet episodes cost about 2 h 57 m of CPU that produced no
   segments.** The lesson is cheap and worth writing down: **fetch one enclosure
   and listen to the first 30 seconds before transcribing any feed that measures
   non-zero.** The sourcing pass had the delta and tiered it PADDABLE; PADDABLE
@@ -797,9 +854,18 @@ re-topic first.**
   a one-Foray world** and this change generalised them: the Foray count, the
   held-back-segment list, the mean-deviation warning count, the source count and
   the source-id list. They now pin per Foray rather than per file, and Foray #2's
-  runtime, mean, D1 and D5 numbers are pinned the same way #1's are. Worth noting
-  because the next Foray should not need to touch that file, which is what a
-  generalisation is for.
+  runtime, mean, D1 and D5 numbers are pinned the same way #1's are, the
+  row-for-row §2 check is now table-driven over both curation docs rather than
+  hardcoded to #1's, and three assertions whose names claimed file-wide scope
+  (the label-to-segment derivation, label uniqueness, and the L2/L3 role bounds)
+  now actually loop every Foray instead of only `forays[0]`. **But do
+  not read that as "the next Foray will not touch this file."** Foray #3 still has
+  to edit five things there — the id array in the two-Foray test, the
+  held-back-segment list, the per-Foray mean-deviation warning counts, the
+  source-id array, and one row in `RUNNING_ORDER_DOCS` — because those are
+  per-Foray *facts*, not counts. What the
+  generalisation removed is whole-file snapshots that broke for no reason; the
+  deliberate per-Foray edits remain, and should.
 
 ---
 
