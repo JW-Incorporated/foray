@@ -115,7 +115,11 @@ const FLOORS = {
      version today would delete 19,278 agent rows and leave valid JSON and a
      green CI behind it. This suite is the reason that cannot come back. */
   "tools/classify-breadth.test.mjs": 29,
-  "tools/foray/check-forays.test.mjs": 81,
+  /* 82 since #226 (PR #237) added "Foray #1 is labelled superseded". Raised in a
+     follow-up rather than in that PR, which is the mistake this floor exists to
+     catch: it left one test of slack, and slack is what lets the new gate be
+     deleted later with CI green. Zero slack here, deliberately, as at the top. */
+  "tools/foray/check-forays.test.mjs": 82,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,

@@ -542,14 +542,27 @@ test("L4's escape hatch is reachable — needs_review + long_reason clears it", 
    * would leave grilling-history-2's copy failing and the test red for a reason
    * that is not about the escape hatch. Every Foray playing the segment gets the
    * hatch and drops its stated runtime, which is the same edit #1 always got,
-   * applied wherever the segment now appears. */
+   * applied wherever the segment now appears.
+   *
+   * `applied` is counted and asserted non-zero for the same reason the L2/L3 loop
+   * above pins `checked`: a loop that silently iterates nothing is the failure to
+   * guard against. If a later rebuild drops this segment from every running order
+   * while leaving it in the pool — the class of edit #226 just made — the `continue`
+   * would apply zero hatches, and because the checker's L4 block only walks PLAYED
+   * segments, a stretched-but-unplayed segment raises no L4 error at all. The
+   * assertion below would then pass green having never exercised the hatch. The
+   * single-Foray version this replaced threw a TypeError in that case, which was
+   * at least loud; this keeps it loud without depending on a crash. */
+  let applied = 0;
   for (const foray of f.forays.forays) {
     const item = foray.items.find((i) => i.segment_id === "moreish-jerk-jamaica#266");
     if (!item) continue;
     delete foray.runtime_sec;
     item.needs_review = true;
     item.long_reason = "One continuous three-community answer; every cut lands mid-claim.";
+    applied += 1;
   }
+  assert.ok(applied > 0, "no Foray plays moreish-jerk-jamaica#266, so this test proved nothing about L4's escape hatch — point it at a segment that is actually played");
   assert.deepEqual(errorsFor(f).filter((e) => /L4/.test(e)), []);
 });
 
