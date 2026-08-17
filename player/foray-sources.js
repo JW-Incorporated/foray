@@ -54,6 +54,33 @@ export function showLink(show, collectionId = null) {
   };
 }
 
+/**
+ * Show name -> square artwork URL, harvested from the same pool, by the same
+ * exact-name join, for the same reason (issue #27).
+ *
+ * The lock screen and a car head unit want a picture, and
+ * `data/segment-sources.json` carries none — no artwork field exists on a source
+ * at all. `data/discover.json` does carry one per show, so this is the only
+ * artwork our own data can offer a Foray, and it is thin on purpose rather than
+ * by oversight: of the 12 shows the two shipped Forays draw on, exactly one is
+ * in the recommendation pool. The rest fall back to the app's own icon
+ * (`player/media-session.js`), which is why a miss here is not a defect.
+ *
+ * Exact-name matched for the reason above: attaching one publisher's artwork to
+ * another publisher's segment is the same error as attaching their page, and it
+ * would be more visible, not less.
+ */
+export function artworkUrlsByShow(discoverDoc) {
+  const map = new Map();
+  const items = Array.isArray(discoverDoc?.items) ? discoverDoc.items : [];
+  for (const item of items) {
+    if (!item || typeof item !== "object" || !nonEmpty(item.show)) continue;
+    if (map.has(item.show)) continue;
+    if (nonEmpty(item.artwork_url)) map.set(item.show, item.artwork_url.trim());
+  }
+  return map;
+}
+
 /** Apple collection ids are positive integers. A float, a negative, or the
     string "null" is not one, and guessing produces a 404 with our name on it. */
 function collectionIdOf(value) {

@@ -1411,12 +1411,19 @@ const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
 function bindForayTransport(r, player, resume = null) {
   const onChange = (s) => paintForay(s);
 
-  const start = (index) => player.playForay(r, { startIndex: index, onChange });
+  /* The discover pool is the only document we have that carries per-show
+     artwork, and a lock screen wants a picture (#27). Passed from here rather
+     than resolved inside the player because app.js is the side that owns the
+     fetch; its absence costs the OS the publisher’s square and nothing else.
+     Spread into all three entry points below so a new one cannot forget it. */
+  const forayOpts = { onChange, discoverDoc: state.discover };
+
+  const start = (index) => player.playForay(r, { startIndex: index, ...forayOpts });
   /* The main button, pressed cold. With a stored position that means RESUME —
      the whole point of the feature — and an explicit index (a row, the strip)
      always wins, because the listener just named a segment. */
   const startOrResume = () => resume
-    ? player.playForay(r, { startElapsedSec: resume.elapsedSec, onChange })
+    ? player.playForay(r, { startElapsedSec: resume.elapsedSec, ...forayOpts })
     : start(0);
 
   $("#fy-restart")?.addEventListener("click", async () => {
@@ -1480,7 +1487,7 @@ function bindForayTransport(r, player, resume = null) {
     const at = stripElapsedAt(e, r);
     if (at != null) {
       if (playerHasForay(r)) return player.foraySeek(at);
-      return player.playForay(r, { startElapsedSec: at, onChange });
+      return player.playForay(r, { startElapsedSec: at, ...forayOpts });
     }
     // No coordinate to work from (a synthetic or assistive click). Fall back to
     // the bar that was hit, which is what the strip did before it could scrub.
