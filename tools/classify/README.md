@@ -273,3 +273,64 @@ the rollout across the Claude Max plan's weekly usage limits (see the
 usage/pacing model in `docs/adr/0006-podcast-classification-methodology.md`),
 and will run the first test batches themselves before committing to a
 cadence.
+
+## `reconcile-shards.mjs` — landing the six shard branches
+
+**Read this before you conclude the classification fleet is dead.** The six
+`foray-classify-shard0-5` cloud routines do **not** follow §8 of
+`docs/agents/runner-prompts/classify-batch.md`: they commit to
+`origin/reclassify-<N>` and **open no pull request**, so nothing they produce
+ever reaches `main` on its own. On 2026-08-17 that had hidden **17,427 real
+tier-1 classifications** across six branches while `main` sat at 1,851 and
+looked like a fleet that had stopped on 2026-08-03.
+
+```
+node tools/classify/reconcile-shards.mjs --dry-run   # the numbers, writes nothing
+node tools/classify/reconcile-shards.mjs             # merge them into data/
+```
+
+It reads `origin/reclassify-0..5:data/breadth-classification.json` with
+`git show` (so it needs those refs fetched, and nothing else — no network, no
+keys, no LLM) and merges the agent rows into whatever the working tree's
+`data/breadth-classification.json` currently says.
+
+**Merge data; never check out a branch's file.** Shards 1–5 descend from
+`origin/reclassify`, which last moved 2026-07-25, so their `genre-map` and
+`llm-title-genre` rows are three weeks stale. Taking any single shard's file
+wholesale drops 1,707 of `main`'s agent rows and reverts the base layers.
+
+Precedence, in full:
+
+| base row | shard row | result |
+|---|---|---|
+| `genre-map` / `llm-title-genre` / sourceless | agent | shard row wins |
+| agent, **older** `classified_at` | agent, newer | shard row wins (`refreshed`) |
+| agent, same or newer `classified_at` | agent | base row wins (`incumbent_kept`) |
+| anything | absent | base row untouched |
+
+**Disjointness is verified, not trusted.** `--shard i/N` selects on
+`Number(id) % N === i`, but on `main` that flag *fails open*: an empty
+`--shard ""` (an unset variable in a routine), an out-of-range `6/6` or a
+non-numeric value are silently ignored and the run then selects from the whole
+catalogue (issue #203 makes them refuse). A shard that ran unsharded would have
+classified other shards' shows, so this script hard-fails on any adopted id
+whose residue is not that shard's lane, and on any id two shards both claim.
+Measured 2026-08-17: **zero off-lane rows on all six branches** — the fleet
+really was disjoint.
+
+### `superseded_topics` — why a row can carry fewer topics than before
+
+When an adopted row does not carry a topic the row it replaced had, the
+displaced ids are recorded on it as `superseded_topics`, with
+`superseded_source` naming where they came from. So the live `topics` reflect
+the better judgement and **nothing is deleted**.
+
+This is deliberately *not* a union of the two lists. PR #198 measured that
+bolting the genre map's coarse secondary branches onto a judged row makes
+classification worse, not better — root-only pairs went 9,741 → **10,502**
+under the superset rule. The demoted ids stay auditable and out of `topics`.
+
+`auditNoRegression()` is the gate that makes this safe, and it runs on every
+invocation before anything is written: no entry may disappear, end with empty
+`topics` or no `source`, lose an agent classification, or lose a topic id from
+both `topics` and `superseded_topics`. Any violation aborts the write.
