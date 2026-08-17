@@ -44,35 +44,38 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `app.js`, `styles.css`, `backend/`, `.github/`; `data/discover.json`,
   `data/taxonomy.json` and `data/genre-taxonomy-map.json` are untouched** (PR
   #198 owns those).
-- **SEQUENCING: this PR carries the `hold` label so it cannot auto-merge ahead of
-  PR #198. Which order to take is a founder call; both are laid out here.** Every
-  path it touches is auto-merge-allowlisted, so without the label it lands the
-  moment checks go green.
-  - **Recommended: #198 first.** This PR is regenerable in one command and its
-    numbers are unchanged by #198 landing first — *simulated against #198's own
-    file: identical 17,427 adoptions, 80 refreshes, 509 remaining, 0
-    regressions*. #198's headline is not similarly portable: after this merge
-    only **509** rows are still base-layer, so its genre-map re-run would have
-    **26** enrichable shows instead of **1,026**, and its 9,741 → 8,874 could
-    not be reproduced.
-  - **The counter-argument, which is real:** #198 carries `merge-conflict`, sits
-    5 commits behind `main`, and its raw diff reverts three already-merged docs,
-    so it cannot land until someone rebases it — and nobody currently owns that.
-    Gating a green, 0-regression data fix behind unowned work is a cost. If a
-    founder prefers, land this first and have #198 rebase and re-run its own
-    generator; its durable value (the `classify-breadth.mjs` destructive-rewrite
-    fix, `root-dumping-report.mjs`, `data-topic-integrity.test.js`, the 7 genre
-    mappings, the 147 `discover.json` tags) is order-independent.
-  - **To land this after #198:** `node tools/classify/reconcile-shards.mjs`,
-    re-run the suites, drop `hold`. Also give #198's newly-created
-    `HUMAN-ACTIONS.md` **#4** the same update block #5 got — it asks Wyatt to go
-    check whether the six routines are alive, which this work already answered.
-  - **What #198 loses, precisely, and it is the same in both orders:** its
-    **1,026** topic-changed breadth rows survive as data — 0 of its added child
-    nodes are lost — but **969** of them end up only in `superseded_topics`,
-    which its own `root-dumping-report.mjs` reads past (`e.topics || []`). So
-    **#198's data enrichment is preserved as archaeology either way; only its
-    metric depends on the order.** Its `discover.json` work this PR never touches.
+- **SEQUENCING — decided: this lands FIRST, #198 rebases onto it. No `hold`.**
+  #198 went `DIRTY`/`CONFLICTING` while this was being built (`main` moved six
+  commits, #202/#203/#204; #198 sits 14 ahead with four files changed on both
+  sides), so "land #198 first" is no longer free — someone must resolve its
+  conflict either way. Three measured reasons for this order:
+  (1) holding a green 0-regression merge behind unowned work re-strands 17,427
+  classifications, the exact failure this fixes;
+  (2) **order does not protect #198's breadth data anyway — 969 of its 1,026
+  topic-changed rows get an agent row in EITHER order**, superseded by a real
+  per-show judgement, which is #198's own precedence rule;
+  (3) #198's durable half is untouched here and survives its own rebase: the
+  `classify-breadth.mjs` rewrite fix, `root-dumping-report.mjs`,
+  `data-topic-integrity.test.js`, the 7 `genre-taxonomy-map.json` mappings, and
+  the 147 hand-judged `discover.json` tags.
+  **Not folded in**, deliberately: 133 hand-judged curated tags plus a 3,451-line
+  generated diff would make both changes unreviewable and unrevertable alone.
+  **To rebase #198:** re-run its own generator (`node tools/classify-breadth.mjs`
+  — its fix preserves every `classify-agent-*` row by design) and
+  `root-dumping-report.mjs --baseline <snapshot>` to re-measure; then give its
+  newly-created `HUMAN-ACTIONS.md` #4 the same update block #5 got here.
+- **Heads-up — #198's improvement is compounded, not lost, but the METRIC flips
+  sign and you need to know which one you are reading.** Root-only *pairs*:
+  main 9,741 → #198 8,874 → **this branch 13,470** → both 13,445. Root-only
+  *items* (a show with no child node anywhere — #198's own harsher view, and the
+  one that decides whether any interest slider fires): main 6,107 → #198 5,249 →
+  **this branch 5,148** → both **5,123**. Pairs rise because agent rows name more
+  branches (7,546 shows gained topics), so the denominator grows — arithmetic,
+  not regression. **On the per-item metric this branch beats #198 (5,148 vs
+  5,249) and the two together beat either.** No correct merge of judged
+  classifications can lower the pairs count below #198's; do not treat that as a
+  goal or you will be tempted to bolt coarse secondary branches back on, which
+  #198 itself measured as worse (9,741 → 10,502).
 - **Heads-up — a row can now carry `superseded_topics`.** 6,758 rows do. When an
   adopted agent row does not carry a topic the row it replaced had, the displaced
   ids move there (with `superseded_source`) instead of being deleted. It is
