@@ -679,17 +679,25 @@ its reasoning.
   dependencies of any kind and exactly one script.
 - **`ios/` is reclassified from "the iOS app" to reference material — and is
   deliberately NOT moved or renamed.** There is exactly one iOS target that
-  ships, and it is the shell. `ios/ForayKit` stays real and CI-compiled (`ios-kit`
-  runs `swift test` on a macOS runner) and holds `IntentGrammar.swift`, which has
-  no JavaScript equivalent; `ios/App/Player/` is a **stale second copy** of
-  `player/queue-state.js` + `player/queue-manager.js`, and the JS port is
-  authoritative because it found two real bugs in the Swift (#50). #36 recommended
-  moving the tree to `ios-native-reference/`; that was rejected because it buys
-  nothing that Capacitor's `ios.path` does not, while costing edits to three
-  auto-merge-denied paths (`.github/workflows/ci.yml`, `CLAUDE.md`,
-  `ios/README.md`) plus the references in #28 and #33. **Role is fixed by writing
-  it down, not by renaming.** Whether the Swift state-machine copies get retired
-  is left open and belongs to #28.
+  ships, and it is the shell. `ios/ForayKit` stays real and **CI-compiled and
+  tested** (`ios-kit` runs `swift test` on a macOS runner) and holds
+  `IntentGrammar.swift`, which has no JavaScript equivalent. Be precise about the
+  duplication, because the loose version is wrong:
+  `ForayKit/…/PlayerQueueState.swift` ↔ `player/queue-state.js` is a **maintained
+  mirror, tested on both sides**; only `App/Player/PlayerQueueManager.swift` ↔
+  `player/queue-manager.js` is one-sided, and even there the two bugs the JS port
+  surfaced were *fixed* in the Swift by PR #50, so it is uncompiled rather than
+  known-wrong. **The decisive argument is that the machinery the product actually
+  runs on — `foray-resolve`, `foray-queue`, `seam-gap`, `seek-policy`,
+  `html-audio-backend`, `durable-store` — has no Swift counterpart at all.** #36
+  recommended moving the tree to `ios-native-reference/`; that was **not** done,
+  because `ios.path` isolates the generated project for free and role is fixed by
+  writing it down rather than by renaming. Stated honestly: the marginal cost of
+  moving is small — `.github/workflows/ci.yml`'s `ios-kit` path plus two issue
+  bodies (#28, #33) — since this change already edits `CLAUDE.md` and
+  `ios/README.md` anyway. **This is a deviation from an explicit issue
+  recommendation and is cheap for a founder to overturn.** Whether the Swift
+  state-machine copies get retired is left open and belongs to #28.
 - **The app id is `com.jwincorporated.foray`, pinned in the config and in a test,
   and it is still a founder ruling** (`HUMAN-ACTIONS.md` #13). Permanent once
   published. `ios/project.yml`'s `com.wjduvall.foray` predates the org, belongs to
@@ -697,7 +705,7 @@ its reasoning.
 - **The native bundle's `webDir` is built by a committed, dependency-free script
   whose data list is DERIVED from `app.js`, not written down.**
   `tools/mobile/prepare-webdir.mjs`. `data/` holds ~62 MB of pipeline inputs and
-  the client fetches ~2.5 MB, so the bundle is curated and the cap (3 MB) **fails**
+  the client fetches 2.1 MB of data (2.52 MB of bundle), so the bundle is curated and the cap (3 MB) **fails**
   the build rather than warning. #36 listed the runtime files by hand and then
   said to verify the list against the `fetchJson` calls; a list that must be
   manually verified is a list that will drift, so the script reads the calls. The
@@ -720,6 +728,17 @@ its reasoning.
 - **Bundled data is frozen at build time, and that is now a named release gate.**
   Nothing in the shell re-fetches data, so a shipped app shows its build day's
   session until #40's remaining half lands. Filed as `HUMAN-ACTIONS.md` #15.
+- **The top open risk is Android's injected bridge versus our CSP, and it is
+  unproven.** Capacitor Android injects `native-bridge.js` as an INLINE script and
+  our `script-src` is `'self'` with no `'unsafe-inline'` — which a `<meta>` CSP
+  cannot fix with a nonce. If it is blocked, `window.Capacitor` never exists, all
+  four plugins are dead, and the service worker registers inside the Android shell
+  (the origin there is an ordinary `https://localhost`). iOS injects via
+  `WKUserScript` and is probably exempt, so this would be Android-only — the mirror
+  image of the iOS-only `img-src` bug. MP1's spike APK never loaded the real
+  `index.html`, so it did not exercise this. Filed as `HUMAN-ACTIONS.md` #16;
+  the possible fixes (a response-header CSP, or serving the bridge as a file)
+  change the shell's shape and were deliberately not guessed at.
 - **Nothing was generated, installed, compiled or launched.** No `cap init`, no
   `cap add`, no `mobile/node_modules`. Both platforms are blocked on hardware this
   project does not have on Windows — MP1 already burned ~75 minutes proving the

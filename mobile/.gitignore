@@ -44,7 +44,13 @@ android/app/build/
 android/app/src/main/assets/public/
 android/app/src/main/assets/capacitor.config.json
 android/app/src/main/assets/capacitor.plugins.json
-android/app/src/main/res/xml/config.xml
+# NOT ignored, deliberately, though Capacitor's own template ignores it:
+#   android/app/src/main/res/xml/config.xml
+# That is the Cordova-compat preference file, and it is where someone would set
+# `KeepRunning="false"` to "save battery" — which calls the process-global
+# pauseTimers() and stops every JavaScript out-point in the app firing.
+# `tools/mobile/shell-invariants.test.mjs` parses it. An ignored file cannot be
+# checked, so ignoring it would make that guard permanently dead.
 android/capacitor-cordova-android-plugins/
 android/local.properties
 android/.idea/

@@ -848,11 +848,12 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 
    In Xcode: select the **App** scheme, pick your device, set your team under **Signing & Capabilities** (it is blank on purpose — no Apple Team ID is committed), then Run.
 
-6. **The four things to report back**, in one comment on #36:
+6. **The five things to report back**, in one comment on #36:
    1. Does the app launch and show the four cards?
-   2. **Are the app icons visible, and is the Xcode console free of Content-Security-Policy errors?** This is the one change made blind: the page's CSP had to gain `'self'` for `img-src`, because the iOS shell's origin is `capacitor://localhost` and the app's own bundled icons match neither `https:` nor `data:`. If you see a CSP error mentioning an image, say so — the fix is one token and it would be wrong.
-   3. Start a Foray, press play, **lock the phone for 15 minutes.** Does audio continue, and does the running order keep advancing through segments? (This is the real version of item #11, the one a browser tab cannot answer.)
-   4. Does the app pick up a new build, or does it seem to serve stale content? It should not cache — the shell deliberately does not register the service worker — and this is the check that confirms it.
+   2. **In the Safari Web Inspector console (Safari → Develop → your device → App), type `Capacitor` and press enter. Is it defined, or does it say "Can't find variable"?** This is the single most important line of output in this whole item. Capacitor injects its bridge as an **inline script**, and the page's CSP is `script-src 'self'` with no `'unsafe-inline'`. If the bridge is blocked, the bridge is gone, all four plugins are dead, and the app silently starts caching itself. iOS probably injects in a way that bypasses the CSP; Android probably does not. Report the exact answer either way, plus **any console error containing the words "Content Security Policy"** — quote it verbatim.
+   3. **Are the app icons visible?** The other change made blind: the CSP had to gain `'self'` for `img-src`, because the iOS shell's origin is `capacitor://localhost` and the app's own bundled icons match neither `https:` nor `data:`. If you see a CSP error mentioning an image, say so.
+   4. Start a Foray, press play, **lock the phone for 15 minutes.** Does audio continue, and does the running order keep advancing through segments? (This is the real version of item #11, the one a browser tab cannot answer.)
+   5. Does the app pick up a new build, or does it seem to serve stale content? It should not cache — the shell deliberately does not register the service worker — and this is the check that confirms it.
 
 7. Commit `mobile/ios/` when it works. Capacitor's own guidance is to commit the generated project, and it keeps CI from needing a `cap add` step.
 
@@ -880,6 +881,53 @@ For a product whose promise is "four picks, every day", that is the difference b
 **Answer this together with item #12** if you are answering either — both are "what must be true before a store listing", and a single sitting settles the release shape.
 
 **Worked if:** #40 says whether it gates the first public release, and the status below says DONE.
+
+**Status:** OPEN
+
+---
+
+### 16. On Android: settle whether our CSP kills Capacitor's bridge
+
+**Tag:** `[BLOCKING]` for Android · **Time:** ~45 minutes, most of it downloads · **Owner:** Wyatt (or anyone with an Android phone and a USB cable)
+
+**Why it matters.** This is the **top open risk** in the whole native-app change, and it can be settled by reading one line in a console.
+
+Capacitor injects its native bridge (`native-bridge.js`, the app config, and every plugin's JavaScript) into the page as an **inline `<script>`**. Foray's page carries a strict CSP — `script-src 'self'`, with no `'unsafe-inline'`, permanently and deliberately. If Android's WebView applies that CSP to the injected script, the script is blocked, and three things follow at once:
+
+1. `window.Capacitor` never exists, so all four installed plugins are dead;
+2. **the service worker registers inside the app** — because with no bridge to ask, the page sees an origin of `https://localhost`, which is indistinguishable from the real website. That is the "app won't update after a store release" bug;
+3. anything later built on a Capacitor plugin (native storage for #40, downloads for #29) silently does nothing.
+
+iOS is probably unaffected — it injects via a mechanism that runs outside the document's CSP — so this is likely an Android-only problem, and **nobody has tested it.** MP1's Android spike built an APK around a few player modules and two tone files, not the real page, so it never carried this CSP. `docs/mobile-shell.md` §5 has the full reasoning and the two possible fixes, neither of which is a one-token change.
+
+**Steps.** No Android Studio needed, and **do not use an emulator** — MP1 spent ~75 minutes proving one will not boot on this hardware. A real phone over USB is faster and is the only thing that answers the question anyway.
+
+1. Install **JDK 21** (Capacitor 8 dies on JDK 17 with `invalid source release: 21`) and the Android **platform tools** (for `adb`).
+2. Build the app:
+
+   ```bash
+   cd mobile
+   npm install
+   npm run add:android
+   cd android
+   ./gradlew assembleDebug
+   ```
+
+   The APK lands at `mobile/android/app/build/outputs/apk/debug/app-debug.apk`.
+
+3. Turn on **Developer options → USB debugging** on the phone, plug it in, and install:
+
+   ```bash
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+4. Open the app on the phone. On the computer, open Chrome and go to **`chrome://inspect`**, then click **inspect** under the Foray app.
+5. **In that console, type `Capacitor` and press enter.** Report which you get:
+   - an object → **the bridge survived the CSP.** The risk is closed and the shell works as designed. Say so; it is the good outcome.
+   - `Uncaught ReferenceError: Capacitor is not defined` → **the bridge is blocked.** Also copy any error containing "Content Security Policy". This is the outcome that changes the shell's shape, and finding it here costs 45 minutes instead of a rejected store build.
+6. Either way, also say whether the four cards render and whether search works.
+
+**Worked if:** there is a comment on #36 quoting what `Capacitor` evaluated to in the Android console, plus any CSP error text verbatim.
 
 **Status:** OPEN
 

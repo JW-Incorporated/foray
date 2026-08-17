@@ -1807,25 +1807,37 @@ init();
    the cached copy of its own bundle after an app-store update replaced it, and
    the symptom is an app that ignores new versions with no error anywhere.
 
-   `window.Capacitor` is injected by the native bridge before page scripts run,
-   so `isNativePlatform()` is the reliable signal and it is checked first. The
-   protocol check is a second, independent net for the iOS case, where the page
-   origin is `capacitor://localhost`.
+   Two signals, and they are checked in SEPARATE `try` blocks on purpose. The
+   origin goes first because it cannot throw: on iOS the page is served from
+   `capacitor://localhost`. `window.Capacitor.isNativePlatform()` goes second —
+   the bridge is injected before page scripts, so it is normally the more precise
+   answer, but it is somebody else's object and calling into it can throw (a
+   bridge that is not ready, a plugin-proxy getter). Sharing one `try` made the
+   guard FAIL OPEN: a throwing bridge skipped the origin check too and registered
+   the worker inside the shell, which is the exact case the origin check exists
+   to cover.
 
    Deliberately NOT a hostname check. Capacitor's Android default is
    `https://localhost`, so testing for "localhost" would also disable the service
    worker for anyone serving the real site from a local dev server — a live web
-   behaviour broken to fix an app one. */
+   behaviour broken to fix an app one.
+
+   Deliberately NOT a user-agent check either. Every real Foray listener is on a
+   phone, so UA-sniffing here would switch the offline shell off for essentially
+   the whole audience. `shell-invariants.test.mjs` asserts a mobile-web UA still
+   registers. */
 function shouldRegisterServiceWorker(win) {
+  try {
+    const proto = (win && win.location && win.location.protocol) || "";
+    if (proto === "capacitor:" || proto === "ionic:") return false;
+  } catch (_) { /* no location: treat as the web, and let the bridge check speak */ }
   try {
     const cap = win && win.Capacitor;
     if (cap) {
       if (typeof cap.isNativePlatform === "function") { if (cap.isNativePlatform()) return false; }
       else if (cap.isNative) return false;
     }
-    const proto = (win && win.location && win.location.protocol) || "";
-    if (proto === "capacitor:" || proto === "ionic:") return false;
-  } catch (_) { /* a hostile/absent window is the web case, not the shell */ }
+  } catch (_) { /* a bridge that throws is not an answer; the origin already spoke */ }
   return true;
 }
 

@@ -1,6 +1,7 @@
 # `mobile/` — the native app shell
 
-Capacitor project for the iOS and Android apps (issue **#36**, MP2). The
+Capacitor project for the iOS and Android apps (issue **#36**, MP2, Capacitor
+**8.5.0**). The
 architecture, the reasoning, and the decisions are in
 **[`docs/mobile-shell.md`](../docs/mobile-shell.md)** — read that first. This
 file is the commands.
@@ -35,8 +36,8 @@ npm run prepare:webdir      # builds mobile/www from the repo root
 
 `prepare:webdir` runs `tools/mobile/prepare-webdir.mjs`, which **copies** the
 real `index.html`, `app.js`, `search-engine.js`, `styles.css`, the icons,
-`manifest.json`, every non-test module in `player/`, and only the ~2.3 MB of
-`data/*.json` the client actually fetches. There is no second copy of the player
+`manifest.json`, every non-test module in `player/`, and only the 2.1 MB of
+`data/*.json` the client actually fetches (2.5 MB of bundle in total). There is no second copy of the player
 in the repo, and `mobile/www/` is gitignored so there never will be.
 
 ## Generating the platforms
@@ -79,8 +80,14 @@ fails if anything in this repo sets it false.
 ## What is checked mechanically
 
 `node --test tools/mobile/*.test.mjs`, and CI runs it via
-`node tools/ci/run-suites.mjs`. Between them the suites pin: the `webDir` size
-cap and its derived file list, that the service worker is not registered in the
-shell but still is on the web, that `KeepRunning` is never false, that the
-generated iOS project cannot collide with the repo's `ios/` SwiftUI scaffold,
-and that the repo root stays dependency-free with no build step.
+`node tools/ci/run-suites.mjs`. Between them the suites pin: the `webDir` size cap
+(**and the cap's own value** — it used to be compared only against itself) and its
+derived file list, that the service worker is not registered in the shell but
+still is on the web *and* on real mobile browsers, that `KeepRunning` is `true`
+and not merely "not `false`", that no Capacitor config exists outside `mobile/`
+and that nothing has generated into the repo's `ios/`, and that the repo root
+stays dependency-free with no build step.
+
+An adversarial review on 2026-08-17 defeated six of these in one edit each; the
+header of `tools/mobile/shell-invariants.test.mjs` lists every hole and the test
+that now closes it. Read that before relaxing anything.

@@ -4,8 +4,8 @@
  * WHY THIS EXISTS (issue #36, MP2)
  * Capacitor bundles exactly one directory. Foray's web root IS the repo root,
  * and the repo root also holds ~62 MB of pipeline inputs under `data/`
- * (`breadth-classification.json` 16 MB, `catalog-breadth.json` 12 MB, two `.gz`
- * archives at 13 MB each). The client fetches ~2.2 MB of that. So the native
+ * (`breadth-classification.json` 16 MB, `catalog-breadth.json` 12 MB, and `.gz`
+ * archives at 13.1 MB and 12.2 MB). The client fetches 2.1 MB of that. So the native
  * bundle needs a curated copy, and the copy needs to be a committed script
  * rather than a hand-assembled directory (CLAUDE.md rule 6).
  *
@@ -65,8 +65,8 @@ export const DEFAULT_OUT = path.join("mobile", "www");
 
 /** The hard ceiling. #36 asks for "under ~3 MB" and asks that exceeding it FAIL
  *  rather than warn — that guard is the only thing standing between the bundle
- *  and the 16 MB classification file. Today's real total is ~2.3 MB, so the
- *  headroom is thin on purpose: `discover.json` (1.7 MB) is the file that grows,
+ *  and the 16 MB classification file. Today's real total is 2.52 MB, so the
+ *  headroom is thin on purpose: `discover.json` (1.63 MB) is the file that grows,
  *  and a bundle creeping toward the cap is a signal worth getting, not noise. */
 export const MAX_BYTES = 3 * 1024 * 1024;
 

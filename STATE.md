@@ -16,19 +16,28 @@ docs/. Completed workstreams move to their plan doc's retro section.
   guarded service-worker registration at the very end of the file),
   `index.html` (one CSP token), `test/suite-integrity.test.js` (two FLOORS
   entries), `ios/README.md` (a status box at the top), `CLAUDE.md` § Layout,
-  `docs/DECISIONS.md`, `HUMAN-ACTIONS.md` (new items **#13**, **#14**, **#15**),
+  `docs/DECISIONS.md`, `HUMAN-ACTIONS.md` (new items **#13**, **#14**, **#15**,
+  **#16**),
   this file. **Untouched on purpose:** `sw.js`, `data/**`, `player/**`,
   `backend/**`, `.github/**`.
 - **THE `ios/` VERDICT — READ THIS BEFORE YOU TOUCH ANYTHING iOS.** `ios/` is now
   **reference material, not the shipping app.** The shipping iOS app is the
   Capacitor shell in **`mobile/`**. `ios/` is **not moved and not renamed** —
-  #36 recommended `ios-native-reference/`, and that was rejected: `ios.path` in
-  `mobile/capacitor.config.json` isolates the generated project for free, while a
-  rename costs edits to three auto-merge-DENIED paths and breaks the references in
-  #28 and #33. `ios/ForayKit` is alive and CI compiles it (`ios-kit`, macOS);
-  `ios/App/Player/` is a **stale second copy** of `player/queue-state.js` +
-  `player/queue-manager.js` and the **JS port is authoritative** (it found two
-  real bugs in the Swift, #50). Retiring the Swift copies belongs to #28.
+  #36 recommended `ios-native-reference/`; `ios.path` in
+  `mobile/capacitor.config.json` isolates the generated project for free, so the
+  rename was skipped. **That is a deviation from an explicit issue recommendation
+  and is cheap to overturn** (one `ci.yml` path + two issue bodies).
+  **Get the duplication right — the loose version of this is wrong and was in an
+  earlier draft of these docs.** `ios/ForayKit` is alive and CI compiles AND
+  TESTS it (`ios-kit`, macOS): `ForayKit/…/PlayerQueueState.swift` ↔
+  `player/queue-state.js` is a **maintained mirror, tested on both sides** — change
+  both. Only `ios/App/Player/PlayerQueueManager.swift` ↔ `player/queue-manager.js`
+  is one-sided, and the two bugs that port surfaced were **fixed** in the Swift by
+  PR #50, so it is uncompiled-by-CI rather than known-wrong.
+  `IntentGrammar.swift` has no JS counterpart at all. The real argument for the
+  web player: `foray-resolve`, `foray-queue`, `seam-gap`, `seek-policy`,
+  `html-audio-backend` and `durable-store` have **no Swift counterpart**. Retiring
+  the Swift copies belongs to #28.
 - **Heads-up — the repo root is still dependency-free, and there is now a test
   that will fail you for changing that.** Capacitor lives entirely in `mobile/`
   with its own `package.json`. `tools/mobile/shell-invariants.test.mjs` asserts the
@@ -44,7 +53,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Heads-up — the bundle's data list is DERIVED from `app.js`'s `fetchJson`
   calls.** Add a `fetchJson("data/new.json")` and the next bundle carries it, no
   edit needed. But the bundle is capped at **3 MB and today it is 2.52 MB** (30
-  files; `discover.json` alone is 1.7 MB). If you make the client fetch something
+  files; `discover.json` alone is 1.63 MB). If you make the client fetch something
   large, `prepare-webdir` **fails the build**. Do not raise the cap to make it
   pass — that cap is what keeps the 16 MB `breadth-classification.json` out.
 - **Heads-up — `app.js` no longer registers the service worker unconditionally.**
@@ -52,9 +61,11 @@ docs/. Completed workstreams move to their plan doc's retro section.
   everywhere else. Gated on `window.Capacitor.isNativePlatform()` and the
   `capacitor:` origin, and **deliberately not on the hostname** — Capacitor's
   Android default origin is `https://localhost`, so a hostname check would kill the
-  service worker for anyone serving the real site from a local dev server. Four
-  tests execute the real `app.js` in four environments; there is no single line
-  whose deletion leaves them all green.
+  service worker for anyone serving the real site from a local dev server, and
+  **deliberately not on the user-agent** — every real listener is on a phone, so a
+  UA sniff would switch the offline shell off for the whole audience. The two
+  signals are in **separate `try` blocks**: sharing one made the guard fail OPEN
+  when the bridge threw. Six tests execute the real `app.js` in six environments.
 - **Heads-up — `index.html`'s CSP gained `'self'` on `img-src`, and it fixes a
   latent iOS-only bug.** The iOS shell's origin is `capacitor://localhost`, so the
   app's **own bundled icons** matched neither `https:` nor `data:` and would have
@@ -62,18 +73,33 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `media-src https:` was **already** present from #24 — #36 assumed it still needed
   adding; it did not, and it is now pinned by a test. `connect-src` was
   deliberately **not** widened; that belongs with #40's refresh code.
-- **NEVER set the Cordova preference `KeepRunning` to `false`** (MP1's finding,
-  now mechanical). Two tests guard it: one over the parsed config at any depth,
-  case-insensitively, and one that walks `mobile/` for the Cordova-compat
-  `config.xml` files `cap add` will generate.
+- **NEVER set the Cordova preference `KeepRunning` to anything but `true`** (MP1's
+  finding, now mechanical). Note it is an **allowlist**, not a denylist: Cordova
+  reads the preference with `Boolean.parseBoolean`, so `0`, `no` and `off` are all
+  false too, and an earlier draft of the guard only rejected the literal `false`.
+  Two tests: one over the parsed config at any depth, case-insensitively, and one
+  that parses the Cordova-compat `config.xml` files `cap add` will generate —
+  which is why `mobile/.gitignore` deliberately does **not** ignore Android's
+  `res/xml/config.xml`, though Capacitor's own template does. An ignored file
+  cannot be checked.
+- **THE TOP OPEN RISK IS ANDROID'S INJECTED BRIDGE vs OUR CSP.** Capacitor Android
+  injects `native-bridge.js` as an **inline `<script>`**, and our CSP is
+  `script-src 'self'` with no `'unsafe-inline'` — which a `<meta>` CSP cannot fix
+  with a nonce. If it is blocked, `window.Capacitor` never exists, all four plugins
+  are dead, **and the service worker registers inside the Android shell** because
+  the origin there is an ordinary `https://localhost`. Unproven (nothing was
+  built), and iOS injects via `WKUserScript` so it is likely Android-only. It is
+  the first thing to check on a device, and the fix may not be one token — see
+  `docs/mobile-shell.md` §5. MP1's spike APK did not load the real `index.html`, so
+  it never exercised this either.
 - **NOTHING WAS GENERATED, INSTALLED, COMPILED OR LAUNCHED — do not report
   otherwise.** No `cap init`, no `cap add`, no `mobile/node_modules`,
-  no `mobile/ios/`, no `mobile/android/`. The seven `@capacitor/*` versions were
-  checked against the npm registry (all 8.x) and nothing was resolved locally.
-  Every claim about a *running* app is unverified, and the CSP change specifically
-  is reasoned from WebKit's scheme behaviour rather than observed. Committing a few
-  hundred unverifiable generated native files was rejected; a founder runs one
-  command on a Mac instead (`HUMAN-ACTIONS.md` **#14**).
+  no `mobile/ios/`, no `mobile/android/`. All seven `@capacitor/*` packages were
+  checked against the npm registry and resolve to **8.5.0**, but nothing was
+  installed locally. Every claim about a *running* app is unverified, and the CSP
+  change specifically is reasoned from WebKit's scheme behaviour rather than
+  observed. Committing a few hundred unverifiable generated native files was
+  rejected; a founder runs one command on a Mac instead (`HUMAN-ACTIONS.md` **#14**).
 - **Heads-up — bundled data is FROZEN at build time.** Nothing in the shell
   re-fetches data, so a shipped app would show its build day's session forever.
   That is #40's remaining half and it is now a named release gate

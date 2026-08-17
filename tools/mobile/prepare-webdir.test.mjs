@@ -186,7 +186,7 @@ test("prepare refuses an output directory it should not be deleting", () => {
 
 test("REAL REPO: today's bundle is under the 3 MB cap", () => {
   /* Deliberately not mocked. This is the early-warning signal for the file that
-     will actually push the bundle over: discover.json, 1.7 MB and growing. If
+     will actually push the bundle over: discover.json, 1.63 MB and growing. If
      this fails, the fix is a smaller client payload, not a bigger cap. */
   const plan = buildPlan(ROOT);
   const total = plan.reduce((n, rel) => n + fs.statSync(path.join(ROOT, rel)).size, 0);

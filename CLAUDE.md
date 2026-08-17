@@ -199,18 +199,25 @@ cannot drift.
   player (#36). Its own `package.json`; the repo root stays dependency-free and
   no-build, and the Pages deploy from `main` root is untouched. The `webDir` is
   built by `tools/mobile/prepare-webdir.mjs`, which **copies** the real
-  `index.html`/`app.js`/`styles.css`/`player/` plus the ~2.5 MB of `data/` the
-  client fetches — there is no second copy of the player. Architecture,
-  decisions and the founder's Mac steps: `docs/mobile-shell.md`.
+  `index.html`/`app.js`/`styles.css`/`player/` plus the **2.1 MB** of `data/` the
+  client fetches (2.5 MB bundle in total) — there is no second copy of the
+  player. Architecture, decisions and the founder's Mac steps:
+  `docs/mobile-shell.md`.
 - `ios/`: **reference material, not the shipping app** (reclassified 2026-08-17,
   #36 — the shell in `mobile/` is the app). SwiftUI app + ForayKit Swift package
-  (state machine + intent grammar, unit-tested). `ios/ForayKit` is real and CI
-  compiles it (`ios-kit`, macOS); `IntentGrammar.swift` exists only there.
-  `ios/App/` builds only on macOS via XcodeGen, is not compiled by CI, and its
-  `Player/` is a **stale second copy** of `player/queue-state.js` +
-  `player/queue-manager.js` — the JS port is authoritative (it found two bugs in
-  the Swift, #50). `// AUDIT:` marks unverified AVFoundation behavior. Retiring
-  the Swift copies belongs to #28.
+  (state machine + intent grammar, unit-tested). **`ios/ForayKit` is real and CI
+  compiles and tests it** (`ios-kit`, macOS): `SessionModels`, `PlayerQueueState`
+  and `IntentGrammar` live there, and `IntentGrammar.swift` has no JavaScript
+  counterpart anywhere. **`ios/App/` is not compiled by CI** and builds only on
+  macOS via XcodeGen. Two files are mirrored in JavaScript on purpose and must be
+  changed together: `ForayKit/…/PlayerQueueState.swift` ↔ `player/queue-state.js`
+  (both tested), and `App/Player/PlayerQueueManager.swift` ↔
+  `player/queue-manager.js` (only the JS is tested — the port surfaced two real
+  position bugs, which PR #50 then fixed in the Swift). Everything the product
+  actually runs on — `foray-resolve`, `foray-queue`, `seam-gap`, `seek-policy`,
+  `html-audio-backend`, `durable-store` — has **no Swift counterpart at all**, and
+  that is why the web player is the host. `// AUDIT:` marks unverified
+  AVFoundation behavior. Retiring the Swift copies belongs to #28.
 - `docs/brief/`: original product spec (read first). `docs/adr/`,
   `docs/DECISIONS.md`: decisions. `docs/agents/`: runner prompts + registry.
   `docs/roles.md`: who owns what. `docs/marketing/`, `docs/research/` (incl.

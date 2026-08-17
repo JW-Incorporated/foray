@@ -20,14 +20,38 @@
  *   5. THE CSP MUST COVER THE APP'S OWN BUNDLE. The iOS shell's origin is
  *      `capacitor://localhost`, which matches neither `https:` nor `data:`.
  *
- * ON THE SHAPE OF THESE TESTS. Three of these five are checked through more than
+ * ON THE SHAPE OF THESE TESTS. Each of these five is checked through more than
  * one mechanism, because a guard that one edit can satisfy is not a guard. The
- * service-worker rule in particular is asserted by EXECUTING the real `app.js`
- * in three different environments rather than by grepping it: deleting the guard
- * fails two of them, deleting the registration fails the third, and there is no
- * single line whose removal leaves all three green. Where a value is pinned
- * literally (the app id, the size cap), that is deliberate friction — those are
- * decisions, and changing one should require editing a test and saying why.
+ * service-worker rule in particular is asserted by EXECUTING the real `app.js` in
+ * six different environments rather than by grepping it: deleting the guard fails
+ * some, deleting the registration fails another, and adding a user-agent sniff —
+ * the likelier accident than any deletion — fails a third.
+ *
+ * Where a value is pinned literally (the app id, the size cap, the derivation
+ * floor), that is deliberate friction: those are decisions, and changing one
+ * should require editing a test and saying why.
+ *
+ * AN ADVERSARIAL PASS ON 2026-08-17 DEFEATED SIX OF THESE IN ONE EDIT EACH, and
+ * every one of those holes is now closed by a named test. Read that list before
+ * relaxing anything here, because each entry is a real single-line change that
+ * broke real behaviour with the suite green:
+ *   - `MAX_BYTES = 30 * 1024 * 1024` — the size cap was only ever compared
+ *     against itself. Now pinned.
+ *   - `"KeepRunning": 0` — the guard rejected only the literal string `false`,
+ *     but Cordova's `Boolean.parseBoolean` reads `0`/`no`/`off` as false too.
+ *     Now an allowlist: it must be `true`.
+ *   - `img-src 'self'` (dropping `https: data:`) — the new directive was pinned
+ *     and the two pre-existing, load-bearing ones were not. Every piece of cover
+ *     art and the favicon would have gone blank. Now all three are pinned.
+ *   - a `/Android|iPhone/` test inside `shouldRegisterServiceWorker` — the
+ *     harness hardcoded `userAgent: "node"`, so a UA sniff that switched the
+ *     offline shell off for the entire real audience passed. Now parameterised.
+ *   - a bridge whose `isNativePlatform()` THROWS — both signals shared one
+ *     `try`, so the guard failed open and registered inside the shell. Fixed in
+ *     `app.js`; two tests cover it.
+ *   - a second `capacitor.config.json` at the repo root — invariant 2 only ever
+ *     looked inside `mobile/`, so `cap add ios` from the root would still land on
+ *     the SwiftUI scaffold. Now the whole repo is checked.
  */
 
 import test from "node:test";
@@ -36,6 +60,8 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
+
+import { MAX_BYTES, MIN_DERIVED_DATA_FILES } from "./prepare-webdir.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -47,7 +73,15 @@ const capConfig = readJson(path.join(MOBILE, "capacitor.config.json"));
 
 /* ───────────────────────────── 1. the root stays clean ───────────────────── */
 
-for (const field of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+for (const field of [
+  "dependencies", "devDependencies", "peerDependencies", "optionalDependencies",
+  /* `workspaces` belongs in this list and is the one that does not look like a
+     dependency. Adding `"workspaces": ["mobile"]` here passes every other
+     assertion in this section and yet makes a root `npm install` create root
+     `node_modules` and a root lockfile — the exact thing the whole section
+     exists to prevent. */
+  "workspaces",
+]) {
   test(`root package.json declares no ${field}`, () => {
     const got = Object.keys(rootPkg[field] || {});
     assert.deepEqual(
@@ -154,6 +188,59 @@ test("the app id is pinned, because it is permanent once published", () => {
   assert.equal(capConfig.appName, "Foray");
 });
 
+test("mobile/ is the only place a Capacitor config lives", () => {
+  /* Invariant 2 used to resolve `ios.path` against `mobile/` and stop there,
+     which meant it could not see a SECOND config elsewhere. A
+     `capacitor.config.json` at the repo root — and #36's own text says to run
+     `npx cap add ios`, which people run from the root — generates into
+     `<root>/ios`, straight on top of the SwiftUI scaffold, with the old test
+     green. `ios/project.yml` declares `sources: - path: App`, so XcodeGen would
+     then absorb Capacitor's generated `ios/App/` tree into the SwiftUI target. */
+  const configs = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name === "www" || e.name.startsWith(".")) continue;
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (/^capacitor\.config\.(json|ts|js)$/.test(e.name)) configs.push(path.relative(ROOT, full));
+    }
+  };
+  walk(ROOT);
+  assert.deepEqual(
+    configs.map((p) => p.split(path.sep).join("/")),
+    ["mobile/capacitor.config.json"],
+    "A Capacitor config outside mobile/ makes `cap` generate somewhere nobody checked."
+  );
+});
+
+test("the repo's ios/ contains no Capacitor output", () => {
+  /* The direct check on the thing that actually goes wrong, rather than only on
+     the config that would cause it. */
+  for (const artefact of ["App/App", "App/Podfile", "App/App.xcodeproj", "capacitor.config.json", "App/App/public"]) {
+    assert.equal(
+      fs.existsSync(path.join(ROOT, "ios", artefact)),
+      false,
+      `ios/${artefact} exists — Capacitor has generated into the SwiftUI scaffold's directory.`
+    );
+  }
+});
+
+test("the webDir size cap is pinned at 3 MB", () => {
+  /* WITHOUT THIS, THE CAP GUARDS NOTHING. The only test of today's bundle
+     compares it against MAX_BYTES, so raising MAX_BYTES satisfies both sides of
+     the comparison: `30 * 1024 * 1024` left the whole suite green while opening
+     the bundle to the 16 MB classification file. A cap compared only against
+     itself is not a cap. */
+  assert.equal(MAX_BYTES, 3 * 1024 * 1024);
+});
+
+test("the derivation floor is pinned at 6 files", () => {
+  /* Same self-referential shape: prepare-webdir only fails when FEWER than
+     MIN_DERIVED_DATA_FILES files are derived, so lowering it to 1 would let a
+     bundle with one data file build and pass. app.js fetches 9 today. */
+  assert.equal(MIN_DERIVED_DATA_FILES, 6);
+});
+
 /* ─────────── 3. the service worker: off in the shell, on in the web ──────── */
 
 const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
@@ -162,7 +249,7 @@ const APP_SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
  *  register the service worker. `init()` suspends on its first await because
  *  `fetch` never settles (the same trick player/foray-playback.test.js uses), so
  *  nothing beyond the top-level statements runs. */
-function runAppShell({ capacitor = undefined, protocol = "https:" } = {}) {
+function runAppShell({ capacitor = undefined, protocol = "https:", userAgent = "node" } = {}) {
   const registered = [];
   const store = new Map();
 
@@ -187,7 +274,7 @@ function runAppShell({ capacitor = undefined, protocol = "https:" } = {}) {
       removeItem: (k) => store.delete(k),
     },
     navigator: {
-      userAgent: "node",
+      userAgent,
       serviceWorker: { register: (p) => { registered.push(p); return Promise.resolve(); } },
     },
     location: { protocol, hash: "#/", search: "", pathname: "/", href: `${protocol}//x.test/` },
@@ -240,6 +327,61 @@ test("a Capacitor bridge reporting the web platform still gets a service worker"
   assert.deepEqual(registered, ["sw.js"]);
 });
 
+test("a phone browsing the real website still gets the offline shell", () => {
+  /* THE LIKELIEST ACCIDENT, and the one the original suite could not see because
+     it hardcoded `userAgent: "node"`. Someone debugging the Android shell adds
+     `if (/Android|iPhone/.test(navigator.userAgent)) return false;` — every other
+     service-worker test stays green, and the offline shell is switched off for
+     essentially the entire real audience of a commute product, whose founding
+     constraint is "sessions survive cell dead zones". */
+  for (const ua of [
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36",
+  ]) {
+    const { registered } = runAppShell({ userAgent: ua });
+    assert.deepEqual(registered, ["sw.js"], `a mobile web browser (${ua.slice(0, 24)}…) lost the offline shell`);
+  }
+});
+
+test("a bridge that throws still suppresses the service worker on the iOS origin", () => {
+  /* THE FAIL-OPEN CASE. Both signals used to live in one `try`, so an
+     `isNativePlatform()` that threw skipped the origin check as well and
+     registered the worker inside the shell — precisely the case the origin check
+     was written to cover. A bridge can throw: it may not be ready, and a
+     plugin-proxy getter is somebody else's code. */
+  const throwing = { isNativePlatform: () => { throw new Error("bridge not ready"); } };
+  const { registered } = runAppShell({ capacitor: throwing, protocol: "capacitor:" });
+  assert.deepEqual(registered, [], "a throwing bridge let sw.js register inside the iOS shell");
+});
+
+test("a bridge that throws on an https origin degrades to the web answer", () => {
+  /* The other half, stated so the behaviour is a decision and not an accident:
+     with no usable native signal and an ordinary web origin, registering is the
+     right answer. This is Android's shell, where the origin is
+     `https://localhost` and indistinguishable from the web — which is exactly why
+     `window.Capacitor` must survive there. See docs/mobile-shell.md § the open
+     risk on CSP and Capacitor's injected bridge. */
+  const throwing = { isNativePlatform: () => { throw new Error("bridge not ready"); } };
+  const { registered } = runAppShell({ capacitor: throwing, protocol: "https:" });
+  assert.deepEqual(registered, ["sw.js"]);
+});
+
+test("app.js is the only file in the bundle that registers a service worker", () => {
+  /* All the tests above execute app.js, so a `register()` added anywhere ELSE in
+     the bundle — player/client.js and search-engine.js both ship — would put a
+     service worker in the shell with every one of them green. */
+  const offenders = [];
+  const bundled = ["search-engine.js", ...fs.readdirSync(path.join(ROOT, "player"))
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
+    .map((f) => `player/${f}`)];
+  for (const rel of bundled) {
+    if (/serviceWorker\s*\.\s*register|serviceWorker\[/.test(fs.readFileSync(path.join(ROOT, rel), "utf8"))) {
+      offenders.push(rel);
+    }
+  }
+  assert.deepEqual(offenders, [], "registration must stay in app.js, behind shouldRegisterServiceWorker()");
+});
+
 test("sw.js is still served to the web and still cache-first for the shell", () => {
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
   assert.match(sw, /const CACHE = "foray-v\d+"/, "sw.js lost its versioned cache name.");
@@ -268,22 +410,37 @@ test("no Capacitor config sets KeepRunning to false", () => {
      backgrounding, and the app would still play audio — so it would look fine
      and deliver 15 minutes of the wrong episode.
      Checked on the PARSED config, at any depth, case-insensitively, so
-     `cordova.preferences.KeepRunning` and any other nesting are all covered. */
+     `cordova.preferences.KeepRunning` and any other nesting are all covered.
+
+     AN ALLOWLIST, NOT A DENYLIST, and that distinction was a real hole: the first
+     version rejected `false` and the string `"false"`, but Cordova reads the
+     preference with `Boolean.parseBoolean`, which returns false for ANYTHING that
+     is not "true" — so `"KeepRunning": 0` disabled every out-point in the app with
+     this test green. Requiring `true` cannot be out-guessed that way. */
   for (const hit of findKeepRunning(capConfig)) {
-    assert.notEqual(
-      hit.value === false || String(hit.value).toLowerCase() === "false",
-      true,
-      `${hit.where} is false in mobile/capacitor.config.json. See docs/mobile-shell.md — ` +
-        `this disables every JavaScript out-point in the app.`
+    assert.ok(
+      hit.value === true || String(hit.value).toLowerCase() === "true",
+      `${hit.where} is ${JSON.stringify(hit.value)} in mobile/capacitor.config.json. Cordova reads ` +
+        `this with Boolean.parseBoolean, so anything other than true is FALSE, and false calls the ` +
+        `process-global pauseTimers() — every JavaScript out-point in the app stops firing. ` +
+        `See docs/mobile-shell.md § footguns.`
     );
   }
 });
 
 test("no generated native config re-enables the KeepRunning footgun", () => {
   /* Arms for later: `cap add` generates a Cordova-compat `config.xml` in each
-     platform, and THAT is the file someone would edit to "save battery". Nothing
-     matches today because no platform is generated; this test is what makes that
-     no longer true the day one is. */
+     platform, and THAT is the file someone would edit to "save battery".
+     Nothing matches today because no platform is generated.
+     `mobile/.gitignore` deliberately does NOT ignore the Android
+     `res/xml/config.xml` that Capacitor's own template ignores — this test is why:
+     an ignored file cannot be checked, and the first version of this test walked
+     for a filename its own sibling ignore rule guaranteed would never be there.
+
+     Reads the PREFERENCE, rather than asking whether the words "KeepRunning" and
+     "false" both appear somewhere in the file. Capacitor generates several
+     unrelated `value="false"` preferences, so the loose version was a false
+     positive waiting to happen AND never actually checked the value. */
   const found = [];
   const walk = (dir) => {
     if (!fs.existsSync(dir)) return;
@@ -291,17 +448,20 @@ test("no generated native config re-enables the KeepRunning footgun", () => {
       if (e.name === "node_modules" || e.name === "www" || e.name.startsWith(".")) continue;
       const full = path.join(dir, e.name);
       if (e.isDirectory()) walk(full);
-      else if (e.name === "config.xml" || /^capacitor\.config\.(json|ts|js)$/.test(e.name)) found.push(full);
+      else if (e.name === "config.xml") found.push(full);
     }
   };
   walk(MOBILE);
   for (const f of found) {
     const src = fs.readFileSync(f, "utf8");
-    assert.ok(
-      !/KeepRunning/i.test(src) || !/false/i.test(src),
-      `${path.relative(ROOT, f)} mentions KeepRunning and false. Verify it is not being ` +
-        `set false — that calls the process-global pauseTimers().`
-    );
+    for (const m of src.matchAll(/<preference\s+name="([^"]*)"\s+value="([^"]*)"/gi)) {
+      if (!/^keeprunning$/i.test(m[1])) continue;
+      assert.ok(
+        m[2].toLowerCase() === "true",
+        `${path.relative(ROOT, f)} sets KeepRunning="${m[2]}". Cordova parses anything but "true" ` +
+          `as false, which calls the process-global pauseTimers() and stops every out-point.`
+      );
+    }
   }
 });
 
@@ -333,6 +493,19 @@ test("the CSP lets the app load its own bundled assets", () => {
       `${dir} must include 'self' or the native shell cannot load its own bundle ` +
         `(origin capacitor://localhost matches neither https: nor data:).`
     );
+  }
+});
+
+test("img-src still allows remote artwork and the data: favicon", () => {
+  /* PINNED IN BOTH DIRECTIONS, because the first version of this suite pinned
+     only the token it had just added. Narrowing `img-src 'self' https: data:` to
+     `img-src 'self'` left every test in the repo green while blanking every piece
+     of cover art on the site and in the app: app.js renders remote artwork from
+     ~41 podcast CDNs, and index.html's favicon is a data: URI. A guard that
+     protects only the newest change is how the older, load-bearing thing dies. */
+  const csp = cspDirectives();
+  for (const src of ["'self'", "https:", "data:"]) {
+    assert.ok(csp["img-src"]?.includes(src), `img-src lost ${src}`);
   }
 });
 

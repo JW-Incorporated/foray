@@ -90,7 +90,7 @@ const FLOORS = {
      scaffold surviving. Nothing else in the repo checks any of those, so
      deleting this suite would silently un-guard all four. */
   "tools/mobile/prepare-webdir.test.mjs": 17,
-  "tools/mobile/shell-invariants.test.mjs": 18,
+  "tools/mobile/shell-invariants.test.mjs": 27,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,

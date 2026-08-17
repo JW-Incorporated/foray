@@ -12,15 +12,23 @@
 >   --package-path ios/ForayKit` on a macOS runner, so this package really does
 >   compile and pass. `IntentGrammar.swift` (the Tier-1 voice grammar) exists
 >   **only** here — there is no JavaScript equivalent anywhere in the repo.
-> - **`ios/App/Player/` is a stale second copy.** `PlayerQueueState.swift` was
->   ported to `player/queue-state.js` and the manager to
->   `player/queue-manager.js`, and the **port is the authoritative copy**: it
->   found two real bugs in this Swift (#50, AUDIT item 9), and it is what CI
->   exercises. If you change playback behaviour, change the JavaScript. Whether
->   this Swift gets retired belongs to **#28**.
-> - **Nothing under `App/` is compiled by CI**, and the segment machinery the
->   product runs on (`foray-resolve`, `foray-queue`, `seam-gap`, `seek-policy`,
->   `html-audio-backend`, `durable-store`) has no Swift counterpart at all.
+> - **Two files are mirrored in JavaScript and must be changed together.**
+>   `ForayKit/Sources/ForayKit/PlayerQueueState.swift` ↔ `player/queue-state.js`,
+>   and `App/Player/PlayerQueueManager.swift` ↔ `player/queue-manager.js`. The
+>   port was deliberate and the two are meant to stay diffable by eye — see the
+>   header of `player/queue-state.js`. **Where they differ in status:**
+>   `PlayerQueueState` is tested on both sides (`PlayerQueueStateTests` here,
+>   `player/queue-state.test.js` there); `PlayerQueueManager` is tested **only** in
+>   JavaScript, and writing that port is what surfaced two real position bugs —
+>   which PR **#50** then fixed in this Swift (see AUDIT item 9 below, which cites
+>   issue #33, the port). So the Swift is not currently known-wrong; it is
+>   uncompiled by CI, which is a different and more permanent problem.
+> - **Nothing under `App/` is compiled by CI.** More decisively than any of the
+>   above: the machinery the product actually runs on — `foray-resolve`,
+>   `foray-queue`, `seam-gap`, `seek-policy`, `html-audio-backend`,
+>   `durable-store` — has **no Swift counterpart at all**. That, not the duplicated
+>   state machine, is why the web player is the host. Whether the Swift copies get
+>   retired belongs to **#28**.
 > - **Do not point `cap add ios` at this directory.** Capacitor's default output
 >   path is `ios`, which is why `mobile/capacitor.config.json` sets `ios.path`
 >   explicitly and `tools/mobile/shell-invariants.test.mjs` fails if the two ever
