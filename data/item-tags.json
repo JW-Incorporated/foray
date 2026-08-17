@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-16T11:43:03.233Z",
+  "built_at": "2026-08-17T11:46:24.674Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -13102,6 +13102,203 @@
       "ducks",
       "baking",
       "variety-show"
+    ],
+    "conan-obrien-needs-a-friend--gillian-anderson": [
+      "comedy",
+      "interview",
+      "celebrity",
+      "acting",
+      "conan-obrien",
+      "talk-show",
+      "television"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3400": [
+      "nuclear",
+      "reactors",
+      "engineering",
+      "history-of-technology",
+      "science",
+      "nuclear-engineering"
+    ],
+    "twenty-minute-vc--20vc-uber-president-on-budgeting-ai": [
+      "business",
+      "startups",
+      "venture-capital",
+      "tech-industry",
+      "ceo",
+      "ai",
+      "self-driving"
+    ],
+    "fly-on-the-wall--mcdonald-s-mustard-and-snl-wigs": [
+      "comedy",
+      "dana-carvey",
+      "david-spade",
+      "snl",
+      "banter",
+      "celebrity",
+      "pop-culture"
+    ],
+    "science-for-sport-podcast--333-why-athletes-keep-breaking-down": [
+      "sports",
+      "biomechanics",
+      "injury",
+      "injury-prevention",
+      "athletic-performance",
+      "rehabilitation",
+      "movement",
+      "physiology"
+    ],
+    "you-are-not-so-smart--346-no-nocebo-effect-helen-pilcher": [
+      "psychology",
+      "placebo",
+      "neuroscience",
+      "cognitive-bias",
+      "decision-making",
+      "health",
+      "mind-body"
+    ],
+    "partially-examined-life--ep-398-donald-davidson-on-mind": [
+      "philosophy",
+      "consciousness",
+      "causation",
+      "mind-body",
+      "epistemology",
+      "ideas"
+    ],
+    "how-i-built-this--bobbie-laura-modi-how-a-baby": [
+      "business",
+      "founders",
+      "entrepreneurship",
+      "startups",
+      "regulation",
+      "manufacturing"
+    ],
+    "the-matt-walker-podcast--148-psychedelics-for-mental-health": [
+      "psychedelics",
+      "neuroscience",
+      "mental-health",
+      "neuroplasticity",
+      "brain",
+      "therapy",
+      "trauma"
+    ],
+    "the-peter-attia-drive--404-mental-health-beyond-neurotransmitters-the": [
+      "mental-health",
+      "hormones",
+      "medicine",
+      "neuroscience",
+      "psychedelics",
+      "therapy"
+    ],
+    "strict-scrutiny--all-the-president-s-henchmen": [
+      "law",
+      "politics",
+      "supreme-court",
+      "executive-power",
+      "judiciary",
+      "government",
+      "news"
+    ],
+    "happiness-lab--the-life-changing-power-of-a": [
+      "psychology",
+      "wellbeing",
+      "burnout",
+      "rest",
+      "career",
+      "self-improvement"
+    ],
+    "ten-percent-happier--you-can-get-through-it-how": [
+      "grief",
+      "loss",
+      "psychology",
+      "coping",
+      "resilience",
+      "mental-health"
+    ],
+    "mel-robbins-podcast--former-cia-spy-how-to-eliminate": [
+      "cia",
+      "espionage",
+      "self-improvement",
+      "confidence",
+      "safety",
+      "lying"
+    ],
+    "happier-gretchen-rubin--little-happier-why-nba-star-jalen": [
+      "nba",
+      "athletes",
+      "sports",
+      "self-improvement",
+      "gretchen-rubin",
+      "happiness"
+    ],
+    "armchair-expert--david-sedaris-6": [
+      "comedy",
+      "interviews",
+      "authors",
+      "writing",
+      "storytelling",
+      "celebrity"
+    ],
+    "comedy-bang-bang--shine-the-vinyl-kristian-bruun-lily": [
+      "comedy",
+      "comedy-bang-bang",
+      "interviews",
+      "celebrity",
+      "banter"
+    ],
+    "working-it-out-birbiglia--221-ron-funches-say-what-you": [
+      "comedy",
+      "stand-up",
+      "interviews",
+      "neurodiversity",
+      "reality-tv"
+    ],
+    "lore--legends-86-litmus-test": [
+      "lore",
+      "folklore",
+      "history",
+      "paranormal",
+      "legend",
+      "storytelling"
+    ],
+    "crime-junkie--new-show-the-truth-about-natalie": [
+      "true-crime",
+      "crime-junkie",
+      "investigation",
+      "toxicology",
+      "missing-persons",
+      "unsolved"
+    ],
+    "wicked-words--tori-telfer-criminal-broads": [
+      "true-crime",
+      "women",
+      "history",
+      "wicked-words",
+      "criminal",
+      "interview"
+    ],
+    "this-american-life--895-label-maker": [
+      "this-american-life",
+      "storytelling",
+      "personal-journals",
+      "identity",
+      "personal-stories"
+    ],
+    "where-should-we-begin--can-i-be-loved": [
+      "relationships",
+      "esther-perel",
+      "psychology",
+      "therapy",
+      "intimacy",
+      "self-awareness"
+    ],
+    "wow-in-the-world--practice-makes-permanent-how-repetition-rewires": [
+      "kids",
+      "education",
+      "science-for-kids",
+      "brain",
+      "learning",
+      "memory"
     ]
   }
 }

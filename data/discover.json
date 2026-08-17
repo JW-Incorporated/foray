@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-16T11:43:03.233Z",
+  "built_at": "2026-08-17T11:46:24.674Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -31098,6 +31098,518 @@
         "kids-family/education"
       ],
       "hook": "Dennis and Reggie cover popsicle-stick sculptures, duck facts, and bread-making in this kids weekend bonus.",
+      "explicit": false
+    },
+    {
+      "id": "conan-obrien-needs-a-friend--gillian-anderson",
+      "show": "Conan O'Brien Needs a Friend",
+      "title": "Gillian Anderson",
+      "apple_collection_id": 1438054347,
+      "apple_track_id": 1000780293873,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/gillian-anderson/id1438054347?i=1000780293873&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 64,
+      "duration_sec": 3846,
+      "audio_url": "https://pdrl.fm/f3efd0/dts.podtrac.com/redirect.mp3/arttrk.com/p/ST44R/claritaspod.com/measure/stitcher.simplecastaudio.com/c945bd13-c7f3-4f22-95b5-4bf98e12b21f/episodes/34d017e4-d154-46f5-b2a3-6d3b73c74ea7/audio/128/default.mp3?aid=rss_feed&awCollectionId=c945bd13-c7f3-4f22-95b5-4bf98e12b21f&awEpisodeId=34d017e4-d154-46f5-b2a3-6d3b73c74ea7&feed=dHoohVNH",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 61545021,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c6/02/8a/c6028ab7-bffd-db83-53e4-34a4ea9bef21/mza_16944101310108746053.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Gillian Anderson talks playing Agent Scully, Margaret Thatcher, and her new book of anonymous sexual fantasies.",
+      "explicit": true
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3400",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 3400: Hell-Broth",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000783745503,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-3400-hell-broth/id121493645?i=1000783745503&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 4,
+      "duration_sec": 225,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260817.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 5404758,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "A short explainer on how nuclear reactors deliberately make water boil and bubble.",
+      "explicit": false
+    },
+    {
+      "id": "twenty-minute-vc--20vc-uber-president-on-budgeting-ai",
+      "show": "The Twenty Minute VC (20VC)",
+      "title": "20VC: Uber President on Budgeting AI at Uber: How AI Helps and Hurts Uber | Why Autonomy Is Existential | How to Beat DoorDash to #1 in Food | The Untold Stories of Travis Kalanick, Dara Khosrowshahi and China with Andrew MacDonald",
+      "apple_collection_id": 958230465,
+      "apple_track_id": 1000783757706,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/20vc-uber-president-on-budgeting-ai-at-uber-how-ai/id958230465?i=1000783757706&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 67,
+      "duration_sec": 3996,
+      "audio_url": "https://traffic.libsyn.com/secure/thetwentyminutevc/Andrew_Macdonald__Uber.mp3?dest-id=240976",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 63932806,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cb/4a/f9/cb4af9a2-5857-c3f1-30d4-14395af9a14f/mza_11350890235230424535.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Uber's president, its longest-serving employee, on autonomy, beating DoorDash, and surviving the Travis era.",
+      "explicit": true
+    },
+    {
+      "id": "fly-on-the-wall--mcdonald-s-mustard-and-snl-wigs",
+      "show": "Fly on the Wall with Dana Carvey and David Spade",
+      "title": "McDonald’s Mustard and SNL Wigs",
+      "apple_collection_id": 1603639502,
+      "apple_track_id": 1000783756453,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/mcdonalds-mustard-and-snl-wigs/id1603639502?i=1000783756453&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 60,
+      "duration_sec": 3596,
+      "audio_url": "https://pdst.fm/e/pscrb.fm/rss/p/tracking.swap.fm/track/v9Uiw3bGr54f6BVZKSyc/serve.castfire.com/audio/8281052/8281052_2026-04-17-233452.192.mp3?rssID=6346",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 86316303,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c4/5f/1e/c45f1e02-7a76-a6e6-d53d-9705246ed2c1/mza_17162576389956741702.jpeg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Dana and David riff on McDonald's mustard drama, SNL wig stories, and Trump's decoy plane.",
+      "explicit": true
+    },
+    {
+      "id": "science-for-sport-podcast--333-why-athletes-keep-breaking-down",
+      "show": "Science for Sport Podcast",
+      "title": "333: Why Athletes Keep Breaking Down",
+      "apple_collection_id": 1506431005,
+      "apple_track_id": 1000783742720,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-athletes-keep-breaking-down/id1506431005?i=1000783742720&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 35,
+      "duration_sec": 2085,
+      "audio_url": "https://aphid.fireside.fm/d/1437767933/ed3f06f4-af55-41d4-87cf-0e484d2d9fef/5a94c972-00f7-40f4-bf83-094c78925fb6.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 50061738,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/d1/ce/2f/d1ce2fc5-acd9-6780-ec02-08e05123ad99/mza_11239183095122157429.jpg/600x600bb.jpg",
+      "topics": [
+        "sports/biomechanics"
+      ],
+      "hook": "A physiotherapist explains why rehab must look beyond the injury site to how athletes move.",
+      "explicit": false
+    },
+    {
+      "id": "you-are-not-so-smart--346-no-nocebo-effect-helen-pilcher",
+      "show": "You Are Not So Smart",
+      "title": "346 - No Nocebo Effect - Helen Pilcher",
+      "apple_collection_id": 521594713,
+      "apple_track_id": 1000783742490,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/346-no-nocebo-effect-helen-pilcher/id521594713?i=1000783742490&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 60,
+      "duration_sec": 3570,
+      "audio_url": "https://stitcher.simplecastaudio.com/aa9f2648-25e9-472a-af42-4e5017da38cf/episodes/309d19c8-5b0c-404a-bce4-43a239c8c91d/audio/128/default.mp3?aid=rss_feed&awCollectionId=aa9f2648-25e9-472a-af42-4e5017da38cf&awEpisodeId=309d19c8-5b0c-404a-bce4-43a239c8c91d&feed=N5eKDxJI",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 57133795,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/90/f3/e5/90f3e5da-d661-3581-4474-6e14f342c86a/mza_8266442694079680437.jpg/600x600bb.jpg",
+      "topics": [
+        "psychology/decision-making"
+      ],
+      "hook": "Neuroscientist Helen Pilcher on the nocebo effect: how expectation alone can cause real symptoms.",
+      "explicit": false
+    },
+    {
+      "id": "partially-examined-life--ep-398-donald-davidson-on-mind",
+      "show": "The Partially Examined Life Philosophy Podcast",
+      "title": "Ep. 398: Donald Davidson on Mind vs. Body (Part One)",
+      "apple_collection_id": 318345767,
+      "apple_track_id": 1000783730547,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/ep-398-donald-davidson-on-mind-vs-body-part-one/id318345767?i=1000783730547&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 52,
+      "duration_sec": 3123,
+      "audio_url": "https://prfx.byspotify.com/e/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/mgln.ai/e/802/claritaspod.com/measure/traffic.libsyn.com/secure/partiallyexaminedlife/PEL_ep_398pt1_7-28-26.mp3?dest-id=16399",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 75004146,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/32/eb/a9/32eba9ac-dfb0-618b-e874-6696c69ea59d/mza_257738567509116492.jpeg/600x600bb.jpg",
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "hook": "A philosophy discussion of Donald Davidson on whether mental causes are truly causal, or just language.",
+      "explicit": false
+    },
+    {
+      "id": "how-i-built-this--bobbie-laura-modi-how-a-baby",
+      "show": "How I Built This with Guy Raz",
+      "title": "Bobbie: Laura Modi. How a Baby Formula Startup Took Market Share From Two Industry Giants",
+      "apple_collection_id": 1150510297,
+      "apple_track_id": 1000783757014,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/bobbie-laura-modi-how-a-baby-formula-startup-took/id1150510297?i=1000783757014&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 80,
+      "duration_sec": 4788,
+      "audio_url": "https://rss.art19.com/episodes/4488842b-74d3-40ed-8776-5831c5934e69.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 76613590,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/64/45/06/644506b5-c44f-f661-f74e-f63a4b2511bc/mza_14892199991035639268.jpeg/600x600bb.jpg",
+      "topics": [
+        "business/founders"
+      ],
+      "hook": "Bobbie's founder on beating an FDA dispute and manufacturer shortages to grab 4% of infant formula.",
+      "explicit": false
+    },
+    {
+      "id": "the-matt-walker-podcast--148-psychedelics-for-mental-health",
+      "show": "The Matt Walker Podcast",
+      "title": "#148 - Psychedelics for Mental Health",
+      "apple_collection_id": 1578319619,
+      "apple_track_id": 1000783757294,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/148-psychedelics-for-mental-health/id1578319619?i=1000783757294&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 32,
+      "duration_sec": 1931,
+      "audio_url": "https://pscrb.fm/rss/p/www.buzzsprout.com/1821163/episodes/19655995-148-psychedelics-for-mental-health.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 23225997,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/5a/3e/6c/5a3e6c8c-6c6f-31eb-6002-0bdaba3ae4f8/mza_5768385804711493809.jpg/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Matt Walker on how psilocybin and LSD quiet the brain's default network to boost neuroplasticity.",
+      "explicit": false
+    },
+    {
+      "id": "the-peter-attia-drive--404-mental-health-beyond-neurotransmitters-the",
+      "show": "The Peter Attia Drive",
+      "title": "#404 ‒ Mental health beyond neurotransmitters: the role of hormones in psychiatry, why symptom reduction isn't enough, and the future of psychedelic therapies | Linus Abrams, M.D.",
+      "apple_collection_id": 1400828889,
+      "apple_track_id": 1000783738434,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/404-mental-health-beyond-neurotransmitters-the-role/id1400828889?i=1000783738434&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 138,
+      "duration_sec": 8271,
+      "audio_url": "https://traffic.libsyn.com/secure/peterattiadrive/EP.404_-_Linus_Abrams_PUBLIC_FINAL.mp3?dest-id=713489",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 132345673,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/89/b8/c0/89b8c0bb-f65c-66ef-8b96-fffea8f0cf5f/mza_872007510196734520.png/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "A psychiatrist of 35 years on hormones in psychiatry, and why symptom reduction isn't enough.",
+      "explicit": false
+    },
+    {
+      "id": "strict-scrutiny--all-the-president-s-henchmen",
+      "show": "Strict Scrutiny",
+      "title": "All the President’s Henchmen",
+      "apple_collection_id": 1469168641,
+      "apple_track_id": 1000783755202,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/all-the-presidents-henchmen/id1469168641?i=1000783755202&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 96,
+      "duration_sec": 5784,
+      "audio_url": "https://clrtpod.com/m/pscrb.fm/rss/p/prfx.byspotify.com/e/arttrk.com/p/CRMDA/mgln.ai/e/284/dts.podtrac.com/redirect.mp3/audioboom.com/posts/8940224.mp3?modified=1786923101&sid=5166629&source=rss",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/68/3f/62/683f6228-b15b-e0de-8c2c-e8c20860ca98/mza_763663699315012405.png/600x600bb.jpg",
+      "topics": [
+        "society/law"
+      ],
+      "hook": "Kate and Liz Oyer break down executive privilege expansion and the week's biggest legal news.",
+      "explicit": true
+    },
+    {
+      "id": "happiness-lab--the-life-changing-power-of-a",
+      "show": "The Happiness Lab with Dr. Laurie Santos",
+      "title": "The Life-Changing Power of a Sabbatical",
+      "apple_collection_id": 1474245040,
+      "apple_track_id": 1000783362495,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-life-changing-power-of-a-sabbatical/id1474245040?i=1000783362495&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 49,
+      "duration_sec": 2911,
+      "audio_url": "https://pdrl.fm/e76c46/podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/tracking.swap.fm/track/SxlTEPDY7xDg35RXkASs/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/96c5c41e-0bc8-4661-b184-ae32006cd726/b7c0058c-d25d-4ba5-936b-b4a6013ff981/audio.mp3?utm_source=Podcast&in_playlist=d623ef0b-3fee-4c26-b815-ae32006cd739",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 46612904,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f9/14/47/f9144733-0019-9e7a-4f8f-21818eadb9d9/mza_1460301163065810614.jpg/600x600bb.jpg",
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "hook": "Dr. Laurie begins a year-long sabbatical and revisits DJ DiDonna's research on stepping away from work.",
+      "explicit": false
+    },
+    {
+      "id": "ten-percent-happier--you-can-get-through-it-how",
+      "show": "10% Happier with Dan Harris",
+      "title": "You Can Get Through It: How to Handle the Hardest Things That Will Ever Happen to You | Dr. Lucy Hone",
+      "apple_collection_id": 1087147821,
+      "apple_track_id": 1000783319194,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/you-can-get-through-it-how-to-handle-the-hardest/id1087147821?i=1000783319194&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 62,
+      "duration_sec": 3727,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/pscrb.fm/rss/p/mgln.ai/e/35/traffic.libsyn.com/secure/05620661-2103-4fe0-9ab9-92bfc4d9cf22/260810_TPH_LucyHone_Master_AudioVersion_v1.mp3?dest-id=4933335",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 59631071,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
+      "topics": [
+        "health/mental",
+        "psychology"
+      ],
+      "hook": "Dr. Lucy Hone debunks the five stages of grief and offers steps for getting through loss.",
+      "explicit": true
+    },
+    {
+      "id": "mel-robbins-podcast--former-cia-spy-how-to-eliminate",
+      "show": "The Mel Robbins Podcast",
+      "title": "Former CIA Spy: How to Eliminate Self-Doubt, Build Confidence, and Protect Yourself in Today’s World",
+      "apple_collection_id": 1646101002,
+      "apple_track_id": 1000783324323,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/former-cia-spy-how-to-eliminate-self-doubt-build-confidence/id1646101002?i=1000783324323&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 69,
+      "duration_sec": 4151,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/pdst.fm/e/stitcher.simplecastaudio.com/b9de9f5f-6dab-4833-b4c2-05f1d28dd998/episodes/4f22e527-b675-4d7b-bb52-e6c3a34df479/audio/128/default.mp3?aid=rss_feed&awCollectionId=b9de9f5f-6dab-4833-b4c2-05f1d28dd998&awEpisodeId=4f22e527-b675-4d7b-bb52-e6c3a34df479&feed=UCwaTX1J",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 66417725,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/66/a5/ab66a5f5-b52b-c70a-227b-0721bd9dc660/mza_13546984924981879479.jpg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement",
+        "health/mental"
+      ],
+      "hook": "The CIA's former Chief of Disguise on spotting liars, staying safe, and building real confidence.",
+      "explicit": false
+    },
+    {
+      "id": "happier-gretchen-rubin--little-happier-why-nba-star-jalen",
+      "show": "Happier with Gretchen Rubin",
+      "title": "Little Happier: Why NBA Star Jalen Brunson Values Persistence over Pyrotechnics",
+      "apple_collection_id": 969519520,
+      "apple_track_id": 1000779797157,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/little-happier-why-nba-star-jalen-brunson-values-persistence/id969519520?i=1000779797157&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 6,
+      "duration_sec": 345,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME4786156777.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bb/50/14/bb5014a6-e7e3-5951-f46c-3b83a7bd4616/mza_4718235590977797444.jpeg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement"
+      ],
+      "hook": "NBA champion Jalen Brunson explains why persistence, not flash plays, defined his title run.",
+      "explicit": false
+    },
+    {
+      "id": "armchair-expert--david-sedaris-6",
+      "show": "Armchair Expert with Dax Shepard",
+      "title": "David Sedaris #6",
+      "apple_collection_id": 1345682353,
+      "apple_track_id": 1000783758499,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/david-sedaris-6/id1345682353?i=1000783758499&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 150,
+      "duration_sec": 8970,
+      "audio_url": "https://rss.art19.com/episodes/a3af7ce6-d5a0-49c8-a125-33eb06cf055b.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 143529273,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f0/13/8f/f0138f4b-8bc3-0a64-2c11-ef566840f60f/mza_3062409012210474882.jpeg/600x600bb.jpg",
+      "topics": [
+        "comedy/interviews"
+      ],
+      "hook": "David Sedaris on finding his name in the Epstein files, and removing his own tumor.",
+      "explicit": true
+    },
+    {
+      "id": "comedy-bang-bang--shine-the-vinyl-kristian-bruun-lily",
+      "show": "Comedy Bang Bang: The Podcast",
+      "title": "Shine The Vinyl (Kristian Bruun, Lily Sullivan, Emily Pendergast)",
+      "apple_collection_id": 316045799,
+      "apple_track_id": 1000783750732,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/shine-the-vinyl-kristian-bruun-lily-sullivan-emily/id316045799?i=1000783750732&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 72,
+      "duration_sec": 4321,
+      "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/da3ab509-b112-4af1-a54b-45ff0ddecf42/episodes/ad6d6e1a-888c-4d22-ada8-424aed03af8d/audio/128/default.mp3?aid=rss_feed&awCollectionId=da3ab509-b112-4af1-a54b-45ff0ddecf42&awEpisodeId=ad6d6e1a-888c-4d22-ada8-424aed03af8d&feed=byb4nhvN",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 69138851,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/0b/ca/6e/0bca6ee0-0b2b-5df7-edee-4d9d1b2d4e8a/mza_10749952114435066299.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Kristian Bruun talks Tatiana Maslany feuds, plus new guests on trucks and spicy set stories.",
+      "explicit": true
+    },
+    {
+      "id": "working-it-out-birbiglia--221-ron-funches-say-what-you",
+      "show": "Mike Birbiglia's Working It Out",
+      "title": "221. Ron Funches: Say What You Want",
+      "apple_collection_id": 1515419751,
+      "apple_track_id": 1000783718937,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/221-ron-funches-say-what-you-want/id1515419751?i=1000783718937&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 48,
+      "duration_sec": 2873,
+      "audio_url": "https://pdst.fm/e/afp-222748-injected.calisto.simplecastaudio.com/32ea5a12-6e17-42a1-8b7f-3cd5287077bd/episodes/d01f88d5-918b-4dce-89bb-f66654aca42b/audio/128/default.mp3?aid=rss_feed&awCollectionId=32ea5a12-6e17-42a1-8b7f-3cd5287077bd&awEpisodeId=d01f88d5-918b-4dce-89bb-f66654aca42b&feed=MTW0B2El",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 45970148,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ef/af/30/efaf301d-6e45-ca17-192e-ef7e66afdcfd/mza_16176505125015117955.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/stand-up",
+        "comedy/interviews"
+      ],
+      "hook": "Ron Funches on his autism diagnosis, finding his comedic voice, and his stint on Traitors.",
+      "explicit": true
+    },
+    {
+      "id": "lore--legends-86-litmus-test",
+      "show": "Lore",
+      "title": "Legends 86: Litmus Test",
+      "apple_collection_id": 978052928,
+      "apple_track_id": 1000768425288,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/legends-86-litmus-test/id978052928?i=1000768425288&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 27,
+      "duration_sec": 1640,
+      "audio_url": "https://pdst.fm/e/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/mgln.ai/e/35/claritaspod.com/measure/traffic.libsyn.com/secure/lorepodcast/Legends-86d.mp3?dest-id=259905",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 39686219,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/9b/e0/c0/9be0c09c-b803-4774-77d3-85167bc87a31/mza_16743750170316675841.jpg/600x600bb.jpg",
+      "topics": [
+        "paranormal",
+        "history"
+      ],
+      "hook": "How folklore became a tool for sorting the good from the bad throughout history.",
+      "explicit": false
+    },
+    {
+      "id": "crime-junkie--new-show-the-truth-about-natalie",
+      "show": "Crime Junkie",
+      "title": "NEW SHOW: The Truth About Natalie",
+      "apple_collection_id": 1322200189,
+      "apple_track_id": 1000783006879,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/new-show-the-truth-about-natalie/id1322200189?i=1000783006879&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 40,
+      "duration_sec": 2373,
+      "audio_url": "https://tracking.swap.fm/track/fxUKVg2nSMaPSHLeKNKH/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/rsv.simplecastaudio.com/ec74d48c-cbf1-4764-923e-7d584dce50fa/episodes/39bff8ed-ec19-4f4d-a86b-56991bce677f/audio/128/default.mp3?aid=rss_feed&awCollectionId=ec74d48c-cbf1-4764-923e-7d584dce50fa&awEpisodeId=39bff8ed-ec19-4f4d-a86b-56991bce677f&feed=qm_9xx0g",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 37976650,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/8c/35/04/8c350430-2fbf-98d0-0a25-00b76550ffeb/mza_13445204151221888086.jpg/600x600bb.jpg",
+      "topics": [
+        "true-crime"
+      ],
+      "hook": "A negative toxicology report and a missing phone raise doubts about Natalie Jones's overdose ruling.",
+      "explicit": false
+    },
+    {
+      "id": "wicked-words--tori-telfer-criminal-broads",
+      "show": "Wicked Words - A True Crime Talk Show with Kate Winkler Dawson",
+      "title": "Tori Telfer: Criminal Broads",
+      "apple_collection_id": 1538204210,
+      "apple_track_id": 1000783755499,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/tori-telfer-criminal-broads/id1538204210?i=1000783755499&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 54,
+      "duration_sec": 3212,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/fdf29e64-8856-472d-b2cd-b24c011a225c/ca84071d-e73e-44be-acd6-b4a40149eab1/audio.mp3?utm_source=Podcast&in_playlist=d35298b0-c12a-44ed-956a-b24c011a22e0",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 51437876,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9f/d5/37/9fd53772-b22c-5e3c-ac4a-3d8b9452fa74/mza_3649081017768100450.jpg/600x600bb.jpg",
+      "topics": [
+        "true-crime",
+        "history"
+      ],
+      "hook": "Tori Telfer tells the stories of women criminals, including a bank robber and a dirty doctor.",
+      "explicit": true
+    },
+    {
+      "id": "this-american-life--895-label-maker",
+      "show": "This American Life",
+      "title": "895: Label Maker!",
+      "apple_collection_id": 201671138,
+      "apple_track_id": 1000783492833,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/label-maker/id201671138?i=1000783492833&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 60,
+      "duration_sec": 3576,
+      "audio_url": "https://pfx.vpixl.com/6qj4J/dts.podtrac.com/redirect.mp/pdst.fm/e/prefix.up.audio/s/npr.simplecastaudio.com/d3081dd9-fcaf-445a-977c-4f56c28f5a6e/episodes/15103000-90c9-465f-8a0d-0dff5fb2f403/audio/128/default.mp3?awCollectionId=d3081dd9-fcaf-445a-977c-4f56c28f5a6e&awEpisodeId=15103000-90c9-465f-8a0d-0dff5fb2f403&nocache",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/be/48/8b/be488bba-a99c-7772-0ed1-d71319e6fab2/mza_3724362318362877380.jpg/600x600bb.jpg",
+      "topics": [
+        "personal-journals",
+        "science/storytelling"
+      ],
+      "hook": "Stories about labels: how they define us, stick without permission, and upend lives when removed.",
+      "explicit": true
+    },
+    {
+      "id": "where-should-we-begin--can-i-be-loved",
+      "show": "Where Should We Begin? with Esther Perel",
+      "title": "Can I Be Loved?",
+      "apple_collection_id": 1237931798,
+      "apple_track_id": 1000778057746,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/can-i-be-loved/id1237931798?i=1000778057746&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 37,
+      "duration_sec": 2240,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP1492521442.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7d/df/6e/7ddf6ef9-41e2-26b1-3c5d-67b720eee0b8/mza_294285070339807355.jpg/600x600bb.jpg",
+      "topics": [
+        "relationships",
+        "psychology"
+      ],
+      "hook": "Esther Perel helps a woman see how her need for control blocks real emotional availability.",
+      "explicit": false
+    },
+    {
+      "id": "wow-in-the-world--practice-makes-permanent-how-repetition-rewires",
+      "show": "Wow in the World",
+      "title": "Practice Makes Permanent: How Repetition Rewires Your Brain!",
+      "apple_collection_id": 1233834541,
+      "apple_track_id": 1000783754700,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/practice-makes-permanent-how-repetition-rewires-your/id1233834541?i=1000783754700&uo=4",
+      "release_date": "2026-08-17",
+      "duration_min": 20,
+      "duration_sec": 1177,
+      "audio_url": "https://pscrb.fm/rss/p/rss.art19.com/episodes/a502a331-1c9d-4c1b-84e1-477985ceb844.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 18844107,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9c/bd/2a/9cbd2a89-ed8a-e35e-e28b-8a5cdb7282aa/mza_3586330809863342442.jpeg/600x600bb.jpg",
+      "topics": [
+        "kids-family/education"
+      ],
+      "hook": "Mindy tackles a stadium organ to learn how repeated practice rewires the brain.",
       "explicit": false
     }
   ]
