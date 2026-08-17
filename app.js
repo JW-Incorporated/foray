@@ -1262,8 +1262,8 @@ async function renderForay(id) {
      Still guarded, for a narrower reason than the one that used to be written
      here. The service worker no longer refreshes app.js and the ES module on
      separate schedules — since #233 both are revalidated on every load and a
-     page that falls back to the cache is pinned to it — but the module is a
-     deferred `<script type="module">`, and the native shells run with no worker
+     page that falls back to the cache is pinned to it — but the module is loaded
+     from a deferred module script tag, and the native shells run with no worker
      at all. An older or not-yet-evaluated module costs the resume offer, which
      is a missing banner rather than a page stuck on "Loading…". */
   /* `resolved` is the freshness half of #40, and it is about STORED state rather
