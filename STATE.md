@@ -7,6 +7,63 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### classify fleet — the shard key, and one transcript label (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/fleet-cataloguing`. Two things from
+  `docs/agents/fleet-review-2026-08.md`, scoped down by Wyatt on the day
+  (*"I just want it to flag transcripts, not go overboard"*).
+  (1) **The shard key is hashed and stable** — `fnv1a32(String(id)) % N`
+  replaces `Number(id) % N`, which is **2.20x unbalanced** over the 17,936
+  shows still needing a pass (shard0 1,514 / 8.4% against shard3 3,334 /
+  18.6%) and would idle a sixth of the fleet from ~day 12. Now **1.05x**,
+  measured over the real catalogue. `--shard` also **fails loud** instead of
+  open. (2) **`transcript_labels`** on every batch entry and every merged
+  record, read off the feed `prepare-batch.mjs` already fetched and discarded.
+  Plus `--batch-size 60` in the prompt.
+- **New files:** `tools/classify/labels.mjs`, `tools/classify/select.mjs`, and
+  three suites (`shard`, `transcript-label`, `no-exclusion`).
+- **Shared files it touches:** `tools/classify/{prepare-batch,merge-results}.mjs`,
+  `tools/classify/README.md`, `docs/agents/runner-prompts/classify-batch.md`,
+  `docs/agents/runners.md`, `HUMAN-ACTIONS.md` (notes on #5 and #6 — no status
+  changed), `test/suite-integrity.test.js` (three floors, isolated final commit),
+  this file. **Nothing in `data/`**, nothing under `player/`, nothing in
+  `app.js`. Deliberately avoided `data/breadth-classification.json`,
+  `data/genre-taxonomy-map.json` and `docs/CATALOG-PIPELINE.md` — PR #198 owns
+  those.
+- **A TRANSCRIPT IS A COST, NOT A GATE. Do not re-derive the opposite from the
+  review.** `fleet-review-2026-08.md` §3 ranks transcript availability as the #1
+  binding constraint; that is **wrong**, and the founder corrected it. We make
+  our own at ~1.1x realtime (~46 min of CPU per hour of audio) and on domain
+  vocabulary ours beat the publishers' — a Spotify SRT rendered "geology bites"
+  as `jala g b`. A show with no `<podcast:transcript>` is *expensive*, not
+  unusable. The one thing that genuinely gates today is a **bounded ad delta**
+  (ADR-0008): paddable below the threshold, needing a locate step above it.
+- **Heads-up — nothing filters, and there is a suite whose whole job is to keep
+  it that way.** Founder ruling: *"no show should be excluded at this stage, just
+  catalogued. I don't want to accidentally toss out shows that are still useful,
+  for example for playlists (not forays)."* `tools/classify/no-exclusion.test.mjs`
+  asserts it three ways — the selector picks identically with hostile labels, the
+  merge writes no key that reads as a verdict, and the directory's own source is
+  scanned for `if (…transcript_present…)`. **If you add a consumer of
+  `transcript_labels`, it may sort, display or budget on it — never gate on it.**
+- **Heads-up — `tools/classify/*.mjs` must stay importable without
+  `backend/node_modules`.** CI's `data-and-site` job never runs `npm ci` in
+  `backend/`, so a top-level `require("fast-xml-parser")` makes merely importing
+  `prepare-batch.mjs` a hard failure in the one environment that runs its tests.
+  It is resolved lazily on first parse now, and the label uses
+  `tools/segments/sweep-transcripts.mjs`'s regex parser instead. Do not "tidy"
+  either back.
+- **Deliberately NOT done, so nobody re-does it as a bug:** enclosure host,
+  `<language>` and liveness labels; `format`/`depth`/`expertise_sourced` content
+  shape in the classifier prompt; and **the selection-order rework**. On the
+  last: selection runs on ascending `apple_collection_id` — show *registration
+  age* — while `chart_rank` is passed into every batch and never used for
+  ordering. That is a real finding and it is unchanged here; it decides what gets
+  catalogued *first*, which is worth its own decision.
+- **Still needs the owner:** `HUMAN-ACTIONS.md` #4 (are the six routines alive)
+  and #5 (per-routine `--shard i/6`, `--batch-size 60`, four hour-phase offsets).
+  Nothing in this PR delivers a single show until those are done.
+
 ### Foray #2 authoring — the types of capital available to startups (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/foray2-capital`. Foray #2 authored end to end: **22 segments,

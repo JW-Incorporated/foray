@@ -34,8 +34,10 @@ prepare-batch.mjs ──▶ classify-batch-<id>.json ──▶ [classification a
 
 | Script | Keyless? | Role |
 |--------|----------|------|
-| `prepare-batch.mjs` | ✅ (RSS only) | Select the next N un-(re)classified breadth shows, fetch each one's feed for description + recent episode titles/descriptions (Tier 0.5), write one batch input file. |
+| `prepare-batch.mjs` | ✅ (RSS only) | Select the next N un-(re)classified breadth shows, fetch each one's feed for description + recent episode titles/descriptions (Tier 0.5) **and the transcript label**, write one batch input file. |
 | `merge-results.mjs` | ✅ | Validate the classification agent's output (taxonomy node ids, confidence bounds, copy rules on `display_title`/`blurb`), merge into `data/breadth-classification.json`, advance progress state. |
+| `labels.mjs` | ✅ (pure) | The transcript label and the shard key. Dependency-free and side-effect-free. |
+| `select.mjs` | ✅ (pure) | Which shows the next fresh batch takes. Dependency-free. |
 
 The **judgment step** (classifying each show, writing `display_title`/
 `blurb`) is the only non-deterministic part, performed by a Claude Code
@@ -141,6 +143,105 @@ convention:
 CLI flags (`--progress`, `--out`/`--batch-size`/`--mode` on
 `prepare-batch.mjs`; `--batch`/`--results` on `merge-results.mjs`) take
 precedence over env vars where both apply.
+
+## Sharding — `--shard i/N`
+
+Six routines run this pipeline in parallel, each taking a disjoint slice.
+`--shard 0/6` … `--shard 5/6`, one per routine.
+
+- **The key is `fnv1a32(String(apple_collection_id)) % N`**, in
+  `labels.mjs`. It replaced `Number(id) % N`, which is 2.20x unbalanced
+  over the shows that remain (shard0 1,514 against shard3 3,334) because
+  Apple collection ids are not uniform mod 6 once the already-classified
+  ones, taken in ascending-id order, are removed. Finish time is the
+  largest shard, so the modulo key idled a sixth of the fleet from around
+  day 12. `shard.test.mjs` measures both against the real catalogue.
+- **The key is stable.** A show's shard depends on its id and nothing else
+  — never on the list, its length, or a position in it. An index-derived
+  key would move shows between shards as siblings got classified, which
+  both repeats work and creates permanent gaps.
+- **Sharding partitions; it never filters.** The union of all six shards
+  is the whole eligible set and the six are disjoint, asserted against the
+  real catalogue.
+- **A malformed `--shard` exits with an error.** It used to fail *open*:
+  `6/6`, `abc`, `0/0` or a missing value all silently ran the full
+  unsharded catalogue, recreating the six-way duplicate work the flag
+  exists to prevent, from one typo in one routine's config. Shards are
+  0-indexed; `6/6` is invalid. Omitting the flag entirely is still legal
+  and still means "the whole catalogue".
+- **`--mode escalate` has no shard support** and no ordering; run
+  escalation as a single routine.
+
+## The transcript label
+
+Every batch entry, and every record `merge-results.mjs` writes, carries a
+`transcript_labels` object:
+
+```json
+"transcript_labels": {
+  "label_schema_version": 1,
+  "episodes_sampled": 8,
+  "transcript_present": true,
+  "transcript_tags": 3,
+  "episodes_with_timed_transcript": 2,
+  "transcript_types": { "text/vtt": 2, "text/plain": 1 }
+}
+```
+
+**It is a cost signal, not a requirement, and never a filter.** Read
+`labels.mjs`'s header before writing anything that consumes it; the short
+version:
+
+- We make our own transcripts, at ~1.1x realtime — roughly **46 minutes of
+  CPU per hour of audio** — and on domain vocabulary ours have beaten the
+  publishers' (a Spotify SRT rendered "geology bites" as `jala g b`). So a
+  show with no `<podcast:transcript>` is *expensive*, not unusable.
+- The founder's ruling (2026-08-16) is that no show is excluded at this
+  stage: *"I don't want to accidentally toss out shows that are still
+  useful, for example for playlists (not forays)."* No consumer may read
+  this label as an eligibility test.
+  `no-exclusion.test.mjs` enforces that three ways — behaviourally over
+  the selector, behaviourally over the merge, and by scanning this
+  directory's own source for `if (…transcript_present…)`.
+- **The counts are a FLOOR.** They are sampled over the ≤ 8 items the
+  Tier-0.5 fetch already read, not the show's whole back catalogue, which
+  is why `episodes_sampled` travels with them. `episodes_sampled: 0` means
+  "the feed could not be read", not "no transcripts".
+- **Timed vs prose matters.** `text/plain` is a tag but cannot anchor a
+  segment, so it raises `transcript_tags` and not
+  `episodes_with_timed_transcript`. The timed-format list is imported from
+  `tools/segments/sweep-transcripts.mjs` rather than restated, so it cannot
+  drift from `data/transcript-availability.json`.
+- **The agent does not write it.** It comes off the batch input, where
+  `prepare-batch.mjs` put it deterministically. The agent's results
+  contract is unchanged.
+
+**Deliberately not recorded here: any per-show ad flag, ratio or boolean.**
+ADR-0008 removed ad load as a rejection reason, and a per-show ad number
+is invalid by that ADR's own rule (N ≥ 2 probes of the *same* episode, a
+maximum in seconds, never a median across different episodes). The
+ranged-GET probe stays the separate narrow sweep it already is in
+`tools/transcribe/ad-inflation.mjs`.
+
+## Tests
+
+```sh
+node --test tools/classify/
+```
+
+- `shard.test.mjs` — balance, stability and the partition property, measured
+  against the **real** `data/catalog-breadth.json`. Ratios and floors, never
+  pinned counts, because the eligible set shrinks with every merged batch.
+- `transcript-label.test.mjs` — extraction from the feed shapes real
+  publishers emit, plus a genuine prepare → merge round trip (the batch entry
+  is built by `prepare-batch.mjs`'s own code, and the merge is
+  `merge-results.mjs` in a child process).
+- `no-exclusion.test.mjs` — the founder's constraint, made mechanical.
+
+These suites import `prepare-batch.mjs` and `merge-results.mjs`, so both must
+stay importable **without `backend/node_modules`** — CI's `data-and-site` job
+never installs them. That is why `fast-xml-parser` is resolved lazily on first
+parse, and why the label is read with a regex parser rather than that one.
 
 ## Cloud topology (paced rollout, not built here)
 
