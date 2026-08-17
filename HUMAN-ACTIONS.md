@@ -245,24 +245,39 @@ the whole time they *were* alive. Both are needed; neither substitutes.
 routines do not pass it.** All six run one shared prompt file with one literal
 command that has no `--shard`, so the shard number exists only in the routine
 *name*. Batch selection is fully deterministic, so **all six shards select the
-identical 40 shows in the identical order** — verified by simulation against the
+identical batch, in the identical order** — reproduced by simulation against the
 real catalogue. Five of every six runs are duplicate work that is thrown away.
 
-The arithmetic confirms it: 18 runs/day produced ~2.6 landed batches/day, which
-is 1/6. Measured throughput was **129 shows/day**; with the flag wired it is
-~765/day. That is the difference between finishing the 17,936 remaining shows in
-**~23 days** and in **~139 days** — and it costs **no extra runs and no extra
-tokens**, because the spend is already being paid six times for the same shows.
+Measured throughput was **129 shows/day**; with the flag wired it is ~774/day.
+That is the difference between finishing the 17,875 remaining shows in **~24
+days** and in **~139 days** — and it costs **no extra runs and no extra tokens**,
+because the spend is already being paid six times for the same shows.
+
+**One honest caveat, so you know what you are confirming.** The duplicate-work
+diagnosis comes from reading the code and the committed prompt, **not** from the
+git record — and the routines are demonstrably *not* running the committed
+command (33 of 37 batches merged more than the prompt's `--batch-size 40`, up to
+56). So step 1 below — copying out what a routine actually executes — is what
+confirms or refutes this. (Item #4's step 3 asks only whether each routine exists
+and when it last ran, not what command it runs, so it does not answer this.) If the routines already pass `--shard`, this item is
+moot and the throughput problem is elsewhere; say so rather than proceeding.
 
 Full analysis: `docs/agents/fleet-review-2026-08.md` §0 and §4.
 
 Steps:
 
 1. Open <https://claude.ai/settings/automations> on the account that owns the
-   routines (Wyatt's).
+   routines (Wyatt's). **Before changing anything, copy out — into a reply, or
+   into this file — the exact command and schedule each of the six currently
+   runs.** That is the one piece of evidence nobody in the repo has, it settles
+   whether the diagnosis above is right, and it is lost the moment you overwrite
+   it. If any of them already contains `--shard`, stop and say so.
 2. For each of the six routines, set the schedule and the shard argument as
-   below. **The cron column is a change of minute offsets only — the cadence
-   stays every 8h, 3 runs/day per routine, 18 runs/day total.** The stagger
+   below. **Every routine keeps its 8h period and its 3 runs/day — only the
+   phase changes.** Shard0 and shard1 change minute only (assuming they sit at the
+   `:00`-offset convention — `runners.md` records only "Every 8h", so read the
+   current value before you overwrite it); **shards 2–5 change
+   the hour field as well** (`0,8,16` → `2,10,18` → `4,12,20`). The stagger
    exists so that only one classify PR is ever open at a time; two concurrent
    ones conflict on the same two lines of
    `data/breadth-classification.json` by construction.
@@ -276,7 +291,7 @@ Steps:
    | `foray-classify-shard4` | `10 4,12,20 * * *` | `--shard 4/6` |
    | `foray-classify-shard5` | `50 4,12,20 * * *` | `--shard 5/6` |
 
-3. The full command each routine should run — copy it literally, changing only
+3. Then set the full command each routine should run — copy it literally, changing only
    the `0/6` to match the table:
 
    ```
@@ -294,11 +309,17 @@ Steps:
    item fixes. It must read `0/6`, `1/6`, `2/6`, `3/6`, `4/6`, `5/6` — one each,
    no duplicates, none of them `6/6`.
 
+**One thing to expect, and it is not a fault.** Until an engineering PR lands the
+matching prompt fix, an agent that re-reads `classify-batch.md` will still use
+`--batch-size 40`, so early batches may come in around 40 rather than 50–60. The
+sharding benefit does not depend on that; the four-week timeline does. A session
+is picking it up.
+
 **Worked if:** within one 8-hour window, **six different** `classify/*` PRs have
 merged, and no two of them classified the same show. Quick check after a day:
 `git log origin/main --oneline -- data/breadth-classification.json` shows
 several batches per day rather than one, and the `classify-agent-tier1` count in
-`data/breadth-classification.json` is climbing by ~700/day rather than ~130.
+`data/breadth-classification.json` is climbing by ~770/day rather than ~130.
 
 **Status:** OPEN
 
@@ -313,8 +334,9 @@ Wyatt on the cost)
 expensive later — which is the only reason it is here rather than being decided
 by a session.
 
-The fleet records 14 fields per show and **every one of them is subject or
-display copy**. Nothing records whether a show is *usable*. The measured
+The fleet records 14 fields per show — nine describing subject or display copy,
+five recording provenance. **None of them records whether a show is *usable*.**
+The measured
 evidence that this is the binding gap: of the nine episodes in the ASR queue we
 actually want, **ads blocked zero, transcript availability blocked all nine, and
 content shape rejected 6h 02m of audio — more than the entire funded queue.**
@@ -361,16 +383,17 @@ whether it will need to be run twice.
 
 **Tag:** `[UPGRADE]` · **Time:** ~5 minutes · **Owner:** Joey
 
-**Why it matters.** Before spending four weeks classifying 17,936 shows, confirm
-they are the right 17,936 — because the list has a hard, measured ceiling and
+**Why it matters.** Before spending four weeks classifying 17,875 shows, confirm
+they are the right 17,875 — because the list has a hard, measured ceiling and
 this is a decision about what we are choosing not to see.
 
 `data/catalog-breadth.json` is, by construction, "the top 200 of each of 110
 Apple genre charts" — `CHART_LIMIT = 200`, and the maximum `chart_rank` present
-anywhere is 200. That is **2.94%** of PodcastIndex's 4.71M feeds, and when one
-sourcing pass went outside it, **88.6%** of the food/history feeds it found were
-not in our catalogue at all. Six of the sources Foray #1 actually uses are not
-in it.
+anywhere is 200. Those 19,787 US shows are **0.42%** of PodcastIndex's 4.71M
+feeds; the whole catalogue including 18 international storefronts (138,480 feeds)
+is **2.94%**. When one sourcing pass went outside it, **88.6%** of the
+food/history feeds it found were not in our catalogue at all — including The
+Moreish Podcast, which Foray #1 now uses.
 
 **The review's recommendation is to keep it as-is for these four weeks**, and to
 be clear about why, because one earlier document argued the opposite:
@@ -381,7 +404,7 @@ be clear about why, because one earlier document argued the opposite:
 - **ADR-0008 then removed ads as a rejection reason entirely** (2026-08-16, the
   day before this review), and the transcript sweep runs the *other* way: the
   ad-injecting shows carry **13.3%** transcript coverage against **0.2%** for
-  ad-free shows, a 66× difference — and transcripts, not ads, are what cost
+  ad-free shows, a **64.5×** difference — and transcripts, not ads, are what cost
   1.33× realtime of CPU.
 
 So the case for changing the list rests on a gate that no longer exists, and
