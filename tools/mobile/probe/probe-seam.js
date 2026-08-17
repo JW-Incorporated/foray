@@ -75,6 +75,20 @@
  *     transitions, and the verdict requires two: the second one happens after the
  *     page has been silent through a beat, which is when the audibility assertion
  *     would have lapsed if it is going to.
+ *
+ * ── AND SINCE 2026-08-17 IT ANSWERS A BIGGER QUESTION FIRST ──────────────────
+ *
+ * Three runs of this probe have produced a record that STOPS 25-28 s after the app
+ * went hidden, with 60+ s of the window unused. `mp1-background-audio.md` §4.1b
+ * reads that as a platform ceiling on hidden time, which would make the whole
+ * WebView shell unsafe — and it is ALSO exactly what you would see if a hidden page
+ * is suspended some seconds after ITS OWN AUDIO STOPS, because this probe's first
+ * boundary stopped the audio at 15 s of hidden time in every one of those runs.
+ *
+ * `ARM_AFTER_HIDDEN_SEC` — 60 s now, 15 s then — is where those two readings come
+ * apart, and its comment carries the argument. Everything else here is unchanged,
+ * deliberately: the seam measurement is the same measurement, taken later in a
+ * hidden window that this probe no longer stops the audio in the middle of.
  */
 
 import { PlayerQueueManager } from "./player/queue-manager.js";
@@ -91,11 +105,58 @@ const TONE_A = "probe-tone.wav";
 const TONE_B = "probe-tone-b.wav";
 const TONE_C = "probe-tone-c.wav";
 
-/** How far past the moment of going hidden the FIRST boundary is armed. Same
- *  constant and same reasoning as `probe-outpoint.js`. */
-const ARM_AFTER_HIDDEN_SEC = 15;
+/** How far past the moment of going hidden the FIRST boundary is armed.
+ *
+ * ── 60 s, AND THE NUMBER IS THE EXPERIMENT ───────────────────────────────────
+ *
+ * It was 15 s, matching `probe-outpoint.js`, for as long as the only question was
+ * whether ONE boundary survives backgrounding. It is 60 s now because of the
+ * question that replaced it, and raising it is the whole measurement rather than a
+ * tuning change. Do not lower it back without reading this.
+ *
+ * THE OBSERVATION. In all three seam runs so far (32036295743, 32057395270,
+ * 32064639785) the durable record simply STOPS 25.2 s, 26.8 s and 27.9 s after the
+ * app went hidden, and `simulator-log-seam.txt` shows a real WebKit process
+ * suspension at that moment. `docs/research/mp1-background-audio.md` §4.1b reads
+ * that as a CEILING — "the page is suspended ~26 s in" — which, if it is one and it
+ * reproduces on a phone, means a Foray stops advancing half a minute after the
+ * screen locks and every seam refinement above is moot.
+ *
+ * THE CONFOUND, which is why 15 s could never settle it. With the boundary at 15 s
+ * the probe's own audio STOPS at 15 s — that is what a boundary is — and WebKit then
+ * starts two timers (measured, run 32036295743, and again in 32064639785's log): a
+ * 5 s audible-activity clear and a ~10 s foreground-assertion release. 15 s of
+ * playback plus a ~12 s assertion release lands at ~27 s, which is the same number
+ * the record stops at, to the second. So "the platform suspends a hidden WebView
+ * ~28 s in whatever it is doing" and "the platform suspends a hidden WebView ~12 s
+ * after ITS AUDIO STOPS" both predict every run we have, and the two have opposite
+ * consequences for the product.
+ *
+ * WHAT 60 s DOES. It moves the probe's first silence from 15 s of hidden time to
+ * 60 s, and changes nothing else. The two readings now predict visibly different
+ * records:
+ *
+ *   - a WALL-CLOCK ceiling  -> the record still stops at ~26-28 s of hidden time,
+ *     while `seg-a` is audibly PLAYING and 30+ s short of its boundary. Nothing
+ *     about our audio can explain it. That is the fatal answer, and the next step is
+ *     HUMAN-ACTIONS.md #11 on real hardware rather than any further CI work.
+ *   - a SILENCE-DRIVEN release -> the record runs to ~60 s, the boundary fires on
+ *     time, and the suspension (if any) arrives ~10-12 s after the beat's silence
+ *     starts. The ~28 s figure was then an artifact of this probe's own 15 s arm and
+ *     the three prior runs measured the arm, not the platform.
+ *
+ * §4.1b predicts the first ("moving the probe's first boundary to 45-60 s of hidden
+ * time puts it PAST the suspension, so it would measure nothing"). That prediction
+ * is the thing under test: if the record covers 60 s of hidden time, it is wrong.
+ *
+ * THE COST is runner time, and it is stated where it is spent: pass 2's window in
+ * `.github/workflows/ios-build.yml` has to hold 60 s + beat + `seg-b` + beat, which
+ * is why that sleep went from 90 s to 175 s. `ios-workflow.test.mjs` pins the floor
+ * against this constant so the two cannot drift apart silently.
+ */
+const ARM_AFTER_HIDDEN_SEC = 60;
 /** If the app is never backgrounded, arm anyway so the run produces a record that
- *  says so instead of playing a tone for 90 s and reporting nothing.
+ *  says so instead of playing a tone for the whole window and reporting nothing.
  *
  *  70 s, NOT 45 s, and the reason is a measured harness quirk: `simctl launch
  *  com.apple.Preferences` took ~39 s to actually foreground Settings in run
@@ -107,18 +168,49 @@ const ARM_AFTER_HIDDEN_SEC = 15;
 const FALLBACK_ARM_AFTER_MS = 70000;
 /** Segment A's authored end. Deliberately far out — it exists only to be
  *  overridden on going hidden, and a value the run can never reach means a missed
- *  override shows up as "no boundary" rather than as a boundary at the wrong time. */
-const SEGMENT_A_END_SEC = 120;
+ *  override shows up as "no boundary" rather than as a boundary at the wrong time.
+ *
+ *  200 s, PAST THE 150 s TONE, and it had to move when `ARM_AFTER_HIDDEN_SEC` did.
+ *  At 120 s it was unreachable inside the old ~105 s page life and reachable inside
+ *  the new one: the fallback arm targets `currentTime + 60`, which can exceed 120,
+ *  so a missed override would have produced a real-looking `endReason: "outPoint"`
+ *  boundary at 120 s — a measurement of the harness wearing the result's label.
+ *  Past the tone, a missed override instead ends the FILE, which arrives as
+ *  `END_NATURAL` and `seamTransitionVerdict`'s first caveat says so by name. */
+const SEGMENT_A_END_SEC = 200;
 
 const TICK_MS = 250;
 const MAX_SAMPLES = 600;
+/** How many save stamps the trail keeps. See `rec.saveTrail`. */
+const SAVE_TRAIL_MAX = 300;
 
 /* THE QUEUE. Three bounded segments, three files, and every transition therefore a
-   real load. B's and C's bounds are authored and untouched. */
+   real load. B's and C's bounds are authored and untouched by the probe at runtime.
+
+   THE LENGTHS ARE PART OF THE SUSPENSION EXPERIMENT, not padding. `seg-b` is 25 s
+   (12 -> 37) and `seg-c` is 20 s (20 -> 40), where they were 8 s and 6 s. Two
+   reasons, and the second is the one that matters:
+
+     1. AUDIO MUST OUTLAST THE SUSPICION. In run 32064639785 the record's last write
+        landed 0.3 s before `seg-b`'s audio was due to run out, so "the page was
+        suspended" and "the probe simply ran out of audio" fit the same artifact.
+        A 25 s segment cannot be confused with a 28 s ceiling.
+     2. EVERY SILENCE IS A NEW EXPERIMENT. If the suspension is driven by our own
+        silences rather than by the clock, the record should survive `seg-b` and stop
+        ~10-12 s into the SECOND beat — a different, checkable prediction from the
+        first beat's.
+
+   Both stay well inside their 60 s tone files (`install-probe.mjs` generates them),
+   so a boundary that fails to fire still leaves 20+ s of audible margin BEFORE the
+   file ends — the difference between "the out-point was late" and "the audio ran
+   out", which the record has to be able to show. The tones are deliberately NOT
+   lengthened: `capacitor://` media loads go through a UIProcess scheme handler that
+   took 3.0 s for a 960 KB file while hidden in that same run, and a bigger file
+   would push a hidden load toward `LOAD_SETTLE_TIMEOUT_HIDDEN_MS` for no gain. */
 const QUEUE = [
   { id: "seg-a", audio_url: TONE_A, start_sec: 0, end_sec: SEGMENT_A_END_SEC },
-  { id: "seg-b", audio_url: TONE_B, start_sec: 12, end_sec: 20 },
-  { id: "seg-c", audio_url: TONE_C, start_sec: 20, end_sec: 26 },
+  { id: "seg-b", audio_url: TONE_B, start_sec: 12, end_sec: 37 },
+  { id: "seg-c", audio_url: TONE_C, start_sec: 20, end_sec: 40 },
 ];
 
 /* A NUMBERED SLOT, not one fixed key — `xcrun simctl launch` on a running app can
@@ -176,6 +268,34 @@ const rec = {
      one-shot, not a change to the standing measurement. */
   saveSeq: 0,
   firstSavedAtWall: null,
+  /* THE ONE THING `saveSeq` + `lastSavedAtWall` CANNOT DO, done here instead.
+     The pair above says WHEN the record stops. It cannot say whether the page
+     stopped being scheduled or its writes stopped landing, for the reason spelled
+     out above: both stamps ride in the same blob.
+
+     This trail is one stamp PER SAVE, each carrying the MEDIA clock alongside the
+     wall clock. That is the discriminator, because the two clocks are driven by
+     different machinery — `Date.now()` needs the page to be running, `currentTime`
+     needs the audio pipeline to be running, and run 32064639785's log shows the
+     second outliving the first by ~13 s.
+
+     So a recovered record answers three questions the earlier one could not:
+
+       - a trail whose wall deltas hold ~2 s to the end, then nothing: the page was
+         being scheduled right up to the last stamp. Whatever ended it was abrupt.
+       - a trail with a GAP — stamp N at hidden+70 s, stamp N+1 at hidden+83 s — is
+         a page that was frozen and RESUMED, which no single "the record stops"
+         observation can show. `mediaSec` across that gap then says whether the audio
+         kept flowing through the freeze (delta ~= the gap) or stalled with it
+         (delta ~= 0).
+       - stamps whose wall clock advances while `mediaSec` does not, with
+         `paused: false`: audio starved while the page ran, which is neither of the
+         two readings and would be a third finding.
+
+     Capped, because this is a ring of evidence and not a log: at a 2 s cadence 300
+     stamps is 10 minutes, several times the longest window this workflow will pay
+     for. */
+  saveTrail: [],
   plannedItems: QUEUE.length,
   askedGapMs: Math.round(SEAM_GAP_SEC * 1000),
   backgroundedAtWall: null,
@@ -201,6 +321,16 @@ const rec = {
 
 const outEl = document.getElementById("out");
 
+/** The `<audio>` element, once it exists.
+ *
+ *  A MODULE-LEVEL BINDING RATHER THAN THE `const el` BELOW, because `save()` is
+ *  called from the outermost `catch` too. If the probe threw before the element was
+ *  created, a `save()` that read `el` would hit the temporal dead zone, throw a
+ *  second time out of the handler, and lose the very error it was recording — the
+ *  record would come back empty and the run would report "nothing was measured"
+ *  instead of the stack that explains it. */
+let mediaEl = null;
+
 function push(arr, v) {
   if (arr.length < MAX_SAMPLES) arr.push(v);
 }
@@ -209,6 +339,17 @@ function save() {
   rec.saveSeq += 1;
   rec.lastSavedAtWall = Date.now();
   if (rec.firstSavedAtWall == null) rec.firstSavedAtWall = rec.lastSavedAtWall;
+  /* Both clocks, in the same stamp. See `saveTrail`. `mediaSec` is rounded to
+     milliseconds because a raw double per stamp is noise a reader has to skip. */
+  if (rec.saveTrail.length < SAVE_TRAIL_MAX) {
+    rec.saveTrail.push({
+      seq: rec.saveSeq,
+      wall: rec.lastSavedAtWall,
+      mediaSec: mediaEl ? Math.round(mediaEl.currentTime * 1000) / 1000 : null,
+      paused: mediaEl ? mediaEl.paused === true : null,
+      hidden: document.hidden === true,
+    });
+  }
   try { localStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
   try { console.log("FORAY_PROBE_SEAM " + JSON.stringify(rec)); } catch (e) {}
   if (outEl) {
@@ -225,6 +366,11 @@ function save() {
       `${rec.transitions.map((t) => (t.observedGapMs == null ? "…" : Math.round(t.observedGapMs))).join(", ") || "—"}\n` +
       `last stage     ${rec.transitions.length ? rec.transitions[rec.transitions.length - 1].lastStage : "—"}\n` +
       `median timer   ${median(rec.timerIntervalsMs)} (asked for ${TICK_MS})\n` +
+      `record         save #${rec.saveSeq}` +
+      (rec.backgroundedAtWall == null
+        ? " (still visible)"
+        : `, ${((rec.lastSavedAtWall - rec.backgroundedAtWall) / 1000).toFixed(1)} s into the hidden window`) +
+      `\n` +
       `autoplay       ${rec.autoplayBlocked ? "BLOCKED: " + rec.autoplayError : "ok"}\n` +
       `error          ${rec.error || "none"}\n`;
   }
@@ -259,6 +405,9 @@ try {
   el.setAttribute("playsinline", "");
   el.preload = "auto";
   document.body.appendChild(el);
+  /* Publish it to `save()` immediately, so the very first stamp carries a media
+     clock rather than a null. */
+  mediaEl = el;
 
   const note = (m) => {
     push(rec.telemetry, { wall: Date.now(), at: el.currentTime, hidden: document.hidden === true, m: String(m) });
@@ -408,8 +557,9 @@ try {
    * defensive noise. `HtmlAudioBackend.load()` CLEARS any armed out-point — that is
    * its documented contract — so an arm that lands before seg-a's load resolves
    * would be silently discarded, the manager would then arm the authored
-   * `end_sec: 120`, and 120 s is unreachable inside the page's ~105 s life. The run
-   * would report "no seam was reached while backgrounded" with nothing to point at.
+   * `end_sec` (`SEGMENT_A_END_SEC`, 200 s), which is past the end of the tone. The
+   * run would report "no seam was reached while backgrounded" with nothing to point
+   * at — or, worse before 200 s, a boundary at a time nothing chose.
    * `probe-outpoint.js` is immune by accident (it never calls `load()`); this is a
    * hazard phase C introduces by driving the real manager.
    *
