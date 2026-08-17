@@ -331,6 +331,10 @@ export class HtmlAudioBackend {
     /** Ducking level, held on the backend rather than on the element, because
         the element changes underneath it at a handover. */
     this._volume = 1;
+    /** Bumped by every `load()`. Only one thing reads it — the autoplay-refusal
+        recovery, which is the only path here that continues after a promise
+        nobody awaited, and therefore the only one that can be overtaken. */
+    this._loadSeq = 0;
     /** Listeners a surface registered through `addMediaListener`, so they can
         be moved to the promoted element instead of being stranded on the
         demoted one. `player/client.js` repaints off these. */
@@ -867,9 +871,21 @@ export class HtmlAudioBackend {
     this._currentUrl = null; // the blessed element holds nothing; force a real load
     this._disarmOutPoint();
 
-    this.load(item, { startOffset: offset }).then(
+    /* THE RECOVERY MUST NOT OUTLIVE ITS OWN ITEM. Nothing awaits this load —
+       the manager already believes the handover succeeded — so if the listener
+       skips while it is in flight, the continuation below would re-arm the
+       PREVIOUS segment's boundary over the new one and start it. That is a
+       wrong out-point, which this repo costs at a median 936.5 s of the wrong
+       episode. `_loadSeq` is bumped by every `load()`, so reading it back
+       immediately after the call gives this recovery a claim it can check. */
+    const settled = this.load(item, { startOffset: offset });
+    const mine = this._loadSeq;
+    settled.then(
       () => {
         if (this._released) return;
+        if (this._loadSeq !== mine) {
+          return this._emit(`handover.recovery.superseded ${item.id} — a newer load owns the element`);
+        }
         if (boundary != null) this.setOutPoint(boundary);
         this.play();
       },
@@ -892,6 +908,9 @@ export class HtmlAudioBackend {
   load(item, { startOffset = 0 } = {}) {
     if (this._released) return Promise.reject(new Error("backend released"));
     if (!item?.audio_url) return Promise.reject(new Error(`item ${item?.id} has no audio_url`));
+    // After the guards, so a malformed call cannot invalidate a recovery that is
+    // legitimately in flight.
+    this._loadSeq++;
 
     // Contract: a load drops any armed boundary. See the header.
     this._disarmOutPoint();

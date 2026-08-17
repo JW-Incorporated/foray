@@ -1261,6 +1261,45 @@ test("a promoted element that refuses to play falls back to the one holding the 
   assert.equal(w.paused, true);
 });
 
+test("a skip during the recovery does not re-arm the previous segment's boundary", async () => {
+  /* Nothing awaits the recovery's load — the manager already believes the
+     handover succeeded — so a listener who skips while it is in flight would
+     otherwise get the OLD segment's out-point armed over the new one. A wrong
+     out-point is the most expensive failure this player has: a median 936.5 s
+     of the wrong episode. */
+  /* The race is DRIVEN, not hoped for. `laggySeek` on the gesture-holding
+     element means the recovery's own load cannot settle until this test fires
+     the event, so the skip is guaranteed to land while it is in flight. A first
+     draft without that passed for the wrong reason — the recovery happened to
+     settle before the skip, and the assertion about the boundary held by luck. */
+  const { b, a, log } = pair({ a: { laggySeek: true }, warm: { refuse: true } });
+  await b.load(item("a0", A_URL), { startOffset: 0 });   // offset 0 needs no seek
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });   // handover
+  b.setOutPoint(20);
+  b.play();                                              // refused; recovery starts
+  await settle();
+  assert.equal(b.el, a, "precondition: the recovery swapped back");
+  // The recovery disarms before re-loading and re-arms only once its load
+  // settles — which, thanks to `laggySeek`, has not happened yet.
+  assert.equal(b.outPoint, null, "precondition: the recovery is still in flight");
+
+  // The listener skips, and this load DOES settle (offset 0 needs no seek).
+  await b.load(item("c", C_URL), { startOffset: 0 });
+  b.setOutPoint(1000);
+
+  // Now let the recovery's load settle, far too late to be relevant: the seek
+  // it was waiting on lands, which is the one thing that can resolve it.
+  a.settleSeek();
+  await settle();
+
+  assert.equal(b.outPoint, 1000, "the new segment's boundary must survive");
+  assert.equal(b.currentItem?.id, "c");
+  assert.ok(log.some((l) => /handover\.recovery\.superseded/.test(l)));
+});
+
 test("a refusal on the fallback element is a real error and is reported", async () => {
   // Recovery happens once. A second refusal is the ordinary autoplay failure
   // this backend has always surfaced, and it must not loop.
