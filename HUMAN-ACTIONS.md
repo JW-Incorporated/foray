@@ -724,6 +724,16 @@ An emulator is also not a phone for the two things that decide the Android answe
    **Report one thing above all: did it move on through new segments, or did it keep playing one episode?** If the highlighted row is still an early one after 15 minutes of listening, that is the exact failure this is about, and saying so is the whole result.
 
 5. Also say whether the audio **stopped** at any point, and roughly when.
+6. **New, 2026-08-17 — and this is now the most useful thing you can report.**
+   At each change of voice, does it sound like a **short deliberate pause** (about
+   two seconds) or like the **app stopped and came back**? Say roughly how long
+   the longest one felt. Why it is worth a sentence: the gap between two segments
+   was measured at **9.2 seconds** on a backgrounded iOS Simulator (run
+   32036295743) against the 2.0 seconds it is supposed to be, and all of the
+   excess was the next episode loading after the pause had already started. The
+   player now loads the next segment 12 seconds early, while the current one is
+   still playing, so those gaps should be short. **Your ear is the acceptance
+   test** — nothing on this machine can hear it.
 
 **Read this before drawing a conclusion from step 4.** A browser tab is **not** the same as an app. This test is genuinely informative about the engine's timer behaviour, and it is the reason it is worth five minutes — but it **cannot** settle app-level backgrounding, because a browser tab is not subject to it. A clean pass here does not mean the packaged app will pass.
 
@@ -910,6 +920,21 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 
 **Worked if:** there is a comment on #36 answering the four questions in step 6, and `mobile/ios/` is committed with `UIBackgroundModes: audio` in its `Info.plist`.
 
+**Note added by #38 (2026-08-17) — steps 1–4 and 6.2 no longer need a Mac, but this item is not done, and TWO of the steps below are wrong as written.**
+
+`.github/workflows/ios-build.yml` now does the toolchain install, `npm run add:ios`, the `Info.plist` edit (via a unit-tested script, not by hand) and an **unsigned build of both the simulator and the arm64 device target** on a GitHub macOS runner. All of that is **verified working** — run [32021861601](https://github.com/JW-Incorporated/foray/actions/runs/32021861601) reported `** BUILD SUCCEEDED` for both, and `PlistBuddy` read the background-audio key back out of the generated plist. Full detail in `docs/ios-ci.md`.
+
+**Two corrections to the steps above, found by that run:**
+
+1. **Step 1 is wrong: `brew install cocoapods` is not needed.** Capacitor 8's iOS template uses **Swift Package Manager**. `cap add ios` writes a `Package.swift` and runs no `pod install`, and there is **no `App.xcworkspace`** — so if you open anything by hand it is **`mobile/ios/App/App.xcodeproj`**, not a workspace. Xcode resolves the local package itself.
+2. **Step 6.2 is answered.** `window.Capacitor` **is defined** in the iOS shell: `typeof` is `object`, `isNativePlatform()` returns `true`, `getPlatform()` returns `"ios"`, nine plugins are registered, and there were **zero** CSP violations and zero "Content Security Policy" lines in the system log. So our `script-src 'self'` does **not** block Capacitor's bridge on iOS. You do not need to type anything into a console for this one. (Android is a different mechanism and is still open — item #18.)
+
+**Step 6.4 now has a Simulator answer, and it is the good one — but it is the WEAK direction of the evidence.** In the backgrounded Simulator the segment's stop-point fired **4.5 milliseconds** late, with 15 seconds of genuinely hidden playback and 61 measurements behind it, and the `timeupdate` event that drives it kept running at ~252 ms while the ordinary page timers next to it were throttled to 1 second. That is the inference `docs/research/mp1-background-audio.md` §8 called its most load-bearing one, and it held. **A Simulator models neither power management nor true suspension, so this cannot promise a real phone will do the same** — a *failure* there would have settled it; a pass only removes one way of being wrong. Your 15 minutes with the screen off is still the test that counts.
+
+**What is still genuinely yours, and a simulator cannot do:** steps 6.1, 6.3, 6.4 and 6.5 are *device* questions. A simulator models neither power management nor true suspension, so however cleanly CI runs, only a real phone with the screen off answers 6.4. Plus step 7 (whether to commit `mobile/ios/` — note there is no `Podfile.lock`, so plugin versions would be pinned only by `Package.swift` and an uncommitted `mobile/package-lock.json`) and the app id in #15.
+
+**Read the workflow's job summary before spending the 30 minutes.** It may have found the failure for you already; it found two.
+
 **Status:** OPEN
 
 ---
@@ -979,6 +1004,120 @@ iOS is probably unaffected — it injects via a mechanism that runs outside the 
 6. Either way, also say whether the four cards render and whether search works.
 
 **Worked if:** there is a comment on #36 quoting what `Capacitor` evaluated to in the Android console, plus any CSP error text verbatim.
+
+**Note added by #38 (2026-08-17) — iOS came out CLEAN, and that does not help you here.** `.github/workflows/ios-build.yml` booted the iOS Simulator and read `typeof window.Capacitor` off the real page under the real CSP: it is `object`, nine plugins registered, zero CSP violations. So on iOS the bridge survives.
+
+**That is not evidence about Android, and the difference is the whole point of this item.** WKWebView injects via `WKUserScript`, which runs outside the document's CSP — which is exactly why iOS was expected to pass. Android's WebView injects an **inline `<script>` into the served HTML**, where a `<meta>` CSP does apply. The iOS result confirms the *mechanism* explanation in `docs/mobile-shell.md` §5, and that explanation is precisely the reason to expect Android to behave differently. **This stays open**, and one console line on a phone still settles it.
+
+One iOS finding that does bear on your step 6, though: `navigator.serviceWorker` **does not exist at all** on `capacitor://localhost`, so the "app silently starts caching itself" half of the risk is impossible on iOS by construction. On Android the shell origin is `https://localhost`, where the API does exist — so that half of the concern is Android-specific too, and real.
+
+**Status:** OPEN
+
+---
+
+### 19. Get an Apple Developer account and add seven secrets, so CI can put a build on TestFlight
+
+**Tag:** `[BLOCKING]` for any iOS tester build · **Time:** ~20 minutes of clicking, plus up to 48 hours of Apple's review of the membership itself · **Owner:** whoever will own the Apple Developer Program membership · **Cost:** **$99/year** — this is a spend decision, so it is the founders' call and not an agent's (CLAUDE.md decision-authority item 3)
+
+**Why it matters.** #38 built the iOS build in CI, and **it works without any of this**: `.github/workflows/ios-build.yml` compiles the shell unsigned on every run, for both the simulator and a real device's architecture, and that is deliberate — an unsigned build that always runs is worth more than a signing job that never does. But an unsigned build **cannot be installed on a phone**. Everything past "it compiles" — TestFlight, a tester, the locked-screen test that items #11 and #16 actually want — needs an Apple identity, and no amount of engineering substitutes for it.
+
+**Decide first, in one line:** is $99/year worth spending now, or does iOS wait? If it waits, mark this `SKIP` with a few words and the workflow keeps doing the unsigned build; nothing breaks. Do **#15** (the permanent bundle id) before this either way — the App ID you register here is the one you live with.
+
+**Steps.**
+
+1. Join the Apple Developer Program at **`https://developer.apple.com/programs/enroll/`** ($99/year). Apple may take a day or two to approve.
+2. In **App Store Connect** (`https://appstoreconnect.apple.com`) → **Users and Access** → **Integrations** → **App Store Connect API** → **+**, create a key with the **App Manager** role. You get three things, and the `.p8` file **downloads exactly once**:
+   - the **Key ID** (10 characters)
+   - the **Issuer ID** (a UUID, shown above the key list)
+   - the file `AuthKey_<KeyID>.p8`
+3. In the developer portal → **Certificates, Identifiers & Profiles**:
+   - **Identifiers → +** → App IDs → App → Bundle ID **`com.jwincorporated.foray`** exactly (this is #15's value; if #15 rules differently, use that instead and say so here). Tick **Background Modes** under Capabilities.
+   - **Certificates → +** → **Apple Distribution**. Follow Apple's instructions to create the CSR, download the `.cer`, open it so it lands in your Keychain, then in **Keychain Access** right-click the certificate → **Export** → `.p12`, and set a password. Keep both the file and the password.
+   - **Profiles → +** → **App Store Connect** distribution profile for that App ID and that certificate. Download the `.mobileprovision`.
+   - Note your **Team ID** (10 characters, top right of the developer portal, or under Membership details).
+4. Base64-encode the three files. On a Mac:
+
+   ```bash
+   base64 -i Certificates.p12 | pbcopy
+   base64 -i Foray_AppStore.mobileprovision | pbcopy
+   base64 -i AuthKey_ABC1234567.p8 | pbcopy
+   ```
+
+5. At **`https://github.com/JW-Incorporated/foray/settings/secrets/actions`**, click **New repository secret** seven times and create **exactly these names** (the workflow reads these and no others — a typo means the gate reports the secret as missing):
+
+   | Secret name | Value |
+   |---|---|
+   | `IOS_DIST_CERT_P12_BASE64` | base64 of the `.p12` |
+   | `IOS_DIST_CERT_PASSWORD` | the password you set when exporting the `.p12` |
+   | `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the `.mobileprovision` |
+   | `APPLE_TEAM_ID` | your 10-character Team ID |
+   | `APP_STORE_CONNECT_KEY_ID` | the 10-character Key ID |
+   | `APP_STORE_CONNECT_ISSUER_ID` | the Issuer ID UUID |
+   | `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | base64 of the `AuthKey_*.p8` |
+
+6. Run the workflow: **`https://github.com/JW-Incorporated/foray/actions/workflows/ios-build.yml`** → **Run workflow**.
+
+**Two things to know before you start.**
+
+- **Set all seven or none.** The workflow deliberately **fails** when only some are set, rather than skipping the upload quietly — a green run with no build on TestFlight is the failure nobody notices for a release cycle. So if you get interrupted halfway, either finish or delete what you added.
+- **The upload path has never executed.** Every line of the archive/export/upload step is written from Apple's documentation, because no one here has ever had an account to test it against. Treat the first run as debugging, not as a release, and expect one or two fixes. Said plainly rather than discovered later.
+
+**Worked if:** a run of `ios-build` shows `state=ready` at the "Is signing configured?" step and a build appears in App Store Connect → TestFlight. If it gets as far as `altool` and then fails, that is the expected first-run outcome and the log is the useful part — paste it and a session will fix the step.
+
+**Status:** OPEN
+
+---
+
+### 20. Revoke one leaked anonymous Supabase session, and delete one CI artifact
+
+**Tag:** `[BLOCKING]` · **Time:** ~5 minutes ·
+**Owner:** Wyatt (it is a credential, so CLAUDE.md decision-authority item 2 puts
+it with a founder and not with an agent)
+
+**Why it matters.** The `ios-shell-evidence` artifact of run
+**32036295743** shipped the iOS Simulator's whole `localStorage` into a **public**
+repo, and `cp_sb_session` was in it, decodable. It contains:
+
+- an `access_token` — ES256 JWT, `role: authenticated`, `is_anonymous: true`,
+  one-hour lifetime, **already expired**;
+- a **`refresh_token`**, which does **not** expire on a timer and can be exchanged
+  for fresh access tokens until it is revoked. **This is the part that still
+  matters.**
+- the project ref `qjdllvqdcgacvujhclny` and the user id
+  `04ac9215-4acd-4067-8a1e-cf6797ace0f3`.
+
+Per this file's own item on deleting user data, `cp_sb_session` is the **only**
+credential that can reach that account's server rows. The blast radius is genuinely
+small — a throwaway anonymous account created by a Simulator on a CI runner, whose
+rows are a handful of probe events — but it is not zero while the refresh token
+lives, and "small" is not a reason to leave a live credential in public.
+
+**The leak itself is already fixed in the PR that files this** (the artifact now
+redacts every non-probe value and no longer uploads the raw SQLite store), so this
+item is *containment of the one that got out*, not a code change.
+
+**Steps.**
+
+1. In the Supabase dashboard for project **`qjdllvqdcgacvujhclny`**, open
+   **Authentication → Users**, find user **`04ac9215-4acd-4067-8a1e-cf6797ace0f3`**
+   (it will show as an anonymous user), and **delete** it. Deleting the user
+   revokes its refresh token, which is the point — signing it out alone may leave
+   the token usable depending on your session settings.
+2. **Then** delete the artifact: open
+   **`https://github.com/JW-Incorporated/foray/actions/runs/32036295743`** and use
+   the artifact's **⋯ → Delete** control on `ios-shell-evidence` (3.5 MB).
+   **ORDER MATTERS, AND SO DOES THE DELAY.** Do step 1 first — deleting the
+   artifact does not revoke anything, and anyone who already downloaded it still
+   has the token. And do not delete the artifact until `docs/ios-ci.md` §4c has
+   landed on `main`: right now that artifact is the **only** place the 9,153 ms seam
+   measurement exists, and deleting it first orphans every citation in these docs.
+3. While you are in the dashboard, it is worth confirming that **anonymous sign-in
+   is still intended to be enabled** (item #13's *first* verification note asks the
+   same question for a different reason).
+
+**Worked if:** requesting a token refresh with that `refresh_token` returns an
+error rather than a new session, and the run page shows no `ios-shell-evidence`
+artifact.
 
 **Status:** OPEN
 
