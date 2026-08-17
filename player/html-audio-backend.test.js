@@ -127,6 +127,87 @@ test("a rejected play() surfaces as onError, never an unhandled rejection", asyn
   assert.match(reported ?? "", /NotAllowedError/);
 });
 
+/* THE FIRST play() OF A SESSION (#225).
+
+   Autoplay policy is about TASKS, not time: WebKit lifts an element's gesture
+   restriction inside the `play()` call that a user gesture is processing, and
+   the gesture stops being processed when the current task ends. Every start in
+   this player reaches `play()` after `await backend.load(...)`, and a first
+   load of a URL resolves on a media event — a new task. So the first `play()`
+   was always outside the tap and Safari was always entitled to refuse it.
+   `notePlayGesture` spends the gesture up front instead. */
+
+test("notePlayGesture spends the tap on the element, before there is anything to load", () => {
+  const { b, el } = mk();
+  assert.equal(b.notePlayGesture(), true);
+  assert.deepStrictEqual(el.calls, ["play"], "the restriction is lifted by the CALL, so the call has to happen");
+});
+
+test("notePlayGesture is one-shot — the restriction is only ever lifted once", () => {
+  const { b, el } = mk();
+  b.notePlayGesture();
+  assert.equal(b.notePlayGesture(), false);
+  assert.equal(el.calls.filter((c) => c === "play").length, 1);
+});
+
+test("notePlayGesture never touches an element that already holds audio", async () => {
+  /* Priming a loaded element would start it at whatever position it is parked
+     at — the one outcome the load contract ("nothing audible until the asset is
+     at the right position") exists to prevent. An element holding a URL has
+     also already played, so there is nothing left to prime. */
+  const { b, el } = mk();
+  await b.load(item("a"), { startOffset: 600 });
+  el.calls.length = 0;
+  assert.equal(b.notePlayGesture(), false);
+  assert.deepStrictEqual(el.calls, [], "no audio may start from a prime");
+});
+
+test("a prime whose play() rejects does not become an unhandled rejection", async () => {
+  /* Expected, not exceptional: there is no source, so the following `load()`
+     aborts the pending play promise. Node's test runner fails the run on an
+     unhandled rejection, which is the assertion here. */
+  const { b } = mk();
+  b.el.playResult = Promise.reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+  b.notePlayGesture();
+  await new Promise((r) => setTimeout(r, 0));
+});
+
+test("a released backend does not spend a gesture on a dead element", () => {
+  const { b, el } = mk();
+  b.release();
+  el.calls.length = 0;
+  assert.equal(b.notePlayGesture(), false);
+  assert.deepStrictEqual(el.calls, []);
+});
+
+test("the SECOND load of one source settles without yielding — why the second tap worked", async () => {
+  /* The mechanism behind the founder's report in #225: the top button "gave
+     several errors" and the row below it may have worked. Nothing about the two
+     controls differs — what differed is that the second tap found the URL
+     already in the element, where `load()` takes the same-source shortcut. That
+     shortcut settles inside the task that asked for it, so everything after it,
+     `play()` included, stays inside the tap. The first load cannot: it resolves
+     on a media event.
+
+     "Settles without yielding" is measured as "a `.then` callback has run after
+     a single microtask turn", which is only true of an already-resolved
+     promise. */
+  const { b } = mk();
+  const settledIn = (p) => { let done = false; p.then(() => { done = true; }); return () => done; };
+
+  const first = settledIn(b.load(item("a"), { startOffset: 600 }));
+  await Promise.resolve();
+  assert.equal(first(), false, "a cold load has to wait for the network — this is the refused case");
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(first(), true);
+
+  // The next segment of the same episode: same URL, already buffered, already at
+  // the offset.
+  const second = settledIn(b.load({ ...item("b"), audio_url: item("a").audio_url }, { startOffset: 600 }));
+  await Promise.resolve();
+  assert.equal(second(), true, "the same-source shortcut must not yield, or no tap can ever start audio");
+});
+
 /* ---------- rate ---------- */
 
 test("rate set before play survives the load that reset it", async () => {
