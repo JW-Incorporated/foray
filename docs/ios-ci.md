@@ -280,18 +280,22 @@ Three changes in total, because a race cannot be tightened into reliability:
    The 15 s arm clears it by 3x, so a run landing there means something went wrong
    and says so.
 
-### The run that cleared the floor
+### The run that settled it
 
-Run [32025079276](https://github.com/JW-Incorporated/foray/actions/runs/32025079276),
-with those changes in place:
+Run [32026332637](https://github.com/JW-Incorporated/foray/actions/runs/32026332637),
+with those changes in place and `armedWhileHidden: true` — the designed path, not
+the fallback:
 
 | | |
 |---|---|
-| out-point fired | **4.9 ms** past the boundary (`end_sec` 60.001 → stopped 60.015) |
+| out-point fired | **4.5 ms** past the boundary (`end_sec` 45.460 → stopped 45.469) |
 | while hidden? | **yes** — `stoppedWhileBackgrounded: true`, `endReason: "outPoint"` |
-| hidden playback observed | **6.44 s**, clearing the 5 s floor |
-| `timeupdate` while hidden | **27 samples, median 252 ms, max 304 ms** |
-| hidden-page DOM timer | median **1001 ms** over 28 samples (250 ms requested) |
+| hidden playback observed | **15.056 s**, three times the 5 s floor |
+| `timeupdate` while hidden | **61 samples, median 252 ms, max 299 ms** |
+| hidden-page DOM timer | median **1000 ms** over 25 samples (250 ms requested) |
+
+Reproduced across runs: an earlier one (32025079276) got 4.9 ms over **6.44 s** of
+hidden playback and 27 samples via the fallback arm. Same answer, thinner sample.
 
 **So MP1 §8's most load-bearing inference held.** `timeupdate` is a media event
 driven by WebCore's playback-progress timer, not a `DOMTimer`, and it kept firing
@@ -306,18 +310,13 @@ disaster.
 1. **A Simulator is not a device**, so this is the weak direction of the evidence
    (§3). A failure here would have been decisive; a pass removes one way of being
    wrong. `HUMAN-ACTIONS.md` #11 and #14 step 6.4 are unchanged.
-2. **This run's boundary was armed by the 40 s FALLBACK, not by the hidden
-   transition** — `armedWhileHidden: false`. Backgrounding took **54.3 s** after
-   playback started: `simctl launch com.apple.Preferences` returns immediately, but
-   Settings evidently takes most of a minute to actually come to the foreground on
-   a cold-booted runner. The fallback happened to place the boundary 6.4 s inside
-   the hidden window, which is a real measurement and clears the floor — but it is
-   not the 15 s the arm-on-hidden path is designed to give. **The timing constants
-   are deliberately left alone**: the measurement is in hand, the floor catches a
-   thin one, and re-tuning them costs a 10x run per attempt to verify. If a future
-   session wants the fuller window, raise `FALLBACK_ARM_AT_SEC`, lengthen the
-   post-background sleep and the tone together, and check `armedWhileHidden` came
-   back `true`.
+2. **Backgrounding is slow and variable on a cold-booted runner**, which is why the
+   arm is relative to it rather than to a clock. `simctl launch
+   com.apple.Preferences` returns immediately, but Settings has taken anywhere up to
+   ~54 s to actually reach the foreground; one earlier run therefore armed via the
+   40 s fallback (`armedWhileHidden: false`) and got a 6.44 s window instead of 15 s.
+   If a run ever reports `hidden-window-too-short`, that is what happened, and the
+   record says which path armed it.
 
 ### One thing that cost 18 minutes, recorded so nobody re-learns it
 
