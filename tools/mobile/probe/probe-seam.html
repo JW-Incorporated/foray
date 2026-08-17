@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- PHASE C (#28's iOS half). Does the SEAM TRANSITION survive backgrounding?
+
+     Phase B settled the STOP (run 32026332637: 4 ms late over a 15.056 s hidden
+     window, app never resumed). This asks the question that result does not
+     answer: after the stop, does the 2.0 s beat's `setTimeout` fire, does a
+     DIFFERENT episode load, does it seek, and does it play — all with the app in
+     the background? The same run measured hidden DOM timers aligned to a median of
+     1000 ms, so the beat runs on the one clock that is throttled.
+
+     Its CSP is `probe-outpoint.html`'s, and for the same single reason:
+     `media-src 'self'` instead of the shipped page's `media-src https:`, so the
+     two bundled tones can play. The real page correctly blocks local media. What
+     that costs the measurement is stated in `LOCAL_MEDIA_CAVEAT` in
+     tools/mobile/ios-ci.mjs and reprinted with every verdict: a cold cross-origin
+     fetch while hidden is NOT what this measures. `'unsafe-inline'` is absent
+     here, exactly as everywhere else in this repo. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; media-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foray seam-transition probe</title>
+</head>
+<body>
+<h1>Foray seam-transition probe</h1>
+<p>Drives the real <code>player/queue-manager.js</code> over the real
+<code>player/html-audio-backend.js</code> across three bounded segments on two
+different audio files, and records whether each transition — beat, load, seek,
+play — completes while the app is backgrounded.</p>
+<pre id="out">starting…</pre>
+<script type="module" src="probe-seam.js"></script>
+</body>
+</html>

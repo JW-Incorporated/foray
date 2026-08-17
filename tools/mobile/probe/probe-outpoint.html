@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- PHASE B (#38, MP4). Its own CSP, and the difference from index.html's is
+     deliberate and narrow: `media-src 'self'` instead of `media-src https:`.
+
+     The shell's real CSP allows only `https:` media because every real episode
+     comes from a podcast CDN over https and product principle #3 forbids
+     rehosting any of it — so a LOCAL audio file is correctly blocked on the real
+     page. This probe needs a local tone (see install-probe.mjs on why it cannot
+     use somebody's CDN), so it carries its own policy.
+
+     What that costs the measurement: nothing. Phase B is not about the CSP —
+     phase A is, on the real page. Phase B asks an ENGINE question (do our
+     out-point's timers and media events survive backgrounding), and the answer
+     does not depend on which https origins media may load from. `'unsafe-inline'`
+     is still absent here, exactly as everywhere else in this repo. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; media-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foray out-point probe</title>
+</head>
+<body>
+<h1>Foray out-point probe</h1>
+<p>Drives the real <code>player/html-audio-backend.js</code> against a bundled
+tone, arms an out-point, and records how far past it playback gets while the app
+is not in the foreground.</p>
+<pre id="out">starting…</pre>
+<script type="module" src="probe-outpoint.js"></script>
+</body>
+</html>
