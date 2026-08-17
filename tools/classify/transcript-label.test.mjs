@@ -1,12 +1,11 @@
 /* The transcript label: extraction from real feed shapes, and survival through a
    prepare -> merge round trip.  Run: node --test tools/classify/transcript-label.test.mjs
 
-   WHAT THE LABEL IS. A COST signal, not a requirement. We transcribe our own
-   audio at ~1.1x realtime — about 46 minutes of CPU per hour — and on domain
-   vocabulary our ASR beat the publisher's (a Spotify SRT rendered "geology
-   bites" as `jala g b`). So a show shipping `<podcast:transcript>` is cheap to
-   build from and one that does not is merely expensive. Nothing here may read
-   the label as a gate; tools/classify/no-exclusion.test.mjs enforces that.
+   WHAT THE LABEL IS. A COST signal, not a requirement: we transcribe our own
+   audio, so a show shipping `<podcast:transcript>` is cheap to build from and one
+   that does not is merely expensive. The measured rate and the rationale are in
+   labels.mjs, which is the single place they are written down. Nothing here may
+   read the label as a gate; tools/classify/no-exclusion.test.mjs enforces that.
 
    The fixtures below are shapes real feeds emit, including the ugly ones: a
    transcript tag with no `@type`, several tags on one episode, a prose-only
@@ -19,7 +18,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { transcriptLabelsFromXml, emptyTranscriptLabels, LABEL_SCHEMA_VERSION, TRANSCRIPT_LABEL_FIELDS } from "./labels.mjs";
+import { transcriptLabelsFromXml, emptyTranscriptLabels, mergeTranscriptLabels, LABEL_SCHEMA_VERSION, TRANSCRIPT_LABEL_FIELDS } from "./labels.mjs";
 import { batchShowFrom } from "./prepare-batch.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -48,8 +47,9 @@ const untyped = (n) => `      <podcast:transcript url="https://cdn.example/ep${n
 test("a feed with no transcript tags labels zero, without claiming the feed is bad", () => {
   const l = transcriptLabelsFromXml(feed([item(1), item(2)].join("\n")), 8);
   assert.equal(l.transcript_present, false);
-  assert.equal(l.transcript_tags, 0);
+  assert.equal(l.episodes_with_transcript, 0);
   assert.equal(l.episodes_with_timed_transcript, 0);
+  assert.equal(l.transcript_tags, 0);
   assert.deepEqual(l.transcript_types, {});
   // The distinction that matters: we DID read the feed. Two episodes, no tags.
   assert.equal(l.episodes_sampled, 2);
@@ -58,8 +58,9 @@ test("a feed with no transcript tags labels zero, without claiming the feed is b
 test("a timed VTT counts as both a tag and a timed transcript", () => {
   const l = transcriptLabelsFromXml(feed([item(1, vtt(1)), item(2)].join("\n")), 8);
   assert.equal(l.transcript_present, true);
-  assert.equal(l.transcript_tags, 1);
+  assert.equal(l.episodes_with_transcript, 1);
   assert.equal(l.episodes_with_timed_transcript, 1);
+  assert.equal(l.transcript_tags, 1);
   assert.deepEqual(l.transcript_types, { "text/vtt": 1 });
 });
 
@@ -74,26 +75,62 @@ test("a prose-only transcript is a tag but NOT timed — the load-bearing distin
   // Counting it as timed would promise a boundary we cannot resolve.
   const l = transcriptLabelsFromXml(feed(item(1, txt(1))), 8);
   assert.equal(l.transcript_present, true);
-  assert.equal(l.transcript_tags, 1);
+  assert.equal(l.episodes_with_transcript, 1);
   assert.equal(l.episodes_with_timed_transcript, 0);
+  assert.equal(l.transcript_tags, 1);
   assert.deepEqual(l.transcript_types, { "text/plain": 1 });
 });
 
-test("several tags on one episode count as ONE episode with a transcript", () => {
-  // Episodes publish ~2.9 tags each in the wild; counting tags instead of
-  // episodes would report 290% coverage.
+test("several tags on one episode count as ONE episode but THREE tags", () => {
+  // Episodes publish ~2.9 tags each in the wild, so the two quantities differ by
+  // ~2.9x and must not share a name. `episodes_with_transcript` is the coverage
+  // number; `transcript_tags` counts tags and sums to `transcript_types`, matching
+  // the fields of the same names in data/transcript-availability.json. The first
+  // draft used `transcript_tags` for the episode count, producing a label whose own
+  // `transcript_types` summed to 8 while it claimed 3. Caught in review.
   const l = transcriptLabelsFromXml(feed(item(1, [vtt(1), srt(1), txt(1)].join("\n"))), 8);
-  assert.equal(l.transcript_tags, 1);
+  assert.equal(l.episodes_with_transcript, 1);
   assert.equal(l.episodes_with_timed_transcript, 1);
+  assert.equal(l.transcript_tags, 3);
   assert.deepEqual(l.transcript_types, { "text/vtt": 1, "application/x-subrip": 1, "text/plain": 1 });
+});
+
+test("transcript_tags always equals the sum of transcript_types", () => {
+  // The internal consistency the rename exists to restore. Checked over a spread
+  // of shapes rather than one, since the two are incremented in the same loop and
+  // a future edit could easily move one out of it.
+  for (const items of [
+    item(1, vtt(1)),
+    [item(1, [vtt(1), srt(1)].join("\n")), item(2, txt(2)), item(3)].join("\n"),
+    [item(1, [vtt(1), untyped(1)].join("\n")), item(2, [txt(2), srt(2), vtt(2)].join("\n"))].join("\n"),
+    [item(1), item(2)].join("\n")
+  ]) {
+    const l = transcriptLabelsFromXml(feed(items), 8);
+    const summed = Object.values(l.transcript_types).reduce((a, b) => a + b, 0);
+    assert.equal(l.transcript_tags, summed, `tags ${l.transcript_tags} != types sum ${summed}`);
+    assert.ok(l.episodes_with_transcript <= l.transcript_tags);
+    assert.ok(l.episodes_with_timed_transcript <= l.episodes_with_transcript);
+  }
 });
 
 test("a transcript tag with no @type is recorded as unknown, not dropped", () => {
   // A new timestamped format should surface as a question, not as a silent loss.
   const l = transcriptLabelsFromXml(feed(item(1, untyped(1))), 8);
+  assert.equal(l.episodes_with_transcript, 1);
   assert.equal(l.transcript_tags, 1);
   assert.equal(l.episodes_with_timed_transcript, 0);
   assert.deepEqual(l.transcript_types, { unknown: 1 });
+});
+
+test("an untyped tag ALONGSIDE a typed one is still counted", () => {
+  // The realistic case, and the one the first draft dropped: its untyped branch was
+  // an `else if`, so it only fired when NO tag on the episode had a type. A
+  // publisher adding a new timestamped format next to their existing VTT is exactly
+  // "a new format shows up", and it reported nothing. Caught in review.
+  const l = transcriptLabelsFromXml(feed(item(1, [vtt(1), untyped(1)].join("\n"))), 8);
+  assert.equal(l.episodes_with_transcript, 1);
+  assert.equal(l.transcript_tags, 2, "the untyped tag must not vanish");
+  assert.deepEqual(l.transcript_types, { "text/vtt": 1, unknown: 1 });
 });
 
 test("a type with a charset parameter still matches", () => {
@@ -118,14 +155,14 @@ test("counts are a FLOOR over the sampled window, and the window is recorded", (
   const items = Array.from({ length: 20 }, (_, i) => item(1, i < 3 ? vtt(1) : "")).join("\n");
   const l = transcriptLabelsFromXml(feed(items), 8);
   assert.equal(l.episodes_sampled, 8);
-  assert.equal(l.transcript_tags, 3);
+  assert.equal(l.episodes_with_transcript, 3);
   assert.equal(l.episodes_with_timed_transcript, 3);
 });
 
 test("the sample window is honoured exactly", () => {
   const items = Array.from({ length: 10 }, () => item(1, vtt(1))).join("\n");
   assert.equal(transcriptLabelsFromXml(feed(items), 3).episodes_sampled, 3);
-  assert.equal(transcriptLabelsFromXml(feed(items), 3).transcript_tags, 3);
+  assert.equal(transcriptLabelsFromXml(feed(items), 3).episodes_with_transcript, 3);
   assert.equal(transcriptLabelsFromXml(feed(items), 0).episodes_sampled, 0);
 });
 
@@ -140,7 +177,7 @@ test("an unreadable body yields episodes_sampled 0 — 'not read', not 'no trans
 test("a feed with zero items is read but empty, and does not throw", () => {
   const l = transcriptLabelsFromXml(feed(""), 8);
   assert.equal(l.episodes_sampled, 0);
-  assert.equal(l.transcript_tags, 0);
+  assert.equal(l.episodes_with_transcript, 0);
 });
 
 test("an Atom feed does not throw — it is simply unlabelled", () => {
@@ -222,7 +259,7 @@ test("prepare writes the label, merge carries it onto the record, byte for byte"
   const entry = classification.entries["1434243584"];
   assert.ok(entry, "the show must be merged");
   assert.deepEqual(entry.transcript_labels, labels, "the label must survive prepare -> merge unchanged");
-  assert.equal(entry.transcript_labels.transcript_tags, 2);
+  assert.equal(entry.transcript_labels.episodes_with_transcript, 2);
   assert.equal(entry.transcript_labels.episodes_with_timed_transcript, 1);
   assert.equal(entry.transcript_labels.episodes_sampled, 3);
 });
@@ -249,8 +286,8 @@ test("a show whose feed could not be read round-trips with an honestly empty lab
 test("the merge records the label schema version and says the label is not a filter", () => {
   const { classification } = roundTrip({ labels: emptyTranscriptLabels() });
   assert.equal(classification.label_schema_version, LABEL_SCHEMA_VERSION);
-  assert.match(classification.provenance.transcript_labels_are_not_filters, /descriptive only/i);
-  assert.match(classification.provenance.transcript_labels_are_not_filters, /cost/i);
+  assert.match(classification.provenance.transcript_labels, /never an eligibility test/i);
+  assert.match(classification.provenance.transcript_labels, /labels[.]mjs/);
 });
 
 test("the label does not disturb the fields the record already had", () => {
@@ -281,9 +318,58 @@ test("the label is never taken from the agent's results file", () => {
   const labels = transcriptLabelsFromXml(feed([item(1), item(2)].join("\n")), 8);
   const { classification } = roundTrip({
     labels,
-    extraResult: { transcript_labels: { transcript_tags: 999, episodes_with_timed_transcript: 999, transcript_present: true } }
+    extraResult: { transcript_labels: { episodes_sampled: 999, episodes_with_transcript: 999, transcript_present: true } }
   });
   assert.deepEqual(classification.entries["1434243584"].transcript_labels, labels);
+});
+
+/* ---------- re-merge keeps the richer observation ---------- */
+
+test("a re-merge whose feed failed does not destroy the earlier reading", () => {
+  // A Tier-2 escalation re-merges a show Tier 1 already labelled. If that run's
+  // feed fetch 500s, an unconditional overwrite would replace a real reading of 8
+  // episodes with "we saw 0" — data loss in the one field whose whole purpose is
+  // budgeting. Caught in review.
+  const rich = transcriptLabelsFromXml(feed(Array.from({ length: 8 }, () => item(1, vtt(1))).join("\n")), 8);
+  assert.equal(rich.episodes_sampled, 8);
+  assert.deepEqual(mergeTranscriptLabels(rich, emptyTranscriptLabels()), rich);
+});
+
+test("a re-merge that read FEWER episodes does not undo the earlier reading", () => {
+  const wide = transcriptLabelsFromXml(feed([item(1, vtt(1)), item(2, vtt(2)), item(3, vtt(3))].join("\n")), 8);
+  const narrow = transcriptLabelsFromXml(feed(item(1)), 8);
+  assert.equal(wide.episodes_sampled, 3);
+  assert.equal(narrow.episodes_sampled, 1);
+  assert.deepEqual(mergeTranscriptLabels(wide, narrow), wide, "a thinner reading must not overwrite a wider one");
+  assert.deepEqual(mergeTranscriptLabels(narrow, wide), wide, "and a wider one replaces a thinner one");
+});
+
+test("on an equal-width re-reading the FRESH observation wins, because feeds change", () => {
+  // The tie-break, stated as a decision rather than left to whichever branch the
+  // comparison happens to take: a show that has started publishing transcripts
+  // since we last looked must be able to say so.
+  const before = transcriptLabelsFromXml(feed([item(1), item(2)].join("\n")), 8);
+  const after = transcriptLabelsFromXml(feed([item(1, vtt(1)), item(2, vtt(2))].join("\n")), 8);
+  assert.equal(before.episodes_sampled, after.episodes_sampled);
+  assert.deepEqual(mergeTranscriptLabels(before, after), after);
+  assert.equal(mergeTranscriptLabels(before, after).transcript_present, true);
+});
+
+test("merging with nothing on either side still yields a valid label", () => {
+  assert.deepEqual(Object.keys(mergeTranscriptLabels(null, null)).sort(), [...TRANSCRIPT_LABEL_FIELDS].sort());
+  const l = transcriptLabelsFromXml(feed(item(1, vtt(1))), 8);
+  assert.deepEqual(mergeTranscriptLabels(null, l), l);
+  assert.deepEqual(mergeTranscriptLabels(l, null), l);
+  assert.deepEqual(mergeTranscriptLabels(undefined, l), l);
+});
+
+test("the merge never drops a show over which label won", () => {
+  // The founder's constraint applied to this helper: both branches produce a
+  // record, and the show is merged either way.
+  for (const labels of [emptyTranscriptLabels(), transcriptLabelsFromXml(feed(item(1, vtt(1))), 8)]) {
+    const { classification } = roundTrip({ labels });
+    assert.ok(classification.entries["1434243584"], "merged regardless of which label won");
+  }
 });
 
 test("the merge still advances progress for a show with no transcripts", () => {
