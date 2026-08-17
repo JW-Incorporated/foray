@@ -103,6 +103,12 @@ for (const s of cat.shows) {
   if (!topics.size) { noTopics++; continue; }
 
   const next = { topics: [...topics], confidence: conf, source: BASE_SOURCE };
+  /* Provenance is sticky. Once an entry records which overlay it replaced, a
+     later run of this same script must not quietly erase that — otherwise the
+     file stops being idempotent in the only field that says where the entry
+     came from, and the second run looks like a clean base-layer entry that was
+     never anything else. */
+  if (existing?.upgraded_from) next.upgraded_from = existing.upgraded_from;
 
   if (existingSource && existingSource !== BASE_SOURCE) {
     /* Any other overlay: the base layer may only ENRICH it, never rewrite it,
@@ -132,7 +138,12 @@ for (const s of cat.shows) {
     const fixesRootDumping = next.topics.some(
       (t) => t.includes("/") && oldBranches.has(t.split("/")[0]) && !oldBranchesWithChild.has(t.split("/")[0])
     );
-    if (!strictSuperset || !fixesRootDumping) {
+    /* An overlay entry with no topics asserts nothing, so there is nothing to
+       protect and both tests above are meaningless against it (a superset of
+       nothing that fixes no branch). Filling it in cannot remove anything.
+       No such entry exists in the live file today; without this an empty
+       overlay entry would lock a show out of classification permanently. */
+    if (old.length && (!strictSuperset || !fixesRootDumping)) {
       preservedBySource[existingSource] = (preservedBySource[existingSource] || 0) + 1;
       continue;
     }

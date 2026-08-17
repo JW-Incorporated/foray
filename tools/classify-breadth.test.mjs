@@ -168,6 +168,17 @@ test("never enriches a classify-agent entry, even when the map has a child to ad
   assert.equal(out.entries["1"].source, "classify-agent-tier1");
 });
 
+test("fills in an overlay entry that has no topics at all", () => {
+  const classification = {
+    version: 1,
+    entries: { 1: { topics: [], confidence: "low", source: "llm-title-genre" } },
+  };
+  const { res, out } = run({ shows: [show(1, "Food")], classification });
+  assert.equal(res.status, 0, res.stderr);
+  assert.deepEqual(out.entries["1"].topics, ["food"], "an empty overlay entry asserts nothing to protect");
+  assert.equal(out.entries["1"].upgraded_from, "llm-title-genre");
+});
+
 test("an upgrade never drops a topic the overlay asserted", () => {
   const classification = {
     version: 1,
@@ -245,6 +256,29 @@ test("--dry-run reports but writes nothing", () => {
   assert.equal(res.status, 0, res.stderr);
   assert.match(res.stdout, /\[dry-run\]/);
   assert.deepEqual(out.entries["1"].topics, ["space"], "the file on disk must be untouched");
+});
+
+test("keeps upgraded_from across a later re-run", () => {
+  const classification = {
+    version: 1,
+    entries: { 1: { topics: ["food"], confidence: "medium", source: "llm-title-genre" } },
+  };
+  const { path: p } = run({ shows: [show(1, "Baking")], classification });
+  // Second run: the entry is now `genre-map`, so it takes the ordinary path.
+  const res2 = spawnSync(process.execPath, [SCRIPT], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      CATALOG_BREADTH_PATH: join(p, "..", "catalog.json"),
+      GENRE_MAP_PATH: join(p, "..", "genre-map.json"),
+      TAXONOMY_PATH: join(p, "..", "taxonomy.json"),
+      BREADTH_CLASSIFICATION_PATH: p,
+    },
+  });
+  assert.equal(res2.status, 0, res2.stderr);
+  const out = JSON.parse(readFileSync(p, "utf8"));
+  assert.equal(out.entries["1"].upgraded_from, "llm-title-genre", "provenance must not be erased by a re-run");
+  assert.match(res2.stdout, /0 upgraded/);
 });
 
 test("is idempotent: a second run produces the same entries", () => {
