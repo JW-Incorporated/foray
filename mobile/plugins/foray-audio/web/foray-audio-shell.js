@@ -262,6 +262,11 @@ export function createForayAudioShell(env) {
   }
 
   function reconcile() {
+    /* Guarded on `installed` because per-element listeners cannot be removed once
+       an element is gone — `watch` registers them in a closure and `uninstall`
+       restores the prototype, not the elements. Without this an uninstalled shell
+       would keep calling native from events on elements it used to watch. */
+    if (!installed) return;
     if (activeCount() > 0) {
       cancelStop();
       ensureStarted();
@@ -270,19 +275,33 @@ export function createForayAudioShell(env) {
     }
   }
 
-  function onMediaEvent() {
-    try {
-      reconcile();
-    } catch (e) {
-      log("foray-audio: reconcile failed", e);
-    }
-  }
-
   function watch(el) {
     if (watched.has(el)) return;
     watched.add(el);
-    for (const name of RELEASE_EVENTS) el.addEventListener(name, onMediaEvent, false);
-    for (const name of ACQUIRE_EVENTS) el.addEventListener(name, onMediaEvent, false);
+    /* TWO HANDLERS, NOT ONE, and the difference is a bug the suite caught. An
+       acquire has to put the element BACK in `active` before reconciling: the pause
+       that preceded it pruned the element out (see `activeCount`), so a `playing`
+       event that only reconciled would find nothing active, leave the settle timer
+       armed, and stop the foreground service while audio was flowing. Both close
+       over `el` rather than reading `event.target`, so a retargeted event cannot
+       point them at the wrong element. */
+    const acquire = function () {
+      try {
+        active.add(el);
+        reconcile();
+      } catch (e) {
+        log("foray-audio: reconcile failed", e);
+      }
+    };
+    const release = function () {
+      try {
+        reconcile();
+      } catch (e) {
+        log("foray-audio: reconcile failed", e);
+      }
+    };
+    for (const name of RELEASE_EVENTS) el.addEventListener(name, release, false);
+    for (const name of ACQUIRE_EVENTS) el.addEventListener(name, acquire, false);
   }
 
   /**
