@@ -38,6 +38,37 @@ const eligible = remaining.filter((s) => s.feed_url);
 
 const SHARDS = 6;
 
+/* WHY THE BALANCE TESTS BELOW USE A SYNTHETIC REMAINDER (2026-08-17)
+   ------------------------------------------------------------------
+   They used to measure `remaining`, with a floor of 5,000 shows. Reconciling the
+   six `reclassify-*` branches onto main took that set from 17,936 to ~509, so
+   the floor and the 10% spread bounds became unsatisfiable by ANY key: 509 shows
+   across 6 buckets is sampling noise (measured hash spread 1.41, which is
+   exactly what a uniform hash gives at n=509). This file's own header requires
+   assertions that survive the set shrinking, so they now measure a remainder
+   that is CONSTRUCTED, large, and reproduces the real pathology forever.
+
+   AND THE PATHOLOGY IS NOT WHAT #203 RECORDED. Its comment says the skew came
+   from the 1,851 done shows "taken in ascending-id order, which drained one
+   residue class first". That does not reproduce: draining the lowest 1,851 ids
+   leaves the modulo key at 1.045x, not 2.20x. The real cause, measured from the
+   branches: of main's 1,851 agent rows, 1,724 were in modulo residue 0, because
+   main had only ever received shard 0's lineage — the other five shards' work
+   sat unmerged on their branches. So the modulo key was skewed by WHICH SHARD's
+   output had landed, and `drainLane(0)` below is that condition exactly.
+
+   Note the direction this moved after reconciliation: over the live remainder
+   the modulo key is now 15.95x unbalanced (335 of 509 sit in residue 2, shard 2
+   being the branch furthest behind), so the hashed key matters MORE than when
+   #203 measured it, not less. */
+
+/** The catalogue as it looks when exactly one modulo lane has been classified —
+    the condition that actually produced the 2.20x skew. Deterministic, and
+    independent of how much real work is left. */
+function drainLane(lane) {
+  return catalog.shows.filter((s) => Number(s.apple_collection_id) % SHARDS !== lane);
+}
+
 function histogram(shows, keyFn) {
   const counts = new Array(SHARDS).fill(0);
   for (const s of shows) counts[keyFn(String(s.apple_collection_id))]++;
@@ -47,10 +78,17 @@ const spread = (counts) => Math.max(...counts) / Math.min(...counts);
 
 /* ---------- the data itself, so a failure below is legible ---------- */
 
-test("the real catalogue is present and large enough to measure balance on", () => {
+test("the real catalogue is present, and remaining/eligible are consistent with it", () => {
   assert.ok(catalog.shows.length > 19_000, `expected ~19,787 shows, saw ${catalog.shows.length}`);
-  assert.ok(remaining.length > 5_000, `expected thousands still needing a pass, saw ${remaining.length}`);
-  assert.ok(eligible.length > 5_000, `expected thousands eligible, saw ${eligible.length}`);
+  /* No floor on `remaining` any more, deliberately: the fleet's whole purpose is
+     to drive it to zero, and it is ~509 since the shard branches were
+     reconciled. A floor here would turn "the pipeline is nearly finished" into a
+     red build. What must hold at every size is the partition invariant. */
+  const classified = catalog.shows.length - remaining.length;
+  assert.ok(remaining.length >= 0 && classified >= 0);
+  assert.equal(classified + remaining.length, catalog.shows.length);
+  assert.ok(eligible.length <= remaining.length, "eligible is a subset of remaining");
+  assert.ok(drainLane(0).length > 15_000, `the synthetic remainder must stay large, saw ${drainLane(0).length}`);
 });
 
 /* ---------- the defect this replaces ---------- */
@@ -59,13 +97,20 @@ test("Number(id) % 6 is badly unbalanced over the shows that remain — the defe
   // Measured 2026-08-16 over 17,936 remaining: shard0 1,514 (8.4%) against
   // shard3 3,334 (18.6%). Finish time is the LARGEST shard, so shard0 runs dry
   // around day 12 and idles for over half the blitz.
-  const counts = histogram(remaining, (id) => Number(id) % SHARDS);
+  const counts = histogram(drainLane(0), (id) => Number(id) % SHARDS);
   assert.ok(
     spread(counts) > 1.5,
-    `the modulo key is expected to be badly unbalanced (it was 2.20x); measured ${spread(counts).toFixed(3)} ` +
-      `over ${remaining.length} shows: ${counts.join(", ")}. If this is now balanced the ids changed shape — ` +
-      `re-measure before concluding the hashed key is unnecessary.`
+    `the modulo key is expected to be badly unbalanced when one lane has been drained ` +
+      `(it was 2.20x on the real 17,936); measured ${spread(counts).toFixed(3)}: ${counts.join(", ")}. ` +
+      `If this is now balanced the ids changed shape — re-measure before concluding the hashed key ` +
+      `is unnecessary.`
   );
+  /* And it is worse, not better, on the live remainder after reconciliation:
+     shard 2 is the branch furthest behind, so residue 2 dominates what is left. */
+  if (remaining.length >= 100) {
+    const live = histogram(remaining, (id) => Number(id) % SHARDS);
+    assert.ok(spread(live) > 1.5, `live modulo spread ${spread(live).toFixed(3)}: ${live.join(", ")}`);
+  }
 });
 
 test("Number(id) % 6 is nearly balanced over the WHOLE catalogue — why the skew was missed", () => {
@@ -80,31 +125,46 @@ test("Number(id) % 6 is nearly balanced over the WHOLE catalogue — why the ske
 
 /* ---------- the fix ---------- */
 
-test("the hashed key balances the shows that remain to within 10%", () => {
-  const counts = histogram(remaining, (id) => shardOf(id, SHARDS));
+test("the hashed key balances a drained-lane remainder to within 10%", () => {
+  // The case modulo fails: one shard's output landed, the other five did not.
+  const counts = histogram(drainLane(0), (id) => shardOf(id, SHARDS));
   assert.ok(
     spread(counts) < 1.1,
-    `hashed shard spread over ${remaining.length} remaining shows is ${spread(counts).toFixed(3)} (want < 1.10): ${counts.join(", ")}`
+    `hashed spread over the drained-lane remainder is ${spread(counts).toFixed(3)} (want < 1.10): ${counts.join(", ")}`
   );
 });
 
-test("the hashed key balances the eligible set to within 10%", () => {
-  const counts = histogram(eligible, (id) => shardOf(id, SHARDS));
-  assert.ok(
-    spread(counts) < 1.1,
-    `hashed shard spread over ${eligible.length} eligible shows is ${spread(counts).toFixed(3)}: ${counts.join(", ")}`
-  );
+test("the hashed key balances the whole catalogue, and every drained lane", () => {
+  const whole = histogram(catalog.shows, (id) => shardOf(id, SHARDS));
+  assert.ok(spread(whole) < 1.1, `hashed spread over the whole catalogue is ${spread(whole).toFixed(3)}: ${whole.join(", ")}`);
+  // Not just lane 0 — the property must not depend on which shard got ahead.
+  for (let lane = 0; lane < SHARDS; lane++) {
+    const counts = histogram(drainLane(lane), (id) => shardOf(id, SHARDS));
+    assert.ok(spread(counts) < 1.1, `draining lane ${lane} leaves hashed spread ${spread(counts).toFixed(3)}: ${counts.join(", ")}`);
+  }
 });
 
-test("no shard is starved — every one carries at least 14% of the remaining work", () => {
+test("no shard is starved — every one carries at least 14% of a drained-lane remainder", () => {
   // The failure mode being pinned is not "uneven", it is "a routine with nothing
   // to do". An even sixth is 16.7%; below ~14% a shard finishes early and burns
   // its scheduled runs printing CLASSIFY_BATCH_EMPTY.
-  const counts = histogram(remaining, (id) => shardOf(id, SHARDS));
+  const counts = histogram(drainLane(0), (id) => shardOf(id, SHARDS));
   const total = counts.reduce((a, b) => a + b, 0);
   counts.forEach((n, i) => {
     const pct = (n / total) * 100;
-    assert.ok(pct >= 14, `shard ${i} holds only ${pct.toFixed(1)}% of remaining work (${n}/${total})`);
+    assert.ok(pct >= 14, `shard ${i} holds only ${pct.toFixed(1)}% of the drained-lane remainder (${n}/${total})`);
+  });
+});
+
+test("no shard is left with nothing while others still have work", () => {
+  /* The size-appropriate version of the check above for the LIVE remainder.
+     A 14% floor is not meaningful at n=509 (sampling noise alone spans
+     70..99), but "some shards idle while work exists" is meaningful at any
+     size, and it is the thing that actually wastes scheduled runs. */
+  if (remaining.length < SHARDS * 6) return; // too small for even this to mean anything
+  const counts = histogram(remaining, (id) => shardOf(id, SHARDS));
+  counts.forEach((n, i) => {
+    assert.ok(n > 0, `shard ${i} has nothing to do while ${remaining.length} shows remain: ${counts.join(", ")}`);
   });
 });
 
@@ -120,13 +180,20 @@ test("no show migrates between shards as the rest of the catalogue is classified
      version of this test did the latter, which holds for every possible
      implementation — including a deliberately unstable one — and so could not
      have caught the thing it was named for. Caught in review. */
-  const world = eligible.slice(0, 3_000);
+  /* The world is a slice of the CATALOGUE against an EMPTY classification, not
+     of `eligible` against the live one. Same property, but it no longer shrinks
+     as the fleet finishes: after the shard branches were reconciled `eligible`
+     is ~448, so a 3,000-show slice of it silently became a 448-show slice and
+     the `checked > 500` assertion at the bottom failed for a reason that had
+     nothing to do with stability. */
+  const world = catalog.shows.filter((s) => s.feed_url).slice(0, 3_000);
+  const empty = { version: 1, entries: {} };
   const now = Date.now();
   const progress = { in_flight: {}, failed_fetch: {} };
 
   const ownerBefore = new Map();
   for (let i = 0; i < SHARDS; i++) {
-    for (const s of selectFreshCandidates(world, classification, progress, now, Infinity, 3, `${i}/${SHARDS}`)) {
+    for (const s of selectFreshCandidates(world, empty, progress, now, Infinity, 3, `${i}/${SHARDS}`)) {
       ownerBefore.set(String(s.apple_collection_id), i);
     }
   }
@@ -137,9 +204,7 @@ test("no show migrates between shards as the rest of the catalogue is classified
   const done = new Set(world.filter((_, i) => i % 5 !== 0).map((s) => String(s.apple_collection_id)));
   const after = {
     version: 1,
-    entries: Object.fromEntries(
-      Object.entries(classification.entries).concat([...done].map((id) => [id, { source: "classify-agent-tier1", needs_review: false }]))
-    )
+    entries: Object.fromEntries([...done].map((id) => [id, { source: "classify-agent-tier1", needs_review: false }]))
   };
 
   let checked = 0;

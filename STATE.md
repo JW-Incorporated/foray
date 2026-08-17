@@ -35,6 +35,8 @@ docs/. Completed workstreams move to their plan doc's retro section.
   byte-identical.
 - **Owned files:** `data/breadth-classification.json`,
   `tools/classify/reconcile-shards.mjs` + `.test.mjs`.
+- **Also touched, and worth knowing:** `tools/classify/shard.test.mjs` (#203's,
+  re-based off live progress onto a constructed remainder — see below).
 - **Shared files it touches:** `tools/classify/merge-results.mjs` (one line — the
   provenance spread below), `test/suite-integrity.test.js` (one new floor, in its
   own final commit), `docs/agents/runners.md`, `tools/classify/README.md`,
@@ -88,6 +90,22 @@ docs/. Completed workstreams move to their plan doc's retro section.
   routines run `--mode fresh` — so the queue is latent. But a deliberate tier-2
   pass is now a ~10× bigger job than the last time anyone sized it, and tier 2
   fetches transcripts, so it is a spend decision. Noted in `HUMAN-ACTIONS.md` #9.
+- **Heads-up — this rebased over #203, and two of its findings interact.**
+  (1) **#203 changed the shard key** (`Number(id) % N` → `fnv1a32(String(id)) % N`).
+  Every one of the 17,427 rows on the branches predates that, so
+  `reconcile-shards.mjs`'s lane check accepts **either** key (`lanesOf()`).
+  Tightening it to the hash alone would reject all 17,427. (2) **#203's
+  `shard.test.mjs` measured balance over the shows that REMAIN, with a floor of
+  5,000** — this merge takes that set to 509, so five of its tests failed.
+  They now measure a *constructed* remainder (`drainLane()`) that reproduces the
+  real pathology permanently, which is what its own header asked for ("a pinned
+  count would be red by tomorrow lunchtime"). **And #203's stated cause was
+  wrong:** the 2.20x skew did not come from the done shows being "taken in
+  ascending-id order" (draining the lowest 1,851 ids leaves modulo at 1.045x) —
+  it came from **1,724 of main's 1,851 agent rows sitting in modulo residue 0**,
+  because main had only ever received shard 0's lineage. Its fix is still right,
+  and now matters *more*: over the live 509 remainder the modulo key is **15.95x**
+  unbalanced (shard 2 is furthest behind), against 1.41x hashed.
 - **Heads-up — `merge-results.mjs` now SPREADS `provenance` instead of replacing
   it.** It used to assign a fresh four-key object, which deleted every other
   layer's provenance on the next batch — `base_layer` (from #198's

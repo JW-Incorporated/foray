@@ -38,11 +38,15 @@
       prompt, and the taxonomy only ever grew (PR #175 renamed and removed
       nothing), so the later pass is at least as well-informed. Ties and a
       missing timestamp keep the incumbent, so the rule can never churn.
-   4. DISJOINTNESS IS VERIFIED, NOT TRUSTED. `--shard i/N` selects on
-      `Number(id) % N === i`, but on `main` that flag FAILS OPEN — an empty
-      `--shard ""` (an unset variable in a routine), an out-of-range `6/6`
-      or a non-numeric value are all silently ignored and the run then
-      selects from the WHOLE catalogue (issue #203 makes them refuse).
+   4. DISJOINTNESS IS VERIFIED, NOT TRUSTED. `--shard i/N` used to FAIL
+      OPEN: an empty `--shard ""` (an unset variable in a routine), an
+      out-of-range `6/6` or a non-numeric value were all silently ignored
+      and the run then selected from the WHOLE catalogue. PR #203 fixed
+      that — `parseShard` now throws — but every row already on the six
+      branches predates the fix, so it cannot be assumed of this data.
+      #203 also changed the KEY, from `Number(id) % N` to
+      `fnv1a32(String(id)) % N`, so a branch can hold rows partitioned by
+      either. `lanesOf()` accepts both, and says why.
       A shard that ran unsharded would have classified other shards' shows,
       so this script hard-fails on (a) two shards adopting the same id and
       (b) any id whose residue is not that shard's lane. Both are fatal,
@@ -99,6 +103,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { shardOf } from "./labels.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -110,14 +115,43 @@ export function isAgentRow(entry) {
   return typeof entry?.source === "string" && entry.source.startsWith("classify-agent");
 }
 
-/* The lane `--shard i/N` selects this id into, or null.
-   `prepare-batch.mjs:226` uses a raw `%`; this normalises negatives, so the
-   two would disagree for a negative id. Apple collection ids are positive,
-   so the difference is unreachable — but it is a difference, not a mirror. */
+/* The LEGACY lane: `Number(id) % N`, the key `--shard i/N` used until PR #203.
+   Every one of the 17,427 rows already sitting on the six branches was selected
+   with it, so it is not history — it is what the data on disk is partitioned by.
+   (This normalises negatives where the original used a raw `%`; Apple
+   collection ids are positive, so the difference is unreachable.) */
 export function laneOf(id, shardCount) {
   const n = Number(id);
   if (!Number.isFinite(n) || !Number.isInteger(shardCount) || shardCount <= 0) return null;
   return ((n % shardCount) + shardCount) % shardCount;
+}
+
+/* EVERY lane a shard could legitimately have selected this id into.
+ *
+ * PR #203 changed the shard key from `Number(id) % N` to
+ * `fnv1a32(String(id)) % N`, because the modulo key was 2.20x unbalanced over
+ * the shows that remained and would have idled a sixth of the fleet. That means
+ * a single branch can legitimately hold rows partitioned by TWO different keys:
+ * everything committed before #203 by the modulo key, everything after it by the
+ * hash. Checking only one would reject the other half as off-lane and abort a
+ * correct merge — the guard would fire on the fleet working as intended.
+ *
+ * So a row is in-lane if EITHER key puts it there. That is weaker than a single
+ * key by exactly a factor of two in the worst case (an unsharded run's rows have
+ * ~2/6 rather than ~1/6 chance of looking legitimate), and it is still decisive
+ * at scale: an unsharded shard contributing ~3,000 rows would produce ~2,000
+ * off-lane ones. Do not "tighten" this to the hash alone until every branch has
+ * been re-cut post-#203; it would reject 17,427 valid rows. */
+export function lanesOf(id, shardCount) {
+  const lanes = new Set();
+  const legacy = laneOf(id, shardCount);
+  if (legacy !== null) lanes.add(legacy);
+  try {
+    lanes.add(shardOf(id, shardCount)); // the post-#203 key
+  } catch {
+    /* shardOf throws on a nonsensical count; the legacy lane already covers us */
+  }
+  return [...lanes];
 }
 
 /** The shard index a branch name claims (`reclassify-3` -> 3), or null. */
@@ -198,9 +232,9 @@ export function reconcile({ base, shards, shardCount = DEFAULT_SHARD_COUNT, taxo
         const inherited = JSON.stringify(row) === JSON.stringify(incumbent);
         if (inherited) { stat.incumbent_kept++; continue; }
 
-        if (index !== null && laneOf(id, shardCount) !== index) {
+        if (index !== null && !lanesOf(id, shardCount).includes(index)) {
           stat.off_lane++;
-          errors.push(`${branch}: show ${id} is in lane ${laneOf(id, shardCount)}, not ${index}, and differs from the incumbent — this shard classified a show outside its slice (see issue #203: --shard used to fail open)`);
+          errors.push(`${branch}: show ${id} is in lane ${lanesOf(id, shardCount).join(" or ")}, not ${index}, and differs from the incumbent — this shard classified a show outside its slice (see issue #203: --shard used to fail open)`);
           continue;
         }
         const incumbentAt = incumbent?.classified_at;
@@ -211,9 +245,9 @@ export function reconcile({ base, shards, shardCount = DEFAULT_SHARD_COUNT, taxo
       }
       /* Rule 4b: the lane check. A shard whose `--shard` failed open would
          land here with ids from every residue. */
-      if (index !== null && laneOf(id, shardCount) !== index) {
+      if (index !== null && !lanesOf(id, shardCount).includes(index)) {
         stat.off_lane++;
-        errors.push(`${branch}: show ${id} is in lane ${laneOf(id, shardCount)}, not ${index} — this shard did not stay in its slice (see issue #203: --shard used to fail open)`);
+        errors.push(`${branch}: show ${id} is in lane ${lanesOf(id, shardCount).join(" or ")}, not ${index} — this shard did not stay in its slice (see issue #203: --shard used to fail open)`);
         continue;
       }
       /* Rule 4a: two shards must never claim the same show. With the lane

@@ -79,8 +79,8 @@ const FLOORS = {
   // whose deletion would be hardest to notice and most expensive to discover,
   // because the thing it guards is an absence.
   "tools/classify/no-exclusion.test.mjs": 25,
-  "tools/classify/reconcile-shards.test.mjs": 64,
-  "tools/classify/shard.test.mjs": 22,
+  "tools/classify/reconcile-shards.test.mjs": 69,
+  "tools/classify/shard.test.mjs": 23,
   "tools/classify/transcript-label.test.mjs": 29,
   "tools/foray/check-forays.test.mjs": 81,
   "tools/refresh/dai.test.mjs": 8,

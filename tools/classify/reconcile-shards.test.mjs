@@ -32,10 +32,12 @@ import {
   auditNoRegression,
   isAgentRow,
   laneOf,
+  lanesOf,
   shardIndexOf,
   DEFAULT_SHARDS,
   DEFAULT_SHARD_COUNT
 } from "./reconcile-shards.mjs";
+import { shardOf } from "./labels.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const readJson = (p) => JSON.parse(fs.readFileSync(path.join(ROOT, p), "utf8"));
@@ -59,8 +61,13 @@ const agent = (over = {}) => ({
 });
 const genre = (topics) => ({ topics, confidence: "low", source: "genre-map" });
 
-/* Ids chosen so their lane is unambiguous: 600 % 6 === 0, 601 % 6 === 1, ... */
-const ID = { l0: "600", l1: "601", l2: "602", l3: "603", l4: "604", l5: "605", l0b: "606" };
+/* Ids chosen so their lane is UNAMBIGUOUS UNDER BOTH SHARD KEYS: for each of
+   these, `Number(id) % 6` and `fnv1a32(String(id)) % 6` agree. That matters
+   because `lanesOf()` deliberately accepts either (PR #203 changed the key
+   mid-flight and the branches hold rows from both eras), so an id whose two
+   keys disagree belongs to two lanes and cannot express "off-lane" in a
+   fixture. Verified by the two `lanesOf` tests below. */
+const ID = { l0: "1008", l1: "1003", l2: "1004", l3: "1023", l4: "1000", l5: "1007", l0b: "1026" };
 
 function baseFile(over = {}) {
   return {
@@ -83,6 +90,23 @@ const shard = (i, entries, over = {}) => ({ branch: `reclassify-${i}`, index: i,
 const TAX = new Set(["science", "nature", "food", "history", "music", "comedy", "sports", "space", "food/grilling-bbq"]);
 
 const run = (base, shards, opts = {}) => reconcile({ base, shards, shardCount: DEFAULT_SHARD_COUNT, taxonomyIds: TAX, ...opts });
+
+/* ------------------------------------------------- 0. the fixtures hold */
+
+test("every fixture id lands in the same lane under BOTH shard keys", () => {
+  /* If this fails, the negative lane tests below stop testing anything: an id
+     whose modulo lane and hashed lane differ is legitimately in two lanes, so
+     it can never be "off-lane" for either of them. Pick new ids rather than
+     relaxing this. */
+  for (const [name, id] of Object.entries(ID)) {
+    assert.equal(laneOf(id, DEFAULT_SHARD_COUNT), shardOf(id, DEFAULT_SHARD_COUNT), `fixture ${name} (${id}) is ambiguous`);
+    assert.equal(lanesOf(id, DEFAULT_SHARD_COUNT).length, 1, `fixture ${name} (${id}) spans two lanes`);
+  }
+  // and they cover all six lanes, so "every lane rejects every other" is real
+  const lanes = ["l0", "l1", "l2", "l3", "l4", "l5"].map((k) => laneOf(ID[k], DEFAULT_SHARD_COUNT));
+  assert.deepEqual(lanes, [0, 1, 2, 3, 4, 5]);
+  assert.equal(laneOf(ID.l0b, DEFAULT_SHARD_COUNT), 0, "l0b must share l0's lane");
+});
 
 /* ------------------------------------------------- 1. the union itself */
 
@@ -440,6 +464,58 @@ test("laneOf mirrors prepare-batch's `Number(id) % N === i`", () => {
   assert.equal(laneOf("600", 0), null);
 });
 
+test("lanesOf accepts BOTH shard keys, because the branches hold both", () => {
+  /* PR #203 replaced `Number(id) % N` with `fnv1a32(String(id)) % N`. Rows
+     committed before it are partitioned by the first, rows after by the second,
+     and a single branch can hold both. */
+  const id = "1459232606";
+  const legacy = laneOf(id, 6);
+  const hashed = shardOf(id, 6);
+  const lanes = lanesOf(id, 6);
+  assert.ok(lanes.includes(legacy), "the legacy modulo lane must stay valid");
+  assert.ok(lanes.includes(hashed), "the post-#203 hashed lane must be valid");
+  assert.ok(lanes.length <= 2 && lanes.length >= 1);
+});
+
+test("lanesOf collapses to one lane when both keys agree", () => {
+  let same = null;
+  for (let n = 600; n < 900; n++) {
+    if (laneOf(String(n), 6) === shardOf(String(n), 6)) { same = String(n); break; }
+  }
+  assert.ok(same, "expected at least one id where the two keys agree");
+  assert.equal(lanesOf(same, 6).length, 1);
+});
+
+test("a row in-lane under ONLY the hashed key is accepted", () => {
+  /* The regression this guards: checking the legacy key alone would reject
+     every row a post-#203 batch produced, aborting a correct merge. */
+  const base = baseFile();
+  let id = null;
+  for (let n = 100000; n < 200000; n++) {
+    const k = String(n);
+    if (shardOf(k, 6) === 0 && laneOf(k, 6) !== 0) { id = k; break; }
+  }
+  assert.ok(id, "expected an id the hash puts in lane 0 and modulo does not");
+  base.entries[id] = genre(["science"]);
+  const { entries, errors } = run(base, [shard(0, { [id]: agent({ topics: ["space"] }) })]);
+  assert.deepEqual(errors, [], "a hashed-key row must not be rejected as off-lane");
+  assert.equal(entries[id].source, "classify-agent-tier1");
+});
+
+test("a row off-lane under BOTH keys is still fatal", () => {
+  const base = baseFile();
+  let id = null;
+  for (let n = 100000; n < 200000; n++) {
+    const k = String(n);
+    if (shardOf(k, 6) !== 0 && laneOf(k, 6) !== 0) { id = k; break; }
+  }
+  assert.ok(id);
+  base.entries[id] = genre(["science"]);
+  const { entries, errors } = run(base, [shard(0, { [id]: agent({ topics: ["space"] }) })]);
+  assert.equal(entries, null, "neither key puts this id in lane 0, so it is off-lane work");
+  assert.match(errors[0], /did not stay in its slice/);
+});
+
 test("shardIndexOf reads the lane off the branch name", () => {
   assert.equal(shardIndexOf("reclassify-4"), 4);
   assert.equal(shardIndexOf("reclassify"), null);
@@ -709,7 +785,7 @@ test("every agent row sits in some lane of the recorded shard count", () => {
   const bad = [];
   for (const id of Object.keys(FILE.entries)) {
     if (!isAgentRow(FILE.entries[id])) continue;
-    if (!lanes.has(laneOf(id, shardCount))) bad.push(id);
+    if (!lanesOf(id, shardCount).some((l) => lanes.has(l))) bad.push(id);
   }
   assert.deepEqual(bad, [], "agent rows outside every recorded shard lane");
 });

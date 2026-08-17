@@ -312,13 +312,22 @@ Precedence, in full:
 | agent, same or newer `classified_at` | agent | base row wins (`incumbent_kept`) |
 | anything | absent | base row untouched |
 
-**Disjointness is verified, not trusted.** `--shard i/N` selects on
-`Number(id) % N === i`, but on `main` that flag *fails open*: an empty
-`--shard ""` (an unset variable in a routine), an out-of-range `6/6` or a
-non-numeric value are silently ignored and the run then selects from the whole
-catalogue (issue #203 makes them refuse). A shard that ran unsharded would have
-classified other shards' shows, so this script hard-fails on any id whose
-residue is not that shard's lane, and on any id two shards both claim.
+**Disjointness is verified, not trusted.** `--shard i/N` used to *fail open*: an
+empty `--shard ""` (an unset variable in a routine), an out-of-range `6/6` or a
+non-numeric value were silently ignored and the run then selected from the whole
+catalogue. PR #203 fixed that — `parseShard` throws now — but **every row already
+on the six branches predates the fix**, so it cannot be assumed of this data. A
+shard that ran unsharded would have classified other shards' shows, so this
+script hard-fails on any id whose lane is not that shard's, and on any id two
+shards both claim.
+
+**Two keys are accepted, on purpose.** #203 also replaced the shard key
+(`Number(id) % N` → `fnv1a32(String(id)) % N`), so one branch can hold rows
+partitioned by either: everything before #203 by modulo, everything after by the
+hash. `lanesOf()` accepts both. Do not tighten it to the hash alone until every
+branch has been re-cut post-#203 — it would reject all 17,427 existing rows. The
+guard is still decisive at scale: an unsharded shard contributing ~3,000 rows
+would produce ~2,000 that neither key can place in its lane.
 
 The only exemption is a row **byte-identical to the incumbent** — an inherited
 row the shard never ran. Identity, not "older timestamp": an off-lane row that
