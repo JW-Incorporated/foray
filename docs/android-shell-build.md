@@ -386,10 +386,15 @@ and pauses the outgoing element only after the incoming one is `canplay`. The
 silent window drops to the authored **2.0 s** beat.
 
 That matters here specifically because **audibility is the currency the whole
-Android argument is denominated in.** MP1 §5.2 measures Blink exempting an
-audible page from throttling *and* from freezing, with a 30 s grace after audio
-stops (`kRecentAudioDelay`, whose source comment reads *"A page cannot be
-throttled or frozen 30 seconds after playing audio"*). Before #227 the app spent
+Android argument is denominated in** — and be careful which half of that is
+measured, because MP1 keeps them apart. **Measured** (§4, desktop Chromium, the
+same engine as Android WebView): a hidden page's timers collapse the moment the
+element pauses and are left alone — 111 ms median for a 100 ms timer, identical to
+visible — while it stays audible. **Source-traced, not measured** (§5.2): that
+Blink exempts an audible page from *freezing* as well, and the 30 s grace after
+audio stops (`kRecentAudioDelay`, whose source comment reads *"A page cannot be
+throttled or frozen 30 seconds after playing audio"*) — a constant read out of
+Chromium, not a stopwatch reading. Before #227 the app spent
 9.2 s of that 30 s window at every one of Foray #1's **16 cross-episode seams**,
 with a JS timer inside it that has to fire for the Foray to continue. Now it
 spends 2.0 s. And #227 removes a cliff, not just slack: 9,153 ms was **92% of
