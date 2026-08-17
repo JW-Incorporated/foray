@@ -168,48 +168,68 @@ const LOAD_SETTLE_TIMEOUT_MS = 10_000;
        collapses ~21x. "A page cannot be throttled or frozen 30 seconds after
        playing audio" is the source comment.
 
-   So a load issued after the boundary runs in the worst window the platform
-   has, and a load issued BEFORE it runs in the best one. That is the fix: warm
-   the next segment while the current one is still audible, and let the boundary
-   hand over to an element that is already `canplay` at the right offset.
+   ── AND THAT REASONING WAS WRONG. THE HANDOVER IS PARKED, DEFAULT OFF ──────
 
-   THE WINDOW IS "AUDIBLE", NOT "VISIBLE", AND THAT DISTINCTION IS THE WHOLE
-   MECHANISM. It is the obvious objection to this design — if a hidden page is
-   throttled, a prefetch in a hidden page is throttled too, and this buys
-   nothing — and the answer is that hiding is not what costs us. The same run
-   settles it on the same device: segment A played **hidden and audible** for 15
-   seconds and its out-point still landed **3 ms** late, while the load that ran
-   **hidden and silent** took 9,153 ms. Blink measures the same split directly
-   (§4.1: hidden+playing 111 ms median for a 100 ms timer, identical to visible;
-   hidden+paused 2,387 ms, a ~21x collapse; recovers the moment audio resumes).
-   `_maybeOpenPrefetchWindow` therefore refuses to open on a paused element —
-   that guard is not defensive noise, it is what guarantees every warm load
-   starts inside the audible window.
+   The two bullets above are about DOM TIMERS and PROCESS SUSPENSION, and both
+   are true. The inference drawn from them — "so a load issued while audio is
+   playing runs in the un-throttled window" — is FALSE, and it was measured false
+   the first time it ran on a device. Run **32057395270** shipped the handover to
+   an iOS Simulator and the seam got WORSE than the bug: `observedGapMs: null`,
+   `lastStage: canplay`, the listener hears the segment end and then nothing.
+   Read `simulator-log-seam.txt` from that run's artifact before touching any of
+   this; it carries the `WebKit:Media` element lifecycle and settles the question.
 
-   AND IT IS WHY WARMING CANNOT BE A FOREGROUND-ONLY WARM-UP. A Foray is ~61
-   minutes over 32 segments; the listener locks the phone in the first minute.
-   Only 1 or 2 of the 16 cross-episode seams happen before backgrounding, so
-   filling a queue of elements while visible would fix the two seams nobody is
-   troubled by and none of the fourteen they are. What is continuously available
-   at EVERY seam is not visibility — it is the audio that is already playing.
+   WHAT IT SHOWS. Every step of the HTML media load algorithm is a QUEUED TASK,
+   and in a hidden page those tasks are delivered SECONDS apart. Same run, same
+   page, times re-based on the primary element's out-point pause:
 
-   THE BYTES ARE NOT THE PROBLEM, WHICH IS ALSO MEASURED. Mid-file 64 KB ranged
-   GETs against six of the real sources in `data/segment-sources.json`: TTFB
-   median 0.99 s, worst 1.41 s, all six 206 (desktop, home network — a lower
-   bound, and it excludes the media pipeline). Every one of them fits inside the
-   2.0 s beat. A CDN that answers in a second cannot explain 9.1 s for a local
-   file, and a warm HTTP cache would not have helped: the cost is in getting an
-   element to `canplay`, which is why the warmed element has to BECOME the
-   player rather than prime a cache for it.
+     VISIBLE, first load     prepareForLoad -> selectMediaResource +0.20 s ->
+                             HaveMetadata +0.24 s -> HaveEnoughData +0.13 s
+                             TOTAL 590 ms
+     HIDDEN + AUDIBLE, warm  20.09 prepareToPlay -> 23.56 prepareForLoad
+                             (+3.47 s) -> 27.46 prepareForLoad (+3.90 s) ->
+                             27.47 selectMediaResource -> nothing for 5.0 s
+     HIDDEN + SILENT, cold   32.49 load() -> 34.88 prepareForLoad (+2.4 s) ->
+                             38.46 selectMediaResource (+3.5 s) ->
+                             43.59 HaveMetadata (+5.1 s) -> 43.63 canplay
+                             TOTAL 11.14 s
 
-   THE SECOND REASON TO SHIP THIS, WHICH IS ABOUT RISK RATHER THAN COMFORT.
-   9,153 ms of silence sits just under TWO independent 10-second cliffs:
-   `LOAD_SETTLE_TIMEOUT_MS` above (cross it and the segment is DROPPED) and
-   WebKit's `audibleActivityClearDelay` (cross it and the web process loses the
-   activity keeping it unsuspended, mid-seam, which from the outside is "the app
-   stopped"). The player is 847 ms from both. A warmed seam is 2.0 s, which is
-   20% of each — the same fix, and the only one, for a slow seam, a dropped
-   segment and a suspended process.
+   THE MIDDLE ROW IS THE REFUTATION. Those 3.47 s and 3.90 s gaps happened while
+   segment A WAS PLAYING AUDIBLY — in the very same window the out-point fired
+   1 ms late. So:
+
+     **MEDIA-ELEMENT LOAD TASKS ARE THROTTLED BY VISIBILITY.
+       DOM TIMERS ARE THROTTLED BY AUDIBILITY. THEY ARE DIFFERENT RULES.**
+
+   §4.1 of mp1-background-audio.md measured TIMERS. Generalising it to LOADS is
+   the mistake that produced this feature, and it is an easy one to make twice —
+   the note beside §4.1 exists to stop the next person making it.
+
+   So warming buys nothing the platform will honour: an ~11 s task chain does not
+   fit in a lead time any segment can afford, and 11.78 s of real lead was not
+   enough. `PREFETCH_LEAD_SEC` below is not a tuning error to be nudged upward;
+   the model behind it was wrong.
+
+   IT ALSO MADE THE FALLBACK WORSE, WHICH IS HOW A SLOW SEAM BECAME A DROPPED
+   SEGMENT. See `_discardWarm` for the log lines: the discard queued two more
+   task-chain steps AHEAD of the cold load, taking it from 9.14 s to 11.14 s,
+   across `LOAD_SETTLE_TIMEOUT_MS`. That is fixed independently of the parking —
+   a boundary now does no media work on the warm element at all.
+
+   WHAT STAYS TRUE, AND STILL NEEDS FIXING SOMEWHERE ELSE. The bytes are not the
+   problem: mid-file 64 KB ranged GETs against six of the real sources in
+   `data/segment-sources.json` answer in 0.99 s median / 1.41 s worst (desktop,
+   home network — a lower bound). And the defect is real and unsolved: a seam is
+   ~9-11 s on a locked phone. Worse, a hidden load measured **11.14 s on a small
+   LOCAL bundled file** against a 10,000 ms `LOAD_SETTLE_TIMEOUT_MS` — so DROPPED
+   SEGMENTS AT SEAMS ARE STRUCTURAL, not bad luck, and predate this feature. The
+   pre-handover path cleared that deadline by 847 ms and this log shows that was
+   luck. Converting drops into slow seams by making the deadline
+   visibility-aware is the live follow-up.
+
+   IF YOU RE-OPEN THE HANDOVER, what would have to be true first: a measurement
+   that shows a hidden-page load completing inside a lead a real segment can
+   afford. Not another inference from the timer numbers.
 
    WHAT THIS DOES NOT DO. It does not make the beat shorter, and it must not:
    2.0 s of silence between two different voices is authored (`seam-gap.js`,
@@ -260,6 +280,13 @@ const LOAD_SETTLE_TIMEOUT_MS = 10_000;
  *
  * Divided by playback rate at the point of use, because the load takes wall
  * clock and not content — at 2x this arms 24 s of content early.
+ *
+ * MEASURED INSUFFICIENT, AND NOT BY A LITTLE. Run 32057395270 gave a warm load
+ * 11.78 s of real lead in the audible window and it did not reach a promotable
+ * state: the hidden-page task chain alone is ~11 s, ~5 s of it before any data
+ * moves. Do not raise this number and re-ship — the reasoning above is sound
+ * about the deadline and the content, and wrong about the platform. See the
+ * refutation in the header.
  */
 export const PREFETCH_LEAD_SEC = 12;
 
@@ -272,15 +299,18 @@ export class HtmlAudioBackend {
    *   `node --test` run that does not ask for it — prefetch is simply
    *   unavailable and every path below behaves exactly as it did before it
    *   existed.
-   * @param {boolean} [opts.prefetch] set false to run one-element. The escape
-   *   hatch for a runtime where a second element misbehaves.
+   * @param {boolean} [opts.prefetch] **DEFAULT FALSE — the handover is parked.**
+   *   Opt in only to measure it. When false no second element is constructed at
+   *   all, so this backend is byte-for-byte the one-element backend that shipped
+   *   before the handover existed. See §"prefetch" for the measurement that
+   *   parked it.
    * @param {Function} [opts.telemetry]
    * @param {number} [opts.loadTimeoutMs] deadline for either load path.
    *   Injected only so the stall cases are testable in milliseconds instead of
    *   ten seconds.
    */
   constructor({
-    element = null, warmElement = null, prefetch = true, telemetry = null,
+    element = null, warmElement = null, prefetch = false, telemetry = null,
     loadTimeoutMs = LOAD_SETTLE_TIMEOUT_MS,
   } = {}) {
     const el = element ?? (typeof Audio !== "undefined" ? new Audio() : null);
@@ -305,16 +335,24 @@ export class HtmlAudioBackend {
        interchangeable — they swap roles on every cross-episode seam, and a
        difference between them (in the document vs not, playsinline vs not)
        would be a difference the listener hears on alternate segments. */
-    this._warmEl = prefetch === false ? null : (warmElement ?? makeWarmElement(el));
+    /* NOT CONSTRUCTED UNLESS ASKED FOR. "Off" has to mean that no second media
+       element exists, rather than one existing and being left alone: a
+       constructed element is a client of the same media task queue the real load
+       needs, and that queue is the scarce resource in a hidden page. Off is
+       therefore provably indistinguishable from the backend that shipped before
+       any of this. */
+    this._warmEl = prefetch === true ? (warmElement ?? makeWarmElement(el)) : null;
     if (this._warmEl) {
       this._warmEl.preload = "auto";
       // Same reasoning as above: never `crossOrigin`, on either element.
     }
-    /** Non-null once prefetch has been switched off for cause, and it is a
-        one-way door: every reason below is "warming coincided with something
+    /** Non-null once prefetch is off, for whatever reason, and once it is off it
+        is a one-way door: every cause below is "warming coincided with something
         going wrong", and retrying that on a listener's commute is not a
         diagnosis, it is a second failure. */
-    this._prefetchOffReason = this._warmEl ? null : "no second element is available";
+    this._prefetchOffReason = this._warmEl
+      ? null
+      : (prefetch === true ? "no second element is available" : "the handover is parked (see §prefetch)");
     /** `{ id, url, offset, ready, failed }` for the item being warmed. */
     this._warm = null;
     /** Detaches the warm element's own listeners. */
@@ -823,12 +861,36 @@ export class HtmlAudioBackend {
   }
 
   /** Stop warming and let go of whatever the warm element holds. */
-  _discardWarm(why) {
+  /**
+   * @param {string}  why
+   * @param {boolean} [releaseElement] also drop the element's buffer. **Never
+   *   true on a path a boundary can reach** — see below.
+   *
+   * DISCARDING MUST NOT TOUCH THE ELEMENT AT A BOUNDARY, and this is measured,
+   * not defensive. `removeAttribute("src") + load()` starts the media load
+   * algorithm again, and every step of that algorithm is a QUEUED TASK sharing
+   * one queue with the cold fallback load we are about to need. In a hidden page
+   * those tasks are delivered ~3 s apart (run 32057395270, `simulator-log-
+   * seam.txt`), so two extra steps put ~5 s in front of the load the listener is
+   * actually waiting for:
+   *
+   *     33.31s  WARM     prepareForLoad             <- the discard
+   *     34.88s  PRIMARY  prepareForLoad             <- the fallback, already behind
+   *     37.02s  WARM     selectMediaResource task fired
+   *     38.46s  WARM     selectMediaResource "nothing to load"
+   *     38.46s  PRIMARY  selectMediaResource task fired    <- 4 ms after the warm one
+   *
+   * That took the fallback from 9.14 s to 11.14 s, across `LOAD_SETTLE_TIMEOUT_MS`
+   * — so a seam that used to be slow DROPPED THE SEGMENT instead. Forgetting the
+   * bookkeeping is free and is all a boundary needs; the buffer is superseded the
+   * next time `prefetch()` assigns a src, and released for real by `release()`.
+   */
+  _discardWarm(why, { releaseElement = false } = {}) {
     if (this._warmCleanup) { this._warmCleanup(); this._warmCleanup = null; }
     if (!this._warm) return;
     const id = this._warm.id;
     this._warm = null;
-    if (this._warmEl) {
+    if (releaseElement && this._warmEl) {
       try { this._warmEl.removeAttribute("src"); this._warmEl.load(); } catch (_) { /* fine */ }
     }
     this._emit(`prefetch.discarded ${id}: ${why}`);
@@ -1291,7 +1353,7 @@ export class HtmlAudioBackend {
     this._disarmOutPoint();
     // Before `_released` stops it mattering, and before the listeners go: the
     // warm element is holding a buffer too, and it must not be left decoding.
-    this._discardWarm("released");
+    this._discardWarm("released", { releaseElement: true });
     this._detach(this.el);
     this.el.pause();
     this.el.removeAttribute("src");
