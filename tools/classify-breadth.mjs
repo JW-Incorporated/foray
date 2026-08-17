@@ -11,16 +11,19 @@
 
    Higher layers WIN. This script is the bottom of the stack, so it writes
    entries that are absent or still on its own layer, leaves every
-   `classify-agent-*` judgement alone, and touches any other overlay only
-   when it can ADD nodes without removing one (see the strict-superset rule
-   below). Until 2026-08 it did the
+   `classify-agent-*` judgement completely alone, and touches any other
+   overlay only to ENRICH it in place — adding the child nodes that fix a
+   branch the overlay left bare, and nothing else. Until 2026-08 it did the
    opposite — it rebuilt `entries` from scratch and wrote the result, so a
    single re-run would have silently deleted every agent-authored
    classification in the file (1,851 of them at the time this was fixed)
    and every entry for a show missing from the input catalog. That is why
    the file below is a merge, not a rebuild.
 
-   Usage: node tools/classify-breadth.mjs [--in data/catalog-breadth.json] [--dry-run]
+   Usage: node tools/classify-breadth.mjs [--in <catalog>] [--dry-run]
+     --in is resolved against the CWD (like the env overrides below), so run it
+     from the repo root: `--in data/catalog-breadth.json`. --dry-run reports
+     what would change and writes nothing.
 
    Env overrides (mirrors tools/classify/'s convention; tests only):
      CATALOG_BREADTH_PATH, GENRE_MAP_PATH, TAXONOMY_PATH,
@@ -74,7 +77,7 @@ const unmappedGenres = new Set();
 const staleMapTopics = new Set();
 
 const preservedBySource = {};
-let wrote = 0, added = 0, changed = 0, unchanged = 0, upgraded = 0, noTopics = 0;
+let wrote = 0, added = 0, changed = 0, unchanged = 0, enriched = 0, noTopics = 0;
 
 for (const s of cat.shows) {
   const id = String(s.apple_collection_id);
@@ -103,52 +106,72 @@ for (const s of cat.shows) {
   if (!topics.size) { noTopics++; continue; }
 
   const next = { topics: [...topics], confidence: conf, source: BASE_SOURCE };
-  /* Provenance is sticky. Once an entry records which overlay it replaced, a
-     later run of this same script must not quietly erase that — otherwise the
-     file stops being idempotent in the only field that says where the entry
-     came from, and the second run looks like a clean base-layer entry that was
-     never anything else. */
-  if (existing?.upgraded_from) next.upgraded_from = existing.upgraded_from;
 
-  if (existingSource && existingSource !== BASE_SOURCE) {
-    /* Any other overlay: the base layer may only ENRICH it, never rewrite it,
-       and only for the one defect this pass exists to fix.
+  /* Note the test is on `existing`, not on `existingSource`: an entry with no
+     `source` field at all is still somebody's work, and the whole point of the
+     rule below is that an unrecognised layer is protected by default. Testing
+     the source would have dropped a sourceless entry straight through to the
+     base path and rewritten it. */
+  if (existing && existingSource !== BASE_SOURCE) {
+    /* Any other overlay: the base layer ENRICHES the entry in place. It does
+       not replace it, does not re-source it, does not touch its confidence,
+       and adds nothing except the child nodes that fix a branch the overlay
+       left bare.
 
        The 2026-07 `llm-title-genre` pass is the case in hand — for whole
        genres it emitted nothing but the bare branch (`["gaming"]`,
-       `["personal-journals"]`), i.e. strictly less than the genre map now
-       says, while outranking it. Two conditions, both required:
+       `["personal-journals"]`) while outranking a map that now names the
+       child.
 
-         1. strict superset — nothing the overlay asserted is dropped, so this
-            can never un-classify or narrow a show; and
-         2. the addition turns a branch the overlay left at its root into one
-            with a child.
+       Adding ONLY the fixing children is the part that took two attempts to
+       get right, and the reason is measurable. Writing the map's whole topic
+       list instead also bolts on its coarse SECONDARY branches (`Games`
+       carries `hobbies`, `Astronomy` carries `science`, `Social Sciences`
+       carries psychology + society + economics). Measured on the live file:
+       replacing the entry wholesale on any strict superset touched 2,021
+       shows and made root dumping WORSE, 9,741 -> 10,502 pairs; gating that
+       on "fixes a bare branch" cut it to 352 shows but still rode 179 new
+       bare-root pairs in on their backs. Adding just the children rides none.
 
-       Condition 2 is what stops this from being a numbers exercise. Without
-       it the map also bolts its coarse SECONDARY branches onto every touched
-       show (`Social Sciences` carries psychology + society + economics), which
-       adds hundreds of new bare-root tags — measurably making root dumping
-       worse while looking like more classification. Measured on the live file:
-       2,021 shows qualified on condition 1 alone and root-only pairs went
-       9,741 -> 10,502. */
+       Enriching in place rather than replacing also keeps every other field
+       the overlay carried — its `by` batch marker, its rationale, its
+       confidence — which "additive" has to mean if it is going to mean
+       anything. */
     const old = existing.topics || [];
-    const strictSuperset = old.every((t) => next.topics.includes(t)) && next.topics.length > old.length;
     const oldBranches = new Set(old.map((t) => t.split("/")[0]));
     const oldBranchesWithChild = new Set(old.filter((t) => t.includes("/")).map((t) => t.split("/")[0]));
-    const fixesRootDumping = next.topics.some(
-      (t) => t.includes("/") && oldBranches.has(t.split("/")[0]) && !oldBranchesWithChild.has(t.split("/")[0])
-    );
-    /* An overlay entry with no topics asserts nothing, so there is nothing to
-       protect and both tests above are meaningless against it (a superset of
-       nothing that fixes no branch). Filling it in cannot remove anything.
-       No such entry exists in the live file today; without this an empty
-       overlay entry would lock a show out of classification permanently. */
-    if (old.length && (!strictSuperset || !fixesRootDumping)) {
-      preservedBySource[existingSource] = (preservedBySource[existingSource] || 0) + 1;
+
+    /* An overlay entry with no topics asserts nothing, so nothing can be lost
+       by filling it in wholesale. No such entry exists in the live file today;
+       without this branch an empty overlay entry would lock its show out of
+       classification permanently. */
+    if (old.length === 0) {
+      entries[id] = { ...existing, topics: next.topics, confidence: next.confidence, enriched_by: BASE_SOURCE, enriched_nodes: next.topics };
+      enriched++;
+      wrote++;
       continue;
     }
-    entries[id] = { ...next, upgraded_from: existingSource };
-    upgraded++;
+
+    const fixes = next.topics.filter(
+      (t) => t.includes("/") && oldBranches.has(t.split("/")[0]) && !oldBranchesWithChild.has(t.split("/")[0])
+    );
+    if (!fixes.length) {
+      const key = existingSource || "(no source)";
+      preservedBySource[key] = (preservedBySource[key] || 0) + 1;
+      continue;
+    }
+    /* Each child goes immediately before its own bare parent. The parent is
+       guaranteed to be present as a bare root: a branch only qualifies as a
+       fix when the overlay named it with no child. */
+    const merged = [...old];
+    for (const child of fixes) merged.splice(merged.indexOf(child.split("/")[0]), 0, child);
+    entries[id] = {
+      ...existing,
+      topics: merged,
+      enriched_by: BASE_SOURCE,
+      enriched_nodes: [...(existing.enriched_nodes || []), ...fixes],
+    };
+    enriched++;
     wrote++;
     continue;
   }
@@ -174,9 +197,13 @@ if (staleMapTopics.size) {
 }
 
 /* The invisible regression this pass could cause is un-classification: a show
-   that had topics yesterday and has none today. Nothing above can do that (we
-   only ever add or replace), so this is a cheap assertion that the merge above
-   stayed a merge — not a hypothetical. */
+   that had topics yesterday and has none today.
+   BE HONEST ABOUT WHAT THIS IS: the real protection is structural — `entries`
+   starts as a copy of what was on disk and every write carries a non-empty
+   `topics` — so this loop should be unreachable. It is a belt-and-braces
+   assertion that a future edit has not broken that property, not the mechanism
+   that guarantees it. Keep it: the failure it catches is silent, and an
+   unreachable check that costs one pass over 19,787 keys is a bargain. */
 const lost = Object.keys(priorEntries).filter(
   (id) => (priorEntries[id].topics || []).length > 0 && !(entries[id]?.topics || []).length
 );
@@ -186,13 +213,20 @@ if (lost.length) {
   process.exit(1);
 }
 
+/* Provenance is per-layer, and merged rather than replaced. merge-results.mjs
+   records `last_batch_id`/`last_batch_tier` here; this script must not sign
+   over the top of a file whose best 1,851 entries it just refused to touch. */
 const doc = {
   version: prior.version || 1,
   built_at: new Date().toISOString(),
   provenance: {
-    produced_by: "classify-breadth.mjs",
-    method: "deterministic genre map (base layer; higher-precedence overlays preserved)",
-    input: inPath || "data/catalog-breadth.json",
+    ...(prior.provenance || {}),
+    base_layer: {
+      produced_by: "classify-breadth.mjs",
+      method: "deterministic genre map (base layer; higher-precedence overlays enriched in place, never replaced)",
+      input: CATALOG_PATH.startsWith(ROOT) ? CATALOG_PATH.slice(ROOT.length + 1).replace(/\\/g, "/") : CATALOG_PATH,
+      built_at: new Date().toISOString(),
+    },
   },
   entries,
 };
@@ -206,7 +240,7 @@ for (const id of Object.keys(entries)) {
 }
 console.log(
   `${dryRun ? "[dry-run] " : ""}base layer: wrote ${wrote}/${cat.shows.length} shows ` +
-    `(${added} new, ${changed} changed, ${unchanged} unchanged, ${upgraded} upgraded from a lower-trust overlay), ` +
+    `(${added} new, ${changed} changed, ${unchanged} unchanged, ${enriched} overlay entries enriched in place), ` +
     `${noTopics} with no mappable genre.`
 );
 console.log(`preserved higher-precedence entries:`, preservedBySource);

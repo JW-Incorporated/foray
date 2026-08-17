@@ -77,10 +77,11 @@ test("classifies a show whose genre is in the map", () => {
   assert.equal(out.entries["1"].source, "genre-map");
 });
 
-test("emits the child node and its parent, in map order", () => {
+test("emits the child node ahead of its parent, in map order", () => {
   const { out } = run({ shows: [show(1, "Astronomy")] });
-  assert.ok(out.entries["1"].topics.includes("space/astronomy"));
-  assert.ok(out.entries["1"].topics.includes("space"));
+  const t = out.entries["1"].topics;
+  assert.ok(t.indexOf("space/astronomy") < t.indexOf("space"), "child must lead its parent: " + t.join());
+  assert.deepEqual(t, GENRE_MAP.map.Astronomy.topics, "order follows the map, not insertion luck");
 });
 
 test("writes no entry for a show whose genre is not in the map, and warns", () => {
@@ -135,27 +136,49 @@ test("preserves an llm-title-genre entry that knows something the map does not",
   assert.deepEqual(out.entries["1"].topics, ["food/baking"]);
 });
 
-test("upgrades a lower-trust overlay when the map adds a child to its bare root", () => {
+test("enriches a lower-trust overlay in place when the map names a child of its bare root", () => {
+  const classification = {
+    version: 1,
+    entries: {
+      1: { topics: ["food"], confidence: "medium", source: "llm-title-genre", by: "breadth-refine-3", rationale: "kept" },
+    },
+  };
+  const { res, out } = run({ shows: [show(1, "Baking")], classification });
+  assert.equal(res.status, 0, res.stderr);
+  assert.deepEqual(out.entries["1"].topics, ["food/baking", "food"], "child inserted ahead of its bare parent");
+  assert.equal(out.entries["1"].source, "llm-title-genre", "the overlay still owns the entry");
+  assert.equal(out.entries["1"].confidence, "medium", "the base layer does not restate the overlay's confidence");
+  assert.equal(out.entries["1"].by, "breadth-refine-3", "every other field the overlay carried survives");
+  assert.equal(out.entries["1"].rationale, "kept");
+  assert.equal(out.entries["1"].enriched_by, "genre-map");
+  assert.deepEqual(out.entries["1"].enriched_nodes, ["food/baking"]);
+  assert.match(res.stdout, /1 overlay entries enriched in place/);
+});
+
+test("enrichment adds ONLY the fixing child, never the map's other branches", () => {
   const classification = {
     version: 1,
     entries: { 1: { topics: ["food"], confidence: "medium", source: "llm-title-genre" } },
   };
-  const { res, out } = run({ shows: [show(1, "Baking")], classification });
-  assert.equal(res.status, 0, res.stderr);
-  assert.deepEqual(out.entries["1"].topics, ["food/baking", "food"]);
-  assert.equal(out.entries["1"].source, "genre-map");
-  assert.equal(out.entries["1"].upgraded_from, "llm-title-genre", "provenance of the replaced layer is recorded");
-  assert.match(res.stdout, /1 upgraded from a lower-trust overlay/);
+  // Carries food/baking (the fix) plus a bare `science` that must not ride along.
+  const genreMap = {
+    version: 1,
+    map: { "Cake Science": { topics: ["food/baking", "food", "science"], confidence: "high" } },
+  };
+  const { out } = run({ shows: [show(1, "Cake Science")], classification, genreMap });
+  assert.deepEqual(out.entries["1"].topics, ["food/baking", "food"], "a bare `science` is not an enrichment");
+  assert.deepEqual(out.entries["1"].enriched_nodes, ["food/baking"]);
 });
 
-test("declines to upgrade when the map would only bolt on another bare root", () => {
+test("declines to touch an overlay when the map only offers another bare root", () => {
   const classification = {
     version: 1,
     entries: { 1: { topics: ["food"], confidence: "medium", source: "llm-title-genre" } },
   };
   const { out } = run({ shows: [show(1, "Nutrition")], classification });
-  assert.deepEqual(out.entries["1"].topics, ["food"], "adding a bare `science` is not an upgrade");
+  assert.deepEqual(out.entries["1"].topics, ["food"]);
   assert.equal(out.entries["1"].source, "llm-title-genre");
+  assert.equal(out.entries["1"].enriched_by, undefined);
 });
 
 test("never enriches a classify-agent entry, even when the map has a child to add", () => {
@@ -166,27 +189,78 @@ test("never enriches a classify-agent entry, even when the map has a child to ad
   const { out } = run({ shows: [show(1, "Baking")], classification });
   assert.deepEqual(out.entries["1"].topics, ["food"]);
   assert.equal(out.entries["1"].source, "classify-agent-tier1");
+  assert.equal(out.entries["1"].enriched_by, undefined);
+});
+
+test("an entry with NO source field is protected exactly like a named overlay", () => {
+  const classification = {
+    version: 1,
+    entries: { 1: { topics: ["food/baking", "food"], confidence: "high", display_title: "Pastry Arts" } },
+  };
+  const { res, out } = run({ shows: [show(1, "Food")], classification });
+  assert.equal(res.status, 0, res.stderr);
+  assert.deepEqual(out.entries["1"].topics, ["food/baking", "food"], "a sourceless entry is still somebody's work");
+  assert.equal(out.entries["1"].display_title, "Pastry Arts");
+  assert.equal(out.entries["1"].source, undefined, "and it is not re-sourced to the base layer");
+  assert.match(res.stdout, /no source/);
 });
 
 test("fills in an overlay entry that has no topics at all", () => {
   const classification = {
     version: 1,
-    entries: { 1: { topics: [], confidence: "low", source: "llm-title-genre" } },
+    entries: { 1: { topics: [], confidence: "low", source: "llm-title-genre", by: "breadth-refine-1" } },
   };
   const { res, out } = run({ shows: [show(1, "Food")], classification });
   assert.equal(res.status, 0, res.stderr);
   assert.deepEqual(out.entries["1"].topics, ["food"], "an empty overlay entry asserts nothing to protect");
-  assert.equal(out.entries["1"].upgraded_from, "llm-title-genre");
+  assert.equal(out.entries["1"].by, "breadth-refine-1");
+  assert.equal(out.entries["1"].enriched_by, "genre-map");
 });
 
-test("an upgrade never drops a topic the overlay asserted", () => {
+test("enrichment never drops a topic the overlay asserted", () => {
   const classification = {
     version: 1,
     entries: { 1: { topics: ["food", "science"], confidence: "medium", source: "llm-title-genre" } },
   };
   const { out } = run({ shows: [show(1, "Baking")], classification });
-  // "Baking" does not carry `science`, so it is not a superset -> preserved whole.
-  assert.deepEqual(out.entries["1"].topics, ["food", "science"]);
+  assert.deepEqual(out.entries["1"].topics, ["food/baking", "food", "science"], "science is kept, baking is added");
+});
+
+test("a duplicated topic in an overlay does not block enrichment", () => {
+  const classification = {
+    version: 1,
+    entries: { 1: { topics: ["food", "food"], confidence: "medium", source: "llm-title-genre" } },
+  };
+  const { out } = run({ shows: [show(1, "Baking")], classification });
+  assert.ok(out.entries["1"].topics.includes("food/baking"), "a length comparison must not stand in for a set test");
+});
+
+test("does not add a whole branch the overlay never named", () => {
+  const classification = {
+    version: 1,
+    entries: { 1: { topics: ["space/astronomy", "space"], confidence: "medium", source: "llm-title-genre" } },
+  };
+  const genreMap = {
+    version: 1,
+    map: { Mixed: { topics: ["space/astronomy", "space", "food/baking", "food"], confidence: "high" } },
+  };
+  const { out } = run({ shows: [show(1, "Mixed")], classification, genreMap });
+  assert.deepEqual(out.entries["1"].topics, ["space/astronomy", "space"], "food is a new BRANCH, not a fix for a bare one");
+  assert.equal(out.entries["1"].enriched_by, undefined);
+});
+
+test("enriches the branch left bare and leaves the one that already has a child", () => {
+  const classification = {
+    version: 1,
+    entries: { 1: { topics: ["space", "food/baking", "food"], confidence: "medium", source: "llm-title-genre" } },
+  };
+  const genreMap = {
+    version: 1,
+    map: { Mixed: { topics: ["space/astronomy", "space", "food/baking", "food"], confidence: "high" } },
+  };
+  const { out } = run({ shows: [show(1, "Mixed")], classification, genreMap });
+  assert.deepEqual(out.entries["1"].enriched_nodes, ["space/astronomy"], "food already has a child; only space was bare");
+  assert.deepEqual(out.entries["1"].topics, ["space/astronomy", "space", "food/baking", "food"]);
 });
 
 test("preserves an entry whose source it has never heard of (fail-safe direction)", () => {
@@ -258,34 +332,34 @@ test("--dry-run reports but writes nothing", () => {
   assert.deepEqual(out.entries["1"].topics, ["space"], "the file on disk must be untouched");
 });
 
-test("keeps upgraded_from across a later re-run", () => {
-  const classification = {
-    version: 1,
-    entries: { 1: { topics: ["food"], confidence: "medium", source: "llm-title-genre" } },
-  };
-  const { path: p } = run({ shows: [show(1, "Baking")], classification });
-  // Second run: the entry is now `genre-map`, so it takes the ordinary path.
-  const res2 = spawnSync(process.execPath, [SCRIPT], {
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      CATALOG_BREADTH_PATH: join(p, "..", "catalog.json"),
-      GENRE_MAP_PATH: join(p, "..", "genre-map.json"),
-      TAXONOMY_PATH: join(p, "..", "taxonomy.json"),
-      BREADTH_CLASSIFICATION_PATH: p,
-    },
-  });
-  assert.equal(res2.status, 0, res2.stderr);
-  const out = JSON.parse(readFileSync(p, "utf8"));
-  assert.equal(out.entries["1"].upgraded_from, "llm-title-genre", "provenance must not be erased by a re-run");
-  assert.match(res2.stdout, /0 upgraded/);
-});
-
-test("is idempotent: a second run produces the same entries", () => {
+test("is idempotent across EVERY path, not just the base one", () => {
   const dir = mkdtempSync(join(tmpdir(), "classify-breadth-idem-"));
   mkdirSync(join(dir, "data"), { recursive: true });
   const p = (f) => join(dir, "data", f);
-  writeFileSync(p("catalog.json"), JSON.stringify({ shows: [show(1, "Astronomy"), show(2, "Food")] }));
+  // One show per path: base-owned, agent-preserved, overlay-enriched,
+  // overlay-preserved, sourceless, and outside the catalog. The first version of
+  // this test seeded only base-path shows, which is exactly why an
+  // enrichment-path field could be silently erased on the second run.
+  writeFileSync(
+    p("catalog.json"),
+    JSON.stringify({
+      shows: [show(1, "Astronomy"), show(2, "Food"), show(3, "Baking"), show(4, "Nutrition"), show(5, "Food"), show(6, "Baking")],
+    })
+  );
+  writeFileSync(
+    p("classification.json"),
+    JSON.stringify({
+      version: 1,
+      entries: {
+        2: { topics: ["food/baking"], confidence: "high", source: "classify-agent-tier1" },
+        3: { topics: ["food"], confidence: "medium", source: "llm-title-genre", by: "breadth-refine-2" },
+        4: { topics: ["food"], confidence: "medium", source: "llm-title-genre" },
+        5: { topics: ["food/baking", "food"], confidence: "high" },
+        6: { topics: [], confidence: "low", source: "llm-title-genre" },
+        999: { topics: ["science"], confidence: "high", source: "genre-map" },
+      },
+    })
+  );
   writeFileSync(p("genre-map.json"), JSON.stringify(GENRE_MAP));
   writeFileSync(p("taxonomy.json"), JSON.stringify(TAXONOMY));
   const env = {
@@ -308,8 +382,20 @@ test("starts from nothing when no classification file exists yet", () => {
   assert.equal(Object.keys(out.entries).length, 1);
 });
 
-test("records its own provenance without claiming the overlays' work", () => {
+test("records its own provenance under its own key, without claiming the overlays' work", () => {
   const { out } = run({ shows: [show(1, "Astronomy")] });
-  assert.equal(out.provenance.produced_by, "classify-breadth.mjs");
-  assert.match(out.provenance.method, /base layer/);
+  assert.equal(out.provenance.base_layer.produced_by, "classify-breadth.mjs");
+  assert.match(out.provenance.base_layer.method, /base layer/);
+});
+
+test("keeps the refinement pipeline's provenance instead of signing over it", () => {
+  const classification = {
+    version: 1,
+    provenance: { produced_by: "tools/classify/merge-results.mjs", last_batch_id: "fresh-2026-08-03-03cc71da", last_batch_tier: 1 },
+    entries: { 1: { topics: ["space"], confidence: "high", source: "genre-map" } },
+  };
+  const { out } = run({ shows: [show(1, "Astronomy")], classification });
+  assert.equal(out.provenance.last_batch_id, "fresh-2026-08-03-03cc71da", "merge-results batch pointer must survive");
+  assert.equal(out.provenance.last_batch_tier, 1);
+  assert.equal(out.provenance.base_layer.produced_by, "classify-breadth.mjs");
 });

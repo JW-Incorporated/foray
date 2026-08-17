@@ -8,7 +8,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert";
-import { branchesWithChildren, measure, buildReport, formatMarkdown } from "./root-dumping-report.mjs";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { branchesWithChildren, measure, buildReport, formatMarkdown, parseArgs } from "./root-dumping-report.mjs";
+
+const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), "root-dumping-report.mjs");
 
 const TAXONOMY = {
   nodes: [
@@ -131,7 +138,94 @@ test("formatMarkdown renders before/after columns against a baseline", () => {
   const md = formatMarkdown(after, before);
   assert.match(md, /root-only before \| root-only after \| change/);
   assert.match(md, /\| food \| 1 \| 1 \| 0 \| -1 \|/);
-  assert.match(md, /was 1 \(100%\)|was 1 \(100.0%\)/);
+  assert.match(md, /was 1 \(100%\)/, "the baseline share is rendered from pct_root_only verbatim");
+});
+
+test("formatMarkdown reports a source that has vanished since the baseline", () => {
+  const before = buildReport({ taxonomy: TAXONOMY, breadth: { entries: { 1: { topics: ["food"] } } }, discover: { items: [] } });
+  const after = buildReport({ taxonomy: TAXONOMY, discover: { items: [] } });
+  const md = formatMarkdown(after, before);
+  assert.match(md, /### breadth/);
+  assert.match(md, /MISSING from this run/, "a disappeared source must not silently drop out of the diff");
+});
+
+/* --- the metric must not be gameable ------------------------------------- */
+
+test("a topic that is not a taxonomy node is reported, never counted as a child", () => {
+  const known = new Set(TAXONOMY.nodes.map((n) => n.id));
+  const r = measure([["food", "food/bakin"]], WITH_CHILDREN, known);
+  assert.deepEqual(r.unknown_topics, ["food/bakin"]);
+  assert.equal(r.root_only, 1, "a misspelled child must not erase a root-only pair");
+});
+
+test("an item whose every topic is unknown counts as having no topics", () => {
+  const known = new Set(TAXONOMY.nodes.map((n) => n.id));
+  const r = measure([["not/real"]], WITH_CHILDREN, known);
+  assert.equal(r.items_with_no_topics, 1);
+  assert.equal(r.pairs, 0);
+});
+
+test("buildReport passes the taxonomy through, so unknown ids surface per source", () => {
+  const rep = buildReport({ taxonomy: TAXONOMY, discover: { items: [{ topics: ["food", "invented/node"] }] } });
+  assert.deepEqual(rep.sources.discover.unknown_topics, ["invented/node"]);
+});
+
+test("measure without a node set still works (ids are then trusted)", () => {
+  const r = measure([["food", "food/anything"]], WITH_CHILDREN);
+  assert.deepEqual(r.unknown_topics, []);
+  assert.equal(r.root_only, 0);
+});
+
+/* --- argument handling: refuse rather than guess -------------------------- */
+
+test("parseArgs accepts the documented flags", () => {
+  assert.deepEqual(parseArgs([]), { json: false, baseline: null });
+  assert.deepEqual(parseArgs(["--json"]), { json: true, baseline: null });
+  assert.deepEqual(parseArgs(["--baseline", "b.json"]), { json: false, baseline: "b.json" });
+});
+
+test("parseArgs refuses an unknown flag instead of ignoring it", () => {
+  assert.match(parseArgs(["--jsn"]).error, /unknown argument/);
+});
+
+test("parseArgs refuses --baseline with no value", () => {
+  assert.match(parseArgs(["--baseline"]).error, /needs a snapshot path/);
+  assert.match(parseArgs(["--baseline", "--json"]).error, /needs a snapshot path/);
+});
+
+test("parseArgs refuses --json together with --baseline", () => {
+  assert.match(parseArgs(["--json", "--baseline", "b.json"]).error, /mutually exclusive/);
+});
+
+test("a bad flag exits non-zero rather than printing a table nobody asked for", () => {
+  const res = spawnSync(process.execPath, [SCRIPT, "--jsn"], { encoding: "utf8" });
+  assert.equal(res.status, 2);
+  assert.match(res.stderr, /unknown argument/);
+  assert.equal(res.stdout.trim(), "", "no table on the happy-path stream");
+});
+
+test("a missing baseline file says so instead of throwing a stack trace", () => {
+  const res = spawnSync(process.execPath, [SCRIPT, "--baseline", "definitely-not-here.json"], { encoding: "utf8" });
+  assert.equal(res.status, 2);
+  assert.match(res.stderr, /baseline snapshot not found/);
+  assert.doesNotMatch(res.stderr, /at Object|at Module/, "not a raw stack");
+});
+
+test("a baseline snapshot with a BOM still parses", () => {
+  const dir = mkdtempSync(join(tmpdir(), "root-dumping-bom-"));
+  const snap = join(dir, "before.json");
+  const report = buildReport({ taxonomy: TAXONOMY, discover: { items: [{ topics: ["food"] }] } });
+  writeFileSync(snap, "﻿" + JSON.stringify(report));
+  const tax = join(dir, "taxonomy.json");
+  const disc = join(dir, "discover.json");
+  writeFileSync(tax, JSON.stringify(TAXONOMY));
+  writeFileSync(disc, JSON.stringify({ items: [{ topics: ["food", "food/baking"] }] }));
+  const res = spawnSync(process.execPath, [SCRIPT, "--baseline", snap], {
+    encoding: "utf8",
+    env: { ...process.env, TAXONOMY_PATH: tax, DISCOVER_PATH: disc, BREADTH_CLASSIFICATION_PATH: join(dir, "none.json") },
+  });
+  assert.equal(res.status, 0, res.stderr);
+  assert.match(res.stdout, /root-only before/);
 });
 
 test("formatMarkdown shows a branch that only exists in the baseline", () => {

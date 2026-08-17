@@ -30,7 +30,7 @@
  * DISCOVER_PATH */
 
 import { readFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -40,7 +40,10 @@ function envPath(name, def) {
   return v ? resolvePath(process.cwd(), v) : join(ROOT, ...def);
 }
 
-const readJson = (p) => JSON.parse(readFileSync(p, "utf8"));
+/* Strip a BOM. The documented workflow is `--json > before.json`, and on
+   Windows — this repo's dev platform — PowerShell redirection writes one, which
+   would otherwise come back as a raw SyntaxError from `--baseline`. */
+const readJson = (p) => JSON.parse(readFileSync(p, "utf8").replace(/^﻿/, ""));
 
 /** Branch id -> whether the taxonomy gives it any child. */
 export function branchesWithChildren(taxonomy) {
@@ -51,15 +54,26 @@ export function branchesWithChildren(taxonomy) {
 
 /**
  * Core measurement. `topicLists` is one array of topic ids per item.
+ * `knownNodes`, when given, is the taxonomy's id set — anything outside it is
+ * reported and ignored rather than counted.
  * Returns per-branch counts plus totals.
  */
-export function measure(topicLists, withChildren) {
+export function measure(topicLists, withChildren, knownNodes = null) {
   const branches = {};
+  const unknownTopics = new Set();
   let items = 0, fullyRootOnly = 0, itemsWithNoTopics = 0;
 
-  for (const topics of topicLists) {
+  for (const rawTopics of topicLists) {
     items++;
-    if (!topics || topics.length === 0) { itemsWithNoTopics++; continue; }
+    if (!rawTopics || rawTopics.length === 0) { itemsWithNoTopics++; continue; }
+
+    /* Validate against the taxonomy. Without this the metric is gameable in
+       the one direction that matters: any string containing a slash would count
+       as "has a child" and erase a root-only pair, so `food/bakin` would look
+       like progress. Nothing else validates this file — merge-results.mjs
+       validates agent output only, and CI does not check it at all. */
+    const topics = knownNodes ? rawTopics.filter((t) => knownNodes.has(t) || (unknownTopics.add(t), false)) : rawTopics;
+    if (topics.length === 0) { itemsWithNoTopics++; continue; }
 
     const seen = new Map(); // branch -> hasChild
     for (const t of topics) {
@@ -88,16 +102,20 @@ export function measure(topicLists, withChildren) {
     pairs,
     root_only: rootOnly,
     pct_root_only: pairs ? Number(((100 * rootOnly) / pairs).toFixed(1)) : 0,
+    unknown_topics: [...unknownTopics].sort(),
     branches: rows,
   };
 }
 
 export function buildReport({ taxonomy, breadth, discover }) {
   const withChildren = branchesWithChildren(taxonomy);
+  const knownNodes = new Set(taxonomy.nodes.map((n) => n.id));
   const childless = taxonomy.nodes.filter((n) => !n.parent && !withChildren.has(n.id)).map((n) => n.id);
   const out = { generated_at: new Date().toISOString(), childless_branches: childless, sources: {} };
-  if (breadth) out.sources.breadth = measure(Object.values(breadth.entries || {}).map((e) => e.topics || []), withChildren);
-  if (discover) out.sources.discover = measure((discover.items || []).map((i) => i.topics || []), withChildren);
+  if (breadth) {
+    out.sources.breadth = measure(Object.values(breadth.entries || {}).map((e) => e.topics || []), withChildren, knownNodes);
+  }
+  if (discover) out.sources.discover = measure((discover.items || []).map((i) => i.topics || []), withChildren, knownNodes);
   return out;
 }
 
@@ -107,8 +125,17 @@ function pct(n, d) {
 
 export function formatMarkdown(report, baseline) {
   const lines = [];
-  for (const [name, s] of Object.entries(report.sources)) {
+  /* Union with the baseline's sources: a source that has DISAPPEARED since the
+     snapshot is the interesting case, and iterating only the current report
+     would drop it silently. */
+  const names = [...new Set([...Object.keys(report.sources), ...Object.keys(baseline?.sources || {})])];
+  for (const name of names) {
+    const s = report.sources[name];
     const b = baseline?.sources?.[name];
+    if (!s) {
+      lines.push(`### ${name}`, "", `**MISSING from this run** — the baseline had ${b.items} items and ${b.root_only} root-only pairs.`, "");
+      continue;
+    }
     lines.push(`### ${name}`);
     lines.push("");
     lines.push(
@@ -122,8 +149,8 @@ export function formatMarkdown(report, baseline) {
     lines.push("");
     lines.push(b ? "| branch | pairs | root-only before | root-only after | change |" : "| branch | pairs | root-only | % |");
     lines.push(b ? "|---|---:|---:|---:|---:|" : "|---|---:|---:|---:|");
-    const names = new Set([...s.branches.map((r) => r.branch), ...(b?.branches || []).map((r) => r.branch)]);
-    const rows = [...names]
+    const branchNames = new Set([...s.branches.map((r) => r.branch), ...(b?.branches || []).map((r) => r.branch)]);
+    const rows = [...branchNames]
       .map((n) => ({ n, now: s.branches.find((r) => r.branch === n), was: b?.branches.find((r) => r.branch === n) }))
       .sort((x, y) => (y.was?.root_only ?? y.now?.root_only ?? 0) - (x.was?.root_only ?? x.now?.root_only ?? 0));
     for (const { n, now, was } of rows) {
@@ -142,9 +169,41 @@ export function formatMarkdown(report, baseline) {
   return lines.join("\n");
 }
 
+const USAGE = "usage: node tools/classify/root-dumping-report.mjs [--json] [--baseline <snapshot.json>]";
+
+/** Parses argv, or returns { error } — never guesses. */
+export function parseArgs(argv) {
+  let json = false;
+  let baseline = null;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--json") { json = true; continue; }
+    if (a === "--baseline") {
+      baseline = argv[++i];
+      if (!baseline || baseline.startsWith("--")) return { error: "--baseline needs a snapshot path" };
+      continue;
+    }
+    return { error: `unknown argument "${a}"` };
+  }
+  /* A typo'd flag used to print the markdown table and exit 0, so
+     `--jsn > before.json` produced a "snapshot" that only failed later, as a
+     baseline, with a JSON parse error. Same reasoning as run-suites.mjs:
+     refuse rather than ignore. */
+  if (json && baseline) return { error: "--json and --baseline are mutually exclusive: --json emits a snapshot, --baseline reads one" };
+  return { json, baseline };
+}
+
 function main() {
-  const args = process.argv.slice(2);
-  const baselineArg = args.includes("--baseline") ? args[args.indexOf("--baseline") + 1] : null;
+  const args = parseArgs(process.argv.slice(2));
+  if (args.error) {
+    console.error(`ERROR: ${args.error}\n${USAGE}`);
+    process.exit(2);
+  }
+  const baselineArg = args.baseline;
+  if (baselineArg && !existsSync(resolvePath(process.cwd(), baselineArg))) {
+    console.error(`ERROR: baseline snapshot not found: ${baselineArg}\nTake one first: node tools/classify/root-dumping-report.mjs --json > before.json`);
+    process.exit(2);
+  }
 
   const taxonomy = readJson(envPath("TAXONOMY_PATH", ["data", "taxonomy.json"]));
   const breadthPath = envPath("BREADTH_CLASSIFICATION_PATH", ["data", "breadth-classification.json"]);
@@ -156,7 +215,16 @@ function main() {
     discover: existsSync(discoverPath) ? readJson(discoverPath) : null,
   });
 
-  if (args.includes("--json")) {
+  /* Unknown topic ids are a data defect, not a rounding error: they mean
+     something wrote an id the taxonomy does not have. Say so on stderr in both
+     output modes, so a piped `--json > snapshot` still reports them. */
+  for (const [name, s] of Object.entries(report.sources)) {
+    if (s.unknown_topics?.length) {
+      console.error(`UNKNOWN TOPIC IDS in ${name} (not taxonomy nodes, excluded from the counts):`, s.unknown_topics);
+    }
+  }
+
+  if (args.json) {
     console.log(JSON.stringify(report, null, 2));
     return;
   }
@@ -164,4 +232,7 @@ function main() {
   console.log(formatMarkdown(report, baseline));
 }
 
-if (process.argv[1] && resolvePath(process.argv[1]) === resolvePath(fileURLToPath(import.meta.url))) main();
+/* Repo convention (tools/ci/run-suites.mjs): compare as file URLs, not as raw
+   strings — string path comparison is case- and symlink-sensitive on Windows,
+   and a mismatch would make this tool print nothing and exit 0. */
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main();

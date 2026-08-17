@@ -41,15 +41,25 @@ prepare-batch.mjs ──▶ classify-batch-<id>.json ──▶ [classification a
 **Take a baseline before you re-classify anything.** `root-dumping-report.mjs --json > before.json`,
 do the work, then `root-dumping-report.mjs --baseline before.json`. Without the
 snapshot there is no way to say afterwards whether a pass helped, and "it looks
-better" is not an acceptance criterion.
+better" is not an acceptance criterion. The two flags are mutually exclusive and
+an unknown flag is refused rather than ignored — a typo that printed a table and
+exited 0 would hand you a "snapshot" that only fails later.
+
+It also reports any topic id that is not a taxonomy node instead of counting it,
+because otherwise the metric is gameable in the one direction that matters: a
+misspelled `food/bakin` would read as "has a child" and erase a root-only pair.
+`test/data-topic-integrity.test.js` is the standing CI gate on the same ids.
 
 **The layer below this pipeline** is `tools/classify-breadth.mjs`, the
 deterministic genre map. It writes the same file, at lower precedence: it never
-overwrites a `classify-agent-*` entry, and it may only add nodes to a lower-trust
-overlay, never remove one. Full precedence table in
-`docs/CATALOG-PIPELINE.md` § Classification layers. Running it is safe and free;
-before 2026-08 it was neither, because it rebuilt the file from scratch and would
-have deleted every entry this pipeline had produced.
+touches a `classify-agent-*` entry at all, and it only ever *enriches* another
+overlay in place — adding the child nodes that fix a branch that overlay left
+bare, keeping its `source`, its `confidence` and every other field, and
+recording what it added in `enriched_by`/`enriched_nodes`. Full precedence table
+and the measurements behind that narrowness in `docs/CATALOG-PIPELINE.md`
+§ Classification layers. Running it is safe and free; before 2026-08 it was
+neither, because it rebuilt the file from scratch and would have deleted every
+entry this pipeline had produced.
 
 The **judgment step** (classifying each show, writing `display_title`/
 `blurb`) is the only non-deterministic part, performed by a Claude Code
