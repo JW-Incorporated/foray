@@ -766,6 +766,36 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 
 ---
 
+### 13. Six facts only you can supply before the privacy policy can be published
+
+**Tag:** `[BLOCKING]` for any store submission · **Time:** ~20 minutes to answer five of them; the sixth is a decision · **Owner:** Wyatt (infra facts), Joey (listing + legal-entity decisions)
+
+**Why it matters.** `docs/legal/privacy-policy.md` and `docs/legal/data-safety.md` now exist and are written **from the code**, not from a template — the Data Safety and App Privacy forms can be filled in by copying verified answers. Everything derivable from the software is answered. What is left is six facts no agent can invent, and a policy published with an invented one is a public, binding false statement. Each is marked `TODO(founder)` in those two files.
+
+**The audit found one thing worth knowing before you read further:** the app **does** transmit. Every page load creates an anonymous Supabase account and sends an event row, and a thumbs-down sends the free-text note you typed. That is not what an earlier reading of the code assumed, and it is why the declarations say "Yes" rather than "No" to collection.
+
+**Steps — answer each in a reply, or edit it straight into the file.**
+
+1. **Legal entity name** to name as data controller. (`privacy-policy.md` §9.)
+2. **A privacy contact address.** Both stores require a working contact, and Play's Data Safety form requires a public privacy-policy URL. Nothing was invented.
+3. **The Supabase project's region / hosting jurisdiction**, and whether a data-processing agreement exists. Needed to say where data is stored, and required if EU users are in scope. (§3.)
+4. **Retention:** how long event rows are kept. Nothing in the code ever deletes one, and no retention job exists (ADR-0005 anticipated one).
+5. **Geo-availability:** US-only listing, or accept GDPR obligations day one? `docs/marketing/05-legal-risk-memo.md` §5 sets out the trade; it is still unresolved and it changes what the policy must promise.
+6. **The one build decision: a delete control.** There is **no in-app way to clear your data** today, so Play's "users can request that their data be deleted" is currently answered **No** and no deletion URL exists. The data layer already permits it (the row-level-security policy is `for all`, covering delete) — this is a missing button, not a missing permission. Recommended: one settings control that clears both storage tiers and issues an authenticated delete of that user's rows. It also satisfies Apple 5.1.1(v) if that ever applies.
+
+**Two things to verify in the Supabase dashboard while you are there** — neither is knowable from the repo, and both are listed as open questions in `data-safety.md`:
+
+- Whether **anonymous sign-in is enabled** on the project. If it is off, every sync silently no-ops and buffers locally forever. The declarations are written as though it is on, which is the correct posture for shipped code either way.
+- Whether the **RLS policies are actually applied and verified**. ADR-0005's own Risks section says they were written to spec but never verified against a live project, and `0014` is recorded as not applied. The per-user isolation claim in the policy depends on them.
+
+**Also worth a lawyer's eye, flagged rather than decided:** two of the nine thumbs-down reason chips are "Leans too far left" and "Leans too far right", and the selected chip is transmitted. They record a reaction to an *episode*, not the listener's own politics — so Apple's "Sensitive Info" and Play's "Political or religious beliefs" are both answered **No**, which is the defensible reading. It is disclosed in the policy regardless.
+
+**Worked if:** `docs/legal/privacy-policy.md` contains no `TODO(founder)` markers, and the answers in `docs/legal/data-safety.md` can be pasted into both forms without a judgement call left in them.
+
+**Status:** OPEN
+
+---
+
 <!-- BEGIN generated:waiting-on-you -->
 
 ### Waiting on a founder (auto-maintained)
