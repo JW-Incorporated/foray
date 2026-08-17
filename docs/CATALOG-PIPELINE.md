@@ -78,6 +78,46 @@ minutes per full harvest. Expected yield: 110 genres × 200 ≈ 22k chart rows �
   rank are enough signal for the breadth tier until then.
 - **Editorial notes/hooks at scale** — reserved for what actually surfaces to users.
 
+## Classification layers and precedence
+
+`data/breadth-classification.json` is one file written by several passes. It has
+always behaved as a layered overlay; until 2026-08 that was only ever stated in a
+comment, and the bottom layer did not honour it.
+
+| Layer | `source` | Written by | Signal |
+|---|---|---|---|
+| base | `genre-map` | `tools/classify-breadth.mjs` | Apple genre only — deterministic, keyless, $0 |
+| distrusted overlay | `llm-title-genre` | the 2026-07 pass (retired) | title + genre, no description |
+| refinement | `classify-agent-tier1` | `tools/classify/` + a Claude Code agent | feed description + recent episodes |
+| escalation | `classify-agent-tier2` | ditto, `--mode escalate` | the above + a transcript excerpt |
+
+**Higher layers win.** The rules the base layer follows, in order:
+
+1. A `classify-agent-*` entry is never touched — not overwritten, not enriched.
+   It is a real per-show judgement and may legitimately disagree with the genre
+   (*The Dice Tower* is `gaming/design`, not the `gaming/tabletop` its genre
+   implies).
+2. Any other overlay may be **upgraded only additively**: the genre map's topic
+   set must be a strict superset of what the overlay asserted, *and* must turn a
+   branch the overlay left bare into one with a child. Both conditions, because
+   the first alone lets the map bolt its coarse secondary branches
+   (`Social Sciences` carries psychology + society + economics) onto shows that
+   never asked for them — measured at 2,021 shows and root dumping getting
+   *worse*, 9,741 → 10,502 pairs.
+3. Entries for shows outside the input catalog are carried through untouched.
+4. If any show that had topics would end up with none, the script writes nothing
+   and exits non-zero. Same for a genre-map topic that is not a taxonomy node.
+
+Rule 4 exists because the failure mode here is silent: the file stays valid JSON,
+CI stays green, and shows simply lose their tags. The pass that made this concrete
+would have deleted 1,851 agent-authored classifications on its next run.
+
+**Measuring it**: `node tools/classify/root-dumping-report.mjs` prints how much of
+each source sits on a bare branch that has children — the defect
+`docs/research/taxonomy-review-2026-08.md` §3.2 named. `--json` snapshots it;
+`--baseline <snapshot>` prints before/after. Take a snapshot before any
+re-classification, because "did it work?" is otherwise unanswerable after the fact.
+
 ## Breadth tier, batch 2 (international)
 
 `data/catalog-breadth-intl.json.gz` — 121,786 shows from 18 regional Apple top-chart

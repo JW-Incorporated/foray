@@ -7,6 +7,33 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### classification — re-classify the catalogue against the 2026-08 taxonomy (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/reclassify-taxonomy`. PR #175 grew the taxonomy 149 → 194
+  nodes and then re-tagged nothing, so every classification in the repo still
+  described the old 149-node world. This runs the redo: six Apple genres
+  re-pointed at child nodes, the deterministic base layer re-run over all
+  19,787 breadth shows, and an LLM refinement pass over the curated pool.
+- **The bug it found:** `tools/classify-breadth.mjs` REBUILT
+  `data/breadth-classification.json` from scratch, so re-running it would have
+  deleted all 1,851 agent-authored classifications and every entry for a show
+  outside the input catalog. It is a merge now, with source precedence, and the
+  suite that proves it is `tools/classify-breadth.test.mjs`.
+- **Owned files:** `data/genre-taxonomy-map.json`,
+  `data/breadth-classification.json`, `data/discover.json` (topics arrays
+  only — no copy touched), `tools/classify-breadth.mjs`,
+  `tools/classify/root-dumping-report.mjs` (new), their suites,
+  `test/suite-integrity.test.js` (two new floors),
+  `docs/CATALOG-PIPELINE.md`, `docs/research/genre-map-notes.md`,
+  `docs/research/taxonomy-review-2026-08.md`, `tools/classify/README.md`.
+- **Out of scope:** `data/taxonomy.json` (no node added or renamed),
+  `data/catalog.json`, `data/session.json` (measured clean), anything under
+  `player/`, and the ~17,900 breadth shows still awaiting a tier-1 agent pass —
+  that remainder is costed in the PR body as a founder call, not started.
+- **If you run the classify cron:** it is unaffected. `prepare-batch.mjs` and
+  `merge-results.mjs` are untouched, and the base layer never overwrites a
+  `classify-agent-*` entry.
+
 ### Foray UI #3 — the seam beat, and the strip becomes a scrubber (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/foray-seams`. (1) **The seam silence.** Foray #1 has no

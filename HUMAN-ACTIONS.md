@@ -230,6 +230,53 @@ much silence goes at a seam".
 
 **Status:** OPEN
 
+### 4. Check whether the six `foray-classify-shard` routines are still alive
+
+**Tag:** `[BLOCKING]` · **Time:** ~5 minutes · **Owner:** Wyatt
+
+**Why it matters.** `docs/agents/runners.md` lists **foray-classify-shard0–5**,
+six Claude Cloud routines on Wyatt's account, cadence **every 8h**, status
+**live** — 18 runs/day. The git record disagrees. Every batch those routines
+land arrives as a `classify/<date>-<batch_id>` branch and a PR, and:
+
+- the last one merged is **PR #86, `Classify batch fresh-2026-08-03-03cc71da`,
+  on 2026-08-03** — 13 days ago as of 2026-08-16;
+- `git branch -r --list "origin/classify/*"` shows exactly two branches ever;
+- `gh pr list --state open` shows no classify PR waiting;
+- inside `data/breadth-classification.json`, `classified_at` runs
+  **2026-07-25 → 2026-08-03 and then stops**: 10 active days, 37 batches,
+  1,851 shows, ~185 shows/day.
+
+At the documented cadence those 13 days should have produced ~230 runs and
+~11,000 classifications. They produced none. Either the routines were paused
+or deleted, or they are running and failing silently. This is blocking in the
+real sense: **1,851 of 19,787 breadth shows (9.4%) have a real classification,
+and at zero shows/day the other 90.6% never gets one** — no amount of taxonomy
+or genre-map work downstream changes that.
+
+Steps:
+
+1. Open <https://claude.ai/settings/automations> on the account that owns the
+   routines (Wyatt's — the registry says `Wyatt's account`).
+2. Look for the six routines named `foray-classify-shard0`, `foray-classify-shard1`,
+   `foray-classify-shard2`, `foray-classify-shard3`, `foray-classify-shard4`,
+   `foray-classify-shard5`.
+3. For each: does it exist, is it enabled, and what does its **last run** say?
+   Note the last-run date and whether it ended in an error.
+4. If they are gone or disabled: either re-create/re-enable them against
+   `docs/agents/runner-prompts/classify-batch.md`, or tell a session to delete
+   the row from `docs/agents/runners.md` — a registry that says `live` about
+   something dark is worse than no registry, and this file's own header says
+   the table is intent, the auditor is truth.
+5. If they are running and failing, paste one failing run's error into a
+   session and it will be diagnosed from there.
+
+**Worked if:** you can say, in one sentence, which of the six exist and when
+each last ran — and either a new `classify/*` PR appears within 8 hours, or
+`docs/agents/runners.md` no longer claims six live classify runners.
+
+**Status:** OPEN
+
 ---
 
 <!-- BEGIN generated:waiting-on-you -->

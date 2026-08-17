@@ -569,6 +569,11 @@ cannot come back.
   Apple's `Food` genre to the new children, but a genre label cannot tell you whether a
   food show is about baking or barbecue; that is precisely the per-show judgement the
   Tier-1 LLM pass exists for. Leaving the coarse prior coarse is correct.
+  **Partly superseded 2026-08-16** (`feat/reclassify-taxonomy`): the Food reasoning holds
+  and `Food` still maps to the bare root, but it does not generalise. Six genres —
+  Astronomy, Music History, Personal Journals, Sexuality, Games, Places & Travel — name a
+  child *exactly*, four of them via an `apple_anchor` this very review wrote. Those six
+  are now mapped; the other 104 stay coarse. See `genre-map-notes.md` § 2026-08-16.
 - `docs/agents/runner-prompts/foray-nightly.md` — no taxonomy references.
 - `backend/src/enrich/StubEnricher.ts` `FALLBACK_TOPICS` — stale (9 seed ids) but only
   used in keyless dry-run; noted in the PR body.
@@ -591,6 +596,24 @@ act rather than propose; that instruction overrides the standing rule for this c
 only, and the rule itself is worth keeping.
 
 ### 8.2 The back-catalogue is not re-classified
+
+> **Actioned 2026-08-16, `feat/reclassify-taxonomy`.** The founder asked directly whether
+> the classifying fleet had been fixed *and* its work redone; it had not. What that PR
+> did: re-pointed six genres at child nodes (§7 above), re-ran the deterministic base
+> layer over all 19,787 breadth shows, and ran an LLM refinement pass over the curated
+> pool (`data/discover.json`). Root-only (show, branch) pairs in the breadth tier went
+> 9,741 → 9,089 and the curated pool's 305 → far fewer; the numbers per branch are in
+> that PR's body and are reproducible with
+> `node tools/classify/root-dumping-report.mjs`.
+>
+> It also found the reason a re-run was not merely useless but dangerous:
+> `tools/classify-breadth.mjs` rebuilt the file from scratch, so the "cheap partial
+> alternative" recommended below would have **deleted all 1,851 agent-authored
+> classifications**. That is fixed and tested.
+>
+> What remains is genuinely a spend decision and is still open: ~17,900 breadth shows
+> have never had a tier-1 agent pass. The paragraphs below stand as the reasoning for
+> that remainder.
 
 **`data/breadth-classification.json` is not re-classified against the new nodes.** All
 19,787 shows keep the topics they were assigned before this change, so the 374 shows on
