@@ -72,9 +72,9 @@ const FLOORS = {
   // ruling made mechanical — of everything floored in this file it is the one
   // whose deletion would be hardest to notice and most expensive to discover,
   // because the thing it guards is an absence.
-  "tools/classify/no-exclusion.test.mjs": 20,
-  "tools/classify/shard.test.mjs": 19,
-  "tools/classify/transcript-label.test.mjs": 22,
+  "tools/classify/no-exclusion.test.mjs": 25,
+  "tools/classify/shard.test.mjs": 22,
+  "tools/classify/transcript-label.test.mjs": 29,
   "tools/foray/check-forays.test.mjs": 81,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
