@@ -92,6 +92,11 @@ const FLOORS = {
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
   "test/data-topic-integrity.test.js": 12,
+  /* One generation per page load (#233). Floored because the thing it guards is
+     invisible in the product: a mismatched code/data pair renders, it just
+     renders the wrong program's reading of today's document. Every test in there
+     was mutation-checked — see the suite header. */
+  "test/sw-generation.test.js": 32,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   "tools/ci/path-policy.test.mjs": 82,

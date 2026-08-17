@@ -566,6 +566,29 @@ and raise N", or "here is what I heard that the rules missed".
 **[UPGRADE]** — **~2 minutes, one word in one file, but it needs a founder merge**
 because `sw.js` is not in the auto-merge allowlist (`tools/ci/path-policy.mjs`).
 
+> ## UPDATE 2026-08-17 — the edit is written; what is left is the merge and one console check. ~~2 minutes~~ ~1 minute.
+>
+> **`sw.js` now reads `const CACHE = "foray-v5";`**, carried by the #233 PR
+> rather than as a change of its own. Steps 1 and 2 below are done. The merge
+> this item warns about is still yours — that PR touches `sw.js`, so
+> `path-policy` holds it and it needs the `founder-approved` label plus a click.
+>
+> **Read this before treating the item as closed, because the premise below was
+> only half right.** This item says a returning visitor "runs the PREVIOUS
+> `app.js` for one load", and calls that "the normal cost of every `app.js`
+> change". It was not only a cost — it was a live defect (#233): the previous
+> `app.js` ran against the CURRENT `data/*.json`, because the shell was
+> cache-first while `data/` was network-first. So the bump was necessary and not
+> sufficient, and the same PR removes the split policy that caused it. The
+> storage-migration argument for bumping is unchanged and still correct.
+>
+> **What is still worth your minute:** the `forayStorageHealth()` check under
+> "Worked if" below, after the deploy. That measures IndexedDB, which nothing in
+> this PR touches and no test here can observe.
+>
+> Left `OPEN` because only the owner changes a Status word (`CLAUDE.md`
+> § HUMAN-ACTIONS.md).
+
 Issue #40's durable-storage change (`player/durable-store.js`) moves every `cp_`
 key — interests, thumbs, playback positions, where a listener is inside a
 61-minute Foray, and the anonymous session token that is their only identity —
