@@ -699,7 +699,7 @@ its reasoning.
   recommendation and is cheap for a founder to overturn.** Whether the Swift
   state-machine copies get retired is left open and belongs to #28.
 - **The app id is `com.jwincorporated.foray`, pinned in the config and in a test,
-  and it is still a founder ruling** (`HUMAN-ACTIONS.md` #13). Permanent once
+  and it is still a founder ruling** (`HUMAN-ACTIONS.md` #15). Permanent once
   published. `ios/project.yml`'s `com.wjduvall.foray` predates the org, belongs to
   the reference scaffold, and has never been published.
 - **The native bundle's `webDir` is built by a committed, dependency-free script
@@ -727,7 +727,7 @@ its reasoning.
   with #40's refresh code.
 - **Bundled data is frozen at build time, and that is now a named release gate.**
   Nothing in the shell re-fetches data, so a shipped app shows its build day's
-  session until #40's remaining half lands. Filed as `HUMAN-ACTIONS.md` #15.
+  session until #40's remaining half lands. Filed as `HUMAN-ACTIONS.md` #17.
 - **The top open risk is Android's injected bridge versus our CSP, and it is
   unproven.** Capacitor Android injects `native-bridge.js` as an INLINE script and
   our `script-src` is `'self'` with no `'unsafe-inline'` — which a `<meta>` CSP
@@ -736,7 +736,7 @@ its reasoning.
   (the origin there is an ordinary `https://localhost`). iOS injects via
   `WKUserScript` and is probably exempt, so this would be Android-only — the mirror
   image of the iOS-only `img-src` bug. MP1's spike APK never loaded the real
-  `index.html`, so it did not exercise this. Filed as `HUMAN-ACTIONS.md` #16;
+  `index.html`, so it did not exercise this. Filed as `HUMAN-ACTIONS.md` #18;
   the possible fixes (a response-header CSP, or serving the bridge as a file)
   change the shell's shape and were deliberately not guessed at.
 - **Nothing was generated, installed, compiled or launched.** No `cap init`, no
@@ -744,4 +744,4 @@ its reasoning.
   project does not have on Windows — MP1 already burned ~75 minutes proving the
   Android emulator will not boot here — so committing a few hundred unverifiable
   generated native files was rejected in favour of one command a founder runs on a
-  Mac (`HUMAN-ACTIONS.md` #14).
+  Mac (`HUMAN-ACTIONS.md` #16).
