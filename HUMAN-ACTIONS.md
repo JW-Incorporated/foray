@@ -1060,7 +1060,7 @@ One iOS finding that does bear on your step 6, though: `navigator.serviceWorker`
 
 ### 20. Revoke one leaked anonymous Supabase session, and delete one CI artifact
 
-**Tag:** `[BLOCKING]` for nothing, but do it today · **Time:** ~5 minutes ·
+**Tag:** `[BLOCKING]` · **Time:** ~5 minutes ·
 **Owner:** Wyatt (it is a credential, so CLAUDE.md decision-authority item 2 puts
 it with a founder and not with an agent)
 
@@ -1102,7 +1102,7 @@ item is *containment of the one that got out*, not a code change.
    landed on `main`: right now that artifact is the **only** place the 9,153 ms seam
    measurement exists, and deleting it first orphans every citation in these docs.
 3. While you are in the dashboard, it is worth confirming that **anonymous sign-in
-   is still intended to be enabled** (item #13's second verification note asks the
+   is still intended to be enabled** (item #13's *first* verification note asks the
    same question for a different reason).
 
 **Worked if:** requesting a token refresh with that `refresh_token` returns an

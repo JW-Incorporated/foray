@@ -581,11 +581,30 @@ test("the raw localStorage databases never enter the artifact directory", () => 
      Asserted as an absence, which is the only way to assert it: a future session
      adding `cp "$db" "$ART/ls/..."` back for debugging convenience is exactly
      the regression, and it would leave every other test green. */
-  assert.equal(
-    /cp\s+"\$db"\s+"\$ART/.test(WF),
-    false,
-    "a localStorage database is being copied into $ART — it holds cp_sb_session " +
-      "and the artifact is public. Copy it to $WORK and read it there."
+  /* ASSERTED OVER EVERY COPYING VERB, not over one exact spelling. A review
+     defeated the first version of this test with four one-line edits that all left
+     it green: `cp -p "$db" "$ART/db-1.sqlite"` (the flag breaks `cp\s+"\$db"`),
+     `cp -r "$WORK" "$ART/"`, `cp "$WORK/db-1.sqlite" "$ART/"`, and
+     `tar -czf "$ART/ls.tgz" -C "$RUNNER_TEMP" ios-ci-ls-work`. So the rule is
+     structural: no line that copies anything may mention both a raw-database
+     source and $ART. */
+  const COPY_VERBS = /^\s*(cp|mv|tar|rsync|install|ditto|zip)\b/;
+  /* The ONE legitimate crossing from $WORK into $ART is the REDACTED rows file.
+     Anything else touching a database, or the work directory as a whole, is the
+     leak. Named as a single allowed filename rather than a denylist of spellings,
+     so a newly added copying line is an offender until it is named here. */
+  const ALLOWED_CROSSING = /"\$WORK\/ls-rows-\$i\.json"\s+"\$ART\/ls-rows-\$i\.json"/;
+  const offenders = WF.split(/\r?\n/).filter((l) => {
+    if (!COPY_VERBS.test(l)) return false;
+    if (!/\$ART/.test(l)) return false;
+    if (ALLOWED_CROSSING.test(l)) return false;
+    return /\$db|\$WORK|\.sqlite|localstorage|ios-ci-ls-work/i.test(l);
+  });
+  assert.deepEqual(
+    offenders,
+    [],
+    "these lines copy a raw local-storage database (or the whole work dir) into " +
+      "$ART, which is a PUBLIC artifact holding cp_sb_session:\n  " + offenders.join("\n  ")
   );
   assert.equal(
     /\$ART\/ls\//.test(WF),
@@ -613,6 +632,24 @@ test("every rows file is redacted before it is moved into the artifact", () => {
     /mv "\$WORK\/ls-rows-\$i\.json" "\$ART\/ls-rows-\$i\.json"/,
     "the rows file must be MOVED into $ART after redaction, not written there and edited"
   );
+  /* AND THE ORDER, because the order IS the property. Asserting the two lines
+     exist independently passes even if they are swapped, which would publish the
+     unredacted array. Stronger still: the `mv` must sit INSIDE the `if node ...
+     redact-localstorage ...; then` block, so it cannot run when redaction failed. */
+  const redactIdx = WF.indexOf('redact-localstorage "$WORK/ls-rows-$i.json"');
+  const mvIdx = WF.indexOf('mv "$WORK/ls-rows-$i.json" "$ART/ls-rows-$i.json"');
+  assert.ok(redactIdx > 0 && mvIdx > 0);
+  assert.ok(
+    redactIdx < mvIdx,
+    "the redaction must run BEFORE the move into $ART, not after it"
+  );
+  const between = WF.slice(redactIdx, mvIdx);
+  assert.match(
+    between,
+    /;\s*then/,
+    "the mv into $ART must be guarded by the redaction's own exit status (`if node " +
+      "... ; then mv ...`), or a failed redaction still publishes the rows"
+  );
   /* sqlite3 must not write its output straight into the artifact. */
   assert.equal(
     /> "\$ART\/ls-rows-\$i\.json"/.test(WF),
@@ -629,5 +666,25 @@ test("a failed redaction fails the job instead of quietly publishing nothing", (
     "a redaction failure must be loud: the quiet version is two inconclusive " +
       "verdicts and a green job"
   );
-  assert.match(WF, /exit 1/);
+  /* SCOPED TO THE BLOCK. A bare `assert.match(WF, /exit 1/)` was vacuous: the
+     workflow contains four `exit 1`s, so turning THIS one into `exit 0` left the
+     test green and a redaction failure back to a green job with no rows. */
+  const guard = WF.slice(WF.indexOf('if [ -n "${REDACT_FAILED:-}" ]'));
+  assert.ok(guard.startsWith('if [ -n "${REDACT_FAILED:-}"'), "the guard block is gone");
+  const block = guard.slice(0, guard.indexOf("\n          fi"));
+  assert.match(block, /::error::/);
+  assert.match(block, /^\s*exit 1\s*$/m, "the REDACT_FAILED guard must exit non-zero");
+});
+
+test("the artifact upload path is exactly the report directory, not all of RUNNER_TEMP", () => {
+  /* THE LAST LINE OF DEFENCE FOR $WORK, and nothing pinned it. $ART is
+     $RUNNER_TEMP/ios-ci and the raw databases live in $RUNNER_TEMP/ios-ci-ls-work;
+     the only thing keeping them unpublished is that the upload names the first
+     directory exactly. Widening it to `${{ runner.temp }}` or adding a `*` would
+     publish the databases -- and, from the gated signing steps, the keychain, the
+     .p12 and ExportOptions.plist too. */
+  const upload = WF.slice(WF.indexOf("actions/upload-artifact"));
+  const pathLine = upload.split(/\r?\n/).find((l) => /^\s*path:/.test(l)) ?? "";
+  assert.match(pathLine, /path:\s*\$\{\{\s*runner\.temp\s*\}\}\/ios-ci\s*$/, `upload path is ${pathLine.trim()}`);
+  assert.equal(/\*/.test(pathLine), false, "no glob in the upload path — it would sweep in $WORK");
 });

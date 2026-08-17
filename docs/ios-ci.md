@@ -466,7 +466,9 @@ was **local**, and Foray #1 has **31 seams**, not one.
 
 **The record simply stops at +25.2 s of a 90 s hidden window**, one second after
 `seg-b` became audible, with `seg-b`'s own out-point armed. The hidden DOM-timer
-samples stop at the same instant (25 samples, 24.2 s, a clean 1000 ms throughout).
+samples stop at the same instant (25 samples over 24.236 s; median 1000 ms, and every
+sample after the first is 985–1015 ms — the first is 252 ms, a partial interval at the
+visibility flip).
 The probe saves every 2 s, so roughly **32 subsequent saves never landed**, and
 about **65 s of the window went unused**.
 
@@ -475,10 +477,7 @@ Two readings, and this artifact cannot separate them:
 - **(a) the page stopped being scheduled** about a second after a 9.15 s silence. If
   so it is a far bigger problem than the seam gap: it would mean a hidden page can be
   descheduled **mid-Foray** after sustained silence, which is the failure that makes
-  the whole WebView-shell approach unsafe. WebKit's `audibleActivityClearDelay` grace
-  is **10 s** and the observed silence was **9.15 s** — the completed transition
-  cleared it by roughly **850 ms**, which is exactly the margin `MIN_HIDDEN_TRANSITIONS
-  = 2` exists to probe, and exactly the transition this run did not get.
+  the whole WebView-shell approach unsafe.
 - **(b) the page kept running and its `localStorage` writes stopped reaching disk**,
   making the collected record a ~65 s stale snapshot. A harness defect.
 
@@ -499,14 +498,15 @@ What was ruled out, so nobody re-treads it:
 - **The simulator log cannot show it either, and that was its own defect.**
   `simulator-log.txt` is **exactly 20,000,000 bytes** — truncated — covering
   **13:45:30.961 → 13:46:44.369**. The seam pass began at **13:47:08.446**, twenty-four
-  seconds after the log ends, so it has **no log coverage at all**. Of 110,579 captured
-  lines, **17** mention our app (**0.015%**): the predicate was
-  `processImagePath CONTAINS "App"`, which matches most of the system, and the shared
-  20 MB cap was spent by pass 1. Every foray line is PID 19964 — pass 1's process. Two
-  of the three `Suspended` hits for it are
-  `WebProcessProxy::canTerminateAuxiliaryProcess: returns false`, which means *do not
-  terminate*; the third is `applicationDidEnterBackground`, a UIKit lifecycle line.
-  **None is a RunningBoard suspension**, and its last state is `unknown-NotVisible`.
+  seconds after the log ends, so it has **no log coverage at all**. The predicate was
+  `processImagePath CONTAINS "App"`, which matches most of the system, so the shared
+  20 MB cap was spent by pass 1: **1,153 of 99,491** timestamped lines came from our
+  process (~1.2%), all of them PID 19964 — pass 1's process. Of the four `Suspended`
+  hits for it, two are `WebProcessProxy::canTerminateAuxiliaryProcess: returns false`
+  (which means *do not* terminate), one is
+  `WebPageProxy::applicationDidEnterBackground` (`com.apple.WebKit:ViewState`) and one
+  is a KeyboardArbiter `invalidateConnection (appDidSuspend)` — a UIKit lifecycle
+  label, not process suspension. **None is a RunningBoard suspension.**
 
 **Fixed here so the next run decides it from the record alone:** each pass gets its
 own log capture and its own cap, the predicate matches our bundle id instead of the
@@ -514,6 +514,59 @@ substring `App`, the reporter reads both logs, and the seam record now carries
 `saveSeq` + `firstSavedAtWall`. If `saveSeq` is high while `lastSavedAtWall` is old,
 the writes stopped landing — reading (b). If both are old and `saveSeq` matches
 elapsed/2 s, the page stopped being scheduled — reading (a).
+
+### The audibility grace is **5 s**, not 10 s — and the beat blew straight through it
+
+**This corrects a number this document and MP1 §7.4 both had wrong**, and the
+correction makes the result more interesting rather than less. There are **two**
+timers, and the same log carries both, verbatim, for our process:
+
+```
+13:46:27.185  WebProcessPool::updateAudibleMediaAssertions: Starting timer to clear
+              audible activity in 5 seconds because we are no longer playing audio
+13:46:32.191  WebProcessPool::clearAudibleActivity: ...          <- 5.006 s later
+13:46:27.205  WebPageProxy::updateThrottleState: UIProcess starting timer to release
+              a foreground assertion in 10 seconds if audio doesn't start to play
+```
+
+`clearAudibleActivity` is the operation `audibleActivityClearDelay` drives, and it
+fired at **5 s**, measured. The **10 s** figure belongs to a *different* mechanism —
+releasing the foreground assertion. MP1 §7.4 labels the 10 s one
+`audibleActivityClearDelay = 10_s`; that is wrong, and this run is the evidence.
+
+So the honest reading of the 9,153 ms beat is **not** "it squeaked inside a 10 s
+grace by 850 ms". It is:
+
+- the silence **exceeded** the 5 s audible-activity clear, comfortably — audible
+  activity was cleared *during the beat*;
+- it stayed under the 10 s foreground-assertion release, by ~850 ms;
+- **and the transition completed anyway.**
+
+That is a stronger pass on the mechanism than the wrong version claimed: the page
+lost its audible-activity assertion mid-seam and still loaded, seeked and played.
+It also relocates the cliff. The thing to fear is the **10 s** foreground-assertion
+release, and the measured beat came within **847 ms** of it — **on a local file**.
+A cross-origin fetch has under a second of headroom before crossing a threshold
+nothing in this run probed.
+
+### What the log DOES say, and a claim it walks back
+
+The narrow claim above — the seam pass has no log coverage — is correct. The broader
+"there was no log" framing was wrong and left **1,153 lines from our own process**
+(of 99,491 timestamped, ~1.2%) unread. Two things in them matter:
+
+- **The app could not take the media-playback assertion at all.**
+  `ProcessAssertion::acquireSync Failed to acquire RBS assertion 'WebKit Media
+  Playback'`, because *"originator doesn't have entitlement
+  com.apple.runningboard.assertions.webkit"*. This is exactly the entitlement gate
+  MP1 §7.4 documents as the reason a real app must carry the background mode. **A
+  simulator app run from `simctl` does not hold it.** That materially strengthens
+  `SIMULATOR_CAVEAT`: this measurement is not merely missing power management, it is
+  missing the assertion the real mechanism depends on.
+- RunningBoard's last observed state for the process is `unknown-NotVisible`, and it
+  logs `assertionsDidInvalidate` at 13:46:34.509. **No RunningBoard suspension is
+  ever observed** — but the log ends before it could have been, so that is an
+  absence of evidence, not evidence of absence.
 
 ### One caveat that was over-corrected once, so read the scoping
 

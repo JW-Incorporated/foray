@@ -141,21 +141,37 @@ const rec = {
   phase: "seam",
   startedAtWall: Date.now(),
   lastSavedAtWall: null,
-  /* SAVE SEQUENCE, and it exists to settle one specific unanswered question.
-     Run 32036295743's record simply STOPS at +25.2 s of a 90 s hidden window,
-     one second after the second segment became audible, with its out-point armed
-     and the 1000 ms timer samples ending at the same instant. Two readings:
-     the page stopped being scheduled, or its localStorage writes stopped reaching
-     disk. The artifact cannot separate them, and the simulator log was truncated
-     before this pass even began, so nothing in that run can.
+  /* SAVE CADENCE. Run 32036295743's record simply STOPS at +25.2 s of a 90 s
+     hidden window, one second after the second segment became audible, with its
+     out-point armed and the 1000 ms timer samples ending at the same instant.
+     Two readings: the page stopped being scheduled, or its localStorage writes
+     stopped reaching disk.
 
-     A counter plus the wall clock of each save separates them from the RECORD
-     ALONE, with no log and no new tooling: if `saveSeq` is high and
-     `lastSavedAtWall` is old, the page kept running and the writes stopped
-     landing. If `saveSeq` matches the elapsed time divided by the 2 s interval and
-     both are old, the page stopped being scheduled -- which is the far more
-     serious branch, because it would mean a hidden page can be descheduled
-     mid-Foray after sustained silence. */
+     BE HONEST ABOUT WHAT THIS PAIR CAN AND CANNOT DO -- a first version of this
+     comment claimed it separates those two readings, and a review showed it
+     cannot. `saveSeq` and `lastSavedAtWall` are stamped and then serialised into
+     the SAME `setItem` blob, so whatever blob reaches disk always carries a
+     matching pair. Under either reading the recovered record reads
+     `saveSeq=N, lastSavedAtWall=T_N`. The state "high seq, old wall clock" is
+     unobservable by construction, and no in-record counter can be otherwise:
+     a page cannot record the fact that its own later write failed to persist.
+
+     WHAT THIS DOES BUY, which is still worth having: the number of saves and the
+     first save's wall clock, so the CADENCE is checkable. `saveSeq` against
+     `(lastSavedAtWall - firstSavedAtWall) / 2000` says whether saves were landing
+     on the 2 s interval or already stuttering before the record ends -- a
+     stuttering cadence is evidence for the write-path reading without settling it.
+
+     WHAT ACTUALLY SEPARATES THEM is an out-of-band channel that does not depend on
+     the thing under suspicion. That is the system log, which is why the workflow
+     now gives each pass its own capture with a corrected predicate. If a run's
+     `simulator-log-seam.txt` shows RunningBoard moving this process to a suspended
+     state around the moment the record ends, that is the descheduling reading,
+     decided. If it shows the process alive to the end of the window, it is the
+     write-path reading. Failing both, the last resort is a one-off diagnostic run
+     that resumes the app and reads the IN-MEMORY record -- which trades away the
+     never-resume property this harness is built on, so it is a deliberate
+     one-shot, not a change to the standing measurement. */
   saveSeq: 0,
   firstSavedAtWall: null,
   plannedItems: QUEUE.length,

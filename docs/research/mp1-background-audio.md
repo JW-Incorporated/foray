@@ -107,11 +107,21 @@ Two things follow, and the second one supersedes a "SAFE" reading in `STATE.md`.
    the `fired-on-resume` retraction above stands.
 2. **§8's specific fear was very nearly realised, on the easiest possible input.**
    §8 names a slow cross-episode advance pushing the silent window past WebKit's
-   **10 s** `audibleActivityClearDelay`. The observed silence was **9.15 s** — inside
-   that grace by roughly **850 ms**, on a *local* file. The beat is
-   `max(gap, load)` (`player/queue-manager.js` §10) and the load dominated it by
-   seven seconds. So the margin against §8's failure mode is not comfortable, it is
-   under a second, and a real cross-origin fetch is strictly worse.
+   audibility grace. **That grace is 5 s, not the 10 s §7.4 states** — the run's own
+   log carries `Starting timer to clear audible activity in 5 seconds`, and
+   `clearAudibleActivity` firing 5.006 s later. The 10 s constant belongs to a
+   different mechanism (`WebPageProxy::updateThrottleState` releasing the foreground
+   assertion); **§7.4's `audibleActivityClearDelay = 10_s` is mislabelled and is
+   corrected below.**
+
+   So the 9,153 ms silence **exceeded** the audible-activity clear outright — the
+   assertion was dropped mid-beat — **and the transition completed anyway**, which is
+   a stronger result than a near-miss would have been. The cliff that remains is the
+   **10 s** foreground-assertion release, and the measured beat came within **847
+   ms** of it, on a *local* file. The beat is `max(gap, load)`
+   (`player/queue-manager.js` §10) and the load dominated by seven seconds, so a real
+   cross-origin fetch has under a second of headroom before crossing a threshold
+   nothing in this run probed.
 
 **And the second transition — the one that would have tested whether audibility
 lapses after that silence — is exactly the one this run did not get.** The record
@@ -686,7 +696,15 @@ problem either.
 takes a **foreground** assertion on the WebContent process whenever the page is
 audible — *"UIProcess is taking a foreground assertion because we are playing
 audio"* — on a branch independent of view visibility, released only after a
-10-second grace (`audibleActivityClearDelay = 10_s`). `takeAudibleActivity()`
+10-second grace (`audibleActivityClearDelay = 10_s`).
+**CORRECTION, 2026-08-17, measured — this constant is wrong.** Run 32036295743's
+simulator log shows WebKit starting the clear timer at **5 seconds** ("Starting timer
+to clear audible activity in 5 seconds because we are no longer playing audio") and
+`clearAudibleActivity` firing 5.006 s later. The 10 s figure in this paragraph is a
+*different* timer — `WebPageProxy::updateThrottleState` releasing the foreground
+assertion. Both appear in that log, seconds apart, and conflating them made a 9.15 s
+measured silence look like a near-miss when it had already crossed the real
+threshold. §0b carries the corrected reading. `takeAudibleActivity()`
 is literally `throttler()->foregroundActivity("View is playing audio")`, and
 `ProcessThrottler` only suspends a process with no activities. **So the web
 process is not suspended while audio plays, and JS keeps running.** (That last

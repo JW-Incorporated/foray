@@ -1452,8 +1452,38 @@ if (isMain) {
          directory. Writes the redacted array back over the same path so the
          workflow cannot accidentally upload the pre-redaction copy. */
       if (!rest[0]) throw new Error("redact-localstorage needs a rows.json");
-      const parsed = readMaybe(rest[0]);
-      const { rows, redacted } = redactLocalStorageRows(Array.isArray(parsed) ? parsed : []);
+      /* STRICT, and deliberately NOT via `readMaybe`. `readMaybe` swallows a parse
+         error and returns null, which would have made this command write `[]`,
+         exit 0, and let the workflow publish an empty rows file -- no rows, three
+         `inconclusive` verdicts, a GREEN job. That is the exact silent-nothing
+         failure the whole collection step is built to avoid, and it would have been
+         indistinguishable from a genuinely empty store. A redaction step that
+         cannot read its input must fail, not shrug. */
+      const text = fs.readFileSync(rest[0], "utf8");
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch (e) {
+        throw new Error(
+          `redact-localstorage: ${rest[0]} is not valid JSON (${e.message}). ` +
+            `sqlite3 wrote ${text.length} byte(s). Refusing to publish a rows file ` +
+            `this command could not read.`
+        );
+      }
+      if (!Array.isArray(parsed)) {
+        throw new Error(
+          `redact-localstorage: ${rest[0]} is ${parsed === null ? "null" : typeof parsed}, ` +
+            `not the array \`sqlite3 -json\` produces.`
+        );
+      }
+      if (parsed.length === 0) {
+        throw new Error(
+          `redact-localstorage: ${rest[0]} holds zero rows. A local-storage database ` +
+            `the app has written to is never empty, so this is a failed read, not an ` +
+            `empty store -- and publishing it would report "measured nothing" on a green job.`
+        );
+      }
+      const { rows, redacted } = redactLocalStorageRows(parsed);
       fs.writeFileSync(rest[0], JSON.stringify(rows, null, 2) + "\n");
       console.error(
         `redacted ${redacted.length} value(s) from ${rest[0]}` +

@@ -385,21 +385,36 @@ jobs:
           # whole-device firehose, and the reporting step's `grep -o` over the
           # result ran for more than seven minutes on a runner that bills at 10x.
           #
-          # SECOND NARROWING — MEASURED ON 32036295743'S OWN ARTIFACT. The
-          # predicate below was still a firehose: `processImagePath CONTAINS "App"`
-          # matches most of the system, so the capture produced 110,579 lines of
-          # which exactly **17** mentioned our app (0.015% signal), hit the 20 MB
-          # cap in **73 seconds**, and covered 13:45:30-13:46:44 only. Pass 2 --
-          # the SEAM measurement, the entire point of that run -- began at 13:47:08
-          # and was never logged at all. That is why the run's one unexplained
-          # result could not be diagnosed from the log: there was no log.
+          # SECOND NARROWING — MEASURED ON 32036295743'S OWN ARTIFACT. The old
+          # predicate was `processImagePath CONTAINS "App"`, which matches most of
+          # the system: the capture hit the 20 MB cap in **73 seconds** and covered
+          # 13:45:30-13:46:44 only, so pass 2 -- the SEAM measurement, the entire
+          # point of that run -- began at 13:47:08 and was **never logged at all**.
+          # Signal ratio in what it did capture: **1,153 of 99,491** timestamped
+          # lines came from our process (~1.2%).
           #
-          # So: match our own bundle id rather than the substring "App", and give
-          # each pass its OWN file and its own cap. A cap shared across passes is
-          # spent by whichever pass runs first, which is never the interesting one.
+          # MATCH ON THE PROCESS NAME, WHICH IS `App`. A first attempt at this fix
+          # used `processImagePath CONTAINS "com.jwincorporated.foray"` and would
+          # have matched NOTHING: for a simulator app `processImagePath` is the host
+          # path to the executable inside the *Bundle* container
+          # (.../Application/<UUID>/App.app/App), and the bundle id appears only in
+          # the Data container's WebKit subdirectory. That would have silently
+          # degraded the capture to the `WebKit` clause alone and dropped every
+          # UIKit, BackBoard and runningboard line -- including the RBS assertion
+          # lines section 4c now cites as evidence. `process == "App"` is exact and
+          # is what the log's own `App[19964:...]` prefix shows.
+          #
+          # NEITHER PREDICATE HAS BEEN EXECUTED. There is no Mac here; the next run
+          # of this workflow is the first test of it. If `simulator-log-seam.txt`
+          # comes back tiny or empty, suspect this line first and check what the
+          # `App[<pid>]` prefix actually is in the run's own log.
+          #
+          # Each pass also gets its OWN file and its own cap: a cap shared across
+          # passes is spent by whichever runs first, which is never the interesting
+          # one.
           start_log() {   # $1 = destination file
             xcrun simctl spawn "$UDID" log stream --style compact \
-              --predicate 'processImagePath CONTAINS "com.jwincorporated.foray" OR senderImagePath CONTAINS "WebKit"' \
+              --predicate 'process == "App" OR senderImagePath CONTAINS "WebKit"' \
               2>&1 | head -c 20000000 > "$1" &
             LOG_PID=$!
           }
@@ -464,16 +479,21 @@ jobs:
           # is `max(gap, load)` (queue-manager.js section 10) and the load dominated.
           # Re-derived at the measured beat:
           #
-          #   15.0 s  hidden playback before boundary 1 (ARM_AFTER_HIDDEN_SEC)
-          #    9.2 s  beat 1                     <- measured, not assumed
-          #    8.0 s  seg-b (12 -> 20)
-          #    9.2 s  beat 2
-          #    0.0 s  seg-c becomes audible = transition 2 completes
-          #   ------
-          #   41.3 s, call it ~45 s with a save interval and margin.
+          #   15.000 s  hidden playback before boundary 1 (ARM_AFTER_HIDDEN_SEC)
+          #    9.153 s  beat 1                    <- measured, not assumed
+          #    8.000 s  seg-b (12 -> 20)
+          #    9.153 s  beat 2 (same assumption)
+          #    0.000 s  seg-c becomes audible = transition 2 completes
+          #   --------
+          #   41.306 s, call it ~45 s with a save interval and margin.
+          #
+          # (Unrounded on purpose: 15 + 9.2 + 8 + 9.2 sums to 41.4, and this file is
+          # in a PR about not mislabelling arithmetic.)
           #
           # 90 s therefore still clears MIN_HIDDEN_TRANSITIONS = 2 with ~2x headroom
-          # (even two worst-case beats at SEAM_BAD_MS = 15 s need only ~59 s), so it
+          # -- even two worst-case beats at SEAM_BAD_MS = 15 s need only 53 s by the
+          # same method (15 + 15 + 8 + 15), or 59 s if seg-c must also play out --
+          # so it
           # is NOT raised here -- macOS minutes bill at 10x and this workflow's cost
           # section is explicit about that. What changed is that the number now has a
           # derivation that matches reality.

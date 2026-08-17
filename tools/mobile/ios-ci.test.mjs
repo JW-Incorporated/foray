@@ -20,6 +20,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
 
 /** This suite reads two SOURCE files to pin constants that cannot be imported
  *  across the CI/browser boundary — see the SEAM_ASKED_MS tests. */
@@ -1197,6 +1199,17 @@ test("a redacted row keeps its key and its size, because that is the diagnostic"
   assert.equal(row.redacted, true);
   assert.equal(row.hexval, null);
   assert.equal(row.value_bytes, 7, '"abc-123" is 7 bytes');
+  /* THE EXACT KEY SET, not just these three fields. A review defeated the looser
+     version with one added line -- `value_preview: hex.slice(0, 64)` -- which keeps
+     every other assertion green (it is hex, so no "access_token" substring, and it
+     is truncated, so no full-token match) while publishing the first 32 bytes of
+     every value: `{"access_token":"eyJhbGciOiJFUzI1...`. A redacted row may carry
+     metadata about a value and must never carry any part OF one. */
+  assert.deepEqual(
+    Object.keys(row).sort(),
+    ["hexval", "key", "redacted", "value_bytes"],
+    "a redacted row grew a field — if it holds any slice of the value, that is the leak again"
+  );
 });
 
 test("redaction is an ALLOWLIST, so a key nobody has written yet is redacted by default", () => {
@@ -1224,4 +1237,59 @@ test("redaction tolerates the rows a broken read produces", () => {
     rows.map((r) => r.value_bytes),
     [0, 0]
   );
+});
+
+/* ── the redact CLI itself, not just the pure function ────────────────────────
+   The five tests above cover `redactLocalStorageRows`. None covered the command
+   the workflow actually runs, and a review found the gap was load-bearing: the
+   first version read its input through `readMaybe`, which swallows a JSON parse
+   error and returns null. Empty or truncated `sqlite3` output therefore produced
+   `[]`, exit 0, and a published rows file with nothing in it -- no rows, three
+   `inconclusive` verdicts, a GREEN job, indistinguishable from a genuinely empty
+   store. That is the silent-nothing failure the whole collection step exists to
+   avoid, so the command must fail instead. */
+
+function runRedact(contents) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-redact-"));
+  const file = path.join(dir, "rows.json");
+  fs.writeFileSync(file, contents);
+  const r = spawnSync(process.execPath, [path.join(HERE, "ios-ci.mjs"), "redact-localstorage", file], {
+    encoding: "utf8",
+  });
+  return { ...r, file, after: fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null };
+}
+
+test("redact-localstorage refuses truncated JSON instead of publishing an empty file", () => {
+  const truncated = '[{"key":"cp_sb_session","hexval":"00';
+  const r = runRedact(truncated);
+  assert.notEqual(r.status, 0, "a JSON parse failure must be a non-zero exit");
+  assert.match(r.stderr, /not valid JSON/);
+  /* And it must NOT have rewritten the file at all — in particular not into the
+     valid-looking `[]` that would sail through the workflow's `mv` and report
+     "measured nothing" on a green job. Left byte-for-byte as found, so the failure
+     is diagnosable from the artifact. */
+  assert.equal(r.after, truncated, "the unreadable file must be left exactly as found");
+});
+
+test("redact-localstorage refuses a zero-row read, which is a failed read not an empty store", () => {
+  const r = runRedact("[]");
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /zero rows/);
+});
+
+test("redact-localstorage refuses a non-array, e.g. sqlite3 writing an error object", () => {
+  const r = runRedact('{"error":"database is locked"}');
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /not the array/);
+});
+
+test("redact-localstorage rewrites a real rows file in place, redacted, and exits 0", () => {
+  const r = runRedact(JSON.stringify(REAL_WORLD_ROWS));
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.after);
+  assert.equal(out.length, REAL_WORLD_ROWS.length, "no row is dropped — the key names are the diagnostic");
+  assert.equal(r.after.includes("access_token"), false);
+  assert.match(r.stderr, /redacted 3 value\(s\)/);
+  /* The probe records must still decode out of the file it wrote. */
+  assert.equal(parseDump(decodeLocalStorageRows(out)).bridge.capacitor, "object");
 });

@@ -42,8 +42,9 @@ docs/. Completed workstreams move to their plan doc's retro section.
   it from the record alone. Both branches: `docs/ios-ci.md` §4c.
 - **Three harness defects fixed on the way, all found by reading the artifact
   rather than the summary:** the log capture's 20 MB cap was spent by pass 1 so the
-  seam pass had **no log coverage at all**; its predicate (`CONTAINS "App"`) gave
-  110,579 lines of which **17** were ours (0.015%); and **zero `FORAY_PROBE_` lines
+  seam pass had **no log coverage at all**; its predicate (`CONTAINS "App"`) spent
+  the cap on the system (**1,153 of 99,491** lines were ours, ~1.2%); and **zero
+  `FORAY_PROBE_` lines
   have ever been captured**, so `collectProbes`' console fallback has never once
   worked and `localStorage` is the only proven channel. Per-pass captures, a
   bundle-id predicate, and an explicit "unproven, not clean" note now ship.
@@ -54,7 +55,8 @@ docs/. Completed workstreams move to their plan doc's retro section.
   downloadable by anyone from a public repo. Redaction is an allowlist
   (`/^foray_probe_/`), the raw DBs no longer enter the artifact at all, and a
   redaction failure is fail-closed and loud. **Revoking the leaked anonymous user
-  and deleting artifact 9290947062 are founder actions and are NOT done here** —
+  and deleting run 32036295743's `ios-shell-evidence` artifact are founder actions
+  and are NOT done here** —
   and the artifact must be deleted only *after* the docs carry its numbers, since
   it is currently the only place the measurement exists.
 - **THE OUT-POINT HEADLINE IS A RETRACTION.** `fired-on-resume` from run **32023924627** was
