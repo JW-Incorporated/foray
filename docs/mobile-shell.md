@@ -390,8 +390,11 @@ Filed as `HUMAN-ACTIONS.md` items with exact steps. In brief:
    task — a scope call, and the biggest one left on Android. `navigator.mediaSession`
    is disabled in Android WebView, so #27's lock-screen and steering-wheel controls
    cannot be delivered from JS at any price, and a foreground service is the only
-   vehicle for them. #227's seam prefetch weakened the *engine-level* case for one
-   and did not touch the *OS-level* case. Reasoning, and what would settle it, in
+   vehicle for them. ~~#227's seam prefetch weakened the *engine-level* case for one
+   and did not touch the *OS-level* case.~~ **#227 is parked (measured making the
+   seam worse — `mp1-background-audio.md` §4.1a), so the engine-level case is back
+   at full strength: a backgrounded WebView takes ~11 s to load a segment however
+   audible the page is.** Reasoning, and what would settle it, in
    `docs/android-shell-build.md` §5. **It is not settleable without a real phone
    off charger.**
 

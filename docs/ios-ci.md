@@ -475,6 +475,17 @@ tolerating.
 Nothing on this machine can verify a prefetch that exists to win a race inside a
 backgrounded WebView. This workflow can, and it is the only thing that can.
 
+> **SUPERSEDED — DO NOT READ ~2,000 ms AS THE PASS CONDITION ANY MORE.** Run
+> **32057395270** dispatched exactly this and #227 FAILED: `observedGapMs: null`,
+> `lastStage: canplay` — the segment was dropped, not merely slow. The handover is
+> now parked (default off), so this probe measures the **one-element** path and
+> **~9–11 s, or a `did not settle within 10000ms` drop, is the expected reading**.
+> Root cause in `docs/research/mp1-background-audio.md` §4.1a: media-element load
+> tasks are throttled by VISIBILITY, so warming in the audible window buys
+> nothing. Re-measuring the handover needs `prefetch: true` added to
+> `probe-seam.js`'s `new HtmlAudioBackend(...)` by hand — without it a run cannot
+> say anything about the handover either way.
+
 **Dispatch `ios-build` on `main` and read `observedGapMs` in the seam record.
 Against this run's 9,153 ms baseline, expect ~2,000–3,000 ms.** Two things to check
 before reading a number as a verdict:
@@ -624,8 +635,12 @@ The three, kept apart on purpose:
 
 The measured 9,153 ms is **92% of our own timeout** and 847 ms short of WebKit's.
 Both arithmetics give 847 ms because both constants are 10,000 ms, which is exactly
-why they are easy to conflate — the earlier draft of this paragraph did. #227's
-prefetch takes the load out of the silent window, which addresses all three at once.
+why they are easy to conflate — the earlier draft of this paragraph did. ~~#227's
+prefetch takes the load out of the silent window, which addresses all three at
+once.~~ **It does not: run 32057395270 measured the load taking ~11 s whether the
+page is audible or silent, because the throttle is on VISIBILITY (§4.1a). All
+three are still open, and the live proposal is a visibility-aware
+`LOAD_SETTLE_TIMEOUT_MS` so a slow load stops dropping the segment.**
 
 ### What the log DOES say, and a claim it walks back
 

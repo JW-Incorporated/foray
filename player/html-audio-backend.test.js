@@ -1476,7 +1476,13 @@ function pair({ a: aOpts = {}, warm: wOpts = {} } = {}) {
   const a = new PairAudio("A", pairLog, aOpts);
   const w = new PairAudio("B", pairLog, wOpts);
   const log = [];
-  const b = new HtmlAudioBackend({ element: a, warmElement: w, telemetry: (m) => log.push(m) });
+  /* `prefetch: true` is explicit because the handover is DEFAULT OFF — it was
+     measured making the seam worse (see §prefetch). Every test in this section
+     is therefore about a mechanism nothing enables in production, kept working
+     and kept honest for whoever re-opens the question with a new measurement. */
+  const b = new HtmlAudioBackend({
+    element: a, warmElement: w, prefetch: true, telemetry: (m) => log.push(m),
+  });
   const ends = [];
   b.onItemEnded = (r) => ends.push(r ?? "natural");
   return { a, w, b, log, ends, pairLog };
@@ -1508,11 +1514,77 @@ const settle = async () => {
 
 /* ---- the capability, and its absence ---- */
 
+test("THE HANDOVER IS OFF BY DEFAULT, and off means no second element exists", async () => {
+  /* Run 32057395270 shipped it to a simulator and the seam went from 9.2 s of
+     silence to a DROPPED SEGMENT. Until a measurement says otherwise, the
+     default must be the backend that shipped before any of this.
+
+     "Off" has to mean NOT CONSTRUCTED, not "constructed and left alone": every
+     media element is a client of the same task queue the real load needs, and in
+     a hidden page that queue delivers a step roughly every 3 seconds. This is
+     the test that would fail if someone flipped the default back. */
+  /* AN ELEMENT IS INJECTED AND MUST BE REFUSED. Asserting `_warmEl === null`
+     with nothing injected proves nothing under `node --test`: there is no
+     `Audio` and no `document`, so `makeWarmElement()` returns null whatever the
+     gate says, and the assertion passes with the gate deleted. Caught by the
+     reviewer's mutation, which removed the gate and kept the suite green.
+     Handing it an element it *could* use is the only way to observe the refusal. */
+  const el = new PairAudio("solo", []);
+  const b = new HtmlAudioBackend({ element: el, warmElement: new PairAudio("warm", []) });
+  assert.equal(b._warmEl, null, "an injected warm element must be REFUSED while prefetch is off");
+  assert.equal(b.canPrefetch, false);
+  assert.match(b.prefetchOffReason ?? "", /parked/);
+  assert.equal(b.prefetch(item("b", B_URL), { startOffset: 12 }), false);
+
+  // And the ordinary path is untouched.
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  assert.equal(el.src, A_URL);
+  assert.equal(el.currentTime, 100);
+});
+
+test("a boundary that discards a warm load does NO media work on that element", async () => {
+  /* THE REGRESSION THAT TURNED A SLOW SEAM INTO A DROPPED SEGMENT. `_discardWarm`
+     used to call `removeAttribute("src") + load()`, which starts the media load
+     algorithm again — and its steps queue AHEAD of the cold fallback on one
+     queue that delivers roughly every 3 s while hidden. Measured on the device:
+     the fallback went 9.14 s -> 11.14 s, across the 10,000 ms deadline.
+
+     So the boundary is allowed to forget the bookkeeping and nothing else. */
+  const { b, a, w } = pair({ warm: { laggySeek: true } });
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 900 });
+  await settle();
+  assert.equal(b.warmState?.ready, false, "precondition: the warm load loses the race");
+  const warmCallsBefore = w.calls.length;
+
+  await b.load(item("b", B_URL), { startOffset: 900 });
+
+  assert.equal(b.warmState, null, "the bookkeeping is forgotten");
+  assert.deepStrictEqual(w.calls.slice(warmCallsBefore), [],
+    "but the warm element must not be touched — no src drop, no second load()");
+  assert.equal(a.src, B_URL, "and the fallback proceeds exactly as before");
+});
+
+test("release DOES free the warm element's buffer — that is not a boundary", async () => {
+  const { b, w } = pair();
+  await b.load(item("a", A_URL), { startOffset: 100 });
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  b.release();
+  assert.ok(w.calls.includes("removeAttribute:src"),
+    "nothing is waiting on a queue at release time, so the buffer goes");
+});
+
 test("with no second element prefetch is unavailable and every path is unchanged", async () => {
   // Every pre-existing test in this file runs in exactly this configuration,
   // which is why they are all still valid: without a warm element the backend
   // is the one-element backend it has always been.
-  const { b, el } = mk();
+  /* Prefetch ASKED FOR but unavailable, which is a different state from parked:
+     there is no `Audio` constructor under `node --test`, so `makeWarmElement`
+     returns null and the capability is honestly absent rather than refused. It is
+     also every pre-existing test in this file, which is why they all still hold. */
+  const el = new FakeAudio();
+  const b = new HtmlAudioBackend({ element: el, prefetch: true });
   assert.equal(b.canPrefetch, false);
   assert.match(b.prefetchOffReason ?? "", /no second element/);
   assert.equal(b.prefetch(item("b", B_URL), { startOffset: 12 }), false);
@@ -1645,13 +1717,37 @@ test("the outgoing element is paused BEFORE the incoming one plays, never both a
   assert.ok(pausedA < playedB, `A must be paused before B plays: ${pairLog.join(" ")}`);
 });
 
-test("the demoted element's buffer is dropped rather than left decoding", async () => {
-  const { b, a } = pair();
+test("a handover PAUSES the demoted element but does not drop its buffer at the boundary", async () => {
+  /* This test used to assert the opposite, and the assertion was wrong for the
+     same reason `_discardWarm` was: `removeAttribute("src") + load()` queues two
+     media-load-algorithm steps — ~3 s each in a hidden page — on the very queue
+     the element we just promoted needs in order to start playing. Pausing stops
+     it making progress, which is what "not left decoding" actually requires; the
+     buffer is superseded the next time `prefetch()` assigns a src to it, and
+     released for real by `release()`.
+
+     Reasoned from the same log rather than measured: the promote never fired on
+     the device, because the warm load never became promotable. */
+  const { b, a, w } = pair();
   await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
   b.prefetch(item("b", B_URL), { startOffset: 12 });
   await settle();
+  const before = a.calls.length;
+
   await b.load(item("b", B_URL), { startOffset: 12 });
-  assert.ok(a.calls.includes("removeAttribute:src"), "the demoted element must let go of its buffer");
+
+  assert.equal(a.paused, true, "the demoted element must stop making progress");
+  assert.deepStrictEqual(
+    a.calls.slice(before).filter((c) => c === "load" || c === "removeAttribute:src"), [],
+    "but no media work at the boundary — the promoted element's own load is waiting on that queue"
+  );
+  assert.equal(b.el, w);
+
+  // Superseded, not leaked: the next warm load re-points that same element.
+  b.prefetch(item("c", C_URL), { startOffset: 40 });
+  await settle();
+  assert.equal(a.src, C_URL, "the demoted element's stale buffer is replaced by the next prefetch");
 });
 
 test("a handover carries the rate and the duck onto the element that inherits the role", async () => {
@@ -1717,8 +1813,10 @@ test("a warm load that has not finished by the boundary falls back to the ordina
 
   assert.equal(b.el, a, "the player element must not change when the race is lost");
   assert.equal(a.src, B_URL, "the boundary loads it the way it always has");
-  assert.equal(b.warmState, null, "and the warm element is left holding nothing");
-  assert.equal(w.src, "");
+  assert.equal(b.warmState, null, "the warm bookkeeping is forgotten");
+  // The element itself is deliberately left alone — clearing it here is media
+  // work on a queue the fallback is waiting on. See the discard test above.
+  assert.equal(w.src, B_URL, "the boundary must not touch the warm element");
 });
 
 test("a warm element ready for a DIFFERENT item is discarded, never promoted", async () => {
