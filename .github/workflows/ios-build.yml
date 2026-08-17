@@ -320,8 +320,15 @@ jobs:
         run: |
           set -euo pipefail
           UDID="${{ steps.sim.outputs.udid }}"
-          xcrun simctl spawn "$UDID" log stream --style compact --level debug \
-            > "$ART/simulator-log.txt" 2>&1 &
+          # NARROWED, and the first run is why: `log stream --level debug` with no
+          # predicate is a whole-device firehose, and the reporting step's
+          # `grep -o` over the result ran for more than seven minutes on a runner
+          # that bills at 10x. Predicate-filtered to our own process plus WebKit,
+          # at default level, and hard-capped — the only lines this workflow ever
+          # reads out of it are `FORAY_PROBE_*` records and CSP messages.
+          xcrun simctl spawn "$UDID" log stream --style compact \
+            --predicate 'processImagePath CONTAINS "App" OR senderImagePath CONTAINS "WebKit"' \
+            2>&1 | head -c 20000000 > "$ART/simulator-log.txt" &
           LOG_PID=$!
           trap 'kill $LOG_PID 2>/dev/null || true' EXIT
 
@@ -494,8 +501,15 @@ jobs:
             echo '{}' > "$ART/localstorage.json"
           fi
           if [ -f "$ART/simulator-log.txt" ]; then
-            grep -a -o 'FORAY_PROBE_[A-Z]*.*' "$ART/simulator-log.txt" > "$ART/probe-console.txt" || true
-            grep -a -i -o '.\{0,120\}Content Security Policy.\{0,200\}' "$ART/simulator-log.txt" \
+            wc -c "$ART/simulator-log.txt"
+            # WHOLE LINES, NOT `grep -o` WITH A COUNTED CONTEXT. The first run spent
+            # >7 minutes here: `grep -a -i -o '.\{0,120\}…\.\{0,200\}'` over a
+            # multi-hundred-megabyte debug log is pathological, and it was reading a
+            # firehose the probe step no longer produces. A bounded line count is
+            # all any human reads anyway.
+            grep -a -F 'FORAY_PROBE_' "$ART/simulator-log.txt" | tail -400 \
+              > "$ART/probe-console.txt" || true
+            grep -a -i -F 'Content Security Policy' "$ART/simulator-log.txt" | head -200 \
               > "$ART/csp-messages.txt" || true
           fi
           touch "$ART/probe-console.txt"

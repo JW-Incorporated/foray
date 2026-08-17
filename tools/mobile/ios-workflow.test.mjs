@@ -190,6 +190,44 @@ test("the job is not named like a required check", () => {
   }
 });
 
+test("the simulator log capture is bounded, in both directions", () => {
+  /* MEASURED COST, NOT A STYLE POINT. The first run captured
+     `log stream --level debug` with no predicate — a whole-device firehose — and
+     the reporting step's `grep -a -i -o '.\{0,120\}…'` over the result ran for more
+     than SEVEN MINUTES on a runner that bills at 10x, for two greps whose output
+     nobody reads past a few hundred lines. On a 60-minute timeout that is also a
+     way to lose a run that had already succeeded.
+
+     Both ends are pinned: the capture is predicate-filtered and byte-capped, and
+     the reads are whole-line with a bounded count. */
+  /* COMMANDS ONLY. The comments in these steps quote the defect they fixed
+     (`--level debug`, `grep -o`), so a whole-step scan fails on its own
+     explanation — which is how a test ends up rewarding silence about a bug. */
+  const commands = (s) =>
+    s
+      .split("\n")
+      .filter((l) => !/^\s*#/.test(l))
+      .join("\n");
+
+  const probe = commands(step(WF, "Run the probes") ?? "");
+  assert.ok(probe);
+  assert.match(probe, /log stream/);
+  assert.match(probe, /--predicate/, "the log capture must be predicate-filtered, not whole-device");
+  assert.equal(/--level debug/.test(probe), false, "debug level is a firehose on a shared runner");
+  assert.match(probe, /head -c \d+/, "the capture must be byte-capped");
+
+  const report = commands(step(WF, "Report what the probes established") ?? "");
+  assert.ok(report);
+  for (const g of report.split("\n").filter((l) => /^\s*grep\b/.test(l.trim()))) {
+    assert.equal(
+      /-o\b/.test(g),
+      false,
+      `grep -o with a counted context over a large log is the pathological case: ${g.trim()}`
+    );
+  }
+  assert.match(report, /tail -\d+|head -\d+/, "the log reads must be bounded");
+});
+
 test("the job has a timeout", () => {
   /* A hung simulator boot on a 10x runner is the expensive failure. MP1 already
      burned ~75 minutes on three Android emulators that never booted. */
