@@ -930,7 +930,12 @@ test("a file that ran out is not an out-point, and the run is refused", () => {
   rec.transitions[0].endReason = "natural";
   const v = seamTransitionVerdict(rec);
   assert.equal(v.verdict, "inconclusive");
-  assert.match(v.headline, /not at its out-point/);
+  assert.match(v.headline, /rather than at\s+its out-point|rather than at its out-point/);
+  /* Absent is refused too. A guard that fails open on a missing field is the same
+     defect as not having the guard — the record must SUPPORT the headline. */
+  const noReason = seamRecord();
+  noReason.transitions.forEach((t) => { delete t.endReason; });
+  assert.notEqual(seamTransitionVerdict(noReason).verdict, "seam-crosses-in-background");
 });
 
 test("a boundary armed by the fallback timer is refused, because that is the race", () => {
@@ -941,7 +946,15 @@ test("a boundary armed by the fallback timer is refused, because that is the rac
      the verdict ignored it. */
   const v = seamTransitionVerdict(seamRecord({ armedWhileHidden: false }));
   assert.equal(v.verdict, "inconclusive");
-  assert.match(v.headline, /fallback timer/);
+  assert.match(v.headline, /armed while hidden/);
+  /* `!== true`, not `=== false`: absent must not pass either. */
+  for (const value of [null, undefined, 0, "true"]) {
+    assert.notEqual(
+      seamTransitionVerdict(seamRecord({ armedWhileHidden: value })).verdict,
+      "seam-crosses-in-background",
+      `armedWhileHidden ${JSON.stringify(value)} was accepted`
+    );
+  }
 });
 
 test("a transition that re-used the same audio file is refused", () => {
@@ -955,7 +968,48 @@ test("a transition that re-used the same audio file is refused", () => {
   const v = seamTransitionVerdict(rec);
   assert.equal(v.verdict, "inconclusive");
   assert.match(v.headline, /SAME audio file/);
-  assert.match(v.detail, /seek with no ` ?refetch|seek with no refetch/);
+  /* And an item with NO recorded src cannot buy a pass either: "a different episode
+     loaded" is then simply uncheckable. */
+  const blind = seamRecord();
+  delete blind.items[2].src;
+  assert.notEqual(seamTransitionVerdict(blind).verdict, "seam-crosses-in-background");
+});
+
+test("a genuine stall is NEVER downgraded to inconclusive by a caveat", () => {
+  /* A CONFIRMATION PASS CAUGHT THIS AS A REGRESSION IN THE FIX ITSELF. The four
+     caveat checks originally sat BEFORE the stall check and returned from it, so a
+     run where a segment ended while hidden and nothing followed reported
+     `inconclusive` — with a detail saying "nothing is known about backgrounding from
+     this run", which was false. A caveat weakens a PASS; it cannot un-observe an
+     advance that failed. The caveats now ride in the detail. */
+  for (const mutate of [
+    (r) => { r.transitions[0].endReason = "natural"; },
+    (r) => { r.armedWhileHidden = false; },
+    (r) => { r.items[1].src = r.items[0].src; },
+    (r) => { r.askedGapMs = 50; },
+  ]) {
+    const rec = seamRecord({ lastSavedAtWall: 60000 });
+    rec.transitions[1].nextPlayingAtWall = null;
+    rec.transitions[1].hiddenAtNextPlaying = null;
+    rec.transitions[1].observedGapMs = null;
+    rec.transitions[1].lastStage = "beat-armed";
+    mutate(rec);
+    const v = seamTransitionVerdict(rec);
+    assert.equal(v.verdict, "seam-stalls-in-background", `a caveat masked the stall: ${v.headline}`);
+    /* And the caveat is still reported, not dropped. */
+    assert.match(v.detail, /CAVEATS ON THIS RUN/);
+  }
+});
+
+test("a beat that is not the SHIPPED beat cannot pass, however it was overridden", () => {
+  /* `askedGapMs` is read off `manager.seamGapSec` by the probe, so this catches an
+     override applied AFTER construction — which the unit test over the options
+     literal cannot see. Only a comparison against the module's own value can. */
+  const v = seamTransitionVerdict(seamRecord({ askedGapMs: 50 }));
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.headline, /not the 2000 ms/);
+  assert.equal(seamTransitionVerdict(seamRecord({ askedGapMs: SEAM_ASKED_MS })).verdict,
+    "seam-crosses-in-background");
 });
 
 test("the hidden window is floored in BOTH directions", () => {

@@ -528,8 +528,12 @@ test("the seam probe cannot shorten the beat it is measuring", () => {
 });
 
 test("the probes' whole player import closure is required, not a spot-check", () => {
-  /* The list is read from the module rather than retyped here: two lists that must
-     agree, maintained separately, is the drift this repo keeps paying for. */
+  /* TWO independently written lists, checked against each other and against disk.
+     `REQUIRED_PLAYER_FILES` above is what the fixture bundle is built from and
+     `PROBE_PLAYER_DEPS` is what the script enforces; a `deepEqual` between them means
+     neither can be trimmed alone. (An earlier version of this comment claimed the
+     list was read from the module — it is not, and a comment that describes a
+     stronger check than exists is worse than no comment.) */
   assert.deepEqual([...REQUIRED_PLAYER_FILES].sort(), [...PROBE_PLAYER_DEPS].sort());
   /* And every name in it is a real file, so a typo cannot make the guard vacuous. */
   for (const f of PROBE_PLAYER_DEPS) {
@@ -540,6 +544,54 @@ test("the probes' whole player import closure is required, not a spot-check", ()
   for (const m of js.matchAll(/from "\.\/player\/([\w-]+\.js)"/g)) {
     assert.ok(PROBE_PLAYER_DEPS.includes(m[1]), `probe-seam.js imports player/${m[1]}, which is not required`);
   }
+});
+
+test("every seam segment's end_sec fits inside the tone it plays", () => {
+  /* A CONFIRMATION PASS DEFEATED THE SUITE HERE. `TONE_C_SECONDS` had no floor and
+     nothing related any `end_sec` to its tone's length, so setting the third tone to
+     20 s — below seg-c's `end_sec: 26` — left all tests green while producing a
+     natural end mid-chain, which the verdict then reports as a silent `inconclusive`.
+     That is exactly the one-edit class this phase exists to close, introduced by the
+     tone that was added to close another one. So the relationship is derived from
+     both sources rather than asserted about either. */
+  const js = asset("probe-seam.js");
+  const names = { TONE_A: TONE_NAME, TONE_B: TONE_B_NAME, TONE_C: TONE_C_NAME };
+  const seconds = Object.fromEntries(TONES.map((t) => [t.name, t.seconds]));
+  const items = [...js.matchAll(/\{ id: "(seg-[a-z])", audio_url: (TONE_[A-Z]), start_sec: (\d+), end_sec: ([A-Z_\d]+)/g)];
+  assert.ok(items.length >= 3, `could not parse the queue; found ${items.length} items`);
+  let checked = 0;
+  for (const [, id, toneKey, startSec, endRaw] of items) {
+    const file = names[toneKey];
+    assert.ok(file, `${id} uses ${toneKey}, which is not a known tone`);
+    const len = seconds[file];
+    assert.ok(len, `${file} is not in TONES`);
+    assert.ok(Number(startSec) < len, `${id} starts at ${startSec}s in a ${len}s file`);
+    /* seg-a's end is a named constant it never reaches (it is overridden on going
+       hidden), so only numeric ends are range-checked — but the start always is. */
+    if (/^\d+$/.test(endRaw)) {
+      assert.ok(
+        Number(endRaw) < len,
+        `${id} ends at ${endRaw}s but ${file} is only ${len}s long — the file would run out first, ` +
+          `and a natural end is not an out-point`
+      );
+      checked++;
+    }
+  }
+  assert.ok(checked >= 2, `expected at least 2 numeric end_sec values to range-check, got ${checked}`);
+});
+
+test("the deferred-arm listener is registered AFTER the item-counting one", () => {
+  /* AN UNDOCUMENTED ORDERING DEPENDENCY, pinned because it is invisible and fatal.
+     The deferred arm needs `rec.items.length` to have been incremented by the earlier
+     `playing` handler; swap the two registrations and `arm()` defers forever — no
+     second `playing` can occur without a boundary, and a boundary needs the arm. The
+     run would then report "no seam was reached" with nothing to point at. */
+  const js = asset("probe-seam.js");
+  const counting = js.indexOf("push(rec.items, {");
+  const deferred = js.indexOf("if (armWhenPlaying !== null) arm(armWhenPlaying)");
+  assert.ok(counting > 0, "could not find the item-counting `playing` listener");
+  assert.ok(deferred > 0, "could not find the deferred-arm `playing` listener");
+  assert.ok(counting < deferred, "the deferred-arm listener runs before the item count is incremented");
 });
 
 test("the seam probe arms relative to going hidden, and records whether it did", () => {

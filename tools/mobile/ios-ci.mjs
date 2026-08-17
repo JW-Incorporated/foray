@@ -847,8 +847,13 @@ export function pickSeam(records) {
     (Array.isArray(r?.transitions) && r.transitions.length ? 100 : 0) +
     (Array.isArray(r?.items) && r.items.length > 1 ? 50 : 0) +
     closedHidden(r) * 10 +
-    (r?.autoplayBlocked ? -400 : 0) +
-    (r?.error ? -200 : 0);
+    /* Penalties deliberately SMALLER than the progress terms can add up to (170).
+       A confirmation pass caught the first version weighting these at -400/-200,
+       which made an errored-but-complete record lose to an EMPTY clean one — both
+       inconclusive, so no false pass, but the report then quotes "no seam was
+       reached" instead of the error that explains why. */
+    (r?.autoplayBlocked ? -40 : 0) +
+    (r?.error ? -20 : 0);
   return [...records].sort(
     (a, b) => score(b) - score(a) || (num(b?.lastSavedAtWall) ?? 0) - (num(a?.lastSavedAtWall) ?? 0)
   )[0];
@@ -941,6 +946,11 @@ export function seamTransitionVerdict(probe) {
     t.boundaryAtWall >= bg &&
     num(t.nextPlayingAtWall) != null &&
     num(t.observedGapMs) != null &&
+    /* POSITIVELY `outPoint`, not merely "not something else". A confirmation pass
+       pointed out that the explicit guard below fails OPEN on an absent field, which
+       is the same shape as the finding it was added for: a record that does not
+       SUPPORT the headline must not be counted toward it. */
+    t.endReason === "outPoint" &&
     (resumed == null || t.nextPlayingAtWall < resumed);
 
   const attemptedHidden = transitions.filter(
@@ -970,10 +980,12 @@ export function seamTransitionVerdict(probe) {
       ? " The app was NEVER resumed during this run."
       : ` The app returned to the foreground ${((resumed - bg) / 1000).toFixed(1)}s after backgrounding.`);
 
-  /* ── THREE THINGS THAT INVALIDATE THE WHOLE RECORD, CHECKED BEFORE ANY READING
-     OF IT. Each of these was a way the first version of this function returned
-     `seam-crosses-in-background` from data that contradicted the sentence it
-     printed; a review found all three by calling it. ── */
+  /* ── FOUR THINGS THAT INVALIDATE THE RECORD AS EVIDENCE FOR A PASS. Each was a
+     way the first version of this function returned `seam-crosses-in-background`
+     from data contradicting the sentence it printed; a review found them by calling
+     it. They are COLLECTED here rather than returned here — see the stall check
+     below, and the regression note on it. ── */
+  const caveats = [];
 
   /* 1. THE BOUNDARY MUST BE WHAT ENDED THE SEGMENT. `html-audio-backend.js` reports
         the same `onItemEnded` for a finished FILE as for a boundary, deliberately —
@@ -982,68 +994,82 @@ export function seamTransitionVerdict(probe) {
         measures the length of the tone. `outPointVerdict` has this exact check and
         its comment is the reason — "the tone against the window is a margin, not a
         check, so this is the check". */
-  const wrongReason = attemptedHidden.find((t) => t.endReason != null && t.endReason !== "outPoint");
+  const wrongReason = attemptedHidden.find((t) => t.endReason !== "outPoint");
   if (wrongReason) {
-    return {
-      verdict: "inconclusive",
-      headline: `A segment ended with reason "${wrongReason.endReason}", not at its out-point.`,
-      detail:
-        `${base} An audio file that ran out before its boundary makes the transition after it ` +
-        `measure the length of the tone rather than the seam. Lengthen the tones in ` +
-        `tools/mobile/probe/install-probe.mjs; nothing is known about backgrounding from this run.`,
-    };
+    caveats.push(
+      `a segment ended with reason ${JSON.stringify(wrongReason.endReason ?? null)} rather than at ` +
+        `its out-point, so an audio file probably ran out first — lengthen the tones in ` +
+        `tools/mobile/probe/install-probe.mjs`
+    );
   }
 
-  /* 2. THE ARM MUST HAVE HAPPENED WHILE HIDDEN. `armedWhileHidden: false` means the
-        probe's 70 s fallback fired instead of the `visibilitychange` path — i.e. the
-        app was never backgrounded in time and the boundary was set on wall clock,
-        which is precisely the race that produced two contradictory verdicts from
-        identical code. The probe records the field; not reading it was the gap. */
-  if (probe.armedWhileHidden === false) {
-    return {
-      verdict: "inconclusive",
-      headline: "The boundary was armed by the fallback timer, while the page was still visible.",
-      detail:
-        `${base} The probe arms on the first \`visibilitychange\` to hidden and falls back at 70 s ` +
-        `only so a never-backgrounded run is reportable. Reaching the fallback means backgrounding ` +
-        `happened far later than the timeline assumes, so this run is a wall-clock race rather than ` +
-        `a measurement — check the screenshots and how long Settings took to foreground.`,
-    };
+  /* 2. THE ARM MUST HAVE HAPPENED WHILE HIDDEN. Anything but `true` means the probe's
+        70 s fallback fired instead of the `visibilitychange` path — the app was not
+        backgrounded in time and the boundary was set on wall clock, which is exactly
+        the race that produced two contradictory verdicts from identical code.
+        `!== true` rather than `=== false`, because a guard that fails open on a
+        missing field is the same defect as not having it. */
+  if (probe.armedWhileHidden !== true) {
+    caveats.push(
+      `the boundary was not recorded as armed while hidden (\`armedWhileHidden\` = ` +
+        `${JSON.stringify(probe.armedWhileHidden ?? null)}), so it was set on wall clock rather than ` +
+        `relative to the page going hidden — a race, not a measurement`
+    );
   }
 
-  /* 3. THE NEXT SEGMENT MUST ACTUALLY BE A DIFFERENT FILE. The pass headline claims
-        "a different episode loaded", and nothing checked it. `html-audio-backend.js`
-        turns a same-URL load into a seek with no refetch, so a queue that
-        accidentally repeats a file measures a buffered seek and reports a load. The
-        probe records `src` and `expectedSrc` per item for exactly this, and reading
-        them here means the property is MEASURED rather than asserted by a unit test
-        over the queue literal — which a review defeated in one edit. */
+  /* 3. THE NEXT SEGMENT MUST ACTUALLY BE A DIFFERENT FILE, AND WE MUST KNOW WHICH.
+        The pass headline claims "a different episode loaded", and nothing checked it.
+        `html-audio-backend.js` turns a same-URL load into a seek with no refetch, so
+        a queue that repeats a file measures a buffered seek and reports a load. Read
+        off the recorded `src`, so the property is MEASURED rather than asserted by a
+        unit test over the queue literal — which a review defeated in one edit. */
   const sameFile = [];
+  const missingSrc = [];
   for (let i = 1; i < items.length; i++) {
     const prev = String(items[i - 1]?.src ?? "");
     const cur = String(items[i]?.src ?? "");
-    if (prev && cur && prev === cur) sameFile.push(`${items[i - 1].id} -> ${items[i].id} (${cur})`);
+    if (!prev || !cur) missingSrc.push(items[i]?.id ?? `item-${i}`);
+    else if (prev === cur) sameFile.push(`${items[i - 1].id} -> ${items[i].id} (${cur})`);
   }
   if (sameFile.length) {
-    return {
-      verdict: "inconclusive",
-      headline:
-        `A transition re-used the SAME audio file (${sameFile.join(", ")}), so no fresh media load ` +
-        `was exercised.`,
-      detail:
-        `${base} \`html-audio-backend.js\` short-circuits a same-URL load into a seek with no ` +
-        `refetch, which is correct for consecutive segments of one episode and is the one path this ` +
-        `measurement must not take: a seek inside an already-buffered file answers a far easier ` +
-        `question than "does a fresh load complete while hidden". Fix the probe's queue so ` +
-        `consecutive items use different files.`,
-    };
+    caveats.push(
+      `a transition re-used the SAME audio file (${sameFile.join(", ")}), so no fresh media load ` +
+        `was exercised — that is \`html-audio-backend.js\`'s same-source seek shortcut, the one path ` +
+        `this measurement must not take`
+    );
+  }
+  if (missingSrc.length) {
+    caveats.push(
+      `no source filename was recorded for ${missingSrc.join(", ")}, so "a different episode loaded" ` +
+        `cannot be checked at all`
+    );
   }
 
-  /* THE FAILURE, FIRST, because it is the one that changes what gets built next —
-     but it needs its own floor. See MIN_HIDDEN_WINDOW_SEC: a transition still open
+  /* 4. THE BEAT UNDER TEST MUST BE THE SHIPPED BEAT. `askedGapMs` is read off
+        `manager.seamGapSec` by the probe, so this catches an override applied AFTER
+        construction — which the unit test over the options literal cannot see. */
+  if (asked !== SEAM_ASKED_MS) {
+    caveats.push(
+      `the beat under test was ${asked} ms, not the ${SEAM_ASKED_MS} ms \`player/seam-gap.js\` ` +
+        `defines, so whatever this run measured is not the shipped seam`
+    );
+  }
+
+  /* THE FAILURE, FIRST — AND IT IS REPORTED EVEN WHEN A CAVEAT APPLIES.
+     A confirmation pass caught the first version of these guards sitting BEFORE this
+     check and downgrading a genuine stall to `inconclusive`, whose detail then said
+     "nothing is known about backgrounding from this run" — which is false: an advance
+     failed while hidden, and that is the finding that changes what gets built. A
+     caveat weakens a PASS; it cannot un-observe a segment that ended and was never
+     followed. So the caveats ride along in the detail instead of replacing it.
+
+     It still needs its own floor. See MIN_HIDDEN_WINDOW_SEC: a transition still open
      after 0.3 s of hidden waiting is not the silence defect, it is a run that ended
      too early, and reporting it as the defect is the same overclaim shape as the
      0.446 s pass this repo already shipped once. */
+  const caveatNote = caveats.length
+    ? ` CAVEATS ON THIS RUN: ${caveats.join("; ")}.`
+    : "";
   if (stalled.length && (lastSeenWall - stalled[0].boundaryAtWall) / 1000 < MIN_HIDDEN_WINDOW_SEC) {
     const waited = (lastSeenWall - stalled[0].boundaryAtWall) / 1000;
     return {
@@ -1054,7 +1080,8 @@ export function seamTransitionVerdict(probe) {
       detail:
         `${base} Below the ${MIN_HIDDEN_WINDOW_SEC}s floor this workflow requires in either ` +
         `direction. The run probably ended (or the app was killed) mid-transition rather than the ` +
-        `transition failing. Last stage reached: ${JSON.stringify(stalled[0].lastStage ?? "unreported")}.`,
+        `transition failing. Last stage reached: ${JSON.stringify(stalled[0].lastStage ?? "unreported")}.` +
+        caveatNote,
       completedHiddenTransitions: completedHidden.length,
       worstGapMs: worstGap,
     };
@@ -1072,7 +1099,19 @@ export function seamTransitionVerdict(probe) {
         `advance does not, so a listener with a locked screen hears one segment and then silence. ` +
         `The last thing the page recorded was ${JSON.stringify(t.lastStage ?? "unreported")}, which ` +
         `is where to look: a throttled beat timer, or a media load that never settled inside ` +
-        `LOAD_SETTLE_TIMEOUT_MS. Something native would have to own the transition (#28).`,
+        `LOAD_SETTLE_TIMEOUT_MS. Something native would have to own the transition (#28).` +
+        caveatNote,
+      completedHiddenTransitions: completedHidden.length,
+      worstGapMs: worstGap,
+    };
+  }
+  /* NO STALL, so a caveat now decides: the record cannot support a pass, and saying
+     which of the four things is wrong is more useful than any band it would land in. */
+  if (caveats.length) {
+    return {
+      verdict: "inconclusive",
+      headline: `This run cannot support a seam verdict: ${caveats[0]}.`,
+      detail: `${base}${caveatNote}`,
       completedHiddenTransitions: completedHidden.length,
       worstGapMs: worstGap,
     };

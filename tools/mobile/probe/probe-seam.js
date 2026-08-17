@@ -398,6 +398,11 @@ try {
     backend.setOutPoint(target);
     save();
   }
+  /* REGISTERED AFTER the item-pushing `playing` handler above, and that order is
+     load-bearing: this one needs `rec.items.length` to have been incremented already,
+     or `arm()` defers again and nothing ever arms. `install-probe.test.mjs` pins the
+     order in the source, because a reader reordering two listeners for tidiness would
+     otherwise silently disarm the whole measurement. */
   el.addEventListener("playing", () => { if (armWhenPlaying !== null) arm(armWhenPlaying); });
 
   /* SEEDED FROM `document.hidden` AT STARTUP, not only from the event. This page is
@@ -417,6 +422,20 @@ try {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       rec.hiddenTransitions++;
+      /* RE-STAMP IF NOTHING HAS BEEN AUDIBLE YET.
+         `backgroundedAtWall`/`resumedAtWall` model ONE hidden window — the first —
+         and the startup seeding above makes it easier to record the wrong one: a
+         transient `document.hidden` at page load followed by the app being visible
+         again would pin `backgroundedAtWall` at launch and `resumedAtWall` a moment
+         later, after which every real transition looks like it completed AFTER a
+         resume and a healthy run reports `too-few-transitions`. If no item has become
+         audible yet then nothing has been measured against those stamps, so the honest
+         thing is to take the later window. */
+      if (rec.items.length === 0 && rec.resumedAtWall !== null) {
+        note("re-stamping the hidden window: nothing was audible during the first one");
+        rec.resumedAtWall = null;
+        rec.backgroundedAtWall = Date.now();
+      }
       if (rec.backgroundedAtWall === null) rec.backgroundedAtWall = Date.now();
       arm(true);
     } else if (rec.backgroundedAtWall !== null && rec.resumedAtWall === null) {
