@@ -173,6 +173,44 @@ const LOAD_SETTLE_TIMEOUT_MS = 10_000;
    the next segment while the current one is still audible, and let the boundary
    hand over to an element that is already `canplay` at the right offset.
 
+   THE WINDOW IS "AUDIBLE", NOT "VISIBLE", AND THAT DISTINCTION IS THE WHOLE
+   MECHANISM. It is the obvious objection to this design — if a hidden page is
+   throttled, a prefetch in a hidden page is throttled too, and this buys
+   nothing — and the answer is that hiding is not what costs us. The same run
+   settles it on the same device: segment A played **hidden and audible** for 15
+   seconds and its out-point still landed **3 ms** late, while the load that ran
+   **hidden and silent** took 9,153 ms. Blink measures the same split directly
+   (§4.1: hidden+playing 111 ms median for a 100 ms timer, identical to visible;
+   hidden+paused 2,387 ms, a ~21x collapse; recovers the moment audio resumes).
+   `_maybeOpenPrefetchWindow` therefore refuses to open on a paused element —
+   that guard is not defensive noise, it is what guarantees every warm load
+   starts inside the audible window.
+
+   AND IT IS WHY WARMING CANNOT BE A FOREGROUND-ONLY WARM-UP. A Foray is ~61
+   minutes over 32 segments; the listener locks the phone in the first minute.
+   Only 1 or 2 of the 16 cross-episode seams happen before backgrounding, so
+   filling a queue of elements while visible would fix the two seams nobody is
+   troubled by and none of the fourteen they are. What is continuously available
+   at EVERY seam is not visibility — it is the audio that is already playing.
+
+   THE BYTES ARE NOT THE PROBLEM, WHICH IS ALSO MEASURED. Mid-file 64 KB ranged
+   GETs against six of the real sources in `data/segment-sources.json`: TTFB
+   median 0.99 s, worst 1.41 s, all six 206 (desktop, home network — a lower
+   bound, and it excludes the media pipeline). Every one of them fits inside the
+   2.0 s beat. A CDN that answers in a second cannot explain 9.1 s for a local
+   file, and a warm HTTP cache would not have helped: the cost is in getting an
+   element to `canplay`, which is why the warmed element has to BECOME the
+   player rather than prime a cache for it.
+
+   THE SECOND REASON TO SHIP THIS, WHICH IS ABOUT RISK RATHER THAN COMFORT.
+   9,153 ms of silence sits just under TWO independent 10-second cliffs:
+   `LOAD_SETTLE_TIMEOUT_MS` above (cross it and the segment is DROPPED) and
+   WebKit's `audibleActivityClearDelay` (cross it and the web process loses the
+   activity keeping it unsuspended, mid-seam, which from the outside is "the app
+   stopped"). The player is 847 ms from both. A warmed seam is 2.0 s, which is
+   20% of each — the same fix, and the only one, for a slow seam, a dropped
+   segment and a suspended process.
+
    WHAT THIS DOES NOT DO. It does not make the beat shorter, and it must not:
    2.0 s of silence between two different voices is authored (`seam-gap.js`,
    `segment-length-rules.md` §6b), and the beat still runs — the manager waits
@@ -199,6 +237,15 @@ const LOAD_SETTLE_TIMEOUT_MS = 10_000;
  *     nominal. ~2 s of slop covers the trigger's own lateness.
  *
  * 10 s + 2 s = 12 s. The measured 9,153 ms load fits with 2.8 s to spare.
+ *
+ * The normal case needs a small fraction of it, which is the point rather than
+ * an argument for a shorter lead: ranged GETs against six of the real sources
+ * answer in 0.99 s median / 1.41 s worst, so a healthy warm load is done inside
+ * the first ~2 s and the element then simply sits ready. The lead is sized for
+ * the pathology, not the median, because the two directions cost different
+ * things — too short and we are back to 9 s of silence or a dropped segment;
+ * too long and a listener who skips in the last 12 s of a 103 s segment wasted
+ * some bandwidth.
  *
  * The other direction is bounded by the content: no segment may be shorter
  * than 30 s (`docs/curation/segment-length-rules.md`, hard floor), so the lead
@@ -664,6 +711,14 @@ export class HtmlAudioBackend {
   _maybeOpenPrefetchWindow() {
     if (this._released || !this.canPrefetch) return;
     if (this._outPoint == null || !this._outArmed) return;
+    /* THE GUARD THAT MAKES THIS WORK AT ALL, not a tidiness check. A warm load
+       is only worth starting while the page is AUDIBLE — that is the window
+       measured at 3 ms accuracy on the device and 111 ms on Blink, against
+       9,153 ms and 2,387 ms once the element pauses. A paused element means the
+       page is silent, which is precisely the throttled state we are moving the
+       load OUT of. `timeupdate` only fires while playing, so this is belt and
+       braces on top of the trigger — and it is the line to keep if anything here
+       is ever refactored. */
     if (this.el.paused) return;
     const key = `${this._currentUrl}@${this._outPoint}`;
     if (this._prefetchWindowKey === key) return;
