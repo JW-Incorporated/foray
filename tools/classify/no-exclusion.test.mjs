@@ -364,7 +364,7 @@ function codeOf(file, { blankStrings = true } = {}) {
   return src;
 }
 
-const PIPELINE_FILES = ["prepare-batch.mjs", "merge-results.mjs", "select.mjs"];
+const PIPELINE_FILES = ["prepare-batch.mjs", "merge-results.mjs", "select.mjs", "reconcile-shards.mjs"];
 const LABEL_TOKENS = ["transcript_labels", ...TRANSCRIPT_LABEL_FIELDS.filter((f) => f !== "label_schema_version")];
 
 /* Two complementary shapes, kept separate because they fail for different reasons

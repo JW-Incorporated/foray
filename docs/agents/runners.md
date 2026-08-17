@@ -19,7 +19,59 @@ changes a runner.
 |--------|-------|---------|-------|---------|-----------------|--------|
 | **nightly-refresh (scan+resolve)** | GitHub Actions (`.github/workflows/nightly-refresh.yml`) | Daily 06:40 UTC | — (deterministic) | Actions minutes (free tier, public repo) | workflow file | live |
 | **foray-nightly-enrich** | Claude Cloud routine | Daily ~11:40 UTC (≥2h after the Action) | Sonnet | Wyatt's account | `runner-prompts/foray-nightly.md` | live |
-| **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h, staggered 40 min apart — see below | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live |
+| **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h, staggered 40 min apart — see below | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live — **push to `reclassify-<N>`, open NO PR** (see below) |
+
+> ### The six classify shards open no pull request. Do not read "nothing on `main`" as "the fleet is dead."
+>
+> **This cost two weeks and one wrong conclusion, so it is written down here.**
+> The six routines run `prepare-batch.mjs --batch-size 60 --shard N/6`, merge
+> the results, and commit to **`origin/reclassify-<N>`** — six long-lived
+> branches, each created from `origin/reclassify`. They never open a PR and
+> never touch `main`. §8 of `runner-prompts/classify-batch.md` tells them to
+> `git switch -c classify/<date>-<batch_id>` and `gh pr create`; **the live
+> routine configuration in the cloud does not do that.** The committed prompt
+> and the running routines disagree, and the routines win.
+>
+> The visible symptoms, all of which read as a dead fleet and none of which are:
+> no classify PR open, no new `classify/*` branch since 2026-08-03, and
+> `data/breadth-classification.json` on `main` frozen at 1,851 agent-classified
+> shows of 19,787. PR #198 drew exactly that conclusion in its own body and
+> filed it as an owner action.
+>
+> **What was actually happening:** all six were running fine and had produced
+> **17,427 classifications** nobody had merged — the agent-classified count went
+> **1,851 → 19,278, a 10.4× multiple**. Reconciled onto `main` 2026-08-17 by
+> `tools/classify/reconcile-shards.mjs`, which is committed and re-runnable
+> precisely because this will recur every time the fleet runs.
+>
+> **So: to see what the classify fleet has done, look at the branches.**
+> `git fetch origin 'refs/heads/reclassify-*:refs/remotes/origin/reclassify-*'`
+> then `node tools/classify/reconcile-shards.mjs --dry-run`. Never judge the
+> fleet by `main` or by open PRs.
+>
+> **The standing fix is a routine-configuration change, not a doc change** —
+> either point the routines at the PR flow the prompt already describes, or
+> schedule a reconciliation run. Until one of those happens, every shard batch
+> accumulates off `main`. Filed as `HUMAN-ACTIONS.md` **#10**.
+>
+> **Two corrections this evidence forces**, both recorded in `HUMAN-ACTIONS.md`
+> (note #4 is created by PR #198 and does not exist on `main` yet — if #198
+> lands, its #4 needs the same update block before anyone acts on it):
+>
+> - **Sharding works.** Each shard's own work is a clean slice of
+>   `Number(id) % 6` — 0 off-lane, 0 double-claimed across 17,427 rows and 24
+>   active days. So #5's "five of every six runs are duplicate work" is refuted,
+>   and acting on it would edit six correct configs through a flag that fails
+>   open. What the git record shows is the *partition*, not which flag produces
+>   it; that is enough to not touch them.
+> - **All six are alive**, so #4's question is answered: yes. Per-branch tips
+>   are staggered, not uniform — s0 08-15, s1 08-16, s2 08-17, s3 08-16, s4
+>   **08-13**, s5 08-15 — and s4's three-day gap is not a fault: the fleet is
+>   running out of work. Only **509** shows still have no agent pass, which is
+>   also why #10 is a 509-show problem, not a 17,000-show one. (Careful quoting
+>   per-lane remainders — they differ by key. Retired `Number(id) % 6`:
+>   38/41/335/40/21/34. Hashed key #203 shipped, which every future run uses:
+>   87/87/80/70/86/99.)
 
 ~19 runs/day, which as of 2026-07-25 was the majority of all agent spend across
 Foray and Swift2 combined (~19 of ~32). That is not a problem by itself — it is

@@ -7,6 +7,145 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### classification — the six shard branches land on `main` (2026-08-17, one PR, no follow-up)
+
+- **READ THIS BEFORE YOU CONCLUDE THE CLASSIFY FLEET IS DEAD.** The six
+  `foray-classify-shard0-5` cloud routines commit to **`origin/reclassify-<N>`**
+  and **open no PR** — §8 of `docs/agents/runner-prompts/classify-batch.md` tells
+  them to `gh pr create`; the live routine configuration does not. So `main`'s
+  `data/breadth-classification.json` stays frozen while the fleet works, and
+  every signal reads as death: no open classify PR, no `classify/*` branch since
+  2026-08-03, the `classify-agent-tier1` count stuck at 1,851 of 19,787. **PR
+  #198 drew exactly that conclusion in its body and filed it as an owner
+  action.** It was wrong: all six were running, and had produced **17,427
+  classifications** nobody had merged.
+  **To see what the fleet has done, look at the branches, never at `main`:**
+  `git fetch origin 'refs/heads/reclassify-*:refs/remotes/origin/reclassify-*'`
+  then `node tools/classify/reconcile-shards.mjs --dry-run`.
+- **What:** `feat/reconcile-shards`. Agent-classified shows **1,851 → 19,278** of
+  19,787 (**509** still have none). New `tools/classify/reconcile-shards.mjs`
+  merges the six branches' agent rows into the base layers — **by merging data,
+  never by checking out a branch's file**: shards 1–5 descend from
+  `origin/reclassify` (last moved 2026-07-25), so checking one out costs 1,707 of
+  main's 1,851 agent rows on shards 1/3/4/5, and on **shard 2 costs 1,815 agent
+  rows plus 16,799 entries dropped outright**; shard 0 alone loses none, being
+  main's own lineage. Verified entry-by-entry against `origin/main`: **0 shows
+  went backwards** (0 dropped, 0 without topics, 0 without a source, 0 that lost
+  an agent row, 0 topic ids that vanished). 17,507 rows changed, 2,280
+  byte-identical.
+- **Owned files:** `data/breadth-classification.json`,
+  `tools/classify/reconcile-shards.mjs` + `.test.mjs`.
+- **Also touched, and worth knowing:** `tools/classify/shard.test.mjs` (#203's,
+  re-based off live progress onto a constructed remainder — see below).
+- **Shared files it touches:** `tools/classify/merge-results.mjs` (one line — the
+  provenance spread below), `test/suite-integrity.test.js` (one new floor, in its
+  own final commit), `docs/agents/runners.md`, `tools/classify/README.md`,
+  `HUMAN-ACTIONS.md` (#5 update + new #10), this file. **Nothing under `player/`,
+  `app.js`, `styles.css`, `backend/`, `.github/`; `data/discover.json`,
+  `data/taxonomy.json` and `data/genre-taxonomy-map.json` are untouched** (PR
+  #198 owns those).
+- **SEQUENCING — decided: this lands FIRST, #198 rebases onto it. No `hold`.**
+  #198 went `DIRTY`/`CONFLICTING` while this was being built (`main` moved six
+  commits, #202/#203/#204; #198 sits 14 ahead with four files changed on both
+  sides), so "land #198 first" is no longer free — someone must resolve its
+  conflict either way. Three measured reasons for this order:
+  (1) holding a green 0-regression merge behind unowned work re-strands 17,427
+  classifications, the exact failure this fixes;
+  (2) **order does not protect #198's breadth data anyway — 969 of its 1,026
+  topic-changed rows get an agent row in EITHER order**, superseded by a real
+  per-show judgement, which is #198's own precedence rule;
+  (3) #198's durable half is untouched here and survives its own rebase: the
+  `classify-breadth.mjs` rewrite fix, `root-dumping-report.mjs`,
+  `data-topic-integrity.test.js`, the 7 `genre-taxonomy-map.json` mappings, and
+  the 147 hand-judged `discover.json` tags.
+  **Not folded in**, deliberately: 133 hand-judged curated tags plus a 3,451-line
+  generated diff would make both changes unreviewable and unrevertable alone.
+  **To rebase #198:** re-run its own generator (`node tools/classify-breadth.mjs`
+  — its fix preserves every `classify-agent-*` row by design) and
+  `root-dumping-report.mjs --baseline <snapshot>` to re-measure; then give its
+  newly-created `HUMAN-ACTIONS.md` #4 the same update block #5 got here.
+- **Heads-up — #198's improvement is compounded, not lost, but the METRIC flips
+  sign and you need to know which one you are reading.** Root-only *pairs*:
+  main 9,741 → #198 8,874 → **this branch 13,470** → both 13,445. Root-only
+  *items* (a show with no child node anywhere — #198's own harsher view, and the
+  one that decides whether any interest slider fires): main 6,107 → #198 5,249 →
+  **this branch 5,148** → both **5,123**. Pairs rise because agent rows name more
+  branches (7,546 shows gained topics), so the denominator grows — arithmetic,
+  not regression. **On the per-item metric this branch beats #198 (5,148 vs
+  5,249) and the two together beat either.** No correct merge of judged
+  classifications can lower the pairs count below #198's; do not treat that as a
+  goal or you will be tempted to bolt coarse secondary branches back on, which
+  #198 itself measured as worse (9,741 → 10,502).
+- **Heads-up — a row can now carry `superseded_topics`.** 6,758 rows do. When an
+  adopted agent row does not carry a topic the row it replaced had, the displaced
+  ids move there (with `superseded_source`) instead of being deleted. It is
+  deliberately **not** a union: #198 measured that bolting the genre map's coarse
+  secondaries onto a judged row makes root dumping *worse* (9,741 → 10,502).
+  Anything reading `topics` should keep ignoring `superseded_topics`.
+  **It is a one-generation record, not an archive:** `merge-results.mjs` rebuilds
+  an entry from the agent's results file, so the next classification of that show
+  deletes both fields. Recoverable from git, not from the file — do not cite it
+  as durable provenance.
+- **Heads-up — the tier-2 escalate queue went 301 → 2,917.** `--mode escalate`
+  selects `classify-agent-tier1 && needs_review`, and this merge added 17,427
+  tier-1 rows, 2,917 of which are flagged (1,275 for a display-copy miss only,
+  1,642 on the classification itself). **Nothing escalates on its own** — the six
+  routines run `--mode fresh` — so the queue is latent. But a deliberate tier-2
+  pass is now a ~10× bigger job than the last time anyone sized it, and tier 2
+  fetches transcripts, so it is a spend decision. Noted in `HUMAN-ACTIONS.md` #10.
+- **Heads-up — this rebased over #203, and two of its findings interact.**
+  (1) **#203 changed the shard key** (`Number(id) % N` → `fnv1a32(String(id)) % N`).
+  Every one of the 17,427 rows on the branches predates that, so the lane check
+  picks the key from each row's own `classified_at` against the #203 merge instant
+  (`keyForRow()` / `SHARD_KEY_CUTOVER`). Full 1/6 guard strength per row —
+  accepting *either* key would have been 1.83x weaker forever — and it is the only
+  variant that survives the next shard run, when every branch becomes a
+  legacy/hashed mixture. A per-*branch* purity rule was written and rejected for
+  exactly that reason: it refuses a mixed-era branch. (2) **#203's
+  `shard.test.mjs` measured balance over the shows that REMAIN, with a floor of
+  5,000** — this merge takes that set to 509, so five of its tests failed.
+  They now measure a *constructed* remainder (`drainLane()` — ~53% of one modulo
+  lane classified, the real 2026-08-16 condition, reproducing 2.21x against #203's
+  measured 2.20x), which is what its own header asked for ("a pinned count would
+  be red by tomorrow lunchtime"). Draining the lane *entirely* was the first
+  attempt and was worse than useless: it makes `spread()` Infinity, so the
+  assertion could never fail. Its three "partition, not a filter" tests moved to a
+  fixed 3,000-show world for the same reason — on the live set they go vacuous at
+  509 and stop catching a shard that drops shows. Verified by mutation: reverting
+  `shardOf` to modulo turns 4 of the 23 red. **And #203's stated cause was
+  wrong:** the 2.20x skew did not come from the done shows being "taken in
+  ascending-id order" (draining the lowest 1,851 ids leaves modulo at 1.045x) —
+  it came from **1,724 of main's 1,851 agent rows sitting in modulo residue 0**,
+  because main had only ever received shard 0's lineage. Its fix is still right,
+  and now matters *more*: over the live 509 remainder the modulo key is **15.95x**
+  unbalanced (shard 2 is furthest behind), against 1.41x hashed.
+- **Heads-up — `merge-results.mjs` now SPREADS `provenance` instead of replacing
+  it.** It used to assign a fresh four-key object, which deleted every other
+  layer's provenance on the next batch — `base_layer` (from #198's
+  `classify-breadth.mjs`) and `reconciled_shards` both live there. One line, but
+  it is the difference between the reconciliation record surviving a classify
+  batch and vanishing on the next one.
+- **Heads-up — root-only moves in two directions, and both are honest.** Root-only
+  *pairs* rise 9,741 → 13,470 because agent rows name more branches; root-only
+  *items* (shows carrying no child node anywhere, the metric that maps to whether
+  an interest slider fires) fall **6,107 → 5,148**. Of the 17,427 merged rows,
+  **4,419 sit on a bare root** — they predate PR #175's 194-node taxonomy, which
+  was purely additive (0 renamed, 0 removed), so they are **valid, just
+  root-heavier**. Re-tagging them to the new children is a separate pass; do not
+  fold it into anything else.
+- **Two `HUMAN-ACTIONS.md` corrections this produced.** #5 ("give each routine its
+  own `--shard i/6`", `[BLOCKING]`) is **refuted** — each shard's own work is a
+  clean `Number(id) % 6` slice, 0 off-lane and 0 double-claimed across 17,427
+  rows, so sharding already works, and acting on the item would overwrite six
+  correct configs through a flag that fails open. (Careful with the weaker claim:
+  the branch **files** each hold 115–127 off-lane agent rows, every one
+  byte-identical to an inherited row. Count each shard's *own* work, or you will
+  conclude five of six ran unsharded.) #4 ("are they alive?") is **yes** — though
+  #4 does not exist on `main`; #198 creates it. The real defect is new **#10**:
+  nothing lands their output. The backlog is now only **509 shows**, so #10 is a
+  small problem, but a promptly-recurring one.
+- **Related:** #198, #203 (`--shard` fails open), #175, ADR-0006.
+
 ### durable storage — resume survives an eviction (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/durable-progress`, issue **#40 (MP6)**. Every `cp_` key —
@@ -67,7 +206,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
   a tier after `MAX_CONSECUTIVE_TIER_FAILURES`, after which `setItem` goes back to
   throwing honestly. **If you add another storage-fault consumer, it must not
   write storage unconditionally.**
-- **Left for the founder:** `HUMAN-ACTIONS.md` #9 — bump `sw.js` to `foray-v5`
+- **Left for the founder:** `HUMAN-ACTIONS.md` #10 — bump `sw.js` to `foray-v5`
   so the migration cuts over in one load instead of two. Safe without it. Also
   open, and a product call not a task: whether resume state gets a server-side
   copy, which only helps if the anon token survived and therefore really means

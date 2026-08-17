@@ -236,6 +236,61 @@ much silence goes at a seam".
 
 **Tag:** `[BLOCKING]` · **Time:** ~15 minutes · **Owner:** Wyatt
 
+> ## UPDATE 2026-08-17 — the premise is refuted. Do not do this. ~~15 minutes~~ 0.
+>
+> **All six routines are sharding correctly. There is no duplicate work.** This
+> item asked Wyatt to establish that from the routine UI because "the diagnosis
+> comes from reading the code, not the git record". It is now established **from
+> the git record**, so no one has to look.
+>
+> The six `reclassify-<N>` branches hold **17,427 agent classifications, and each
+> branch's own work is a clean slice of `Number(id) % 6`: 0 of 17,427 rows sit
+> outside their branch's residue, and 0 ids are claimed by two branches** —
+> sustained over **24 active classify days** (2026-07-25 .. 08-17), **~2,900 rows
+> per shard on average** (1,476 / 3,176 / 2,952 / 3,294 / 3,247 / 3,282 — shard 0
+> is the outlier because `main` already held its earlier work).
+> Independently: that is **~726 shows/day**, against this item's own prediction of
+> ~774/day *with* sharding wired and 129/day without.
+>
+> **What that does and does not prove.** It proves a `Number(id) % 6` partition is
+> in force per branch; ~2,900 rows all landing in one residue by chance is not
+> credible. It does **not** show *which mechanism* produces the slice — the git
+> record cannot see the routine's command line, and the repo root still contains
+> `classify-shard-0.mjs`, a stale one-off with a hardcoded `/home/user/...` path,
+> i.e. proof that another route to the same slice has existed. So: something
+> correct is in place. That is enough, because the action this item proposes is to
+> **overwrite** it.
+>
+> So, in this item's own words — *"If the routines already pass `--shard`, this
+> item is moot and the throughput problem is elsewhere; say so rather than
+> proceeding."* Saying so. **There is no duplicate work and there never was**;
+> the throughput problem was that none of the output reached `main` (item #10).
+>
+> **Acting on this item would now cause the damage it was meant to prevent:**
+> step 2 overwrites the cron phase and shard argument of six routines that are
+> already correct, and step 4 warns that `--shard` fails open on a malformed
+> value — so a typo during an unnecessary edit is exactly how six working shards
+> become six unsharded ones.
+>
+> Also answered, for free: **#4 ("are the six routines alive?") is yes** — all
+> six, with commits through 2026-08-17 00:52 UTC.
+>
+> Left `OPEN` because only the owner changes a Status word (`CLAUDE.md`
+> § HUMAN-ACTIONS.md).
+>
+> **One thing #203 changed about this, stated honestly.** #203 shipped the
+> balanced key and the fail-loud parse *in the repo*, and those only reach the
+> fleet if the routines really do invoke `prepare-batch.mjs --shard` — which, per
+> the caveat above, the git record cannot show. So this item is no longer *purely*
+> moot: doing step 1 would confirm #203's fix is live. It is still not worth it, on
+> the numbers rather than on moot-ness.
+>
+> **Recommended: `SKIP`.** The remaining backlog is **509 shows (2.6%)**, roughly
+> nine more shard-runs — a throughput fix has almost nothing left to speed up, and
+> step 2 edits six live configs through a flag that used to fail open.
+> Evidence: `tools/classify/reconcile-shards.mjs --dry-run` prints the per-branch
+> off-lane count, and `tools/classify/reconcile-shards.test.mjs` pins the check.
+
 **Do #4 first.** #4 asks whether the six routines are alive. This item assumes
 they are, and fixes a separate defect that has been costing 5/6 of their output
 the whole time they *were* alive. Both are needed; neither substitutes.
@@ -560,6 +615,83 @@ Read those three together, because two of them can lie on their own:
   which is the pre-#40 behaviour, not a regression.
 
 The click matters: nothing is written until something happens.
+
+---
+
+### 10. Make the six classify routines land their own work (they open no PR)
+
+**Tag:** `[BLOCKING]` · **Time:** ~10 minutes · **Owner:** Wyatt
+
+**Read #5's update block first — it replaces #5, and this is the real problem
+it turned out to be.** The six routines are alive, correctly sharded, and
+productive. What they do not do is get their output to `main`.
+
+**Why it matters.** Each routine commits to **`origin/reclassify-<N>`** and
+**opens no pull request**, even though §8 of
+`docs/agents/runner-prompts/classify-batch.md` tells it to create a
+`classify/<date>-<batch_id>` branch and run `gh pr create`. The committed prompt
+and the live routine configuration disagree. Consequence: **17,427 real
+classifications accumulated on six branches over three weeks while `main` stayed
+at 1,851**, and every signal a human or an agent would check — no open classify
+PR, no new `classify/*` branch since 2026-08-03, a frozen count in
+`data/breadth-classification.json` — said the fleet was dead. PR #198 read those
+signals and filed exactly that conclusion.
+
+This PR reconciles the backlog by hand
+(`tools/classify/reconcile-shards.mjs`, 1,851 → 19,278). **That is a one-off
+catch-up, not a fix.** Every batch after 2026-08-17 accumulates off `main` again.
+
+**Pick (b) unless you have a reason not to. (a) is not currently safe** — see the
+warning under it.
+
+- **(a) Make the routines open PRs.** In each of the six routines' instructions,
+  replace the commit-and-push step with §8 of `classify-batch.md` verbatim. The
+  `classify/*` prefix is already auto-merge allowlisted, so the PRs land
+  themselves on green. Six edits, and the stagger in #5's table matters here:
+  two concurrent classify PRs conflict on the same lines by construction.
+  **Not safe today, and this is a real blocker, not a caveat.** A classify batch
+  merging onto `main` rewrites `provenance` in
+  `data/breadth-classification.json`, and three gate tests in
+  `tools/classify/reconcile-shards.test.mjs` read the reconciliation record
+  there. The provenance-clobbering half is fixed in this PR
+  (`merge-results.mjs` now spreads rather than replaces) and the tests now
+  tolerate an absent record — but **verify both are on `main` before choosing
+  (a)**, or the first classify PR is red, auto-merge cannot act on it, and the
+  fleet stops reaching `main` again: the exact disease this work cured.
+- **(b) Leave the routines alone and schedule the reconciler.** One new routine,
+  daily, whose whole job is:
+  ```
+  git fetch origin 'refs/heads/reclassify-*:refs/remotes/origin/reclassify-*'
+  node tools/classify/reconcile-shards.mjs
+  ```
+  then commit `data/breadth-classification.json` on a `classify/reconcile-<date>`
+  branch and `gh pr create`. Keyless, deterministic, idempotent — a day with no
+  new shard work produces no diff and no PR. **Recommended:** it touches none of
+  the six working configurations, and it keeps working if a seventh shard is ever
+  added.
+
+**Do not "fix" this by editing the prompt file.** The routines are not reading
+it for this step — that is the whole finding. A doc change here would look like a
+fix and change nothing.
+
+**Two things to size this against, so it is not over-prioritised.** The backlog
+is now **509 shows (2.6% of 19,787)**, ~nine shard-runs — not another 17,000; the
+shards are running out of work, which is why `reclassify-4` has not committed
+since 08-13. (Per-lane remainders depend on WHICH key: under the retired
+`Number(id) % 6` they are 38/41/335/40/21/34; under the hashed key #203 shipped —
+what every future run uses — 87/87/80/70/86/99. Quote the second.) And the reconciliation raised the **tier-2
+escalate queue from 301 to 2,917** shows (`--mode escalate` selects
+`classify-agent-tier1 && needs_review`): 1,275 of those are flagged only for a
+copy-rule miss on the display fields, 1,642 for the classification itself.
+**Nothing escalates on its own** — the six routines run `--mode fresh`, so the
+queue is latent. But a deliberate tier-2 pass is now a ~10× bigger job than the
+last time anyone sized it, and tier 2 fetches transcripts, so that is a spend
+decision (CLAUDE.md decision authority #3) and not one to stumble into.
+
+**Worked if:** `data/breadth-classification.json` on `main` gains
+`classify-agent-tier1` rows within 48 hours without anyone running a command
+locally — either from six `classify/*` PRs, or from one
+`classify/reconcile-*` PR.
 
 **Status:** OPEN
 

@@ -273,3 +273,102 @@ the rollout across the Claude Max plan's weekly usage limits (see the
 usage/pacing model in `docs/adr/0006-podcast-classification-methodology.md`),
 and will run the first test batches themselves before committing to a
 cadence.
+
+## `reconcile-shards.mjs` — landing the six shard branches
+
+**Read this before you conclude the classification fleet is dead.** The six
+`foray-classify-shard0-5` cloud routines do **not** follow §8 of
+`docs/agents/runner-prompts/classify-batch.md`: they commit to
+`origin/reclassify-<N>` and **open no pull request**, so nothing they produce
+ever reaches `main` on its own. On 2026-08-17 that had hidden **17,427 real
+tier-1 classifications** across six branches while `main` sat at 1,851 and
+looked like a fleet that had stopped on 2026-08-03.
+
+```
+node tools/classify/reconcile-shards.mjs --dry-run   # the numbers, writes nothing
+node tools/classify/reconcile-shards.mjs             # merge them into data/
+```
+
+It reads `origin/reclassify-0..5:data/breadth-classification.json` with
+`git show` (so it needs those refs fetched, and nothing else — no network, no
+keys, no LLM) and merges the agent rows into whatever the working tree's
+`data/breadth-classification.json` currently says.
+
+**Merge data; never check out a branch's file.** Shards 1–5 descend from
+`origin/reclassify`, which last moved 2026-07-25, so their `genre-map` and
+`llm-title-genre` rows are three weeks stale. Checking one out costs, measured
+per branch: **`reclassify-1`/`3`/`4`/`5` each lose 1,707 of `main`'s 1,851 agent
+rows**; **`reclassify-2` loses 1,815 of them and drops 16,799 entries from the
+catalogue outright** (its file holds only agent rows — see below);
+**`reclassify-0` loses none**, being `main`'s own lineage. Only shard 0 is even
+survivable, and it would still discard the other five shards' 15,951 rows.
+
+Precedence, in full:
+
+| base row | shard row | result |
+|---|---|---|
+| `genre-map` / `llm-title-genre` / sourceless | agent | shard row wins |
+| agent, **older** `classified_at` | agent, newer | shard row wins (`refreshed`) |
+| agent, same or newer `classified_at` | agent | base row wins (`incumbent_kept`) |
+| anything | absent | base row untouched |
+
+**Disjointness is verified, not trusted.** `--shard i/N` used to *fail open*: an
+empty `--shard ""` (an unset variable in a routine), an out-of-range `6/6` or a
+non-numeric value were silently ignored and the run then selected from the whole
+catalogue. PR #203 fixed that — `parseShard` throws now — but **every row already
+on the six branches predates the fix**, so it cannot be assumed of this data. A
+shard that ran unsharded would have classified other shards' shows, so this
+script hard-fails on any id whose lane is not that shard's, and on any id two
+shards both claim.
+
+**Each row is checked under the one key it was selected with.** #203 also replaced the shard key
+(`Number(id) % N` → `fnv1a32(String(id)) % N`), so a branch holds rows
+partitioned by whichever key was live at the time — and from the next run onward,
+every branch holds both. `keyForRow()` picks the era from the row's own
+`classified_at` against `SHARD_KEY_CUTOVER` (the #203 merge instant,
+2026-08-17T03:29:56Z); a row with no timestamp reads `legacy`, safe because
+anything predating the field also predates the key change.
+
+Two weaker designs were tried first and are worth not repeating: accepting a row
+if *either* key places it in-lane is **1.83x weaker forever** (an unsharded run's
+rows pass 11/36 of the time instead of 6/36), and requiring each *branch* pure
+under one key is full-strength but refuses the mixed-era branches the next run
+creates.
+
+The only exemption is a row **byte-identical to the incumbent** — an inherited
+row the shard never ran. Identity, not "older timestamp": an off-lane row that
+differs from the incumbent is evidence of off-lane work whichever way its clock
+points.
+
+Measured 2026-08-17: **0 off-lane rows among each shard's own work, on all six
+branches.** Be precise about that claim, because the weaker version is false and
+a two-line script contradicts it: the branch **files** do contain off-lane agent
+rows — 115–127 each on shards 0, 1, 3, 4 and 5 — and every one is byte-identical
+to a row inherited from `origin/reclassify` or `main`. Counting all agent rows
+per file instead of each shard's own work makes it look as though five of six ran
+unsharded. They did not.
+
+### `superseded_topics` — why a row can carry fewer topics than before
+
+When an adopted row does not carry a topic the row it replaced had, the
+displaced ids are recorded on it as `superseded_topics`, with
+`superseded_source` naming where they came from. So the live `topics` reflect
+the better judgement and **nothing is deleted**.
+
+This is deliberately *not* a union of the two lists. PR #198 measured that
+bolting the genre map's coarse secondary branches onto a judged row makes
+classification worse, not better — root-only pairs went 9,741 → **10,502**
+under the superset rule. The demoted ids stay auditable and out of `topics`.
+
+`auditNoRegression()` is the gate that makes this safe, and it runs on every
+invocation before anything is written: no entry may disappear, end with empty
+`topics` or no `source`, lose an agent classification, or lose a topic id from
+both `topics` and `superseded_topics`. Any violation aborts the write.
+
+**The demotion is a one-generation record, not an archive.** `merge-results.mjs`
+rebuilds an entry from the agent's results file rather than spreading the
+existing row, so the next classification of that show deletes its
+`superseded_topics` and `superseded_source`. That is defensible — a fresh
+judgement supersedes the thing the previous judgement had already demoted — but
+it means the demoted ids are recoverable from git history, not from the file
+forever. Do not cite `superseded_topics` as durable provenance.
