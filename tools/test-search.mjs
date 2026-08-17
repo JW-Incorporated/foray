@@ -245,8 +245,10 @@ for (const c of topicalCases) {
 
 /* "nba"/"basketball" joined this list in PR2 -- before the `sports` concept
    cleanup, a bare "nba" query flooded in generic sports-science content via
-   full concept-vocabulary expansion. With the zero-coverage league terms
-   removed, only items naming the league themselves can match.
+   full concept-vocabulary expansion. With the near-zero-coverage league terms
+   removed, only items naming the league themselves can match. ("nba" has
+   since left this list and become a coverage-gated case of its own, directly
+   below -- the catalog grew real NBA content on 2026-08-17.)
    The team names stay genuinely absent, and both collide with ordinary prose
    ("warriors" reaches an episode of The Ancients about Scotland's first
    warriors; and "team" reaches "steam", the §6 collision case below), so
