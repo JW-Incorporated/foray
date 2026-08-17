@@ -1058,6 +1058,61 @@ One iOS finding that does bear on your step 6, though: `navigator.serviceWorker`
 
 ---
 
+### 20. Revoke one leaked anonymous Supabase session, and delete one CI artifact
+
+**Tag:** `[BLOCKING]` for nothing, but do it today · **Time:** ~5 minutes ·
+**Owner:** Wyatt (it is a credential, so CLAUDE.md decision-authority item 2 puts
+it with a founder and not with an agent)
+
+**Why it matters.** The `ios-shell-evidence` artifact of run
+**32036295743** shipped the iOS Simulator's whole `localStorage` into a **public**
+repo, and `cp_sb_session` was in it, decodable. It contains:
+
+- an `access_token` — ES256 JWT, `role: authenticated`, `is_anonymous: true`,
+  one-hour lifetime, **already expired**;
+- a **`refresh_token`**, which does **not** expire on a timer and can be exchanged
+  for fresh access tokens until it is revoked. **This is the part that still
+  matters.**
+- the project ref `qjdllvqdcgacvujhclny` and the user id
+  `04ac9215-4acd-4067-8a1e-cf6797ace0f3`.
+
+Per this file's own item on deleting user data, `cp_sb_session` is the **only**
+credential that can reach that account's server rows. The blast radius is genuinely
+small — a throwaway anonymous account created by a Simulator on a CI runner, whose
+rows are a handful of probe events — but it is not zero while the refresh token
+lives, and "small" is not a reason to leave a live credential in public.
+
+**The leak itself is already fixed in the PR that files this** (the artifact now
+redacts every non-probe value and no longer uploads the raw SQLite store), so this
+item is *containment of the one that got out*, not a code change.
+
+**Steps.**
+
+1. In the Supabase dashboard for project **`qjdllvqdcgacvujhclny`**, open
+   **Authentication → Users**, find user **`04ac9215-4acd-4067-8a1e-cf6797ace0f3`**
+   (it will show as an anonymous user), and **delete** it. Deleting the user
+   revokes its refresh token, which is the point — signing it out alone may leave
+   the token usable depending on your session settings.
+2. **Then** delete the artifact: open
+   **`https://github.com/JW-Incorporated/foray/actions/runs/32036295743`** and use
+   the artifact's **⋯ → Delete** control on `ios-shell-evidence` (3.5 MB).
+   **ORDER MATTERS, AND SO DOES THE DELAY.** Do step 1 first — deleting the
+   artifact does not revoke anything, and anyone who already downloaded it still
+   has the token. And do not delete the artifact until `docs/ios-ci.md` §4c has
+   landed on `main`: right now that artifact is the **only** place the 9,153 ms seam
+   measurement exists, and deleting it first orphans every citation in these docs.
+3. While you are in the dashboard, it is worth confirming that **anonymous sign-in
+   is still intended to be enabled** (item #13's second verification note asks the
+   same question for a different reason).
+
+**Worked if:** requesting a token refresh with that `refresh_token` returns an
+error rather than a new session, and the run page shows no `ios-shell-evidence`
+artifact.
+
+**Status:** OPEN
+
+---
+
 <!-- BEGIN generated:waiting-on-you -->
 
 ### Waiting on a founder (auto-maintained)

@@ -82,17 +82,48 @@ however long the app stayed backgrounded, not by milliseconds. Three fixes lande
 low-overshoot/`fired-on-resume` combination — and the corrected run is the one
 tabled above. **Do not cite 32023924627 for anything.**
 
-**STILL UNMEASURED, and it is the one that matters now.** The out-point result is
-about the **stop**. It says nothing about the **transition**, and §8's last
-paragraph is exactly why: the beat is a `setTimeout`, and the run above measured
-hidden DOM timers at a 1000 ms median — the one clock that *is* throttled — with a
-fresh cross-episode load inside that window. Phase C of the probe
+**THE TRANSITION IS NOW PARTLY MEASURED, AND §8's LAST PARAGRAPH WAS RIGHT TO
+WORRY.** The out-point result above is about the **stop**; the transition is a
+different mechanism — a `setTimeout` beat on the very clock measured at 1000 ms
+alignment, with a fresh cross-episode load inside it. Phase C
 (`tools/mobile/probe/probe-seam.js`, #28's iOS half) drives three bounded segments
-over three files through the real `PlayerQueueManager` and reports whether each
-transition completes while backgrounded. Its own limit is stated with every
-verdict: the next segment is a **local bundled file**, so a cold cross-origin fetch
-while hidden — the specific risk §8 names against WebKit's 10 s
-`audibleActivityClearDelay` — is still not measured.
+over three files through the real `PlayerQueueManager`.
+
+**Run [32036295743](https://github.com/JW-Incorporated/foray/actions/runs/32036295743),
+verdict `too-few-transitions` — encouraging, and NOT a pass:**
+
+| | |
+|---|---|
+| transitions completed while hidden | **1**, against this workflow's floor of **2** (`MIN_HIDDEN_TRANSITIONS`) |
+| the one that completed | beat → cross-episode load → seek → play, `hiddenAtBoundary` and `hiddenAtNextPlaying` both true, `resumedAtWall` **null** |
+| **the 2.0 s beat** | **9,153 ms observed against 2,000 ms asked** |
+| where the time went | `beat-armed` +2 ms (the timer is fine), `stalled` **+3,173 ms**, `canplay` +9,142 ms, `beat-ended` **+9,142 ms** — the same millisecond |
+| the audio being loaded | a **local bundled file**, not a CDN fetch |
+
+Two things follow, and the second one supersedes a "SAFE" reading in `STATE.md`.
+
+1. **The chain does run backgrounded on iOS.** One complete transition with the app
+   never resumed. Nothing native is needed for the mechanism to work, which is why
+   the `fired-on-resume` retraction above stands.
+2. **§8's specific fear was very nearly realised, on the easiest possible input.**
+   §8 names a slow cross-episode advance pushing the silent window past WebKit's
+   **10 s** `audibleActivityClearDelay`. The observed silence was **9.15 s** — inside
+   that grace by roughly **850 ms**, on a *local* file. The beat is
+   `max(gap, load)` (`player/queue-manager.js` §10) and the load dominated it by
+   seven seconds. So the margin against §8's failure mode is not comfortable, it is
+   under a second, and a real cross-origin fetch is strictly worse.
+
+**And the second transition — the one that would have tested whether audibility
+lapses after that silence — is exactly the one this run did not get.** The record
+stops at +25.2 s of a 90 s hidden window. Whether the page stopped being scheduled
+or its writes stopped reaching disk is **genuinely open**; `docs/ios-ci.md` §4c
+states both branches and what will separate them. Under the first branch a hidden
+page can be descheduled mid-Foray, which would be a bigger problem than the gap.
+
+**The cross-origin fetch is not merely unmeasured, it is unmeasurable in CI** — a
+runner is a datacenter link, so a green number there is a floor against a
+slow-fetch risk. `docs/ios-ci.md` §4d gives the full argument and what would
+actually settle it (instrument the shipped seam path, not the probe).
 
 **A Simulator is not a device.** It models neither power management nor true
 suspension, so a pass there is weaker evidence than a failure would be. That

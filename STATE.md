@@ -19,7 +19,45 @@ docs/. Completed workstreams move to their plan doc's retro section.
   merge after both.** Branched from `ci/ios-build`. #209 was `CONFLICTING` when
   this started (`app.js`, `STATE.md`, `HUMAN-ACTIONS.md`,
   `test/suite-integrity.test.js`) — expect a rebase; do not fix #209 from here.
-- **THE HEADLINE IS A RETRACTION.** `fired-on-resume` from run **32023924627** was
+- **THE SEAM RESULT, STATED THE WAY THE CODE STATES IT: `too-few-transitions`,
+  NOT a pass.** Run 32036295743 got **1** hidden transition against
+  `MIN_HIDDEN_TRANSITIONS = 2`, so **this does NOT close #28's iOS half** and the
+  PR does not claim it does. What it does support: one full transition (beat →
+  cross-episode load → seek → play) completed with the app backgrounded and never
+  resumed, so nothing native is needed for the mechanism. What it also found, and
+  the PR gives it equal weight: **the 2.0 s beat took 9,153 ms** — the timer armed
+  in 2 ms, the *load* took nine seconds, on a **local bundled file**, and
+  `beat-ended` landed on the same millisecond as `canplay`, so the silence is
+  `max(beat, load)`. Filed as its own issue; **nothing in `player/` is touched
+  here.**
+- **OPEN, and more serious than the gap — do not let it decay into a footnote.**
+  The record stops at **+25.2 s of a 90 s hidden window**, 1 s after the second
+  segment became audible, with the 1000 ms timer samples ending at the same instant
+  and ~32 subsequent 2-second saves never landing. Either **the page stopped being
+  scheduled** after a 9.15 s silence (which would make a hidden page descheduable
+  mid-Foray and the shell approach unsafe) or **its writes stopped reaching disk**.
+  Ruled out: the 90 s budget (~45 s needed, ~65 s unused), the screenshot (device
+  screen, not the WebView), and the log (truncated at 20 MB before this pass began).
+  `probe-seam.js` now records `saveSeq`/`firstSavedAtWall` so the next run decides
+  it from the record alone. Both branches: `docs/ios-ci.md` §4c.
+- **Three harness defects fixed on the way, all found by reading the artifact
+  rather than the summary:** the log capture's 20 MB cap was spent by pass 1 so the
+  seam pass had **no log coverage at all**; its predicate (`CONTAINS "App"`) gave
+  110,579 lines of which **17** were ours (0.015%); and **zero `FORAY_PROBE_` lines
+  have ever been captured**, so `collectProbes`' console fallback has never once
+  worked and `localStorage` is the only proven channel. Per-pass captures, a
+  bundle-id predicate, and an explicit "unproven, not clean" note now ship.
+- **SECURITY, fixed here: the evidence artifact was publishing a live credential.**
+  `ls-rows-*.json` dumped the whole `localStorage` hex-encoded, and the raw
+  `.localstorage` SQLite copies were uploaded too — so `cp_sb_session` (a Supabase
+  `access_token` **and a `refresh_token`**, which does not expire in an hour) was
+  downloadable by anyone from a public repo. Redaction is an allowlist
+  (`/^foray_probe_/`), the raw DBs no longer enter the artifact at all, and a
+  redaction failure is fail-closed and loud. **Revoking the leaked anonymous user
+  and deleting artifact 9290947062 are founder actions and are NOT done here** —
+  and the artifact must be deleted only *after* the docs carry its numbers, since
+  it is currently the only place the measurement exists.
+- **THE OUT-POINT HEADLINE IS A RETRACTION.** `fired-on-resume` from run **32023924627** was
   quoted onward as "the iOS out-point only fires on resume — MP1 §8's failure
   mode". It was a harness race with a **3 ms** overshoot, not a finding. Run
   **32026332637** is authoritative: overshoot **0.0045 s** over a **15.056 s**
@@ -275,8 +313,19 @@ docs/. Completed workstreams move to their plan doc's retro section.
      Median overrun **936.5 s**; worst 42 min. Miss only the FIRST out-point and
      the listener gets 2.5 min of Foray then **20.4 min of one Origin Stories
      episode**, with the UI still highlighting segment 1.
-- **Heads-up — the 2.0 s seam beat is SAFE backgrounded, and this was the
-  specific worry.** The beat pauses the element, which withdraws the audibility
+- **SUPERSEDED 2026-08-17 by a real iOS measurement — READ THIS BEFORE THE
+  PARAGRAPH BELOW.** Run 32036295743 measured the beat at **9,153 ms against 2,000
+  ms asked**, backgrounded, on a **local bundled file**. The Chromium figures below
+  (2.8–4.6 s) are still correct *for Chromium*, and the "do not redesign the beat"
+  ruling still holds — the beat's own `setTimeout` armed in **2 ms** and is
+  exonerated. But "SAFE" is no longer the right word: the beat is
+  `max(gap, load)` and the LOAD took nine seconds, leaving **~850 ms** of margin
+  against WebKit's 10 s `audibleActivityClearDelay` rather than the comfortable
+  window the paragraph below implies. The "one unmeasured risk" it names at the end
+  is therefore no longer unmeasured and was very nearly realised. Details:
+  `docs/ios-ci.md` §4c, `docs/research/mp1-background-audio.md` §0b.
+- **Heads-up — the 2.0 s seam beat is SAFE ON CHROMIUM backgrounded, and this was
+  the specific worry.** The beat pauses the element, which withdraws the audibility
   everything else depends on — but both engines carry a far longer grace window:
   **30 s** on Chromium (`kRecentAudioDelay`, whose source comment reads "A page
   cannot be throttled or frozen 30 seconds after playing audio") and **10 s** on
