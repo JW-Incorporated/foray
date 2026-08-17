@@ -14,20 +14,68 @@ node_modules/
 # committed copy would not.
 www/
 
-# ── The generated native projects ────────────────────────────────────────────
+# ── The generated native projects: BOTH IGNORED IN FULL ──────────────────────
 #
-# `mobile/ios/` and `mobile/android/` are NOT ignored. Capacitor's own guidance
-# is to commit them (they hold real project configuration — the Info.plist
-# background-audio key, signing, the app icon set), and committing them keeps CI
-# simple: no `cap add` step, no platform SDK needed to check out and build.
+# This block used to say the opposite — that `mobile/ios/` and `mobile/android/`
+# are NOT ignored, because Capacitor's own guidance is to commit them. Both
+# platforms have since been generated, and the practice the repo actually settled
+# on is the other one, so the rule now matches it. Written down rather than
+# quietly flipped, because the old argument was not silly.
 #
-# Neither exists yet: nothing here has been generated, because neither platform
-# can be BUILT on Windows and committing hundreds of unverifiable generated files
-# is how a scaffold acquires a lie. See mobile/README.md § Generating the
-# platforms. What IS ignored is what those projects produce when built.
+# WHAT SETTLED IT — the same call, twice, independently:
+#   - iOS. PR #213 (on #220) builds the shell on a macOS runner by running
+#     `npm run add:ios` in the job and building what it generates. `mobile/ios/`
+#     is not in the repo and the workflow does not want it to be.
+#   - Android. Issue #37 built `mobile/android/` on Windows and got both APKs
+#     (`docs/android-shell-build.md`). Committing it was rejected for the same
+#     reason: ~100 generated files, no reviewer, and this directory AUTO-MERGES
+#     with no post-merge review window.
+#
+# So the generate step must be reproducible from `mobile/package.json` alone, and
+# it is: `npm install && npm run add:android` (or `add:ios`) needs nothing that is
+# not committed. `capacitor.config.json` — the only file that carries a DECISION
+# (the app id, the platform paths) — is committed, and is pinned by
+# `tools/mobile/shell-invariants.test.mjs`.
+#
+# THE ONE THING THIS COSTS, stated plainly because it is a real loss. The Android
+# `res/xml/config.xml` was deliberately left un-ignored so the `KeepRunning`
+# footgun could be parsed by a test — an ignored file cannot be checked. Ignoring
+# the platform means CI never sees that file. The vector it defended against goes
+# away with it: `KeepRunning="false"` can no longer be committed, because the file
+# it would live in can no longer be committed. `cap add` regenerates it from
+# Capacitor's template on every machine, and the template sets no preference at
+# all. The guard is now a check on the machine that generated the platform —
+# which is the machine that builds the APK, so it still runs where it matters.
+# The committed half of that guard (the parsed `capacitor.config.json`, at any
+# depth, case-insensitively) is untouched and still runs in CI.
+ios/
+android/
+
+# ── If you ever un-ignore a platform above, YOU NEED THE RULES BELOW TOO ──────
+#
+# An earlier draft of this file deleted every per-platform output rule and left a
+# comment claiming they were "kept for anyone who un-ignores a platform above".
+# They were not, and a reviewer measured the cost: **2,569 of the 2,623 files under
+# `mobile/android/` were covered by nothing except the blanket `android/` line.**
+# Deleting that one line would have staged all of them — including
+# `local.properties`, which carries a machine-absolute `sdk.dir`, and
+# `app/src/main/assets/public/`, which is the duplicate copy of the player that the
+# `www/` rule above exists to prevent.
+#
+# So the output rules are restored and kept beside the blanket ignore. They are
+# redundant while the blanket rules stand, and they are what makes un-ignoring a
+# platform a safe, single-line edit instead of a 2,500-file accident.
+#
+# MEASURED, both ways, on a generated Android project (2,623 files):
+#   - with only the blanket `android/` line, commenting it out exposes 2,621 files,
+#     including `local.properties` and `app/src/main/assets/public/`;
+#   - with the rules below in place, commenting it out exposes **53** — the real
+#     project files someone doing that would actually mean to commit — and
+#     `local.properties` and `assets/public/` are NOT among them.
 
 # iOS
 ios/App/App/public/
+ios/App/App/capacitor.config.json
 ios/App/Pods/
 ios/App/output/
 ios/App/build/
@@ -44,13 +92,7 @@ android/app/build/
 android/app/src/main/assets/public/
 android/app/src/main/assets/capacitor.config.json
 android/app/src/main/assets/capacitor.plugins.json
-# NOT ignored, deliberately, though Capacitor's own template ignores it:
-#   android/app/src/main/res/xml/config.xml
-# That is the Cordova-compat preference file, and it is where someone would set
-# `KeepRunning="false"` to "save battery" — which calls the process-global
-# pauseTimers() and stops every JavaScript out-point in the app firing.
-# `tools/mobile/shell-invariants.test.mjs` parses it. An ignored file cannot be
-# checked, so ignoring it would make that guard permanently dead.
+android/app/src/main/res/xml/config.xml
 android/capacitor-cordova-android-plugins/
 android/local.properties
 android/.idea/
