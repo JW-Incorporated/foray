@@ -53,10 +53,20 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Heads-up — a resume row has two new fields.** `segment_id` and `into_sec`,
   both optional, both absent on every existing row (`isProgressRecord` does not
   require them, on purpose). `resumePoint(record, { segments })` is the new form;
-  without `segments` its behaviour is byte-identical to before and reports
-  `drift: "unverified"`. Build the descriptor with
-  `progressSegments(resolved)` — never pair a stored index against authored
-  position, because the queue skips unplayable items.
+  without `segments` it behaves exactly as before, plus one added field
+  (`drift: "unverified"`). Build the descriptor with `progressSegments(resolved)`
+  — never pair a stored index against authored position, because the queue skips
+  unplayable items. And do NOT pre-filter the live order before handing it over:
+  the returned `index` counts positions in the CALLER's array, so filtering shifts
+  every row after a malformed entry.
+- **Heads-up — reporting a storage fault is itself a write, and it self-feeds.**
+  `onFault` → `logEvent` → `lsSet` → another durable write → another fault. A
+  re-entrancy flag does not stop it: an async tier's failure arrives on a later
+  tick with the flag already cleared, and review measured 400 events out of ONE
+  user write. There is now a notification budget AND a circuit breaker that drops
+  a tier after `MAX_CONSECUTIVE_TIER_FAILURES`, after which `setItem` goes back to
+  throwing honestly. **If you add another storage-fault consumer, it must not
+  write storage unconditionally.**
 - **Left for the founder:** `HUMAN-ACTIONS.md` #9 — bump `sw.js` to `foray-v5`
   so the migration cuts over in one load instead of two. Safe without it. Also
   open, and a product call not a task: whether resume state gets a server-side

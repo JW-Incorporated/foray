@@ -108,7 +108,15 @@ function lsSet(key, value) {
    Bounded on purpose: a hung IndexedDB must cost the durable tier, never the
    page. And a `window` with no `addEventListener` cannot ever tell us the store
    arrived, so there is nothing to wait for — that is the case in the test
-   harnesses, and treating it as "no store" is the same answer as a 404. */
+   harnesses, and treating it as "no store" is the same answer as a 404.
+
+   THE TIMEOUT IS THE LAST RESORT, NOT THE ANSWER. `playerBridge()` below can
+   afford to sit on its whole budget because it only ever runs on a click. This
+   runs before the first paint, so spending five seconds here on a 404 would cost
+   the page — the exact thing this shim is not allowed to do. Module scripts are
+   deferred and always execute before `DOMContentLoaded`, so that event is an
+   exact "it is not coming": if the store is not published by then, the module
+   failed to load or threw, and we go on with `localStorage`. */
 const STORAGE_WAIT_MS = 5000;
 
 function waitForStorage() {
@@ -118,6 +126,13 @@ function waitForStorage() {
     let done = false;
     const finish = () => { if (!done) { done = true; resolve(window.forayStorage || null); } };
     window.addEventListener("forayplayer:ready", finish, { once: true });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", finish, { once: true });
+    } else {
+      // Parsing already finished, so every deferred module has run. Either the
+      // store is here (handled above) or it is never arriving.
+      finish();
+    }
     setTimeout(finish, STORAGE_WAIT_MS);
   });
 }

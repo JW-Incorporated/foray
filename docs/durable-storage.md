@@ -54,6 +54,19 @@ way the event pipeline is handed over. Until it appears — and permanently, if 
 module 404s from a stale service-worker cache — `lsGet`/`lsSet` use raw
 `localStorage`, which is where the value would have been anyway.
 
+A module that never loads must cost durability and **never the page**, so the wait
+for it ends at `DOMContentLoaded`: deferred module scripts always execute before
+that event, so if the store is not published by then it is not coming. The five
+second timeout underneath is a last resort, not the mechanism — review caught the
+first draft blocking first paint for the whole budget on a 404.
+
+`test/app-security.test.js` pins the discipline: `localStorage` may be **named**
+in exactly one place per file, verbatim, in `app.js` and in `player/client.js`.
+The first version of that guard matched only dotted calls, and review defeated it
+in one edit — a `RAW` alias plus `RAW["setItem"](…)` moved `cp_events` off the
+store entirely on a fully green run. A call-shaped pattern cannot see an alias, a
+destructure or a computed member, so the rule is inverted instead.
+
 ### Three guarantees, each with tests named after it
 
 1. **Nothing is deleted to migrate it.** `localStorage` is a mirror, not a
@@ -68,12 +81,32 @@ module 404s from a stale service-worker cache — `lsGet`/`lsSet` use raw
    touch it. `app.js` additionally *awaits* hydration before its first write,
    concurrently with the first data fetch so it costs nothing on the critical
    path.
+
+   Two orderings inside hydration matter, and review found both broken in the
+   first draft. Migration now **drains the write queue and re-checks each key
+   against memory immediately before writing it**, because `removeItem` rides that
+   queue and migration did not — so a "Start over" during hydration used to be
+   undone by the durable copy. And a tier whose `readAll` **failed** is no longer
+   treated as a tier that is empty: "I could not look" is not "I saw nothing", and
+   confusing them pushed a stale localStorage mirror over durable rows that were
+   newer. Such a tier now receives only the keys this session wrote.
 3. **A failed write is detectable.** `setItem` throws when no tier accepted
    responsibility, so `writeProgress`'s `return false` still means what it says.
    Every failure lands in `health()` with tier, op, key and message; `onFault`
    fires so `app.js` can log a `storage_fault` event; the record is mirrored to
    `cp_storage_health`; and `PositionStore`/`ForayProgressStore` count refused
    writes. `window.forayStorageHealth()` prints the whole record from a console.
+
+   **Reporting a failure is itself a write, and that needs two brakes.** The
+   fault sink logs an event, logging queues a durable write, and a permanently
+   failing durable tier makes that write fail — which faults again. A
+   re-entrancy flag cannot stop it, because an async tier's failure arrives on a
+   later tick with the flag already cleared; review measured 400 events from one
+   user write. So `onFault` has a budget (`MAX_FAULTS` notifications per session)
+   and a tier that fails `MAX_CONSECUTIVE_TIER_FAILURES` times in a row is
+   dropped from the write path — after which `setItem` starts throwing again when
+   localStorage also refuses, which is the honest answer. A dropped tier is
+   reported as `disabled: true` and is excluded from `durableTiers`.
 
 ### `navigator.storage.persist()`
 
@@ -107,9 +140,17 @@ live order and reports what it found:
 | `unanchored` | a row written before segment ids existed | clamp index and clock, as before |
 | `unverified` | no live order was supplied (the home rail) | clamp index and clock, as before |
 
-`moved` and `dropped` are logged as a `foray_progress_drift` event. Nothing
-user-facing changes; the point is that a stale row can no longer produce a wrong
-seek, and that we can see how often real listeners hit it.
+`moved` and `dropped` are logged as a `foray_progress_drift` event —
+`unanchored` deliberately is not, because on the day this ships *every* stored row
+is unanchored and an old row is not drift.
+
+Nothing user-facing changes. Be precise about what this buys: **while the stored
+segment still exists, a stale document can no longer produce a wrong seek at
+all.** When the segment is gone there is nothing left to anchor to, so `dropped`
+falls back to the clock clamped to the live runtime and paints no row — the
+listener lands near where they were rather than at a confident wrong index, which
+is a reduction, not an elimination. The other half of the value is simply being
+able to see how often real listeners hit either case.
 
 ## What this does NOT fix — read this before claiming it does
 

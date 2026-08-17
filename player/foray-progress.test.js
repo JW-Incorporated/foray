@@ -447,13 +447,46 @@ test("an old row against a changed order is checked the old way, and labelled as
   assert.equal(p.index, 2);
 });
 
-test("a stored offset longer than the segment now is clamped to that segment", () => {
-  // The segment was shortened — a repaired out-point. Resuming past its end would
-  // land in the NEXT segment, which is a wrong seek dressed as a precise one.
-  const shorter = [{ id: "s3", startSec: 0, durationSec: 20 }, { id: "s4", startSec: 20, durationSec: LEN }];
-  const p = resumePoint(anchored({ elapsedSec: 40, totalSec: 110 }), { totalSec: 110, segments: shorter });
-  assert.equal(p.elapsedSec, 20);
+test("a stored offset longer than the segment now is clamped INSIDE that segment", () => {
+  /* The segment was shortened — a repaired out-point. Resuming past its end would
+     land in the NEXT segment, which is a wrong seek dressed as a precise one.
+     Clamped one second short of the boundary, not to it: `segmentAtElapsed(20)`
+     on this order returns index 1, so clamping exactly to 20 would make the
+     painted row and the seek destination disagree — which is the same class of
+     bug one step smaller. */
+  const shorter = [{ id: "s3", startSec: 0, durationSec: 30 }, { id: "s4", startSec: 30, durationSec: LEN }];
+  const p = resumePoint(anchored({ elapsedSec: 40, totalSec: 120 }), { totalSec: 120, segments: shorter });
+  assert.equal(p.elapsedSec, 29);
   assert.equal(p.index, 0);
+  assert.ok(p.elapsedSec < shorter[1].startSec, "a clamped resume must stay in the segment it names");
+});
+
+test("a malformed entry in the live order does not shift the indexes after it", () => {
+  /* `reconcileSegment` used to FILTER the live order and then return an index into
+     the filtered array as if it were the running order — so one bad entry silently
+     moved every row after it by one, and the resume painted the wrong segment.
+     Review found it; the fix is to validate in place. */
+  const withHole = [
+    { id: "s1", startSec: 0, durationSec: LEN },
+    { id: "s2", startSec: LEN },                       // no durationSec: unusable
+    { id: "s3", startSec: 2 * LEN, durationSec: LEN },
+  ];
+  const p = resumePoint(anchored(), { totalSec: 3 * LEN, segments: withHole });
+  assert.equal(p.index, 2, "s3 is the THIRD entry of the caller's array, whatever we can parse");
+  assert.equal(p.elapsedSec, 2 * LEN + 40);
+  assert.equal(p.drift, DRIFT_EXACT);
+});
+
+test("a live order with no usable entry at all is 'no live order', not 'everything is gone'", () => {
+  const useless = [{ id: "s3" }, { id: "s4", startSec: NaN, durationSec: 5 }];
+  assert.equal(reconcileSegment(anchored(), useless).drift, DRIFT_UNVERIFIED);
+  assert.equal(resumePoint(anchored(), { totalSec: 540, segments: useless }).drift, DRIFT_UNVERIFIED);
+});
+
+test("a negative duration in the live order cannot pull a resume before its segment", () => {
+  const bad = [{ id: "s3", startSec: 100, durationSec: -50 }, { id: "s4", startSec: 100, durationSec: LEN }];
+  assert.equal(reconcileSegment(anchored(), bad).drift, DRIFT_DROPPED,
+    "an entry that describes nothing coherent cannot anchor a resume");
 });
 
 test("a segment with no authored id cannot anchor a resume and does not match one", () => {

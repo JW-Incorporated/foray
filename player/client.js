@@ -68,7 +68,7 @@ import {
 } from "./foray-resolve.js";
 import {
   ForayProgressStore, resumePoint, remainingLabel, percentDone,
-  DRIFT_EXACT, DRIFT_UNVERIFIED,
+  DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED,
 } from "./foray-progress.js";
 import { forayCredits, collectionIdsByShow, creditsSummary } from "./foray-sources.js";
 import { createDurableStore } from "./durable-store.js";
@@ -797,11 +797,16 @@ const ForayPlayer = {
     };
   },
 
-  /** Whether a resume offer was checked against the live running order, and what
-      the check found. Separated from `forayResume` so a surface can log or
-      explain the drift without re-deriving it. */
+  /** Whether the document is the one this row was written against.
+      "Clean" includes the two cases that are not drift at all: nothing was
+      checked (`unverified`, the home rail), and there was nothing to check with
+      (`unanchored` — every row written before segment ids existed, which is all
+      of them on the day this ships). Only `moved` and `dropped` are drift. */
   forayDriftIsClean(point) {
-    return !point || point.drift === DRIFT_EXACT || point.drift === DRIFT_UNVERIFIED;
+    if (!point) return true;
+    return point.drift === DRIFT_EXACT
+      || point.drift === DRIFT_UNVERIFIED
+      || point.drift === DRIFT_UNANCHORED;
   },
 
   /** Every Foray with a resume point, most recent first — the home screen's

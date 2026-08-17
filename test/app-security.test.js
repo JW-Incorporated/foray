@@ -197,22 +197,68 @@ test("localStorage keys keep the legacy cp_ prefix", () => {
   assert.deepStrictEqual(bad, [], "localStorage keys must keep the cp_ prefix");
 });
 
-test("no user state is read or written outside the storage shim (#40)", () => {
-  /* Durability is only durable if EVERYTHING goes through the shim. One
-     `localStorage.setItem` added later — by a hurried change or a bot PR — is a
-     key that lives only in the evictable tier, is never migrated, and silently
-     disappears for the listener who comes back next week. That is the original
-     defect, reintroduced one line at a time, and it is invisible in review
-     because it looks exactly like the code that used to be correct.
+/* ---------- the storage shim is the only door (#40) ----------
 
-     `lsGet`/`lsSet`/`storageBackend` are the only sanctioned readers, and
-     `storageBackend` names `localStorage` as its FALLBACK, not as a call. */
-  const calls = [...SRC.matchAll(/\blocalStorage\s*\.\s*(\w+)\s*\(/g)].map((m) => m[0]);
-  assert.deepStrictEqual(
-    calls, [],
-    "these bypass lsGet/lsSet and therefore bypass the durable store:\n" + calls.join("\n")
-  );
-});
+   Durability is only durable if EVERYTHING goes through the shim. One direct
+   `localStorage` write added later — by a hurried change or a bot PR on the
+   auto-merge path — is a key that lives only in the evictable tier, is never
+   migrated, and silently disappears for the listener who comes back next week.
+   That is the original defect reintroduced one line at a time, and it is
+   invisible in review because it looks exactly like the code that used to be
+   correct.
+
+   THIS TEST WAS WEAKER AND WAS DEFEATED. The first version matched dotted calls
+   (`/\blocalStorage\s*\.\s*\w+\s*\(/`). Review broke it in one edit — a `RAW`
+   alias plus `RAW["setItem"](…)` moved `cp_events` off the durable store, out of
+   the `cp_` prefix gate above, and still scored a full green run. Computed member
+   access, an alias and a destructure all walk past a call-shaped pattern, and
+   tightening the pattern is a losing game.
+
+   So the rule is inverted: `localStorage` may be NAMED in exactly one place, and
+   that place is pinned verbatim. Anything else — dotted, computed, aliased,
+   destructured, or a shape nobody has thought of — fails. */
+
+/** Comments are stripped before the scan: the shim's own header discusses
+    `localStorage` at length, and prose is not a code path. */
+function codeOnly(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+}
+
+/** The one sanctioned reference in each file, verbatim. If a legitimate change
+    reformats these, this test fails and the fix is to re-pin it here — which is
+    the point: the diff has to say so. */
+const SANCTIONED = {
+  "app.js": `function storageBackend() {
+  if (window.forayStorage) return window.forayStorage;
+  return typeof localStorage !== "undefined" ? localStorage : null;
+}`,
+  "player/client.js": `  localStorage: typeof localStorage !== "undefined" ? localStorage : null,`,
+};
+
+for (const [rel, sanctioned] of Object.entries(SANCTIONED)) {
+  test(`${rel} names localStorage in exactly one sanctioned place (#40)`, () => {
+    /* Newlines normalised: this repo is developed on Windows against a
+       Unix-normalised tree, so the same file is CRLF in one checkout and LF in
+       another and a multi-line pin would be a coin flip (CLAUDE.md § Never
+       discard uncommitted work names the same trap). */
+    const src = fs.readFileSync(path.join(__dirname, "..", rel), "utf8").replace(/\r\n/g, "\n");
+    assert.ok(
+      src.includes(sanctioned),
+      `the sanctioned localStorage reference in ${rel} has changed. If that was ` +
+        `deliberate, re-pin it in SANCTIONED in test/app-security.test.js.`
+    );
+    const stray = (codeOnly(src.replace(sanctioned, " ")).match(/\blocalStorage\b/g) || []);
+    assert.deepStrictEqual(
+      stray, [],
+      `${rel} names localStorage ${stray.length} time(s) outside the shim. Every one ` +
+        `of those bypasses the durable store (#40) — including an alias, a ` +
+        `destructure or localStorage["setItem"], which a call-shaped check misses. ` +
+        `Route it through lsGet/lsSet (app.js) or the injected store (player/).`
+    );
+  });
+}
 
 test("the shim prefers window.forayStorage, which is what makes cp_ state durable", () => {
   // The wiring, behaviourally: player/client.js publishes a DurableStore there,

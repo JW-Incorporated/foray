@@ -51,7 +51,9 @@
         - `setItem` THROWS when no tier accepted responsibility, so
           `writeProgress`'s existing `return false` keeps meaning what it says;
         - every failure lands in `health()` with tier, op, key and message;
-        - `onFault` fires once per failure so the app can log an event;
+        - `onFault` fires per failure, up to a budget, so the app can log an
+          event — see `_fault`, and note that the app's sink WRITES, so this path
+          feeds itself and needs two brakes rather than a re-entrancy flag;
         - the health record is mirrored to `cp_storage_health` best-effort.
       `health()` is always readable even when every tier is dead, because it
       lives in memory.
@@ -92,8 +94,24 @@ export const DEFAULT_PREFIX = "cp_";
 export const HEALTH_KEY = "cp_storage_health";
 
 /** Faults are kept for inspection, not forever — a permanently broken tier
-    would otherwise grow this without bound. */
+    would otherwise grow this without bound. Doubles as the budget for `onFault`
+    notifications; see `_fault`. */
 export const MAX_FAULTS = 20;
+
+/**
+ * Consecutive failures after which an async tier is dropped from the write path.
+ *
+ * WHY THIS EXISTS — review found the loop it closes. The app's fault sink logs an
+ * event, and logging an event is a write. A permanently failing durable tier
+ * therefore self-feeds: write fails → fault → sink → write → fails → fault,
+ * forever, one queued write per iteration. `_inFault` cannot stop it because the
+ * failure arrives asynchronously, on a later tick, with the guard already
+ * cleared. A dead tier has to stop being asked.
+ *
+ * Once every async tier is disabled, `setItem` starts throwing again when the
+ * sync tier also refuses — which is the honest answer, not a regression.
+ */
+export const MAX_CONSECUTIVE_TIER_FAILURES = 5;
 
 /* ---------- persistence: a request, not a setting ---------- */
 
@@ -213,6 +231,14 @@ export class DurableStore {
     /** What each async tier already had at hydration, so migration writes the
         rows that are missing rather than the whole namespace every launch. */
     this._seen = new Map();
+    /** Tiers whose `readAll` FAILED. Migration must not push the whole local
+        namespace into a tier it could not read: "I saw nothing" and "I could not
+        look" are different claims, and confusing them overwrites newer durable
+        rows with a stale mirror. Review found this one. */
+    this._unread = new Set();
+    /** Tiers taken out of the write path by the circuit breaker. Kept here rather
+        than spliced out of `_async` so `health()` still reports them. */
+    this._disabled = new Set();
 
     this._sync = [];
     this._async = [];
@@ -223,6 +249,7 @@ export class DurableStore {
 
     this._faults = [];
     this._stats = new Map();
+    this._notified = 0;
     this._pending = 0;
     this._queue = Promise.resolve();
     this._persist = { state: PERSIST_UNKNOWN, already: false };
@@ -361,12 +388,19 @@ export class DurableStore {
         failures: s.failures,
         migrated: s.migrated,
         lastError: s.lastError,
+        /* Taken out of the write path after MAX_CONSECUTIVE_TIER_FAILURES. A
+           `durable: true, disabled: true` tier is the case a human most needs to
+           see: it exists, and it is not protecting anything. */
+        disabled: this._disabled.has(t.name),
       };
     }
     return {
       ok: this._faults.length === 0,
       hydrated: this._hydrated,
-      durableTiers: this._async.filter((t) => t.durable).map((t) => t.name),
+      /* Tiers that are BOTH durable and still in the write path. A tier the
+         circuit breaker dropped is no longer durability, whatever it claims —
+         `HUMAN-ACTIONS.md` #9's check reads this. */
+      durableTiers: this._async.filter((t) => t.durable && !this._disabled.has(t.name)).map((t) => t.name),
       persisted: this._persist.state,
       persistedAlready: Boolean(this._persist.already),
       keys: this._ownedKeys().length,
@@ -378,20 +412,32 @@ export class DurableStore {
 
   /* ---------- internals ---------- */
 
+  /** The owned namespace, WITHOUT the diagnostic key: `cp_storage_health` is not
+      user state, and counting it would make `length` and `key(i)` claim a row
+      nothing wrote. It is still readable through `getItem`. */
   _ownedKeys() {
-    return [...this._mem.keys()];
+    return [...this._mem.keys()].filter((k) => k !== HEALTH_KEY);
   }
 
   _stat(name) {
     let s = this._stats.get(name);
     if (!s) {
-      s = { writes: 0, failures: 0, migrated: 0, lastError: null };
+      s = { writes: 0, failures: 0, migrated: 0, consecutive: 0, lastError: null };
       this._stats.set(name, s);
     }
     return s;
   }
 
-  _ok(name) { this._stat(name).writes += 1; }
+  _ok(name) {
+    const s = this._stat(name);
+    s.writes += 1;
+    s.consecutive = 0;
+  }
+
+  /** Async tiers still worth writing to. */
+  _liveAsync() {
+    return this._async.filter((t) => !this._disabled.has(t.name));
+  }
 
   _loadSync() {
     for (const t of this._sync) {
@@ -416,11 +462,14 @@ export class DurableStore {
   /** @returns {boolean} whether anything was queued (i.e. whether a durable
       tier exists to take responsibility for this write). */
   _enqueue(op, key, kind) {
-    if (!this._async.length) return false;
+    // Not `_async.length`: a tier the circuit breaker dropped cannot take
+    // responsibility for anything, so a store whose only durable tier is dead
+    // must go back to throwing when localStorage refuses too.
+    if (!this._liveAsync().length) return false;
     this._pending += 1;
     const done = () => { this._pending -= 1; };
     this._queue = this._queue.then(async () => {
-      for (const t of this._async) {
+      for (const t of this._liveAsync()) {
         try { await op(t); this._ok(t.name); }
         catch (err) { this._fault(t.name, kind, err, key); }
       }
@@ -454,15 +503,23 @@ export class DurableStore {
 
   async _doHydrate() {
     for (const t of this._async) {
+      const seen = new Set();
+      this._seen.set(t.name, seen);
       let rows = null;
       try {
         rows = typeof t.readAll === "function" ? await t.readAll(this.prefix) : null;
       } catch (err) {
+        /* COULD NOT LOOK ≠ SAW NOTHING. Without this the empty `seen` reads as
+           "the tier has none of these rows" and migration pushes the entire local
+           namespace down over whatever is really there — turning a transient
+           read failure into permanent loss of any durable row that was NEWER
+           than the local mirror. Review found this, and the precondition is
+           ordinary: localStorage refused a write, the durable tier took it, and
+           the next launch cannot read the durable tier. */
         this._fault(t.name, "read", err);
+        this._unread.add(t.name);
         continue;
       }
-      const seen = new Set();
-      this._seen.set(t.name, seen);
       if (!rows) continue;
       for (const [k, v] of rows) {
         if (typeof k !== "string" || typeof v !== "string") continue;
@@ -508,14 +565,29 @@ export class DurableStore {
    * rather than being something you have to take on trust.
    */
   async _migrateUp() {
-    if (!this._async.length) return;
-    const rows = [...this._mem.entries()].filter(([k]) => k !== HEALTH_KEY);
-    for (const t of this._async) {
+    if (!this._liveAsync().length) return;
+    /* Drain first. `removeItem` rides `_queue` and these writes do not, so the
+       two chains are otherwise unordered — and an unordered remove is a row that
+       comes back. Draining plus the per-key liveness check below makes the
+       ordering total in the only direction that can lose data. */
+    await this._queue;
+    const keys = this._ownedKeys();
+    for (const t of this._liveAsync()) {
       const seen = this._seen.get(t.name) ?? new Set();
-      for (const [k, v] of rows) {
+      const unread = this._unread.has(t.name);
+      for (const k of keys) {
+        /* Re-checked here, not read from a snapshot: a key removed since this
+           hydration started must not be written back down. `app.js` races
+           hydration against a timeout and proceeds while it is still running, so
+           a "start over" DURING hydration is a real sequence, and review proved
+           it resurrected the row. */
+        if (!this._mem.has(k)) continue;
+        /* A tier we could not read gets only the keys this session wrote, which
+           are the only ones we know to be newer than whatever is down there. */
+        if (unread && !this._dirty.has(k)) continue;
         if (seen.has(k) && !this._dirty.has(k)) continue;
         try {
-          await t.write(k, v);
+          await t.write(k, this._mem.get(k));
           this._ok(t.name);
           this._stat(t.name).migrated += 1;
           seen.add(k);
@@ -529,15 +601,33 @@ export class DurableStore {
   _fault(tier, op, err, key = null) {
     const s = this._stat(tier);
     s.failures += 1;
+    s.consecutive += 1;
     s.lastError = errText(err);
     const fault = { tier, op, key: key ?? null, error: s.lastError, at: this._now() };
     this._faults.push(fault);
     while (this._faults.length > MAX_FAULTS) this._faults.shift();
+
+    /* THE CIRCUIT BREAKER. A durable tier that has failed this many times in a
+       row is not coming back this session, and every further attempt is one more
+       fault, one more notification, and one more write from the app's fault sink.
+       Stop asking it. Reads are unaffected — hydration has already happened. */
+    if (!this._disabled.has(tier) && s.consecutive >= MAX_CONSECUTIVE_TIER_FAILURES
+        && this._async.some((t) => t.name === tier)) {
+      this._disabled.add(tier);
+    }
+
     this._recordHealth();
-    if (this._onFault && !this._inFault) {
+
+    /* THE NOTIFICATION BUDGET, and the reason it is not just `_inFault`.
+       `_inFault` is set and cleared synchronously, so it guards a re-entrant
+       sink and nothing else. An ASYNC tier failure arrives on a later tick with
+       the guard already clear — and the app's sink writes an event, which is a
+       write, which queues another durable write, which fails, which faults. That
+       is unbounded, and review measured it at 400 events from one user write.
+       Two independent brakes now: this budget, and the breaker above. */
+    if (this._onFault && !this._inFault && this._notified < MAX_FAULTS) {
+      this._notified += 1;
       this._inFault = true;
-      // The app's fault sink writes an event, which writes to storage, which can
-      // fault. One level, no recursion.
       try { this._onFault(fault, this.health()); } catch (_) {}
       this._inFault = false;
     }

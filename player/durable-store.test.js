@@ -26,7 +26,7 @@ import assert from "node:assert/strict";
 
 import {
   DurableStore, createDurableStore, localStorageTier, requestPersistence, isNewer,
-  DEFAULT_PREFIX, HEALTH_KEY, MAX_FAULTS,
+  DEFAULT_PREFIX, HEALTH_KEY, MAX_FAULTS, MAX_CONSECUTIVE_TIER_FAILURES,
   PERSIST_GRANTED, PERSIST_DENIED, PERSIST_UNSUPPORTED, PERSIST_ERROR, PERSIST_UNKNOWN,
 } from "./durable-store.js";
 import { ForayProgressStore, makeProgress, readProgress, progressKey } from "./foray-progress.js";
@@ -80,20 +80,22 @@ function fakeDurable({ name = "idb", rows = {}, failWrite = false, failRead = fa
     store,
     reads: 0,
     writes: [],
+    failWrite,
+    failRead,
     async readAll(prefix) {
       tier.reads += 1;
-      if (failRead) throw new Error("readAll failed");
+      if (tier.failRead) throw new Error("readAll failed");
       const out = new Map();
       for (const [k, v] of store) if (!prefix || k.startsWith(prefix)) out.set(k, v);
       return out;
     },
     async write(k, v) {
-      if (failWrite) throw new Error("put failed");
+      if (tier.failWrite) throw new Error("put failed");
       tier.writes.push(k);
       store.set(k, String(v));
     },
     async remove(k) {
-      if (failWrite) throw new Error("delete failed");
+      if (tier.failWrite) throw new Error("delete failed");
       store.delete(k);
     },
   };
@@ -103,7 +105,10 @@ function fakeDurable({ name = "idb", rows = {}, failWrite = false, failRead = fa
 const ID = "grilling-history-1";
 const PROGRESS_KEY = progressKey(ID);
 
-function row(over = {}) {
+/* `row_` rather than `row`: the trailing underscore keeps it out of the way of
+   the local `const row = …` a couple of tests below want to use. */
+
+function row_(over = {}) {
   return JSON.stringify(makeProgress({
     forayId: ID, title: "The history of grilling",
     elapsedSec: 1180, totalSec: 3673, index: 9,
@@ -126,7 +131,7 @@ test("reads answer from memory before hydration — the first paint is not slowe
   // Constructed over a localStorage that already has state, and asked for it
   // synchronously. No await anywhere: this is the property that let the whole
   // change happen without rewriting a single caller as async.
-  const local = new FakeLocal({ cp_interests: '{"a":1}', [PROGRESS_KEY]: row() });
+  const local = new FakeLocal({ cp_interests: '{"a":1}', [PROGRESS_KEY]: row_() });
   const s = new DurableStore({ tiers: [localStorageTier(local), fakeDurable()] });
   assert.equal(JSON.parse(s.getItem("cp_interests")).a, 1);
   assert.equal(readProgress(s, ID).elapsed_sec, 1180);
@@ -161,7 +166,7 @@ test("writes reach the durable tier in the order they were made", async () => {
 });
 
 test("length and key() enumerate the owned namespace, which is what listProgress walks", () => {
-  const local = new FakeLocal({ [PROGRESS_KEY]: row(), "cp_foray:other": row({ forayId: "other" }) });
+  const local = new FakeLocal({ [PROGRESS_KEY]: row_(), "cp_foray:other": row_({ forayId: "other" }) });
   const s = new DurableStore({ tiers: [localStorageTier(local)] });
   assert.equal(s.length, 2);
   const keys = [s.key(0), s.key(1)];
@@ -180,8 +185,8 @@ test("an unowned key passes through to localStorage and is not enumerated", () =
 });
 
 test("removeItem clears both tiers", async () => {
-  const local = new FakeLocal({ [PROGRESS_KEY]: row() });
-  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row() } });
+  const local = new FakeLocal({ [PROGRESS_KEY]: row_() });
+  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row_() } });
   const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
   s.removeItem(PROGRESS_KEY);
   await s.flush();
@@ -193,7 +198,7 @@ test("removeItem clears both tiers", async () => {
 /* ---------- migration: the guarantee that nothing is lost to the fix ---------- */
 
 test("MIGRATION: an existing cp_ row in localStorage is carried into the durable tier", async () => {
-  const local = new FakeLocal({ cp_profile_id: '"p-abc"', cp_interests: '{"x":0.5}', [PROGRESS_KEY]: row() });
+  const local = new FakeLocal({ cp_profile_id: '"p-abc"', cp_interests: '{"x":0.5}', [PROGRESS_KEY]: row_() });
   const idb = fakeDurable();
   const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
   await s.hydrate();
@@ -205,7 +210,7 @@ test("MIGRATION: an existing cp_ row in localStorage is carried into the durable
 test("MIGRATION: localStorage still has every row afterwards — nothing is deleted to move it", async () => {
   // The one guarantee that matters on ship day. localStorage is a MIRROR, not a
   // staging area, so there is no window in which a row exists in neither place.
-  const before = { cp_profile_id: '"p-abc"', cp_sb_session: '{"user_id":"u1"}', [PROGRESS_KEY]: row() };
+  const before = { cp_profile_id: '"p-abc"', cp_sb_session: '{"user_id":"u1"}', [PROGRESS_KEY]: row_() };
   const local = new FakeLocal({ ...before });
   const s = new DurableStore({ tiers: [localStorageTier(local), fakeDurable()] });
   await s.hydrate();
@@ -254,7 +259,7 @@ test("EVICTION: localStorage wiped, durable tier intact — the position comes b
   // This is the listener the issue is about: 20 minutes into a 61-minute Foray,
   // back a week later, localStorage swept by Safari.
   const local = new FakeLocal();                      // evicted: empty
-  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row(), cp_profile_id: '"p-abc"' } });
+  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row_(), cp_profile_id: '"p-abc"' } });
   const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
   assert.equal(s.getItem(PROGRESS_KEY), null, "before hydration there is genuinely nothing");
   await s.hydrate();
@@ -264,10 +269,10 @@ test("EVICTION: localStorage wiped, durable tier intact — the position comes b
 
 test("EVICTION: a restored row is written back into localStorage, so the fast path has it too", async () => {
   const local = new FakeLocal();
-  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row() } });
+  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row_() } });
   const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
   await s.hydrate();
-  assert.equal(local.map.get(PROGRESS_KEY), row());
+  assert.equal(local.map.get(PROGRESS_KEY), row_());
 });
 
 /* ---------- hydration must not clobber this session ---------- */
@@ -295,8 +300,8 @@ test("CLOBBER: and the session's value is pushed DOWN over the durable one", asy
 test("CLOBBER: a key REMOVED this session is not resurrected by hydration", async () => {
   // "Start over" clears a Foray's row. A durable copy that comes back afterwards
   // would undo the only destructive thing a listener can ask for.
-  const local = new FakeLocal({ [PROGRESS_KEY]: row() });
-  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row() } });
+  const local = new FakeLocal({ [PROGRESS_KEY]: row_() });
+  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row_() } });
   const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
   s.removeItem(PROGRESS_KEY);
   await s.hydrate();
@@ -308,8 +313,8 @@ test("CLOBBER: a key REMOVED this session is not resurrected by hydration", asyn
 /* ---------- conflicts ---------- */
 
 test("CONFLICT: the row with the later updated_at wins", async () => {
-  const older = row({ elapsedSec: 100, now: "2026-08-10T00:00:00.000Z" });
-  const newer = row({ elapsedSec: 2000, now: "2026-08-15T00:00:00.000Z" });
+  const older = row_({ elapsedSec: 100, now: "2026-08-10T00:00:00.000Z" });
+  const newer = row_({ elapsedSec: 2000, now: "2026-08-15T00:00:00.000Z" });
   const local = new FakeLocal({ [PROGRESS_KEY]: older });
   const s = new DurableStore({ tiers: [localStorageTier(local), fakeDurable({ rows: { [PROGRESS_KEY]: newer } })] });
   await s.hydrate();
@@ -317,8 +322,8 @@ test("CONFLICT: the row with the later updated_at wins", async () => {
 });
 
 test("CONFLICT: a local row that is newer is kept, not overwritten by the durable copy", async () => {
-  const older = row({ elapsedSec: 100, now: "2026-08-10T00:00:00.000Z" });
-  const newer = row({ elapsedSec: 2000, now: "2026-08-15T00:00:00.000Z" });
+  const older = row_({ elapsedSec: 100, now: "2026-08-10T00:00:00.000Z" });
+  const newer = row_({ elapsedSec: 2000, now: "2026-08-15T00:00:00.000Z" });
   const local = new FakeLocal({ [PROGRESS_KEY]: newer });
   const idb = fakeDurable({ rows: { [PROGRESS_KEY]: older } });
   const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
@@ -631,6 +636,144 @@ test("END TO END: write, evict localStorage, reopen — the listener keeps their
   assert.equal(back.elapsed_sec, 1180);
   assert.equal(back.index, 9);
   assert.equal(back.title, "The history of grilling");
+});
+
+/* ======================================== the four bugs review found ==========
+
+   All four were live in the first draft of `durable-store.js`, all four lose or
+   corrupt user state, and none of them was caught by the fifty tests above. They
+   are grouped here so that a future change that reintroduces one fails against a
+   test that names it. */
+
+test("REVIEW #1: a permanently failing durable tier cannot self-feed through onFault", () => {
+  /* The measured loop: a durable write fails asynchronously → `_fault` → the
+     app's sink logs an event → logging is a WRITE → queued to the same dead tier
+     → fails → faults. `_inFault` cannot stop it: the failure arrives on a later
+     tick with the guard already cleared. Review measured 400 events from ONE user
+     write. Two brakes now — a notification budget and a circuit breaker.
+
+     Synchronous version of the same loop, so the assertion is not about timing:
+     a sink that writes, against tiers that both refuse. */
+  const local = new FakeLocal();
+  local.failWrites = true;
+  let sinkCalls = 0;
+  const s = new DurableStore({
+    tiers: [localStorageTier(local)],
+    onFault: () => { sinkCalls += 1; try { s.setItem("cp_events", "[]"); } catch (_) {} },
+  });
+  for (let i = 0; i < 200; i++) { try { s.setItem(`cp_k${i}`, "1"); } catch (_) {} }
+  assert.ok(sinkCalls <= MAX_FAULTS, `the sink was notified ${sinkCalls} times; the budget is ${MAX_FAULTS}`);
+});
+
+test("REVIEW #1: a durable tier that keeps failing is dropped from the write path", async () => {
+  const idb = fakeDurable({ failWrite: true });
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal()), idb] });
+  for (let i = 0; i < MAX_CONSECUTIVE_TIER_FAILURES + 3; i++) {
+    s.setItem(`cp_k${i}`, "1");
+    await s.flush();
+  }
+  const h = s.health();
+  assert.equal(h.tiers.idb.disabled, true);
+  assert.deepEqual(h.durableTiers, [], "a dropped tier is not durability, whatever it claims");
+  assert.ok(h.tiers.idb.failures <= MAX_CONSECUTIVE_TIER_FAILURES,
+    `it kept being asked: ${h.tiers.idb.failures} failures`);
+});
+
+test("REVIEW #1: once every durable tier is dropped, setItem goes back to throwing honestly", async () => {
+  const local = new FakeLocal();
+  const idb = fakeDurable({ failWrite: true });
+  const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
+  for (let i = 0; i < MAX_CONSECUTIVE_TIER_FAILURES; i++) { s.setItem(`cp_k${i}`, "1"); await s.flush(); }
+  local.failWrites = true;
+  assert.throws(() => s.setItem("cp_late", "1"), /no storage tier accepted/,
+    "with the breaker open and localStorage full, nothing took the value and the caller must hear so");
+});
+
+test("REVIEW #1: a tier that recovers is not punished for an earlier failure", async () => {
+  const idb = fakeDurable({ failWrite: true });
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal()), idb] });
+  s.setItem("cp_a", "1");
+  await s.flush();
+  idb.failWrite = false;
+  s.setItem("cp_b", "2");
+  await s.flush();
+  assert.equal(s.health().tiers.idb.disabled, false, "consecutive failures reset on a success");
+  assert.equal(idb.store.get("cp_b"), "2");
+});
+
+test("REVIEW #2: a remove DURING hydration is not resurrected by the migration", async () => {
+  /* `removeItem` rides the write queue and migration used to write directly, so
+     the two were unordered and migration's pre-taken snapshot wrote the row back
+     down. `app.js` races hydration against a timeout and proceeds while it is
+     still running, so "Start over" mid-hydration is a real sequence. */
+  const row = row_();
+  const local = new FakeLocal({ [PROGRESS_KEY]: row });
+  const idb = fakeDurable();
+  const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
+  const hydrating = s.hydrate();
+  s.removeItem(PROGRESS_KEY);          // mid-flight, exactly as the page can
+  await hydrating;
+  await s.flush();
+  assert.equal(s.getItem(PROGRESS_KEY), null);
+  assert.equal(local.map.has(PROGRESS_KEY), false);
+  assert.equal(idb.store.has(PROGRESS_KEY), false, "the deleted position came back");
+
+  // And it stays gone across a reload.
+  const next = new DurableStore({ tiers: [localStorageTier(new FakeLocal()), idb] });
+  await next.hydrate();
+  assert.equal(next.getItem(PROGRESS_KEY), null);
+});
+
+test("REVIEW #2: a value CHANGED during hydration is migrated at its new value", async () => {
+  const local = new FakeLocal({ cp_a: "old" });
+  const idb = fakeDurable();
+  const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
+  const hydrating = s.hydrate();
+  s.setItem("cp_a", "new");
+  await hydrating;
+  await s.flush();
+  assert.equal(idb.store.get("cp_a"), "new", "migration must read memory, not a stale snapshot");
+});
+
+test("REVIEW #3: a tier whose readAll FAILED is not blindly overwritten", async () => {
+  /* "I could not look" is not "I saw nothing". The durable tier here holds 50
+     minutes of progress; localStorage holds a stale mirror because an earlier
+     write was refused. A transient read failure used to push the mirror down over
+     the real row — permanent loss out of a recoverable state. */
+  const durableRow = row_({ elapsedSec: 3000, now: "2026-08-16T12:00:00.000Z" });
+  const staleLocal = row_({ elapsedSec: 60, now: "2026-08-16T10:00:00.000Z" });
+  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: durableRow }, failRead: true });
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal({ [PROGRESS_KEY]: staleLocal })), idb] });
+  await s.hydrate();
+  await s.flush();
+  assert.equal(JSON.parse(idb.store.get(PROGRESS_KEY)).elapsed_sec, 3000, "50 minutes of progress was overwritten");
+  assert.equal(s.health().ok, false, "and the read failure is still recorded");
+});
+
+test("REVIEW #3: but a write made THIS session still reaches an unreadable tier", async () => {
+  // The one class of key we know is newer than whatever is down there.
+  const idb = fakeDurable({ rows: { cp_a: "theirs" }, failRead: true });
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal({ cp_b: "stale" })), idb] });
+  s.setItem("cp_a", "mine");
+  await s.hydrate();
+  await s.flush();
+  assert.equal(idb.store.get("cp_a"), "mine");
+  assert.equal(idb.store.get("cp_b"), undefined, "and the unwritten mirror is left alone");
+});
+
+test("REVIEW #4: cp_storage_health is not counted as user state", () => {
+  /* A persist REFUSAL writes the health record, and a refusal is the expected
+     case on Safari and on any non-engaged Chromium origin — so this fired on
+     essentially every real load. `length` claimed one row more than exists. */
+  const local = new FakeLocal({ cp_a: "1" });
+  const s = new DurableStore({ tiers: [localStorageTier(local)] });
+  assert.equal(s.length, 1);
+  s._recordHealth();
+  assert.equal(s.length, 1, "the diagnostic key inflated the namespace");
+  assert.deepEqual([s.key(0)], ["cp_a"]);
+  assert.equal(s.key(1), null);
+  assert.equal(s.health().keys, 1);
+  assert.ok(s.getItem(HEALTH_KEY), "and it is still readable, just not user state");
 });
 
 test("localStorageTier refuses an object that is not Storage-shaped", () => {

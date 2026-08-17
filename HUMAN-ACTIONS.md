@@ -543,11 +543,23 @@ runs once instead of racing itself.
    `backend` are green. The `activate` handler already deletes every cache whose
    name is not the current one, so nothing else has to change.
 
-**Worked if:** after deploying, a hard reload of
-<https://jw-incorporated.github.io/foray/> and then `forayStorageHealth()` in the
-browser console prints an object whose `durableTiers` is `["idb"]`. If it prints
-`[]`, IndexedDB is unavailable in that browser and the listener is on the
-localStorage mirror only — which is the pre-#40 behaviour, not a regression.
+**Worked if:** after deploying, hard-reload
+<https://jw-incorporated.github.io/foray/>, click something (a suggestion, the
+family-mode toggle — anything that stores state), then type `forayStorageHealth()`
+in the browser console. You want **`ok: true`** and **`tiers.idb.writes` greater
+than 0**, with `durableTiers: ["idb"]`.
+
+Read those three together, because two of them can lie on their own:
+
+- `durableTiers: ["idb"]` with `writes: 0` means IndexedDB *exists* but has never
+  committed anything. That is what Safari private mode looks like.
+- `ok: false` means at least one write or read failed; `faults` says which tier
+  and why.
+- `durableTiers: []` means this browser has no IndexedDB (or it failed enough
+  times to be dropped) and the listener is on the localStorage mirror only —
+  which is the pre-#40 behaviour, not a regression.
+
+The click matters: nothing is written until something happens.
 
 **Status:** OPEN
 

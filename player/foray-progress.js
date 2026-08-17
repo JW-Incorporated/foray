@@ -274,29 +274,47 @@ export function resumePoint(record, { totalSec = null, maxIndex = null, segments
  * document that changed under a listener is the ordinary case, and the worst
  * allowed outcome is a clamped clock.
  *
+ * Leans on one invariant it does not enforce: a segment id appears AT MOST ONCE
+ * in a Foray. `tools/foray/check-forays.mjs` fails CI on a repeat, so a reprise
+ * of the same segment is not authorable today; if that ever changes, `findIndex`
+ * below silently prefers the first occurrence.
+ *
  * @param {object} record
  * @param {Array<{id: ?string, startSec: number, durationSec: number}>|null} segments
  * @returns {{ drift: string, elapsedSec?: number, index?: number }}
  */
 export function reconcileSegment(record, segments) {
-  const live = Array.isArray(segments) ? segments.filter(isSegmentDescriptor) : null;
-  if (!live || !live.length) return { drift: DRIFT_UNVERIFIED };
+  /* NOT filtered. `index` below is returned as a LIVE index and is used to paint
+     the running order, so it has to count positions in the caller's own array —
+     filtering first would shift every index after a malformed entry and hand back
+     a confident wrong row. A list with no usable entry at all is "no live order". */
+  const live = Array.isArray(segments) ? segments : null;
+  if (!live || !live.some(isSegmentDescriptor)) return { drift: DRIFT_UNVERIFIED };
   if (!isProgressRecord(record)) return { drift: DRIFT_UNVERIFIED };
   const storedId = nonEmpty(record.segment_id) ? record.segment_id : null;
   if (!storedId) return { drift: DRIFT_UNANCHORED };
 
-  const at = live.findIndex((s) => s.id === storedId);
+  const at = live.findIndex((s) => isSegmentDescriptor(s) && s.id === storedId);
   if (at < 0) return { drift: DRIFT_DROPPED };
 
   const into = isNum(record.into_sec) && record.into_sec > 0 ? record.into_sec : 0;
-  const elapsedSec = live[at].startSec + Math.min(into, live[at].durationSec);
+  /* Clamped one second INSIDE the segment, not to its boundary. Landing exactly
+     on the boundary is the next segment's start, so `segmentAtElapsed` would pick
+     index+1 while `index` here says `at` — the painted row and the seek would
+     disagree by one for the one case where the segment got shorter. */
+  const room = Math.max(0, live[at].durationSec - DRIFT_TOLERANCE_SEC);
+  const elapsedSec = live[at].startSec + Math.min(into, room);
   const unmoved = record.index === at
     && Math.abs(elapsedSec - record.elapsed_sec) <= DRIFT_TOLERANCE_SEC;
   return { drift: unmoved ? DRIFT_EXACT : DRIFT_MOVED, elapsedSec, index: at };
 }
 
 function isSegmentDescriptor(s) {
-  return Boolean(s && typeof s === "object" && isNum(s.startSec) && s.startSec >= 0 && isNum(s.durationSec));
+  return Boolean(
+    s && typeof s === "object" &&
+    isNum(s.startSec) && s.startSec >= 0 &&
+    isNum(s.durationSec) && s.durationSec >= 0
+  );
 }
 
 /** -1 ("we do not know") is a legal answer and must survive the clamp; anything
