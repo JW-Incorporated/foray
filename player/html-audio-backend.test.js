@@ -160,6 +160,13 @@ test("notePlayGesture never touches an element that already holds audio", async 
   el.calls.length = 0;
   assert.equal(b.notePlayGesture(), false);
   assert.deepStrictEqual(el.calls, [], "no audio may start from a prime");
+  /* AND IT MUST NOT HAVE SPENT THE ONE-SHOT. Nothing needed priming here, so
+     nothing was primed — burning the flag on a call that did no work would
+     switch the fix off for the rest of the session the first time a load
+     happened outside a tap. Found by review: the ordering read correctly and was
+     wrong. Asserted on the private field because the only public way back to an
+     unloaded element is `release()`, which is a one-way door of its own. */
+  assert.equal(b._gestureNoted, false, "a call that primed nothing must leave the one-shot unspent");
 });
 
 test("a prime whose play() rejects does not become an unhandled rejection", async () => {

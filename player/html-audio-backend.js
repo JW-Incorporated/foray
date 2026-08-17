@@ -344,8 +344,11 @@ export class HtmlAudioBackend {
     this._currentUrl = null;
     this._pendingRate = 1.0;
     this._released = false;
-    /** Whether a `play()` has been issued on this element from inside a real
-        user gesture. One-way and one-shot — see `notePlayGesture`. */
+    /** Whether a `play()` has been issued from inside a real user gesture.
+        One-way and one-shot — see `notePlayGesture`. Held per BACKEND while the
+        restriction it lifts is per ELEMENT: the warm element is never primed
+        here, and the refusal it can produce at a handover has its own recovery
+        (`_recoverFromRefusedHandover`). */
     this._gestureNoted = false;
 
     /* out-point state — see §"the out-point" above */
@@ -1186,14 +1189,26 @@ export class HtmlAudioBackend {
    */
   notePlayGesture() {
     if (this._released || this._gestureNoted) return false;
-    this._gestureNoted = true;
+    // The one-shot is spent only when a gesture actually is: burning it on an
+    // element that needed no priming would switch this off for the whole session
+    // the first time a load happens outside a tap.
     if (this._currentUrl) return false;
+    this._gestureNoted = true;
     /* Nothing is audible: there is no source, so the media element ends up
        waiting for one and the promise it hands back never resolves. The
        following `load()` aborts it, which rejects with `AbortError` — caught
-       here, because an unhandled rejection would take the module down. */
-    const p = this.el.play();
-    if (p && typeof p.catch === "function") p.catch(() => {});
+       here, because an unhandled rejection would take the module down.
+
+       And the whole thing is wrapped, because this is now the FIRST line of
+       every start: an element that throws from `play()` must cost a listener a
+       normal refusal, not the start itself. */
+    try {
+      const p = this.el.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } catch (err) {
+      this._emit(`gesture.noted.threw ${err?.name ?? err}`);
+      return false;
+    }
     this._emit("gesture.noted — the autoplay restriction is spent inside the tap");
     return true;
   }

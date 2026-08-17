@@ -169,29 +169,29 @@ test("play loads then starts, in that order", async () => {
   assert.deepStrictEqual(backend.calls, ["load:a@0", "rate:1", "play"]);
 });
 
-test("nothing between a settled load and play() yields the tap (#225)", async () => {
-  /* The invariant the whole start path rests on. Safari lets audio start only
-     inside the task that carries the user gesture, so once a load has settled,
-     every step from there to `play()` — the reducer, the effect loop, the rate,
-     the out-point, the beat's zero-length wait — has to stay inside that task.
-     One stray macrotask anywhere in the chain and no tap can ever start audio.
+test("the manager adds no macrotask between a settled load and play()", async () => {
+  /* Necessary, not sufficient, and the distinction matters: WebKit's user-gesture
+     indicator is stack-scoped, so an `await` can lose a gesture with no timer
+     involved at all — which is exactly why #225 had to spend the gesture on the
+     element in the backend rather than tidy this chain. What this pins is the
+     cheaper half: once a load HAS settled, the reducer, the effect loop, the
+     rate, the out-point and the beat's zero-length wait all stay inside the task
+     that asked. Put one timer in that chain and even a load that resolves
+     instantly — the same-source shortcut, which is how a tap gets audio out of an
+     element already holding the URL — could not start playback.
 
-     The gesture window is modelled the way the browser defines it: open for the
-     current task, closed by the first timer callback. `FakeBackend.load` is an
-     `async` method with no awaits in it, so it settles in a microtask — which is
-     the real shape of the same-source shortcut in html-audio-backend.js, the
-     path that made the founder's second tap work in #225. */
+     A timer callback stands in for "the task ended". */
   const { m, backend } = make();
-  let gestureOpen = true;
-  setTimeout(() => { gestureOpen = false; }, 0);
+  let sameTask = true;
+  setTimeout(() => { sameTask = false; }, 0);
   const playedWith = [];
   const realPlay = backend.play.bind(backend);
-  backend.play = () => { playedWith.push(gestureOpen); realPlay(); };
+  backend.play = () => { playedWith.push(sameTask); realPlay(); };
 
   m.setQueueFromPick(ep("a"));
   await m.play(0);
 
-  assert.deepStrictEqual(playedWith, [true], "play() left the gesture behind — Safari would refuse it");
+  assert.deepStrictEqual(playedWith, [true], "a macrotask between the load and play() strands every start");
 });
 
 test("SINGLE_ITEM ends the session instead of chaining into another episode", async () => {

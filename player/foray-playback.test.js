@@ -774,6 +774,10 @@ const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
   const calls = [];
   let onChange = null;
+  /** A transport call that throws while the Foray is genuinely live — the other
+      shape of #225's invisible failure, and the one that must not make the page
+      forget what is playing. */
+  let toggleThrows = null;
   const record = (name) => (...args) => { calls.push({ name, args }); };
   const credit = {
     show: resolved.shows[0], clips: 3, seconds: 420,
@@ -822,7 +826,11 @@ function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
       if (startThrows) throw startThrows;
       return null;
     },
-    forayToggle: record("forayToggle"),
+    throwOnToggle: (err) => { toggleThrows = err; },
+    forayToggle: (...args) => {
+      calls.push({ name: "forayToggle", args });
+      if (toggleThrows) throw toggleThrows;
+    },
     forayNext: record("forayNext"),
     forayPrevious: record("forayPrevious"),
     forayJump: (i) => { calls.push({ name: "forayJump", args: [i] }); },
@@ -1182,6 +1190,47 @@ test("a start that fails puts the page back to cold, so the next tap is a real r
   assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 3);
 });
 
+test("a PAUSED Foray with an error standing is still a live Foray, not a failed start", async () => {
+  /* Found by review, and it is the sharp edge of the rule above: "an error and
+     nothing playing" also describes a listener who paused. Getting this wrong
+     costs more than the bug being fixed — the page would go cold mid-hour, the
+     stale banner would come back, and the next press would rebuild the queue at
+     whatever position the page opened on. Two things keep it right: the player
+     clears the error the moment audio is produced, and the retry point is the
+     furthest position this page has actually heard. */
+  const resume = { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" };
+  const { dom, bridge, resolved } = await mountForayPage({ resume });
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  const at = (over) => onChange({ forayId: FORAY_ID, index: 9, loading: false, gap: false, ended: false, totalSec: resolved.totalSec, playing: false, elapsedSec: 1500, error: null, ...over });
+
+  at({ playing: true });                       // audio, for a while
+  at({ playing: false });                      // and the listener pauses
+  assert.equal(dom.el("fy-play").textContent, "▶ Resume");
+  assert.equal(dom.el("fy-resume").hidden, true, "a page that has heard audio must not re-offer a stale position");
+  assert.ok(dom.rows[9].classList.contains("is-playing"), "the segment is still the loaded one");
+
+  // The next press is a toggle, because the Foray IS live — not a rebuild.
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 1);
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1, "pausing must not cost the queue");
+});
+
+test("a failure after real progress retries from where the listener got to", async () => {
+  const resume = { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" };
+  const { dom, bridge, resolved } = await mountForayPage({ resume });
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+
+  onChange({ forayId: FORAY_ID, index: 9, playing: true, loading: false, gap: false, ended: false, elapsedSec: 1500, totalSec: resolved.totalSec, error: null });
+  // Twenty-five minutes in, the next segment will not load.
+  onChange(failedStart(20, "player.error: loadItem(x) failed: load failed (code 2)", resolved.totalSec));
+
+  await dom.el("fy-play").click();
+  const last = bridge.calls.filter((c) => c.name === "playForay").pop();
+  assert.equal(last.args[1].startElapsedSec, 1500, "a retry must not send the listener back to the page's opening position");
+});
+
 test("autoplay refusal reads as a browser being careful, not as a broken app", async () => {
   const { dom, bridge, resolved } = await mountForayPage();
   await dom.el("fy-play").click();
@@ -1229,6 +1278,32 @@ test("a start that THROWS says so on the page instead of vanishing into the cons
   assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 2);
 });
 
+test("a control that throws over LIVE audio says so without lying about the state", async () => {
+  /* The other half of the same guard, and the half that must not overreach. The
+     audio is still running, so the player's state is still the truth: a page that
+     dropped its "this Foray is live" flag here would show a button labelled
+     "Pause" that means "start", and the next press would rebuild the queue
+     underneath audio the listener is still hearing. */
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  onChange({ forayId: FORAY_ID, index: 4, playing: true, loading: false, gap: false, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null });
+
+  bridge.throwOnToggle(Object.assign(new Error("nope"), { name: "TypeError" }));
+  await dom.el("fy-play").click();             // must NOT reject
+
+  assert.equal(dom.el("fy-error").hidden, false, "a control that threw has to be visible");
+  assert.ok(!/wouldn't load/.test(dom.el("fy-error").textContent), `nothing failed to load: ${dom.el("fy-error").textContent}`);
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause", "the label still describes the audio, which is still playing");
+
+  // And the page still knows a Foray is live, so the next press is a transport
+  // action rather than a restart on top of live audio.
+  bridge.throwOnToggle(null);
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1, "a failed control must never restart a running Foray");
+  assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 2);
+});
+
 test("the tap reaches playForay with nothing awaited in front of it", async () => {
   /* THE FIRST DEFECT IN THE FOUNDER'S SENTENCE, pinned as far as this harness
      can reach. Safari lifts an element's autoplay restriction inside the
@@ -1241,17 +1316,21 @@ test("the tap reaches playForay with nothing awaited in front of it", async () =
      ordering inside it is pinned the same way below. */
   assert.match(
     APP_SRC,
-    /const start = \(index\) => guardForayTap\(\(\) => player\.playForay\(/,
+    /const start = \(index\) => \(paintForayFailure\(null\), guardForayStart\(\(\) => player\.playForay\(/,
     "the index funnel must call the player as the first thing inside the tap"
   );
   assert.match(
     APP_SRC,
-    /const startAt = \(elapsedSec\) => guardForayTap\(\(\) => player\.playForay\(/,
+    /const startAt = \(elapsedSec\) => \(paintForayFailure\(null\), guardForayStart\(\(\) => player\.playForay\(/,
     "the resume/scrub funnel must too"
   );
-  // Both funnels, no third path: every control on the page routes through one of
-  // them, so neither can be fixed and the other left awaiting.
-  const bodies = APP_SRC.split("\n").filter((l) => l.includes("playForay(") && !l.trim().startsWith("//"));
+  /* Both funnels, no third path: every control on the page routes through one of
+     them, so neither can be fixed and the other left awaiting. Comment lines are
+     dropped in all three shapes — this file and app.js both discuss `playForay(`
+     in prose, and a test that goes red at a paragraph is a test people delete. */
+  const bodies = APP_SRC.split("\n")
+    .filter((l) => l.includes("playForay("))
+    .filter((l) => !/^\s*(\/\/|\/\*|\*)/.test(l));
   assert.equal(bodies.length, 2, `expected two call sites, found:\n${bodies.join("\n")}`);
   for (const line of bodies) {
     assert.ok(!/await/.test(line), `a start must not await anything before playForay: ${line}`);
@@ -1268,14 +1347,42 @@ test("client.js spends the gesture on the element BEFORE its first await", async
      a Node test. It is a weak instrument used for a sharp question, so it asks
      the only question that matters — is the prime above the first await. */
   const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
-  const body = client.slice(client.indexOf("async playForay(resolved, {"));
-  assert.ok(body.startsWith("async playForay(resolved, {"), "playForay moved or was renamed");
-  const primeAt = body.indexOf("backend.notePlayGesture()");
-  const awaitAt = body.indexOf("await ");
-  assert.ok(primeAt > 0, "playForay no longer spends the gesture on the element (#225)");
-  assert.ok(
-    primeAt < awaitAt,
-    "notePlayGesture must run before the first await in playForay, or the tap is already spent"
+  // BOTH entry points a tap can reach: a Foray, and a single episode from a card.
+  // The episode path is the one a `playForay`-shaped assertion cannot see.
+  for (const signature of ["async playForay(resolved, {", "async play(item, { why"]) {
+    const from = client.indexOf(signature);
+    assert.ok(from > 0, `${signature} moved or was renamed`);
+    const body = client.slice(from);
+    const primeAt = body.indexOf("backend.notePlayGesture()");
+    const awaitAt = body.indexOf("await ");
+    assert.ok(primeAt > 0, `${signature} no longer spends the gesture on the element (#225)`);
+    assert.ok(
+      primeAt < awaitAt,
+      `notePlayGesture must run before the first await in ${signature}, or the tap is already spent`
+    );
+  }
+});
+
+test("client.js only ever reports an error that describes the attempt in front of it", async () => {
+  /* The page treats "an error, and nothing playing" as a failed start, so a
+     `foray.error` that outlives its attempt is not a stale message — it is a
+     page that goes cold mid-hour. Two rules keep the field honest, and both are
+     one line in a module this suite cannot import, so both are read as text.
+
+     The telemetry strings themselves are pinned behaviourally in
+     `queue-manager.test.js` ("a DAI segment whose copy has drifted is skipped"
+     for `.atLoad`, and the build-time `skipped[1]` in the ladder tests), so the
+     two halves of this rule cannot drift apart silently. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  assert.match(
+    client,
+    /if \(foray\.error && isPlaying\(\)\) foray\.error = null;/,
+    "an error must not survive audio, or pausing reads as a failed start (#225)"
+  );
+  assert.match(
+    client,
+    /foray && \/player\\\.error\|segment\\\.skipped\\\.atLoad\/i\.test\(m\)/,
+    "a segment the BUILD dropped is a property of the running order, not a failed tap"
   );
 });
 

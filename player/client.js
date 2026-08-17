@@ -318,6 +318,13 @@ function setForayIndex(index, { pending = true } = {}) {
     event already drives, so no new callback is needed on the manager. */
 function syncForaySegment() {
   if (!foray) return;
+  /* AN ERROR CANNOT SURVIVE AUDIO (#225). `foray.error` describes the last
+     ATTEMPT, and a player that is producing sound has plainly moved past it.
+     Without this the field stands for the rest of the session: the surface reads
+     "an error, and nothing playing" as a failed start, so the listener pressing
+     pause ten minutes later would have the page decide their Foray had never
+     started — and offer to resume them at the position the page opened on. */
+  if (foray.error && isPlaying()) foray.error = null;
   const index = manager?.currentIndex ?? -1;
   if (index < 0) return;
   if (index === foray.index) { foray.pendingFrom = null; return; }
@@ -759,10 +766,20 @@ function ensureBooted() {
     telemetry: (m) => {
       if (!/error|rejected|skipped/i.test(m)) return;
       console.warn("[player]", m);
-      // A Foray that stops on a dead segment must SAY so. Without this the
-      // manager pauses, the page keeps its highlight, and the only evidence is
-      // a console line nobody has open.
-      if (foray && /player\.error|segment\.skipped/i.test(m)) {
+      /* A Foray that stops on a dead segment must SAY so. Without this the
+         manager pauses, the page keeps its highlight, and the only evidence is
+         a console line nobody has open.
+
+         `.atLoad` and nothing shorter (#225). `setQueueFromForay` emits one
+         `foray.segment.skipped[i]` per segment the BUILD dropped, synchronously
+         inside `playForay` and before any audio is attempted — a property of the
+         running order, which the page already states in its own words ("2
+         segments can't play — listed below"). Catching those here stamped a
+         standing error on a Foray that was about to play perfectly well, and a
+         standing error is indistinguishable from a failed attempt. A skip
+         discovered at LOAD is the other thing: the listener's segment, refused
+         with the audio in hand. */
+      if (foray && /player\.error|segment\.skipped\.atLoad/i.test(m)) {
         foray.error = m;
         notifyForay();
       }
