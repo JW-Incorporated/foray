@@ -462,6 +462,22 @@ tail, and §8's argument rests on the median.
 > +26.30, ~1.6 s before it fired. The arithmetic fits the 10 s timer and not the 5 s
 > one. Nothing below depends on which.*
 >
+> **AND IT IS THE SAME ARITHMETIC IN ALL THREE RUNS**, which is what turns this from a
+> story about one artifact into a mechanism. `suspensionVerdict` was run over all three
+> uploaded artifacts; the first boundary is at ~15.0 s in every one because that is what
+> `ARM_AFTER_HIDDEN_SEC` was:
+>
+> | run | first boundary (probe's audio stops) | record ends | **lead** | log says |
+> |---|---|---|---|---|
+> | 32036295743 | +15.03 s | +25.16 s | **10.1 s** | nothing — that run's seam pass had no log coverage at all |
+> | 32057395270 | +15.02 s | +26.77 s | **11.8 s** | `suspended` at +26.84 s, audio had stopped (the segment was dropped) |
+> | 32064639785 | +15.05 s | +27.86 s | **12.8 s** | `suspended` at +27.99 s, audio playing since +20.16 s |
+>
+> **Measured.** 25.2, 26.8 and 27.9 s are not three samples of a ceiling on hidden time;
+> they are 15 s of arm plus a 10-13 s assertion release, three times. The spread tracks
+> the *silence*, not the clock: the run with the shortest lead is the one whose next
+> segment came back soonest.
+>
 > **Why the audio restarting did not cancel it, and this is the Simulator-specific
 > part.** `seg-b` became audible at **+20.16 s**, well before the release fired, and
 > WebKit noticed (`updateAudibleMediaAssertions: Taking MediaPlayback assertion`,

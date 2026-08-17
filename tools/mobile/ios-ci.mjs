@@ -1576,7 +1576,16 @@ export function suspensionVerdict({ seam, lifecycle } = {}) {
   const trail = saveTrailAnalysis(seam ?? null);
   const bg = num(seam?.backgroundedAtWall);
   const lastSaved = num(seam?.lastSavedAtWall);
-  const base = { trail, recordEndsAtHiddenSec: null, audioAdvancedAfterRecordSec: null, channels: [] };
+  const base = {
+    trail,
+    recordEndsAtHiddenSec: null,
+    audioAdvancedAfterRecordSec: null,
+    /** Only a suspension can have one, but the KEY exists on every return so a caller
+     *  reading it gets `null` rather than `undefined` and cannot tell "no timer" apart
+     *  from "no suspension" by accident. */
+    releaseArmedBeforeSuspensionSec: null,
+    channels: [],
+  };
   if (!seam || typeof seam !== "object" || bg == null || lastSaved == null) {
     return {
       ...base,
