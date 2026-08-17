@@ -168,7 +168,7 @@ Applied here as four working tests, in the order they were applied:
 1. **A segment enters only against a named beat**, and only if it advances that
    beat's claim. Not for being about food, history, cooking or barbecue.
 2. **A thin beat earns its place by advancing its claim, not by adding minutes.**
-   Six of the ten thin beats were rejected on that test; see §4.
+   Seven of the ten thin beats were rejected on that test; see §4.
 3. **Length is an output.** 17.6 minutes is what the tape supports. The
    34.2-minute figure in stage 2's report is a *ceiling* computed by admitting
    everything, and it was never a target.
@@ -177,7 +177,6 @@ Applied here as four working tests, in the order they were applied:
    what serves *this* Foray; it prunes nothing.
 
 ---
-
 
 ## 4. The thin tier, decided beat by beat
 
