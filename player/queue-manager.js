@@ -69,6 +69,35 @@
      total silence is `max(gap, load)`, never `gap + load`. Ordering it the
      other way is the difference between a graceful beat and a stall, and on a
      cold CDN it is the difference between 2 s and 5 s.
+
+   ── 11. Warming the next segment (`html-audio-backend.js` §"prefetch") ─────
+   §10's `max(gap, load)` is the best ordering available with one element, and
+   it is still the defect, because on a backgrounded phone the load is not 2 s:
+   run 32036295743 measured `askedGapMs: 2000` against `observedGapMs: 9153`,
+   with the beat armed 2 ms after the boundary and every remaining millisecond
+   spent in the media load — for a file bundled inside the app. The backend's
+   header carries the full stage trace and the cause: the boundary pauses the
+   element, a silent page loses the audibility the platform keys its scheduling
+   off, and the load then runs in the worst window there is.
+
+   So the load moves off the boundary. The backend warms the NEXT segment on a
+   second element while the current one is still audible and hands over at the
+   boundary. THE MANAGER'S PART IS ONE QUESTION — when the backend says the
+   window is open, what comes next and where does it start — and deliberately
+   nothing more: the queue is the one thing here a backend must never learn.
+
+   Two properties to preserve:
+
+     WARMING USES THE BEAT'S OWN RULE. Eligibility is `seamGapSec(...) > 0`, the
+     same call that decides the beat, not a second copy of "is this a
+     segment-to-segment seam". Warm exactly the transitions that get a beat and
+     the two cannot drift apart.
+
+     THE BEAT IS STILL SPENT IN FULL. `_awaitSeamGap` is untouched, so a
+     handover that finishes early waits out the remainder and the listener hears
+     the authored 2.0 s instead of 9.2 s of nothing. The beat is an editorial
+     pause between two voices, not an artifact of loading; shortening it was
+     never the fix.
 */
 
 import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
@@ -182,6 +211,14 @@ export class PlayerQueueManager {
         run each segment to the end of its whole episode. Recorded once here so
         the refusal below can name the cause instead of the symptom. */
     this._outPointCapable = typeof backend.setOutPoint === "function";
+
+    /* Warming the next segment (§11). Wired only for a backend that can honour
+       it: the native backend (#28) may never implement `prefetch`, and every
+       fake in this repo's suites does not — so this is a capability check rather
+       than politeness, and its absence is the behaviour that shipped before. */
+    if (typeof backend.prefetch === "function") {
+      backend.onPrefetchWindow = () => this._warmNextSegment();
+    }
 
     backend.onItemEnded = (reason) => this._handleBackendItemEnded(reason);
     backend.onError = (msg) => this._handle(E.error(String(msg)));
@@ -629,6 +666,43 @@ export class PlayerQueueManager {
     if (sec <= 0) return;
     this._setGapDeadline(this._scheduler.nowMs() + sec * 1000);
     this._emit(`seam.gap.armed ${describeSeam(seam)}`);
+  }
+
+  /**
+   * The backend's playhead watch says the boundary is `PREFETCH_LEAD_SEC` of
+   * wall clock away. Name the segment that boundary will advance to, and where
+   * it starts, so that its load happens while the current one is still audible.
+   *
+   * Synchronous on purpose: it is called from inside a media event, it touches
+   * no state of ours and dispatches no event, so it cannot interleave with the
+   * reducer. Everything about HOW the load happens — the second element, the
+   * readiness condition, the handover — is the backend's, and stays there.
+   *
+   * A warmed segment can still be refused at load time by the ADR-0007 ladder
+   * (`_segmentGate`), in which case the bytes are wasted and the skip proceeds
+   * exactly as it does today. A wasted warm load is the cheapest failure here
+   * and is not worth a guard.
+   */
+  _warmNextSegment() {
+    if (this._disposed) return;
+    // Only a running item is approaching a boundary. A beat, a pause or a load
+    // in flight has no seam to cover yet — and `_cursor()` would answer for an
+    // in-flight skip rather than for what is playing.
+    if (this.state.type !== "playing") return;
+    const next = this._nextItem(this._cursor(), false);
+    if (!next) return this._emit("prefetch.none: nothing follows this item");
+    const from = this._currentItem();
+    const to = next.item;
+    const seam = { from, to, bridged: to.kind === TTS, cause: AUTO_ADVANCE, gapSec: this.seamGapSec };
+    // The beat's own rule, CALLED rather than re-implemented (§11): warm exactly
+    // the transitions that get a beat, and the two cannot drift apart.
+    if (seamGapSec(seam) <= 0) return this._emit(`prefetch.skipped ${to.id}: ${describeSeam(seam)}`);
+    const bounds = boundsOf(to);
+    // The in-point, which is the same offset `_loadItem` will ask for. A warm
+    // element parked anywhere else is not promoted — see the backend's
+    // `_warmReadyFor` — so getting this wrong costs a slow seam, never a
+    // segment that starts in the wrong place.
+    this.backend.prefetch(to, { startOffset: bounds ? bounds.startSec : 0 });
   }
 
   /**

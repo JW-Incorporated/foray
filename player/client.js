@@ -793,9 +793,17 @@ function ensureBooted() {
   backend.setRate(rate);
   ui.rateBtn.textContent = `${rate}×`;
 
-  backend.el.addEventListener("timeupdate", render);
-  backend.el.addEventListener("play", render);
-  backend.el.addEventListener("pause", render);
+  /* `addMediaListener`, NOT `backend.el.addEventListener`, and this is not a
+     style preference. The backend now owns two `<audio>` elements and hands the
+     player role between them at every cross-episode seam
+     (`html-audio-backend.js` §"prefetch"). A listener bound to one element
+     directly is left attached to a paused, src-less element from the first seam
+     onwards — the transport would keep playing and this surface would silently
+     stop repainting for the rest of the Foray, with no error anywhere. The
+     backend migrates anything registered this way. */
+  backend.addMediaListener("timeupdate", render);
+  backend.addMediaListener("play", render);
+  backend.addMediaListener("pause", render);
 }
 
 /* ---------- public surface ---------- */
