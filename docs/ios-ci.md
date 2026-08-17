@@ -80,15 +80,17 @@ outcome, because a three-way rule cannot be written as `if: secrets.X != ''`.
 macOS runners bill at **10× Linux minutes**. This repo is **public**, and GitHub
 charges nothing for standard runners on public repos — which is also why
 `ci.yml`'s `ios-kit` job can run `macos-latest` on every PR today. Both facts are
-recorded because the second one changes the day the repo stops being public: at an
-**estimated** ~12–18 minutes of wall clock, a run would then cost ~120–180
-billable minutes. A sister project already suspected Actions-minutes exhaustion
-behind a build freeze, and "it was free when we wrote it" is not a design.
+recorded because the second one changes the day the repo stops being public. A
+sister project already suspected Actions-minutes exhaustion behind a build freeze,
+and "it was free when we wrote it" is not a design.
 
-**Those minute figures are an estimate, not a measurement** — they were written
-before anything had run. Replace them with the run's real duration once one
-exists. This document sits next to one whose entire §1 is a
-measured-versus-documented table, for exactly this reason.
+**Measured, 2026-08-17.** A full green run — both builds, the simulator boot, both
+probes, the report and the artifact upload — took **8 min 19 s** of wall clock
+(run 32023924627, `11:13:42Z` → `11:22:01Z`). So ~8-9 minutes, not the 12-18 first
+estimated, which would be **~85 billable minutes** at the 10x multiplier if this
+repo were ever private. The estimate is left in the workflow header alongside the
+measurement rather than quietly replaced, because the gap between the two is the
+point this document keeps making.
 
 So: `workflow_dispatch` plus a path filter narrow enough that nightly content
 PRs never trigger it (`mobile/`, `tools/mobile/`, `index.html`, `app.js`,
@@ -204,6 +206,99 @@ and #14 still want one real phone.
   behaviour after an update — are device questions and a simulator cannot answer
   them. #16 is Android and this workflow says nothing about it.
 - **#15:** whether the bundled-data freeze blocks a store submission.
+
+## 4b. What the runs have actually measured
+
+Run [32021861601](https://github.com/JW-Incorporated/foray/actions/runs/32021861601),
+2026-08-17. Runner: **macOS 26.5.2, Xcode 26.6, CocoaPods 1.17.0**; simulator
+**iPhone 17 / iOS 26.5**. Labelled the way
+`docs/research/mp1-background-audio.md` §1 labels things, because the difference
+between these rows is the whole point.
+
+| Claim | Basis | Result |
+|---|---|---|
+| The shell compiles for the simulator | **Measured** | `** BUILD SUCCEEDED`. `App.app` 8.3 MB |
+| The shell compiles for arm64 device, Release | **Measured** | `** BUILD SUCCEEDED`, unsigned |
+| `UIBackgroundModes: audio` lands in the generated plist | **Measured**, by Apple's own reader | `PlistBuddy` prints `Array { audio }`; `plutil -lint` clean |
+| Capacitor 8 iOS uses SwiftPM, no workspace | **Measured** | `-project mobile/ios/App/App.xcodeproj` |
+| `window.Capacitor` survives our CSP on iOS | **Measured** | `typeof` = `object`, `isNativePlatform()` = `true`, `getPlatform()` = `"ios"`, origin `capacitor://localhost`, **9 plugins** registered, **0** CSP violations, **0** "Content Security Policy" lines in the system log |
+| Hidden-page DOM timers are aligned to ~1 s | **Measured** | a 250 ms `setInterval` ran at **median 1000 ms, n=33, range 254–1003 ms** |
+| `timeupdate` survives backgrounding | **Attempted, too thin to claim** | 243 and 246 ms — but **n=2**, see below |
+| The out-point fires while backgrounded | **Attempted, NOT obtained** | fired 3.7 ms past the boundary with the page hidden — from a hidden window of **0.446 s**. Not a measurement of backgrounding |
+
+Three of those deserve their own paragraph.
+
+**MP1 §7.5 is now measured, and it was right.** That section inferred WebKit aligns
+hidden-page DOM timers to 1 s from `DOMTimer.h`, and flagged that it could not
+verify whether the preference defaults on in WKWebView. It does: a 250 ms
+`setInterval` in the backgrounded shell ran at a median of exactly 1000 ms over 33
+samples. So the out-point's **fine** stage genuinely loses its precision in the
+background, exactly as predicted — which makes the coarse `timeupdate` stage the
+thing that matters, which is the claim below.
+
+**`navigator.serviceWorker` does not exist at all on `capacitor://localhost`.** Not
+"registers nothing" — the API is absent (`hasServiceWorkerApi: false`). So on iOS
+the "app won't update after a store release" bug is impossible by construction,
+and `shouldRegisterServiceWorker`'s guard is belt-and-braces there rather than
+load-bearing. It stays load-bearing on Android, whose shell origin is
+`https://localhost`. This also means the run's `swRegistrations: 0` is *not*
+evidence of invariant 3 holding, and `bridgeVerdict` says so instead of counting it.
+
+**The backgrounding measurement did not happen, and the first version of this
+workflow claimed it did.** That run reported `fires-in-background`, a 4 ms
+overshoot and "MP1 §8's load-bearing inference HELD". Every sentence was true.
+None of it was evidence: the page was **visible for 24.5 of the 25 s** and hidden
+for the final **0.446 s**, with two hidden `timeupdate` samples, because `xcrun
+simctl launch com.apple.Preferences` returns as soon as the launch is accepted and
+Settings took ~10 s to actually reach the foreground on a cold-booted simulator.
+The wall-clock timeline was a race and it lost.
+
+**And the next run, on identical code, said something different — which is the
+proof it was a race.** Run
+[32023924627](https://github.com/JW-Incorporated/foray/actions/runs/32023924627)
+reported `fired-on-resume`, the label for MP1 §8's *failure* mode, with an overshoot
+of **0.003 s**. Those two cannot both be about a real failure: an out-point that had
+genuinely stopped firing while backgrounded would overshoot by however long the app
+stayed backgrounded, not by three milliseconds. It means the boundary was crossed
+while the page was **visible**. Read at face value it is a harness artifact wearing
+the label of an architectural failure — and #28 (a native audio backend) is a
+decision somebody could reasonably make on it.
+
+So `outPointVerdict` now refuses that combination: `stoppedWhileBackgrounded: false`
+with a sub-tolerance overshoot is `inconclusive` with the reason spelled out, and
+`fired-on-resume` is claimed only when the overshoot is actually large.
+
+Three changes in total, because a race cannot be tightened into reliability:
+
+1. **`outPointVerdict` rejects the incoherent combination** above, so a harness
+   artifact cannot borrow the failure mode's label.
+2. **The boundary is armed relative to going hidden**, not to wall clock:
+   `setOutPoint(currentTime + 15)` on the first `visibilitychange` to hidden.
+   However long backgrounding takes, the boundary is 15 s inside the hidden window.
+3. **`outPointVerdict` has a floor.** Below `MIN_HIDDEN_PLAYBACK_SEC` (5 s) of
+   observed hidden playback the verdict is `hidden-window-too-short`, not a pass.
+   The 15 s arm clears it by 3x, so a run landing there means something went wrong
+   and says so.
+
+Until a run clears that floor, **MP1 §8's most load-bearing inference is still an
+inference**, and `HUMAN-ACTIONS.md` #11 and #14 are unchanged.
+
+### One thing that cost 18 minutes, recorded so nobody re-learns it
+
+`xcrun simctl spawn <udid> log stream --level debug` with no predicate captured a
+**117 MB** system log in ~70 seconds, and
+`grep -a -i -o '.\{0,120\}Content Security Policy.\{0,200\}'` over it ran for
+**18 minutes** — a counted-context pattern backtracks at every byte position. On a
+60-minute job timeout that is a way to lose a run that had already produced the
+answer, since a timed-out job skips its `always()` artifact upload. Now
+predicate-filtered, capped at 20 MB, and read with whole-line greps.
+
+Related, and honest: **the console log as a second channel is unproven.** The idea
+is that Capacitor's `Console` plugin forwards `console.log` to `print()` and thence
+to the system log. The plugin *is* registered — it is in the 9 — but
+`probe-console.txt` came back **0 bytes**, so nothing was recovered that way. The
+localStorage channel carried everything. Treat the console channel as a fallback
+that has never fired.
 
 ## 5. If the first run fails
 

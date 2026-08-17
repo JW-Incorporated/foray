@@ -464,7 +464,7 @@ test("the workflow states its own cost, in both the public and private case", ()
      table precisely because estimates get quoted as measurements. */
   const text = prose(WF);
   assert.match(text, /10x/);
-  assert.match(text, /minutes of wall clock per run/);
+  assert.match(text, /(minutes|min \d+ s) of wall clock per run/);
   assert.match(text, /billable minutes/);
   assert.match(text, /PUBLIC/);
   assert.match(text, /estimate/i);

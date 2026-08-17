@@ -36,10 +36,12 @@
 #
 # ── COST, AND WHY THIS IS NOT A REQUIRED CHECK ───────────────────────────────
 #
-# An ESTIMATE, because nothing had run when this was written: ~12-18 minutes of
-# wall clock per run, and macOS runners bill at 10x Linux minutes — so ~120-180
-# billable minutes if this repo were private. Replace these with the measured
-# figures once a run exists; an estimate quoted as a measurement is the specific
+# MEASURED, 2026-08-17: a full green run — both builds, simulator boot, both
+# probes, report and artifact upload — took 8 min 19 s of wall clock per run
+# (run 32023924627). macOS runners bill at 10x Linux minutes, so ~85 billable
+# minutes if this repo were private. The first estimate here said 12-18 minutes;
+# it is replaced rather than kept, but the distinction is why `docs/ios-ci.md`
+# labels every figure — an estimate quoted as a measurement is the specific
 # mistake `docs/research/mp1-background-audio.md` §1 keeps a whole table to avoid.
 #
 # It is PUBLIC, and GitHub charges nothing for standard runners on public repos,
@@ -297,21 +299,31 @@ jobs:
         id: probe_run
         if: env.PROBES != 'false' && steps.probe_install.outcome == 'success'
         continue-on-error: true
-        # THE TIMELINE, and every number in it is load-bearing:
+        # THE TIMELINE — AND NOTE WHAT IT NO LONGER DECIDES.
         #   t+0   launch. probe-bridge.js snapshots window.Capacitor immediately,
         #         re-checks at 3 s (in case the bridge is injected late), reads
         #         navigator.serviceWorker.getRegistrations(), then navigates to
-        #         the out-point probe.
-        #   t+3   the out-point probe starts playing and arms end_sec=25 s of
-        #         MEDIA time, so the boundary falls at roughly t+28 wall clock.
-        #   t+14  BACKGROUNDED by foregrounding Settings — 14 s of slack for a
-        #         cold first launch. There is no simctl "press home"; launching
-        #         another app is how you background one.
-        #   t+64  50 s backgrounded, and t+28 is deep inside it: a working
-        #         out-point fires while hidden, a broken one does not fire at all.
-        #   t+67  screenshot, then read the numbers out of WebKit's local storage.
-        # ~67 s total, against a 150 s tone — the audio must never be the thing
-        # that stops playback, or a natural end would be mistaken for a boundary.
+        #         the out-point probe, which starts playing the tone.
+        #   t+14  BACKGROUNDED by foregrounding Settings. There is no simctl
+        #         "press home"; launching another app is how you background one.
+        #   t+64  50 s later. Screenshot, then read WebKit's local storage.
+        #
+        # THE BOUNDARY IS NOT ON THIS CLOCK, and that is the fix for the defect the
+        # first two runs exposed. `simctl launch com.apple.Preferences` returns as
+        # soon as the launch is ACCEPTED; on a cold-booted simulator Settings took
+        # about ten more seconds to actually reach the foreground. With a fixed
+        # `end_sec = 25` that left a hidden window of 0.446 s on one run, and a
+        # boundary crossed while still visible on the next — two different verdicts
+        # from identical code, neither of them a measurement.
+        #
+        # So probe-outpoint.js arms the out-point at `currentTime + 15` on the first
+        # `visibilitychange` to hidden. However long backgrounding takes, the
+        # boundary is 15 s INSIDE the hidden window, and `outPointVerdict` refuses
+        # to call anything a pass below 5 s of observed hidden playback. The sleeps
+        # below only need to be generous, not accurate.
+        #
+        # ~80 s total against a 150 s tone — the audio must never be the thing that
+        # stops playback, or a natural end would be mistaken for a boundary.
         # The app is NOT relaunched to read the results: `simctl launch` on a
         # running app can restart it, and a restart would erase the very
         # measurement it was launched to collect. (probe-outpoint.js also refuses
@@ -338,7 +350,7 @@ jobs:
           echo "--- backgrounding by foregrounding Settings ---"
           xcrun simctl launch "$UDID" com.apple.Preferences \
             || xcrun simctl launch "$UDID" com.apple.mobilesafari
-          sleep 50
+          sleep 60
           xcrun simctl io "$UDID" screenshot "$ART/02-backgrounded.png" || true
 
           # WebKit batches localStorage writes, so give it a beat, then copy the

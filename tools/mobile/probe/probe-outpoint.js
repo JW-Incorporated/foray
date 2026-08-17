@@ -58,18 +58,40 @@ const KEY = (function () {
   return KEY_BASE + "_5";
 })();
 
-/** Media time at which the segment is "over". Far enough in that the app is
- *  already backgrounded when it arrives (the workflow backgrounds at ~t+14 and
- *  this page starts at ~t+3, so the boundary lands ~t+28), near enough that the
- *  ~67 s observation window covers both the good and the bad outcome. */
-const END_SEC = 25;
+/* THE BOUNDARY IS ARMED RELATIVE TO GOING HIDDEN, NOT TO WALL CLOCK.
+ *
+ * The first real run armed it at a fixed `end_sec = 25` and let the workflow
+ * background the app on a `sleep`. The result looked perfect and measured almost
+ * nothing: the page was VISIBLE for 24.5 s of those 25 s and hidden for the final
+ * **0.446 s**, with exactly TWO hidden `timeupdate` samples. `simctl launch
+ * com.apple.Preferences` returns as soon as the launch is accepted, and Settings
+ * took ~10 s to actually come to the foreground on a cold-booted simulator — so
+ * the backgrounding landed nowhere near where the timeline assumed.
+ *
+ * A wall-clock race cannot be tightened into reliability; it has to be removed.
+ * So the out-point is now armed on the first `visibilitychange` to hidden, at
+ * `currentTime + ARM_AFTER_HIDDEN_SEC`. However long backgrounding takes, the
+ * boundary is that many seconds INSIDE the hidden window, and the hidden window
+ * is what the measurement is about.
+ *
+ * There is still a fallback arm, because "never hidden" must be reported rather
+ * than hung on — `outPointVerdict` has an explicit verdict for it. */
+const ARM_AFTER_HIDDEN_SEC = 15;
+/** If the app is never backgrounded, arm anyway at this media time so the run
+ *  produces a record that says so instead of timing out silently. */
+const FALLBACK_ARM_AT_SEC = 60;
 const TONE = "probe-tone.wav";
 const TICK_MS = 250;
 const MAX_SAMPLES = 1200;
 
 const rec = {
   phase: "outpoint",
-  endSec: END_SEC,
+  /** Filled in when the boundary is actually armed — see ARM_AFTER_HIDDEN_SEC. */
+  endSec: null,
+  armedWhileHidden: null,
+  /** Seconds of HIDDEN playback before the out-point fired. The number that says
+   *  whether this run measured backgrounding at all. */
+  hiddenPlaybackSec: null,
   startedAtWall: Date.now(),
   backgroundedAtWall: null,
   resumedAtWall: null,
@@ -99,6 +121,7 @@ function save() {
       `stopped at     ${rec.stoppedAtSec === null ? "— NOT YET —" : rec.stoppedAtSec.toFixed(3) + " s"}\n` +
       `overshoot      ${rec.overshootSec === null ? "—" : rec.overshootSec.toFixed(3) + " s"}\n` +
       `while hidden   ${rec.stoppedWhileBackgrounded}\n` +
+      `hidden window  ${rec.hiddenPlaybackSec === null ? "—" : rec.hiddenPlaybackSec.toFixed(3) + " s of hidden playback"}\n` +
       `end reason     ${rec.endReason}\n` +
       `hidden tu/vis  ${rec.hiddenTimeupdates} / ${rec.visibleTimeupdates}\n` +
       `median tu ms   ${median(rec.timeupdateIntervalsMs)}\n` +
@@ -146,7 +169,14 @@ try {
     rec.overshootSec =
       typeof backend.lastOutPointOvershootSec === "number"
         ? backend.lastOutPointOvershootSec
-        : Math.max(0, rec.stoppedAtSec - END_SEC);
+        : Math.max(0, rec.stoppedAtSec - (rec.endSec ?? 0));
+    /* How much HIDDEN playback this run actually observed. The first run reported
+       a beautiful 4 ms overshoot from a 0.446 s hidden window, and nothing in the
+       report said so. */
+    rec.hiddenPlaybackSec =
+      rec.backgroundedAtWall != null && rec.stoppedWhileBackgrounded
+        ? (rec.stoppedAtWall - rec.backgroundedAtWall) / 1000
+        : 0;
     save();
   };
   backend.onError = (e) => { rec.error = "backend error: " + String(e); save(); };
@@ -173,10 +203,25 @@ try {
     lastTick = now;
   }, TICK_MS);
 
+  /** Arm the boundary at `now + seconds`, once. */
+  function arm(seconds, whileHidden) {
+    if (rec.endSec !== null) return;
+    rec.endSec = el.currentTime + seconds;
+    rec.armedWhileHidden = whileHidden;
+    backend.setOutPoint(rec.endSec);
+    save();
+  }
+
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       rec.hiddenTransitions++;
       if (rec.backgroundedAtWall === null) rec.backgroundedAtWall = Date.now();
+      /* THE ARM. Relative to going hidden, so the boundary is always
+         ARM_AFTER_HIDDEN_SEC deep INSIDE the hidden window no matter how long
+         `simctl launch com.apple.Preferences` actually took to foreground
+         Settings — which on the first run was about ten seconds, and reduced the
+         hidden window to 0.446 s. */
+      arm(ARM_AFTER_HIDDEN_SEC, true);
     } else if (rec.backgroundedAtWall !== null && rec.resumedAtWall === null) {
       rec.resumedAtWall = Date.now();
     }
@@ -189,13 +234,17 @@ try {
   setInterval(save, 2000);
 
   el.addEventListener("playing", () => {
-    /* Armed only once audio is genuinely moving. Arming before `playing` would
-       have the fine stage scheduled against a currentTime of 0 with a paused
-       element, which `_scheduleFineWatch` correctly ignores — so this is about
-       the measurement starting when playback does, not about correctness. */
-    if (backend.outPoint == null) backend.setOutPoint(END_SEC);
+    /* Deliberately does NOT arm. The boundary is armed on going hidden — see
+       ARM_AFTER_HIDDEN_SEC. All this records is that playback really started. */
+    rec.playingAtWall = rec.playingAtWall ?? Date.now();
     save();
   });
+
+  /* The fallback arm, so "the app was never backgrounded" is a reported result
+     rather than a run that just plays a tone and says nothing. `outPointVerdict`
+     reads `armedWhileHidden === false` and refuses to draw a background
+     conclusion from it. */
+  setTimeout(() => arm(Math.max(1, FALLBACK_ARM_AT_SEC - el.currentTime), false), 40000);
 
   const p = el.play();
   if (p && typeof p.catch === "function") {

@@ -20,6 +20,7 @@ import assert from "node:assert/strict";
 
 import {
   MP1_ALIGNED_TIMER_PREDICTION_SEC,
+  MIN_HIDDEN_PLAYBACK_SEC,
   MP1_TIMEUPDATE_PREDICTION_SEC,
   OVERSHOOT_BAD_SEC,
   OVERSHOOT_OK_SEC,
@@ -442,6 +443,12 @@ const base = {
   endSec: 25,
   backgroundedAtWall: 1000,
   stoppedWhileBackgrounded: true,
+  /* 15 s, because the probe arms the boundary 15 s after the page goes hidden.
+     A fixture below MIN_HIDDEN_PLAYBACK_SEC is a `hidden-window-too-short` run,
+     which is its own verdict — see the test for it. */
+  hiddenPlaybackSec: 15.2,
+  hiddenTimeupdates: 60,
+  armedWhileHidden: true,
   timeupdateIntervalsMs: [250, 251, 249, 252],
 };
 
@@ -457,6 +464,7 @@ test("a sub-second overshoot while backgrounded is the good outcome", () => {
   const v = outPointVerdict({ ...base, stoppedAtSec: 25.24, overshootSec: 0.24 });
   assert.equal(v.verdict, "fires-in-background");
   assert.match(v.headline, /0\.240s past end_sec/);
+  assert.match(v.detail, /Hidden playback observed: 15\.200s/);
   assert.match(v.detail, /Median timeupdate interval while hidden: 251 ms/);
   assert.equal(v.medianTimeupdateMs, 250.5);
 });
@@ -493,6 +501,63 @@ test("the 1.5s tolerance is OURS, and MP1's two predictions are reported as MP1'
   assert.match(unknown.detail, /which of MP1 §8's two mechanisms carried this is unknown/);
 });
 
+test("a 0.4-second hidden window is NOT a measurement of backgrounding", () => {
+  /* THE OVERCLAIM THE FIRST REAL RUN SHIPPED, now a named verdict. That run
+     reported `fires-in-background`, a 4 ms overshoot and "MP1 §8's inference
+     HELD" — from a hidden window of 0.446 s and TWO hidden timeupdate samples.
+     The page had been VISIBLE for 24.5 of the 25 s, because `simctl launch
+     com.apple.Preferences` returns before Settings reaches the foreground.
+     Every sentence in that verdict was true and none of it was evidence. */
+  const v = outPointVerdict({
+    ...base,
+    hiddenPlaybackSec: 0.446,
+    hiddenTimeupdates: 2,
+    stoppedAtSec: 25.008,
+    overshootSec: 0.004,
+  });
+  assert.equal(v.verdict, "hidden-window-too-short");
+  assert.match(v.headline, /only for 0\.446s, which is not a measurement of backgrounding/);
+  assert.match(v.detail, /2 hidden timeupdate samples/);
+  assert.equal(v.hiddenPlaybackSec, 0.446);
+  /* And it must not read as the good outcome anywhere in the sentence. */
+  assert.equal(/inference HELD/.test(v.detail), false);
+});
+
+test("the hidden-window floor is pinned, and a healthy run clears it 3x", () => {
+  assert.equal(MIN_HIDDEN_PLAYBACK_SEC, 5);
+  /* The probe arms 15 s after going hidden, so the designed margin is 3x. Just
+     under and just over the floor are different verdicts. */
+  assert.equal(
+    outPointVerdict({ ...base, hiddenPlaybackSec: 4.99, stoppedAtSec: 25.2, overshootSec: 0.2 }).verdict,
+    "hidden-window-too-short"
+  );
+  assert.equal(
+    outPointVerdict({ ...base, hiddenPlaybackSec: 5.01, stoppedAtSec: 25.2, overshootSec: 0.2 }).verdict,
+    "fires-in-background"
+  );
+});
+
+test("a record with no hidden-window figure is not silently treated as clearing the floor", () => {
+  /* An older probe build, or a truncated console record, has no
+     `hiddenPlaybackSec`. It must not therefore skip the floor unnoticed — the
+     detail has to say the figure is missing. */
+  const v = outPointVerdict({ ...base, hiddenPlaybackSec: undefined, stoppedAtSec: 25.2, overshootSec: 0.2 });
+  assert.match(v.detail, /length of the hidden window was not recorded/);
+});
+
+test("an unarmed record is inconclusive, not malformed", () => {
+  /* `endSec: null` is the normal not-yet-armed state now that the boundary is
+     armed relative to going hidden. */
+  const v = outPointVerdict({ phase: "outpoint", endSec: null, armedWhileHidden: null });
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.headline, /never armed/);
+  const blocked = outPointVerdict({
+    phase: "outpoint", endSec: null, armedWhileHidden: null,
+    autoplayBlocked: true, autoplayError: "NotAllowedError",
+  });
+  assert.match(blocked.detail, /NotAllowedError/);
+});
+
 test("a natural file end is NOT read as the out-point firing", () => {
   /* THE FALSE-PASS THIS SUITE MOST NEEDED. `html-audio-backend.js` reports the
      same `onItemEnded` for a finished FILE ("natural") as for a boundary
@@ -512,7 +577,7 @@ test("a natural file end is NOT read as the out-point firing", () => {
   assert.equal(real.verdict, "fires-in-background");
 });
 
-test("an out-point that only fires on resume is the failure mode, whatever the overshoot", () => {
+test("an out-point that only fires on resume, LATE, is the failure mode", () => {
   /* THE SHAPE MP1 §8 WARNED ABOUT. The audio kept playing and nothing stopped it
      until the app was foregrounded, so the overshoot is bounded by the length of
      the commute rather than by anything in the code. */
@@ -525,6 +590,28 @@ test("an out-point that only fires on resume is the failure mode, whatever the o
   assert.equal(v.verdict, "fired-on-resume");
   assert.match(v.headline, /ONLY ON RESUME/);
   assert.match(v.detail, /the whole commute/);
+});
+
+test("a 3-MILLISECOND overshoot is not `fired-on-resume`, however the flag reads", () => {
+  /* A FALSE ALARM THE SECOND REAL RUN ACTUALLY EMITTED. It reported
+     `fired-on-resume` — "MP1 §8's failure mode" — with an overshoot of 0.003 s. The
+     two cannot both be true: an out-point that had genuinely stopped firing while
+     backgrounded would overshoot by however long the app stayed backgrounded, not
+     by milliseconds. 3 ms means the boundary was crossed while the page was
+     VISIBLE, i.e. the harness failed to background in time. Left alone, this is a
+     harness artifact wearing the label of an architectural failure — and #28 is a
+     decision someone could make on it. */
+  const v = outPointVerdict({
+    ...base,
+    stoppedWhileBackgrounded: false,
+    stoppedAtSec: 25.006,
+    overshootSec: 0.003,
+  });
+  assert.equal(v.verdict, "inconclusive");
+  assert.match(v.headline, /crossed while the page was VISIBLE/);
+  assert.match(v.detail, /NOT MP1 §8's failure mode/);
+  /* The scary phrase must be absent, not merely qualified. */
+  assert.equal(/the whole commute/.test(v.detail), false);
 });
 
 test("an out-point that never fired at all names the 936.5 s cost", () => {

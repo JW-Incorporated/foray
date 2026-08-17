@@ -464,6 +464,25 @@ export const OVERSHOOT_OK_SEC = 1.5;
 export const MP1_TIMEUPDATE_PREDICTION_SEC = 0.25;
 /** MP1 §8's prediction if it does not, and only the aligned DOM timer survives. */
 export const MP1_ALIGNED_TIMER_PREDICTION_SEC = 1;
+
+/**
+ * The least HIDDEN playback a run must observe before "the out-point fires while
+ * backgrounded" means anything.
+ *
+ * THIS FLOOR EXISTS BECAUSE ITS ABSENCE PRODUCED AN OVERCLAIM ON THE FIRST REAL
+ * RUN. That run reported `fires-in-background`, a 4 ms overshoot and "the
+ * inference HELD" — from a hidden window of **0.446 s** and exactly TWO hidden
+ * `timeupdate` samples. The page had been VISIBLE for 24.5 of the 25 s, because
+ * `simctl launch com.apple.Preferences` returns before Settings actually reaches
+ * the foreground and the wall-clock timeline assumed otherwise. Everything the
+ * verdict said was true and none of it was evidence.
+ *
+ * 5 s is not a statistical threshold, it is the point below which the claim stops
+ * being about backgrounding: ~20 `timeupdate` intervals, and long enough that a
+ * throttle which takes a moment to engage would show. The probe now arms the
+ * boundary 15 s after the page goes hidden, so a healthy run clears this by 3x.
+ */
+export const MIN_HIDDEN_PLAYBACK_SEC = 5;
 /** Above this the out-point did not meaningfully fire. MP1 §3 measured the cost
  *  of a missed out-point at a 936.5 s median — 15.6 minutes of the wrong
  *  episode — so anything in the middle band is still a real defect. */
@@ -475,6 +494,20 @@ export const OVERSHOOT_BAD_SEC = 10;
  * @param {object|null} probe the `foray_probe_outpoint` record
  */
 export function outPointVerdict(probe) {
+  /* `endSec: null` is now the NORMAL not-yet-armed state — the boundary is armed
+     relative to going hidden — so an unarmed record is inconclusive rather than
+     malformed, and says which of the two it is. */
+  if (probe && typeof probe === "object" && probe.endSec === null && probe.armedWhileHidden === null) {
+    return {
+      verdict: "inconclusive",
+      headline: "The out-point was never armed, so nothing was measured.",
+      detail:
+        probe.autoplayBlocked
+          ? `Playback never started: ${String(probe.autoplayError || "play() rejected")}.`
+          : "The probe recorded neither a hidden transition nor its 40 s fallback arm, so it did " +
+            "not run long enough to arm anything. Check the run's screenshots.",
+    };
+  }
   if (!probe || typeof probe !== "object" || typeof probe.endSec !== "number") {
     return {
       verdict: "inconclusive",
@@ -544,12 +577,70 @@ export function outPointVerdict(probe) {
   const where = probe.stoppedWhileBackgrounded
     ? "while the app was backgrounded"
     : "only after the app came back to the foreground";
+  const hiddenSec =
+    typeof probe.hiddenPlaybackSec === "number" ? probe.hiddenPlaybackSec : null;
+  const hiddenNote =
+    hiddenSec == null
+      ? " The length of the hidden window was not recorded."
+      : ` Hidden playback observed: ${hiddenSec.toFixed(3)}s` +
+        (typeof probe.hiddenTimeupdates === "number"
+          ? ` (${probe.hiddenTimeupdates} hidden timeupdate samples).`
+          : ".");
   const base =
-    `Stopped at ${probe.stoppedAtSec.toFixed(3)}s against end_sec=${probe.endSec}s: ` +
+    `Stopped at ${probe.stoppedAtSec.toFixed(3)}s against end_sec=${probe.endSec.toFixed(3)}s: ` +
     `overshoot ${overshoot.toFixed(3)}s, ${where}.` +
+    hiddenNote +
     (median == null ? "" : ` Median timeupdate interval while hidden: ${median.toFixed(0)} ms.`);
 
+  /* THE FLOOR. See MIN_HIDDEN_PLAYBACK_SEC — this exact case shipped a
+     `fires-in-background` verdict from 0.446 s of hidden playback on the first
+     real run, and every sentence in it was true. */
+  if (probe.stoppedWhileBackgrounded && hiddenSec != null && hiddenSec < MIN_HIDDEN_PLAYBACK_SEC) {
+    return {
+      verdict: "hidden-window-too-short",
+      headline:
+        `The out-point fired ${overshoot.toFixed(3)}s past end_sec and the page WAS hidden — but ` +
+        `only for ${hiddenSec.toFixed(3)}s, which is not a measurement of backgrounding.`,
+      detail:
+        base +
+        ` Below the ${MIN_HIDDEN_PLAYBACK_SEC}s floor this workflow requires, so it is reported as ` +
+        `inconclusive rather than as a pass. The probe arms the boundary 15 s after the page goes ` +
+        `hidden precisely so a healthy run clears that floor; a run landing here means the app was ` +
+        `backgrounded far later than intended — check the screenshots and hiddenTransitions.`,
+      overshootSec: overshoot,
+      medianTimeupdateMs: median,
+      hiddenPlaybackSec: hiddenSec,
+    };
+  }
+
   if (!probe.stoppedWhileBackgrounded) {
+    /* TWO VERY DIFFERENT THINGS LOOK THE SAME HERE, and conflating them produced a
+       false alarm on the second real run: it reported `fired-on-resume` — "MP1 §8's
+       failure mode", the scary one — with an overshoot of **3 milliseconds**. Those
+       two facts cannot both be about a real failure. If nothing had stopped the
+       audio for the whole time the app was backgrounded, the overshoot would be
+       measured in tens of seconds; 3 ms means the boundary was simply crossed while
+       the page was VISIBLE, i.e. the harness failed to background the app in time.
+       A harness artifact wearing the label of an architectural failure is how a
+       decision gets made on nothing. */
+    if (overshoot <= OVERSHOOT_OK_SEC) {
+      return {
+        verdict: "inconclusive",
+        headline:
+          `The boundary was crossed while the page was VISIBLE (overshoot ` +
+          `${overshoot.toFixed(3)}s), so this run says nothing about backgrounding.`,
+        detail:
+          base +
+          " This is NOT MP1 §8's failure mode: an out-point that had genuinely stopped firing in " +
+          "the background would overshoot by however long the app stayed backgrounded, not by " +
+          "milliseconds. The app was backgrounded too late, or came back too early, relative to " +
+          "the boundary. The probe arms 15 s after the page goes hidden to make that impossible; " +
+          "a run landing here means the arm did not happen as designed.",
+        overshootSec: overshoot,
+        medianTimeupdateMs: median,
+        hiddenPlaybackSec: hiddenSec,
+      };
+    }
     return {
       verdict: "fired-on-resume",
       headline:
@@ -561,6 +652,7 @@ export function outPointVerdict(probe) {
         "backgrounded, which on a commute is the whole commute.",
       overshootSec: overshoot,
       medianTimeupdateMs: median,
+      hiddenPlaybackSec: hiddenSec,
     };
   }
   if (overshoot <= OVERSHOOT_OK_SEC) {
