@@ -2465,7 +2465,12 @@ const SHELL_NOTICE = {
 };
 
 function showShellNotice(reason) {
-  const said = SHELL_NOTICE[reason];
+  /* Own properties only. A plain object literal answers `SHELL_NOTICE["constructor"]`
+     with a function, and `SHELL_NOTICE["toString"]` with another one, so a bare
+     lookup would happily render `function Object() { [native code] }` into the
+     bar for a reason nobody wrote. The reason comes from our own worker today —
+     this is so a later one cannot make that a bug by adding a message type. */
+  const said = Object.prototype.hasOwnProperty.call(SHELL_NOTICE, reason) ? SHELL_NOTICE[reason] : "";
   if (!said) return;
   const view = $("#view");
   if (!view || !view.parentNode) return;
@@ -2480,9 +2485,22 @@ function showShellNotice(reason) {
   }
   bar.innerHTML =
     `<p class="note">${esc(said)} Reload to get the current version.</p>` +
-    `<button type="button" id="shell-notice-reload">Reload</button>`;
-  const btn = $("#shell-notice-reload");
-  if (btn) btn.addEventListener("click", () => location.reload());
+    `<button type="button" id="shell-notice-reload">Reload</button>` +
+    `<button type="button" id="shell-notice-dismiss" aria-label="Dismiss this message">×</button>`;
+  const reload = $("#shell-notice-reload");
+  if (reload) reload.addEventListener("click", () => location.reload());
+  /* Dismissable, and this is not politeness. The bar is fixed below the topbar
+     and a Foray page's transport is sticky at the same offset, so while the bar
+     is up it covers the scrubber and the play control. In the `stale-shell` case
+     — a dead zone — pressing Reload just reproduces it, so without this the
+     listener would lose the transport for the rest of the session. Removing the
+     element is enough: the worker only speaks again on a new page load. */
+  const dismiss = $("#shell-notice-dismiss");
+  if (dismiss) {
+    dismiss.addEventListener("click", () => {
+      if (bar.parentNode) bar.parentNode.removeChild(bar);
+    });
+  }
 }
 
 if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {

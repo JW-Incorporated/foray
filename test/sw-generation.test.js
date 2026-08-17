@@ -81,8 +81,15 @@ function loadWorker({ network, seed = {}, seedCache = "foray-v5", windows = [] }
     bucket(seedCache).set(abs(url), { body, status: 200 });
   }
 
-  const answer = network || (() => { throw new Error("no network in this test"); });
-  const fakeFetch = (input) => Promise.resolve().then(() => answer(abs(input), input));
+  /* Switchable so one worker can install online and then be taken offline —
+     otherwise an "offline still works" test that seeds a SECOND worker by hand
+     proves nothing about what install actually cached. */
+  let answer = network || (() => { throw new Error("no network in this test"); });
+  const inits = [];
+  const fakeFetch = (input, init) => {
+    inits.push({ url: abs(input), init });
+    return Promise.resolve().then(() => answer(abs(input), init, input));
+  };
 
   /* Bodies are stored as text and re-wrapped on read. Storing Response objects
      and cloning them repeatedly is the kind of harness detail that fails for
@@ -180,6 +187,10 @@ function loadWorker({ network, seed = {}, seedCache = "foray-v5", windows = [] }
     fireTimers() {
       for (const t of timers.filter((x) => x.live)) { t.live = false; t.fn(); }
     },
+    /** Change what the origin does, on this same worker and cache. */
+    setNetwork(next) { answer = next; },
+    /** Every fetch the worker made, with the init it passed. */
+    inits,
     cacheNames: () => [...store.keys()],
     cachedBody: (url, name = "foray-v5") => {
       const hit = bucket(name).get(abs(url));
@@ -273,6 +284,97 @@ test("one code file that does not answer pins the whole page, not just itself", 
     await (await h.fetch(sub(FORAYS), { clientId: "page-1" })).text(),
     '{"forays":["grilling-history-1"]}'
   );
+});
+
+test("a later code file that DOES answer does not unpin the page", async () => {
+  /* The hole a reviewer found in the first draft of this fix, and it was the
+     original bug from inside the cure. index.html pulls search-engine.js, app.js
+     and the deferred module player/client.js as three separate requests. If
+     app.js falls back and client.js then answers, clearing the pin hands
+     deploy-2's data to deploy-1's app.js. The pin is sticky; a reload is a new
+     document with a new client id, so nothing needs clearing. */
+  const h = loadWorker({
+    seed: { "app.js": "APP@deploy-1", [FORAYS]: '{"forays":["grilling-history-1"]}' },
+    network: (url) => {
+      if (url.endsWith("app.js")) offline();
+      return ok(url.endsWith("client.js") ? "MODULE@deploy-2" : '{"forays":["grilling-history-2"]}');
+    },
+  });
+
+  assert.equal(await (await h.fetch(sub("app.js"), { clientId: "page-1" })).text(), "APP@deploy-1");
+  assert.equal(
+    await (await h.fetch(sub("player/client.js"), { clientId: "page-1" })).text(),
+    "MODULE@deploy-2",
+    "the module itself is current, which is not the question"
+  );
+  assert.equal(
+    await (await h.fetch(sub(FORAYS), { clientId: "page-1" })).text(),
+    '{"forays":["grilling-history-1"]}',
+    "the page is still running deploy-1 app.js, so it stays pinned"
+  );
+});
+
+test("a navigation pins the page it creates, not the page that started it", async () => {
+  /* On a navigation, `clientId` names the document that INITIATED it — the one
+     being replaced, or another tab — and `resultingClientId` names the one about
+     to exist. Reading them in that order pins a page that is going away and
+     leaves the new one unpinned. Angular's worker shipped exactly this
+     (angular#42607), and our own reload control is such a navigation, so getting
+     it backwards would mean the recovery path never recovered. */
+  const h = loadWorker({
+    seed: { "./": "INDEX@deploy-1", [FORAYS]: '{"forays":["grilling-history-1"]}' },
+    network: (url) => {
+      if (url === BASE) offline();
+      return ok('{"forays":["grilling-history-2"]}');
+    },
+    windows: ["old-page", "new-page"],
+  });
+
+  await h.fetch(nav("./"), { clientId: "old-page", resultingClientId: "new-page" });
+  await h.settle();
+
+  assert.deepEqual(
+    h.posted,
+    [{ id: "new-page", message: { source: "foray-sw", reason: "stale-shell" } }],
+    "the page that is about to exist is the one told"
+  );
+  assert.equal(
+    await (await h.fetch(sub(FORAYS), { clientId: "new-page" })).text(),
+    '{"forays":["grilling-history-1"]}',
+    "and the one pinned"
+  );
+  assert.equal(
+    await (await h.fetch(sub(FORAYS), { clientId: "old-page" })).text(),
+    '{"forays":["grilling-history-2"]}',
+    "the initiating page is not pinned by somebody else's navigation"
+  );
+});
+
+test("a data file that answers 404 falls back to the cached copy", async () => {
+  /* `handleShell` already treats "an answer that is not the file" as no answer. A
+     404 or 502 on data/session.json makes init() give up with "Couldn't load
+     Foray" even when a good cached copy is right here. */
+  const h = loadWorker({
+    seed: { "data/session.json": '{"session_id":"cached"}' },
+    network: (url) => (url.endsWith("app.js") ? ok("APP@deploy-2") : new Response("", { status: 502 })),
+  });
+  await h.fetch(sub("app.js"), { clientId: "page-1" });
+  const res = await h.fetch(sub("data/session.json"), { clientId: "page-1" });
+  assert.equal(res.status, 200);
+  assert.equal(await res.text(), '{"session_id":"cached"}');
+});
+
+test("a data file that is genuinely gone still reads as absent", async () => {
+  /* The other direction: nothing cached and a real 404 must reach app.js as a
+     non-ok, because every consumer treats null as "absent" and that is how a
+     removed file costs one feature rather than the site. */
+  const h = loadWorker({
+    network: (url) => (url.endsWith("app.js") ? ok("APP@deploy-2") : new Response("", { status: 404 })),
+  });
+  await h.fetch(sub("app.js"), { clientId: "page-1" });
+  const res = await h.fetch(sub(FORAYS), { clientId: "page-1" });
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 404);
 });
 
 test("styles and icons do not pin the page — only code decides the generation", async () => {
@@ -381,14 +483,38 @@ test("install precaches the shell into foray-v5", async () => {
   assert.equal(h.skipped(), 1);
 });
 
-test("with no network a navigation is still answered from the precached shell", async () => {
+test("install goes past the browser's HTTP cache, not through it", async () => {
+  /* `cache.addAll` uses the default cache mode, so it would fill the NEW
+     generation from the browser's HTTP cache — and GitHub Pages sends max-age.
+     A visitor who loaded the site minutes before a deploy would precache the
+     PREVIOUS deploy as the new generation, which is the bug wearing a hat. */
   const h = loadWorker({ network: shellNetwork });
   await h.lifecycle("install");
+  const modes = h.inits.map((f) => f.init && f.init.cache);
+  assert.equal(modes.length, 8, "one fetch per shell entry");
+  assert.deepEqual([...new Set(modes)], ["reload"]);
+});
 
-  const dead = loadWorker({ seed: { "./": "INDEX" }, network: offline });
-  const res = await dead.fetch(nav("./"), { resultingClientId: "page-1" });
+test("install is all-or-nothing: one missing shell file activates no generation", async () => {
+  const h = loadWorker({
+    network: (url) => (url.endsWith("styles.css") ? new Response("", { status: 404 }) : shellNetwork(url)),
+  });
+  await assert.rejects(() => h.lifecycle("install"));
+  assert.equal(h.cachedBody("app.js"), null, "half a generation is not a generation");
+});
+
+test("with no network a navigation is answered from what install actually cached", async () => {
+  /* One worker, one cache: install online, then take the SAME worker offline. An
+     earlier version of this test installed into one worker and asserted against a
+     second, hand-seeded one — so install could have cached nothing and it would
+     still have passed. */
+  const h = loadWorker({ network: shellNetwork });
+  await h.lifecycle("install");
+  h.setNetwork(offline);
+
+  const res = await h.fetch(nav("./"), { resultingClientId: "page-1" });
   assert.equal(res.status, 200);
-  assert.equal(await res.text(), "INDEX");
+  assert.equal(await res.text(), "shell:./");
 });
 
 test("a deep link is answered offline even though its query never matched the cache", async () => {
@@ -497,6 +623,12 @@ function makeDocument() {
       removeEventListener() {},
       setAttribute() {}, removeAttribute() {},
       appendChild(child) { el.children.push(child); child.parentNode = el; return child; },
+      removeChild(child) {
+        const at = el.children.indexOf(child);
+        if (at >= 0) el.children.splice(at, 1);
+        child.parentNode = null;
+        return child;
+      },
       insertBefore(child, ref) {
         const at = el.children.indexOf(ref);
         el.children.splice(at < 0 ? el.children.length : at, 0, child);
@@ -590,6 +722,7 @@ function loadPage() {
     send: (data) => messages[0]({ data }),
     notice: () => document.querySelector("#shell-notice"),
     reloadButton: () => document.querySelector("#shell-notice-reload"),
+    dismissButton: () => document.querySelector("#shell-notice-dismiss"),
     reloads: () => reloads,
     view: document._view,
     body: document.body,
@@ -631,6 +764,22 @@ test("pressing Reload reloads, and nothing reloads on its own", async () => {
   assert.equal(page.reloads(), 1);
 });
 
+test("the notice can be dismissed, because it covers the Foray transport", async () => {
+  /* The bar is fixed below the topbar and a Foray page's `.fy-transport` is
+     sticky at the same offset, so while it is up it covers the scrubber and the
+     play control. In the stale-shell case pressing Reload reproduces it, so
+     without a dismiss the listener loses the transport for the session. */
+  const page = loadPage();
+  page.send({ source: "foray-sw", reason: "stale-shell" });
+  const bar = page.notice();
+  const dismiss = page.dismissButton();
+  assert.ok(dismiss, "the bar carries a way out that is not a reload");
+  for (const fn of dismiss.listeners.click || []) fn();
+  assert.equal(page.notice(), null);
+  assert.equal(bar.parentNode, null);
+  assert.equal(page.reloads(), 0, "dismissing is not reloading");
+});
+
 test("a message that is not from the worker is ignored", async () => {
   const page = loadPage();
   page.send({ source: "some-other-frame", reason: "stale-shell" });
@@ -643,4 +792,14 @@ test("an unrecognised reason renders nothing rather than an empty bar", async ()
   const page = loadPage();
   page.send({ source: "foray-sw", reason: "something-a-later-worker-sends" });
   assert.equal(page.notice(), null);
+});
+
+test("a reason that names an inherited property renders nothing", async () => {
+  /* A plain object literal answers `["constructor"]` with a function, so a bare
+     lookup would put `function Object() { [native code] }` on screen. */
+  const page = loadPage();
+  for (const reason of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+    page.send({ source: "foray-sw", reason });
+    assert.equal(page.notice(), null, `${reason} must not resolve to copy`);
+  }
 });

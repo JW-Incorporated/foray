@@ -96,7 +96,7 @@ const FLOORS = {
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
      was mutation-checked — see the suite header. */
-  "test/sw-generation.test.js": 24,
+  "test/sw-generation.test.js": 32,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   "tools/ci/path-policy.test.mjs": 82,

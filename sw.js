@@ -38,6 +38,28 @@
         app.js says so with a reload control. A wrong pair has to fail loudly
         and recoverably; rendering it silently is the bug being fixed.
 
+   WHAT THIS STILL DOES NOT GUARANTEE, stated because a half-known guarantee is
+   worse than a known limit.
+
+     - THE PIN CAN LAND AFTER THE DATA, for exactly one file. A page's data
+       requests all come from `app.js`, so the browser must have fetched AND
+       executed `app.js` before any of them exist — and `index.html` and
+       `search-engine.js` are ordered ahead of it. The pin from all three is
+       therefore in place before the first `data/` request. The deferred ES
+       module `player/client.js` is the exception: it is fetched in parallel, so
+       if IT is the file that does not answer, the data may already have gone out
+       fresh. The exposure is narrower than it sounds — a stale `client.js` is a
+       stale PLAYER, not a stale reader of `data/*.json`, and `renderForay`
+       already guards its calls into the module with `typeof` — but it is real,
+       and it is the one ordering hole left.
+     - THE CACHE IS NOT GENERATION-ATOMIC. Each file is written as it arrives, so
+       a load in which `app.js` answered and `client.js` timed out leaves two
+       generations in one cache, and a later OFFLINE load could pair them. It is
+       not silent: an offline load is served from the cache, which pins the page
+       and raises the notice. The next complete load repairs it. Closing this
+       properly needs a deploy id stamped into the artifact, which GitHub Pages
+       serving the repo root does not give us — see the PR for #233.
+
    OFFLINE IS PRESERVED. The shell is still precached on install, the cache is
    still the fallback for everything, and the wait for the origin is bounded by
    NET_TIMEOUT_MS so a dead zone costs a few seconds rather than hanging. The
@@ -104,8 +126,37 @@ self.addEventListener("install", (e) => {
      this file exists to stop a stale-code load, taking effect a visit later is
      the wrong trade. The straddle it does create is handled: `activate` claims
      the open pages and then tells them they are a version behind. */
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(precache().then(() => self.skipWaiting()));
 });
+
+/**
+ * Fill the new generation's cache with the shell.
+ *
+ * `cache: "reload"` rather than `cache.addAll`, and this is not a detail.
+ * `addAll` fetches with the default cache mode, so it would populate the NEW
+ * generation THROUGH the browser's HTTP cache — and GitHub Pages sends
+ * `max-age`, so a visitor who loaded the site minutes before a deploy would
+ * precache the PREVIOUS deploy's `index.html` and `app.js` as the new
+ * generation, and every offline fallback would serve that copy until an online
+ * fetch overwrote it. That is exactly the skew §1 exists to remove, arriving
+ * through the front door.
+ *
+ * Still all-or-nothing, like `addAll` was: a shell we could not fetch completely
+ * is not a generation, so install fails rather than activating half of one. And
+ * every file is fetched before any is written, which is as close to atomic as
+ * CacheStorage gets without a second cache to swap.
+ */
+async function precache() {
+  const cache = await caches.open(CACHE);
+  const fetched = await Promise.all(
+    SHELL.map(async (url) => {
+      const res = await fetch(url, { cache: "reload" });
+      if (!res || !res.ok) throw new TypeError(`precache failed for ${url}`);
+      return [url, res];
+    })
+  );
+  await Promise.all(fetched.map(([url, res]) => cache.put(url, res)));
+}
 
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
@@ -260,13 +311,19 @@ async function handleShell(request, env, pin) {
      happen at the current scope (`/foray/` does not redirect, and `/foray` is
      outside the worker's scope entirely) — this is here so that stays true by
      accident rather than by luck. */
-  if (res && (res.ok || res.type === "opaqueredirect")) {
-    if (pin && env.clientId) degraded.delete(env.clientId);
-    return res;
-  }
+  if (res && (res.ok || res.type === "opaqueredirect")) return res;
   /* No answer, or an answer that is not the file — a 404 mid-deploy reads the
      same way here. Serve the last-known copy, and if this was code, pin the
-     page to it: from here on its data comes from the cache too. */
+     page to it: from here on its data comes from the cache too.
+
+     THE PIN IS STICKY, and nothing clears it. An earlier draft cleared it on any
+     later successful code fetch, which was a hole big enough to be the original
+     bug from inside the fix: index.html pulls `search-engine.js`, `app.js` and
+     the deferred module `player/client.js` as three separate requests, so an
+     `app.js` that fell back followed by a `client.js` that did not would unpin
+     the page and hand deploy-2's data to deploy-1's code. Nothing needs
+     clearing, either: a document's code cannot change while that document is
+     alive, and a reload is a new document with a new client id. */
   const cached = await cachedFallback(request);
   if (pin && env.clientId) {
     degraded.add(env.clientId);
@@ -291,9 +348,15 @@ async function handleData(request, env) {
     return unavailable(request);
   }
   const res = await fromOrigin(request, env);
-  if (res) return res;
+  /* `res.ok`, not `res` — the same rule `handleShell` applies, for the same
+     reason. A 404 or a 502 on `data/session.json` is not an answer worth
+     rendering: `fetchJson` turns it into null and `init()` gives up with
+     "Couldn't load Foray" even when a perfectly good cached copy is sitting
+     right here. A genuine 404 with nothing cached still surfaces as the 404, so
+     a file that was really removed still reads as absent. */
+  if (res && res.ok) return res;
   const cached = await caches.match(request);
-  return cached || unavailable(request);
+  return cached || res || unavailable(request);
 }
 
 self.addEventListener("fetch", (e) => {
@@ -304,14 +367,26 @@ self.addEventListener("fetch", (e) => {
   if (url.origin !== location.origin) return;
 
   /* Which page asked, and how to keep the worker alive for the writes that
-     outlive the response. On a navigation the page does not exist yet, so
-     `resultingClientId` names the one about to. Either can be absent (no
-     `resultingClientId` in older Safari), and a page that cannot be named
-     cannot be pinned — it gets the plain policy rather than a refusal.
+     outlive the response.
+
+     For a subresource that is `clientId`. For a NAVIGATION it is not, and the
+     two are not interchangeable: on a navigation `clientId` names the page that
+     INITIATED it — the document about to be replaced, or another tab entirely —
+     while `resultingClientId` names the page about to exist. Reading `clientId`
+     first would pin and message a document that is going away and leave the new
+     one unpinned, which is how Angular's service worker shipped this exact bug
+     (angular#42607). Our own reload control is such a navigation, so getting it
+     backwards would mean the recovery path never recovered.
+
+     `resultingClientId` is absent in older Safari, and there is deliberately no
+     fallback to `clientId` there: a page that cannot be named is not pinned,
+     which fails open, and pinning the WRONG document would fail closed on
+     somebody else's tab.
+
      `waitUntil` is wrapped because it throws once the event has settled, and a
      cache write we are too late to register is not worth a broken response. */
   const env = {
-    clientId: e.clientId || e.resultingClientId || "",
+    clientId: (isNavigation(request) ? e.resultingClientId : e.clientId) || "",
     waitUntil: (p) => { try { e.waitUntil(p); } catch (_) { /* too late; harmless */ } },
   };
 

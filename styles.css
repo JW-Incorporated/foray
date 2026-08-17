@@ -360,7 +360,14 @@ button.star.on { color: var(--gold); }
    so a bar in normal flow would sit underneath the topbar and be invisible.
    z-index 19 keeps it below the topbar (20) and the drawer (30/31) — it is
    information, not a modal, and it must never cover the menu that dismisses it
-   by navigating away. */
+   by navigating away.
+
+   It DOES sit over a Foray page's `.fy-transport` (sticky, z-index 5) at the
+   same offset, which is why the bar carries a dismiss control. Reserving space
+   instead would mean pushing `#view` and `.fy-transport` down by the bar's
+   height, and the height is not knowable from CSS — the copy wraps to two or
+   three lines on a narrow phone. A control the listener can press beats a
+   number that is wrong on some screens. */
 .shell-notice {
   position: fixed;
   top: calc(var(--topbar-h) + env(safe-area-inset-top));
@@ -386,6 +393,14 @@ button.star.on { color: var(--gold); }
   cursor: pointer;
 }
 .shell-notice button:active { background: var(--surface-2); }
+#shell-notice-dismiss {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 6px 4px;
+}
 
 /* ---------- pages (playlists) ---------- */
 .page {
