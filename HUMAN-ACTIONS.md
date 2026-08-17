@@ -506,6 +506,65 @@ and raise N", or "here is what I heard that the rules missed".
 
 ---
 
+### 9. Bump the service-worker cache to `foray-v5` so the storage change lands in one go
+
+**[UPGRADE]** — **~2 minutes, one word in one file, but it needs a founder merge**
+because `sw.js` is not in the auto-merge allowlist (`tools/ci/path-policy.mjs`).
+
+Issue #40's durable-storage change (`player/durable-store.js`) moves every `cp_`
+key — interests, thumbs, playback positions, where a listener is inside a
+61-minute Foray, and the anonymous session token that is their only identity —
+from evictable `localStorage` into IndexedDB, with `localStorage` kept as a
+mirror. Nothing is renamed and nothing is deleted, so this is safe either way.
+
+**Why bump anyway.** `app.js` is in the service worker's precached shell and is
+served **cache-first**, so a returning visitor runs the PREVIOUS `app.js` for one
+load and picks up the new one on the load after. That is the normal cost of every
+`app.js` change and nobody has bumped for it. It is worth bumping for this one
+because a storage migration is the one kind of change where having some tabs on
+the old code and some on the new is worth avoiding: the old code writes only to
+`localStorage`, the new code migrates it, and a crisp cutover means the migration
+runs once instead of racing itself.
+
+1. Open `sw.js` at the repo root.
+2. Line 7 reads:
+
+   ```
+   const CACHE = "foray-v4";
+   ```
+
+   Change it to:
+
+   ```
+   const CACHE = "foray-v5";
+   ```
+
+3. Commit on a branch, open a PR, and merge it once `data-and-site` and
+   `backend` are green. The `activate` handler already deletes every cache whose
+   name is not the current one, so nothing else has to change.
+
+**Worked if:** after deploying, hard-reload
+<https://jw-incorporated.github.io/foray/>, click something (a suggestion, the
+family-mode toggle — anything that stores state), then type `forayStorageHealth()`
+in the browser console. You want **`ok: true`** and **`tiers.idb.writes` greater
+than 0**, with `durableTiers: ["idb"]`.
+
+Read those three together, because two of them can lie on their own:
+
+- `durableTiers: ["idb"]` with `writes: 0` means IndexedDB *exists* but has never
+  committed anything. That is what Safari private mode looks like.
+- `ok: false` means at least one write or read failed; `faults` says which tier
+  and why.
+- `durableTiers: []` means this browser has no IndexedDB (or it failed enough
+  times to be dropped) and the listener is on the localStorage mirror only —
+  which is the pre-#40 behaviour, not a regression.
+
+The click matters: nothing is written until something happens.
+
+**Status:** OPEN
+
+---
+
 <!-- BEGIN generated:waiting-on-you -->
 
 ### Waiting on a founder (auto-maintained)

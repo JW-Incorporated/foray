@@ -44,13 +44,109 @@ function safeUrl(u) {
   return "#";
 }
 
-/* ---------- storage ---------- */
+/* ---------- storage ----------
+
+   EVERY `cp_` key in this file goes through these two functions, and they are
+   the whole reason issue #40's shim could be added without touching 40 call
+   sites. What changed (#40) is what sits behind them.
+
+   It used to be `localStorage`, which browsers evict: Safari clears
+   script-writable storage after ~7 days without a visit, any engine can evict
+   under storage pressure, and a WKWebView's storage is not durable by default.
+   Everything this app knows about a listener is in here — interests, thumbs,
+   positions, where they are inside a 61-minute Foray, and the Supabase anonymous
+   token that IS their identity (ADR-0005). Losing it silently orphans them.
+
+   So the backing store is now `player/durable-store.js`: the same synchronous
+   Storage shape, memory-fast for reads, backed by IndexedDB, with localStorage
+   kept as a mirror so nothing breaks where IndexedDB is unavailable. It is built
+   in `player/client.js` and handed over on `window.forayStorage`, because that
+   file is an ES module and this one is a classic script that cannot import it —
+   and because `index.html` is outside the auto-merge allowlist, so adding a
+   third classic script tag to the page was not on the table.
+
+   THE FALLBACK IS NOT DECORATION. Until that module evaluates (and forever, if
+   it 404s from a stale service-worker cache) these read and write raw
+   localStorage, which is exactly where the value would have been anyway. The
+   store's own hydration then migrates whatever was written in the meantime.
+   `storageReady()` below is what stops that window from costing anything.
+
+   Key names are untouched, deliberately — CLAUDE.md § Conventions: the `cp_`
+   prefix is legacy and renaming a key wipes user state. The shim changes the
+   backing store, never the keys. */
+
+function storageBackend() {
+  if (window.forayStorage) return window.forayStorage;
+  return typeof localStorage !== "undefined" ? localStorage : null;
+}
 
 function lsGet(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (_) { return fallback; }
+  const store = storageBackend();
+  if (!store) return fallback;
+  try { return JSON.parse(store.getItem(key)) ?? fallback; } catch (_) { return fallback; }
 }
+
+/** @returns {boolean} whether the value is now stored somewhere. False means the
+    write was refused by every tier — callers mostly cannot act on that, but a
+    function that reports it can be tested, and `window.forayStorageHealth()`
+    holds the reason. The old version returned nothing and swallowed the error. */
 function lsSet(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+  const store = storageBackend();
+  if (!store) return false;
+  try { store.setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; }
+}
+
+/* The store arrives with `player/client.js`, which is a deferred module: it has
+   evaluated by the time `init()` comes back from its first fetch, but not
+   necessarily before `init()` starts. Wait for it the same bounded way
+   `playerBridge()` waits for the player, then wait for HYDRATION — which is the
+   part that matters, because reading `cp_interests` or `cp_sb_session` before
+   IndexedDB has been consulted is how a restored profile gets overwritten by a
+   fresh one. That is the fix causing the defect, and it is why this is awaited
+   in `init()` rather than left to settle whenever.
+
+   Bounded on purpose: a hung IndexedDB must cost the durable tier, never the
+   page. And a `window` with no `addEventListener` cannot ever tell us the store
+   arrived, so there is nothing to wait for — that is the case in the test
+   harnesses, and treating it as "no store" is the same answer as a 404.
+
+   THE TIMEOUT IS THE LAST RESORT, NOT THE ANSWER. `playerBridge()` below can
+   afford to sit on its whole budget because it only ever runs on a click. This
+   runs before the first paint, so spending five seconds here on a 404 would cost
+   the page — the exact thing this shim is not allowed to do. Module scripts are
+   deferred and always execute before `DOMContentLoaded`, so that event is an
+   exact "it is not coming": if the store is not published by then, the module
+   failed to load or threw, and we go on with `localStorage`. */
+const STORAGE_WAIT_MS = 5000;
+
+function waitForStorage() {
+  if (window.forayStorage) return Promise.resolve(window.forayStorage);
+  if (typeof window.addEventListener !== "function") return Promise.resolve(null);
+  return new Promise(resolve => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(window.forayStorage || null); } };
+    window.addEventListener("forayplayer:ready", finish, { once: true });
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", finish, { once: true });
+    } else {
+      // Parsing already finished, so every deferred module has run. Either the
+      // store is here (handled above) or it is never arriving.
+      finish();
+    }
+    setTimeout(finish, STORAGE_WAIT_MS);
+  });
+}
+
+async function storageReady() {
+  const store = await waitForStorage();
+  if (!store || typeof store.hydrate !== "function") return null;
+  try {
+    await Promise.race([
+      store.hydrate(),
+      new Promise(resolve => setTimeout(resolve, STORAGE_WAIT_MS)),
+    ]);
+  } catch (_) { /* every tier failure is already recorded in health() */ }
+  return store;
 }
 
 function profileId() {
@@ -1161,10 +1257,27 @@ async function renderForay(id) {
      Guarded because app.js and the ES module deploy independently (the service
      worker refreshes each on its own schedule): an older module costs the resume
      offer, which is a missing banner rather than a page stuck on "Loading…". */
+  /* `resolved` is the freshness half of #40. `data/forays.json` is served
+     network-first by the service worker, so this page can be rendering a CACHED
+     running order against a row written from a newer one (or the reverse). With
+     the resolved Foray in hand the player looks the stored SEGMENT up in the live
+     order instead of trusting the stored index — so a segment that moved resumes
+     to the same audio, and one that is gone degrades to a clamped clock with no
+     row marked current, rather than seeking somewhere wrong. */
   const resume = typeof player.forayResume === "function"
-    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length })
+    ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r })
     : null;
   state.forayResume = resume;
+  /* The document changed under a stored position. Nothing user-facing — the
+     resume already degraded correctly — but it is the one signal that says how
+     often real listeners hit it, and #40 is explicit that a stale-data event must
+     be visible in the data rather than inferred later. */
+  if (resume && typeof player.forayDriftIsClean === "function" && !player.forayDriftIsClean(resume)) {
+    logEvent("foray_progress_drift", {
+      foray_id: r.id, drift: resume.drift,
+      elapsed_sec: Math.round(resume.elapsedSec), index: resume.index,
+    });
+  }
 
   $("#view").innerHTML = `
     <div class="page foray">
@@ -1617,7 +1730,13 @@ async function fetchJson(path) {
 }
 
 async function init() {
-  state.session = await fetchJson("data/session.json");
+  /* Storage hydration runs CONCURRENTLY with the first fetch, not before it: it
+     is one IndexedDB read, so it costs nothing on the critical path, and it must
+     finish before the first write — `loadInterests()` below is a read followed by
+     a write, and doing that against a not-yet-hydrated store is how a restored
+     profile gets replaced by taxonomy defaults. */
+  const [, session] = await Promise.all([storageReady(), fetchJson("data/session.json")]);
+  state.session = session;
   if (!state.session) {
     $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load Foray — check your connection and reload.</p></div>`;
     return;

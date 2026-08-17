@@ -52,17 +52,23 @@ const ROOT = path.join(__dirname, "..");
 
 /* suite -> minimum number of top-level test() declarations. */
 const FLOORS = {
-  "player/foray-playback.test.js": 45,
-  "player/foray-progress.test.js": 38,
+  /* The durable store (#40). Both of these guard against silent DATA LOSS
+     rather than a wrong answer on screen, which makes them the two suites in
+     `player/` whose deletion would be hardest to notice: everything keeps
+     rendering, and a listener's place quietly stops surviving the week. */
+  "player/durable-store.test.js": 59,
+  "player/idb-tier.test.js": 23,
+  "player/foray-playback.test.js": 61,
+  "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 29,
-  "player/foray-resolve.test.js": 38,
+  "player/foray-resolve.test.js": 42,
   "player/foray-sources.test.js": 24,
   "player/html-audio-backend.test.js": 44,
   "player/queue-manager.test.js": 76,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
-  "test/app-security.test.js": 18,
+  "test/app-security.test.js": 20,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
   "tools/ci/path-policy.test.mjs": 82,

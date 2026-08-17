@@ -38,6 +38,23 @@
    listener recognises: elapsed across the whole thing. This file is where the
    live playhead meets that store — on every tick (throttled), and forced at the
    two moments the next tick may never come, pause and page-hide.
+
+   ── Durable storage (#40) ─────────────────────────────────────────────────
+   This module owns the ONE `DurableStore` the whole app shares. It is built
+   here, not in app.js, for a mechanical reason: app.js is a classic script and
+   cannot import an ES module, and `index.html` is outside the auto-merge
+   allowlist so a third `<script>` tag is not available. So the store is created
+   at module evaluation and published on `window.forayStorage` alongside
+   `window.ForayPlayer`; app.js's `lsGet`/`lsSet` pick it up and fall back to raw
+   `localStorage` until it appears (and forever, if this module fails to load).
+
+   Two consequences worth knowing before changing anything here:
+     - `hydrate()` is started immediately and is what app.js awaits before its
+       first write. Reading `cp_interests` or `cp_sb_session` before it finishes
+       is how a RESTORED profile gets overwritten by a fresh one — the fix
+       causing the defect it fixes.
+     - `navigator.storage.persist()` is requested once, and a refusal is
+       recorded rather than treated as an error. Nothing below branches on it.
 */
 
 import { PlayerQueueManager } from "./queue-manager.js";
@@ -47,10 +64,15 @@ import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays,
-  forayElapsed, segmentAtElapsed, fmtClock, fmtSpan,
+  forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
 } from "./foray-resolve.js";
-import { ForayProgressStore, resumePoint, remainingLabel, percentDone } from "./foray-progress.js";
+import {
+  ForayProgressStore, resumePoint, remainingLabel, percentDone,
+  DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED,
+} from "./foray-progress.js";
 import { forayCredits, collectionIdsByShow, creditsSummary } from "./foray-sources.js";
+import { createDurableStore } from "./durable-store.js";
+import { makeIdbTier } from "./idb-tier.js";
 
 const SEEK_BACK = 15;
 const SEEK_FWD = 30;
@@ -61,10 +83,51 @@ let backend = null;
 let positions = null;
 let ui = null;
 
+/* ---------- durable storage (#40) ----------
+
+   Built before anything else in this module, because everything below it stores
+   something. `createDurableStore` drops any tier it cannot have, so a browser
+   with no IndexedDB gets a localStorage-only store and a browser with neither
+   gets one that works for the session and says so in `health()`. */
+const storage = createDurableStore({
+  localStorage: typeof localStorage !== "undefined" ? localStorage : null,
+  idbTier: makeIdbTier({}),
+  onFault: (fault, health) => {
+    // The player cannot fix a dead tier. What it must not do is hide one.
+    console.warn("[storage]", fault.tier, fault.op, fault.key ?? "", fault.error);
+    if (typeof window.forayLogEvent === "function") {
+      window.forayLogEvent("storage_fault", {
+        tier: fault.tier, op: fault.op, key: fault.key, error: fault.error,
+        durable_tiers: health.durableTiers, persisted: health.persisted,
+      });
+    }
+  },
+});
+
+/* Started immediately, awaited by app.js before its first write. Rejection is
+   impossible by construction (every tier failure is caught into `health()`), but
+   an unhandled rejection here would take the module down, so it is attached. */
+const storageReady = storage.hydrate().catch(() => storage);
+
+/* A request, not a setting: Chromium may grant it silently, Firefox may prompt,
+   Safari does not meaningfully honour it, and a refusal changes nothing about
+   how this store behaves. Fired and forgotten — the answer lands in `health()`.
+   Deliberately NOT awaited before hydration: exempting storage from eviction has
+   nothing to do with reading what is already in it. */
+storage.requestPersistence(typeof navigator !== "undefined" ? navigator : null).catch(() => {});
+
+/* app.js is a classic script and cannot import this module, so the store is
+   handed over the same way the event pipeline is. Published BEFORE any await so
+   that app.js, whose `init()` parks on its first fetch, sees it. */
+window.forayStorage = storage;
+window.forayStorageReady = storageReady;
+/** For a founder or a tester with a console open: the whole failure record. */
+window.forayStorageHealth = () => storage.health();
+
 /* Resume points are readable with nothing booted: the home screen asks for them
    before anything has been played, and booting an <audio> element to answer a
-   question about localStorage would be absurd. */
-const forayProgress = new ForayProgressStore();
+   question about storage would be absurd. */
+const forayProgress = new ForayProgressStore({ storage });
 
 /* ---------- DOM ---------- */
 
@@ -326,14 +389,32 @@ function persistForayProgress({ force = false } = {}) {
      inside that second) would have quietly rounded the listener back by up to a
      whole segment, again on every attempt. */
   if (foray.resumeSeekPending) return;
+  /* WHICH segment, not only which index (#40). `data/forays.json` is served
+     network-first, so the document this row is read back against can have moved
+     a segment or lost one — and an index is a position, which stops meaning
+     anything the moment the order changes. The authored id plus the offset INTO
+     the segment is what survives that; see `reconcileSegment`. */
+  const elapsedSec = forayPosition();
+  const seg = forayProgressSegments()[foray.index] ?? null;
   forayProgress.save({
     forayId: id,
     title: foray.resolved.title,
-    elapsedSec: forayPosition(),
+    elapsedSec,
     totalSec: foray.resolved.totalSec,
     index: foray.index,
+    segmentId: seg ? seg.id : null,
+    intoSec: seg ? Math.max(0, elapsedSec - seg.startSec) : 0,
     force,
   });
+}
+
+/** The live running order in the shape a stored row is reconciled against.
+    Computed once per Foray, not once per tick: `render()` runs at 4 Hz and this
+    walks all 32 segments. */
+function forayProgressSegments() {
+  if (!foray) return [];
+  if (!foray.segments) foray.segments = progressSegments(foray.resolved);
+  return foray.segments;
 }
 
 function render() {
@@ -490,9 +571,11 @@ function bind() {
   });
 
   ui.rateBtn.addEventListener("click", () => {
-    const cur = Number(localStorage.getItem("cp_rate")) || 1;
+    const cur = Number(storage.getItem("cp_rate")) || 1;
     const next = RATES[(RATES.indexOf(cur) + 1) % RATES.length];
-    localStorage.setItem("cp_rate", String(next));
+    // Throws only when NO tier accepted it — a rate that cannot be stored is
+    // still a rate that should apply for this session.
+    try { storage.setItem("cp_rate", String(next)); } catch (_) { /* health() has it */ }
     backend.setRate(next);
     ui.rateBtn.textContent = `${next}×`;
   });
@@ -504,6 +587,13 @@ function bind() {
     // Unconditional, unlike the line above: a Foray paused at 23:14 and then
     // backgrounded must still remember 23:14.
     persistForayProgress({ force: true });
+    /* The durable write cannot be awaited here — `pagehide` has no way to hold
+       the page open, and an IndexedDB commit is asynchronous. That is survivable
+       and deliberately so: the localStorage tier is written SYNCHRONOUSLY by the
+       line above, so the position is on disk before this handler returns, and the
+       next `hydrate()` copies it down into IndexedDB. Kicking the queue costs
+       nothing and often wins the race anyway. */
+    storage.flush().catch(() => {});
   };
   document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
   window.addEventListener("pagehide", flush);
@@ -513,6 +603,7 @@ function ensureBooted() {
   if (manager) return;
 
   positions = new PositionStore({
+    storage,
     onSave: (id, seconds, meta) => {
       // Ride the existing event pipeline; app.js owns it.
       if (typeof window.forayLogEvent === "function") {
@@ -549,8 +640,11 @@ function ensureBooted() {
   ui = buildUI();
   bind();
 
-  backend.setRate(Number(localStorage.getItem("cp_rate")) || 1);
-  ui.rateBtn.textContent = `${Number(localStorage.getItem("cp_rate")) || 1}×`;
+  // Through the durable store, like every other cp_ key: a playback rate is
+  // small, but "the app forgot I listen at 1.5x" is the same defect in miniature.
+  const rate = Number(storage.getItem("cp_rate")) || 1;
+  backend.setRate(rate);
+  ui.rateBtn.textContent = `${rate}×`;
 
   backend.el.addEventListener("timeupdate", render);
   backend.el.addEventListener("play", render);
@@ -677,13 +771,23 @@ const ForayPlayer = {
    * have changed since the row was written, and a resume point past the end of
    * the Foray as it exists now is a stale row, not a position.
    *
-   * @returns {{ elapsedSec, index, remainingSec, percent, finished, label,
-   *             clock, title } | null}
+   * `resolved` is the stronger form of the same idea and is what the Foray page
+   * passes (#40): with the whole running order in hand the stored SEGMENT can be
+   * looked up rather than trusting the stored index, so a Foray whose segments
+   * moved resumes to the same audio, and one whose segment is gone degrades to a
+   * clamped clock instead of seeking somewhere wrong. `drift` says which
+   * happened; the home rail, which has no resolved document, gets "unverified".
+   *
+   * @returns {{ elapsedSec, index, remainingSec, percent, finished, drift,
+   *             label, clock, title } | null}
    */
-  forayResume(forayId, { totalSec = null, itemCount = null } = {}) {
+  forayResume(forayId, { totalSec = null, itemCount = null, resolved = null } = {}) {
     const record = forayProgress.get(forayId);
-    const maxIndex = Number.isInteger(itemCount) && itemCount > 0 ? itemCount - 1 : null;
-    const point = resumePoint(record, { totalSec, maxIndex });
+    const segments = resolved ? progressSegments(resolved) : null;
+    const total = isFiniteNum(totalSec) ? totalSec : (resolved ? resolved.totalSec : null);
+    const count = Number.isInteger(itemCount) ? itemCount : (resolved ? resolved.playable.length : null);
+    const maxIndex = Number.isInteger(count) && count > 0 ? count - 1 : null;
+    const point = resumePoint(record, { totalSec: total, maxIndex, segments });
     if (!point || point.finished) return null;
     return {
       ...point,
@@ -691,6 +795,18 @@ const ForayPlayer = {
       clock: fmtClock(point.elapsedSec),
       label: remainingLabel(point.remainingSec),
     };
+  },
+
+  /** Whether the document is the one this row was written against.
+      "Clean" includes the two cases that are not drift at all: nothing was
+      checked (`unverified`, the home rail), and there was nothing to check with
+      (`unanchored` — every row written before segment ids existed, which is all
+      of them on the day this ships). Only `moved` and `dropped` are drift. */
+  forayDriftIsClean(point) {
+    if (!point) return true;
+    return point.drift === DRIFT_EXACT
+      || point.drift === DRIFT_UNVERIFIED
+      || point.drift === DRIFT_UNANCHORED;
   },
 
   /** Every Foray with a resume point, most recent first — the home screen's
@@ -813,6 +929,8 @@ const ForayPlayer = {
 
 /** Below this many seconds into a segment, "previous" means the segment before. */
 const RESTART_WINDOW_SEC = 4;
+
+const isFiniteNum = (n) => typeof n === "number" && Number.isFinite(n);
 
 function clampIndex(index, length) {
   const n = Number.isInteger(index) ? index : 0;

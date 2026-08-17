@@ -7,6 +7,76 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### durable storage — resume survives an eviction (2026-08-16, one PR, no follow-up)
+
+- **What:** `feat/durable-progress`, issue **#40 (MP6)**. Every `cp_` key —
+  interests, thumbs, episode positions, Foray resume rows, and the Supabase
+  anonymous token that is the only identity (ADR-0005) — moves off evictable
+  `localStorage` onto a **tiered store** (`player/durable-store.js`): a
+  synchronous Storage-shaped facade over memory + localStorage + IndexedDB, with
+  `navigator.storage.persist()` requested and a refusal RECORDED rather than
+  assumed. Plus the freshness half of #40: a stored row now names the SEGMENT it
+  was in, so a network-first `data/forays.json` that changed under it degrades
+  instead of seeking wrong. Full write-up: `docs/durable-storage.md`.
+- **New files:** `player/durable-store.js` + test (the merge/migration/fault
+  logic), `player/idb-tier.js` + test (the IndexedDB adapter, against a fake
+  `IDBFactory`), `docs/durable-storage.md`.
+- **Shared files it touches:** `app.js` (the `lsGet`/`lsSet` shim and one awaited
+  hydrate in `init()`), `player/client.js`, `player/foray-progress.js`,
+  `player/foray-resolve.js` (one new export, `progressSegments`),
+  `player/position-store.js`, `player/foray-playback.test.js`,
+  `player/foray-progress.test.js`, `player/foray-resolve.test.js`,
+  `test/app-security.test.js`, `test/suite-integrity.test.js` (two floors, four
+  raised, isolated final commit), `HUMAN-ACTIONS.md` (#9), this file. **Nothing
+  in `data/`, nothing in `tools/`, nothing in `index.html`, nothing in `sw.js`.**
+- **Heads-up — `app.js` CANNOT import the store, and that is structural.** It is
+  a classic script; `player/` is ES modules; `index.html` is not auto-merge
+  allowlisted so a third classic script tag was not available. So
+  `player/client.js` constructs the ONE shared store and publishes
+  `window.forayStorage` / `window.forayStorageReady` /
+  `window.forayStorageHealth()`, and `app.js`'s shim falls back to raw
+  `localStorage` until it appears. Do not "tidy" that into an import.
+- **Heads-up — HYDRATION MUST BE AWAITED BEFORE THE FIRST WRITE, and `init()`
+  now does.** Reading an evicted (empty) `cp_interests` or `cp_sb_session`,
+  writing a default, and only then hearing back from IndexedDB would overwrite
+  the restored profile with the default — the fix causing the defect. The store
+  also protects every key written since construction (`_dirty`), so the ordering
+  and the rule are belt and braces. **If you add anything to `app.js` that writes
+  storage before `init()`'s first `await`, it will bypass both.**
+- **Heads-up — `setItem` THROWS when no tier accepted the value.** That is
+  deliberate and load-bearing: `writeProgress()`'s `return false` and
+  `PositionStore`'s refusal counter depend on it, and swallowing there is the
+  original defect. Callers that cannot react (the rate button) catch explicitly.
+- **Heads-up — nothing is ever deleted to migrate it.** `localStorage` is a
+  MIRROR, not a staging area, in both directions. There is no PR in which a `cp_`
+  row exists in neither place, and no rename anywhere (CLAUDE.md § Conventions).
+- **Heads-up — a resume row has two new fields.** `segment_id` and `into_sec`,
+  both optional, both absent on every existing row (`isProgressRecord` does not
+  require them, on purpose). `resumePoint(record, { segments })` is the new form;
+  without `segments` it behaves exactly as before, plus one added field
+  (`drift: "unverified"`). Build the descriptor with `progressSegments(resolved)`
+  — never pair a stored index against authored position, because the queue skips
+  unplayable items. And do NOT pre-filter the live order before handing it over:
+  the returned `index` counts positions in the CALLER's array, so filtering shifts
+  every row after a malformed entry.
+- **Heads-up — reporting a storage fault is itself a write, and it self-feeds.**
+  `onFault` → `logEvent` → `lsSet` → another durable write → another fault. A
+  re-entrancy flag does not stop it: an async tier's failure arrives on a later
+  tick with the flag already cleared, and review measured 400 events out of ONE
+  user write. There is now a notification budget AND a circuit breaker that drops
+  a tier after `MAX_CONSECUTIVE_TIER_FAILURES`, after which `setItem` goes back to
+  throwing honestly. **If you add another storage-fault consumer, it must not
+  write storage unconditionally.**
+- **Left for the founder:** `HUMAN-ACTIONS.md` #9 — bump `sw.js` to `foray-v5`
+  so the migration cuts over in one load instead of two. Safe without it. Also
+  open, and a product call not a task: whether resume state gets a server-side
+  copy, which only helps if the anon token survived and therefore really means
+  "an account" (`docs/durable-storage.md` § Still open).
+- **NOT built, on purpose:** #40's Problem 1 (bundled snapshot + TTL refresh in a
+  native app) — it depends on #36's `prepare-webdir.mjs` and a filesystem cache,
+  and none of it exists yet. The freshness work here is the web half only.
+- **Related:** #40, #34, #26, #36 (blocker for the native half), ADR-0005.
+
 ### classify fleet — the shard key, and one transcript label (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/fleet-cataloguing`. Two things from

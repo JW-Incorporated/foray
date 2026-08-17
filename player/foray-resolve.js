@@ -373,6 +373,37 @@ export function segmentAtElapsed(items, elapsed) {
 }
 
 /**
+ * The stored-progress view of a running order: one row per playable item, in
+ * play order, carrying the AUTHORED segment id alongside its Foray-clock start
+ * and length.
+ *
+ * WHY THIS SHAPE (issue #40, the freshness half)
+ * A queue item's own `id` is `${forayId}#${ord}`, which is a POSITION — it
+ * changes when the running order changes, so it cannot tell a stored row that
+ * segment 9 is now segment 7. The authored `segment_id` can, and it lives on
+ * `entries`, joined back to the queue by `queueIndex`. `player/foray-progress.js`
+ * is deliberately pure and knows nothing about resolved Forays, so this is the
+ * adapter between the two: `resumePoint(record, { segments: progressSegments(r) })`.
+ *
+ * `id` is null for any item with no authored segment (a narration bridge, when
+ * one exists) rather than invented — an unidentifiable item simply cannot anchor
+ * a resume, and saying so is better than matching the wrong thing.
+ */
+export function progressSegments(resolved) {
+  const items = resolved?.playable ?? [];
+  const starts = segmentStarts(items);
+  const idByQueueIndex = new Map();
+  for (const e of resolved?.entries ?? []) {
+    if (e && e.playable && Number.isInteger(e.queueIndex)) idByQueueIndex.set(e.queueIndex, e.segment_id ?? null);
+  }
+  return items.map((item, i) => ({
+    id: idByQueueIndex.get(i) ?? null,
+    startSec: starts[i],
+    durationSec: lengthOf(item),
+  }));
+}
+
+/**
  * Elapsed across the whole Foray, from the queue index and the playhead inside
  * the SOURCE episode.
  *
