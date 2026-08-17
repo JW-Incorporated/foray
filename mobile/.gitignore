@@ -51,9 +51,51 @@ www/
 ios/
 android/
 
-# What the platforms produce, kept for anyone who un-ignores a platform above.
-DerivedData/
+# ── If you ever un-ignore a platform above, YOU NEED THE RULES BELOW TOO ──────
+#
+# An earlier draft of this file deleted every per-platform output rule and left a
+# comment claiming they were "kept for anyone who un-ignores a platform above".
+# They were not, and a reviewer measured the cost: **2,569 of the 2,623 files under
+# `mobile/android/` were covered by nothing except the blanket `android/` line.**
+# Deleting that one line would have staged all of them — including
+# `local.properties`, which carries a machine-absolute `sdk.dir`, and
+# `app/src/main/assets/public/`, which is the duplicate copy of the player that the
+# `www/` rule above exists to prevent.
+#
+# So the output rules are restored and kept beside the blanket ignore. They are
+# redundant while the blanket rules stand, and they are what makes un-ignoring a
+# platform a safe, single-line edit instead of a 2,500-file accident.
+#
+# MEASURED, both ways, on a generated Android project (2,623 files):
+#   - with only the blanket `android/` line, commenting it out exposes 2,621 files,
+#     including `local.properties` and `app/src/main/assets/public/`;
+#   - with the rules below in place, commenting it out exposes **53** — the real
+#     project files someone doing that would actually mean to commit — and
+#     `local.properties` and `assets/public/` are NOT among them.
+
+# iOS
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/Pods/
+ios/App/output/
+ios/App/build/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/capacitor-cordova-ios-plugins/
 *.xcuserstate
+DerivedData/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/res/xml/config.xml
+android/capacitor-cordova-android-plugins/
+android/local.properties
+android/.idea/
 *.iml
 *.apk
 *.aab

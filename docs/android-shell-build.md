@@ -310,10 +310,19 @@ could not move our CSP in front of it even if we wanted to.
 mechanisms in Capacitor's Java, one fact of document order in our own markup, and
 the CSP specification's rule about when a meta-delivered policy begins to apply.
 No WebView executed anything. Specifically **not** claimed: that a running
-Android app logs zero CSP violations. #213 measured that on **iOS**, where the
-mechanism is `WKUserScript` and the origin is `capacitor://localhost`; §2's whole
-point is that Android's mechanism is different, so that result does not transfer
-and neither does this one in reverse.
+Android app logs zero CSP violations.
+
+#213 measured that on **iOS**, where the mechanism is `WKUserScript` and the origin
+is `capacitor://localhost`; §2's whole point is that Android's mechanism is
+different, so that result does not transfer and neither does this one in reverse.
+**And #213's own scope is narrower than it is easy to remember:** the
+0-CSP-violations reading comes from a booted **iOS Simulator**, and its arm64/Release
+step is a **compile only** — `BUILD SUCCEEDED`, unsigned, never installed, never
+launched. `docs/ios-ci.md` twice warns that a simulator is not a device. So "the
+bridge survives our CSP" is observed on one simulator, inferred on Android, and
+unobserved on real hardware of either kind. An earlier draft of this change
+compressed that into "on both a simulator and an arm64 device" in
+`docs/mobile-shell.md` §5; the reviewer pass caught it and it is fixed.
 
 **What settles it, cheapest first.** All three are `HUMAN-ACTIONS.md` item **#18**
 in the post-#220 numbering, which this document deliberately does not edit

@@ -226,7 +226,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
   WebView.** Do not cite the above as a measurement, and **do not cite #213's iOS
   "0 CSP violations" as covering Android** — that was `WKUserScript` on
   `capacitor://localhost`, a different mechanism on a different origin, which is
-  the whole reason this was a separate open risk. What settles it is a phone over
+  the whole reason this was a separate open risk. **And be precise about what #213
+  measured even on iOS:** the 0-CSP-violations reading is from a booted **iOS
+  Simulator**; its arm64/Release step is a **compile only**, unsigned, never
+  installed and never launched. An earlier draft of `docs/mobile-shell.md` §5 in
+  this branch said "on both a simulator and an arm64 device" and that was wrong —
+  caught by the reviewer pass, fixed, and noted here because it is the exact
+  inference-to-measurement upgrade this workstream is supposed to be careful about.
+  What settles it is a phone over
   USB and `chrome://inspect`, reading three values: any CSP violation,
   `typeof window.Capacitor`, `navigator.serviceWorker.controller` (must be
   `null`). `docs/android-shell-build.md` §3.
