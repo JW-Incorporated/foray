@@ -13,11 +13,14 @@
 #   1. PROVE THE SHELL BUILDS. `npx cap add ios` then `xcodebuild` turns "should
 #      work" into "does work", and any failure found here is one a founder does
 #      not have to discover on their own Mac.
-#   2. SETTLE #209's TOP OPEN RISK. Capacitor injects its bridge as an INLINE
+#   2. MEASURE WHAT #209 ONLY REASONED. Capacitor injects its bridge as an INLINE
 #      script and our CSP is `script-src 'self'` with no `'unsafe-inline'`. If it
 #      is blocked there is no `window.Capacitor`, four plugins are dead, and the
-#      service worker registers inside the shell. #209 flags it as
-#      Android-only-and-unproven. The bridge probe measures the iOS half.
+#      shell loses one of the two signals that keep the service worker off.
+#      `docs/mobile-shell.md` §5 argues iOS is *probably* fine (WKWebView injects
+#      via `WKUserScript`, outside the document's CSP) and says plainly that
+#      nothing was built to check. The bridge probe checks it. The RISK that
+#      section names is Android's, by a different mechanism, and stays open.
 #   3. ATTACK MP1's MOST LOAD-BEARING INFERENCE. MP1 (#207) concluded iOS keeps
 #      backgrounded audio with one Info.plist line, but whether our OUT-POINT
 #      still fires rests on `timeupdate` surviving backgrounding — explicitly the
@@ -33,13 +36,17 @@
 #
 # ── COST, AND WHY THIS IS NOT A REQUIRED CHECK ───────────────────────────────
 #
-# ~12-18 minutes of wall clock per run, and macOS runners bill at 10x Linux
-# minutes — so ~120-180 billable minutes if this repo were private. It is
-# PUBLIC, and GitHub charges nothing for standard runners on public repos, which
-# is also why `ci.yml`'s `ios-kit` job can run `macos-latest` on every PR today.
-# Both numbers are stated because the second one changes the moment the repo
-# does: a sister project already suspected Actions-minutes exhaustion as the root
-# cause of a build freeze, and "it was free when we wrote it" is not a design.
+# An ESTIMATE, because nothing had run when this was written: ~12-18 minutes of
+# wall clock per run, and macOS runners bill at 10x Linux minutes — so ~120-180
+# billable minutes if this repo were private. Replace these with the measured
+# figures once a run exists; an estimate quoted as a measurement is the specific
+# mistake `docs/research/mp1-background-audio.md` §1 keeps a whole table to avoid.
+#
+# It is PUBLIC, and GitHub charges nothing for standard runners on public repos,
+# which is also why `ci.yml`'s `ios-kit` job can run `macos-latest` on every PR
+# today. Both numbers are stated because the second one changes the moment the
+# repo does: a sister project already suspected Actions-minutes exhaustion as the
+# root cause of a build freeze, and "it was free when we wrote it" is not a design.
 #
 # So it is designed for infrequency: manual dispatch, plus a path filter narrow
 # enough that ordinary data/docs/backend PRs never trigger it. It is NOT in the
@@ -97,10 +104,19 @@ jobs:
       APP_ID: com.jwincorporated.foray
       WORKSPACE: mobile/ios/App/App.xcworkspace
       INFO_PLIST: mobile/ios/App/App/Info.plist
-      DD_SIM: ${{ runner.temp }}/dd-sim
-      DD_DEV: ${{ runner.temp }}/dd-dev
-      ART: ${{ runner.temp }}/ios-ci
+      # DELIBERATELY NOT `${{ runner.temp }}` HERE. The `runner` context is not
+      # available in a job-level `env:` block (GitHub's availability table allows
+      # github/needs/strategy/matrix/vars/secrets/inputs there and nothing else),
+      # and an unavailable context is a workflow-compile error, not an empty
+      # string — the whole job would never start. The paths are set from
+      # $RUNNER_TEMP in the first step instead.
+      #
       # `false` only via an explicit dispatch input; every other trigger probes.
+      # Note this reads `github.event.inputs.probes`, which for a typed boolean is
+      # the STRING "false" — truthy in a GitHub expression, so `a && b || c`
+      # yields "false" and the step guards below match on it. Switching to the
+      # `inputs.probes` context (a real boolean) would make `a && false || 'true'`
+      # evaluate to 'true' and silently re-enable the probes.
       PROBES: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.probes || 'true' }}
 
     steps:
@@ -113,9 +129,12 @@ jobs:
       - name: Toolchain versions (the first thing to read when this breaks)
         run: |
           set -euo pipefail
-          mkdir -p "$ART"
+          echo "ART=$RUNNER_TEMP/ios-ci"   >> "$GITHUB_ENV"
+          echo "DD_SIM=$RUNNER_TEMP/dd-sim" >> "$GITHUB_ENV"
+          echo "DD_DEV=$RUNNER_TEMP/dd-dev" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/ios-ci"
           { sw_vers; xcodebuild -version; echo "sqlite3 $(sqlite3 --version)"; pod --version; } \
-            | tee "$ART/toolchain.txt"
+            | tee "$RUNNER_TEMP/ios-ci/toolchain.txt"
 
       # ── the parts a Mac is actually needed for ──────────────────────────────
 
@@ -158,7 +177,7 @@ jobs:
         # so there is no plugin, no AppDelegate edit and no Swift. Capacitor has
         # no config option for the key, so something has to edit the generated
         # plist — and that something is a unit-tested pure function
-        # (tools/mobile/inject-background-audio.test.mjs, 22 tests, all runnable
+        # (tools/mobile/inject-background-audio.test.mjs, all of it runnable
         # without a Mac) rather than a sed a regex change could silently no-op.
         #
         # THREE independent confirmations, because the failure is invisible: the
@@ -220,6 +239,12 @@ jobs:
       - name: Choose and boot a simulator
         id: sim
         if: env.PROBES != 'false'
+        # A simulator that will not boot is a MEASUREMENT failure, not a build
+        # failure, and turning a successful build red for it would be the exact
+        # conflation this workflow argues against. The dependent steps guard on
+        # `steps.sim.outcome == 'success'`, so the chain degrades to "we learned
+        # nothing today" and the verdict step says so.
+        continue-on-error: true
         run: |
           set -euo pipefail
           xcrun simctl list devices available -j > "$ART/simctl-devices.json"
@@ -235,6 +260,7 @@ jobs:
         # looks like a source checkout.
         id: probe_install
         if: env.PROBES != 'false' && steps.sim.outcome == 'success'
+        continue-on-error: true
         run: |
           set -euo pipefail
           UDID="${{ steps.sim.outputs.udid }}"
@@ -257,14 +283,16 @@ jobs:
         #         re-checks at 3 s (in case the bridge is injected late), reads
         #         navigator.serviceWorker.getRegistrations(), then navigates to
         #         the out-point probe.
-        #   t+14  audio is playing and the out-point is armed at end_sec=25 s of
-        #         media time.
-        #   t+16  BACKGROUNDED by foregrounding Settings. There is no simctl
-        #         "press home"; launching another app is how you background one.
-        #   t+66  50 s backgrounded. end_sec falls at roughly t+39, so a working
-        #         out-point fires deep inside this window and a broken one does
-        #         not fire at all.
-        #   t+66+ screenshot, then read the numbers out of WebKit's local storage.
+        #   t+3   the out-point probe starts playing and arms end_sec=25 s of
+        #         MEDIA time, so the boundary falls at roughly t+28 wall clock.
+        #   t+14  BACKGROUNDED by foregrounding Settings — 14 s of slack for a
+        #         cold first launch. There is no simctl "press home"; launching
+        #         another app is how you background one.
+        #   t+64  50 s backgrounded, and t+28 is deep inside it: a working
+        #         out-point fires while hidden, a broken one does not fire at all.
+        #   t+67  screenshot, then read the numbers out of WebKit's local storage.
+        # ~67 s total, against a 150 s tone — the audio must never be the thing
+        # that stops playback, or a natural end would be mistaken for a boundary.
         # The app is NOT relaunched to read the results: `simctl launch` on a
         # running app can restart it, and a restart would erase the very
         # measurement it was launched to collect. (probe-outpoint.js also refuses
@@ -294,42 +322,32 @@ jobs:
           CONTAINER=$(xcrun simctl get_app_container "$UDID" "$APP_ID" data)
           echo "container=$CONTAINER"
           mkdir -p "$ART/ls"
-          find "$CONTAINER" \( -name '*.localstorage' -o -name 'local-storage.sqlite3' \) -print \
+          # DELIBERATELY LOOSE PATTERNS. WebKit has moved and renamed this file
+          # more than once (`*.localstorage`, `local-storage.sqlite3`,
+          # `localstorage.sqlite3`, under a salted WebsiteData path), and a
+          # runner-image bump can change it again. A pattern that stops matching
+          # produces an empty read, two `inconclusive` verdicts and a GREEN job —
+          # #38 producing nothing forever with no error anywhere. So match on the
+          # substring, and dump the whole tree as a fallback for a human.
+          find "$CONTAINER" \( -iname '*localstorage*' -o -iname '*local-storage*' \) -print \
             > "$ART/ls-files.txt" || true
+          find "$CONTAINER" -type f > "$ART/container-tree.txt" 2>/dev/null || true
           cat "$ART/ls-files.txt"
           i=0
           while IFS= read -r db; do
             [ -n "$db" ] || continue
+            case "$db" in *-wal|*-shm) continue ;; esac
             i=$((i+1))
+            # `-wal`/`-shm` too: an unflushed write lives in the write-ahead log,
+            # and copying the main file alone would silently drop it.
             cp "$db" "$ART/ls/db-$i.sqlite" || continue
+            [ -f "$db-wal" ] && cp "$db-wal" "$ART/ls/db-$i.sqlite-wal" || true
+            [ -f "$db-shm" ] && cp "$db-shm" "$ART/ls/db-$i.sqlite-shm" || true
             sqlite3 -json "$ART/ls/db-$i.sqlite" "select key, hex(value) as hexval from ItemTable" \
               > "$ART/ls-rows-$i.json" 2>>"$ART/ls-errors.txt" || true
           done < "$ART/ls-files.txt"
           echo "read $i local-storage database(s)"
           ls -l "$ART" || true
-
-      - name: Report what the probes established
-        id: verdict
-        if: always()
-        continue-on-error: true
-        env:
-          IOS_BUILD_STATUS: >-
-            simulator=${{ steps.build_sim.outcome }},
-            device=${{ steps.build_dev.outcome }},
-            probes=${{ steps.probe_run.outcome }}
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          rows=( "$ART"/ls-rows-*.json )
-          if [ ${#rows[@]} -gt 0 ]; then
-            node tools/mobile/ios-ci.mjs decode-localstorage "${rows[@]}" > "$ART/localstorage.json"
-          else
-            echo '{}' > "$ART/localstorage.json"
-          fi
-          grep -a -o 'FORAY_PROBE_[A-Z]*.*' "$ART/simulator-log.txt" > "$ART/probe-console.txt" 2>/dev/null || true
-          grep -a -i -o '.\{0,120\}Content Security Policy.\{0,200\}' "$ART/simulator-log.txt" \
-            > "$ART/csp-messages.txt" 2>/dev/null || true
-          node tools/mobile/ios-ci.mjs verdict "$ART/localstorage.json"
 
       # ── signing and TestFlight: gated, and never yet executed ───────────────
 
@@ -410,6 +428,63 @@ jobs:
             -exportPath "${{ runner.temp }}/export" | tail -20
           xcrun altool --upload-app -f "${{ runner.temp }}/export/App.ipa" -t ios \
             --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+
+      # ── the report, last, so it can see every outcome it describes ──────────
+
+      - name: Report what the probes established
+        # AFTER the signing gate on purpose. Its section 3 reads
+        # `steps.signing.outputs.state`; an earlier version recomputed it from
+        # `process.env`, which this step is deliberately not given the secrets for
+        # — so it said "no signing secrets set" unconditionally, and would have
+        # started contradicting the gate step in the same run the day
+        # HUMAN-ACTIONS.md #17 was done.
+        #
+        # NOT `continue-on-error`. `ios-ci.mjs verdict` exits 0 for every verdict
+        # including the bad ones, by design, so the only thing the flag could hide
+        # is a crash in the reporter — a green run with no summary at all, which
+        # reads as "fine".
+        id: verdict
+        if: always()
+        env:
+          IOS_BUILD_STATUS: >-
+            simulator=${{ steps.build_sim.outcome }},
+            device=${{ steps.build_dev.outcome }},
+            probes=${{ steps.probe_run.outcome }}
+          SIGNING_STATE: ${{ steps.signing.outputs.state }}
+        run: |
+          set -euo pipefail
+          # `if: always()` means this can run even when the very first step failed
+          # and $ART was never exported, so it re-derives rather than dying on an
+          # unbound variable and leaving no report at all.
+          ART="${ART:-$RUNNER_TEMP/ios-ci}"
+          mkdir -p "$ART"
+          # A `for` over a glob rather than a bash array: macOS ships bash 3.2,
+          # where `${#arr[@]}` on an empty array is an unbound-variable error under
+          # `set -u`. Combined with an unguarded reporter that would have been a
+          # silent, report-free green run.
+          : > "$ART/ls-rows-all.txt"
+          for f in "$ART"/ls-rows-*.json; do
+            [ -e "$f" ] || continue
+            echo "$f" >> "$ART/ls-rows-all.txt"
+          done
+          if [ -s "$ART/ls-rows-all.txt" ]; then
+            # shellcheck disable=SC2046
+            node tools/mobile/ios-ci.mjs decode-localstorage $(cat "$ART/ls-rows-all.txt") \
+              > "$ART/localstorage.json"
+          else
+            echo '{}' > "$ART/localstorage.json"
+          fi
+          if [ -f "$ART/simulator-log.txt" ]; then
+            grep -a -o 'FORAY_PROBE_[A-Z]*.*' "$ART/simulator-log.txt" > "$ART/probe-console.txt" || true
+            grep -a -i -o '.\{0,120\}Content Security Policy.\{0,200\}' "$ART/simulator-log.txt" \
+              > "$ART/csp-messages.txt" || true
+          fi
+          touch "$ART/probe-console.txt"
+          # The console log is the SECOND channel, and it is passed in rather than
+          # merely archived: if WebKit's local-storage filename moves under us, the
+          # records are still in the system log, and an earlier version captured
+          # them into the artifact and then never read them.
+          node tools/mobile/ios-ci.mjs verdict "$ART/localstorage.json" "$ART/probe-console.txt"
 
       - name: Upload everything this run learned
         # Always: a failed build's log is the most useful thing in the run, and

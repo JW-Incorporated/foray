@@ -16,8 +16,15 @@ each of them blocking a decision:
 | Claim | Where it lives | Status before #38 |
 |---|---|---|
 | The Capacitor shell compiles at all | `docs/mobile-shell.md` §0 | **Never generated, never installed, never compiled.** Its author said so in a table |
-| Our CSP does not block Capacitor's injected bridge | `docs/mobile-shell.md` §5, "the top open risk" | Reasoned from WebKit's injection mechanism. `HUMAN-ACTIONS.md` #14 step 6.2 asks a human to type `Capacitor` into a console |
+| Our CSP does not block Capacitor's injected bridge *on iOS* | `docs/mobile-shell.md` §5 | Reasoned from WKWebView's `WKUserScript` injection. `HUMAN-ACTIONS.md` #14 step 6.2 asks a human to type `Capacitor` into a console |
 | Our out-point still fires when the app is backgrounded | `docs/research/mp1-background-audio.md` §8 | "**The single most load-bearing untested claim** in this document" — its words |
+
+Be precise about the second one, because the sloppy version overclaims: §5's
+heading is *"the top open risk: **Android's** injected bridge versus this CSP"*,
+and its iOS line is "iOS is probably fine". So this workflow does not settle that
+risk. It settles the *iOS assumption that sits beside it* — the one #14 step 6.2
+calls "the single most important line of output in this whole item" — and Android
+stays exactly where it was (`HUMAN-ACTIONS.md` #16).
 
 GitHub's macOS runners have Xcode **and the iOS Simulator**. So the third
 column can change without anyone buying a laptop.
@@ -71,10 +78,15 @@ outcome, because a three-way rule cannot be written as `if: secrets.X != ''`.
 macOS runners bill at **10× Linux minutes**. This repo is **public**, and GitHub
 charges nothing for standard runners on public repos — which is also why
 `ci.yml`'s `ios-kit` job can run `macos-latest` on every PR today. Both facts are
-recorded because the second one changes the day the repo stops being public: at
-~12–18 minutes of wall clock, a run would then cost **~120–180 billable
-minutes**. A sister project already suspected Actions-minutes exhaustion behind a
-build freeze, and "it was free when we wrote it" is not a design.
+recorded because the second one changes the day the repo stops being public: at an
+**estimated** ~12–18 minutes of wall clock, a run would then cost ~120–180
+billable minutes. A sister project already suspected Actions-minutes exhaustion
+behind a build freeze, and "it was free when we wrote it" is not a design.
+
+**Those minute figures are an estimate, not a measurement** — they were written
+before anything had run. Replace them with the run's real duration once one
+exists. This document sits next to one whose entire §1 is a
+measured-versus-documented table, for exactly this reason.
 
 So: `workflow_dispatch` plus a path filter narrow enough that nightly content
 PRs never trigger it (`mobile/`, `tools/mobile/`, `index.html`, `app.js`,
@@ -110,11 +122,19 @@ It records `typeof window.Capacitor`, `isNativePlatform()`, the plugin list, any
 `navigator.serviceWorker.getRegistrations().length`, which must be **0** inside
 the shell whatever the bridge did.
 
-**Scope discipline.** A pass settles the **iOS** half of `docs/mobile-shell.md`'s
-top open risk and *nothing else*. Android injects its bridge by a different
-mechanism into a `https://localhost` origin; that is `HUMAN-ACTIONS.md` #16 and
-it stays open. `bridgeVerdict()` says so in its own output so the claim cannot
-creep in a retelling.
+**Scope discipline.** A pass establishes one thing: on iOS, `script-src 'self'`
+does not block Capacitor's bridge injection. That is what `docs/mobile-shell.md`
+§5 *reasoned* and nobody had run. It says nothing about Android, which injects an
+inline `<script>` into the served HTML from a `https://localhost` origin — a
+different mechanism, and the one §5's risk is actually about. That is
+`HUMAN-ACTIONS.md` #16 and it stays open. `bridgeVerdict()` carries both halves of
+that sentence in its own output so the claim cannot creep in a retelling.
+
+**And a `bridge-blocked` result does not automatically mean the CSP.** On iOS the
+CSP is the *least* likely explanation, so the verdict names it as the cause only
+when a `script-src` violation was actually observed; otherwise it says the cause is
+unknown and points at `cap-add-ios.log` and `csp-messages.txt`. A harness failure
+promoted to an architectural finding is how a wrong claim gets into a document.
 
 ### Probe B — the out-point, backgrounded
 
@@ -124,14 +144,24 @@ past 25 s playback got. The workflow backgrounds the app by foregrounding
 Settings — `simctl` has no "press home" — waits 50 s, and reads the numbers out
 of WebKit's local-storage database in the app container.
 
-Four numbers come back. The one that decides the architecture is
-`stoppedWhileBackgrounded`: `false` means nothing stopped the audio until the app
-was foregrounded, which is MP1 §3's failure whatever the overshoot reads
-(**936.5 s median — 15.6 minutes of the wrong episode**). The other three are
-`overshootSec` (14 ms foreground today; MP1 §8 predicts 0.25–1 s backgrounded),
-the median `timeupdate` interval while hidden — *the inference itself, measured* —
-and the median interval of a 250 ms `setInterval` while hidden, against MP1
-§7.5's claim that WebKit aligns hidden-page DOM timers to 1 s.
+Five things come back, and each answers a different question.
+
+| | What it settles |
+|---|---|
+| `stoppedWhileBackgrounded` | **The one that decides the architecture.** `false` means nothing stopped the audio until the app was foregrounded — MP1 §3's failure whatever the overshoot reads (**936.5 s median: 15.6 minutes of the wrong episode**) |
+| `endReason` | Whether the *out-point* stopped it, or the file simply ran out. `html-audio-backend.js` reports the same callback for both, deliberately; here they are opposite results |
+| `overshootSec` | How late the boundary was. Foreground today is ~14 ms — *measured on desktop Chromium, n=3, MP1 §4.3*, not on a phone. MP1 §8 predicts 0.25–1 s backgrounded |
+| median `timeupdate` interval while hidden | **The inference itself, measured.** ~250 ms means MP1 §8's load-bearing claim held; ~1000 ms means it did not and the aligned DOM timer covered for it. The overshoot alone cannot tell those apart, which is why this is reported separately |
+| median 250 ms `setInterval` while hidden | MP1 §7.5's claim that WebKit aligns hidden-page DOM timers to 1 s — itself never verified, since WebKit's preference YAMLs had moved |
+
+Two reporting channels, because the primary one is fragile. The probe writes to
+`localStorage` and the workflow reads WebKit's database out of the app container
+**by filename** — a filename WebKit has changed before. Both probes also
+`console.log` their record, Capacitor's iOS bridge forwards console output to
+`print()`, and that lands in the system log the workflow already captures. So a
+renamed database does not silently produce a run that measured nothing. Note the
+dependency honestly: the console channel works only if the bridge is alive, so it
+can rescue an out-point run and can never rescue a `bridge-blocked` one.
 
 **A SIMULATOR IS NOT A DEVICE.** It runs on the host's CPU under the host's power
 policy and models neither true suspension nor RunningBoard's assertions. So a
@@ -149,8 +179,15 @@ and #14 still want one real phone.
   repo has shipped a conclusion drawn from a measurement that did not happen
   twice already (`corpus eval`'s mislabelled `Recall@5`; MP1's emulator run).
 - **Mistaking a natural end for an out-point.** If the tone ran out first the
-  backend would report `END_NATURAL` and the overshoot would look perfect. The
-  tone is 150 s against a ~70 s window, and a test pins that margin.
+  backend would report `END_NATURAL` and the overshoot would look perfect. The tone
+  is 150 s against a ~67 s window and a test pins that margin — but a margin is not
+  a check, so `outPointVerdict` also refuses any `endReason` that is not
+  `"outPoint"`.
+- **Ranking away the decisive negative.** `simctl launch` on a running app can
+  restart it, which writes a second, fresh record. The picker weights *having been
+  backgrounded* above *having stopped*, so a tidy foreground run cannot outrank the
+  backgrounded run in which the out-point never fired — which is the single most
+  valuable result this workflow can produce.
 
 ## 4. What still needs a human
 
@@ -172,8 +209,27 @@ Expected, and cheap to read. The artifact `ios-shell-evidence` carries
 `xcodebuild-simulator.log`, `xcodebuild-device.log`, `cap-add-ios.log`,
 `toolchain.txt` (the OS, Xcode and CocoaPods versions — the first thing to check
 when a runner image moves under you), the injected `Info.plist`, the simulator
-system log, three screenshots and the raw probe records.
+system log, `container-tree.txt`, two screenshots (`01-playing.png`,
+`02-backgrounded.png`) and the raw probe records.
 
-The probe steps are `continue-on-error` on purpose: a probe that cannot report is
-a probe failure, not a build failure, and conflating them would turn "we did not
-learn anything today" into "the iOS shell is broken".
+The two most likely first-run failures, in order:
+
+1. **No `.xcworkspace`.** The workflow builds with `-workspace
+   mobile/ios/App/App.xcworkspace` and asserts that file exists, which assumes
+   Capacitor 8 still generates a CocoaPods workspace. If `cap add ios` ever
+   switches its iOS template to Swift Package Manager there is no workspace and no
+   `pod install`, and the "generate the iOS project" step fails on the `test -f`.
+   It fails **loudly**, which is the point of the assertion — the fix is
+   `-project mobile/ios/App/App.xcodeproj`.
+2. **CocoaPods.** `cap add ios` runs `pod install` itself. Capacitor's Podfile
+   references every `@capacitor/*` pod by local path, so no remote spec repo should
+   be needed — but `cap-add-ios.log` is where that assumption gets tested.
+
+**All three probe steps are `continue-on-error`** (choose simulator, install probe,
+run probes) — a probe that cannot report is a *measurement* failure, not a build
+failure, and conflating them would turn "we did not learn anything today" into "the
+iOS shell is broken". The **build** steps deliberately are not, and a test asserts
+they never become so: proving the shell compiles is the one claim this workflow can
+make on its own, and a build that cannot fail proves nothing. The **reporting**
+step is not either, because the only thing that flag could hide there is a crash in
+the reporter — a green run with no summary at all, which reads as fine.

@@ -17,10 +17,12 @@
  * fetch, and the out-point stages do not depend on it.
  *
  * WHAT THE NUMBERS MEAN, AND THE ONE THAT MATTERS
- *   overshootSec              how far past end_sec playback got. 14 ms is the
- *                             measured foreground figure; MP1 §8 predicts
- *                             0.25–1 s backgrounded; anything in minutes is the
- *                             disaster.
+ *   overshootSec              how far past end_sec playback got. For scale: ~14 ms
+ *                             foreground, but that figure is MP1 §4.3's
+ *                             desktop-Chromium measurement (n=3, a hidden TAB),
+ *                             not a phone and not this backend on iOS. MP1 §8
+ *                             predicts 0.25–1 s backgrounded; anything in minutes
+ *                             is the disaster.
  *   stoppedWhileBackgrounded  false means nothing stopped it until the app came
  *                             back — the failure mode, whatever the overshoot.
  *   timeupdateIntervalsMs     the coarse stage's actual rate while hidden. This
@@ -57,8 +59,9 @@ const KEY = (function () {
 })();
 
 /** Media time at which the segment is "over". Far enough in that the app is
- *  already backgrounded when it arrives, near enough that a 90 s window covers
- *  both the good and the bad outcome. */
+ *  already backgrounded when it arrives (the workflow backgrounds at ~t+14 and
+ *  this page starts at ~t+3, so the boundary lands ~t+28), near enough that the
+ *  ~67 s observation window covers both the good and the bad outcome. */
 const END_SEC = 25;
 const TONE = "probe-tone.wav";
 const TICK_MS = 250;

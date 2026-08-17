@@ -205,6 +205,25 @@ test("installing puts every asset and the tone into the bundle", () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test("installProbe ITSELF refuses the checkout, not just assertBuildArtefact", () => {
+  /* AN ADVERSARIAL PASS DEFEATED THIS SUITE HERE. Every guard test above called
+     `assertBuildArtefact` directly, so replacing its call inside `installProbe`
+     with `path.resolve(dir)` left all 23 tests green — while the entry point the
+     workflow actually invokes would happily patch the repo's own index.html and
+     copy a probe onto the live website. Test the door, not the lock sitting next
+     to it. */
+  assert.throws(() => installProbe(REPO_ROOT), /refusing to patch the repo root/);
+  assert.throws(() => installProbe(REPO_ROOT, { write: false }), /refusing to patch the repo root/);
+  const dir = tmpBundle();
+  fs.writeFileSync(path.join(dir, "CLAUDE.md"), "x");
+  assert.throws(() => installProbe(dir), /source checkout/);
+  fs.rmSync(dir, { recursive: true, force: true });
+  /* And nothing was written to the repo on the way to throwing. */
+  for (const asset of [...PROBE_ASSETS, TONE_NAME]) {
+    assert.equal(fs.existsSync(path.join(REPO_ROOT, asset)), false, `${asset} was written to the repo root`);
+  }
+});
+
 test("--list mode writes nothing", () => {
   const dir = tmpBundle();
   const before = fs.readdirSync(dir).sort();

@@ -31,8 +31,9 @@ const WORKFLOW_REL = ".github/workflows/ios-build.yml";
 const WF = fs.readFileSync(path.join(ROOT, WORKFLOW_REL), "utf8");
 const CI = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
 
-/** Top-level (column-0) keys of a YAML document, in order. Comment lines and
- *  blanks are skipped; nothing nested is reported. */
+/** Top-level (column-0) keys of a YAML document, in order. Safe because a block
+ *  scalar's content must be indented deeper than its key, so nothing inside a
+ *  `run: |` can sit at column 0. */
 function topLevelKeys(src) {
   return src
     .split(/\r?\n/)
@@ -40,7 +41,14 @@ function topLevelKeys(src) {
     .map((l) => l.slice(0, l.indexOf(":")));
 }
 
-/** The lines of one block, by its owning key's indentation. */
+/** The lines of one block, by its owning key's indentation.
+ *
+ *  COMMENTS AND BLANKS ARE SKIPPED RATHER THAN RETURNED, and that was a real
+ *  defect: an earlier version pushed them, so a *comment* inside `on:` that
+ *  happened to mention `"mobile/**"` satisfied the path-filter assertion below —
+ *  and that block does carry comments explaining the filter. A test that a
+ *  comment can satisfy is not a test. Scanning still continues through them, so a
+ *  blank line does not end the block. */
 function block(src, key, indent = 0) {
   const lines = src.split(/\r?\n/);
   const pad = " ".repeat(indent);
@@ -48,12 +56,35 @@ function block(src, key, indent = 0) {
   if (start < 0) return null;
   const out = [];
   for (let i = start + 1; i < lines.length; i++) {
-    if (lines[i].trim() === "" || lines[i].trimStart().startsWith("#")) { out.push(lines[i]); continue; }
+    if (lines[i].trim() === "" || lines[i].trimStart().startsWith("#")) continue;
     const lead = lines[i].length - lines[i].trimStart().length;
     if (lead <= indent) break;
     out.push(lines[i]);
   }
   return out.join("\n");
+}
+
+/** Every comment line in the file, unwrapped into one string.
+ *
+ *  Assertions about the header's PROSE have to read it this way: a claim like
+ *  "minutes of wall clock per run" is wrapped across two `#` lines at 80 columns,
+ *  so a naive regex over the raw file fails the moment someone reflows a
+ *  paragraph — which is a documentation edit, not a behaviour change, and should
+ *  not turn a suite red. */
+function prose(src) {
+  return src
+    .split(/\r?\n/)
+    .filter((l) => l.trimStart().startsWith("#"))
+    .map((l) => l.trimStart().replace(/^#+\s?/, ""))
+    .join(" ")
+    .replace(/\s+/g, " ");
+}
+
+/** One step's YAML, by its `name:`. Used to assert per-step properties that a
+ *  whole-file regex cannot see (a `continue-on-error` on the wrong step, say). */
+function step(src, nameFragment) {
+  const chunks = src.split(/\n(?= {6}- (?:name|uses):)/);
+  return chunks.find((c) => c.includes(nameFragment)) ?? null;
 }
 
 /** Every `xcodebuild` COMMAND in the workflow, as one line each.
@@ -93,6 +124,22 @@ test("it is manually dispatchable and path-filtered, and never runs on a push", 
   assert.match(on, /pull_request:/);
   assert.equal(/^\s{2}push:/m.test(on), false, "a push trigger would run this on every merge to main");
   assert.equal(/^\s{2}schedule:/m.test(on), false, "a schedule would run this on days nothing changed");
+});
+
+test("the trigger is `paths`, not `paths-ignore`", () => {
+  /* AN ADVERSARIAL PASS DEFEATED THIS SUITE WITH ONE WORD. Changing `paths:` to
+     `paths-ignore:` left all 20 tests green — every assertion below is about the
+     LIST, and the list is identical — while inverting the trigger: a 15-minute
+     macOS job on every PR that does NOT touch mobile/**, which is every nightly
+     content PR. The cost design this file exists to hold, undone in nine
+     characters. */
+  const on = block(WF, "on");
+  assert.match(on, /^ {4}paths:$/m, "the pull_request trigger must filter with `paths:`");
+  assert.equal(
+    /paths-ignore/.test(WF),
+    false,
+    "`paths-ignore` INVERTS the filter — this job would run on every PR that does not touch the shell"
+  );
 });
 
 test("the path filter covers what the shell is built from, and nothing broader", () => {
@@ -172,13 +219,54 @@ test("every xcodebuild build disables code signing", () => {
   }
 });
 
-test("both a simulator and a device architecture are built", () => {
+test("both a simulator and a device architecture are BUILT, not merely mentioned", () => {
   /* They are not the same compile: the device build is arm64/Release, the
      configuration a TestFlight build would use, and it is the one that would
-     catch an arch-specific or Release-only failure. The simulator build is the
-     one the probes run in. */
-  assert.match(WF, /-sdk iphonesimulator/);
-  assert.match(WF, /-sdk iphoneos/);
+     catch an arch-specific or Release-only failure.
+
+     ANCHORED TO A BUILD INVOCATION, because a whole-file `assert.match(WF,
+     /-sdk iphoneos/)` was defeated by changing the device build to
+     Debug/iphonesimulator: `-sdk iphoneos` still appeared, inside the gated
+     archive step that has never executed. The claim is about what this job
+     compiles, so it has to be read off the compile commands. */
+  const builds = xcodebuildInvocations(WF).filter(
+    (c) => /\sbuild(\s|$)/.test(c) && !/-exportArchive|-archivePath/.test(c)
+  );
+  const sdks = builds.map((c) => (/-sdk (\S+)/.exec(c) || [])[1]);
+  assert.ok(sdks.includes("iphonesimulator"), `no simulator build; sdks built: ${sdks.join(", ")}`);
+  assert.ok(sdks.includes("iphoneos"), `no device-architecture build; sdks built: ${sdks.join(", ")}`);
+  const release = builds.find((c) => /-sdk iphoneos/.test(c));
+  assert.match(release, /-configuration Release/, "the device build must use the shipping configuration");
+});
+
+test("neither build step can be made unable to fail", () => {
+  /* ANOTHER ONE-EDIT DEFEAT. `continue-on-error: true` on the simulator build
+     left all 20 tests green and made "PROVE THE SHELL BUILDS" — the workflow's
+     primary value, and the one claim #38 can actually establish — decorative. The
+     probe steps carry that flag deliberately; the build steps must never. */
+  for (const fragment of ["Build for the iOS Simulator", "Build for a real device"]) {
+    const s = step(WF, fragment);
+    assert.ok(s, `step not found: ${fragment}`);
+    assert.equal(
+      /continue-on-error/.test(s),
+      false,
+      `"${fragment}" carries continue-on-error, so a failed build would not fail the job`
+    );
+  }
+});
+
+test("the two measurements are actually invoked", () => {
+  /* Deleting the simulator and probe steps outright left all 20 tests green, and
+     with them both things #38 exists to settle. Nothing asserted they were
+     present — only that IF present they were shaped correctly. */
+  assert.match(WF, /node tools\/mobile\/probe\/install-probe\.mjs/, "the bridge/out-point probe is never installed");
+  assert.match(WF, /xcrun simctl bootstatus/, "no simulator is ever booted");
+  assert.match(WF, /xcrun simctl launch "\$UDID" "\$APP_ID"/, "the app is never launched");
+  assert.match(WF, /node tools\/mobile\/ios-ci\.mjs verdict/, "no verdict is ever reported");
+  /* And the backgrounding, which is the whole out-point measurement: without it
+     the probe would report a foreground run, which player/html-audio-backend.test.js
+     already covers. */
+  assert.match(WF, /simctl launch "\$UDID" com\.apple\./, "the app is never backgrounded");
 });
 
 test("the plist injection goes through the tested script, not through sed or PlistBuddy alone", () => {
@@ -223,18 +311,50 @@ test("the gate is the tested function, not an inline expression over secrets", (
   assert.match(WF, /node tools\/mobile\/ios-ci\.mjs signing-gate/);
 });
 
-test("no secret is echoed, written to a log, or committed", () => {
-  /* CLAUDE.md decision-authority item 2. Base64 secrets are decoded straight into
-     files; nothing prints one. */
-  for (const line of WF.split(/\r?\n/)) {
-    if (!/\$\{\{\s*secrets\./.test(line)) continue;
-    assert.equal(
-      /^\s*(echo|printf|cat)\b/.test(line.trim()),
-      false,
-      `a secret is being printed: ${line.trim()}`
+test("no secret is echoed to the log, by either spelling", () => {
+  /* CLAUDE.md decision-authority item 2. Two spellings, and the first version of
+     this test only caught one: `${{ secrets.X }}` inline, and `$X` after the
+     secret has been mapped into `env:` — which is how every line in the upload
+     step refers to them. `echo "$IOS_DIST_CERT_P12_BASE64" | base64 --decode >
+     file` is fine (a redirect, and GitHub masks the value anyway); an `echo` that
+     ENDS at the console is not. */
+  const names = SIGNING_SECRET_NAMES();
+  for (const raw of WF.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!/^(echo|printf|cat)\b/.test(line)) continue;
+    const mentionsSecret =
+      /\$\{\{\s*secrets\./.test(line) || names.some((n) => line.includes(`$${n}`) || line.includes(`${n}}`));
+    if (!mentionsSecret) continue;
+    assert.ok(
+      />\s*\S/.test(line) || /\|\s*base64/.test(line),
+      `a secret reaches the console rather than a file: ${line}`
     );
   }
   assert.equal(/secrets\.GITHUB_TOKEN/.test(WF), false, "this workflow needs no token");
+});
+
+/** The secret names the gate declares, read from the module rather than retyped —
+ *  a hardcoded list here would drift from the one the workflow actually uses. */
+function SIGNING_SECRET_NAMES() {
+  const src = fs.readFileSync(path.join(ROOT, "tools/mobile/ios-ci.mjs"), "utf8");
+  const m = /SIGNING_SECRETS = \[([^\]]+)\]/.exec(src);
+  assert.ok(m, "could not read SIGNING_SECRETS out of tools/mobile/ios-ci.mjs");
+  return [...m[1].matchAll(/"([A-Z0-9_]+)"/g)].map((x) => x[1]);
+}
+
+test("every secret the gate checks is actually passed to the gate step", () => {
+  /* The gate reports a secret as MISSING when it is simply not wired into the
+     step's `env:` — indistinguishable, from the log, from a secret nobody set. So
+     the two lists have to agree, and neither is allowed to drift alone. */
+  const gateStep = step(WF, "Is signing configured?");
+  assert.ok(gateStep);
+  for (const name of SIGNING_SECRET_NAMES()) {
+    assert.match(
+      gateStep,
+      new RegExp(`${name}: \\$\\{\\{ secrets\\.${name} \\}\\}`),
+      `${name} is checked by signingReadiness() but never passed to the gate step`
+    );
+  }
 });
 
 test("no credential value is hardcoded anywhere in the workflow", () => {
@@ -254,9 +374,12 @@ test("ci.yml's ios-kit job is untouched and still compiles ForayKit", () => {
   assert.match(CI, /runs-on: macos-latest/);
 });
 
-test("the required checks in ci.yml are still exactly backend and data-and-site", () => {
-  /* Read as: this change did not add a job to the required set. If a founder
-     later adds one deliberately, this line is where they will notice. */
+test("ci.yml still declares exactly its three jobs, and #38 added none", () => {
+  /* NOT a check on the `protect-main` ruleset — that lives in GitHub's settings
+     and nothing in this repo can read it. What this asserts is narrower and still
+     worth having: `ci.yml` has the same three jobs it had before #38, so the two
+     REQUIRED contexts (`backend`, `data-and-site`) are still produced by the job
+     names they were produced by, and #38 did not quietly add a fourth. */
   const jobs = block(CI, "jobs")
     .split(/\r?\n/)
     .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
@@ -269,13 +392,36 @@ test("the required checks in ci.yml are still exactly backend and data-and-site"
 test("the workflow states its own cost, in both the public and private case", () => {
   /* #38 asked for the expected minutes per run to be stated. It is in the header
      because a cost that lives only in a PR body is a cost nobody can find later —
-     and the 10x multiplier starts billing the day this repo stops being public. */
-  assert.match(WF, /10x/);
-  assert.match(WF, /minutes per run|minutes of wall clock per run/);
-  assert.match(WF, /PUBLIC/);
+     and the 10x multiplier starts billing the day this repo stops being public.
+     The figure is an ESTIMATE and the header must say so: nothing had run when it
+     was written, and this repo's own research doc keeps a measured-versus-documented
+     table precisely because estimates get quoted as measurements. */
+  const text = prose(WF);
+  assert.match(text, /10x/);
+  assert.match(text, /minutes of wall clock per run/);
+  assert.match(text, /billable minutes/);
+  assert.match(text, /PUBLIC/);
+  assert.match(text, /estimate/i);
+});
+
+test("the runner context is not used where GitHub does not provide it", () => {
+  /* A job-level `env:` can see github/needs/strategy/matrix/vars/secrets/inputs
+     and NOT `runner`. Using it there is a workflow-compile error, so the job never
+     starts at all — a failure mode with no log and no partial output. It was
+     exactly this, caught by review rather than by a run. */
+  const jobEnv = block(WF, "env", 4);
+  assert.ok(jobEnv, "no job-level env block");
+  assert.equal(
+    /\$\{\{\s*runner\./.test(jobEnv),
+    false,
+    "the `runner` context is unavailable in a job-level env: block — set the path from " +
+      "$RUNNER_TEMP in a step instead"
+  );
 });
 
 test("the simulator caveat is in the workflow itself, not only in the report", () => {
-  assert.match(WF, /SIMULATOR IS NOT A DEVICE/i);
-  assert.match(WF, /weaker evidence than a FAILURE/i);
+  const text = prose(WF);
+  assert.match(text, /SIMULATOR IS NOT A DEVICE/i);
+  assert.match(text, /does not model power management/i);
+  assert.match(text, /weaker evidence than a FAILURE/i);
 });

@@ -19,6 +19,7 @@ import assert from "node:assert/strict";
 import {
   BACKGROUND_AUDIO_MODE,
   PlistError,
+  assertModePresent,
   backgroundModes,
   injectBackgroundAudio,
   rootEntries,
@@ -287,4 +288,61 @@ test("a mode name that would break the XML is refused", () => {
   for (const bad of ["", "  ", "<script>", "audio&more", null, 7]) {
     assert.throws(() => injectBackgroundAudio(CAPACITOR_PLIST, bad), PlistError, `accepted ${bad}`);
   }
+});
+
+/* ─────────── three holes an adversarial pass opened, now closed ──────────── */
+
+test("a padded <string> audio </string> is refused, not read as present", () => {
+  /* FOUND BY AN ADVERSARIAL PASS, AND IT DEFEATED EVERY CHECK IN THE PIPELINE.
+     `arrayStrings` used to `.trim()` each member, so a padded mode read as
+     "audio" — the injector reported "already present", wrote nothing, and its own
+     re-parse agreed. On the runner `--check` passed, `plutil -lint` passed, and
+     `PlistBuddy | grep -q audio` passed on the padded value. All three
+     "independent confirmations" agreed and all three were wrong: iOS does not
+     honour a mode with surrounding whitespace, so audio would have died on the
+     lock screen with CI fully green. */
+  const padded = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string> audio </string>\n\t</array>\n\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.throws(() => backgroundModes(padded), /surrounding whitespace/);
+  assert.throws(() => injectBackgroundAudio(padded), /surrounding whitespace/);
+});
+
+test("a newline inside a <string> member is the same refusal", () => {
+  const wrapped = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>\n\t\t\taudio\n\t\t</string>\n\t</array>\n\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.throws(() => injectBackgroundAudio(wrapped), /surrounding whitespace/);
+});
+
+test("two root-level UIBackgroundModes keys are refused, not merged into the first", () => {
+  /* ALSO FOUND BY AN ADVERSARIAL PASS. `.find()` took the first key; every plist
+     reader, Apple's included, takes the LAST. So the script appended `audio` to a
+     key nothing reads, reported success, and `--check` — which used the same
+     `.find()` — agreed. The effective value stayed `["location"]`. */
+  const twice = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>fetch</string>\n\t</array>\n" +
+      "\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>location</string>\n\t</array>\n" +
+      "\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.throws(() => backgroundModes(twice), /declares UIBackgroundModes 2 times/);
+  assert.throws(() => injectBackgroundAudio(twice), /declares UIBackgroundModes 2 times/);
+});
+
+test("assertModePresent is a real function, and it rejects what it should", () => {
+  /* THE THIRD HOLE. This check used to be an inline `if` at the end of
+     `injectBackgroundAudio`; changing it to `if (false)` left all 22 tests green,
+     while its own comment says that without it every failure above "degrades to
+     'returned the input unchanged and said it worked'". A guard that can be
+     deleted invisibly is not a guard, so it is named and tested directly. */
+  assert.throws(() => assertModePresent(CAPACITOR_PLIST, "audio"), /the edit did not take/);
+  const withLocationOnly = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>UIBackgroundModes</key>\n\t<array>\n\t\t<string>location</string>\n\t</array>\n\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.throws(() => assertModePresent(withLocationOnly, "audio"), /does not include "audio"/);
+  assert.deepEqual(assertModePresent(injectBackgroundAudio(CAPACITOR_PLIST).xml, "audio"), ["audio"]);
 });

@@ -17,13 +17,14 @@
  * must not need the very `'unsafe-inline'` whose absence it is measuring, and an
  * inline probe would have been blocked and told us nothing.
  *
- * WHY IT PATCHES THE BUILT BUNDLE AND NOT `mobile/www`
- * The Xcode project does not care what is inside its web assets, so the honest
- * BUILD verdict comes from compiling the CLEAN bundle. The probe then goes into
- * a COPY of the built `.app`, which needs no rebuild — one xcodebuild instead of
- * two on a runner that bills at 10x. `tools/mobile/prepare-webdir.mjs` also
- * deletes and rebuilds its output directory every run, so no probe can survive
- * into a real build even by accident.
+ * WHY CI PATCHES THE BUILT BUNDLE RATHER THAN `mobile/www`
+ * Either directory is accepted — both are build artefacts — but the workflow uses
+ * the built `.app`'s `public/`, and the reason is the build verdict: the Xcode
+ * project does not care what is inside its web assets, so compiling the CLEAN
+ * bundle and then patching a COPY of the product gives an honest "it builds" and
+ * needs no second xcodebuild on a runner that bills at 10x.
+ * `tools/mobile/prepare-webdir.mjs` also deletes and rebuilds its output directory
+ * every run, so no probe can survive into a real build even by accident.
  *
  * THE GUARD THAT MATTERS: this refuses to touch the repo's own working tree. The
  * target must be a build artefact, not the checkout — patching the committed

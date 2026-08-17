@@ -19,7 +19,7 @@
  *   node tools/mobile/ios-ci.mjs signing-gate
  *   node tools/mobile/ios-ci.mjs pick-simulator [simctl-devices.json]
  *   node tools/mobile/ios-ci.mjs decode-localstorage <rows.json...>
- *   node tools/mobile/ios-ci.mjs verdict <localstorage.json>
+ *   node tools/mobile/ios-ci.mjs verdict <localstorage.json> [probe-console.txt]
  */
 
 import fs from "node:fs";
@@ -217,12 +217,83 @@ export function parseDump(dump) {
  */
 export function pickOutPoint(records) {
   if (!Array.isArray(records) || records.length === 0) return null;
+  /* BACKGROUNDING OUTRANKS STOPPING, and an adversarial pass is why. The first
+     version scored `stoppedAtSec` above `backgroundedAtWall`, so a restarted run
+     that played in the FOREGROUND and stopped cleanly beat the real backgrounded
+     run in which the out-point NEVER FIRED — and `never-fired` is the one result
+     MP1 §8 said would force a native iOS backend (#28). Ranking a foreground pass
+     above the decisive negative is the exact failure this function's header
+     claims to prevent. A record that never left the foreground cannot answer
+     #38's question at all, so it sorts last however tidy it looks. */
   const score = (r) =>
+    (r?.backgroundedAtWall != null ? 8 : 0) +
     (r?.stoppedAtSec != null ? 4 : 0) +
-    (r?.backgroundedAtWall != null ? 2 : 0) +
-    (r?.autoplayBlocked ? -1 : 0) +
-    (Array.isArray(r?.timeupdateIntervalsMs) && r.timeupdateIntervalsMs.length ? 1 : 0);
+    (r?.stoppedWhileBackgrounded === true ? 2 : 0) +
+    (Array.isArray(r?.timeupdateIntervalsMs) && r.timeupdateIntervalsMs.length ? 1 : 0) +
+    (r?.autoplayBlocked ? -1 : 0);
   return [...records].sort((a, b) => score(b) - score(a))[0];
+}
+
+/**
+ * The same records, recovered from the simulator's system log.
+ *
+ * THE SECOND CHANNEL, AND IT IS NOT REDUNDANT DECORATION. The primary channel is
+ * WebKit's local-storage database, found by filename in the app container — a
+ * filename WebKit has changed before and can change again with a runner image
+ * bump. If that `find` stops matching, every verdict reads `inconclusive` and the
+ * job is GREEN: #38 would produce nothing, forever, with no error anywhere. Both
+ * probes also `console.log` their record, Capacitor's iOS bridge forwards console
+ * output to `print()`, and `print()` lands in the system log the workflow already
+ * captures. So the data is usually sitting in the artifact even when the database
+ * read fails, and an earlier version of this file captured it and never looked.
+ *
+ * Note the dependency, honestly: this channel works only if the bridge is alive,
+ * which is one of the things being measured. It rescues an out-point run; it
+ * cannot rescue a `bridge-blocked` run. That is why it is the second channel and
+ * not the first.
+ */
+export function parseConsoleProbes(text) {
+  const bridge = [];
+  const outPoints = [];
+  for (const line of String(text ?? "").split(/\r?\n/)) {
+    const m = /FORAY_PROBE_(BRIDGE|OUTPOINT)\s+(\{.*\})/.exec(line);
+    if (!m) continue;
+    let rec = null;
+    try {
+      rec = JSON.parse(m[2]);
+    } catch {
+      /* Log lines get truncated. Retry against the longest prefix that closes. */
+      const cut = m[2].lastIndexOf("}");
+      if (cut > 0) { try { rec = JSON.parse(m[2].slice(0, cut + 1)); } catch { rec = null; } }
+    }
+    if (rec && typeof rec === "object") (m[1] === "BRIDGE" ? bridge : outPoints).push(rec);
+  }
+  return { bridge, outPoints };
+}
+
+/** Everything both channels found, and which channel each answer came from. */
+export function collectProbes({ dump, consoleText } = {}) {
+  const fromDump = parseDump(dump);
+  const fromConsole = parseConsoleProbes(consoleText);
+  /* The bridge probe rewrites one record as it learns more (an immediate
+     snapshot, then a re-check at 3 s with the service-worker count), so the LAST
+     console copy is the most complete. localStorage already holds only the final
+     one, and is preferred because it does not depend on the bridge. */
+  const bridge = fromDump.bridge ?? fromConsole.bridge[fromConsole.bridge.length - 1] ?? null;
+  const outPoints = [...fromDump.outPoints, ...fromConsole.outPoints];
+  return {
+    bridge,
+    outPoints,
+    outPoint: pickOutPoint(outPoints),
+    sources: {
+      bridge: fromDump.bridge ? "localStorage" : fromConsole.bridge.length ? "console" : "none",
+      outPoint: fromDump.outPoints.length
+        ? "localStorage"
+        : fromConsole.outPoints.length
+          ? "console"
+          : "none",
+    },
+  };
 }
 
 /* ─────────────────────────────── the verdicts ────────────────────────────── */
@@ -259,28 +330,49 @@ export function bridgeVerdict(probe) {
   }
   const csp = Array.isArray(probe.cspViolations) ? probe.cspViolations : [];
   const scriptBlocked = csp.filter((v) => /script-src/.test(v?.directive || ""));
-  const sw = typeof probe.swRegistrations === "number" ? probe.swRegistrations : null;
+  /* `swRegistrations: 0` is only evidence if the API existed to be asked. Where
+     `navigator.serviceWorker` is absent, 0 is true by construction and reporting
+     it as "invariant 3 holding" would be a pass drawn from an absence. */
+  const sw =
+    typeof probe.swRegistrations === "number" && probe.hasServiceWorkerApi !== false
+      ? probe.swRegistrations
+      : null;
   const swNote =
     sw === null
-      ? " Service-worker registration count was not reported."
+      ? probe.hasServiceWorkerApi === false
+        ? " Service workers are not available on this origin at all, so the registration count " +
+          "says nothing either way."
+        : " Service-worker registration count was not reported."
       : sw === 0
         ? " Service worker: 0 registrations inside the shell, which is invariant 3 holding."
         : ` SERVICE WORKER: ${sw} registration(s) inside the shell — invariant 3 is BROKEN here.`;
 
   if (probe.capacitorType === "undefined") {
+    /* DO NOT NAME THE CSP AS THE CAUSE WITHOUT A VIOLATION TO POINT AT. An
+       adversarial pass caught this asserting "the CSP blocked the bridge" from a
+       missing `window.Capacitor` alone — and on iOS the CSP is the LEAST likely
+       explanation: docs/mobile-shell.md §5 reasons that WKWebView injects via
+       `WKUserScript`, outside the document's CSP. A failed `cap add`, a broken
+       config, or a probe that ran before injection are all likelier. Turning a
+       harness failure into a decisive architectural finding is how a false claim
+       ends up in a doc. */
+    const cause = scriptBlocked.length
+      ? `The page reported ${scriptBlocked.length} script-src violation(s), so the CSP is the ` +
+        `likely cause and this settles docs/mobile-shell.md §5 for iOS. Its "why the fix may not ` +
+        `be one token" paragraph has the two options, both of which change the shell's shape.`
+      : `NO script-src violation was observed, so the CAUSE IS UNKNOWN — and on iOS the CSP is ` +
+        `the least likely one: docs/mobile-shell.md §5 reasons that WKWebView injects via ` +
+        `WKUserScript, outside the document's CSP. Check cap-add-ios.log, csp-messages.txt and ` +
+        `the simulator log before concluding anything about the CSP.`;
     return {
       verdict: "bridge-blocked",
-      headline: "window.Capacitor is UNDEFINED in the iOS shell — the CSP blocked the bridge.",
+      headline: "window.Capacitor is UNDEFINED in the iOS shell — the bridge did not reach the page.",
       detail:
-        `This is the decisive failure. All four installed plugins are dead, and the shell loses ` +
-        `the native signal it uses to keep the service worker off.` +
-        (scriptBlocked.length
-          ? ` The page also reported ${scriptBlocked.length} script-src violation(s).`
-          : "") +
-        swNote +
-        " docs/mobile-shell.md § 'why the fix may not be one token' has the two options, both of " +
-        "which change the shell's shape.",
+        `All four installed plugins would be dead, and the shell loses the native signal it uses ` +
+        `to keep the service worker off. ${cause}` +
+        swNote,
       swRegistrations: sw,
+      cspAttributable: scriptBlocked.length > 0,
     };
   }
   if (probe.capacitorType !== "object") {
@@ -312,16 +404,29 @@ export function bridgeVerdict(probe) {
       `plugins=${JSON.stringify(probe.pluginNames || [])}, ` +
       `${csp.length} CSP violation(s) observed by the page.` +
       swNote +
-      " This settles the iOS half of docs/mobile-shell.md's top open risk with a measurement. " +
-      "It says NOTHING about Android, whose bridge is injected by a different mechanism — that " +
-      "is HUMAN-ACTIONS.md #16 and it stays open.",
+      " So on iOS, `script-src 'self'` does not block Capacitor's bridge injection — which is " +
+      "what docs/mobile-shell.md §5 REASONED (WKWebView injects via WKUserScript, outside the " +
+      "document's CSP) and nobody had run. It says NOTHING about Android: that bridge is an " +
+      "inline <script> in the served HTML, a different mechanism, and it is what §5 is actually " +
+      "about. HUMAN-ACTIONS.md #16 stays open.",
     swRegistrations: sw,
   };
 }
 
-/** Overshoot at or under this is the good outcome MP1 §8 predicts (~0.25 s if
- *  `timeupdate` survives, ~1 s if only the aligned DOM timer does). */
+/** Overshoot at or under this counts as "the out-point still works".
+ *
+ *  MP1 §8's two predictions are **~0.25 s** if `timeupdate` survives
+ *  backgrounding and **~1 s** if only the 1 s-aligned DOM timer does. 1.5 s is
+ *  OUR tolerance — a margin above the worse of the two — and not a number MP1
+ *  contains. That distinction was a real defect: an earlier version of this file
+ *  printed "inside MP1 §8's predicted 1.5s band", attributing its own threshold
+ *  to the source document, in a repo whose research doc carries a
+ *  measured-versus-documented table precisely to stop that. */
 export const OVERSHOOT_OK_SEC = 1.5;
+/** MP1 §8's prediction if the `timeupdate` inference HOLDS. */
+export const MP1_TIMEUPDATE_PREDICTION_SEC = 0.25;
+/** MP1 §8's prediction if it does not, and only the aligned DOM timer survives. */
+export const MP1_ALIGNED_TIMER_PREDICTION_SEC = 1;
 /** Above this the out-point did not meaningfully fire. MP1 §3 measured the cost
  *  of a missed out-point at a 936.5 s median — 15.6 minutes of the wrong
  *  episode — so anything in the middle band is still a real defect. */
@@ -359,6 +464,25 @@ export function outPointVerdict(probe) {
       detail:
         "`visibilitychange` never reported hidden. An out-point firing in a FOREGROUNDED page is " +
         "what player/html-audio-backend.test.js already covers.",
+    };
+  }
+  /* THE OUT-POINT MUST BE WHAT STOPPED IT. `html-audio-backend.js` reports the
+     same `onItemEnded` for a finished FILE (`END_NATURAL` = "natural") as for a
+     boundary (`END_OUT_POINT` = "outPoint"), by design — the manager must not be
+     able to tell them apart. Here they are opposite results: if the tone ran out
+     first, the "overshoot" would look perfect and mean nothing. The 150 s tone
+     against a ~70 s window is a margin, not a check, so this is the check. */
+  if (probe.endReason != null && probe.endReason !== "outPoint") {
+    return {
+      verdict: "inconclusive",
+      headline: `Playback ended with reason "${probe.endReason}", not at the out-point.`,
+      detail:
+        probe.endReason === "natural"
+          ? "The audio file ended before the boundary did, so the stop measures the length of the " +
+            "tone rather than the out-point. Lengthen TONE_SECONDS in " +
+            "tools/mobile/probe/install-probe.mjs; nothing is known about backgrounding from this run."
+          : "An unexpected end reason. Nothing is known about backgrounding from this run.",
+      overshootSec: null,
     };
   }
   if (probe.stoppedAtSec == null) {
@@ -403,12 +527,32 @@ export function outPointVerdict(probe) {
     };
   }
   if (overshoot <= OVERSHOOT_OK_SEC) {
+    /* WHICH of MP1 §8's two predictions came true is a separate question from
+       whether the out-point works, and it is the more interesting one. ~0.25 s
+       means `timeupdate` survived — the load-bearing inference held. ~1 s means
+       it did NOT, and the 1 s-aligned DOM timer covered for it. The median
+       timeupdate interval tells them apart directly; the overshoot alone does
+       not, which is why an earlier version collapsing both into "inside the
+       predicted band" was hiding the finding. */
+    const inference =
+      median == null
+        ? "No timeupdate intervals were sampled while hidden, so which of MP1 §8's two mechanisms " +
+          "carried this is unknown."
+        : median <= 500
+          ? `timeupdate kept firing at ~${median.toFixed(0)} ms while hidden, so MP1 §8's ` +
+            `load-bearing inference HELD (it predicted ~${MP1_TIMEUPDATE_PREDICTION_SEC}s of overshoot ` +
+            `in that case).`
+          : `timeupdate slowed to ~${median.toFixed(0)} ms while hidden, so MP1 §8's inference did ` +
+            `NOT hold — the ~1 s-aligned DOM timer covered for it, which is the ` +
+            `~${MP1_ALIGNED_TIMER_PREDICTION_SEC}s case that document also predicted. The out-point ` +
+            `still works; its precision in the background does not come from where MP1 thought.`;
     return {
       verdict: "fires-in-background",
       headline:
-        `The out-point FIRED while backgrounded, ${overshoot.toFixed(3)}s past end_sec — inside ` +
-        `MP1 §8's predicted ${OVERSHOOT_OK_SEC}s band.`,
-      detail: base,
+        `The out-point FIRED while backgrounded, ${overshoot.toFixed(3)}s past end_sec — within ` +
+        `this workflow's ${OVERSHOOT_OK_SEC}s tolerance, against MP1 §8's predictions of ` +
+        `~${MP1_TIMEUPDATE_PREDICTION_SEC}s / ~${MP1_ALIGNED_TIMER_PREDICTION_SEC}s.`,
+      detail: `${base} ${inference}`,
       overshootSec: overshoot,
       medianTimeupdateMs: median,
     };
@@ -452,20 +596,47 @@ export const SIMULATOR_CAVEAT =
   "device will behave the same way, while a failure would have been decisive. " +
   "HUMAN-ACTIONS.md #11/#14 still want one real phone.";
 
-/** The whole report, as markdown for `$GITHUB_STEP_SUMMARY`. */
-export function renderReport({ bridge, outPoint, signing, build }) {
+/**
+ * The whole report, as markdown for `$GITHUB_STEP_SUMMARY`.
+ *
+ * `signingState` is passed IN, from the gate step's own output. It used to be
+ * recomputed here from `process.env` — but the reporting step is not given the
+ * secrets (and must not be), so section 3 read "no signing secrets set" no matter
+ * what. It was right only by accident, and would have started lying the day
+ * HUMAN-ACTIONS.md #17 was done: the same run would have said `state=ready` at
+ * the gate and "not configured" in the summary. A report that cannot observe what
+ * it asserts should not assert it.
+ */
+export function renderReport({ bridge, outPoint, signingState, build }) {
   const b = bridgeVerdict(bridge);
   const o = outPointVerdict(outPoint);
-  const s = signingReadiness(signing || {});
   const lines = [];
   lines.push("## iOS shell — what this run actually established", "");
   if (build) lines.push(`**Build:** ${build}`, "");
   lines.push(`### 1. Capacitor's bridge vs our CSP — \`${b.verdict}\``, "", b.headline, "", b.detail, "");
   lines.push(`### 2. The out-point while backgrounded — \`${o.verdict}\``, "", o.headline, "", o.detail, "");
   lines.push(`> ${SIMULATOR_CAVEAT}`, "");
-  lines.push(`### 3. TestFlight upload — \`${s.state}\``, "", s.message, "");
+  lines.push(
+    `### 3. TestFlight upload — \`${signingState || "not reported"}\``,
+    "",
+    signingState
+      ? SIGNING_STATE_NOTES[signingState] || `The signing gate reported \`${signingState}\`.`
+      : "The signing gate did not report — read its own step, not this line.",
+    ""
+  );
   return lines.join("\n");
 }
+
+const SIGNING_STATE_NOTES = {
+  ready: "All signing secrets are present, so the archive and TestFlight upload ran. That path has " +
+    "never executed before — read its log rather than assuming it worked.",
+  absent:
+    "No signing secrets are set, so the upload was skipped. The unsigned build still ran, and that " +
+    "is the designed behaviour — see HUMAN-ACTIONS.md #17.",
+  partial:
+    "Signing is only half configured, so the job failed on purpose rather than skipping the upload " +
+    "on a green run. See HUMAN-ACTIONS.md #17: set all seven secrets or none.",
+};
 
 /* --------------------------------------------------------------------- main */
 
@@ -509,15 +680,18 @@ if (isMain) {
       console.log(JSON.stringify(decodeLocalStorageRows(rows), null, 2));
     } else if (cmd === "verdict") {
       const dump = readMaybe(rest[0]) || {};
-      const { bridge, outPoint, outPoints } = parseDump(dump);
+      const consoleText =
+        rest[1] && fs.existsSync(rest[1]) ? fs.readFileSync(rest[1], "utf8") : "";
+      const { bridge, outPoint, outPoints, sources } = collectProbes({ dump, consoleText });
       console.error(
-        `read ${Object.keys(dump).length} localStorage key(s); ` +
-          `bridge record ${bridge ? "present" : "ABSENT"}; ${outPoints.length} out-point record(s)`
+        `read ${Object.keys(dump).length} localStorage key(s) and ${consoleText.length} bytes of ` +
+          `console log; bridge record ${bridge ? `from ${sources.bridge}` : "ABSENT"}; ` +
+          `${outPoints.length} out-point record(s) from ${sources.outPoint}`
       );
       const report = renderReport({
         bridge,
         outPoint,
-        signing: process.env,
+        signingState: process.env.SIGNING_STATE || null,
         build: process.env.IOS_BUILD_STATUS || null,
       });
       if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, report + "\n");
@@ -533,8 +707,11 @@ if (isMain) {
       /* Deliberately exit 0 for every verdict, INCLUDING the bad ones. This step
          reports a measurement; it is not a gate. A red X here would read as "the
          iOS build is broken" when what happened is that we learned something —
-         and #38's own instruction is that the build must keep running. The
-         verdicts are in the job summary and the PR body. */
+         and #38's own instruction is that the build must keep running.
+         WHERE TO READ THE RESULT: the run's job summary and the `ios-shell-evidence`
+         artifact. Nothing here writes to a PR — this workflow holds
+         `contents: read` and no token, deliberately — so if a verdict belongs in a
+         PR body, a human or a session puts it there. */
     } else {
       console.error("Usage: node tools/mobile/ios-ci.mjs <signing-gate|pick-simulator|verdict> [args]");
       process.exit(2);

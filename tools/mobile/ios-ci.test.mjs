@@ -19,14 +19,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  MP1_ALIGNED_TIMER_PREDICTION_SEC,
+  MP1_TIMEUPDATE_PREDICTION_SEC,
   OVERSHOOT_BAD_SEC,
   OVERSHOOT_OK_SEC,
   SIGNING_SECRETS,
   SIMULATOR_CAVEAT,
   bridgeVerdict,
+  collectProbes,
   decodeLocalStorageRows,
   medianMs,
   outPointVerdict,
+  parseConsoleProbes,
   parseDump,
   pickOutPoint,
   pickSimulator,
@@ -215,6 +219,67 @@ test("the most informative out-point record wins, not the last one", () => {
   assert.equal(pickOutPoint(null), null);
 });
 
+test("a backgrounded record that NEVER FIRED beats a tidy foreground one", () => {
+  /* AN ADVERSARIAL PASS FOUND THIS RANKED THE WRONG WAY ROUND, and it discarded
+     the single most valuable result this workflow can produce. `stoppedAtSec` used
+     to outscore `backgroundedAtWall`, so a restarted run that played in the
+     FOREGROUND and stopped cleanly beat the real backgrounded run in which the
+     out-point never fired — and `never-fired` is the outcome MP1 §8 said would
+     force a native iOS backend (#28). A record that never left the foreground
+     cannot answer #38's question at all, however tidy it looks. */
+  const foregroundPass = { endSec: 25, stoppedAtSec: 25.01, backgroundedAtWall: null };
+  const backgroundedFailure = { endSec: 25, stoppedAtSec: null, backgroundedAtWall: 1000 };
+  assert.equal(pickOutPoint([foregroundPass, backgroundedFailure]), backgroundedFailure);
+  assert.equal(outPointVerdict(pickOutPoint([foregroundPass, backgroundedFailure])).verdict, "never-fired");
+});
+
+test("the console log is a second channel, not decoration", () => {
+  /* The primary channel is WebKit's local-storage database, located by FILENAME —
+     a name WebKit has changed before. If that find stops matching, every verdict
+     reads `inconclusive` and the job is GREEN: #38 producing nothing, forever,
+     with no error anywhere. An earlier version captured these console lines into
+     the artifact and never read them. */
+  const log = [
+    "2026-08-17 12:00:00.000 Df App[123:456] ⚡️  [log] - FORAY_PROBE_BRIDGE {\"capacitorType\":\"object\",\"isNativePlatform\":true}",
+    "some unrelated line",
+    'FORAY_PROBE_OUTPOINT {"endSec":25,"stoppedAtSec":25.3,"backgroundedAtWall":9,"stoppedWhileBackgrounded":true}',
+  ].join("\n");
+  const c = parseConsoleProbes(log);
+  assert.equal(c.bridge.length, 1);
+  assert.equal(c.outPoints.length, 1);
+
+  const both = collectProbes({ dump: {}, consoleText: log });
+  assert.equal(both.sources.bridge, "console");
+  assert.equal(both.sources.outPoint, "console");
+  assert.equal(bridgeVerdict(both.bridge).verdict, "bridge-present");
+  assert.equal(outPointVerdict(both.outPoint).verdict, "fires-in-background");
+});
+
+test("localStorage wins over the console when both have an answer", () => {
+  /* The database does not depend on the bridge being alive; the console channel
+     does (Capacitor forwards console output to print()). So the console can rescue
+     an out-point run and can never rescue a `bridge-blocked` one — which is why it
+     is second. */
+  const dump = { foray_probe_bridge: '{"capacitorType":"undefined"}' };
+  const log = 'FORAY_PROBE_BRIDGE {"capacitorType":"object","isNativePlatform":true}';
+  const c = collectProbes({ dump, consoleText: log });
+  assert.equal(c.sources.bridge, "localStorage");
+  assert.equal(bridgeVerdict(c.bridge).verdict, "bridge-blocked");
+});
+
+test("collectProbes and parseConsoleProbes survive junk and truncation", () => {
+  assert.deepEqual(parseConsoleProbes(""), { bridge: [], outPoints: [] });
+  assert.deepEqual(parseConsoleProbes(null), { bridge: [], outPoints: [] });
+  assert.deepEqual(parseConsoleProbes("FORAY_PROBE_BRIDGE not json at all"), { bridge: [], outPoints: [] });
+  /* Log lines get truncated mid-record; the recoverable prefix is used. */
+  const truncated = 'FORAY_PROBE_BRIDGE {"capacitorType":"object","isNativePlatform":true} tail junk {';
+  assert.equal(parseConsoleProbes(truncated).bridge.length, 1);
+  const empty = collectProbes({});
+  assert.equal(empty.bridge, null);
+  assert.equal(empty.outPoint, null);
+  assert.equal(empty.sources.bridge, "none");
+});
+
 test("parseDump finds the bridge record and every numbered out-point slot", () => {
   const dump = {
     foray_probe_bridge: '{"capacitorType":"object","isNativePlatform":true}',
@@ -262,19 +327,59 @@ test("window.Capacitor present and native is the good outcome, scoped to iOS", (
   assert.match(v.detail, /0 registrations/);
 });
 
-test("window.Capacitor undefined is the decisive failure", () => {
+test("a missing bridge WITH a script-src violation names the CSP as the cause", () => {
   const v = bridgeVerdict({ capacitorType: "undefined", cspViolations: [{ directive: "script-src" }] });
   assert.equal(v.verdict, "bridge-blocked");
   assert.match(v.headline, /UNDEFINED/);
-  assert.match(v.detail, /script-src violation/);
+  assert.equal(v.cspAttributable, true);
+  assert.match(v.detail, /the CSP is the \s*likely cause|CSP is the likely cause/);
+});
+
+test("a missing bridge with NO violation must not blame the CSP", () => {
+  /* AN ADVERSARIAL PASS CAUGHT THIS ASSERTING A CAUSE IT HAD NO EVIDENCE FOR. On
+     iOS the CSP is the LEAST likely explanation — docs/mobile-shell.md §5 reasons
+     that WKWebView injects via WKUserScript, outside the document's CSP — so a
+     failed `cap add`, a broken config or a probe that ran before injection are all
+     likelier. Turning a harness failure into a decisive architectural finding is
+     precisely how a false claim ends up in a doc, which is what this repo has been
+     burned by twice. */
+  const v = bridgeVerdict({ capacitorType: "undefined", cspViolations: [] });
+  assert.equal(v.verdict, "bridge-blocked");
+  assert.equal(v.cspAttributable, false);
+  assert.match(v.detail, /CAUSE IS UNKNOWN/);
+  assert.equal(/the CSP is the likely cause/.test(v.detail), false);
+  assert.equal(/the CSP blocked the bridge/.test(v.headline), false);
 });
 
 test("a service worker registered inside the shell is reported as broken", () => {
-  /* Invariant 3's consequence, measured. Two registrations means the shell will
+  /* Invariant 3's consequence, measured. One registration means the shell will
      serve its own stale cache after a store update. */
-  const v = bridgeVerdict({ capacitorType: "object", isNativePlatform: true, swRegistrations: 1 });
+  const v = bridgeVerdict({
+    capacitorType: "object",
+    isNativePlatform: true,
+    hasServiceWorkerApi: true,
+    swRegistrations: 1,
+  });
   assert.equal(v.verdict, "bridge-present");
   assert.match(v.detail, /invariant 3 is BROKEN/);
+});
+
+test("zero registrations is only evidence if the API existed to be asked", () => {
+  /* `swRegistrations: 0` with no `navigator.serviceWorker` is true by
+     construction, and reporting it as "invariant 3 holding" would be a pass drawn
+     from an absence — the failure this whole file is written to refuse. */
+  const measured = bridgeVerdict({
+    capacitorType: "object", isNativePlatform: true, hasServiceWorkerApi: true, swRegistrations: 0,
+  });
+  assert.match(measured.detail, /0 registrations inside the shell, which is invariant 3 holding/);
+  assert.equal(measured.swRegistrations, 0);
+
+  const unmeasurable = bridgeVerdict({
+    capacitorType: "object", isNativePlatform: true, hasServiceWorkerApi: false, swRegistrations: 0,
+  });
+  assert.equal(unmeasurable.swRegistrations, null);
+  assert.match(unmeasurable.detail, /says nothing either way/);
+  assert.equal(/invariant 3 holding/.test(unmeasurable.detail), false);
 });
 
 test("a bridge that reports the WEB platform inside the app is its own verdict", () => {
@@ -312,12 +417,63 @@ test("no out-point data leaves MP1's inference untouched", () => {
   }
 });
 
-test("a sub-second overshoot while backgrounded is the predicted good outcome", () => {
+test("a sub-second overshoot while backgrounded is the good outcome", () => {
   const v = outPointVerdict({ ...base, stoppedAtSec: 25.24, overshootSec: 0.24 });
   assert.equal(v.verdict, "fires-in-background");
   assert.match(v.headline, /0\.240s past end_sec/);
   assert.match(v.detail, /Median timeupdate interval while hidden: 251 ms/);
   assert.equal(v.medianTimeupdateMs, 250.5);
+});
+
+test("the 1.5s tolerance is OURS, and MP1's two predictions are reported as MP1's", () => {
+  /* AN ADVERSARIAL PASS CAUGHT THIS FILE ATTRIBUTING ITS OWN THRESHOLD TO THE
+     SOURCE: the headline said "inside MP1 §8's predicted 1.5s band", and 1.5 does
+     not appear anywhere in that document. Its predictions are ~0.25 s if
+     `timeupdate` survives and ~1 s if only the aligned DOM timer does. Worse, those
+     two are DIFFERENT VERDICTS about the inference — and both used to render as one
+     sentence, hiding the actual finding. */
+  assert.equal(OVERSHOOT_OK_SEC, 1.5);
+  assert.equal(MP1_TIMEUPDATE_PREDICTION_SEC, 0.25);
+  assert.equal(MP1_ALIGNED_TIMER_PREDICTION_SEC, 1);
+
+  const held = outPointVerdict({ ...base, stoppedAtSec: 25.24, overshootSec: 0.24 });
+  assert.match(held.headline, /this workflow's 1\.5s tolerance/);
+  assert.match(held.detail, /inference HELD/);
+
+  /* Same overshoot band, ~1 s timers: the inference did NOT hold, and the report
+     has to say which mechanism carried it. */
+  const timerOnly = outPointVerdict({
+    ...base,
+    timeupdateIntervalsMs: [1000, 1001, 999, 1002],
+    stoppedAtSec: 26.1,
+    overshootSec: 1.1,
+  });
+  assert.equal(timerOnly.verdict, "fires-in-background");
+  assert.match(timerOnly.detail, /did \s*NOT hold|did NOT hold/);
+  assert.match(timerOnly.detail, /aligned DOM timer covered for it/);
+
+  /* And with no samples at all it must not guess which one it was. */
+  const unknown = outPointVerdict({ ...base, timeupdateIntervalsMs: [], stoppedAtSec: 25.2, overshootSec: 0.2 });
+  assert.match(unknown.detail, /which of MP1 §8's two mechanisms carried this is unknown/);
+});
+
+test("a natural file end is NOT read as the out-point firing", () => {
+  /* THE FALSE-PASS THIS SUITE MOST NEEDED. `html-audio-backend.js` reports the
+     same `onItemEnded` for a finished FILE ("natural") as for a boundary
+     ("outPoint") — deliberately, so the manager cannot tell them apart. Here they
+     are opposite results: if the tone ran out first, the overshoot would look
+     perfect and mean nothing at all. The 150 s tone is a margin; this is the check. */
+  const natural = outPointVerdict({ ...base, stoppedAtSec: 25.4, overshootSec: 0.4, endReason: "natural" });
+  assert.equal(natural.verdict, "inconclusive");
+  assert.match(natural.headline, /"natural", not at the out-point/);
+  assert.match(natural.detail, /TONE_SECONDS/);
+
+  const weird = outPointVerdict({ ...base, stoppedAtSec: 25.4, endReason: "somethingElse" });
+  assert.equal(weird.verdict, "inconclusive");
+
+  /* The real one still passes. "outPoint" is END_OUT_POINT in player/queue-state.js. */
+  const real = outPointVerdict({ ...base, stoppedAtSec: 25.4, overshootSec: 0.4, endReason: "outPoint" });
+  assert.equal(real.verdict, "fires-in-background");
 });
 
 test("an out-point that only fires on resume is the failure mode, whatever the overshoot", () => {
@@ -394,7 +550,7 @@ test("the simulator caveat is stated, and states the asymmetry", () => {
 });
 
 test("the report always carries all three sections and the caveat", () => {
-  const md = renderReport({ bridge: null, outPoint: null, signing: {}, build: "simulator=success" });
+  const md = renderReport({ bridge: null, outPoint: null, signingState: "absent", build: "simulator=success" });
   assert.match(md, /Capacitor's bridge vs our CSP/);
   assert.match(md, /out-point while backgrounded/);
   assert.match(md, /TestFlight upload/);
@@ -404,11 +560,39 @@ test("the report always carries all three sections and the caveat", () => {
   assert.equal(/`inconclusive`/.test(md), true);
 });
 
+test("the signing section reports what the GATE said, not what this process can see", () => {
+  /* AN ADVERSARIAL PASS FOUND THIS STRUCTURALLY UNABLE TO BE RIGHT. It used to
+     recompute the state from `process.env` — but the reporting step is deliberately
+     not given the secrets, so it said "no signing secrets set" unconditionally. It
+     was right only by accident, and would have begun contradicting the gate step
+     inside the same run on the day HUMAN-ACTIONS.md #17 was done. */
+  assert.match(renderReport({ signingState: "ready" }), /`ready`/);
+  assert.match(renderReport({ signingState: "ready" }), /never executed before/);
+  assert.match(renderReport({ signingState: "partial" }), /failed on purpose/);
+  assert.match(renderReport({ signingState: "absent" }), /HUMAN-ACTIONS\.md #17/);
+  /* And with no gate output it must say so rather than guessing "absent". */
+  const silent = renderReport({ signingState: null });
+  assert.match(silent, /`not reported`/);
+  assert.match(silent, /did not report/);
+  /* The env must not be able to influence it. */
+  const before = process.env.APPLE_TEAM_ID;
+  process.env.APPLE_TEAM_ID = "ABCDE12345";
+  try {
+    assert.match(renderReport({ signingState: "absent" }), /No signing secrets are set/);
+  } finally {
+    if (before === undefined) delete process.env.APPLE_TEAM_ID;
+    else process.env.APPLE_TEAM_ID = before;
+  }
+});
+
 test("the report renders the good outcomes too", () => {
   const md = renderReport({
-    bridge: { capacitorType: "object", isNativePlatform: true, platform: "ios", pluginNames: [], swRegistrations: 0 },
+    bridge: {
+      capacitorType: "object", isNativePlatform: true, platform: "ios",
+      pluginNames: [], hasServiceWorkerApi: true, swRegistrations: 0,
+    },
     outPoint: { ...base, stoppedAtSec: 25.2, overshootSec: 0.2 },
-    signing: {},
+    signingState: "absent",
   });
   assert.match(md, /`bridge-present`/);
   assert.match(md, /`fires-in-background`/);

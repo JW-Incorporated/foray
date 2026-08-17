@@ -187,26 +187,85 @@ function arrayStrings(xml, arrayEl) {
         `UIBackgroundModes contains a <${el.name}>; every member must be a <string>.`
       );
     }
-    out.push(el.empty ? "" : xml.slice(el.openEnd, el.closeStart).trim());
+    const raw = el.empty ? "" : xml.slice(el.openEnd, el.closeStart);
+    /* NOT trimmed, and an adversarial pass found why. `<string> audio </string>`
+       is a mode iOS does not honour — but trimming made it read as "audio",
+       which made `injectBackgroundAudio` report "already present", write
+       nothing, and pass its own re-parse. `--check` passed too, `plutil -lint`
+       passed, and `PlistBuddy | grep audio` passed on the padded value. All
+       three "independent confirmations" agreed, and all three were wrong. So a
+       member with surrounding whitespace is refused rather than normalised: a
+       human wrote it, and quietly disagreeing with them is how this gets found
+       on a device instead of here. */
+    if (raw !== raw.trim()) {
+      throw new PlistError(
+        `UIBackgroundModes contains <string>${JSON.stringify(raw)}</string> — a mode with ` +
+          `surrounding whitespace. iOS will not honour it, and treating it as ${JSON.stringify(raw.trim())} ` +
+          `would make this script report success while changing nothing. Fix the plist by hand.`
+      );
+    }
+    out.push(raw);
     i = el.next;
   }
   return out;
 }
 
-/** Whatever `UIBackgroundModes` the ROOT dict declares, or null if it has none.
- *  Exported because "what does the plist say?" is the question a reader has,
- *  and because it is what `injectBackgroundAudio` verifies itself with. */
-export function backgroundModes(xml) {
-  const { entries } = rootEntries(xml);
-  const hit = entries.find((e) => e.key === "UIBackgroundModes");
-  if (!hit) return null;
+/** The root dict's ONE `UIBackgroundModes` entry, plus its parsed modes. `hit` is
+ *  null when the key is absent, and `modes` is null with it.
+ *
+ *  DUPLICATE KEYS THROW, and that hole was opened by an adversarial pass rather
+ *  than imagined: with two root-level `UIBackgroundModes` keys, a `.find()`
+ *  appends to the FIRST while every plist reader — Apple's included — takes the
+ *  LAST. The script reported success, its own re-parse agreed, `--check` agreed,
+ *  and the effective value was still `["location"]`. A plist with two of the same
+ *  root key is malformed; say so instead of picking one. */
+function backgroundModesEntry(xml) {
+  const { rootDict, entries } = rootEntries(xml);
+  const hits = entries.filter((e) => e.key === "UIBackgroundModes");
+  if (hits.length > 1) {
+    throw new PlistError(
+      `the root dict declares UIBackgroundModes ${hits.length} times. Plist readers take the ` +
+        `last one, so an edit to any other is invisible. Delete the duplicates by hand first.`
+    );
+  }
+  const hit = hits[0] ?? null;
+  if (!hit) return { rootDict, entries, hit: null, modes: null };
   if (hit.value.name !== "array") {
     throw new PlistError(
       `UIBackgroundModes is a <${hit.value.name}>, but iOS requires an <array> of strings. ` +
         `Fix the plist by hand — this script will not rewrite a value it did not write.`
     );
   }
-  return arrayStrings(xml, hit.value);
+  return { rootDict, entries, hit, modes: arrayStrings(xml, hit.value) };
+}
+
+/** Whatever `UIBackgroundModes` the ROOT dict declares, or null if it has none.
+ *  Exported because "what does the plist say?" is the question a reader has,
+ *  and because it is what `injectBackgroundAudio` verifies itself with. */
+export function backgroundModes(xml) {
+  return backgroundModesEntry(xml).modes;
+}
+
+/**
+ * Assert that `xml` really declares `mode`, and throw if it does not.
+ *
+ * EXPORTED SO IT CAN BE TESTED DIRECTLY. It was previously an inline `if` at the
+ * end of `injectBackgroundAudio`, and an adversarial pass changed it to
+ * `if (false)` with all 22 tests still green — a guard whose own comment says
+ * that without it "every failure mode above degrades to 'returned the input
+ * unchanged and said it worked'". A guard that can be deleted invisibly is not a
+ * guard, so it is now a named function with tests of its own.
+ */
+export function assertModePresent(xml, mode) {
+  const modes = backgroundModes(xml);
+  if (!modes || !modes.includes(mode)) {
+    throw new PlistError(
+      `the edit did not take: UIBackgroundModes reads ${JSON.stringify(modes)} after ` +
+        `injection, which does not include ${JSON.stringify(mode)}. This is a bug in ` +
+        `inject-background-audio.mjs, not in the plist.`
+    );
+  }
+  return modes;
 }
 
 /* ---------------------------------------------------------------- injection */
@@ -239,9 +298,8 @@ export function injectBackgroundAudio(xml, mode = BACKGROUND_AUDIO_MODE) {
     throw new PlistError(`invalid background mode ${JSON.stringify(mode)}`);
   }
 
-  const { rootDict, entries } = rootEntries(xml);
+  const { rootDict, entries, hit } = backgroundModesEntry(xml);
   const indent = rootIndent(xml, entries);
-  const hit = entries.find((e) => e.key === "UIBackgroundModes");
 
   let out;
   let reason;
@@ -258,12 +316,8 @@ export function injectBackgroundAudio(xml, mode = BACKGROUND_AUDIO_MODE) {
     out = xml.slice(0, at) + block + xml.slice(at);
     reason = `added UIBackgroundModes with "${mode}"`;
   } else {
-    if (hit.value.name !== "array") {
-      throw new PlistError(
-        `UIBackgroundModes is a <${hit.value.name}>, but iOS requires an <array> of strings. ` +
-          `Fix the plist by hand — this script will not rewrite a value it did not write.`
-      );
-    }
+    /* The type check and the duplicate-key check both happened in
+       backgroundModesEntry(), so by here `hit.value` is known to be an array. */
     const existing = arrayStrings(xml, hit.value);
     if (existing.includes(mode)) {
       /* Idempotent on purpose: CI re-runs, and `cap sync` can regenerate. A
@@ -284,16 +338,11 @@ export function injectBackgroundAudio(xml, mode = BACKGROUND_AUDIO_MODE) {
   }
 
   /* THE ANTI-FAILS-GREEN CHECK. Re-parse our own output and insist the mode is
-     really there. Without this, every failure mode above degrades to "returned
-     the input unchanged and said it worked". */
-  const modes = backgroundModes(out);
-  if (!modes || !modes.includes(mode)) {
-    throw new PlistError(
-      `the edit did not take: UIBackgroundModes reads ${JSON.stringify(modes)} after ` +
-        `injection. This is a bug in inject-background-audio.mjs, not in the plist.`
-    );
-  }
-  return { xml: out, changed: true, reason, modes };
+     really there. Without it, every failure mode above degrades to "returned the
+     input unchanged and said it worked". It is `assertModePresent` rather than an
+     inline `if` because an adversarial pass replaced the inline version with
+     `if (false)` and left all 22 tests green. */
+  return { xml: out, changed: true, reason, modes: assertModePresent(out, mode) };
 }
 
 /* --------------------------------------------------------------------- main */
@@ -310,7 +359,12 @@ if (isMain) {
     if (argv[i] === "--check") checkOnly = true;
     else if (argv[i] === "--mode") {
       mode = argv[++i];
-      if (!mode) { console.error("--mode needs a value"); process.exit(2); }
+      /* `--mode --check` used to consume the flag as the value and inject
+         `<string>--check</string>`. A flag is never a value. */
+      if (!mode || mode.startsWith("-")) {
+        console.error(`--mode needs a value, got ${mode === undefined ? "nothing" : mode}`);
+        process.exit(2);
+      }
     } else if (!argv[i].startsWith("-") && file === null) file = argv[i];
     else {
       console.error(`Unknown argument: ${argv[i]}`);

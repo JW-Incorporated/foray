@@ -83,7 +83,12 @@
   function checkWorkers(done) {
     try {
       if (!navigator.serviceWorker || !navigator.serviceWorker.getRegistrations) {
-        out.swRegistrations = 0;
+        /* NOT 0. On `capacitor://localhost` the API may legitimately be absent,
+           and 0 would then be true by construction — which the verdict would have
+           rendered as "0 registrations, invariant 3 holding": a pass drawn from an
+           absence, the exact shape this whole workflow is written to refuse.
+           `hasServiceWorkerApi` (set in snapshot()) is what tells the two apart. */
+        out.swRegistrations = null;
         return done();
       }
       navigator.serviceWorker.getRegistrations().then(
