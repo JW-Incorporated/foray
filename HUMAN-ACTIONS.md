@@ -616,6 +616,8 @@ Read those three together, because two of them can lie on their own:
 
 The click matters: nothing is written until something happens.
 
+**Status:** OPEN
+
 ---
 
 ### 10. Make the six classify routines land their own work (they open no PR)
@@ -692,6 +694,73 @@ decision (CLAUDE.md decision authority #3) and not one to stumble into.
 `classify-agent-tier1` rows within 48 hours without anyone running a command
 locally — either from six `classify/*` PRs, or from one
 `classify/reconcile-*` PR.
+
+**Status:** OPEN
+
+---
+
+### 11. Put a Foray on a real phone with the screen off — the one test no machine here can run
+
+**Tag:** `[BLOCKING]` for any store submission · **Time:** ~5 minutes to start, then a 15-minute walk · **Owner:** Joey (an iPhone) and/or Wyatt (an Android phone) — either one alone is worth doing
+
+**Why it matters.** #35 asked whether `<audio>` in a Capacitor WebView survives backgrounding. It now has an answer — `docs/research/mp1-background-audio.md` — but **no part of that answer came from a device.** iOS could not be tested at all (this is a Windows machine; iOS cannot be built on it), and the Android emulator route was tried and failed: the SDK went on, a throwaway Capacitor app was built around our real player code, the APK was pushed — and the emulator never finished booting well enough to install it. Three attempts, about 75 minutes, not one line of output. §6.2 of that document has the detail.
+
+An emulator is also not a phone for the two things that decide the Android answer — **power management and audio focus** — so even a successful emulator run would not have closed this.
+
+**The specific claim at stake, because it decides a lot of work.** On iOS, background JS timers are aligned to ~1 second, so the player's precise stop relies on the `timeupdate` media event still firing while backgrounded. That is an *inference* from WebKit's source, not something anyone has run. If it holds, a segment stops within about a quarter-second of where it should. If it does not, **the segment plays on into the rest of the source episode — a median of 15.6 minutes of the wrong content** (measured over the real Foray data), with the app still showing the Foray and its clock still counting. That is the difference between "ship the shell with a caveat" and "the shell needs a native audio backend on both platforms".
+
+**Steps — five minutes, no tooling, either platform.**
+
+1. On your phone, open exactly this:
+
+   ```
+   https://jw-incorporated.github.io/foray/?foray=grilling-history-1
+   ```
+
+2. Press **Play**. Let one segment start (they are ~1–3 minutes each).
+3. **Lock the phone** (side button) and put it in your pocket. Keep listening.
+4. After about 15 minutes, unlock and look at the running order.
+
+   **Report one thing above all: did it move on through new segments, or did it keep playing one episode?** If the highlighted row is still an early one after 15 minutes of listening, that is the exact failure this is about, and saying so is the whole result.
+
+5. Also say whether the audio **stopped** at any point, and roughly when.
+
+**Read this before drawing a conclusion from step 4.** A browser tab is **not** the same as an app. This test is genuinely informative about the engine's timer behaviour, and it is the reason it is worth five minutes — but it **cannot** settle app-level backgrounding, because a browser tab is not subject to it. A clean pass here does not mean the packaged app will pass.
+
+**The version that actually settles it needs a build**, which does not exist yet: #36's Capacitor scaffold plus one `Info.plist` line. Say the word and a session will produce a TestFlight build (iOS) or an APK (Android) of the throwaway spike app, which logs the numbers directly instead of asking you to judge by ear.
+
+**Worked if:** there is a written note on #35 saying, for at least one real phone: whether audio continued with the screen locked, for how long, and whether segments kept advancing. Three sentences is a complete result.
+
+**Status:** OPEN
+
+---
+
+### 12. Decide: does Android's native audio backend land before the Play release?
+
+**Tag:** `[BLOCKING]` for the store sequencing · **Time:** ~10 minutes to decide · **Owner:** Wyatt (architecture)
+
+**Why it matters.** #34 plans to wrap the web app in a Capacitor shell and ship both stores, **Google Play first**, because Play is more lenient about webviews and Android builds on Windows today. The MP1 research (`docs/research/mp1-background-audio.md`) does not overturn that, but it found that on *audio* the two platforms come out the opposite way round, and the consequence is a sequencing decision only you should make.
+
+- **iOS turns out to be the easy one.** Background audio costs **one line in `Info.plist`** (`UIBackgroundModes: audio`). No plugin, no Swift, no `NativeAudioBackend` — WebKit already configures the audio session itself, and a plain `<audio>` element is deliberately exempt from its background and screen-lock restrictions. Verified in WebKit's source. #35's own method section assumed native code was needed here; it is not.
+- **Android is the hard one, for two reasons that both need native code.** A `mediaPlayback` foreground service is required to stop the OS freezing or killing the app — and from Android 15, to hold audio focus at all, which matters because Capacitor 8 generates `targetSdk 36`. And **`navigator.mediaSession` is switched off in Android WebView by Chromium itself**, so lock-screen and steering-wheel controls are *impossible* from JavaScript at any price. `docs/brief/04_VOICE_AUDIO_SPEC.md` calls those controls "the baseline hands-free interface" that "must be flawless before any voice work".
+- **No maintained Capacitor plugin fills the gap.** The one that fits exactly is pinned to Capacitor 6 and was last published in **August 2024**; we are on Capacitor 8.
+
+So the recommendation is: **Android's half of #28 lands before any Play release, not after.** Once you are writing a Media3 `MediaSessionService` for the lock screen — which #27 forces regardless — you have already built most of it, and letting it also *play* the audio removes a second source of truth for transport state.
+
+**One caveat on the evidence, stated plainly:** none of this was measured on a device (item #11). The Android conclusion rests on Chromium's source plus measurements of the same engine on the desktop; the iOS conclusion rests on Apple's and WebKit's documentation. The parts that decide *this* item — the foreground-service requirement and MediaSession being disabled — are the best-supported findings in the document, both from primary sources.
+
+**The decision.** Reply with one of:
+
+- **"Native Android before Play"** (recommended). #28's Android half moves onto the critical path. Slower to a store listing; the first release behaves like a podcast app.
+- **"Ship the shell to Play first, native after."** Faster to a listing. The first release has no lock-screen controls on Android and can be frozen or killed in the background by the OS — in practice an internal or closed-testing track, not a public launch.
+- **"Neither — iOS first."** The audio picture genuinely favours iOS. This cuts against #34's Play-first reasoning (App Store 4.2 review risk, and iOS needs the Actions macOS runners to build), so it is a real trade, not a free win.
+
+**Steps.**
+
+1. Read §9 and §10 of `docs/research/mp1-background-audio.md` — two short sections, one table.
+2. Reply with one of the three phrases above and change the status below. A session will re-scope #28, #27 and #34 to match.
+
+**Worked if:** #28 and #27 say the same thing about Android as #34's milestone order does, and nobody has to re-derive it.
 
 **Status:** OPEN
 
