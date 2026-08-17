@@ -232,6 +232,181 @@ much silence goes at a seam".
 
 ---
 
+### 5. Give each of the six classify routines its own `--shard i/6`
+
+**Tag:** `[BLOCKING]` · **Time:** ~15 minutes · **Owner:** Wyatt
+
+**Do #4 first.** #4 asks whether the six routines are alive. This item assumes
+they are, and fixes a separate defect that has been costing 5/6 of their output
+the whole time they *were* alive. Both are needed; neither substitutes.
+
+**Why it matters.** `tools/classify/prepare-batch.mjs` supports sharding
+(`--shard i/N` — take only shows where `Number(id) % N === i`). **The six
+routines do not pass it.** All six run one shared prompt file with one literal
+command that has no `--shard`, so the shard number exists only in the routine
+*name*. Batch selection is fully deterministic, so **all six shards select the
+identical 40 shows in the identical order** — verified by simulation against the
+real catalogue. Five of every six runs are duplicate work that is thrown away.
+
+The arithmetic confirms it: 18 runs/day produced ~2.6 landed batches/day, which
+is 1/6. Measured throughput was **129 shows/day**; with the flag wired it is
+~765/day. That is the difference between finishing the 17,936 remaining shows in
+**~23 days** and in **~139 days** — and it costs **no extra runs and no extra
+tokens**, because the spend is already being paid six times for the same shows.
+
+Full analysis: `docs/agents/fleet-review-2026-08.md` §0 and §4.
+
+Steps:
+
+1. Open <https://claude.ai/settings/automations> on the account that owns the
+   routines (Wyatt's).
+2. For each of the six routines, set the schedule and the shard argument as
+   below. **The cron column is a change of minute offsets only — the cadence
+   stays every 8h, 3 runs/day per routine, 18 runs/day total.** The stagger
+   exists so that only one classify PR is ever open at a time; two concurrent
+   ones conflict on the same two lines of
+   `data/breadth-classification.json` by construction.
+
+   | Routine | Cron (UTC) | Shard argument |
+   |---|---|---|
+   | `foray-classify-shard0` | `10 0,8,16 * * *` | `--shard 0/6` |
+   | `foray-classify-shard1` | `50 0,8,16 * * *` | `--shard 1/6` |
+   | `foray-classify-shard2` | `10 2,10,18 * * *` | `--shard 2/6` |
+   | `foray-classify-shard3` | `50 2,10,18 * * *` | `--shard 3/6` |
+   | `foray-classify-shard4` | `10 4,12,20 * * *` | `--shard 4/6` |
+   | `foray-classify-shard5` | `50 4,12,20 * * *` | `--shard 5/6` |
+
+3. The full command each routine should run — copy it literally, changing only
+   the `0/6` to match the table:
+
+   ```
+   node tools/classify/prepare-batch.mjs --shard 0/6 --batch-size 60 --mode fresh --progress data/classify-progress.json
+   ```
+
+   If the routine has no place to put extra arguments and only accepts a prompt,
+   say so and a session will commit six per-shard prompt files
+   (`docs/agents/runner-prompts/classify-batch-shard0.md` … `shard5.md`) so you
+   only have to change one **path** per routine instead.
+
+4. **Do not guess the shard string.** `--shard` currently fails *open*: a
+   malformed value (`6/6`, `abc`, `0/0`, or a missing value) silently reverts to
+   the full unsharded catalogue with no warning, recreating exactly the bug this
+   item fixes. It must read `0/6`, `1/6`, `2/6`, `3/6`, `4/6`, `5/6` — one each,
+   no duplicates, none of them `6/6`.
+
+**Worked if:** within one 8-hour window, **six different** `classify/*` PRs have
+merged, and no two of them classified the same show. Quick check after a day:
+`git log origin/main --oneline -- data/breadth-classification.json` shows
+several batches per day rather than one, and the `classify-agent-tier1` count in
+`data/breadth-classification.json` is climbing by ~700/day rather than ~130.
+
+**Status:** OPEN
+
+---
+
+### 6. Decide: add the usability fields before the four-week run, or after
+
+**Tag:** `[BLOCKING]` · **Time:** ~10 minutes to decide · **Owner:** Joey (with
+Wyatt on the cost)
+
+**Why it matters.** This is a sequencing decision, and it is cheap now and
+expensive later — which is the only reason it is here rather than being decided
+by a session.
+
+The fleet records 14 fields per show and **every one of them is subject or
+display copy**. Nothing records whether a show is *usable*. The measured
+evidence that this is the binding gap: of the nine episodes in the ASR queue we
+actually want, **ads blocked zero, transcript availability blocked all nine, and
+content shape rejected 6h 02m of audio — more than the entire funded queue.**
+
+The fix is nearly free, and that is the point. The fleet **already downloads
+each show's full RSS feed** and throws away everything except the description
+and recent episode titles. `<podcast:transcript>` tags, the audio host,
+`<language>` and the newest `<pubDate>` are in bytes already on the wire — no
+extra request, no extra token. And `data/taxonomy.json` already defines the
+vocabulary for "explanatory versus chat" (`episode_attributes.format`, with
+`"hang"` as the chat value) which the classifier does not emit.
+
+**The decision.** Schema first, or blitz first?
+
+- **Schema first (recommended).** One engineering PR, ~1 day of delay. Four
+  weeks of runs produce both the subject tags *and* the usability record.
+- **Blitz first.** Starts a day sooner and needs a **second** four-week pass
+  over all 19,787 shows later to collect signal that was on the wire the first
+  time and discarded — plus a deliberate progress reset, because the pipeline
+  skips any show it has already classified.
+
+Rationale and the exact field list: `docs/agents/fleet-review-2026-08.md` §3
+and §5.
+
+Steps:
+
+1. Read `docs/agents/fleet-review-2026-08.md` §5 — it is one table of fields
+   with a one-line reason each.
+2. Reply with either **"schema first"** or **"blitz first"** and change the
+   status below. No other detail is needed; a session will do the rest.
+3. If **schema first**, expect the engineering PR to also carry: `--shard`
+   failing loudly instead of open, `chart_rank` ordering within bucket, a
+   terminal `feed_dead` state, and deletion of two stray root scripts
+   (`classify-shard-0.mjs`, `classify-shows.mjs`).
+
+**Worked if:** a session can start the four-week run without having to guess
+whether it will need to be run twice.
+
+**Status:** OPEN
+
+---
+
+### 7. Confirm the fleet's target list stays the chart-200 catalogue
+
+**Tag:** `[UPGRADE]` · **Time:** ~5 minutes · **Owner:** Joey
+
+**Why it matters.** Before spending four weeks classifying 17,936 shows, confirm
+they are the right 17,936 — because the list has a hard, measured ceiling and
+this is a decision about what we are choosing not to see.
+
+`data/catalog-breadth.json` is, by construction, "the top 200 of each of 110
+Apple genre charts" — `CHART_LIMIT = 200`, and the maximum `chart_rank` present
+anywhere is 200. That is **2.94%** of PodcastIndex's 4.71M feeds, and when one
+sourcing pass went outside it, **88.6%** of the food/history feeds it found were
+not in our catalogue at all. Six of the sources Foray #1 actually uses are not
+in it.
+
+**The review's recommendation is to keep it as-is for these four weeks**, and to
+be clear about why, because one earlier document argued the opposite:
+
+- `grilling-foray-sourcing.md` §5.2 found that chart rank predicts ad injection
+  (top-25 are 33% ad-free vs 71% at ranks 26–200) and concluded the harvest
+  "selects against us". That argued for re-pointing the harvest.
+- **ADR-0008 then removed ads as a rejection reason entirely** (2026-08-16, the
+  day before this review), and the transcript sweep runs the *other* way: the
+  ad-injecting shows carry **13.3%** transcript coverage against **0.2%** for
+  ad-free shows, a 66× difference — and transcripts, not ads, are what cost
+  1.33× realtime of CPU.
+
+So the case for changing the list rests on a gate that no longer exists, and
+changing it would give up the half of our free-transcript inventory ADR-0008 just
+unlocked. Broadening is a real workstream, with its own measured verdict (the
+PodcastIndex dump is "a research tool, not an ingest path") — it just should not
+happen *during* the four weeks, because it resets the denominator and "have we
+finished?" stops having an answer.
+
+Steps:
+
+1. Read `docs/agents/fleet-review-2026-08.md` §1.
+2. Reply **"keep the list"** (recommended) or **"broaden first"**, and change
+   the status below.
+3. Either way, one thing is worth knowing and does not need a decision: a show
+   absent from `catalog-breadth.json` has **not** been assessed and rejected —
+   it has never been seen.
+
+**Worked if:** nobody re-opens "should we have classified a different list?" in
+week three.
+
+**Status:** OPEN
+
+---
+
 <!-- BEGIN generated:waiting-on-you -->
 
 ### Waiting on a founder (auto-maintained)
