@@ -771,9 +771,13 @@ const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 /** Records every call app.js makes into the player, and resolves the running
     order with the REAL resolver against the REAL data files. */
-function fakeBridge(resolved, { resume = null } = {}) {
+function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
   const calls = [];
   let onChange = null;
+  /** A transport call that throws while the Foray is genuinely live — the other
+      shape of #225's invisible failure, and the one that must not make the page
+      forget what is playing. */
+  let toggleThrows = null;
   const record = (name) => (...args) => { calls.push({ name, args }); };
   const credit = {
     show: resolved.shows[0], clips: 3, seconds: 420,
@@ -813,8 +817,34 @@ function fakeBridge(resolved, { resume = null } = {}) {
     // something to bind — an empty list made that binder untested by accident.
     forayCredits: () => ({ credits: [credit], summary: "1 episode from 1 show" }),
     watchForay: (fn) => { onChange = fn; return null; },
-    playForay: (r, opts = {}) => { calls.push({ name: "playForay", args: [r, opts] }); onChange = opts.onChange ?? onChange; return null; },
-    forayToggle: record("forayToggle"),
+    /* `startThrows` is the failure mode #225 had no surface for at all: the
+       player throwing on the way in — a stale module, a missing method, a
+       TypeError — which reached the console and nothing else. */
+    playForay: (r, opts = {}) => {
+      calls.push({ name: "playForay", args: [r, opts] });
+      onChange = opts.onChange ?? onChange;
+      if (startThrows) {
+        /* THE INTENT PAINT HAPPENS FIRST, exactly as the real `playForay` does
+           it: `setForayIndex` runs before the load is awaited, so by the time
+           anything can throw the page has already been told a segment is
+           current. Without this the throw arrives on a page that never believed
+           a Foray was live, and the flag-clearing half of the guard is never
+           exercised — which is how the first draft of this fixture let a
+           mutation through. */
+        onChange?.({
+          forayId: resolved.id, index: opts.startIndex ?? 0, playing: false,
+          loading: false, gap: false, ended: false, elapsedSec: 0,
+          totalSec: resolved.totalSec, error: null,
+        });
+        throw startThrows;
+      }
+      return null;
+    },
+    throwOnToggle: (err) => { toggleThrows = err; },
+    forayToggle: (...args) => {
+      calls.push({ name: "forayToggle", args });
+      if (toggleThrows) throw toggleThrows;
+    },
     forayNext: record("forayNext"),
     forayPrevious: record("forayPrevious"),
     forayJump: (i) => { calls.push({ name: "forayJump", args: [i] }); },
@@ -826,10 +856,11 @@ function fakeBridge(resolved, { resume = null } = {}) {
     point, and is what the inert build did. */
 async function mountForayPage({
   resume = null, durable = false, seed = {}, durableRows = {}, failLocalWrites = false,
+  startThrows = null,
 } = {}) {
   const resolved = realResolve();
   const dom = new StubDom(resolved);
-  const bridge = fakeBridge(resolved, { resume });
+  const bridge = fakeBridge(resolved, { resume, startThrows });
   const store = new Map(Object.entries(seed));
   let failLocal = failLocalWrites;
 
@@ -1116,6 +1147,306 @@ test("during a seam beat the page says Pause, not Loading — the silence is del
   onChange({ ...base, playing: false, loading: true, gap: false });
   assert.equal(dom.el("fy-play").textContent, "Loading…");
   assert.equal(dom.el("fy-strip").classList.contains("is-seam"), false);
+});
+
+/* ================================================ a start that fails (#225) ===
+
+   The founder, on a phone, on the live site: "starting it was difficult, not
+   sure why. I tried pressing the play button up top and got several errors. It
+   might have worked when I pressed a play button down on the first segment, but
+   I'm not 100% sure on that."
+
+   Two separate defects are in that sentence, and these tests are about the
+   second, which is the one no device is needed to see. `playForay` paints its
+   index BEFORE it awaits the load — deliberately, so a tapped row lights up at
+   once — and everything on this page read that index as "playing". So a start
+   that then failed left a page that looked started: the resume banner hid
+   itself, the button relabelled, a row stayed lit, and `state.forayPlaying`
+   made the next press of the main button mean PAUSE instead of a retry. The two
+   controls really did stop meaning the same thing, and nothing on screen said
+   why. */
+
+/** The snapshot a failed start produces: the intent index is standing, the error
+    line is set, and nothing is playing, loading or beating.
+
+    `elapsedSec` is the REAL one — `forayPosition()` answers with the failed
+    segment's own start, which for any index but the first is a large number that
+    no audio ever reached. Hard-coding 0 here made an earlier version of the clock
+    assertion below pass against a snapshot the player cannot produce. */
+const failedStart = (index, error, resolved) => ({
+  forayId: FORAY_ID, index, playing: false, loading: false, gap: false,
+  ended: false, totalSec: resolved.totalSec, error,
+  elapsedSec: forayElapsed(resolved.playable, index, null),
+});
+
+test("a start that fails puts the page back to cold, so the next tap is a real retry", async () => {
+  const resume = { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" };
+  const { dom, bridge, resolved } = await mountForayPage({ resume });
+
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  // The intent paint, which is correct and stays: the row lights up while the
+  // load is in flight.
+  onChange({ forayId: FORAY_ID, index: 9, playing: false, loading: true, gap: false, ended: false, elapsedSec: 1180, totalSec: resolved.totalSec, error: null });
+  assert.ok(dom.rows[9].classList.contains("is-playing"));
+
+  // ...and then the load is refused.
+  onChange(failedStart(9, "player.error: loadItem(x) failed: load failed (code 2)", resolved));
+
+  assert.equal(dom.el("fy-error").hidden, false, "a failed start must say so on the page");
+  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "the button has to offer another go, not a pause");
+  assert.equal(dom.el("fy-resume").hidden, false, "the resume offer is still the truth — nothing played");
+  assert.ok(!dom.rows[9].classList.contains("is-playing"), "no row is audible, so none may look it");
+
+  // THE ASYMMETRY THE FOUNDER MET. With the page believing a Foray is live, this
+  // second press becomes forayToggle and the Foray never starts.
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 0, "a failed start must not leave the button meaning pause");
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 2, "the second press has to try to start it again");
+  // And a row press retries too, rather than jumping inside a Foray that is not
+  // loaded — which is the other half of "the segment button might have worked".
+  await dom.rows[0].click();
+  assert.equal(bridge.calls.filter((c) => c.name === "forayJump").length, 0);
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 3);
+});
+
+test("PAUSING a live Foray is not a failed start — the page stays live", async () => {
+  /* The sharp edge of the rule above, found by review: "an error, and nothing
+     playing" also describes a listener who paused. Getting it wrong costs more
+     than the bug being fixed — the page would go cold mid-hour, the stale banner
+     would come back, and the next press would rebuild the queue instead of
+     resuming. What keeps the two apart is upstream of this file: the player
+     clears `foray.error` the moment audio is produced, so a paused snapshot
+     cannot still be carrying one. That clearing is pinned separately, by the
+     text assertion in "client.js only ever reports an error that describes the
+     attempt in front of it" — this test is the app.js half, and it deliberately
+     sends the paused snapshot the player really sends: no error. */
+  const resume = { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" };
+  const { dom, bridge, resolved } = await mountForayPage({ resume });
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  const at = (over) => onChange({ forayId: FORAY_ID, index: 9, loading: false, gap: false, ended: false, totalSec: resolved.totalSec, playing: false, elapsedSec: 1500, error: null, ...over });
+
+  at({ playing: true });                       // audio, for a while
+  at({ playing: false });                      // and the listener pauses
+  assert.equal(dom.el("fy-play").textContent, "▶ Resume");
+  assert.equal(dom.el("fy-resume").hidden, true, "a live Foray does not re-offer the position it started from");
+  assert.ok(dom.rows[9].classList.contains("is-playing"), "the segment is still the loaded one");
+
+  // The next press is a toggle, because the Foray IS live — not a rebuild.
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 1);
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1, "pausing must not cost the queue");
+});
+
+test("the clock a failed start leaves behind is the place the button goes", async () => {
+  /* A failed start puts the page back to cold, and cold has exactly one position
+     — the stored one. The clock, the banner, the ticked rows and the button must
+     all name it, because the listener is about to act on whichever they believe.
+
+     The trap this pins: `forayPosition()` reports the FAILED segment's own start,
+     so the snapshot arrives carrying 37:31 for a refused jump to segment 20. Take
+     that as the page's clock and it reads a position no audio ever reached, over a
+     button that goes somewhere else. */
+  const resume = { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" };
+  const { dom, bridge, resolved } = await mountForayPage({ resume });
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+
+  onChange({ forayId: FORAY_ID, index: 9, playing: true, loading: false, gap: false, ended: false, elapsedSec: 1500, totalSec: resolved.totalSec, error: null });
+  const phantom = failedStart(20, "player.error: loadItem(x) failed: load failed (code 2)", resolved);
+  assert.ok(phantom.elapsedSec > 2000, "the fixture has to carry the phantom, or this test is about nothing");
+  onChange(phantom);
+
+  assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "the cold clock is the stored point, not the segment that would not load");
+  assert.equal(dom.el("fy-resume").hidden, false, "cold means the offer — and the Start over inside it — is back");
+  assert.ok(dom.rows[8].classList.contains("is-played"), "the rows agree with the clock");
+  assert.ok(!dom.rows[20].classList.contains("is-played"));
+
+  await dom.el("fy-play").click();
+  const last = bridge.calls.filter((c) => c.name === "playForay").pop();
+  assert.equal(last.args[1].startElapsedSec, 1180, "the button goes where the clock says");
+});
+
+test("another Foray's ticks are not this page's news", async () => {
+  /* `watchForay` points the live player's callback at whichever page rendered
+     last, so with one Foray playing in the mini bar and another on screen, the
+     playing one's snapshots arrive here. Before the guard, this page adopted them:
+     its main button read "Pause" and pressing it paused the OTHER Foray. The first
+     paint was always gated on the id; the 4 Hz ticks after it were not. */
+  const resume = { elapsedSec: 1180, index: 9, remainingSec: 2493, percent: 32, finished: false, label: "42 min left", clock: "19:40" };
+  const { dom, bridge, resolved } = await mountForayPage({ resume });
+  const onChange = bridge.lastOnChange() ?? ((s) => dom.el("view") && s);
+  await dom.el("fy-play").click();
+  const live = bridge.lastOnChange();
+
+  live({ forayId: "some-other-foray", index: 4, playing: true, loading: false, gap: false, ended: false, elapsedSec: 1500, totalSec: 4000, error: null });
+
+  assert.equal(dom.el("fy-play").textContent, "▶ Resume", "this page is not playing, whatever the mini bar is doing");
+  assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "and its clock is its own");
+  assert.ok(!dom.rows[4].classList.contains("is-playing"), "no row here is audible");
+
+  // And the button still means START — pressing it must not reach for the other
+  // Foray's transport.
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 0, "this page must never pause somebody else's Foray");
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 2);
+  assert.equal(typeof onChange, "function");
+});
+
+test("autoplay refusal reads as a browser being careful, not as a broken app", async () => {
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+
+  /* The string the player really produces for a refusal: the backend reports
+     `play rejected: NotAllowedError`, the reducer stamps it `player.error:`.
+     Nothing about that is the connection, and telling a listener to check theirs
+     would send them off to fix something that is not broken. */
+  onChange(failedStart(0, "player.error: play rejected: NotAllowedError", resolved));
+  const line = dom.el("fy-error");
+  assert.equal(line.hidden, false);
+  assert.match(line.textContent, /press play again/i, "the affordance has to be named");
+  assert.ok(!/connection/i.test(line.textContent), `autoplay refusal must not blame the connection: ${line.textContent}`);
+  assert.ok(line.classList.contains("is-hint"), "a normal browser state is a note, not a warning");
+
+  // A load failure is a different thing and keeps its own words.
+  onChange(failedStart(0, "player.error: loadItem(x) failed: load failed (code 2)", resolved));
+  assert.match(line.textContent, /connection/i);
+  assert.ok(!line.classList.contains("is-hint"), "a segment that would not load IS a fault");
+
+  // And a clean snapshot takes the line away again.
+  onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, gap: false, ended: false, elapsedSec: 3, totalSec: resolved.totalSec, error: null });
+  assert.equal(line.hidden, true);
+  assert.equal(line.textContent, "");
+});
+
+test("a start that THROWS says so on the page instead of vanishing into the console", async () => {
+  /* The click handlers are async, so before #225 this became an unhandled
+     promise rejection: a console line on a device with no console, and a page
+     that did not move. Indistinguishable from a dead app, which is exactly what
+     the report describes. */
+  const boom = Object.assign(new Error("player.forayJump is not a function"), { name: "TypeError" });
+  const { dom, bridge } = await mountForayPage({ startThrows: boom });
+
+  await dom.el("fy-play").click();           // must NOT reject
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1);
+  assert.equal(dom.el("fy-error").hidden, false, "a start that threw has to be visible");
+  assert.match(dom.el("fy-error").textContent, /press play/i, "and it has to say what to do next");
+
+  // The page is still able to try: the throw happened after the intent paint, so
+  // the "a Foray is live" flag has to be dropped on the way out.
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 0);
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 2);
+});
+
+test("a control that throws over LIVE audio says so without lying about the state", async () => {
+  /* The other half of the same guard, and the half that must not overreach. The
+     audio is still running, so the player's state is still the truth: a page that
+     dropped its "this Foray is live" flag here would show a button labelled
+     "Pause" that means "start", and the next press would rebuild the queue
+     underneath audio the listener is still hearing. */
+  const { dom, bridge, resolved } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  onChange({ forayId: FORAY_ID, index: 4, playing: true, loading: false, gap: false, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null });
+
+  bridge.throwOnToggle(Object.assign(new Error("nope"), { name: "TypeError" }));
+  await dom.el("fy-play").click();             // must NOT reject
+
+  assert.equal(dom.el("fy-error").hidden, false, "a control that threw has to be visible");
+  assert.ok(!/wouldn't load/.test(dom.el("fy-error").textContent), `nothing failed to load: ${dom.el("fy-error").textContent}`);
+  assert.equal(dom.el("fy-play").textContent, "❚❚ Pause", "the label still describes the audio, which is still playing");
+
+  // And the page still knows a Foray is live, so the next press is a transport
+  // action rather than a restart on top of live audio.
+  bridge.throwOnToggle(null);
+  await dom.el("fy-play").click();
+  assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1, "a failed control must never restart a running Foray");
+  assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 2);
+});
+
+test("the tap reaches playForay with nothing awaited in front of it", async () => {
+  /* THE FIRST DEFECT IN THE FOUNDER'S SENTENCE, pinned as far as this harness
+     can reach. Safari lifts an element's autoplay restriction inside the
+     `play()` call that a user gesture is processing, and the gesture is spent
+     when the current task ends — so anything this page awaits before calling
+     into the player is a start Safari may refuse.
+
+     Asserted on the SOURCE because the module that does the priming
+     (`player/client.js`) cannot be loaded here: it builds DOM at import. The
+     ordering inside it is pinned the same way below. */
+  assert.match(
+    APP_SRC,
+    /const start = \(index\) => guardForayStart\(\(\) => \(paintForayFailure\(null\), player\.playForay\(/,
+    "the index funnel must call the player as the first thing inside the tap"
+  );
+  assert.match(
+    APP_SRC,
+    /const startAt = \(elapsedSec\) => guardForayStart\(\(\) => \(paintForayFailure\(null\), player\.playForay\(/,
+    "the resume/scrub funnel must too"
+  );
+  /* Both funnels, no third path: every control on the page routes through one of
+     them, so neither can be fixed and the other left awaiting. Comment lines are
+     dropped in all three shapes — this file and app.js both discuss `playForay(`
+     in prose, and a test that goes red at a paragraph is a test people delete. */
+  const bodies = APP_SRC.split("\n")
+    .filter((l) => l.includes("playForay("))
+    .filter((l) => !/^\s*(\/\/|\/\*|\*)/.test(l));
+  assert.equal(bodies.length, 2, `expected two call sites, found:\n${bodies.join("\n")}`);
+  for (const line of bodies) {
+    assert.ok(!/await/.test(line), `a start must not await anything before playForay: ${line}`);
+  }
+});
+
+test("client.js spends the gesture on the element BEFORE its first await", async () => {
+  /* `playForay` is called straight out of a click handler, so the line that
+     primes the element has to come before every `await` in it — the load that
+     follows resolves on a media event, which is a new task, and by then Safari
+     is entitled to refuse the `play()` that ends the call.
+
+     A text assertion, for the reason above: this module cannot be imported into
+     a Node test. It is a weak instrument used for a sharp question, so it asks
+     the only question that matters — is the prime above the first await. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  // BOTH entry points a tap can reach: a Foray, and a single episode from a card.
+  // The episode path is the one a `playForay`-shaped assertion cannot see.
+  for (const signature of ["async playForay(resolved, {", "async play(item, { why"]) {
+    const from = client.indexOf(signature);
+    assert.ok(from > 0, `${signature} moved or was renamed`);
+    const body = client.slice(from);
+    const primeAt = body.indexOf("backend.notePlayGesture()");
+    const awaitAt = body.indexOf("await ");
+    assert.ok(primeAt > 0, `${signature} no longer spends the gesture on the element (#225)`);
+    assert.ok(
+      primeAt < awaitAt,
+      `notePlayGesture must run before the first await in ${signature}, or the tap is already spent`
+    );
+  }
+});
+
+test("client.js only ever reports an error that describes the attempt in front of it", async () => {
+  /* The page treats "an error, and nothing playing" as a failed start, so a
+     `foray.error` that outlives its attempt is not a stale message — it is a
+     page that goes cold mid-hour. Two rules keep the field honest, and both are
+     one line in a module this suite cannot import, so both are read as text.
+
+     The telemetry strings themselves are pinned behaviourally in
+     `queue-manager.test.js` ("a DAI segment whose copy has drifted is skipped"
+     for `.atLoad`, and the build-time `skipped[1]` in the ladder tests), so the
+     two halves of this rule cannot drift apart silently. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  assert.match(
+    client,
+    /if \(foray\.error && isPlaying\(\)\) foray\.error = null;/,
+    "an error must not survive audio, or pausing reads as a failed start (#225)"
+  );
+  assert.match(
+    client,
+    /foray && \/player\\\.error\|segment\\\.skipped\\\.atLoad\/i\.test\(m\)/,
+    "a segment the BUILD dropped is a property of the running order, not a failed tap"
+  );
 });
 
 test("a thumbs-up records a vote — the binder that actually threw", async () => {

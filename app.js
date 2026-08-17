@@ -1307,7 +1307,9 @@ async function renderForay(id) {
           <button type="button" class="fy-btn fy-main" id="fy-play" aria-label="Play">▶ Play</button>
           <button type="button" class="fy-btn" id="fy-next" aria-label="Next segment">››</button>
         </div>
-        <p class="fy-error" id="fy-error" hidden></p>
+        <!-- A start that failed says so HERE, and a screen reader hears it
+             without moving focus off the button that was just pressed. -->
+        <p class="fy-error" id="fy-error" role="status" aria-live="polite" hidden></p>
       </div>
       ${lost ? `<p class="note">${lost} segment${lost === 1 ? "" : "s"} can't play — listed below.</p>` : ""}
       ${r.slots.map(foraySlotHtml).join("")}
@@ -1408,6 +1410,85 @@ function fillOf(strip, i) {
 
 const FORAY_IDLE = { index: -1, playing: false, ended: false, elapsedSec: 0 };
 
+/* THE TWO THINGS A FAILED START MAY SAY, and there are only two because only
+   two can be acted on.
+
+   Autoplay refusal is not a fault. The browser is holding audio back until it is
+   certain a person asked for it, which is a rule we live under rather than a bug
+   — so it gets a plain instruction and the play button beneath it is the
+   affordance, never a red line about an error. Everything else is a segment that
+   did not arrive, where the connection is the first thing to check.
+
+   Matched on the player's telemetry STRING rather than a structured field on
+   purpose: app.js and player/client.js are cached and refreshed independently by
+   the service worker (see the note in `renderForay`), so this page is regularly
+   paired with a module of a different vintage. `NotAllowedError` is a DOM
+   exception name — it is stable in both directions across that skew. */
+const FY_AUTOPLAY_HINT = "Your browser held the audio back until it was sure you asked for it — press play again and it will start.";
+const FY_START_FAILED = "That segment wouldn't load. Check the connection, then press play.";
+/* A control that threw while the Foray was already running is a third thing, and
+   it must not claim a segment failed to load: nothing did, the audio is still
+   going, and the honest report is that the button did not take. */
+const FY_TAP_FAILED = "That control didn't take. Try it again, or reload the page if it keeps happening.";
+
+function forayFailureCopy(signal) {
+  return /NotAllowedError/.test(String(signal ?? "")) ? FY_AUTOPLAY_HINT : FY_START_FAILED;
+}
+
+/** Say it on the page. `signal` is whatever evidence there is — the player's own
+    error line, or a caught exception — and null clears the line. */
+function paintForayFailure(signal) {
+  const err = $("#fy-error");
+  if (!err) return;
+  err.hidden = !signal;
+  err.textContent = signal ? forayFailureCopy(signal) : "";
+  // A browser being careful about audio is not an error, and must not be dressed
+  // as one. styles.css tones `.is-hint` down to a note.
+  err.classList.toggle("is-hint", Boolean(signal) && forayFailureCopy(signal) === FY_AUTOPLAY_HINT);
+}
+
+/* Every tap on this page's transport goes through one of these two (#225).
+
+   The click handlers are `async`, so a call that threw became an unhandled
+   promise rejection: a console line, and a page that did not move a pixel. On a
+   phone there is no console, which makes that outcome indistinguishable from a
+   dead app — the founder's report was "starting it was difficult, not sure why".
+
+   THEY DIFFER IN WHAT THEY MAY ASSUME, which is why they are two functions.
+   A start that threw got nowhere, so the "this Foray is live" flag that the
+   intent-paint set is a lie and has to go, or the next press of the main button
+   means pause instead of another attempt. A control that threw while the Foray
+   was ALREADY running is the opposite: the audio is still going, the player's own
+   state is still the truth, and clearing the page's flags would leave a button
+   labelled "Pause" that means "start" — the very confusion this issue is about.
+   That one says so and touches nothing; the next tick owns the state. */
+async function guardForayStart(run) {
+  try {
+    return await run();
+  } catch (err) {
+    console.warn("[foray] start failed", err);
+    state.forayPlaying = null;
+    state.forayPainted = null;
+    paintForayFailure(err?.name ? `${err.name}: ${err.message ?? ""}` : String(err));
+    return null;
+  }
+}
+
+async function guardForayTap(run) {
+  try {
+    return await run();
+  } catch (err) {
+    console.warn("[foray] control failed", err);
+    const line = $("#fy-error");
+    if (line) {
+      line.hidden = false;
+      line.textContent = FY_TAP_FAILED;
+      line.classList.remove("is-hint");
+    }
+    return null;
+  }
+}
+
 function bindForayTransport(r, player, resume = null) {
   const onChange = (s) => paintForay(s);
 
@@ -1418,13 +1499,19 @@ function bindForayTransport(r, player, resume = null) {
      Spread into all three entry points below so a new one cannot forget it. */
   const forayOpts = { onChange, discoverDoc: state.discover };
 
-  const start = (index) => player.playForay(r, { startIndex: index, ...forayOpts });
+  /* Both funnels are a `guardForayStart`, and the call into the player is the
+     FIRST thing inside it — no await, no lookup, nothing between the tap and
+     `playForay`. Safari only lets audio start inside the gesture that asked for
+     it, and the gesture is spent by the first thing that waits (#225). Clearing
+     the failure line is cleared in the same breath, because the message from the
+     last attempt is not evidence about this one — inside the guard, so even that
+     cannot become the unhandled rejection this whole thing is about. */
+  const start = (index) => guardForayStart(() => (paintForayFailure(null), player.playForay(r, { startIndex: index, ...forayOpts })));
+  const startAt = (elapsedSec) => guardForayStart(() => (paintForayFailure(null), player.playForay(r, { startElapsedSec: elapsedSec, ...forayOpts })));
   /* The main button, pressed cold. With a stored position that means RESUME —
      the whole point of the feature — and an explicit index (a row, the strip)
      always wins, because the listener just named a segment. */
-  const startOrResume = () => resume
-    ? player.playForay(r, { startElapsedSec: resume.elapsedSec, ...forayOpts })
-    : start(0);
+  const startOrResume = () => resume ? startAt(resume.elapsedSec) : start(0);
 
   $("#fy-restart")?.addEventListener("click", async () => {
     if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
@@ -1444,7 +1531,7 @@ function bindForayTransport(r, player, resume = null) {
   }
 
   $("#fy-play").addEventListener("click", async () => {
-    if (playerHasForay(r)) return player.forayToggle();
+    if (playerHasForay(r)) return guardForayTap(() => player.forayToggle());
     // Only the real start is an event. Logging a pause as a play is the kind of
     // small lie that makes a metric useless six months later.
     logEvent("foray_play", {
@@ -1455,13 +1542,13 @@ function bindForayTransport(r, player, resume = null) {
   });
   // Before anything has started, every transport button means "start it" — a
   // next that begins at segment 2 silently drops the opening of the Foray.
-  $("#fy-next").addEventListener("click", () => playerHasForay(r) ? player.forayNext() : startOrResume());
-  $("#fy-prev").addEventListener("click", () => playerHasForay(r) ? player.forayPrevious() : startOrResume());
+  $("#fy-next").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayNext()) : startOrResume());
+  $("#fy-prev").addEventListener("click", () => playerHasForay(r) ? guardForayTap(() => player.forayPrevious()) : startOrResume());
 
   $("#view").querySelectorAll("[data-fy]").forEach(btn => {
     btn.addEventListener("click", async () => {
       const index = Number(btn.dataset.fy);
-      if (playerHasForay(r)) await player.forayJump(index);
+      if (playerHasForay(r)) await guardForayTap(() => player.forayJump(index));
       else await start(index);
     });
   });
@@ -1486,15 +1573,15 @@ function bindForayTransport(r, player, resume = null) {
        has to be true or the control is lying. */
     const at = stripElapsedAt(e, r);
     if (at != null) {
-      if (playerHasForay(r)) return player.foraySeek(at);
-      return player.playForay(r, { startElapsedSec: at, ...forayOpts });
+      if (playerHasForay(r)) return guardForayTap(() => player.foraySeek(at));
+      return startAt(at);
     }
     // No coordinate to work from (a synthetic or assistive click). Fall back to
     // the bar that was hit, which is what the strip did before it could scrub.
     const seg = e.target.closest("[data-seg]");
     if (!seg) return;
     const index = Number(seg.dataset.seg);
-    return playerHasForay(r) ? player.forayJump(index) : start(index);
+    return playerHasForay(r) ? guardForayTap(() => player.forayJump(index)) : start(index);
   });
 
   /* Re-entering the page mid-Foray must paint the segment that is actually
@@ -1520,15 +1607,47 @@ function playerHasForay(r) {
     and drop focus. */
 function paintForay(s) {
   if (!state.foray) return;
-  state.forayPlaying = s.index >= 0 ? state.foray.id : null;
+  /* SOMEBODY ELSE'S FORAY IS NOT THIS PAGE'S NEWS. `watchForay` points the live
+     player's callback at whichever page rendered last, so with Foray A playing in
+     the mini bar, opening Foray B's page (the home rail does exactly this) fed
+     A's ticks into B's paint: B's button read "Pause" and pressing it paused A.
+     The first paint has always been gated this way — `renderForay` compares
+     `live.forayId === r.id` — and the ticks after it were not. `FORAY_IDLE`
+     carries no id and must still get through: it is this page saying "nothing". */
+  if (s.forayId && s.forayId !== state.foray.id) return;
+  /* A START THAT FAILED IS NOT A LIVE FORAY (#225).
+
+     `playForay` paints its intent before it awaits the load — deliberately, so a
+     tapped row lights up immediately — which means an index arrives on this page
+     a moment BEFORE the audio is known to exist. When the load or the play is
+     then refused, that index was the only thing standing, and everything below
+     read it as "playing": the resume banner hid itself, the button relabelled,
+     and `state.forayPlaying` made the next press of the main button mean PAUSE
+     rather than a retry. Two controls that had meant the same thing now meant
+     different things, with nothing on screen to say why — which is the whole of
+     the founder's report.
+
+     An error with nothing playing, nothing loading and no beat running is a
+     failed start, and the page goes back to being cold with a line that says so. */
+  const failed = Boolean(s.error) && !s.playing && !s.loading && !s.gap;
+  const live = s.index >= 0 && !failed;
+  state.forayPlaying = live ? state.foray.id : null;
 
   /* Nothing loaded — cold, or the mini bar was just closed. Fall back to the
      stored resume point rather than repainting the page as untouched: the
      banner above still says "Jump back in at 23:14" and the button still
      resumes there, so a clock reading 0:00 underneath it would be the page
      contradicting itself. */
-  const resume = s.index >= 0 ? null : state.forayResume;
-  const elapsed = s.index >= 0 ? (s.elapsedSec || 0) : (s.elapsedSec || resume?.elapsedSec || 0);
+  const resume = live ? null : state.forayResume;
+  /* THE COLD CLOCK IS THE STORED POINT, AND ONLY THAT — the same expression the
+     main button starts from, so the two cannot disagree.
+
+     It used to read `s.elapsedSec` first, which is right while something is live
+     and wrong the moment a start fails: `forayPosition()` answers with the failed
+     segment's own start, so a refused jump to segment 20 left the clock reading
+     37:31 over a button that goes to 19:40. A phantom position is worse than a
+     stale one, because the listener can act on it. */
+  const elapsed = live ? (s.elapsedSec || 0) : (resume?.elapsedSec || 0);
 
   const now = $("#fy-now");
   if (now && window.ForayPlayer) now.textContent = window.ForayPlayer.fmtClock(elapsed);
@@ -1537,13 +1656,14 @@ function paintForay(s) {
      playing that is the live segment; before anything has started it is the
      stored resume point, so a page opened cold shows the hour already half
      ticked off instead of pretending it was never touched. */
-  const mark = s.index >= 0 ? s.index : (resume?.index ?? -1);
+  const mark = live ? s.index : (resume?.index ?? -1);
   paintSegFill(mark >= 0, elapsed);
 
   // The offer only means anything while stopped; once it is playing, the
-  // transport IS the progress and a second "jump back in" is noise.
+  // transport IS the progress and a second "jump back in" is noise. A start that
+  // failed is stopped, so the offer — and the "Start over" inside it — comes back.
   const banner = $("#fy-resume");
-  if (banner) banner.hidden = s.index >= 0;
+  if (banner) banner.hidden = live;
 
   const playBtn = $("#fy-play");
   if (playBtn) {
@@ -1555,7 +1675,7 @@ function paintForay(s) {
     // for the two seconds the silence lasts. Labelling those two seconds
     // "Loading…" would be the app apologising for its own edit.
     const running = s.playing || s.gap;
-    const started = s.index >= 0 || elapsed > 0;
+    const started = live || elapsed > 0;
     const label = running ? "❚❚ Pause" : (s.loading ? "Loading…" : (started ? "▶ Resume" : "▶ Play"));
     playBtn.textContent = label;
     playBtn.setAttribute("aria-label", running ? "Pause" : "Play");
@@ -1566,27 +1686,29 @@ function paintForay(s) {
 
   // The player's own words are telemetry, not copy. Say the one thing a
   // listener can act on, and keep the detail in the console.
-  const err = $("#fy-error");
-  if (err) {
-    err.hidden = !s.error;
-    err.textContent = s.error ? "That segment wouldn't load. Check the connection, then press play." : "";
-  }
+  paintForayFailure(s.error);
 
-  // The row and strip classes only change when the segment does, and this runs
-  // on every position tick. Guard it: 32 rows x 4 Hz of class churn for a value
-  // that changes once a minute is work nobody asked for.
-  if (state.forayPainted === s.index) return;
-  state.forayPainted = s.index;
+  /* The row and strip classes only change when the segment does, and this runs
+     on every position tick. Guard it: 32 rows x 4 Hz of class churn for a value
+     that changes once a minute is work nobody asked for.
+
+     Keyed on the LIVE index, not the raw one: a start that failed at segment 12
+     has to clear the highlight it painted a moment ago, and keying on `s.index`
+     — which does not change when the load fails — would skip that repaint and
+     leave a row lit under a message saying nothing is playing. */
+  const liveIndex = live ? s.index : -1;
+  if (state.forayPainted === liveIndex) return;
+  state.forayPainted = liveIndex;
 
   $("#view").querySelectorAll("[data-fy]").forEach(row => {
     const i = Number(row.dataset.fy);
-    row.classList.toggle("is-playing", i === s.index);
+    row.classList.toggle("is-playing", i === liveIndex);
     row.classList.toggle("is-played", mark >= 0 && i < mark);
   });
   const strip = $("#fy-strip");
   if (strip) {
     [...strip.children].forEach((seg, i) => {
-      seg.classList.toggle("is-playing", i === s.index);
+      seg.classList.toggle("is-playing", i === liveIndex);
       seg.classList.toggle("is-played", mark >= 0 && i < mark);
       // A bar the listener has passed is full; one they have not reached is
       // empty. The bar they are INSIDE is left alone — paintSegFill already

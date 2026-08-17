@@ -169,6 +169,31 @@ test("play loads then starts, in that order", async () => {
   assert.deepStrictEqual(backend.calls, ["load:a@0", "rate:1", "play"]);
 });
 
+test("the manager adds no macrotask between a settled load and play()", async () => {
+  /* Necessary, not sufficient, and the distinction matters: WebKit's user-gesture
+     indicator is stack-scoped, so an `await` can lose a gesture with no timer
+     involved at all — which is exactly why #225 had to spend the gesture on the
+     element in the backend rather than tidy this chain. What this pins is the
+     cheaper half: once a load HAS settled, the reducer, the effect loop, the
+     rate, the out-point and the beat's zero-length wait all stay inside the task
+     that asked. Put one timer in that chain and even a load that resolves
+     instantly — the same-source shortcut, which is how a tap gets audio out of an
+     element already holding the URL — could not start playback.
+
+     A timer callback stands in for "the task ended". */
+  const { m, backend } = make();
+  let sameTask = true;
+  setTimeout(() => { sameTask = false; }, 0);
+  const playedWith = [];
+  const realPlay = backend.play.bind(backend);
+  backend.play = () => { playedWith.push(sameTask); realPlay(); };
+
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+
+  assert.deepStrictEqual(playedWith, [true], "a macrotask between the load and play() strands every start");
+});
+
 test("SINGLE_ITEM ends the session instead of chaining into another episode", async () => {
   // CLAUDE.md product principle 1: no autoplay chains.
   const { m, backend } = make();

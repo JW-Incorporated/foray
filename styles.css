@@ -683,6 +683,9 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
 .fy-row.is-out .fy-jump { cursor: default; }
 .fy-out { margin: 4px 0 0; font-size: 0.72rem; color: var(--gold); }
 .fy-error { margin: 10px 0 0; text-align: center; font-size: 0.78rem; color: var(--gold); }
+/* A browser refusing to autoplay is a rule we live under, not a fault, so it is
+   a note in the ordinary muted voice rather than a warning in gold (#225). */
+.fy-error.is-hint { color: var(--text-dim); }
 
 /* ---------- per-segment feedback ----------
    Up is one quiet tap; down opens the sheet. The controls are the same size so
