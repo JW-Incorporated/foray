@@ -16,9 +16,13 @@
         real catalog coverage, every one of the checked top results must
         carry the query's actual subject (a tag, title, or show substring
         we specify per case) -- if this fails, junk is leaking into results.
-     3. Honest empty: for topics the catalog genuinely doesn't cover (an
-        NBA team by name), status must be "empty" -- never a padded list of
-        unrelated filler.
+     3. Honest coverage: for topics the catalog genuinely doesn't cover (a
+        basketball team by name), status must be "empty" -- never a padded
+        list of unrelated filler. For a topic whose coverage is real but
+        THIN, the expectation is derived from the catalog rather than pinned
+        to a tier label (see the "nba" case), because the nightly refresh
+        grows the catalog by design and a hard-coded tier breaks the moment
+        it does.
      4. Diversity: no single show dominates a result, EXCEPT when the
         catalog genuinely can't diversify (a single-show topic like bbq, or
         a direct show-name query like "smartless") -- there the honest
@@ -46,7 +50,9 @@
      9. `sports` concept cleanup: zero-coverage league/team terms (nba,
         basketball, baseball, tennis, ...) removed so a bare "nba"/
         "basketball" query no longer floods in generic sports-science
-        content and instead stays honestly empty -- verified via the
+        content and instead returns only items that name the league
+        themselves -- which for "nba" was nothing at all until the
+        2026-08-17 refresh, and is two items now (see §3) -- verified via the
         validator's new zero-coverage-term WARN (tools/validate-semantic-
         index.mjs), which flagged exactly these two as strictly zero
         (tagDF=0 AND corpusDF=0); the rest were removed by hand after
@@ -227,17 +233,69 @@ for (const c of topicalCases) {
     `off-topic: ${offTopic.map((p) => `${p.i.id} "${p.i.title}"`).join(", ")}`);
 }
 
-/* ---------- 3. honest empty for genuinely-absent topics ---------- */
+/* ---------- 3. honest coverage for absent and thin topics ---------- */
 
-/* "nba"/"basketball" join this list in PR2 -- before the `sports` concept
-   cleanup, a bare "nba" query flooded in generic sports-science content
-   (the one real "nba"-tagged item is about an NBA performance coach's
-   biomechanics, not the league) via full concept-vocabulary expansion.
-   With the zero-coverage league terms removed, it's honestly empty. */
-for (const query of ["the lakers", "warriors", "nba", "basketball"]) {
+/* "nba"/"basketball" joined this list in PR2 -- before the `sports` concept
+   cleanup, a bare "nba" query flooded in generic sports-science content via
+   full concept-vocabulary expansion. With the zero-coverage league terms
+   removed, only items naming the league themselves can match.
+   Team names stay genuinely absent, and both tokens collide with ordinary
+   prose ("warriors" reaches an Ancient History episode about Scotland's
+   first warriors; "team" reaches "steam" -- see the collision cases below),
+   so anything returned here would be filler by construction.
+   `basketball` stays here too, for a reason worth writing down: exactly ONE
+   item in the pool carries the word (Freakonomics' Gary Gulman episode,
+   which mentions basketball in passing in a comedy/mental-health hook), and
+   one result can never clear classifyResults' two-strong-matches floor. The
+   2026-08-17 refresh's real NBA episode is tagged `nba`, not `basketball`,
+   so it does not change this -- a tagging gap, deliberately left to the
+   catalogue owner rather than patched from inside the oracle. */
+for (const query of ["the lakers", "warriors", "basketball"]) {
   const { status, picks } = search(query);
-  check(`"${query}" is honestly empty (no NBA-team content in catalog)`, status === "empty" && picks.length === 0,
+  check(`"${query}" is honestly empty (no basketball-team content in catalog)`, status === "empty" && picks.length === 0,
     `got status=${status}, picks=${picks.length}`);
+}
+
+/* "nba" was in that list until the 2026-08-17 nightly refresh (+24 episodes,
+   PR #214) turned it red -- and the label it carried there, "no NBA-team
+   content in catalog", was already wrong before that. What actually kept the
+   query empty was classifyResults' floor: it returns "empty" whenever fewer
+   than two results clear the relative strong bar, and the catalog held
+   exactly ONE item naming the league (Just Fly Performance Podcast 515, an
+   NBA performance coach on tendon biomechanics -- tagged `nba`, "NBA" in its
+   hook). The refresh added a second and squarely on-topic one (Happier's
+   Jalen Brunson episode -- tagged `nba`, "NBA" in both title and hook), which
+   flipped the query empty -> sparse with 2 picks. NEITHER pick is a ranker
+   false positive: both name the league in prose a listener reads, and both
+   match through the same `hitTag`/`hitText` the ranker scores with.
+
+   So this is a real topical case now -- but a COVERAGE-GATED one rather than
+   a pinned status label, because a pinned tier is exactly what broke. It has
+   broken three times: "how bbq works" on 2026-07-29 and again on -07-30, and
+   "plane crashes" on 2026-08-06. The nightly grows the catalog by design, so
+   the expectation is derived FROM the catalog: below the two-strong floor the
+   honest answer is nothing at all; at or above it, the query must surface
+   real NBA items and only those. Assert the behaviour, never the count.
+
+   `nba` is the whole needle set on purpose. The query is one token, it
+   expands to no concept (interpretQuery yields a single own-source term), so
+   `nba` is the only thing that can match -- and a needle that cannot fire is
+   how an oracle quietly goes loose. */
+{
+  const needle = "nba";
+  const covered = pool.filter((i) => itemHas(i, needle)).length;
+  const { status, picks } = search("nba");
+  if (covered < 2) {
+    check(`"nba" is honestly empty (catalog names the league in ${covered} item(s), below the two-strong floor)`,
+      status === "empty" && picks.length === 0, `got status=${status}, picks=${picks.length}`);
+  } else {
+    check(`"nba" surfaces the ${covered} catalog items that name the league`,
+      status !== "empty" && picks.length >= 2,
+      `got status=${status}, picks=${picks.length} -- ${covered} items name the league, so search hiding them means one swamped the relative strong bar (see issue #216)`);
+    const offTopic = picks.filter((p) => !itemHas(p.i, needle));
+    check(`"nba" returns only items that name the league`, offTopic.length === 0,
+      `off-topic: ${offTopic.map((p) => `${p.i.id} "${p.i.title}"`).join(", ")}`);
+  }
 }
 
 /* ---------- 4. diversity: no show dominates, except where honesty requires it ---------- */
