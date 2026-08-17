@@ -297,7 +297,7 @@ test("xcodebuild is pointed at a DETECTED container, not a hardcoded workspace",
   /* THE FIRST REAL RUN OF THIS WORKFLOW FAILED HERE, and it is the most useful
      thing #38 has produced so far: Capacitor 8's iOS template is Swift Package
      Manager, so `cap add ios` writes `Package.swift` and NO `App.xcworkspace`.
-     Every Capacitor guide, and HUMAN-ACTIONS.md #14 as originally written, assumes
+     Every Capacitor guide, and HUMAN-ACTIONS.md #16 as originally written, assumes
      a CocoaPods workspace. Hardcoding `-workspace` gave xcodebuild a path that did
      not exist. */
   assert.match(WF, /node tools\/mobile\/ios-ci\.mjs xcode-container/);

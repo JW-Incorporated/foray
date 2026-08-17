@@ -16,16 +16,16 @@ each of them blocking a decision:
 | Claim | Where it lives | Status before #38 |
 |---|---|---|
 | The Capacitor shell compiles at all | `docs/mobile-shell.md` §0 | **Never generated, never installed, never compiled.** Its author said so in a table |
-| Our CSP does not block Capacitor's injected bridge *on iOS* | `docs/mobile-shell.md` §5 | Reasoned from WKWebView's `WKUserScript` injection. `HUMAN-ACTIONS.md` #14 step 6.2 asks a human to type `Capacitor` into a console |
+| Our CSP does not block Capacitor's injected bridge *on iOS* | `docs/mobile-shell.md` §5 | Reasoned from WKWebView's `WKUserScript` injection. `HUMAN-ACTIONS.md` #16 step 6.2 asks a human to type `Capacitor` into a console |
 | Our out-point still fires when the app is backgrounded | `docs/research/mp1-background-audio.md` §8 | "**The single most load-bearing untested claim** in this document" — its words. **SETTLED, run 32026332637: it holds.** See §4b |
 | A Foray's 31 seam **transitions** survive backgrounding — the 2.0 s beat's `setTimeout`, then a fresh cross-episode load | `docs/research/mp1-background-audio.md` §8, last paragraph | Named as a risk and left unmeasured. The out-point result does **not** cover it: different mechanism, and the beat runs on the clock the same run measured at 1 s alignment. Probe C (§3) |
 
 Be precise about the second one, because the sloppy version overclaims: §5's
 heading is *"the top open risk: **Android's** injected bridge versus this CSP"*,
 and its iOS line is "iOS is probably fine". So this workflow does not settle that
-risk. It settles the *iOS assumption that sits beside it* — the one #14 step 6.2
+risk. It settles the *iOS assumption that sits beside it* — the one #16 step 6.2
 calls "the single most important line of output in this whole item" — and Android
-stays exactly where it was (`HUMAN-ACTIONS.md` #16).
+stays exactly where it was (`HUMAN-ACTIONS.md` #18).
 
 GitHub's macOS runners have Xcode **and the iOS Simulator**. So the third
 column can change without anyone buying a laptop.
@@ -34,7 +34,7 @@ column can change without anyone buying a laptop.
 
 1. `npm install` in `mobile/`, then **`npm run add:ios`** — the committed script,
    used rather than re-spelling `cap add ios`, so the workflow cannot drift from
-   what `HUMAN-ACTIONS.md` #14 tells a human on a Mac to run.
+   what `HUMAN-ACTIONS.md` #16 tells a human on a Mac to run.
 2. Work out whether to build a **workspace or a project** (§5: Capacitor 8 is
    SwiftPM and generates no workspace), and assert Capacitor did **not** generate
    into the repo's `ios/`. #209 pins the second through config; here it is checked
@@ -61,7 +61,7 @@ column can change without anyone buying a laptop.
 
 Signing needs an Apple Developer account, a distribution certificate, a
 provisioning profile and an App Store Connect API key. None exist
-(`HUMAN-ACTIONS.md` #17). A workflow that needed them would be a workflow that
+(`HUMAN-ACTIONS.md` #19). A workflow that needed them would be a workflow that
 has never run — so the build is unsigned and always runs, and the upload is
 gated behind them.
 
@@ -141,7 +141,7 @@ does not block Capacitor's bridge injection. That is what `docs/mobile-shell.md`
 §5 *reasoned* and nobody had run. It says nothing about Android, which injects an
 inline `<script>` into the served HTML from a `https://localhost` origin — a
 different mechanism, and the one §5's risk is actually about. That is
-`HUMAN-ACTIONS.md` #16 and it stays open. `bridgeVerdict()` carries both halves of
+`HUMAN-ACTIONS.md` #18 and it stays open. `bridgeVerdict()` carries both halves of
 that sentence in its own output so the claim cannot creep in a retelling.
 
 **And a `bridge-blocked` result does not automatically mean the CSP.** On iOS the
@@ -183,7 +183,7 @@ policy and models neither true suspension nor RunningBoard's assertions. So a
 been decisive, a pass only removes one way of being wrong. That sentence is
 `SIMULATOR_CAVEAT` in `tools/mobile/ios-ci.mjs`, shipped with every report, so it
 cannot be dropped from one retelling and kept in another. `HUMAN-ACTIONS.md` #11
-and #14 still want one real phone.
+and #16 still want one real phone.
 
 ### Probe C — the seam transition, backgrounded
 
@@ -260,17 +260,17 @@ that only completed on resume. A test in `ios-workflow.test.mjs` asserts that no
 
 ## 4. What still needs a human
 
-- **`HUMAN-ACTIONS.md` #17 (new):** an Apple Developer Program membership, a
+- **`HUMAN-ACTIONS.md` #19 (new):** an Apple Developer Program membership, a
   distribution certificate, a provisioning profile, an App Store Connect API key,
   and the seven repository secrets. Until then there is no TestFlight build, only
   an unsigned one.
-- **#13:** rule on the permanent bundle id. It is baked into the generated
+- **#15:** rule on the permanent bundle id. It is baked into the generated
   project; changing it after a store release means a new listing.
-- **#14 / #16:** still open. #14's *build* is now automated, but its device
+- **#16 / #18:** still open. #16's *build* is now automated, but its device
   questions — icons visible, a Foray advancing with the phone locked, stale-content
   behaviour after an update — are device questions and a simulator cannot answer
-  them. #16 is Android and this workflow says nothing about it.
-- **#15:** whether the bundled-data freeze blocks a store submission.
+  them. #18 is Android and this workflow says nothing about it.
+- **#17:** whether the bundled-data freeze blocks a store submission.
 
 ## 4b. What the runs have actually measured
 
@@ -374,7 +374,7 @@ disaster.
 
 1. **A Simulator is not a device**, so this is the weak direction of the evidence
    (§3). A failure here would have been decisive; a pass removes one way of being
-   wrong. `HUMAN-ACTIONS.md` #11 and #14 step 6.4 are unchanged.
+   wrong. `HUMAN-ACTIONS.md` #11 and #16 step 6.4 are unchanged.
 2. **Backgrounding is slow and variable on a cold-booted runner**, which is why the
    arm is relative to it rather than to a clock. `simctl launch
    com.apple.Preferences` returns immediately, but Settings has taken anywhere up to
@@ -439,10 +439,10 @@ failed at "generate the iOS project" in 21 seconds, and the log is unambiguous:
 
 No `pod install`, no workspace. The first draft of this workflow hardcoded
 `xcodebuild -workspace mobile/ios/App/App.xcworkspace` — the shape every
-Capacitor guide shows, and the shape `HUMAN-ACTIONS.md` #14 was written around —
+Capacitor guide shows, and the shape `HUMAN-ACTIONS.md` #16 was written around —
 and handed xcodebuild a path that does not exist.
 
-**This is the finding, not the bug.** A founder following #14 on their own Mac
+**This is the finding, not the bug.** A founder following #16 on their own Mac
 would have hit the same wall, in Xcode, with less signal. `pickXcodeContainer()`
 now chooses `-workspace` or `-project` from what is actually on disk (workspace
 wins if both exist, which is Xcode's own rule), throws if neither is there, and
@@ -452,7 +452,7 @@ made this choice, and the four plugins resolved fine.
 Consequences worth knowing: the iOS shell has **no Podfile and no Podfile.lock**,
 so the plugin versions are pinned by `mobile/package-lock.json` (which is not
 committed — see the `npm install` note above) and by `Package.swift`, which
-`cap sync` regenerates. That is a reproducibility question for #14 step 7
+`cap sync` regenerates. That is a reproducibility question for #16 step 7
 ("commit `mobile/ios/`?") and it now has one more input.
 
 ### The other thing to check first

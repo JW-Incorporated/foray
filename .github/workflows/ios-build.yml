@@ -85,7 +85,7 @@
 # The BUILD is unsigned and always runs. Signing and the TestFlight upload need
 # an Apple Developer account, a distribution certificate, a provisioning profile
 # and an App Store Connect API key — none of which exist (`HUMAN-ACTIONS.md`
-# #17). Those steps are gated on the secrets being present, and the gate has
+# #19). Those steps are gated on the secrets being present, and the gate has
 # three outcomes rather than two: all set -> upload, none set -> skip loudly,
 # SOME set -> fail the job. A half-configured signing setup that silently skips
 # the upload on a green run is the worst of the three.
@@ -178,7 +178,7 @@ jobs:
       - name: Build the webDir and generate the iOS project
         # `npm run add:ios` is the committed script (prepare:webdir && cap add ios),
         # used rather than re-spelling the commands so this workflow cannot drift
-        # from what HUMAN-ACTIONS.md #14 tells a human on a Mac to run.
+        # from what HUMAN-ACTIONS.md #16 tells a human on a Mac to run.
         working-directory: mobile
         run: |
           set -euo pipefail
@@ -193,7 +193,7 @@ jobs:
       - name: Which Xcode container did Capacitor generate?
         # `-workspace` (CocoaPods) or `-project` (SwiftPM), chosen by a tested
         # function rather than assumed. Every Capacitor guide — and HUMAN-ACTIONS.md
-        # #14 as first written — assumes a workspace; 8.x does not make one.
+        # #16 as first written — assumes a workspace; 8.x does not make one.
         id: xc
         run: |
           set -euo pipefail
@@ -562,7 +562,7 @@ jobs:
         # `process.env`, which this step is deliberately not given the secrets for
         # — so it said "no signing secrets set" unconditionally, and would have
         # started contradicting the gate step in the same run the day
-        # HUMAN-ACTIONS.md #17 was done.
+        # HUMAN-ACTIONS.md #19 was done.
         #
         # NOT `continue-on-error`. `ios-ci.mjs verdict` exits 0 for every verdict
         # including the bad ones, by design, so the only thing the flag could hide

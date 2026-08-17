@@ -10,7 +10,7 @@
  * and no Swift. The key is the only missing piece — and Capacitor has no config
  * option for it, so something has to edit the generated project.
  *
- * That "something" used to be a human on a Mac (`HUMAN-ACTIONS.md` #14 step 4).
+ * That "something" used to be a human on a Mac (`HUMAN-ACTIONS.md` #16 step 4).
  * This script is that step, so a CI runner can do it, and so it can be TESTED on
  * a machine with no Mac at all — which is the only part of #38 that is testable
  * here.

@@ -74,7 +74,7 @@ test("with no secrets set, the upload is skipped and that is NOT a failure", () 
   assert.equal(r.state, "absent");
   assert.equal(r.ready, false);
   assert.equal(r.missing.length, SIGNING_SECRETS.length);
-  assert.match(r.message, /HUMAN-ACTIONS\.md #17/);
+  assert.match(r.message, /HUMAN-ACTIONS\.md #19/);
 });
 
 test("a HALF-configured signing setup is an error, not a skip", () => {
@@ -121,7 +121,7 @@ test("a SwiftPM-only project is built with -project", () => {
      Swift Package Manager: the run logged "All Capacitor plugins have a
      Package.swift file", then "Writing Package.swift", then "ios platform added!"
      — no `pod install` and no `App.xcworkspace`. Every Capacitor guide, and
-     HUMAN-ACTIONS.md #14 as first written, assumes a CocoaPods workspace, and
+     HUMAN-ACTIONS.md #16 as first written, assumes a CocoaPods workspace, and
      hardcoding `-workspace` handed xcodebuild a path that did not exist. */
   const c = pickXcodeContainer({ project: "mobile/ios/App/App.xcodeproj" });
   assert.equal(c.flag, "-project");
@@ -401,7 +401,7 @@ test("window.Capacitor present and native is the good outcome, scoped to iOS", (
   assert.equal(v.verdict, "bridge-present");
   assert.match(v.headline, /EXISTS on iOS/);
   /* The claim must not creep. Android's bridge is injected by a different
-     mechanism and stays unproven — HUMAN-ACTIONS.md #16. */
+     mechanism and stays unproven — HUMAN-ACTIONS.md #18. */
   assert.match(v.detail, /NOTHING about Android/);
   assert.match(v.detail, /0 registrations/);
 });
@@ -1118,11 +1118,11 @@ test("the signing section reports what the GATE said, not what this process can 
      recompute the state from `process.env` — but the reporting step is deliberately
      not given the secrets, so it said "no signing secrets set" unconditionally. It
      was right only by accident, and would have begun contradicting the gate step
-     inside the same run on the day HUMAN-ACTIONS.md #17 was done. */
+     inside the same run on the day HUMAN-ACTIONS.md #19 was done. */
   assert.match(renderReport({ signingState: "ready" }), /`ready`/);
   assert.match(renderReport({ signingState: "ready" }), /never executed before/);
   assert.match(renderReport({ signingState: "partial" }), /failed on purpose/);
-  assert.match(renderReport({ signingState: "absent" }), /HUMAN-ACTIONS\.md #17/);
+  assert.match(renderReport({ signingState: "absent" }), /HUMAN-ACTIONS\.md #19/);
   /* And with no gate output it must say so rather than guessing "absent". */
   const silent = renderReport({ signingState: null });
   assert.match(silent, /`not reported`/);

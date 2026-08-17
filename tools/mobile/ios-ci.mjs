@@ -32,7 +32,7 @@ import { fileURLToPath } from "node:url";
 /** Everything an App Store Connect upload needs, and nothing it does not.
  *
  *  These are SECRET NAMES, not values, and no value for any of them exists in
- *  this repo or in this project's GitHub org — see `HUMAN-ACTIONS.md` #17. The
+ *  this repo or in this project's GitHub org — see `HUMAN-ACTIONS.md` #19. The
  *  list is here so the workflow can say precisely what is missing instead of
  *  "signing not configured", which is the message that makes someone go read a
  *  YAML file. */
@@ -81,7 +81,7 @@ export function signingReadiness(env = {}) {
         ? "All 7 signing secrets present — archiving and uploading to TestFlight."
         : state === "absent"
           ? "No signing secrets set, so the TestFlight upload is skipped. The unsigned build " +
-            "above still ran, and that is the designed behaviour — see HUMAN-ACTIONS.md #17."
+            "above still ran, and that is the designed behaviour — see HUMAN-ACTIONS.md #19."
           : `Signing is HALF configured: ${present.length} of ${SIGNING_SECRETS.length} secrets are ` +
             `set and ${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} missing. Failing ` +
             `rather than skipping, because a skipped upload on a green run is invisible.`,
@@ -94,7 +94,7 @@ export function signingReadiness(env = {}) {
  * `-workspace` or `-project`, depending on what `cap add ios` actually generated.
  *
  * MEASURED, NOT ASSUMED — and the first run of this workflow is what settled it.
- * Every Capacitor iOS guide, and `HUMAN-ACTIONS.md` #14 as originally written,
+ * Every Capacitor iOS guide, and `HUMAN-ACTIONS.md` #16 as originally written,
  * assumes CocoaPods and therefore an `App.xcworkspace`. **Capacitor 8 does not
  * generate one.** Its iOS template uses Swift Package Manager: the first run
  * logged "All Capacitor plugins have a Package.swift file and will be included in
@@ -392,7 +392,7 @@ export function bridgeVerdict(probe) {
       detail:
         "The probe never reported, so this run says nothing about window.Capacitor. Do not " +
         "read it as a pass: docs/mobile-shell.md's open risk stays open and HUMAN-ACTIONS.md " +
-        "#14 step 6.2 still needs doing.",
+        "#16 step 6.2 still needs doing.",
     };
   }
   const csp = Array.isArray(probe.cspViolations) ? probe.cspViolations : [];
@@ -475,7 +475,7 @@ export function bridgeVerdict(probe) {
       "what docs/mobile-shell.md §5 REASONED (WKWebView injects via WKUserScript, outside the " +
       "document's CSP) and nobody had run. It says NOTHING about Android: that bridge is an " +
       "inline <script> in the served HTML, a different mechanism, and it is what §5 is actually " +
-      "about. HUMAN-ACTIONS.md #16 stays open.",
+      "about. HUMAN-ACTIONS.md #18 stays open.",
     swRegistrations: sw,
   };
 }
@@ -544,7 +544,7 @@ export function outPointVerdict(probe) {
       headline: "No out-point data came back — MP1 §8's load-bearing inference is UNCHANGED.",
       detail:
         "Nothing was measured, so `timeupdate` surviving backgrounding remains an inference. " +
-        "HUMAN-ACTIONS.md #11 and #14 step 6.4 still need a device.",
+        "HUMAN-ACTIONS.md #11 and #16 step 6.4 still need a device.",
     };
   }
   if (probe.autoplayBlocked) {
@@ -1269,7 +1269,7 @@ export const SIMULATOR_CAVEAT =
   "Measured in the iOS Simulator, which does not model power management or true app " +
   "suspension. A pass here is WEAKER evidence than a failure would be: it cannot promise a " +
   "device will behave the same way, while a failure would have been decisive. " +
-  "HUMAN-ACTIONS.md #11/#14 still want one real phone.";
+  "HUMAN-ACTIONS.md #11/#16 still want one real phone.";
 
 /**
  * The whole report, as markdown for `$GITHUB_STEP_SUMMARY`.
@@ -1278,7 +1278,7 @@ export const SIMULATOR_CAVEAT =
  * recomputed here from `process.env` — but the reporting step is not given the
  * secrets (and must not be), so section 3 read "no signing secrets set" no matter
  * what. It was right only by accident, and would have started lying the day
- * HUMAN-ACTIONS.md #17 was done: the same run would have said `state=ready` at
+ * HUMAN-ACTIONS.md #19 was done: the same run would have said `state=ready` at
  * the gate and "not configured" in the summary. A report that cannot observe what
  * it asserts should not assert it.
  */
@@ -1318,10 +1318,10 @@ const SIGNING_STATE_NOTES = {
     "never executed before — read its log rather than assuming it worked.",
   absent:
     "No signing secrets are set, so the upload was skipped. The unsigned build still ran, and that " +
-    "is the designed behaviour — see HUMAN-ACTIONS.md #17.",
+    "is the designed behaviour — see HUMAN-ACTIONS.md #19.",
   partial:
     "Signing is only half configured, so the job failed on purpose rather than skipping the upload " +
-    "on a green run. See HUMAN-ACTIONS.md #17: set all seven secrets or none.",
+    "on a green run. See HUMAN-ACTIONS.md #19: set all seven secrets or none.",
 };
 
 /* --------------------------------------------------------------------- main */
