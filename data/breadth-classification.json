@@ -76976,13 +76976,962 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-17-f05973c4",
       "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1844905790": {
+      "topics": [
+        "espionage",
+        "history/military-modern",
+        "society/law"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "espionage",
+          "confidence": 0.85
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Ex-CIA whistleblower discusses espionage, torture accountability, federal prison experience.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1844970260": {
+      "topics": [
+        "business/founders",
+        "psychology/decision-making",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneur interviews on influence, leadership, peak performance with high-profile guests.",
+      "display_title": "Unblinded with Sean Callagy",
+      "blurb": "Entrepreneur interviews on influence, leadership, and peak performance with celebrities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1845155084": {
+      "topics": [
+        "health/nutrition",
+        "health/fitness",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness coach covers macros, body composition, nutrition science, travel and digestion.",
+      "display_title": "MacroHabits Podcast",
+      "blurb": "Fitness coach discusses nutrition, body composition, and health habits for women.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1845429860": {
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedian documents 2025 tour with behind-the-scenes fan stories and insights.",
+      "display_title": "Matt Rife: Stay Golden Tour",
+      "blurb": "Stand-up comedian Matt Rife shares behind-the-scenes stories from his 2025 tour.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1845603128": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily NHL coverage of San Jose Sharks with game results, trades, and player updates.",
+      "display_title": "San Jose Sharks News",
+      "blurb": "Daily NHL coverage of the San Jose Sharks with game results and roster updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1845875570": {
+      "topics": [
+        "society/government",
+        "news/politics",
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "University podcast on policy/politics with officials; Tier-0 'courses' conflicts with interview format.",
+      "display_title": "Policy and Governance Perspectives",
+      "blurb": "In-depth policy discussions with elected officials, experts, and thought leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1846250420": {
+      "topics": [
+        "business/marketing",
+        "business/careers",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CPG industry leaders discuss retail strategy, innovation, omni-commerce, and women in business.",
+      "display_title": "SHeCommerce",
+      "blurb": "CPG industry leaders discuss retail strategy, innovation, and women's commerce leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1846612394": {
+      "topics": [
+        "business/startups",
+        "business/founders",
+        "business/marketing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Founder-focused podcast on growth, decision-making, scaling challenges, and strategic shifts.",
+      "display_title": "Making BIG Shifts",
+      "blurb": "Founder interviews on growth strategies, decision-making, and scaling business challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1847423282": {
+      "topics": [
+        "health/fitness",
+        "health/nutrition",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness coach for women 40+ focuses on simplified nutrition, exercise, habits without guilt.",
+      "display_title": "Midlife Glow Up",
+      "blurb": "Fitness coach for women 40+ on simplified nutrition, exercise, and healthy habits.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1847433278": {
+      "topics": [
+        "sports/football",
+        "news/daily"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "South Carolina high school football coverage with coach interviews and preseason previews.",
+      "display_title": "Four Quarter Friday",
+      "blurb": "South Carolina high school football coverage with coach interviews and game previews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1847518304": {
+      "topics": [
+        "philosophy",
+        "philosophy/ideas",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ancient philosophy applied to modern life through discussions on faith, responsibility, meaning.",
+      "display_title": "The Dialog",
+      "blurb": "Ancient philosophy meets modern life through discussions on faith, responsibility, meaning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1847643602": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jeff Marek hosts NHL podcast with exclusive player interviews and insider analysis.",
+      "display_title": "The Hockey Lifers",
+      "blurb": "NHL interviews and analysis featuring players, coaches, and insider perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1847709608": {
+      "topics": [
+        "gaming/design",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Competitive card game Riftbound discussion featuring meta analysis and player stories.",
+      "display_title": "The Winning Point",
+      "blurb": "Competitive card game Riftbound discussion featuring meta analysis and player strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1848020264": {
+      "topics": [
+        "culture/pop-culture",
+        "tv-film",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV personalities discuss pop culture, entertainment, motherhood with celebrity guests.",
+      "display_title": "Drop The Lo",
+      "blurb": "Reality TV personalities discuss pop culture, motherhood, and entertainment topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1848271976": {
+      "topics": [
+        "religion/spirituality",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spirituality and paranormal topics including UFOs, channeling, consciousness, metaphysics.",
+      "display_title": "Multiverse 5D",
+      "blurb": "Spirituality, metaphysics, and paranormal topics including UFOs and consciousness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1848424550": {
+      "topics": [
+        "sports/cricket",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket podcast covering Parish team updates, matches, and cricket history.",
+      "display_title": "The Sunday Service",
+      "blurb": "Cricket podcast covering Parish team updates, matches, and sport history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1848629186": {
+      "topics": [
+        "religion/buddhism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist teachings and meditation practices from Natural Dharma Fellowship community.",
+      "display_title": "Dharma Sunday",
+      "blurb": "Buddhist teachings and meditation practices from Natural Dharma Fellowship community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1848750800": {
+      "topics": [
+        "culture/performing-arts",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.9
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Former Rockette interviews dancers on Broadway careers, artistic growth, performance journeys.",
+      "display_title": "Kicking It Real",
+      "blurb": "Dancer interviews exploring Broadway careers, artistic growth, and performance journeys.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1849299998": {
+      "topics": [
+        "culture/books",
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fanfiction audiobook readings with literary discussion and immersive storytelling.",
+      "display_title": "Blourish and Flotts",
+      "blurb": "Fanfiction audiobook readings with literary discussion and immersive storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1849755374": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening and homesteading advice on soil health, water security, growing practices.",
+      "display_title": "The Compost Pile",
+      "blurb": "Gardening and homesteading advice covering soil health, water security, and crops.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1849798268": {
+      "topics": [
+        "fiction/drama",
+        "gaming/design",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.65
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Vampire: The Masquerade actual play series set in New York City with character storytelling.",
+      "display_title": "LPNRPG: Bloodbath",
+      "blurb": "Vampire: The Masquerade actual play series set in New York City.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1849896938": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French rugby discussion covering Top 14 championships, matches, and player analysis.",
+      "display_title": "Rugby Confidential",
+      "blurb": "French rugby discussion covering Top 14 championships and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1849941122": {
+      "topics": [
+        "culture/books",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep analysis of Lord of the Rings and A Song of Ice and Fire fantasy worlds.",
+      "display_title": "In Deep Geek",
+      "blurb": "Deep analysis of Lord of the Rings and A Song of Ice and Fire.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1850472770": {
+      "topics": [
+        "society/government",
+        "psychology",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Public health success stories covering injury prevention, mental health, community programs.",
+      "display_title": "Public Health Did That",
+      "blurb": "Public health success stories on injury prevention, mental health, and programs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1850526014": {
+      "topics": [
+        "news/politics",
+        "news/commentary",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "National security discussion from administration officials on foreign policy, intelligence.",
+      "display_title": "The Long Game",
+      "blurb": "National security discussion from administration officials on foreign policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1850603732": {
+      "topics": [
+        "health/sexuality",
+        "fiction",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Romantic and erotic fiction storytelling for adults featuring romantic narratives.",
+      "display_title": "Erotic Stories (18+)",
+      "blurb": "Romantic and erotic fiction storytelling for adults.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1850756558": {
+      "topics": [
+        "engineering/energy-grid",
+        "science",
+        "nature/earth-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/energy-grid",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Climate tech innovation and clean energy solutions with entrepreneurs and scientists.",
+      "display_title": "Future in Bloom",
+      "blurb": "Climate tech innovation and clean energy solutions featuring entrepreneurs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1850900612": {
+      "topics": [
+        "personal-journals",
+        "education/self-improvement",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrities and entrepreneurs discuss setbacks that led to personal growth and wins.",
+      "display_title": "Not My Best Moment",
+      "blurb": "Celebrities discuss challenges that led to personal growth and success.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1850976302": {
+      "topics": [
+        "kids-family/education",
+        "nature/animal-cognition",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/education",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational nature and animal facts for kids exploring God's natural world.",
+      "display_title": "Nature Loving Kids",
+      "blurb": "Educational nature and animal facts for kids exploring the natural world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1851084350": {
+      "topics": [
+        "fiction/drama"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic mystery and crime drama from golden age radio broadcasting.",
+      "display_title": "The Shadow",
+      "blurb": "Classic mystery and crime drama from golden age radio broadcasting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1851148118": {
+      "topics": [
+        "relationships",
+        "personal-journals",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real-life relationship and family drama stories with celebrity advice.",
+      "display_title": "Tengo Testimonio",
+      "blurb": "Real-life relationship and family drama stories with celebrity advice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1851227240": {
+      "topics": [
+        "math/puzzles",
+        "science",
+        "engineering"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math/puzzles",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Russian conversations exploring mathematics, physics, and science with experts.",
+      "display_title": "Нестандартная модель",
+      "blurb": "Russian conversations exploring mathematics, physics, and science with experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
+    },
+    "1851456704": {
+      "topics": [
+        "culture/performing-arts",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic old-time radio variety show with comedy and music from 1940s.",
+      "display_title": "Phil Harris & Alice Faye",
+      "blurb": "Classic old-time radio variety show with comedy and music.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-093617a1",
+      "classified_at": "2026-08-17T08:59:57.949Z"
     }
   },
-  "built_at": "2026-08-17T00:52:51.348Z",
+  "built_at": "2026-08-17T08:59:57.949Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-17-f05973c4",
+    "last_batch_id": "fresh-2026-08-17-093617a1",
     "last_batch_tier": 1
   }
 }
