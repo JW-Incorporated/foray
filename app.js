@@ -1259,16 +1259,21 @@ async function renderForay(id) {
      data file cannot leave someone resuming past the end of a Foray that got
      shorter, or paint a running order that is entirely behind them.
 
-     Guarded because app.js and the ES module deploy independently (the service
-     worker refreshes each on its own schedule): an older module costs the resume
-     offer, which is a missing banner rather than a page stuck on "Loading…". */
-  /* `resolved` is the freshness half of #40. `data/forays.json` is served
-     network-first by the service worker, so this page can be rendering a CACHED
-     running order against a row written from a newer one (or the reverse). With
-     the resolved Foray in hand the player looks the stored SEGMENT up in the live
-     order instead of trusting the stored index — so a segment that moved resumes
-     to the same audio, and one that is gone degrades to a clamped clock with no
-     row marked current, rather than seeking somewhere wrong. */
+     Still guarded, for a narrower reason than the one that used to be written
+     here. The service worker no longer refreshes app.js and the ES module on
+     separate schedules — since #233 both are revalidated on every load and a
+     page that falls back to the cache is pinned to it — but the module is a
+     deferred `<script type="module">`, and the native shells run with no worker
+     at all. An older or not-yet-evaluated module costs the resume offer, which
+     is a missing banner rather than a page stuck on "Loading…". */
+  /* `resolved` is the freshness half of #40, and it is about STORED state rather
+     than about the worker: a `cp_` position written days ago can name a segment
+     that a later `data/forays.json` moved or dropped, however fresh both the code
+     and the data are. With the resolved Foray in hand the player looks the stored
+     SEGMENT up in the live order instead of trusting the stored index — so a
+     segment that moved resumes to the same audio, and one that is gone degrades
+     to a clamped clock with no row marked current, rather than seeking somewhere
+     wrong. */
   const resume = typeof player.forayResume === "function"
     ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r })
     : null;
@@ -2440,6 +2445,54 @@ function shouldRegisterServiceWorker(win) {
   return true;
 }
 
+/* ---------- the page's half of #233 ----------
+
+   sw.js refuses to hand a page running last-known code a freshly fetched
+   `data/*.json`, because that pair is a different program reading a file it has
+   never seen. Refusing is the safe half; this is the recoverable half — the
+   worker says which of the two things happened, and the page says so with a
+   control that fixes it.
+
+   Both reasons mean the same thing to a listener (this page is not the current
+   version) and both are fixed by one reload, so there is one bar with one
+   button. Deliberately NOT an automatic reload: a reload loop cannot be rolled
+   back by reverting a commit — clients keep the worker they have until it
+   updates — and a loop would take the whole site out, which is worse than the
+   bug being fixed. The listener presses it, or ignores it and keeps listening. */
+const SHELL_NOTICE = {
+  "stale-shell": "Foray is showing its last saved copy — the network didn't answer while this page was loading.",
+  "generation-changed": "Foray updated in the background, so this page is one version behind.",
+};
+
+function showShellNotice(reason) {
+  const said = SHELL_NOTICE[reason];
+  if (!said) return;
+  const view = $("#view");
+  if (!view || !view.parentNode) return;
+  let bar = $("#shell-notice");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "shell-notice";
+    bar.className = "shell-notice";
+    /* A sibling of #view, not a child: route() rewrites #view's innerHTML on
+       every navigation and would wipe the bar on the first hash change. */
+    view.parentNode.insertBefore(bar, view);
+  }
+  bar.innerHTML =
+    `<p class="note">${esc(said)} Reload to get the current version.</p>` +
+    `<button type="button" id="shell-notice-reload">Reload</button>`;
+  const btn = $("#shell-notice-reload");
+  if (btn) btn.addEventListener("click", () => location.reload());
+}
+
 if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
   navigator.serviceWorker.register("sw.js").catch(() => { /* progressive */ });
+  /* Feature-detected rather than assumed: `navigator.serviceWorker` is somebody
+     else's object, and a page that threw here would lose everything below it. */
+  if (typeof navigator.serviceWorker.addEventListener === "function") {
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      const msg = e && e.data;
+      if (msg && msg.source === "foray-sw") showShellNotice(msg.reason);
+    });
+  }
 }
