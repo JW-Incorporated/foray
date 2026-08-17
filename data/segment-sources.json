@@ -137,6 +137,20 @@
       "audio_verified_on": "2026-08-16"
     },
     {
+      "id": "satay-okay-e01-satay-myth",
+      "show": "Satay? Okay!",
+      "title": "1. Satay and the Myth of Malaysian Cuisine",
+      "feed_url": "https://media.rss.com/satay-okay/feed.xml",
+      "episode_guid": "581a3509-1b50-468a-8fa3-ae903a5b1279",
+      "audio_url": "https://content.rss.com/episodes/340886/2188236/satay-okay/2025_08_28_14_13_18_699a6794-7e0b-421e-aa10-7fc0b94bfb6d.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 37175073,
+      "duration_sec": 2323,
+      "dai_suspected": false,
+      "ad_free_ratio": 1,
+      "audio_verified_on": "2026-08-17"
+    },
+    {
       "id": "ss-inlaw-investors",
       "show": "The Startup Solution",
       "title": "The Case of the In-law Investors",
