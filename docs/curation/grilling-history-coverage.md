@@ -51,11 +51,13 @@ catalogue suggests, and the shape of it explains most of this report.
 | Anchor-validated passages in `grilling-foray-passages.json` | 8 (501 s), never merged into the pool | Yes, as documented candidates |
 | Episodes in `grilling-asr-manifest.json` | 24, of which **none** is transcribed | No — content unverifiable at beat level |
 
-Two facts about this table do most of the work below.
+Three facts about this table do most of the work below.
 
-**The local ASR transcripts are gone.** Every existing segment carries
-`transcript_source: "asr-local"`, and `data-local/` holds no `.asr.json` — it
-holds the engineering research corpus only. So for seven of the nine source
+**The local ASR transcripts are gone.** All 36 grilling segments carry
+`transcript_source: "asr-local"` (9 of the 62 in the pool are `"publisher"`, all of
+them on the capital Foray's episodes), and the main checkout's gitignored
+`data-local/` holds no `.asr.json` — only the engineering research corpus. So for
+seven of the nine source
 episodes I can score the cuts that exist but cannot make new ones, because I
 cannot see the words between them. That is a real ceiling on this pass and it is
 worth fixing before stage 4: the same episodes would yield better cuts if they
@@ -63,11 +65,15 @@ were re-transcribed, and `bbqrn-argentina-open-fire` in particular is likely
 under-cut for beat 14.
 
 **Two transcripts are readable, and both were worth reading.** `bbqc-moss-school`
-publishes a `<podcast:transcript>` SRT, which I fetched and read end to end; its
-timestamps match the existing ASR cut points to within a cue (checked on three
-anchors — `#2941` at 2941.51, `#1881`'s out at 1944.65, `#3315`'s out at 3395.68),
-so cuts proposed against it are safe to mint. Only the 2537–3441 s band is on
-plot; the first hour is hot-dog-eating coverage, knives and griddle gear.
+publishes a `<podcast:transcript>` SRT, which I fetched and read end to end. Its
+time base matches the existing ASR cut points, checked three ways: `#2941`'s
+start-anchor phrase begins in the cue at **2941.51** against a recorded
+`start_sec` of 2941.37, a difference of 0.14 s; and the out-anchor phrases of
+`#1881` and `#3315` begin at **1944.65** and **3395.68** against recorded
+`end_sec` values of 1947.55 and 3398.97, roughly 3 s earlier in each case, which is
+what the remainder of each anchor sentence occupies. So cuts proposed against this
+SRT are safe to mint. Only the 2537–3441 s band is on plot; the first hour is
+hot-dog-eating coverage, knives and griddle gear.
 `moreish-jerk-jamaica` publishes an untimed plain-text transcript, enough to
 confirm what the two existing cuts contain but not to time new ones.
 
@@ -79,11 +85,32 @@ narration against it should listen to the audio at the timestamp given. The
 exact.
 
 **Nothing new was sourced in this pass, deliberately.** The catalogue-broadening
-pass already searched 4.71M feeds (`docs/curation/catalogue-broadening.md`) and its
-negative results are answers, not gaps: braai, tandoor, mangal/kebab and Filipino
-lechon have no usable source at any budget. I re-ran only targeted checks against
-the recommendation pool for the beats that looked empty, so as not to under-report
-coverage. Those checks are in §6.
+pass already searched 4.71M feeds (`docs/curation/catalogue-broadening.md`), and I
+re-ran only targeted checks against the recommendation pool and the source feeds for
+the beats that looked empty, so as not to under-report coverage.
+
+### 2a. Three tiers of empty, and the difference matters
+
+`docs/adr/0008-ad-tolerance-and-timestamp-precision.md` (2026-08-16) removed the ad
+gate that several earlier "unsourceable" verdicts rested on, and its §"what this
+unlocks" table re-scores the arc slots. So an empty beat in this report means one of
+three quite different things, and a reader should not read them as equivalent:
+
+- **Unsourceable.** No source exists at any budget. After a 4.71M-feed search this
+  is true of **braai** and **Filipino lechon** only, and `docs/DECISIONS.md` confirms
+  both survive ADR-0008. These are answers, not gaps.
+- **Identified but not playable yet.** A source exists and is named in ADR-0008's
+  unlock table, and it is blocked on ad measurement, on the locate step, or on
+  transcription — not on availability. **Tandoor is in this tier now, not the
+  unsourceable one**: the earlier verdict turned on the ad gate and ADR-0008 reverses
+  it. So is the core of Act IV.
+- **Empty under the English-only ruling.** A source exists and is not in English.
+  `docs/DECISIONS.md` records the English-only ruling (Wyatt, 2026-08-16) together
+  with the narrator ruling: a non-Anglophone tradition is *described in English*
+  rather than shipped as non-English tape. This is decided, not pending, so beats in
+  this tier are permanently narration beats for this Foray.
+
+Where a beat is empty for one of these reasons rather than another, the beat says so.
 
 ---
 
@@ -148,7 +175,7 @@ explanation is weaker.
 **What is missing.** Collagen converting to gelatin, the two clocks the cook runs at
 once, the evaporative stall and what wrapping does about it, Maillard and the bark,
 why smoke deposits on a moist surface. §5 predicted this beat would be
-**over-supplied**. It is empty — see §5 of this report.
+**over-supplied**. It is empty — see §7.
 
 ### Beat 4 — two technologies, one word — **strong** (on a proposed new cut)
 
@@ -256,7 +283,7 @@ the crowd owes something for the meat.
 ### Beat 8 — the steppe as the control case — **empty** (fan)
 
 **Nothing**, and §5 predicted it. The recommendation pool's only steppe material is
-`Fall of Civilizations — The Mongols: Terror of the Steppe` (241 min), which is
+`Fall of Civilizations — The Mongols: Terror of the Steppe (Part 1)` (241 min), which is
 military and political history with no cooking in it. Rejected without further
 checking, because the beat wants khorkhog, boodog, hot-stone cooking, dung and
 scrub as fuel, and the Taipei provenance of the restaurant format.
@@ -281,12 +308,19 @@ satay half would not. It is the other way round.
 
 **What is missing.** The whole Ottoman and mangal root: the mangal as equipment and
 as an occasion, the regional codification of named kebabs, charcoal management along
-a narrow fire, the vertical spit and its 1970s German reinvention. This is not a
-sourcing failure to be retried — `grilling-asr-manifest.json` and
-`catalogue-broadening.md` §4 both record mangal/kebab as **unsourceable** after a
-4.71M-feed search, the one candidate having failed the content gate. Per the
-founder's rule that is the correct outcome for the beat, and beat 9 keeps its 3.5 %
-as narration with a satay cut inside it.
+a narrow fire, the vertical spit and its 1970s German reinvention.
+
+**Status of the root, stated precisely.** `grilling-asr-manifest.json` and
+`catalogue-broadening.md` §4 record mangal/kebab as unsourceable after the 4.71M-feed
+search, the one candidate having failed the *content* gate — hosts reminiscing, no
+sourced expertise. ADR-0008 then adds one ad-gated candidate that the old gate had
+excluded: The Delicious Legacy's "Kokoretsi: The Ultimate Easter Kebab!", now
+authorable but **LOCATE-REQUIRED**, and the ADR cautions in terms against
+over-claiming it. So the honest position is that the mangal root has no source that
+passes the content gate, and one source that passes the content gate only if a
+single Greek Easter offal dish is accepted as the Ottoman skewer tradition — which
+on this beat's own standard it is not. Beat 9 keeps its 3.5 % as narration with a
+satay cut inside it.
 
 **I did not mint the satay passage.** Its anchors were validated against a
 transcript body I cannot see, and its episode has no entry in
@@ -294,15 +328,28 @@ transcript body I cannot see, and its episode has no entry in
 personally checked and minting a new source at the same time. Documented here for
 stage 4 instead.
 
-### Beat 10 — the tandoor as a third technology — **empty** (fan)
+### Beat 10 — the tandoor as a third technology — **empty, but identified** (fan)
 
-**Nothing**, and §5 ranked this the beat most likely to come back empty. Confirmed
-independently: `catalogue-broadening.md` §4 records two genuinely on-brief candidates
-(Naan Curry's 67-minute kebab episode, olive's Maunika Gowardhan tandoori episode)
-and both are ad-injected — 1.0470 measured, and a bitrate-implied ~1.02 on a feed
-declaring `length="0"`. ADR-0008 admits the second in principle, but admitted is not
-shippable: it requires N ≥ 2 probes of the same episode and no episode in this repo
-has ever been probed twice.
+**Nothing playable today**, and §5 ranked this the beat most likely to come back
+empty. But the beat is **not unsourceable, and this report corrects an earlier
+verdict that said so.** `catalogue-broadening.md` §4 now carries a superseding note
+of its own: the tandoor verdict turned on the ad gate, the ad gate is gone under
+ADR-0008, and "tandoor content exists and we can use it." Two on-brief candidates:
+
+- **olive's "Maunika Gowardhan on 10 things you need to know about tandoori
+  cooking"** (45 min, a real Indian cookbook author) — PADDABLE on the screen and
+  the better of the two. Its Megaphone feed declares `length="0"`, so the bitrate-
+  implied ~1.02 cannot size a pad; it needs N ≥ 2 decode-and-compare probes first.
+  ADR-0008's Gastropod section is the warning here — a bitrate-implied ratio
+  overstated that show's load by 3–6× against what decoding actually found.
+- **Naan Curry's 67-minute kebab episode** — measured 1.0470, LOCATE-REQUIRED.
+
+**Also blocked on content, separately from ads.** Neither candidate is known to
+supply what beat 10 actually claims: how a clay oven's radiant heat differs
+mechanically from a grill's and from a pit's. A cookbook author on ten things to know
+about tandoori cooking may well be the recipe-and-menu material the beat says to
+reject. That cannot be settled without reading a transcript, and neither episode has
+one.
 
 **Fan hole — safe.** Costs the Foray its only beat that adds a technology rather
 than a tradition, and all South Asian coverage.
@@ -310,9 +357,12 @@ than a tradition, and all South Asian coverage.
 ### Beat 11 — yakitori as thrift made precise by fuel — **empty under the English rule** (fan)
 
 **Nothing in English.** The only explanatory yakitori source found in 4.71M feeds is
-`火上料理人：The Meat Nerds` (Taiwan, Mandarin). Under #226's English-only
-constraint this beat is empty; it is **not unsourceable**. The distinction matters,
-and it is a founder decision, not a sourcing one — see §6.
+`火上料理人：The Meat Nerds` (Taiwan, Mandarin), whose tare episode is real mechanism.
+The beat is therefore empty but **not unsourceable**, and the distinction is settled
+rather than open: `docs/DECISIONS.md` records the English-only ruling alongside the
+narrator ruling, so a non-Anglophone tradition is described in English rather than
+shipped as non-English tape. Beat 11 is a permanent narration beat for this Foray,
+and no ASR or ad budget changes that.
 
 ### Beat 12 — Korea puts the fire on the table — **empty under the English rule** (fan)
 
@@ -322,7 +372,7 @@ is the only English candidate, and on its stated subject it does not advance thi
 beat: erasure of a national cuisine under colonisation is a different claim from
 table-top grilling, the diner as cook, and the recent economics of pork belly.
 Transcribing it would probably not fill beat 12. The two Korean-language sources
-would.
+would, and under the English-only ruling they cannot be used.
 
 **Fan hole.** Costs the fan its clearest demonstration of beat 6 running in reverse.
 
@@ -419,18 +469,31 @@ The act is also where the spine says the editorial test of the whole document li
 and where beats 20, 21, 22 and 30 — 12 % of runtime, the honest weight of the
 authorship argument — are all empty at once.
 
-**There is exactly one identified English source for the core of this act**, and it
-is untranscribed: `The Grill Coach — Adrian Miller and The History of BBQ` (3,306 s),
-in `grilling-asr-manifest.json` at **priority 3**. Its published description states
-that the interview covers barbecue's indigenous roots, the shift to what we now call
-barbecue, the significant contribution of African Americans to the culture, and the
-current state and future of it — which is beats 18, 20, 21, 22 and 38, including the
-Foray's load-bearing beat. Miller is named in the spine itself as the archetype of
-the register wanted. I checked for a transcript on the feed, on the show's episode
-page and on three Buzzsprout transcript endpoints: there is none, so its content
-cannot be verified at beat level and no cut can be proposed from it. **The single
-highest-value action available to this project is to transcribe that episode.** See
-§6.
+**Four English sources for the core of this act are identified, and none is
+readable today.** The act is empty because nothing has been transcribed, not because
+nothing exists — this is the "identified but not playable yet" tier of §2a, and it is
+the most improvable finding in the report.
+
+| Source | Length | Ad status | What is known about its content |
+|---|---|---|---|
+| `The Grill Coach — Adrian Miller and The History of BBQ` | 3,306 s | **ad-free**, measured ratio 1.0. **Priority 3** in the ASR work order. No publisher transcript | The only one with a published description specific enough to map: indigenous roots, the shift to what we now call barbecue, African American contribution, present state and future — beats 18, 20, 21, 22, 38 |
+| `A Taste of the Past — Black Smoke, the African American Roots of BBQ` | est. ~35–45 min | **PADDABLE** on one probe (implied 42–54 s); `delta_max` unknown, needs N ≥ 2 probes | Titled after Miller's book, so the authorship beats. Contents not verified |
+| `Proof (America's Test Kitchen) — Barbecue Trailblazers`, 4 parts | est. ~30–40 min each | **TIGHT** — implied 50–67 s, already at Gastropod's measured maximum; bitrate-implied, needs N ≥ 2 probes. **Carries a transcript** | A four-part US-barbecue series. Which beats each part serves is unknown |
+| `Stuff You Should Know — A Lip-Smacking Look at Barbecue` | 37–47 min | **LOCATE-REQUIRED** (+8 to +10 min measured) | General barbecue history; weakest of the four and the most expensive to play |
+
+Rows two to four are named in ADR-0008's unlock table against exactly this arc slot,
+"American barbecue's birth and westward spread". Adrian Miller is named in the spine
+itself as the archetype of the register wanted, alongside Michael Twitty.
+
+**None of their content is verified at beat level**, which is why every beat below is
+empty rather than provisional. I checked for a Grill Coach transcript on the feed, on
+the show's episode page and on three Buzzsprout endpoints; there is none. So no cut
+can be proposed from any of the four, and an episode description is not evidence that
+a 110-second span inside it advances a beat — that is the standard this whole report
+is applying, and it has to apply to promising sources as well as to disappointing
+ones. **What can be said is that Act IV's holes are a transcription and
+ad-measurement problem rather than a sourcing one, and that closing them is the
+cheapest large improvement available to the project.** See §9.
 
 ### Beat 16 — the word named a frame — **empty**
 
@@ -448,9 +511,13 @@ listener a small checkable correction early, and narration does that as well as 
 ### Beat 17 — barbacoa as living practice — **empty**
 
 **Nothing in English.** Three Spanish sources exist and are weakly authoritative
-(8:08, 14:51, 3:34 — `catalogue-broadening.md` §3 assesses them as together worth
-perhaps one 90-second segment). §5 predicted this beat would be hard because the
-continuity argument is the hard part; that is confirmed.
+(8:08, 14:51, 3:34 — `catalogue-broadening.md` §4 assesses them as together worth
+perhaps one 90-second passage), and ADR-0008 upgrades the Mexican slot further by
+admitting El Mundo en un Bocado's 47-minute *Tacos al Pastor* as PADDABLE. All of it
+is Spanish, so under the English-only ruling none of it reaches this Foray, and the
+ad unlock is irrelevant here. §5 predicted this beat would be hard because the
+continuity argument is the hard part; that is confirmed, and the language ruling
+makes it moot.
 
 **Chain hole.** Without it, beat 16's word-origin note never becomes a lineage with
 living practitioners, and beat 18's raised grate and this beat's buried pit have no
@@ -458,8 +525,8 @@ fork to be two branches of.
 
 ### Beat 18 — the adopted indigenous apparatus — **empty**
 
-**Nothing.** The Adrian Miller episode is the only identified source and is
-untranscribed.
+**Nothing.** The Grill Coach episode is the only one of the four Act IV sources
+described as covering indigenous roots, and it is untranscribed.
 
 **Chain hole.** This is the transmission event that connects the Caribbean word to
 the mainland. Without it the act jumps from a Taíno word to a Southern pork
@@ -482,7 +549,9 @@ once. That is a general statement of blending with no technique in it and no
 mechanism of transfer, which is exactly what beat 20 says to reject. `The Moreish
 Podcast — Caribbean Food History with Dr. Candice Goucher` (3,466 s, English,
 priority 2, untranscribed, no publisher transcript) is the most promising unread
-candidate given Goucher's work on African and Caribbean transmission.
+candidate given Goucher's work on African and Caribbean transmission, ahead of the
+three Act IV sources in the table above, none of which is described as reaching back
+across the Atlantic.
 
 **Chain hole, and it weakens the Foray's central argument.** Without beat 20 the
 act's causal story is indigenous technique plus European livestock plus Black
@@ -501,7 +570,9 @@ narration — and narration is an acceptable answer here only if it is written t
 beat's standard: the tasks named specifically, the overnight shift as labour
 extracted on top of field work, the documented valuation and hiring-out of skilled
 pit cooks, and the decisions the cuisine consists of attributed to the people who
-made them. The Adrian Miller episode is the source that would let tape carry it.
+made them. Three of the four sources in the table above are described as carrying
+this argument, and transcribing any one of them would give the beat a chance at tape
+instead.
 
 ### Beat 22 — the record preserves the labour and erases the labourer — **empty**
 
@@ -569,7 +640,7 @@ City and Chicago read as spontaneous local inventions.
 East Texas, the Rio Grande or West Texas, or dates brisket's rise.
 
 **Chain hole in the internal fan.** §5 predicted beat 26 would be **over-supplied**
-and named it a bloat risk. It is empty — see §5 of this report.
+and named it a bloat risk. It is empty — see §7.
 
 ### Beat 27 — the Carolinas and contested custody — **thin**, and the tape contradicts the spine
 
@@ -625,14 +696,31 @@ nothing specific to be a revival from.
 
 ## 6. Act V — the re-pricing (chain, beats 31–40)
 
-### Beat 31 — refrigeration ended the necessity — **empty**
+### Beat 31 — refrigeration ended the necessity — **empty, but the closest thing to a free win in the report**
 
-**Nothing usable, and one identified candidate.** The recommendation pool contains
-`Gastropod — The Birth of Cool: How Refrigeration Changed Everything` (49 min),
-which is this beat's subject exactly. It is blocked twice over:
-`grilling-asr-manifest.json` excludes Gastropod by instruction, and its measured ad
-ratio of 1.080 on a 49-minute episode is roughly 235 s of injection, well past
-ADR-0008's 120 s threshold. It publishes no transcript at the URL I checked.
+**Nothing usable today, and one strong identified candidate.** The recommendation
+pool contains `Gastropod — The Birth of Cool: How Refrigeration Changed Everything`
+(49 min), which is this beat's subject exactly.
+
+**Correcting an error I nearly made.** The obvious reading is that Gastropod is
+ad-blocked, on the strength of the `1.080 — injected` row in
+`grilling-foray-sourcing.md` §4. That is wrong twice over, and ADR-0008 says so at
+length. First, the 1.080 is **bitrate-implied and against a different episode**
+("Where There's Smoke, There's… Whiskey, Fish, and Barbecue!"), so applying it here is
+the exact axis error that ADR warns about. Second, Gastropod is **the one show in this
+repo that has been probed twice** — +66.1 s and +32.7 s by decode-and-compare — which
+makes it PADDABLE at a pad of about 100 s against the 120 s ceiling, and ADR-0008
+calls it "the first candidate admitted on measured evidence under this ADR". The
+bitrate-implied figure overstated the real load by 3–6×.
+
+**What actually blocks it, then.** Two things, neither of them ads. It publishes no
+timed transcript — `data/transcript-availability.json` records Gastropod at 0
+transcripts across 293 episodes, and the episode page URL I tried 404s — so it needs
+ASR. And `grilling-asr-manifest.json` excludes Gastropod under
+`excluded_by_instruction`, where the stated reason is "already being transcribed",
+which is a workstream note rather than a rejection. One outstanding caveat from the
+ADR applies: both Gastropod probes were the same client on the same day, and the
+margin exists to cover a different requester's copy, which has never been sampled.
 
 **Rejected near-miss:** `bfh-medieval-meals-manners#1543` mentions that without
 refrigeration the lady of the house planned feasts far ahead. That is medieval feast
@@ -641,8 +729,11 @@ as a taste after its function ended.
 
 **Chain hole, and it is the act's hinge.** The spine added beat 31 in revision
 precisely because beat 2 argues smoke is infrastructure and Act V assumes it stopped
-being so, with nothing narrating the transition. With both beat 2 and beat 31 empty,
-the Foray's central irony is asserted and never explained at either end.
+being so, with nothing narrating the transition. With beat 2 only thin and beat 31
+empty, the Foray's central irony is currently asserted at both ends and explained at
+neither. Note that Gastropod is also ADR-0008's admitted candidate for beat 1's slot
+("Out of the Fire, Into the Frying Pan"), which beat 1 does not need — so the show's
+value to this Foray is concentrated here.
 
 ### Beat 32 — the manufactured backyard — **strong**
 
@@ -700,7 +791,7 @@ Acts I–IV and what most listeners have actually eaten.
 
 **Nothing.** `The BBQ Central Show` has an episode titled "Robert Moss Talks Southern
 BBQ Competition Beginnings" — the right speaker on the right subject — and it
-publishes no transcript. Of 1,861 items in that feed only 12 carry a
+publishes no transcript. `data/transcript-availability.json` records 1,858 episodes on that feed of which only 12 carry a
 `<podcast:transcript>` tag, and only one of those is on plot: the Moss BBQ School
 episode already segmented here.
 
@@ -730,9 +821,10 @@ recorded as a spine correction in §8, which costs no runtime.
 
 ### Beat 38 — the authorship argument, unconcluded — **empty**
 
-**Nothing.** The Adrian Miller episode is the identified source — *Black Smoke:
-African Americans and the United States of Barbecue* is one of the works this beat's
-argument runs through — and it is untranscribed.
+**Nothing.** All four Act IV sources are relevant here — *Black Smoke: African
+Americans and the United States of Barbecue* is one of the works this beat's argument
+runs through, and A Taste of the Past has an episode named after it — and none is
+readable.
 
 **Chain hole, and it is the beat that makes the Foray current.** The spine warns that
 the failure mode here is a single sentence of credit inside a segment about something
@@ -798,9 +890,14 @@ predicted direction:
 - **Act V is a ten-beat chain with one strong beat**, and the empty beats include
   its hinge (31) and its peak (38).
 - **Act III's five empty beats are the least of the problem**, exactly as designed,
-  and three of them — 10 (tandoor), 13 (braai), and beat 9's mangal root — are
-  *proven unsourceable* rather than merely unsourced. Those are answers. Two more,
-  11 (yakitori) and 12 (Korea), are empty only under the English-only rule.
+  and they divide by the three tiers in §2a rather than being one kind of hole. Only
+  **13 (braai)** is unsourceable outright, and the negative there is unusually clean.
+  **11 (yakitori)** and **12 (Korea)** are empty under the English-only ruling, which
+  is decided, so they are permanent narration beats. **10 (tandoor)** and **beat 9's
+  mangal root** are identified-but-not-playable: tandoor has two candidates unlocked
+  by ADR-0008 and awaiting probes and ASR, and the mangal root has one candidate that
+  fails this beat's content gate. Nothing in Act III can be closed by searching
+  harder; two of the five could be closed by measuring and transcribing.
 - **Act I holds up**, which matches the founder's field report that the content
   started good. Three of its five beats are strong and its one empty beat (3) is
   narratable.
@@ -842,17 +939,24 @@ was sized for a scarcity of runtime and what it met was a scarcity of tape.**
 | Rejected — off-beat | **18** | see below |
 
 **14 of 32 survive; 10 of them are actually assigned to a beat.** The four
-grilling segments outside the current Foray (`moss#1881`, `traeger#2457`,
-`bbqrn#2292`, `bfh-griddle#1360`) all fail too, so of 36 grilling segments in the
-pool, 14 survive.
+grilling segments that sit outside the current Foray (`moss#1881`, `traeger#2457`,
+`bbqrn#2292`, `bfh-griddle#1360`) all fail too, so of the 36 grilling segments in the
+pool, **14 survive and 22 are rejected** — 18 of those 22 being inside the Foray, as
+the table above counts them.
 
-The 18 rejections, with the beat each was scored against and the reason:
+All 22 rejections, with the beat each was scored against and the reason. The four
+outside the Foray are marked †.
 
 - `bfh-griddle-bakestone#740`, `#968`, `#1691`, `#1971` and `bfh-18c-tavern-briggs#940`,
   `#1484`, `#1871` — scored against beats 2, 3, 6 and 7. British hearth cookery,
   bakestones, Welsh cakes, bannocks, Yorkshire pudding and an 18th-century cook's
   cause of death. None advances a claim about fire, smoke, surplus or the labour of
   the pit. §6b of the spine names general food history as never having been a beat.
+- `bfh-griddle-bakestone#1360` † — scored against beats 3 and 5. How to read a
+  bakestone's heat, brought up slowly and tested with flour. It is genuinely about
+  reading a fire, which is why it was scored rather than dismissed, but a bakestone is
+  a baking surface and the beat it comes closest to (5) is about fuel determining a
+  tradition. At 57 s it is also below the target band.
 - `bfh-medieval-meals-manners#673`, `#944`, `#1326`, `#1543` — scored against beats 6
   and 7. Feast seating, distance from the salt cellar, carving vocabulary, feast
   logistics. Beat 7 says in terms that a lavish dinner party is not this beat.
@@ -863,14 +967,14 @@ The 18 rejections, with the beat each was scored against and the reason:
   14. Offal ordering, Italian rather than Spanish settlement of Argentina, cooking
   durations. Cuisine detail and demography; none advances beat 14's claim about where
   the craft went.
-- `bbqrn-argentina-open-fire#2292` — scored against beat 5. Patagonian lamb tasting
+- `bbqrn-argentina-open-fire#2292` † — scored against beat 5. Patagonian lamb tasting
   salty from sea spray on the grass is terroir colour, and at 59 s it is below the
   target band as well.
-- `bbqc-traeger-history#1079`, `#1987`, `#2340`, `#2457` — scored against beats 34, 35
-  and 39. Traeger's COVID boom and IPO, grill price tiers, boutique charcoal
+- `bbqc-traeger-history#1079`, `#1987`, `#2340` and `#2457` † — scored against beats
+  34, 35 and 39. Traeger's COVID boom and IPO, grill price tiers, boutique charcoal
   distribution, Kingsford's market share. §6b excludes equipment and gear history
   except where it carries a social argument, and none of these does.
-- `bbqc-moss-school#1881` — scored against beats 3 and 4. Grill marks as Maillard
+- `bbqc-moss-school#1881` † — scored against beats 3 and 4. Grill marks as Maillard
   browning is grilling technique inside a cast-iron gear discussion, and beat 3 is
   about the low-and-slow bargain.
 
@@ -884,9 +988,9 @@ the outcome is that reputation was right.
 
 The spine recorded its predictions so that this report could check them, so:
 
-**Likely-narration predictions: 10 of 13 correct.** Beats 10, 8, 20, 33, 29, 22, 30,
-17, 31 and 13 all came back empty as predicted, and 40 was designed that way. Two
-were inverted:
+**Likely-narration predictions: 11 of 13 correct.** Beats 10, 8, 20, 33, 29, 22, 30,
+17, 31 and 13 all came back empty as predicted, and 40 was designed that way, which
+is eleven. Two were inverted:
 
 - **Beat 5 came back strong**, where §5 ranked it eighth-hardest. The reasoning was
   right — no tape states the rule — but a practitioner stating the mechanism turned
@@ -901,14 +1005,19 @@ capped at two segments. Beats 3, 26 and 36 are empty and beat 37 is thin.**
 
 This is the single most useful thing the predictions revealed, and it changes what
 stage 4 should be defending against. The spine reasoned from what English-language
-podcasting covers, which was sound, but the pool is not English-language podcasting
-— it is nine hand-picked episodes plus a recommendation pool of 1,489 items with
-almost no barbecue history in it. **The fill pressure the spine was designed to
-resist does not exist here.** There is no pile of Texas or competition or brisket
-tape waiting to bloat Act IV. The live risk is the opposite one: a Foray that is
-mostly narration, in which the narration quietly becomes the place the drift
-happens, because nobody is scoring prose against the beats the way this report
-scored tape.
+podcasting covers, which was sound, but **the pool is not English-language
+podcasting** — it is nine hand-picked episodes plus a recommendation pool of 1,489
+items. Barbecue tape in that pool exists but is not history: `data/discover.json`
+holds Jess Pryles, Grant Pinkerton on Pinkerton's Barbecue and Steven Raichlen, all
+of them technique, restaurant and personality material of the kind beats 26, 36 and
+37 explicitly reject, and none of it transcribed.
+
+So the fill pressure the spine was designed to resist does not exist **as tape**. The
+live risk is the opposite one and it is worth naming plainly: a Foray that is 34 beats
+of narration, in which **the narration becomes the place the drift happens**, because
+nobody is scoring prose against the beats the way this report scored tape. If stage 4
+writes 34 narration beats without a gate on them, #226 recurs in a form that is harder
+to hear, since narration always sounds on-topic.
 
 ---
 
@@ -923,7 +1032,10 @@ Robert Moss — a barbecue historian and the author of a history of American bar
 says on tape that he is skeptical it happened, on the ground that people of German
 descent in the Carolinas mostly arrived some two centuries before mustard sauce
 became a thing, and that the sauce looks locally developed. He notes he has written
-about it elsewhere. **Recommendation:** revise
+about it elsewhere, and `data/discover.json` holds a later BBQ Central episode
+devoted to it — "Cigar Wrapper Talk With Mr. J; Robert Moss Brings The Mustard Based
+TRUTH" (63 min) — which is the place to check this before revising, though it carries
+no transcript. **Recommendation:** revise
 beat 27 to carry the mustard belt as a *disputed* origin rather than a settlement
 trace. This costs the beat nothing — a live dispute is better material than a tidy
 derivation, by the spine's own standard — and it removes a claim the Foray's own
@@ -948,7 +1060,7 @@ honestly lists the traditions left out of the fan — Chinese roast meats, lecho
 hāngī, contemporary West African grill cuisines. It does not mention that the
 American act's regional coverage stops at Texas, the Carolinas, Kansas City and
 Memphis, which are the four the founder named, and therefore excludes California and
-Santa Maria — a style for which this project holds two sourced episodes and a
+Santa Maria — a style for which this project holds one playable sourced episode, a second in the ASR work order, and a
 segment. That is defensible on runtime, and beat 29 arguably absorbs it in
 principle, but the omission should be recorded in §6b so that the next sourcing pass
 does not keep re-finding Santa Maria tape and wondering where it goes.
@@ -960,34 +1072,48 @@ does not keep re-finding Santa Maria tape and wondering where it goes.
 Not decisions — this report does not own them. Ordered by how many beats each moves.
 
 1. **Transcribe `The Grill Coach — Adrian Miller and The History of BBQ` (3,306 s,
-   English, ad-free, currently priority 3).** It is the only identified English
-   source for beats 18, 20, 21, 22 and 38, including the Foray's load-bearing beat,
-   and its own episode description commits it to indigenous roots, African American
-   authorship and the present state of the argument. **The ASR work order's
-   priorities are now wrong against the spine:** priority 1 holds sources for beats
-   that are already strong from existing cuts (beat 1 from Origin Stories, beat 15
-   from Moreish, beat 14 from the asado episode) and one — Santa Maria — for a beat
-   that does not exist. The top of that queue buys almost nothing and the bottom
-   buys Act IV.
-2. **Transcribe `The Moreish Podcast — Caribbean Food History with Dr. Candice
+   English, measured ad-free at ratio 1.0, currently priority 3).** Of the four
+   identified Act IV sources it is the only one that needs no ad work at all: it is
+   ad-free, so it needs ASR and nothing else, where the other three need N ≥ 2 probes
+   or the locate step first. It is described as covering beats 18, 20, 21, 22 and 38,
+   including the Foray's load-bearing beat.
+2. **Reprioritise the ASR work order against the spine.** Priority 1 currently holds
+   sources for three beats that are *already strong* from existing cuts — beat 1
+   (Origin Stories), beat 15 (Moreish jerk), beat 14 (the asado episode) — plus Santa
+   Maria, for which no beat exists. Being fair to it: priority 1 also holds the
+   English Korean episode for empty beat 12, and three non-English rows that the
+   English-only ruling now makes unusable, which is itself a reason to re-sort. The
+   ranking was built against the six old arc slots, and the spine's 40 beats are a
+   different instrument.
+3. **Transcribe `The Moreish Podcast — Caribbean Food History with Dr. Candice
    Goucher` (3,466 s, English, priority 2).** Best unread candidate for beat 20, and
    likely useful to beats 2 and 15.
-3. **Re-transcribe `bbqrn-argentina-open-fire` and `origin-stories-cooking-human`.**
+4. **Probe Gastropod's "The Birth of Cool" and transcribe it.** Gastropod is already
+   PADDABLE on two measured probes, so beat 31 — an Act V chain hinge — is closer to
+   filled than any other empty beat. ADR-0008's outstanding caveat applies: sample a
+   different requester's copy before relying on the pad.
+5. **Re-transcribe `bbqrn-argentina-open-fire` and `origin-stories-cooking-human`.**
    Their local ASR is gone, they are the two episodes whose existing cuts already
    carry strong beats, and beat 14 is demonstrably under-cut — the asador as a social
    office is the thing beat 21's contrast needs and no existing cut contains it.
-4. **Mint the beat 4 cut** specified in §3, through `merge-segments.mjs` with the
+6. **Mint the beat 4 cut** specified in §3, through `merge-segments.mjs` with the
    published SRT as the transcript body, so the pool's anchor conventions stay
    consistent.
-5. **Get a founder decision on mixed-language audio.** It is the only thing standing
-   between the Foray and beats 11, 12 and 17, and `catalogue-broadening.md` §3 has
-   been waiting on it since 2026-08-16. It is a product decision, not a sourcing one.
-6. **Decide the three §8 questions** before stage 4 writes narration, because two of
+7. **Decide the three §8 questions** before stage 4 writes narration, because two of
    them change what the narration says.
 
-One thing this report deliberately does not recommend: broadening the sourcing again
-to close Act IV. The 4.71M-feed pass has already been run and its answers are
-recorded. Act IV's holes are not a search problem, they are a transcription problem
-for one episode and a narration problem for the rest — and the temptation to fill
-them by widening the net until something fits is the exact mechanism #226 was opened
-to stop.
+**Not recommended: broadening the sourcing again to close Act IV.** The 4.71M-feed
+pass has been run and its answers are recorded, and the temptation to widen the net
+until something fits is the exact mechanism #226 was opened to stop. Act IV's holes
+are a transcription and ad-measurement problem for four named episodes, and a
+narration problem for everything those four do not reach.
+
+**Also not recommended: treating the mixed-language question as open.** An earlier
+draft of this report listed it as a pending founder decision. It is not —
+`docs/DECISIONS.md` records the English-only ruling of 2026-08-16 together with the
+narrator ruling, which together answer it: non-English tape is not shipped, and the
+narrator describes those traditions in English instead. Note for whoever maintains
+these documents that `catalogue-broadening.md` §3 still frames it as unresolved and
+its §0 summary still calls tandoor unsourceable, both of which ADR-0008 and
+`DECISIONS.md` have since overtaken. Reconciling those two paragraphs would stop the
+next agent making the same mistake this one did.
