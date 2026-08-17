@@ -7,6 +7,72 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### classification — the six shard branches land on `main` (2026-08-17, one PR, no follow-up)
+
+- **READ THIS BEFORE YOU CONCLUDE THE CLASSIFY FLEET IS DEAD.** The six
+  `foray-classify-shard0-5` cloud routines commit to **`origin/reclassify-<N>`**
+  and **open no PR** — §8 of `docs/agents/runner-prompts/classify-batch.md` tells
+  them to `gh pr create`; the live routine configuration does not. So `main`'s
+  `data/breadth-classification.json` stays frozen while the fleet works, and
+  every signal reads as death: no open classify PR, no `classify/*` branch since
+  2026-08-03, the `classify-agent-tier1` count stuck at 1,851 of 19,787. **PR
+  #198 drew exactly that conclusion in its body and filed it as an owner
+  action.** It was wrong: all six were running, and had produced **17,427
+  classifications** nobody had merged.
+  **To see what the fleet has done, look at the branches, never at `main`:**
+  `git fetch origin 'refs/heads/reclassify-*:refs/remotes/origin/reclassify-*'`
+  then `node tools/classify/reconcile-shards.mjs --dry-run`.
+- **What:** `feat/reconcile-shards`. Agent-classified shows **1,851 → 19,278** of
+  19,787 (**509** still have none). New `tools/classify/reconcile-shards.mjs`
+  merges the six branches' agent rows into the base layers — **by merging data,
+  never by checking out a branch's file**: shards 1–5 descend from
+  `origin/reclassify` (last moved 2026-07-25), so taking any one file wholesale
+  drops 1,707 of main's agent rows and reverts `genre-map`/`llm-title-genre`
+  three weeks. Verified entry-by-entry against `origin/main`: **0 shows went
+  backwards.**
+- **Owned files:** `data/breadth-classification.json`,
+  `tools/classify/reconcile-shards.mjs` + `.test.mjs`.
+- **Shared files it touches:** `test/suite-integrity.test.js` (one new floor, in
+  its own final commit), `docs/agents/runners.md`, `tools/classify/README.md`,
+  `HUMAN-ACTIONS.md` (#5 update + new #10), this file. **Nothing under `player/`,
+  `app.js`, `styles.css`, `backend/`, `.github/`; `data/discover.json`,
+  `data/taxonomy.json` and `data/genre-taxonomy-map.json` are untouched** (PR
+  #198 owns those).
+- **SEQUENCING: this PR carries the `hold` label and must land AFTER PR #198.**
+  It is otherwise auto-merge-allowlisted on every path and would land the moment
+  checks go green, which would strand #198. The asymmetry is measured and it is
+  the whole reason for the order: **my numbers survive #198 landing first
+  (simulated on #198's file — identical 17,427 adoptions, 509 remaining, 0
+  regressions), and #198's headline does not survive mine.** After my merge only
+  **509** rows are still base-layer, so #198's genre-map re-run would have 9
+  enrichable shows instead of 388 and its 9,741 → 8,874 could not be reproduced.
+  Whoever merges #198: then run `node tools/classify/reconcile-shards.mjs`, re-run
+  the suites, drop the `hold` label. **Nothing of #198's is lost in either
+  order** — 379 of its 388 breadth enrichments get an agent row regardless, and
+  all of their added child nodes stay on the row (in `topics` or
+  `superseded_topics`); its `discover.json` work is untouched by this PR.
+- **Heads-up — a row can now carry `superseded_topics`.** 6,758 rows do. When an
+  adopted agent row does not carry a topic the row it replaced had, the displaced
+  ids move there (with `superseded_source`) instead of being deleted. It is
+  deliberately **not** a union: #198 measured that bolting the genre map's coarse
+  secondaries onto a judged row makes root dumping *worse* (9,741 → 10,502).
+  Anything reading `topics` should keep ignoring `superseded_topics`.
+- **Heads-up — root-only moves in two directions, and both are honest.** Root-only
+  *pairs* rise 9,741 → 13,470 because agent rows name more branches; root-only
+  *items* (shows carrying no child node anywhere, the metric that maps to whether
+  an interest slider fires) fall **6,107 → 5,148**. Of the 17,427 merged rows,
+  **4,419 sit on a bare root** — they predate PR #175's 194-node taxonomy, which
+  was purely additive (0 renamed, 0 removed), so they are **valid, just
+  root-heavier**. Re-tagging them to the new children is a separate pass; do not
+  fold it into anything else.
+- **Two `HUMAN-ACTIONS.md` corrections this produced.** #5 ("give each routine its
+  own `--shard i/6`", `[BLOCKING]`) is **refuted** — the 17,427 rows are a perfect
+  partition by `Number(id) % 6`, 0 off-lane and 0 double-claimed, so all six
+  already pass it and there is no duplicate work; acting on the item would
+  overwrite six working configs via a flag that fails open. #4 ("are they
+  alive?") is **yes**. The real defect is new **#10**: nothing lands their output.
+- **Related:** #198, #203 (`--shard` fails open), #175, ADR-0006.
+
 ### durable storage — resume survives an eviction (2026-08-16, one PR, no follow-up)
 
 - **What:** `feat/durable-progress`, issue **#40 (MP6)**. Every `cp_` key —
@@ -67,7 +133,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
   a tier after `MAX_CONSECUTIVE_TIER_FAILURES`, after which `setItem` goes back to
   throwing honestly. **If you add another storage-fault consumer, it must not
   write storage unconditionally.**
-- **Left for the founder:** `HUMAN-ACTIONS.md` #9 — bump `sw.js` to `foray-v5`
+- **Left for the founder:** `HUMAN-ACTIONS.md` #10 — bump `sw.js` to `foray-v5`
   so the migration cuts over in one load instead of two. Safe without it. Also
   open, and a product call not a task: whether resume state gets a server-side
   copy, which only helps if the anon token survived and therefore really means
