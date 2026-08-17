@@ -784,7 +784,7 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 3. **The Supabase project's region / hosting jurisdiction**, and whether a data-processing agreement exists. Needed to say where data is stored, and required if EU users are in scope. (§3.)
 4. **Retention:** how long event rows are kept. Nothing in the code ever deletes one, and no retention job exists (ADR-0005 anticipated one).
 5. **Geo-availability:** US-only listing, or accept GDPR obligations day one? `docs/marketing/05-legal-risk-memo.md` §5 sets out the trade; it is still unresolved and it changes what the policy must promise.
-6. **The one build decision: a delete control.** There is **no in-app way to clear your data** today, so Play's "users can request that their data be deleted" is currently answered **No** and no deletion URL exists. The data layer already permits it (the row-level-security policy is `for all`, covering delete) — this is a missing button, not a missing permission. Recommended: one settings control that clears both storage tiers and issues an authenticated delete of that user's rows. It also satisfies Apple 5.1.1(v) if that ever applies.
+6. **The one build decision: a delete control.** ~~There is **no in-app way to clear your data** today~~ — **BUILT, nothing to decide here any more.** The menu now carries **Delete my data**: it clears both storage tiers (enumerated and verified, not from a list) and issues an authenticated delete of that account's rows in every per-user table, remote first so a network failure cannot strand the rows. Play's deletion answer is **Yes** — `docs/legal/data-safety.md` §A7. Two residues, both real and neither blocking this item: the **deletion URL** the form also wants (a hosting task, and item 2 above covers the same page), and the empty **auth user row** a client cannot delete, which is new item **14**.
 
 **Two things to verify in the Supabase dashboard while you are there** — neither is knowable from the repo, and both are listed as open questions in `data-safety.md`:
 
@@ -794,6 +794,29 @@ So the recommendation is: **Android's half of #28 lands before any Play release,
 **Also worth a lawyer's eye, flagged rather than decided:** two of the nine thumbs-down reason chips are "Leans too far left" and "Leans too far right", and the selected chip is transmitted. They record a reaction to an *episode*, not the listener's own politics — so Apple's "Sensitive Info" and Play's "Political or religious beliefs" are both answered **No**, which is the defensible reading. It is disclosed in the policy regardless.
 
 **Worked if:** `docs/legal/privacy-policy.md` contains no `TODO(founder)` markers, and the answers in `docs/legal/data-safety.md` can be pasted into both forms without a judgement call left in them.
+
+**Status:** OPEN
+
+---
+
+### 14. Delete the empty anonymous accounts a client cannot delete itself
+
+**Tag:** `[UPGRADE]` · **Time:** ~15 minutes in the Supabase dashboard, once · **Owner:** Wyatt
+
+**Why it matters.** The in-app **Delete my data** control (now built) deletes every row an account owns, in every per-user table, and discards the token so the next event creates a **new** anonymous account rather than re-attaching. What it cannot delete is the `auth.users` row itself: that needs the Admin API and a **service-role key**, and a key that can delete any account cannot ship inside a public web page — this repo's automation is deliberately keyless (CLAUDE.md decision-authority item 2), and putting one in `app.js` would be strictly worse for privacy than leaving the row.
+
+So after a deletion the account is an **empty shell**: no name, no email, no phone number, no password, no `app_users` row, no events. Both store declarations and the privacy policy say exactly that rather than implying the account is gone. This item is what would let them say more.
+
+**The honest framing:** this is not a data-protection hole — an identifier with nothing attached to it is not personal data in any practical sense, and it is disclosed. It matters for two narrower reasons: an Apple reviewer reading guideline 5.1.1(v) strictly may want the account record itself removed, and the table otherwise grows one dead row per deletion forever.
+
+**Steps.**
+
+1. In the Supabase dashboard, open **SQL Editor** and add a `security definer` function that deletes the caller's own auth user — the standard shape is `delete from auth.users where id = auth.uid();` inside a function owned by a privileged role, exposed as an RPC (e.g. `create function public.delete_own_account() returns void`), with `grant execute on function public.delete_own_account() to authenticated;`.
+2. Tell whoever picks up the follow-up (or reply here) that it exists, and the client will call `POST /rest/v1/rpc/delete_own_account` as the last step of the deletion — **after** the row deletes, since the token dies with the account. It is ~10 lines in `app.js` and one more `SB_USER_TABLES`-style pin in `test/data-deletion.test.js`.
+3. Decide whether the same function should also cascade the per-user tables. It does not need to — the client already deletes them — but it makes the server-side path complete on its own, which matters if a deletion request ever arrives by email instead of through the app.
+4. While in there: consider a **retention job** for anonymous accounts with no events at all (item 13, step 4, needs a number for the policy either way). The same sweep can collect shells from before this function existed.
+
+**Worked if:** calling the RPC as an ordinary anonymous user removes that user from `auth.users` and returns success, and calling it cannot remove anybody else's (test it twice, with two different anonymous tokens). Then `docs/legal/data-safety.md` §A7 and `privacy-policy.md` §7 can drop the "the account row stays" paragraph — and both must be updated in the same change that ships the client call, per the standing rule in §8 of the policy.
 
 **Status:** OPEN
 

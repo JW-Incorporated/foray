@@ -782,3 +782,266 @@ test("localStorageTier refuses an object that is not Storage-shaped", () => {
   assert.equal(localStorageTier({ getItem() {} }), null);
   assert.ok(localStorageTier(new FakeLocal()));
 });
+
+/* ---------- purge: the listener asked for all of it to go (#42) ----------
+
+   The control that calls this lives in app.js and is tested end to end in
+   `test/data-deletion.test.js`. What belongs here is the store's own contract:
+   which keys it finds, which tiers it clears, and — the part that decides whether
+   a delete button may say "done" — what it reports when it could not finish. */
+
+test("PURGE clears every owned key from both tiers and reports what it removed", async () => {
+  const rows = {
+    cp_interests: '{"a":1}', cp_seen: "[]", [PROGRESS_KEY]: row_(),
+    "cp_pos:ep-1": '{"seconds":10}', "cp_pos:ep-2": '{"seconds":20}',
+  };
+  const local = new FakeLocal({ ...rows });
+  const idb = fakeDurable({ rows: { ...rows } });
+  const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
+  await s.hydrate();
+
+  const out = await s.purge();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.deepEqual(out.remaining, []);
+  assert.deepEqual(out.unverified, []);
+  assert.deepEqual(out.keys.sort(), Object.keys(rows).sort());
+  assert.deepEqual([...local.map.keys()], [], "localStorage still holds rows");
+  assert.deepEqual([...idb.store.keys()], [], "the durable tier still holds rows");
+  assert.equal(s.length, 0);
+  assert.equal(s.getItem("cp_interests"), null);
+});
+
+test("PURGE finds a row only the durable tier has — the one a facade walk misses", async () => {
+  const idb = fakeDurable({ rows: {} });
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal({ cp_seen: "[]" })), idb] });
+  await s.hydrate();
+  // Written behind the store's back, exactly as another tab (or a hydration that
+  // failed on an earlier load) leaves it.
+  idb.store.set("cp_pos:ep-9", '{"seconds":99}');
+  assert.ok(!Array.from({ length: s.length }, (_, i) => s.key(i)).includes("cp_pos:ep-9"));
+
+  const out = await s.purge();
+  assert.ok(out.keys.includes("cp_pos:ep-9"), "the durable-only row was never targeted");
+  assert.equal(out.ok, true);
+  assert.deepEqual([...idb.store.keys()], []);
+});
+
+test("PURGE clears cp_storage_health, which the facade deliberately does not list", async () => {
+  const local = new FakeLocal({ cp_a: "1" });
+  const s = new DurableStore({ tiers: [localStorageTier(local)] });
+  s._recordHealth();
+  assert.equal(s.length, 1, "premise: the diagnostic is hidden from the facade");
+  assert.ok(local.map.has(HEALTH_KEY));
+
+  const out = await s.purge();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.deepEqual([...local.map.keys()], [], "the diagnostic record survived the purge");
+});
+
+test("PURGE leaves unowned keys alone", async () => {
+  const local = new FakeLocal({ cp_a: "1", other_thing: "keep me" });
+  const s = new DurableStore({ tiers: [localStorageTier(local)] });
+  await s.purge();
+  assert.deepEqual([...local.map.keys()], ["other_thing"]);
+});
+
+test("PURGE does NOT report ok when a tier keeps the rows anyway", async () => {
+  // A tier whose `remove` resolves and does nothing: the silent no-op, and the
+  // only thing standing between it and a false "your data is gone" is the
+  // verifying re-read.
+  const idb = fakeDurable({ rows: { cp_a: "1" } });
+  idb.remove = async () => {};
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal({ cp_a: "1" })), idb] });
+  await s.hydrate();
+
+  const out = await s.purge();
+  assert.equal(out.ok, false, "a tier that kept its rows is not a successful deletion");
+  assert.deepEqual(out.remaining, ["cp_a"]);
+});
+
+test("PURGE reports a tier it could not READ rather than calling it empty", async () => {
+  const idb = fakeDurable({ rows: { cp_a: "1" }, failRead: true });
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal({ cp_a: "1" })), idb] });
+  const out = await s.purge();
+  assert.equal(out.ok, false, `"I could not look" is not "it is empty": ${JSON.stringify(out)}`);
+  assert.deepEqual(out.unverified.map((u) => `${u.tier}:${u.phase}`), ["idb:before", "idb:after"]);
+  // Both phases, and both matter: `before` means keys may have been missed,
+  // `after` means the deletion cannot be confirmed.
+  assert.ok(out.unverified.every((u) => /readAll failed/.test(u.reason)));
+});
+
+test("PURGE re-arms a tier the circuit breaker had dropped", async () => {
+  /* The breaker exists to stop a fault loop, not to refuse a listener. A dropped
+     tier that is never asked again is a tier whose rows survive a deletion. */
+  const idb = fakeDurable({ rows: {}, failWrite: true });
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal()), idb] });
+  for (let i = 0; i < MAX_CONSECUTIVE_TIER_FAILURES; i++) {
+    s.setItem(`cp_k${i}`, "1");
+    await s.flush();
+  }
+  assert.equal(s.health().tiers.idb.disabled, true, "premise: the breaker dropped it");
+
+  idb.failWrite = false;
+  idb.store.set("cp_left_behind", "1");
+  const out = await s.purge();
+  assert.ok(out.keys.includes("cp_left_behind"));
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.deepEqual([...idb.store.keys()], []);
+});
+
+test("PURGE marks every key dirty, so a late hydration cannot resurrect one", async () => {
+  /* The sequence: purge finishes, and only then does a slow `readAll` from an
+     earlier hydrate() come back holding the rows. Without the dirty marks it
+     would adopt them and write them back up into localStorage. */
+  const local = new FakeLocal({ cp_a: "1" });
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const idb = fakeDurable({ rows: { cp_a: "1" } });
+  let reads = 0;
+  const slow = {
+    ...idb,
+    /* Only the FIRST read — hydration's — is parked, or the purge's own read
+       deadlocks on the same gate.
+       AND IT SNAPSHOTS BEFORE PARKING. Review caught the first version returning
+       `idb.readAll(p)` AFTER the gate opened: by then the purge had emptied the
+       tier, so hydration adopted nothing and the test passed with `_dirty`
+       deleted. A late read has to carry the rows it saw when it was issued —
+       that is what "answers late" means. */
+    async readAll(p) {
+      reads += 1;
+      if (reads > 1) return idb.readAll(p);
+      const snapshot = await idb.readAll(p);
+      await gate;
+      return snapshot;
+    },
+  };
+  const s = new DurableStore({ tiers: [localStorageTier(local), slow] });
+
+  const hydrating = s.hydrate();
+  const out = await s.purge();
+  release();
+  await hydrating;
+  await s.flush();
+
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.equal(s.getItem("cp_a"), null, "hydration put a purged row back");
+  assert.deepEqual([...local.map.keys()], [], "and wrote it back into localStorage");
+});
+
+test("PURGE on a store with no tiers at all still empties memory and says ok", async () => {
+  // A browser that has taken storage away: there is nothing to delete, and
+  // claiming failure would be as wrong as claiming a deletion that did not happen.
+  const s = new DurableStore({ tiers: [] });
+  try { s.setItem("cp_a", "1"); } catch (_) { /* expected: no tier took it */ }
+  const out = await s.purge();
+  assert.equal(out.ok, true);
+  assert.equal(s.getItem("cp_a"), null);
+});
+
+test("PURGE is safe to run twice, and the second run finds nothing", async () => {
+  const local = new FakeLocal({ cp_a: "1" });
+  const idb = fakeDurable({ rows: { cp_a: "1" } });
+  const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
+  await s.hydrate();
+  await s.purge();
+  const second = await s.purge();
+  assert.equal(second.ok, true);
+  assert.deepEqual(second.keys, []);
+});
+
+test("PURGE then a fresh write: the store keeps working, which is how resume recovers", async () => {
+  const local = new FakeLocal({ [PROGRESS_KEY]: row_() });
+  const idb = fakeDurable({ rows: { [PROGRESS_KEY]: row_() } });
+  const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
+  await s.hydrate();
+  await s.purge();
+
+  const store = new ForayProgressStore({ storage: s });
+  assert.equal(store.save({
+    forayId: ID, title: "The history of grilling", elapsedSec: 42, totalSec: 3673, index: 0, force: true,
+  }), true);
+  await s.flush();
+  assert.equal(readProgress(s, ID).elapsed_sec, 42);
+  assert.ok(idb.store.has(PROGRESS_KEY), "the new row is not durable");
+  assert.equal(store.refusedWrites, 0);
+});
+
+test("PURGE: a tier that cannot be ENUMERATED at all is unverified, with nothing left behind", async () => {
+  /* The gap review found: every other unreadable-tier case raises a FAULT, and a
+     fault writes `cp_storage_health`, which lands in `remaining` — so `ok: false`
+     was coming out for the wrong reason and the `unverified` half of the `ok`
+     rule was never independently asserted. A tier with no `readAll` raises no
+     fault, leaves `remaining` empty, and must STILL refuse to report success:
+     a whole tier we could not look inside is not a tier we cleared. */
+  const opaque = {
+    name: "opaque", sync: false, durable: true,
+    async write() {}, async remove() {},
+    // no readAll, and none is coming
+  };
+  const s = new DurableStore({ tiers: [localStorageTier(new FakeLocal({ cp_a: "1" })), opaque] });
+  const out = await s.purge();
+  assert.deepEqual(out.remaining, [], "nothing is left behind, and that is not the point");
+  assert.deepEqual(out.unverified.map((u) => `${u.tier}:${u.phase}`), ["opaque:before", "opaque:after"]);
+  assert.equal(out.ok, false, "an un-enumerable tier must not be reported as cleared");
+  assert.equal(out.faults, 0, "and it is not a fault — there was nothing to fail");
+});
+
+test("PURGE reports a row written while it was verifying — memory is what getItem answers", async () => {
+  /* `remaining` is assembled from the tiers AND from memory, because memory is
+     what `getItem` answers from: a row still in it is still the listener's data,
+     whatever the tiers say. The reachable case is a write that lands after the
+     removals — here, from inside the verifying read itself, which is the only way
+     to time it deterministically. (`app.js` stops the player before deleting so
+     this is not the ordinary case; it is why the line exists anyway.) */
+  const idb = fakeDurable({ rows: { cp_a: "1" } });
+  let s = null;
+  let reads = 0;
+  const watcher = {
+    ...idb,
+    async readAll(p) {
+      reads += 1;
+      const rows = await idb.readAll(p);
+      if (reads === 2) s.setItem("cp_late", "1");   // the verification pass
+      return rows;
+    },
+  };
+  s = new DurableStore({ tiers: [localStorageTier(new FakeLocal({ cp_a: "1" })), watcher] });
+
+  const out = await s.purge();
+  assert.equal(reads, 2, "premise: one read to find the keys, one to verify");
+  assert.deepEqual(out.remaining, ["cp_late"], `a row readable through the facade went unreported: ${JSON.stringify(out)}`);
+  assert.equal(out.ok, false);
+  assert.equal(s.getItem("cp_late"), "1", "and it really is still readable");
+});
+
+test("PURGE never leaves a diagnostic record of its OWN failure behind", async () => {
+  /* A fault writes `cp_storage_health`, so without the suppression in `purge()` a
+     permanently failing tier turns deleting that key into creating it: every
+     failed run would report a key the purge itself wrote, and a listener who
+     asked for deletion would be left with a NEW row. What they get instead is an
+     honest failure naming only what really survived. */
+  const idb = fakeDurable({ rows: { cp_a: "1" } });
+  idb.remove = async () => { throw new Error("delete failed"); };
+  const local = new FakeLocal({ cp_a: "1" });
+  const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
+  await s.hydrate();
+
+  const out = await s.purge();
+  assert.equal(out.ok, false, "the tier kept the row, so this is a failure");
+  assert.ok(out.faults > 0, "premise: a fault was raised, and a fault writes the health record");
+  assert.deepEqual(out.remaining, ["cp_a"], "only the row that really survived");
+  assert.equal(local.map.has(HEALTH_KEY), false, "the purge wrote a key into the storage it was emptying");
+  assert.equal(s.health().ok, false, "and the fault is still reported through health()");
+});
+
+test("PURGE restores health recording afterwards, even when it threw", async () => {
+  // The suppression is scoped to the call. A store that stopped recording faults
+  // after one purge would go quietly blind for the rest of the session.
+  const idb = fakeDurable({ rows: {} });
+  idb.readAll = async () => { throw new Error("boom"); };
+  const local = new FakeLocal();
+  const s = new DurableStore({ tiers: [localStorageTier(local), idb] });
+  await s.purge();
+  s._recordHealth();
+  assert.ok(local.map.has(HEALTH_KEY), "health recording never came back on");
+});
