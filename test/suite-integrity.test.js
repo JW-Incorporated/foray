@@ -102,7 +102,7 @@ const FLOORS = {
      is still there. Nothing else covers any of that. */
   "tools/mobile/inject-background-audio.test.mjs": 26,
   "tools/mobile/ios-ci.test.mjs": 49,
-  "tools/mobile/ios-workflow.test.mjs": 26,
+  "tools/mobile/ios-workflow.test.mjs": 27,
   "tools/mobile/probe/install-probe.test.mjs": 24,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
