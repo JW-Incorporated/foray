@@ -353,12 +353,18 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `docs/research/mp1-background-audio.md` **§4.1a** now carries the numbers so
   nobody repeats the generalisation — §4.1 measured *timers* and #227 read it as
   covering *loads*. From that run's `simulator-log-seam.txt` (`WebKit:Media`
-  element lifecycle, times re-based on the out-point pause):
-  **visible** 0.20/0.24/0.13 s between load-algorithm steps, 590 ms total;
+  element lifecycle; times are SECONDS SINCE THE PROBE PAGE STARTED and the
+  out-point pause is at 32.49 s, so the audible row below happens BEFORE the
+  boundary, which is the whole point of quoting it):
+  **visible** 0.20/0.24/0.13 s between load-algorithm steps, ~570-590 ms total;
   **hidden + AUDIBLE** +3.47 s and +3.90 s between steps, then 5.0 s with no
   data, never finishing; **hidden + silent** +2.4/+3.5/+5.1 s, **11.14 s** total.
-  The middle row is the refutation — those gaps happened while a segment was
-  playing audibly, in the same window the out-point fired **1 ms** late.
+  The middle row is the refutation — those gaps happened at t=23.6 s and t=27.5 s,
+  nine and five seconds BEFORE the boundary, while a segment was playing audibly,
+  in the same window the out-point fired **1 ms** late. **Stated as an
+  observation, not platform law:** N=1 per phase, one run, one engine, a
+  Simulator. That is enough to park a feature built on the opposite assumption
+  and not enough to quote as a WebKit invariant.
 - **What landed to make `main` safe again:** (1) the handover is **default off**,
   and off means the second `<audio>` element is **never constructed** — a media
   element is a client of the same task queue the real load needs, so "off" has to
@@ -367,8 +373,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
   segment: `_discardWarm` called `removeAttribute("src") + load()`, and its steps
   queued AHEAD of the cold fallback on the one queue (`WARM
   selectMediaResource "nothing to load"` at 38.46 s, `PRIMARY
-  selectMediaResource` at 38.46 s — 4 ms apart), taking the fallback from
-  **9.14 s to 11.14 s**, across `LOAD_SETTLE_TIMEOUT_MS`.
+  selectMediaResource` at 38.46 s — 4 ms apart). The fallback measured
+  **11.14 s** here against **9.14 s** in run 32036295743: the ORDERING is
+  within-run evidence, the ~2 s is a cross-run estimate across different builds,
+  and either way it lands on the wrong side of `LOAD_SETTLE_TIMEOUT_MS`. The same
+  hazard existed on the PROMOTE path (`_promoteWarm` dropped the demoted
+  element's src at the boundary, and that element then becomes the warm one) and
+  in the autoplay recovery; both now pause without dropping. Caught by the
+  reviewer, not by the device — the promote never fired there.
 - **`notReadyFor` was NOT weakened and must not be.** It was the guard working
   correctly; promoting an element that is not ready plays the wrong audio, which
   is worse than silence.

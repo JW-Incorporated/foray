@@ -1523,11 +1523,17 @@ test("THE HANDOVER IS OFF BY DEFAULT, and off means no second element exists", a
      media element is a client of the same task queue the real load needs, and in
      a hidden page that queue delivers a step roughly every 3 seconds. This is
      the test that would fail if someone flipped the default back. */
+  /* AN ELEMENT IS INJECTED AND MUST BE REFUSED. Asserting `_warmEl === null`
+     with nothing injected proves nothing under `node --test`: there is no
+     `Audio` and no `document`, so `makeWarmElement()` returns null whatever the
+     gate says, and the assertion passes with the gate deleted. Caught by the
+     reviewer's mutation, which removed the gate and kept the suite green.
+     Handing it an element it *could* use is the only way to observe the refusal. */
   const el = new PairAudio("solo", []);
-  const b = new HtmlAudioBackend({ element: el });
+  const b = new HtmlAudioBackend({ element: el, warmElement: new PairAudio("warm", []) });
+  assert.equal(b._warmEl, null, "an injected warm element must be REFUSED while prefetch is off");
   assert.equal(b.canPrefetch, false);
   assert.match(b.prefetchOffReason ?? "", /parked/);
-  assert.equal(b._warmEl, null, "no second element may be constructed by default");
   assert.equal(b.prefetch(item("b", B_URL), { startOffset: 12 }), false);
 
   // And the ordinary path is untouched.
@@ -1711,13 +1717,37 @@ test("the outgoing element is paused BEFORE the incoming one plays, never both a
   assert.ok(pausedA < playedB, `A must be paused before B plays: ${pairLog.join(" ")}`);
 });
 
-test("the demoted element's buffer is dropped rather than left decoding", async () => {
-  const { b, a } = pair();
+test("a handover PAUSES the demoted element but does not drop its buffer at the boundary", async () => {
+  /* This test used to assert the opposite, and the assertion was wrong for the
+     same reason `_discardWarm` was: `removeAttribute("src") + load()` queues two
+     media-load-algorithm steps — ~3 s each in a hidden page — on the very queue
+     the element we just promoted needs in order to start playing. Pausing stops
+     it making progress, which is what "not left decoding" actually requires; the
+     buffer is superseded the next time `prefetch()` assigns a src to it, and
+     released for real by `release()`.
+
+     Reasoned from the same log rather than measured: the promote never fired on
+     the device, because the warm load never became promotable. */
+  const { b, a, w } = pair();
   await b.load(item("a", A_URL), { startOffset: 100 });
+  b.play();
   b.prefetch(item("b", B_URL), { startOffset: 12 });
   await settle();
+  const before = a.calls.length;
+
   await b.load(item("b", B_URL), { startOffset: 12 });
-  assert.ok(a.calls.includes("removeAttribute:src"), "the demoted element must let go of its buffer");
+
+  assert.equal(a.paused, true, "the demoted element must stop making progress");
+  assert.deepStrictEqual(
+    a.calls.slice(before).filter((c) => c === "load" || c === "removeAttribute:src"), [],
+    "but no media work at the boundary — the promoted element's own load is waiting on that queue"
+  );
+  assert.equal(b.el, w);
+
+  // Superseded, not leaked: the next warm load re-points that same element.
+  b.prefetch(item("c", C_URL), { startOffset: 40 });
+  await settle();
+  assert.equal(a.src, C_URL, "the demoted element's stale buffer is replaced by the next prefetch");
 });
 
 test("a handover carries the rate and the duck onto the element that inherits the role", async () => {

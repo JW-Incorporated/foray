@@ -70,7 +70,18 @@
      other way is the difference between a graceful beat and a stall, and on a
      cold CDN it is the difference between 2 s and 5 s.
 
-   ── 11. Warming the next segment (`html-audio-backend.js` §"prefetch") ─────
+   ── 11. Warming the next segment — PARKED, DEFAULT OFF ─────────────────────
+   Everything in this section describes a mechanism that **is not enabled**. It
+   shipped, was measured on an iOS Simulator (run 32057395270) making the seam
+   WORSE than the bug — the segment was dropped, not merely delayed — and is now
+   off unless a caller passes `prefetch: true`. The reasoning below about the
+   "audible window" is the part that was wrong: media-element load tasks are
+   throttled by VISIBILITY, DOM timers by AUDIBILITY, and this feature was built
+   on generalising the second to the first. `html-audio-backend.js` §"prefetch"
+   carries the refutation and the numbers; `docs/research/mp1-background-audio.md`
+   §4.1a carries the rule. `_warmNextSegment` below is therefore dead code in
+   production, kept because the question is still open and the wiring is correct.
+
    §10's `max(gap, load)` is the best ordering available with one element, and
    it is still the defect, because on a backgrounded phone the load is not 2 s:
    run 32036295743 measured `askedGapMs: 2000` against `observedGapMs: 9153`,

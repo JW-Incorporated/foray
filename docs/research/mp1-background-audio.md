@@ -136,9 +136,15 @@ Two things follow, and the second one supersedes a "SAFE" reading in `STATE.md`.
    short of the second — the same number, because the constants match, which is
    what makes the conflation easy and why it is spelled out here.
 
-   **#227** moves the load off the boundary (prefetch on a second element, 12 s
+   ~~**#227** moves the load off the boundary (prefetch on a second element, 12 s
    ahead, while the current segment is still audible) so the silent window is no
-   longer where the fetch happens — which relieves all three.
+   longer where the fetch happens — which relieves all three.~~
+   **RETRACTED, and see §4.1a.** Measured on run 32057395270: the load takes ~11 s
+   whether the page is audible or silent, because media-element load tasks are
+   throttled by VISIBILITY rather than audibility. #227 relieved none of the three
+   and made the third one certain (the segment was dropped), so it is parked
+   default-off. All three remain open; the live proposal is a visibility-aware
+   `LOAD_SETTLE_TIMEOUT_MS`, which converts a dropped segment into a slow seam.
 
 **And the second transition — the one that would have tested whether audibility
 lapses after that silence — is exactly the one this run did not get.** The record
@@ -305,7 +311,7 @@ tail, and §8's argument rests on the median.
 
 > **4.1a — THIS SECTION IS ABOUT TIMERS. DO NOT GENERALISE IT TO MEDIA LOADS.**
 > Added 2026-08-17, after the generalisation was made and shipped and cost a
-> regression (PR #227, reverted to default-off by the PR that added this note).
+> regression (PR #227, parked default-off by the PR that added this note; the machinery and its tests remain).
 >
 > The measurement above says a hidden page **that is producing audio** is not
 > throttled — for `setTimeout`. It says nothing about the HTML **media load
@@ -314,12 +320,12 @@ tail, and §8's argument rests on the median.
 >
 > Measured on a device-class run — **32057395270**, iOS Simulator, app genuinely
 > backgrounded — from `WebKit:Media` element lifecycle in that run's
-> `simulator-log-seam.txt` (times re-based on the primary element's out-point
-> pause):
+> `simulator-log-seam.txt` (times are seconds since the probe page started; the
+> out-point pause is at 32.49 s, so the audible row is BEFORE the boundary):
 >
 > | phase | between load-algorithm steps | total to `canplay` |
 > |---|---|---|
-> | **visible** | 0.20 s, 0.24 s, 0.13 s | **590 ms** |
+> | **visible** | 0.20 s, 0.24 s, 0.13 s | **~570-590 ms** |
 > | **hidden, audio PLAYING** | **+3.47 s, +3.90 s**, then 5.0 s with no data | never finished (11.8 s) |
 > | hidden, audio paused | +2.4 s, +3.5 s, +5.1 s | **11.14 s** |
 >
@@ -329,7 +335,10 @@ tail, and §8's argument rests on the median.
 > moment. One page, one run, two schedulers:
 >
 > - **DOM timers → throttled by AUDIBILITY** (§4.1, §5.2, §7.4).
-> - **Media-element load tasks → throttled by VISIBILITY.** ~20x collapse.
+> - **Media-element load tasks → throttled by VISIBILITY.** A ~15-20x collapse in
+>   step delivery. **N=1 per phase, one run, one engine, a Simulator** — enough to
+>   refute a design built on the opposite assumption, not enough to quote as a
+>   WebKit invariant. §4.4 holds itself to the same standard.
 >
 > Two consequences that outlive the reverted feature, both worth more than it
 > was:

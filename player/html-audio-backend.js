@@ -170,8 +170,10 @@ const LOAD_SETTLE_TIMEOUT_MS = 10_000;
 
    ── AND THAT REASONING WAS WRONG. THE HANDOVER IS PARKED, DEFAULT OFF ──────
 
-   The two bullets above are about DOM TIMERS and PROCESS SUSPENSION, and both
-   are true. The inference drawn from them — "so a load issued while audio is
+   The two bullets above are about DOM TIMERS and PROCESS SUSPENSION, and are
+   sound in that scope (though note `docs/ios-ci.md` §"a claim it walks back"
+   measured `audibleActivityClearDelay` behaving as ~5 s rather than the 10 s
+   quoted above). The inference drawn from them — "so a load issued while audio is
    playing runs in the un-throttled window" — is FALSE, and it was measured false
    the first time it ran on a device. Run **32057395270** shipped the handover to
    an iOS Simulator and the seam got WORSE than the bug: `observedGapMs: null`,
@@ -181,40 +183,56 @@ const LOAD_SETTLE_TIMEOUT_MS = 10_000;
 
    WHAT IT SHOWS. Every step of the HTML media load algorithm is a QUEUED TASK,
    and in a hidden page those tasks are delivered SECONDS apart. Same run, same
-   page, times re-based on the primary element's out-point pause:
+   page. **Times are SECONDS SINCE THE PROBE PAGE STARTED, and the out-point pause
+   is at 32.49 s** — so the middle row happens BEFORE the boundary, while audio is
+   still playing, which is the whole point of quoting it:
 
-     VISIBLE, first load     prepareForLoad -> selectMediaResource +0.20 s ->
-                             HaveMetadata +0.24 s -> HaveEnoughData +0.13 s
-                             TOTAL 590 ms
-     HIDDEN + AUDIBLE, warm  20.09 prepareToPlay -> 23.56 prepareForLoad
-                             (+3.47 s) -> 27.46 prepareForLoad (+3.90 s) ->
-                             27.47 selectMediaResource -> nothing for 5.0 s
+     VISIBLE, first load     the whole load in 570-590 ms: prepareForLoad ->
+                             selectMediaResource +0.20 s -> HaveMetadata +0.24 s
+                             -> HaveEnoughData +0.13 s
+     HIDDEN + AUDIBLE, warm  20.09 prefetch -> 23.56 prepareForLoad (+3.47 s) ->
+                             27.46 prepareForLoad (+3.90 s) -> 27.47
+                             selectMediaResource -> nothing for the 5.0 s left
+                             before the boundary
      HIDDEN + SILENT, cold   32.49 load() -> 34.88 prepareForLoad (+2.4 s) ->
                              38.46 selectMediaResource (+3.5 s) ->
                              43.59 HaveMetadata (+5.1 s) -> 43.63 canplay
                              TOTAL 11.14 s
 
-   THE MIDDLE ROW IS THE REFUTATION. Those 3.47 s and 3.90 s gaps happened while
+   THE MIDDLE ROW IS THE REFUTATION. Those 3.47 s and 3.90 s gaps happened at
+   t=23.6 s and t=27.5 s, i.e. 9 s and 5 s BEFORE the boundary at 32.49 s, while
    segment A WAS PLAYING AUDIBLY — in the very same window the out-point fired
-   1 ms late. So:
+   1 ms late. So, on this engine:
 
-     **MEDIA-ELEMENT LOAD TASKS ARE THROTTLED BY VISIBILITY.
-       DOM TIMERS ARE THROTTLED BY AUDIBILITY. THEY ARE DIFFERENT RULES.**
+     **MEDIA-ELEMENT LOAD TASKS APPEAR TO BE THROTTLED BY VISIBILITY.
+       DOM TIMERS ARE THROTTLED BY AUDIBILITY. DIFFERENT RULES.**
+
+   Stated as an observation rather than as platform law: this is ONE run, ONE
+   engine, a Simulator, N=1 per phase. It is more than enough to park a feature
+   built on the opposite assumption — that only needs the feature to have failed
+   once — and it is not enough to quote as a WebKit invariant. §4.4 below holds
+   itself to the same standard and is worth reading for the discipline.
 
    §4.1 of mp1-background-audio.md measured TIMERS. Generalising it to LOADS is
    the mistake that produced this feature, and it is an easy one to make twice —
    the note beside §4.1 exists to stop the next person making it.
 
    So warming buys nothing the platform will honour: an ~11 s task chain does not
-   fit in a lead time any segment can afford, and 11.78 s of real lead was not
-   enough. `PREFETCH_LEAD_SEC` below is not a tuning error to be nudged upward;
-   the model behind it was wrong.
+   fit in a lead time any segment can afford, and the ~12 s of real lead this run
+   gave it (`prefetch.window` reported 11.8 s remaining; 32.49 - 20.09 = 12.4 s of
+   wall clock) was not enough. `PREFETCH_LEAD_SEC` below is not a tuning error to
+   be nudged upward; the model behind it was wrong.
 
    IT ALSO MADE THE FALLBACK WORSE, WHICH IS HOW A SLOW SEAM BECAME A DROPPED
    SEGMENT. See `_discardWarm` for the log lines: the discard queued two more
-   task-chain steps AHEAD of the cold load, taking it from 9.14 s to 11.14 s,
-   across `LOAD_SETTLE_TIMEOUT_MS`. That is fixed independently of the parking —
-   a boundary now does no media work on the warm element at all.
+   task-chain steps AHEAD of the cold load. Within this one run the ORDERING is
+   direct evidence — the discard's steps are timestamped ahead of the fallback's
+   and the two `selectMediaResource` calls land 4 ms apart, which is what one
+   shared queue looks like. The SIZE of the cost is a cross-run comparison and
+   softer: 9.14 s in run 32036295743 against 11.14 s here, different builds. Take
+   the mechanism as measured and the 2 s as an estimate; either way it is on the
+   wrong side of `LOAD_SETTLE_TIMEOUT_MS`. Fixed independently of the parking —
+   no boundary-reachable path does media work on the warm element now.
 
    WHAT STAYS TRUE, AND STILL NEEDS FIXING SOMEWHERE ELSE. The bytes are not the
    problem: mid-file 64 KB ranged GETs against six of the real sources in
@@ -826,9 +844,15 @@ export class HtmlAudioBackend {
        `_notePause` exists to notice. */
     this._detach(outgoing);
     try { outgoing.pause(); } catch (_) { /* already paused */ }
-    // Drop the demoted element's buffer rather than leaving it decoding — the
-    // same reason `release()` does it.
-    try { outgoing.removeAttribute("src"); outgoing.load(); } catch (_) { /* fine */ }
+    /* THE DEMOTED ELEMENT'S BUFFER IS NOT DROPPED HERE, and this is the same
+       lesson as `_discardWarm`, applied on the other side of the boundary.
+       `removeAttribute("src") + load()` queues two media-load-algorithm steps on
+       the queue the element we just promoted needs in order to start playing —
+       ~3 s per step in a hidden page. Pausing is enough to stop it making
+       progress; the buffer is superseded the next time `prefetch()` assigns a
+       src to it, and released for real by `release()`. This path never ran on
+       the device (the promote never fired), so it is reasoned from the same log
+       rather than measured — noted so the next person knows which is which. */
 
     this.el = incoming;
     this._warmEl = outgoing;
@@ -992,11 +1016,12 @@ export class HtmlAudioBackend {
     const offset = this.currentTime;
     this._emit(`handover.refused ${item.id} — retrying on the element that holds the gesture`);
 
-    // Detached first, so the pause and the drop below reach nobody — see the
-    // note in `_promoteWarm` about not leaving `_expectPause` stranded.
+    // Detached first, so the pause reaches nobody — see the note in
+    // `_promoteWarm` about not leaving `_expectPause` stranded. And no src drop
+    // here either, for the same task-queue reason: the element we are swapping
+    // TO has a load to run, and it must not queue behind this one's teardown.
     this._detach(this.el);
     try { this.el.pause(); } catch (_) { /* fine */ }
-    try { this.el.removeAttribute("src"); this.el.load(); } catch (_) { /* fine */ }
     this._warmEl = this.el;
     this.el = blessed;
     this._attach(this.el);
