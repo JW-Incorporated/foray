@@ -255,6 +255,34 @@ test("neither build step can be made unable to fail", () => {
   }
 });
 
+test("xcodebuild is pointed at a DETECTED container, not a hardcoded workspace", () => {
+  /* THE FIRST REAL RUN OF THIS WORKFLOW FAILED HERE, and it is the most useful
+     thing #38 has produced so far: Capacitor 8's iOS template is Swift Package
+     Manager, so `cap add ios` writes `Package.swift` and NO `App.xcworkspace`.
+     Every Capacitor guide, and HUMAN-ACTIONS.md #14 as originally written, assumes
+     a CocoaPods workspace. Hardcoding `-workspace` gave xcodebuild a path that did
+     not exist. */
+  assert.match(WF, /node tools\/mobile\/ios-ci\.mjs xcode-container/);
+  /* `-version` prints, and `-exportArchive` reads an archive rather than a
+     container — neither takes one. Everything that COMPILES must. */
+  const needsContainer = xcodebuildInvocations(WF).filter(
+    (c) => !/-version|-exportArchive/.test(c)
+  );
+  assert.ok(needsContainer.length >= 3, `expected 3 container-taking invocations, found ${needsContainer.length}`);
+  for (const c of needsContainer) {
+    assert.match(
+      c,
+      /"\$XC_FLAG" "\$XC_PATH"/,
+      `an xcodebuild invocation hardcodes its container instead of using the detected one: ${c}`
+    );
+  }
+  assert.equal(
+    /-workspace\s+"?mobile\//.test(WF),
+    false,
+    "a hardcoded -workspace path is back; Capacitor 8 generates no .xcworkspace"
+  );
+});
+
 test("the two measurements are actually invoked", () => {
   /* Deleting the simulator and probe steps outright left all 20 tests green, and
      with them both things #38 exists to settle. Nothing asserted they were

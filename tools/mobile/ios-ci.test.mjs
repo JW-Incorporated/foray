@@ -33,6 +33,7 @@ import {
   parseConsoleProbes,
   parseDump,
   pickOutPoint,
+  pickXcodeContainer,
   pickSimulator,
   renderReport,
   signingReadiness,
@@ -94,6 +95,41 @@ test("the secret list has no duplicates and names no value", () => {
   for (const name of SIGNING_SECRETS) {
     assert.match(name, /^[A-Z0-9_]+$/, `${name} does not look like a secret NAME`);
   }
+});
+
+/* ──────────────────── what xcodebuild gets pointed at ─────────────────────── */
+
+test("a SwiftPM-only project is built with -project", () => {
+  /* MEASURED BY THE FIRST REAL RUN, not assumed. Capacitor 8's iOS template is
+     Swift Package Manager: the run logged "All Capacitor plugins have a
+     Package.swift file", then "Writing Package.swift", then "ios platform added!"
+     — no `pod install` and no `App.xcworkspace`. Every Capacitor guide, and
+     HUMAN-ACTIONS.md #14 as first written, assumes a CocoaPods workspace, and
+     hardcoding `-workspace` handed xcodebuild a path that did not exist. */
+  const c = pickXcodeContainer({ project: "mobile/ios/App/App.xcodeproj" });
+  assert.equal(c.flag, "-project");
+  assert.equal(c.path, "mobile/ios/App/App.xcodeproj");
+  assert.equal(c.toolchain, "swiftpm-project");
+});
+
+test("a workspace wins when both exist, which is Xcode's own rule", () => {
+  /* Both are live possibilities: SPM is 8.x today, and a `cap` release or a
+     hand-added CocoaPods dependency could put a workspace back. A workspace exists
+     precisely to be built instead of the projects inside it. */
+  const c = pickXcodeContainer({
+    workspace: "mobile/ios/App/App.xcworkspace",
+    project: "mobile/ios/App/App.xcodeproj",
+  });
+  assert.equal(c.flag, "-workspace");
+  assert.equal(c.toolchain, "cocoapods-workspace");
+});
+
+test("neither container present THROWS rather than guessing a path", () => {
+  /* A silent fallback would hand xcodebuild a missing path, and the build failure
+     would be about the wrong thing entirely. */
+  assert.throws(() => pickXcodeContainer({}), /neither an \.xcworkspace nor an \.xcodeproj/);
+  assert.throws(() => pickXcodeContainer(), /neither an \.xcworkspace nor an \.xcodeproj/);
+  assert.throws(() => pickXcodeContainer({ workspace: null, project: null }), /Nothing can be built/);
 });
 
 /* ─────────────────────────── choosing a simulator ────────────────────────── */

@@ -102,8 +102,12 @@ jobs:
     timeout-minutes: 60
     env:
       APP_ID: com.jwincorporated.foray
-      WORKSPACE: mobile/ios/App/App.xcworkspace
+      IOS_DIR: mobile/ios
       INFO_PLIST: mobile/ios/App/App/Info.plist
+      # $XC_FLAG and $XC_PATH are NOT set here: what xcodebuild gets pointed at
+      # depends on what `cap add ios` generated, and the first run of this workflow
+      # is what established that Capacitor 8 uses Swift Package Manager and emits
+      # NO `.xcworkspace`. See the "Which Xcode container" step.
       # DELIBERATELY NOT `${{ runner.temp }}` HERE. The `runner` context is not
       # available in a job-level `env:` block (GitHub's availability table allows
       # github/needs/strategy/matrix/vars/secrets/inputs there and nothing else),
@@ -158,7 +162,22 @@ jobs:
           set -euo pipefail
           set -o pipefail
           npm run add:ios 2>&1 | tee "$ART/cap-add-ios.log"
-          test -f ios/App/App.xcworkspace/contents.xcworkspacedata
+          # No `test -f .../App.xcworkspace` here any more, and the first run of
+          # this workflow is why: Capacitor 8's iOS template is Swift Package
+          # Manager, so there is no CocoaPods workspace to assert. The tree is
+          # recorded instead, and the next step decides what to build.
+          find ios -maxdepth 4 -not -path '*/public/*' | sort | tee "$ART/ios-tree.txt"
+
+      - name: Which Xcode container did Capacitor generate?
+        # `-workspace` (CocoaPods) or `-project` (SwiftPM), chosen by a tested
+        # function rather than assumed. Every Capacitor guide — and HUMAN-ACTIONS.md
+        # #14 as first written — assumes a workspace; 8.x does not make one.
+        id: xc
+        run: |
+          set -euo pipefail
+          node tools/mobile/ios-ci.mjs xcode-container "$IOS_DIR" | tee "$ART/xcode-container.txt"
+          sed -n 's/^xc_flag=/XC_FLAG=/p; s/^xc_path=/XC_PATH=/p; s/^xc_toolchain=/XC_TOOLCHAIN=/p' \
+            "$ART/xcode-container.txt" >> "$GITHUB_ENV"
 
       - name: Assert the generated project did NOT land on the SwiftUI scaffold
         # #209's invariant 2, checked against reality instead of against config.
@@ -200,7 +219,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! xcodebuild \
-              -workspace "$WORKSPACE" -scheme App -configuration Debug \
+              "$XC_FLAG" "$XC_PATH" -scheme App -configuration Debug \
               -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
               -derivedDataPath "$DD_SIM" \
               CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
@@ -224,7 +243,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! xcodebuild \
-              -workspace "$WORKSPACE" -scheme App -configuration Release \
+              "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
               -sdk iphoneos -destination 'generic/platform=iOS' \
               -derivedDataPath "$DD_DEV" \
               CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
@@ -417,7 +436,7 @@ jobs:
           ' "${{ runner.temp }}/ExportOptions.plist"
           plutil -lint "${{ runner.temp }}/ExportOptions.plist"
 
-          xcodebuild -workspace "$WORKSPACE" -scheme App -configuration Release \
+          xcodebuild "$XC_FLAG" "$XC_PATH" -scheme App -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' \
             -archivePath "${{ runner.temp }}/Foray.xcarchive" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \

@@ -17,6 +17,7 @@
  *
  * USAGE (all subcommands read stdin or argv and write to stdout / $GITHUB_OUTPUT)
  *   node tools/mobile/ios-ci.mjs signing-gate
+ *   node tools/mobile/ios-ci.mjs xcode-container mobile/ios
  *   node tools/mobile/ios-ci.mjs pick-simulator [simctl-devices.json]
  *   node tools/mobile/ios-ci.mjs decode-localstorage <rows.json...>
  *   node tools/mobile/ios-ci.mjs verdict <localstorage.json> [probe-console.txt]
@@ -85,6 +86,42 @@ export function signingReadiness(env = {}) {
             `set and ${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} missing. Failing ` +
             `rather than skipping, because a skipped upload on a green run is invisible.`,
   };
+}
+
+/* ─────────────────── which thing does xcodebuild get pointed at ───────────── */
+
+/**
+ * `-workspace` or `-project`, depending on what `cap add ios` actually generated.
+ *
+ * MEASURED, NOT ASSUMED — and the first run of this workflow is what settled it.
+ * Every Capacitor iOS guide, and `HUMAN-ACTIONS.md` #14 as originally written,
+ * assumes CocoaPods and therefore an `App.xcworkspace`. **Capacitor 8 does not
+ * generate one.** Its iOS template uses Swift Package Manager: the first run
+ * logged "All Capacitor plugins have a Package.swift file and will be included in
+ * Package.swift", then "Writing Package.swift", then "ios platform added!" — no
+ * `pod install`, no workspace. `xcodebuild -workspace` had nothing to point at.
+ *
+ * So this picks whichever container exists rather than hardcoding either, because
+ * both are live possibilities: SPM is what 8.x does today, and a `cap` release or
+ * a hand-added CocoaPods dependency could put a workspace back. Preferring the
+ * workspace when both exist is the standard Xcode rule — a workspace exists
+ * precisely to be built instead of the projects inside it.
+ *
+ * It THROWS when neither is there. A silent fallback would hand xcodebuild a
+ * missing path and produce a build failure whose message is about the wrong thing.
+ */
+export function pickXcodeContainer({ workspace = null, project = null } = {}) {
+  if (workspace) {
+    return { flag: "-workspace", path: workspace, toolchain: "cocoapods-workspace" };
+  }
+  if (project) {
+    return { flag: "-project", path: project, toolchain: "swiftpm-project" };
+  }
+  throw new Error(
+    "`cap add ios` produced neither an .xcworkspace nor an .xcodeproj. Nothing can be built. " +
+      "Read cap-add-ios.log and ios-tree.txt in the run artifact — the generated layout has " +
+      "changed shape, which is a Capacitor-version change rather than a bug here."
+  );
 }
 
 /* ──────────────────────────── which simulator ────────────────────────────── */
@@ -663,6 +700,19 @@ if (isMain) {
       console.error(r.message);
       /* `partial` is the one that fails. See signingReadiness(). */
       process.exit(r.state === "partial" ? 1 : 0);
+    } else if (cmd === "xcode-container") {
+      const iosDir = rest[0];
+      if (!iosDir) throw new Error("xcode-container needs the generated ios/ directory");
+      const ws = path.join(iosDir, "App", "App.xcworkspace");
+      const proj = path.join(iosDir, "App", "App.xcodeproj");
+      const c = pickXcodeContainer({
+        workspace: fs.existsSync(ws) ? ws : null,
+        project: fs.existsSync(proj) ? proj : null,
+      });
+      appendOutput(`xc_flag=${c.flag}`);
+      appendOutput(`xc_path=${c.path}`);
+      appendOutput(`xc_toolchain=${c.toolchain}`);
+      console.error(`Building with ${c.flag} ${c.path} (${c.toolchain})`);
     } else if (cmd === "pick-simulator") {
       const raw = rest[0] ? fs.readFileSync(rest[0], "utf8") : fs.readFileSync(0, "utf8");
       const sim = pickSimulator(raw);

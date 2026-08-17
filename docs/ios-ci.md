@@ -34,8 +34,10 @@ column can change without anyone buying a laptop.
 1. `npm install` in `mobile/`, then **`npm run add:ios`** — the committed script,
    used rather than re-spelling `cap add ios`, so the workflow cannot drift from
    what `HUMAN-ACTIONS.md` #14 tells a human on a Mac to run.
-2. Assert Capacitor did **not** generate into the repo's `ios/`. #209 pins that
-   through config; here it is checked against a directory that actually exists.
+2. Work out whether to build a **workspace or a project** (§5: Capacitor 8 is
+   SwiftPM and generates no workspace), and assert Capacitor did **not** generate
+   into the repo's `ios/`. #209 pins the second through config; here it is checked
+   against a directory that actually exists.
 3. **Inject `UIBackgroundModes: audio`** into the generated `Info.plist` with
    `tools/mobile/inject-background-audio.mjs`. MP1 §7.3: this is the *entire* iOS
    background-audio requirement — WebKit sets the `AVAudioSession` category
@@ -212,18 +214,46 @@ when a runner image moves under you), the injected `Info.plist`, the simulator
 system log, `container-tree.txt`, two screenshots (`01-playing.png`,
 `02-backgrounded.png`) and the raw probe records.
 
-The two most likely first-run failures, in order:
+### The first run already found one, and it is worth recording
 
-1. **No `.xcworkspace`.** The workflow builds with `-workspace
-   mobile/ios/App/App.xcworkspace` and asserts that file exists, which assumes
-   Capacitor 8 still generates a CocoaPods workspace. If `cap add ios` ever
-   switches its iOS template to Swift Package Manager there is no workspace and no
-   `pod install`, and the "generate the iOS project" step fails on the `test -f`.
-   It fails **loudly**, which is the point of the assertion — the fix is
-   `-project mobile/ios/App/App.xcodeproj`.
-2. **CocoaPods.** `cap add ios` runs `pod install` itself. Capacitor's Podfile
-   references every `@capacitor/*` pod by local path, so no remote spec repo should
-   be needed — but `cap-add-ios.log` is where that assumption gets tested.
+**Capacitor 8's iOS template is Swift Package Manager. There is no
+`.xcworkspace` and no CocoaPods.** Run
+[32021466913](https://github.com/JW-Incorporated/foray/actions/runs/32021466913)
+failed at "generate the iOS project" in 21 seconds, and the log is unambiguous:
+
+```
+✔ Adding native Xcode project in ios
+[info] All Capacitor plugins have a Package.swift file and will be included in Package.swift
+[info] Writing Package.swift
+[info] Found 4 Capacitor plugins for ios: @capacitor/app@8.1.1, @capacitor/preferences@8.0.1,
+       @capacitor/splash-screen@8.0.2, @capacitor/status-bar@8.0.3
+[success] ios platform added!
+```
+
+No `pod install`, no workspace. The first draft of this workflow hardcoded
+`xcodebuild -workspace mobile/ios/App/App.xcworkspace` — the shape every
+Capacitor guide shows, and the shape `HUMAN-ACTIONS.md` #14 was written around —
+and handed xcodebuild a path that does not exist.
+
+**This is the finding, not the bug.** A founder following #14 on their own Mac
+would have hit the same wall, in Xcode, with less signal. `pickXcodeContainer()`
+now chooses `-workspace` or `-project` from what is actually on disk (workspace
+wins if both exist, which is Xcode's own rule), throws if neither is there, and
+has three tests. **`mobile/package.json` needs no change** — Capacitor's own CLI
+made this choice, and the four plugins resolved fine.
+
+Consequences worth knowing: the iOS shell has **no Podfile and no Podfile.lock**,
+so the plugin versions are pinned by `mobile/package-lock.json` (which is not
+committed — see the `npm install` note above) and by `Package.swift`, which
+`cap sync` regenerates. That is a reproducibility question for #14 step 7
+("commit `mobile/ios/`?") and it now has one more input.
+
+### The other thing to check first
+
+`prepare-webdir.mjs` reported **30 files, 2.46 MB of 3.00 MB** on the runner —
+0.06 MB smaller than the 2.52 MB #209 measured on Windows, which is line endings,
+not drift. Worth knowing because that cap is thin on purpose: `discover.json` is
+the file that will push it.
 
 **All three probe steps are `continue-on-error`** (choose simulator, install probe,
 run probes) — a probe that cannot report is a *measurement* failure, not a build
