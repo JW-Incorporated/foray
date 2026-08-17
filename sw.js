@@ -152,13 +152,17 @@ function networkFetch(request) {
 }
 
 /** Resolve to the response, or to null if the origin failed or was too slow. */
-function fromOrigin(request) {
+function fromOrigin(request, env) {
   const live = networkFetch(request).then(
     (res) => {
       /* Written to the cache whenever it lands, including after this call has
          already given up on it. That is what keeps a slow connection from being
-         stuck on the same timeout every load. */
-      if (res && res.ok) cachePut(request, res.clone());
+         stuck on the same timeout every load. Handed to `waitUntil` rather than
+         left floating: the response has already gone back to the page by then,
+         and a worker the browser is free to terminate would otherwise drop the
+         write — the failure being "the cache never fills, and nobody notices
+         until the next dead zone". */
+      if (res && res.ok) env.waitUntil(cachePut(request, res.clone()));
       return res;
     },
     () => null
@@ -248,19 +252,19 @@ function unavailable(request) {
  * Shell (code, styles, icons): origin first, cache second.
  * `pin` is true for the files that decide the generation — see isCode().
  */
-async function handleShell(request, clientId, pin) {
-  const res = await fromOrigin(request);
+async function handleShell(request, env, pin) {
+  const res = await fromOrigin(request, env);
   if (res && res.ok) {
-    if (pin && clientId) degraded.delete(clientId);
+    if (pin && env.clientId) degraded.delete(env.clientId);
     return res;
   }
   /* No answer, or an answer that is not the file — a 404 mid-deploy reads the
      same way here. Serve the last-known copy, and if this was code, pin the
      page to it: from here on its data comes from the cache too. */
   const cached = await cachedFallback(request);
-  if (pin && clientId) {
-    degraded.add(clientId);
-    tellClient(clientId, "stale-shell");
+  if (pin && env.clientId) {
+    degraded.add(env.clientId);
+    env.waitUntil(tellClient(env.clientId, "stale-shell"));
   }
   if (cached) return cached;
   return res || unavailable(request);
@@ -273,14 +277,14 @@ async function handleShell(request, clientId, pin) {
  * read, so withholding it is the safe answer and saying so is the recoverable
  * one.
  */
-async function handleData(request, clientId) {
-  if (clientId && degraded.has(clientId)) {
+async function handleData(request, env) {
+  if (env.clientId && degraded.has(env.clientId)) {
     const cached = await caches.match(request);
     if (cached) return cached;
-    tellClient(clientId, "stale-shell");
+    env.waitUntil(tellClient(env.clientId, "stale-shell"));
     return unavailable(request);
   }
-  const res = await fromOrigin(request);
+  const res = await fromOrigin(request, env);
   if (res) return res;
   const cached = await caches.match(request);
   return cached || unavailable(request);
@@ -293,12 +297,18 @@ self.addEventListener("fetch", (e) => {
   try { url = new URL(request.url); } catch (_) { return; }
   if (url.origin !== location.origin) return;
 
-  /* Which page asked. On a navigation the page does not exist yet, so
+  /* Which page asked, and how to keep the worker alive for the writes that
+     outlive the response. On a navigation the page does not exist yet, so
      `resultingClientId` names the one about to. Either can be absent (no
      `resultingClientId` in older Safari), and a page that cannot be named
-     cannot be pinned — it gets the plain policy rather than a refusal. */
-  const clientId = e.clientId || e.resultingClientId || "";
+     cannot be pinned — it gets the plain policy rather than a refusal.
+     `waitUntil` is wrapped because it throws once the event has settled, and a
+     cache write we are too late to register is not worth a broken response. */
+  const env = {
+    clientId: e.clientId || e.resultingClientId || "",
+    waitUntil: (p) => { try { e.waitUntil(p); } catch (_) { /* too late; harmless */ } },
+  };
 
-  if (isData(url)) e.respondWith(handleData(request, clientId));
-  else e.respondWith(handleShell(request, clientId, isCode(request, url)));
+  if (isData(url)) e.respondWith(handleData(request, env));
+  else e.respondWith(handleShell(request, env, isCode(request, url)));
 });
