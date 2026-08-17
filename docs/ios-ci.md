@@ -1,4 +1,4 @@
-# Building iOS without a Mac — and the four things the runner settles
+# Building iOS without a Mac — and the four claims the runner goes after (it settles three)
 
 Issue **#38** (MP4), part of **#34**. Stacks on **#209** (#36's `mobile/`
 scaffold) and reads on from `docs/mobile-shell.md` and
@@ -18,7 +18,13 @@ each of them blocking a decision:
 | The Capacitor shell compiles at all | `docs/mobile-shell.md` §0 | **Never generated, never installed, never compiled.** Its author said so in a table |
 | Our CSP does not block Capacitor's injected bridge *on iOS* | `docs/mobile-shell.md` §5 | Reasoned from WKWebView's `WKUserScript` injection. `HUMAN-ACTIONS.md` #16 step 6.2 asks a human to type `Capacitor` into a console |
 | Our out-point still fires when the app is backgrounded | `docs/research/mp1-background-audio.md` §8 | "**The single most load-bearing untested claim** in this document" — its words. **SETTLED, run 32026332637: it holds.** See §4b |
-| A Foray's 31 seam **transitions** survive backgrounding — the 2.0 s beat's `setTimeout`, then a fresh cross-episode load | `docs/research/mp1-background-audio.md` §8, last paragraph | Named as a risk and left unmeasured. The out-point result does **not** cover it: different mechanism, and the beat runs on the clock the same run measured at 1 s alignment. Probe C (§3) |
+| A Foray's 31 seam **transitions** survive backgrounding — the 2.0 s beat's `setTimeout`, then a fresh cross-episode load | `docs/research/mp1-background-audio.md` §8, last paragraph | Named as a risk and left unmeasured. The out-point result does **not** cover it: different mechanism, and the beat runs on the clock the same run measured at 1 s alignment. Probe C (§3). **STILL OPEN after run 32036295743** — one hidden transition completed, which is below this workflow's own floor of two, so the verdict is `too-few-transitions`. And the one that completed took **9.2 s against a 2.0 s beat**. See §4c |
+
+**The fourth row is the one to read carefully.** A green `ios-build` run does not
+mean the seam is sound, and this document's own machinery says so: a single
+successful hidden transition reports `too-few-transitions`, not a pass. The seam
+measurement so far is **one encouraging data point and one defect**, and §4c gives
+them equal weight on purpose.
 
 Be precise about the second one, because the sloppy version overclaims: §5's
 heading is *"the top open risk: **Android's** injected bridge versus this CSP"*,
@@ -221,13 +227,11 @@ including a completed transition sitting next to it, because the stall is the
 finding that changes what gets built.
 
 **Its limit, and it ships with every verdict** (`LOCAL_MEDIA_CAVEAT`): the next
-segment is a **local bundled file**. Product principle #3 forbids reusing episode
-audio — a CI job hammering a podcast CDN is exactly what that principle is about —
-and the probe page's CSP is `media-src 'self'`. So this settles **the beat's timer
-and a fresh media load while hidden**. It does *not* settle DNS + TLS + a range
-request into someone's CDN while hidden, which is the other half of the risk MP1 §8
-names. Saying so is the difference between an honest partial result and a claim the
-run cannot support.
+segment is a **local bundled file**, so this settles **the beat's timer and a fresh
+media load while hidden** and not DNS + TLS + a range request into someone's CDN
+while hidden — the other half of the risk MP1 §8 names. That limit is **permanent**,
+not a to-do; §4d explains why, and why the two reasons this caveat used to give were
+the weak ones.
 
 **Two passes, one step, ~95 s of extra runner time.** Probes B and C need the same
 scarce resource — a window in which the app is backgrounded — and B spends its whole
@@ -266,6 +270,9 @@ that only completed on resume. A test in `ios-workflow.test.mjs` asserts that no
   an unsigned one.
 - **#15:** rule on the permanent bundle id. It is baked into the generated
   project; changing it after a store release means a new listing.
+- **A founder decision this PR does NOT make:** whether the 9.2 s measured seam
+  silence (§4c) is acceptable, and whether `player/seam-gap.js`'s 2.0 s should be
+  re-documented as a floor. Filed as its own issue; nothing here changes the player.
 - **#16 / #18:** still open. #16's *build* is now automated, but its device
   questions — icons visible, a Foray advancing with the phone locked, stale-content
   behaviour after an update — are device questions and a simulator cannot answer
@@ -394,6 +401,179 @@ thrown away; `docs/research/mp1-background-audio.md` §0b carries the retraction
 question. The stop is a media event. The beat is a `setTimeout`, on the very clock
 this run measured at 1000 ms alignment, with a fresh cross-episode load inside it.
 Nothing above covers it.
+
+## 4c. The seam run — one transition, nine seconds, and one open question
+
+Run [32036295743](https://github.com/JW-Incorporated/foray/actions/runs/32036295743),
+2026-08-17. **The job was green. The job being green is not the result.**
+
+| | |
+|---|---|
+| `seamTransitionVerdict` | **`too-few-transitions`** — *"1 hidden transition(s) completed, below the 2 this workflow requires before calling the seam sound"* |
+| the transition that did complete | backgrounded start to finish: `hiddenAtBoundary: true`, `hiddenAtNextPlaying: true`, `armedWhileHidden: true`, `endReason: "outPoint"`, `resumedAtWall: null` |
+| a different file really loaded | `seg-a` = `probe-tone.wav` → `seg-b` = `probe-tone-b.wav`, entered at `startedAtSec: 12` |
+| out-point precision at that boundary | **3.1 ms** past `end_sec` |
+| **the beat** | asked **2,000 ms**, observed **9,153 ms** |
+| hidden DOM-timer alignment | median **1000 ms**, 25 samples |
+
+### The pass half: the chain does run backgrounded, and no Swift is needed
+
+One full segment-to-segment transition — beat, cross-episode load, seek, play —
+completed with the app in the background and **never resumed**. Together with probe
+B's out-point result that is the whole chain running hidden, and it is why the
+`fired-on-resume` reading that argued for a native audio backend is retracted
+(§4b). **A native out-point owner was started on that reading and thrown away.**
+
+### The defect half: the 2.0 s beat took 9.2 seconds
+
+`askedGapMs: 2000` → `observedGapMs: 9153`. **4.6x.** A listener with a locked screen
+hears about **seven seconds of nothing** at that seam. The per-stage trace, offsets
+from the boundary, localises it and exonerates the timer:
+
+| stage | +ms | reading |
+|---|---|---|
+| `boundary` | 0 | the out-point stopped the element |
+| `beat-armed` | **2** | **the `setTimeout` beat armed instantly — the JS timer is not the problem** |
+| `load-started` | 12 | `backend.load()` began inside the beat, as designed |
+| `stalled` | **3,173** | the media element fired `stalled` — on a **local bundled file** |
+| `loadedmetadata` | 9,127 | |
+| `canplay` | 9,142 | |
+| `beat-ended` | **9,142** | **the same millisecond as `canplay`** |
+| `playing` | 9,153 | |
+
+`beat-ended` landing on `canplay` is the mechanism: the silence is
+**`max(beat, load)`**, and the load dominated by 7 seconds.
+
+**This is not undocumented behaviour, and do not report it as a bug in the beat.**
+`player/queue-manager.js` §10 states it deliberately — *"total silence is
+`max(gap, load)`, never `gap + load`"* — and ordering it that way is correct: the
+alternative is `gap + load`, which is worse. Two things are nonetheless wrong:
+
+1. **§10's own cost estimate is optimistic by about 2x.** It says the ordering is,
+   on a cold CDN, *"the difference between 2 s and 5 s."* This was a **local file in
+   the app bundle** and it cost **9.2 s**. That is the floor, not the tail.
+2. **`player/seam-gap.js` answers the question "how long is the silence at this
+   seam?" with `SEAM_GAP_SEC = 2.0`**, and defines the gap as *"wall clock between
+   the moment one segment's out-point stops the element and the moment the next
+   segment's `startPlayback` runs"* — which is precisely the 9,153 ms this run
+   measured. 2.0 s is a **floor**, not the silence, and that module reads as though
+   it were the silence. Filed as its own issue; it is not fixed here.
+
+And a real Foray is worse than this measurement in two compounding ways: the file
+was **local**, and Foray #1 has **31 seams**, not one.
+
+### The open question this run could not answer, and it is the more serious one
+
+**The record simply stops at +25.2 s of a 90 s hidden window**, one second after
+`seg-b` became audible, with `seg-b`'s own out-point armed. The hidden DOM-timer
+samples stop at the same instant (25 samples, 24.2 s, a clean 1000 ms throughout).
+The probe saves every 2 s, so roughly **32 subsequent saves never landed**, and
+about **65 s of the window went unused**.
+
+Two readings, and this artifact cannot separate them:
+
+- **(a) the page stopped being scheduled** about a second after a 9.15 s silence. If
+  so it is a far bigger problem than the seam gap: it would mean a hidden page can be
+  descheduled **mid-Foray** after sustained silence, which is the failure that makes
+  the whole WebView-shell approach unsafe. WebKit's `audibleActivityClearDelay` grace
+  is **10 s** and the observed silence was **9.15 s** — the completed transition
+  cleared it by roughly **850 ms**, which is exactly the margin `MIN_HIDDEN_TRANSITIONS
+  = 2` exists to probe, and exactly the transition this run did not get.
+- **(b) the page kept running and its `localStorage` writes stopped reaching disk**,
+  making the collected record a ~65 s stale snapshot. A harness defect.
+
+**Do not let this settle into a footnote about save cadence.** Under (a) the product
+decision changes.
+
+What was ruled out, so nobody re-treads it:
+
+- **The 90 s budget is not the cause.** At the measured 9.2 s beat the chain needs
+  15 + 9.2 + 8 + 9.2 ≈ **41.3 s**, ~45 s with margin; two worst-case beats at
+  `SEAM_BAD_MS` need ~59 s. 90 s clears it with ~2x headroom and is **unchanged** —
+  macOS minutes bill at 10x. What was wrong was the budget's stated *derivation*,
+  which assumed a 2 s beat; that is corrected in the workflow.
+- **`04-seam-backgrounded.png` cannot show it.** It captures the device screen —
+  Settings in the foreground, `◀ Foray` in the status bar — not the probe's WebView.
+  It is good independent corroboration that the app really was backgrounded, and it
+  is nothing else.
+- **The simulator log cannot show it either, and that was its own defect.**
+  `simulator-log.txt` is **exactly 20,000,000 bytes** — truncated — covering
+  **13:45:30.961 → 13:46:44.369**. The seam pass began at **13:47:08.446**, twenty-four
+  seconds after the log ends, so it has **no log coverage at all**. Of 110,579 captured
+  lines, **17** mention our app (**0.015%**): the predicate was
+  `processImagePath CONTAINS "App"`, which matches most of the system, and the shared
+  20 MB cap was spent by pass 1. Every foray line is PID 19964 — pass 1's process. Two
+  of the three `Suspended` hits for it are
+  `WebProcessProxy::canTerminateAuxiliaryProcess: returns false`, which means *do not
+  terminate*; the third is `applicationDidEnterBackground`, a UIKit lifecycle line.
+  **None is a RunningBoard suspension**, and its last state is `unknown-NotVisible`.
+
+**Fixed here so the next run decides it from the record alone:** each pass gets its
+own log capture and its own cap, the predicate matches our bundle id instead of the
+substring `App`, the reporter reads both logs, and the seam record now carries
+`saveSeq` + `firstSavedAtWall`. If `saveSeq` is high while `lastSavedAtWall` is old,
+the writes stopped landing — reading (b). If both are old and `saveSeq` matches
+elapsed/2 s, the page stopped being scheduled — reading (a).
+
+### One caveat that was over-corrected once, so read the scoping
+
+The 0-byte `csp-messages.txt` **cannot** support "zero CSP violations" for the seam
+pass, because the log never covered it. But the **in-page** observation is separate
+and stands: `foray_probe_bridge`, written by the seam pass's own launch at
+13:47:05, carries `cspViolations: []`, `capacitorType: "object"`,
+`isNativePlatform: true`, nine plugin names, `hasServiceWorkerApi: false`, origin
+`capacitor://localhost`, rechecked after 3,000 ms. **CSP is measured clean in-page;
+the log file proves nothing either way.** Keep both halves of that.
+
+Relatedly: **zero `FORAY_PROBE_` lines appeared in 110,579 captured lines**, so a
+WKWebView `console.log` has never once been observed reaching the simulator system
+log. `collectProbes`' console channel is therefore **unproven, not clean** —
+`localStorage` is the only measurement path that has ever worked, and a report that
+looks multiply-sourced has one source.
+
+## 4d. Can this ever measure a cross-origin fetch? — no, and that is permanent
+
+The honest answer to the question `LOCAL_MEDIA_CAVEAT` raises, because a caveat that
+reads as a formality invites someone to discharge it cheaply and believe they have.
+
+**The two reasons the caveat used to give are the weak ones.**
+
+- **`media-src 'self'` is a one-line, zero-risk obstacle.** The probe pages carry
+  their own `<meta>` CSP (`probe-seam.html`) and `install-probe.mjs` copies them
+  byte-for-byte; widening it would touch nothing shipped and would not even turn a
+  test red today. It is a fact about our own fixture, not an obstacle.
+- **Product principle #3's letter is satisfied** by streaming from the original
+  enclosure URL — that *is* "download via original enclosure URLs". The real
+  objection is load and politeness, and this repo already ruled on it once:
+  `tools/foray/verify-source-audio.mjs` is *"MANUAL, NEVER CI ... CI must not go red
+  because a podcast CDN had a bad afternoon."* A defensible **choice**, not a
+  prohibition. (CORS is a non-issue: `html-audio-backend.js` deliberately sets no
+  `crossorigin`, so a no-CORS `<audio>` load needs no header from any of the 43 hosts.)
+
+**The binding reason is the third one, and no CI change fixes it.** A
+`macos-latest` runner is a datacenter IP on a datacenter link — **the fastest network
+this app will ever see**. The risk being chased is a **slow** cold fetch pushing the
+silent window past WebKit's 10 s audibility grace. So a green cross-origin number
+from CI would be a **floor**, and a floor cannot retire a tail-latency risk. It is
+the same asymmetry `SIMULATOR_CAVEAT` already names for power management, and it
+survives widening the CSP *and* proving the runner has egress. (Whether a runner can
+reach a podcast CDN is, separately, **unproven rather than blocked** — the
+"every CDN was unreachable" line in `STATE.md` is a fact about the Windows dev
+machine, not about GitHub Actions, and should not be quoted as one.)
+
+**What would actually settle it.** Not a CI change and not only a device test: move
+the per-stage stamping the probe already does — `load-started` → `canplay` — into the
+**shipped** seam path (`player/queue-manager.js`'s beat clock and
+`player/html-audio-backend.js`'s load events) and read a **distribution** off real
+networks, real hosts and real times of day, including the LTE-in-a-tunnel tail that
+is the actual risk. It costs no extra CDN load — the listener's player was going to
+fetch that byte range anyway — needs nothing new in the CSP (`index.html` already
+carries `media-src https:`), and has zero principle-#3 exposure. The one real phone
+`HUMAN-ACTIONS.md` #11/#16 asks for then **confirms a real number** instead of
+supplying a single anecdote.
+
+Until that exists, the correct sentence is the one the constant now carries: a cold
+cross-origin fetch at a seam is **unmeasured, and unmeasurable here**.
 
 ### One thing that cost 18 minutes, recorded so nobody re-learns it
 

@@ -141,6 +141,23 @@ const rec = {
   phase: "seam",
   startedAtWall: Date.now(),
   lastSavedAtWall: null,
+  /* SAVE SEQUENCE, and it exists to settle one specific unanswered question.
+     Run 32036295743's record simply STOPS at +25.2 s of a 90 s hidden window,
+     one second after the second segment became audible, with its out-point armed
+     and the 1000 ms timer samples ending at the same instant. Two readings:
+     the page stopped being scheduled, or its localStorage writes stopped reaching
+     disk. The artifact cannot separate them, and the simulator log was truncated
+     before this pass even began, so nothing in that run can.
+
+     A counter plus the wall clock of each save separates them from the RECORD
+     ALONE, with no log and no new tooling: if `saveSeq` is high and
+     `lastSavedAtWall` is old, the page kept running and the writes stopped
+     landing. If `saveSeq` matches the elapsed time divided by the 2 s interval and
+     both are old, the page stopped being scheduled -- which is the far more
+     serious branch, because it would mean a hidden page can be descheduled
+     mid-Foray after sustained silence. */
+  saveSeq: 0,
+  firstSavedAtWall: null,
   plannedItems: QUEUE.length,
   askedGapMs: Math.round(SEAM_GAP_SEC * 1000),
   backgroundedAtWall: null,
@@ -171,7 +188,9 @@ function push(arr, v) {
 }
 
 function save() {
+  rec.saveSeq += 1;
   rec.lastSavedAtWall = Date.now();
+  if (rec.firstSavedAtWall == null) rec.firstSavedAtWall = rec.lastSavedAtWall;
   try { localStorage.setItem(KEY, JSON.stringify(rec)); } catch (e) {}
   try { console.log("FORAY_PROBE_SEAM " + JSON.stringify(rec)); } catch (e) {}
   if (outEl) {

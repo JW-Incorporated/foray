@@ -372,9 +372,10 @@ test("the backgrounded observation windows are long enough to measure anything",
   );
   /* The seam pass needs the longer of the two. */
   assert.ok(
-    Math.max(...sleeps) >= 75,
-    `the longest observation window is ${Math.max(...sleeps)} s; the seam chain needs ~33 s inside ` +
-      `a window that also absorbs a ~39 s foregrounding delay`
+    Math.max(...sleeps) >= 85,
+    `the longest observation window is ${Math.max(...sleeps)} s; at the MEASURED 9.2 s beat the ` +
+      `seam chain needs ~45 s (15 + 9.2 + 8 + 9.2) inside a window that also absorbs a ~39 s ` +
+      `foregrounding delay`
   );
 });
 

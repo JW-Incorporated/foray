@@ -379,17 +379,33 @@ jobs:
         run: |
           set -euo pipefail
           UDID="${{ steps.sim.outputs.udid }}"
-          # NARROWED, and the first run is why: `log stream --level debug` with no
-          # predicate is a whole-device firehose, and the reporting step's
-          # `grep -o` over the result ran for more than seven minutes on a runner
-          # that bills at 10x. Predicate-filtered to our own process plus WebKit,
-          # at default level, and hard-capped — the only lines this workflow ever
-          # reads out of it are `FORAY_PROBE_*` records and CSP messages.
-          xcrun simctl spawn "$UDID" log stream --style compact \
-            --predicate 'processImagePath CONTAINS "App" OR senderImagePath CONTAINS "WebKit"' \
-            2>&1 | head -c 20000000 > "$ART/simulator-log.txt" &
-          LOG_PID=$!
-          trap 'kill $LOG_PID 2>/dev/null || true' EXIT
+          # NARROWED TWICE, and run 32036295743 is why the second time was needed.
+          #
+          # First narrowing: `log stream --level debug` with no predicate is a
+          # whole-device firehose, and the reporting step's `grep -o` over the
+          # result ran for more than seven minutes on a runner that bills at 10x.
+          #
+          # SECOND NARROWING — MEASURED ON 32036295743'S OWN ARTIFACT. The
+          # predicate below was still a firehose: `processImagePath CONTAINS "App"`
+          # matches most of the system, so the capture produced 110,579 lines of
+          # which exactly **17** mentioned our app (0.015% signal), hit the 20 MB
+          # cap in **73 seconds**, and covered 13:45:30-13:46:44 only. Pass 2 --
+          # the SEAM measurement, the entire point of that run -- began at 13:47:08
+          # and was never logged at all. That is why the run's one unexplained
+          # result could not be diagnosed from the log: there was no log.
+          #
+          # So: match our own bundle id rather than the substring "App", and give
+          # each pass its OWN file and its own cap. A cap shared across passes is
+          # spent by whichever pass runs first, which is never the interesting one.
+          start_log() {   # $1 = destination file
+            xcrun simctl spawn "$UDID" log stream --style compact \
+              --predicate 'processImagePath CONTAINS "com.jwincorporated.foray" OR senderImagePath CONTAINS "WebKit"' \
+              2>&1 | head -c 20000000 > "$1" &
+            LOG_PID=$!
+          }
+          stop_log() { kill "${LOG_PID:-}" 2>/dev/null || true; }
+          start_log "$ART/simulator-log.txt"
+          trap 'stop_log' EXIT
 
           background_it() {
             echo "--- backgrounding by foregrounding Settings ---"
@@ -422,6 +438,12 @@ jobs:
           # boundary, second beat — happens INSIDE the hidden window, and
           # `seamTransitionVerdict` refuses a pass on too small a hidden window.
           echo "--- pass 2: reinstalling with the seam probe phase ---"
+          # A FRESH LOG FILE FOR THE SEAM PASS. See the capture comment above: on
+          # 32036295743 the single shared capture was exhausted by pass 1 and the
+          # seam pass had no log coverage whatsoever. The two passes answer
+          # different questions and each gets its own budget.
+          stop_log
+          start_log "$ART/simulator-log-seam.txt"
           xcrun simctl terminate "$UDID" "$APP_ID" || true
           node tools/mobile/probe/install-probe.mjs \
             "${{ steps.probe_install.outputs.probed }}/public" --phase seam
@@ -435,6 +457,29 @@ jobs:
           # (2 s each) and two more segments (8 s and 6 s) — about 33 s of hidden
           # chain — with the rest absorbing however late Settings foregrounds (39 s,
           # measured, in run 32025079276). `ios-workflow.test.mjs` pins this floor.
+          # 90 s, AND THE DERIVATION BELOW IS THE MEASURED ONE, NOT THE DESIGNED ONE.
+          # The first version of this comment budgeted "two beats (2 s each) and two
+          # more segments (8 s and 6 s) - about 33 s of hidden chain". The beat is
+          # not 2 s: run 32036295743 measured **9,153 ms** for it, because the beat
+          # is `max(gap, load)` (queue-manager.js section 10) and the load dominated.
+          # Re-derived at the measured beat:
+          #
+          #   15.0 s  hidden playback before boundary 1 (ARM_AFTER_HIDDEN_SEC)
+          #    9.2 s  beat 1                     <- measured, not assumed
+          #    8.0 s  seg-b (12 -> 20)
+          #    9.2 s  beat 2
+          #    0.0 s  seg-c becomes audible = transition 2 completes
+          #   ------
+          #   41.3 s, call it ~45 s with a save interval and margin.
+          #
+          # 90 s therefore still clears MIN_HIDDEN_TRANSITIONS = 2 with ~2x headroom
+          # (even two worst-case beats at SEAM_BAD_MS = 15 s need only ~59 s), so it
+          # is NOT raised here -- macOS minutes bill at 10x and this workflow's cost
+          # section is explicit about that. What changed is that the number now has a
+          # derivation that matches reality.
+          #
+          # IF YOU CHANGE `SEAM_GAP_SEC` OR THE TONE LENGTHS, redo this arithmetic.
+          # `ios-workflow.test.mjs` pins the floor so it cannot be trimmed silently.
           sleep 90
           xcrun simctl io "$UDID" screenshot "$ART/04-seam-backgrounded.png" || true
 
@@ -636,19 +681,38 @@ jobs:
           else
             echo '{}' > "$ART/localstorage.json"
           fi
-          if [ -f "$ART/simulator-log.txt" ]; then
-            wc -c "$ART/simulator-log.txt"
-            # WHOLE LINES, NOT `grep -o` WITH A COUNTED CONTEXT. The first run spent
-            # >7 minutes here: `grep -a -i -o '.\{0,120\}…\.\{0,200\}'` over a
-            # multi-hundred-megabyte debug log is pathological, and it was reading a
-            # firehose the probe step no longer produces. A bounded line count is
-            # all any human reads anyway.
-            grep -a -F 'FORAY_PROBE_' "$ART/simulator-log.txt" | tail -400 \
-              > "$ART/probe-console.txt" || true
-            grep -a -i -F 'Content Security Policy' "$ART/simulator-log.txt" | head -200 \
-              > "$ART/csp-messages.txt" || true
+          # BOTH CAPTURES, pass 1's and the seam pass's. Reading only the first was
+          # a real defect: on run 32036295743 the seam pass had no coverage in it at
+          # all, so `probe-console.txt` came out EMPTY and the console fallback below
+          # was silently useless on the one pass that mattered.
+          #
+          # WHOLE LINES, NOT `grep -o` WITH A COUNTED CONTEXT. The first run spent
+          # >7 minutes here: `grep -a -i -o '.\{0,120\}…\.\{0,200\}'` over a
+          # multi-hundred-megabyte debug log is pathological. A bounded line count is
+          # all any human reads anyway.
+          : > "$ART/probe-console.txt"
+          : > "$ART/csp-messages.txt"
+          for LOGF in "$ART/simulator-log.txt" "$ART/simulator-log-seam.txt"; do
+            [ -f "$LOGF" ] || continue
+            wc -c "$LOGF"
+            grep -a -F 'FORAY_PROBE_' "$LOGF" | tail -400 \
+              >> "$ART/probe-console.txt" || true
+            grep -a -i -F 'Content Security Policy' "$LOGF" | head -200 \
+              >> "$ART/csp-messages.txt" || true
+          done
+          # AN EMPTY probe-console.txt IS NOT EVIDENCE OF ANYTHING, and it was read
+          # as evidence once. On 32036295743 it was 0 bytes and zero `FORAY_PROBE_`
+          # lines appeared in 110,579 captured lines -- so a WKWebView `console.log`
+          # has never once been observed reaching the simulator system log through
+          # this predicate. Until one is, treat the console channel as UNPROVEN and
+          # localStorage as the only working path. The same caution applies to
+          # `csp-messages.txt`: empty means "nothing was captured", which is only
+          # "no CSP violations" for a window the log actually covered.
+          if [ ! -s "$ART/probe-console.txt" ]; then
+            echo "NOTE: no FORAY_PROBE_ line was captured in any log; the console" \
+                 "channel is unproven, not clean. localStorage is the measurement." \
+              >> "$ART/probe-console-note.txt"
           fi
-          touch "$ART/probe-console.txt"
           # The console log is the SECOND channel, and it is passed in rather than
           # merely archived: if WebKit's local-storage filename moves under us, the
           # records are still in the system log, and an earlier version captured

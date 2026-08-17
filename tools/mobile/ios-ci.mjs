@@ -1288,19 +1288,42 @@ export function seamTransitionVerdict(probe) {
 
 /** THE LIMIT OF THIS MEASUREMENT, carried with every verdict that quotes it.
  *
- *  The next segment's audio is a LOCAL file in the app bundle. That is not a
- *  choice about rigour, it is forced twice over: product principle #3 forbids
- *  reusing episode audio and a CI job hammering a podcast CDN is exactly what that
- *  principle is about, and the probe page's own CSP is `media-src 'self'`. So what
- *  this settles is the BEAT'S TIMER and a fresh cross-file media load while
- *  hidden. A cold HTTPS fetch from a podcast host while hidden — DNS, TLS, a range
- *  request into the middle of a 90 MB file — is NOT measured here, and it is the
- *  part `docs/research/mp1-background-audio.md` warns could push the silent window
- *  past WebKit's 10 s audibility grace. */
+ *  The next segment's audio is a LOCAL file in the app bundle, so what this
+ *  settles is the BEAT'S TIMER and a fresh cross-file media load while hidden. A
+ *  cold HTTPS fetch from a podcast host while hidden — DNS, TLS, a range request
+ *  into the middle of a 90 MB file — is NOT measured here, and it is the part
+ *  `docs/research/mp1-background-audio.md` warns could push the silent window past
+ *  WebKit's 10 s audibility grace.
+ *
+ *  BE PRECISE ABOUT WHY, BECAUSE TWO OF THE THREE REASONS ARE SOFT AND THE THIRD
+ *  IS PERMANENT. This wording was sharpened once already, after a review pointed
+ *  out that the first draft rested its whole case on the two soft ones:
+ *
+ *    - `media-src 'self'` on the probe page is a ONE-LINE, ZERO-RISK obstacle. The
+ *      probe pages carry their own `<meta>` CSP and `install-probe.mjs` copies them
+ *      verbatim, so widening it would touch nothing shipped. Do not cite it as the
+ *      reason; it is a fact about our own test fixture.
+ *    - Product principle #3's LETTER is satisfied by streaming from the original
+ *      enclosure URL. The real objection is load and politeness, which this repo
+ *      already ruled on once and wrote down: `tools/foray/verify-source-audio.mjs`
+ *      is "MANUAL, NEVER CI ... CI must not go red because a podcast CDN had a bad
+ *      afternoon." That is a defensible CHOICE, not a prohibition.
+ *    - THE PERMANENT ONE: a `macos-latest` runner is a datacenter IP on a
+ *      datacenter link — the fastest network this app will ever see. The risk being
+ *      chased is a SLOW cold fetch. So a green cross-origin number from CI would be
+ *      a FLOOR, and a floor cannot retire a tail-latency risk. Exactly the
+ *      asymmetry `SIMULATOR_CAVEAT` names for power management, and it survives
+ *      widening the CSP and proving the runner has egress.
+ *
+ *  Which is why the fix is not a CI change: instrument `load-started -> canplay`
+ *  in the SHIPPED seam path and read a distribution off real networks. See
+ *  `docs/ios-ci.md` § "Can this ever measure a cross-origin fetch?". */
 export const LOCAL_MEDIA_CAVEAT =
-  "The seam's next segment is a LOCAL bundled file, not a podcast CDN fetch (product principle #3, " +
-  "and the probe page's own media-src 'self'). This measures the beat's timer and a fresh media " +
-  "load while hidden; a cold cross-origin fetch while hidden is still unmeasured.";
+  "The seam's next segment is a LOCAL bundled file, not a podcast CDN fetch, so a cold cross-origin " +
+  "fetch while hidden is still unmeasured. This is a PERMANENT limit of measuring here, not a gap to " +
+  "close: a CI runner is a datacenter link, which is the fastest network this app will ever see, so " +
+  "a green number from it would be a floor and the risk is a SLOW fetch. Only the shipped player on " +
+  "real networks can answer it.";
 
 /** A finite number, or null. Journals arrive as JSON with explicit nulls. */
 function num(v) {
