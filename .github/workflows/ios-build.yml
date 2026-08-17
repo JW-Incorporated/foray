@@ -64,6 +64,15 @@
 # and ~100 billable minutes. Replace this line with the measured figure from the
 # first run that includes it; do not quote it as one until then.
 #
+# ESTIMATED, same standard: the seam window went 90 s -> 175 s on 2026-08-17 to put
+# the probe's first silence at 60 s of hidden time instead of 15 s, which is the only
+# way to tell a platform suspension CEILING apart from a suspension that follows the
+# probe's own silence (`mp1-background-audio.md` §4.1b; the arithmetic is at the
+# `sleep 175` itself). That is 85 s more wall clock, so ~11.5 minutes and ~115
+# billable minutes. It buys the one open question that could invalidate the whole
+# WebView shell — and it does not license widening the path filter or making this a
+# required check to absorb the extra time.
+#
 # It is PUBLIC, and GitHub charges nothing for standard runners on public repos,
 # which is also why `ci.yml`'s `ios-kit` job can run `macos-latest` on every PR
 # today. Both numbers are stated because the second one changes the moment the
@@ -490,17 +499,54 @@ jobs:
           # (Unrounded on purpose: 15 + 9.2 + 8 + 9.2 sums to 41.4, and this file is
           # in a PR about not mislabelling arithmetic.)
           #
-          # 90 s therefore still clears MIN_HIDDEN_TRANSITIONS = 2 with ~2x headroom
-          # -- even two worst-case beats at SEAM_BAD_MS = 15 s need only 53 s by the
-          # same method (15 + 15 + 8 + 15), or 59 s if seg-c must also play out --
-          # so it
-          # is NOT raised here -- macOS minutes bill at 10x and this workflow's cost
-          # section is explicit about that. What changed is that the number now has a
-          # derivation that matches reality.
+          # 90 s cleared that with ~2x headroom -- even two worst-case beats at
+          # SEAM_BAD_MS = 15 s need only 53 s by the same method (15 + 15 + 8 + 15),
+          # or 59 s if seg-c must also play out.
           #
-          # IF YOU CHANGE `SEAM_GAP_SEC` OR THE TONE LENGTHS, redo this arithmetic.
-          # `ios-workflow.test.mjs` pins the floor so it cannot be trimmed silently.
-          sleep 90
+          # ── RAISED TO 175 s, 2026-08-17, AND THE EXTRA TIME IS THE MEASUREMENT ──
+          #
+          # 90 s was never the binding constraint, and three runs proved it by NOT
+          # using it: the durable record stops 25.2 s, 26.8 s and 27.9 s into the
+          # hidden window with 60+ s of it unspent, because the WebKit process is
+          # suspended there. `mp1-background-audio.md` §4.1b reads that as a CEILING on
+          # hidden time -- which, on a device, would mean a Foray stops advancing half
+          # a minute after the screen locks and every seam refinement above is moot.
+          #
+          # It is also exactly what a probe would produce if suspension follows ITS OWN
+          # SILENCE, because `probe-seam.js` armed its first boundary at 15 s of hidden
+          # time and WebKit's assertion-release timer is ~10 s: 15 + ~12 lands on the
+          # same ~27 s. `ARM_AFTER_HIDDEN_SEC` is 60 s now precisely so the two come
+          # apart, and this sleep is what pays for it:
+          #
+          #   60.000 s  hidden playback before boundary 1 (ARM_AFTER_HIDDEN_SEC),
+          #             CONTINUOUS -- no silence of ours anywhere inside it
+          #    9.200 s  beat 1  <- the measured beat, max(gap, load), run 32036295743
+          #   25.000 s  seg-b (12 -> 37)
+          #    9.200 s  beat 2
+          #   --------
+          #  103.400 s  to transition 2 completing, +20 s if seg-c plays out
+          #
+          # 175 s therefore clears the chain with ~70 s spare for however late Settings
+          # actually foregrounds (39 s, measured, run 32025079276) -- so even the worst
+          # observed foregrounding leaves the full chain inside the hidden window.
+          #
+          # WHAT IT COSTS, STATED PLAINLY: 85 s more wall clock per run, which is ~14
+          # more BILLABLE minutes at the macOS 10x multiplier (~115 total, against ~100
+          # before). That is affordable only because this workflow is `workflow_dispatch`
+          # plus a narrow path filter and is NOT a required check -- and because the repo
+          # is public, where GitHub bills nothing for standard runners. Neither of those
+          # is permanent. Do not widen the path filter to compensate for a slower run,
+          # and do not add this to `protect-main`.
+          #
+          # AND IT MAKES `MIN_HIDDEN_TRANSITIONS = 2` REACHABLE FOR THE FIRST TIME. Every
+          # `seamTransitionVerdict` ever printed has been `too-few-transitions`, because
+          # the app was not alive to reach transition 2. A run that now reports something
+          # else is not a code change working -- it is this window.
+          #
+          # IF YOU CHANGE `SEAM_GAP_SEC`, `ARM_AFTER_HIDDEN_SEC` OR THE SEGMENT BOUNDS,
+          # redo this arithmetic. `ios-workflow.test.mjs` DERIVES the floor from
+          # `probe-seam.js`'s own constants, so the two cannot drift apart silently.
+          sleep 175
           xcrun simctl io "$UDID" screenshot "$ART/04-seam-backgrounded.png" || true
 
           # ── collect, once, with the app still in the background ───────────────
