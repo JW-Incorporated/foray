@@ -115,13 +115,31 @@ function search(query, opts) {
   return { status, picks, interp, results };
 }
 
-/* True if item's tags/title/show/topics contain `needle` (case-insensitive
-   substring on the combined text, or an exact tag hit). */
+/* True if item's tags/title/show/HOOK/topics contain `needle` (case-insensitive
+   substring on the combined text, or an exact tag hit).
+
+   `hook` was missing until 2026-08-17, and it is the field `scoreMatch` gives
+   +1.5 for — so the oracle that decides "is this result on-topic?" could not see
+   a field the RANKER scores. An oracle blind to an input the thing under test
+   reads is measuring the wrong object, and it failed in the direction that looks
+   like a regression: for "the history of jazz" the catalogue holds exactly three
+   items with any jazz signal at all, and TWO of them carry it only in the hook
+   ("why it's cool to say you like jazz"; "a jazz-raised kid found his voice as a
+   composer"). The Sting episode also carries a literal `jazz` tag, which is the
+   only reason it satisfied the old oracle; the John Williams episode does not,
+   so when it legitimately rose to #2 the oracle called it off-topic.
+
+   Measured blast radius of adding `hook`, over all 51 needles the battery uses:
+   the summed on-topic count moves 1,281 -> 1,386, and exactly ONE assertion
+   changes verdict (the jazz one). Every item it adds names the needle in prose a
+   listener actually reads. It is a widening, so it is worth restating what still
+   guards quality here: the top-N on-topic checks, not this helper. */
 function itemHas(item, needle) {
   const n = needle.toLowerCase();
   const tags = itemTags.tags?.[item.id] || [];
   if (tags.some((t) => t.includes(n))) return true;
-  const text = [item.title, item.show, (item.topics || []).join(" ")].join(" ").toLowerCase();
+  const text = [item.title, item.show, item.hook, (item.topics || []).join(" ")]
+    .join(" ").toLowerCase();
   return text.includes(n);
 }
 
