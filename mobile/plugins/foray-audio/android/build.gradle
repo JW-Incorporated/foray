@@ -1,0 +1,89 @@
+/* The `foray-audio` Capacitor plugin's Android library module.
+ *
+ * WHAT THIS IS. Capacitor's CLI reads `../package.json`'s `capacitor.android.src`,
+ * finds this directory, and writes two lines into the GENERATED project on every
+ * `cap add android` / `cap sync`:
+ *
+ *     mobile/android/capacitor.settings.gradle  ->  include ':foray-audio'
+ *                                                   project(':foray-audio').projectDir = …
+ *     mobile/android/app/capacitor.build.gradle ->  implementation project(':foray-audio')
+ *
+ * That is the whole reason this file lives here and not in `mobile/android/`:
+ * those two generated files are rewritten from the plugin list every sync, so a
+ * regenerated platform re-consumes this module with no patch step and nothing for
+ * a human to run. See docs/android-native-code.md.
+ *
+ * DELIBERATELY MODELLED ON `node_modules/@capacitor/app/android/build.gradle`.
+ * The version-resolution shape — `project.hasProperty('x') ? rootProject.ext.x : <fallback>`
+ * — is Capacitor's, not ours, and it is copied rather than improved for one
+ * reason: those `rootProject.ext` values come from the generated
+ * `mobile/android/variables.gradle`, so this module tracks whatever the app is
+ * built against (compileSdk 36, minSdk 24, targetSdk 36 as of Capacitor 8.5.0)
+ * instead of pinning a second, drifting set. The fallbacks only apply if someone
+ * builds this module standalone, which nothing in this repo does.
+ *
+ * TWO DEPENDENCIES, AND NEITHER IS NEW TO THE BUILD:
+ *   - project(':capacitor-android')  — the `Plugin`/`PluginCall` base classes.
+ *     Already a module of every generated Capacitor project.
+ *   - androidx.appcompat            — for `NotificationCompat`, `ServiceCompat`
+ *     and `ContextCompat`, which appcompat exposes as `api` on `androidx.core`.
+ *     Already pulled in by capacitor-android and by every bundled plugin, and
+ *     asking for it by the same coordinate they use adds no new Maven artefact.
+ *
+ * NOT MEDIA3, ON PURPOSE. A `mediaPlayback` foreground service that only keeps
+ * the process alive needs no player library: the audio is the WebView's own
+ * `<audio>` element, not an ExoPlayer. Media3 is the right answer for the NEXT
+ * piece — `MediaSession` + a `Player` adapter over the WebView element is how
+ * #27's lock-screen metadata and transport controls get built, because
+ * `navigator.mediaSession` is switched off in Android WebView
+ * (docs/research/mp1-background-audio.md §5.4) — and at that point this service
+ * should become a `MediaSessionService`. Declaring `androidx.media3.session` today
+ * would be a dependency with no caller.
+ *
+ * NO `buildscript { }` BLOCK, unlike @capacitor/app's copy of this file, which
+ * pins `com.android.tools.build:gradle:8.13.0` for its own standalone `./gradlew
+ * build`. This module is only ever built as a subproject of the generated app, so
+ * `com.android.library` resolves from the root project's classpath and a second
+ * AGP pin here would be a version to forget to bump.
+ */
+
+ext {
+    androidxAppCompatVersion = project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace = "com.jwincorporated.foray.audio"
+    compileSdk = project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig {
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    lintOptions {
+        abortOnError = false
+    }
+    compileOptions {
+        /* 21 because capacitor-android compiles at 21 and Capacitor 8 requires JDK
+           21 outright (docs/android-shell-build.md §1.2: JDK 17 dies at
+           `invalid source release: 21`). Matching it keeps one toolchain. */
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+}

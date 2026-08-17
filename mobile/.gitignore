@@ -48,8 +48,25 @@ www/
 # which is the machine that builds the APK, so it still runs where it matters.
 # The committed half of that guard (the parsed `capacitor.config.json`, at any
 # depth, case-insensitively) is untouched and still runs in CI.
-ios/
-android/
+#
+# ANCHORED WITH A LEADING SLASH, and that is not cosmetic. These lines used to read
+# `ios/` and `android/`, and a gitignore pattern with no leading slash matches a
+# directory of that name AT ANY DEPTH. So `android/` silently ignored
+# `plugins/foray-audio/android/` — this repo's OWN hand-written foreground-service
+# code — and `git add mobile/plugins` staged the package.json and the web half while
+# dropping every .java file, the build.gradle and the manifest without a word.
+# Caught by noticing four files missing from `git status`, which is luckier than it
+# should have been: a reviewer would have seen a plugin with no native code in it and
+# the Android build on the generating machine would still have passed, because the
+# untracked files were right there on disk.
+#
+# What these two lines were ever meant to ignore is the GENERATED PLATFORM, which is
+# `mobile/android/` and `mobile/ios/` exactly — `capacitor.config.json` says so, and
+# `shell-invariants.test.mjs` reads those paths out of it. Anchoring says that and
+# nothing more. Native code we WRITE lives under `plugins/` and is committed; see
+# docs/android-native-code.md.
+/ios/
+/android/
 
 # ── If you ever un-ignore a platform above, YOU NEED THE RULES BELOW TOO ──────
 #

@@ -12,7 +12,9 @@
     "open:ios": "cap open ios",
     "open:android": "cap open android"
   },
+  "//foray-audio": "NOT a third-party dependency. `file:plugins/foray-audio` is this repo's OWN hand-written Android code (a mediaPlayback foreground service), declared here because that is the only way Capacitor's CLI discovers a plugin: `@capacitor/cli`'s getDependencies() reads this object, resolvePlugin() looks for a `capacitor` key in the resolved package.json, and `cap sync` then writes the include/implementation lines into the GENERATED mobile/android/ on every run. That is what makes the native code survive a platform regeneration with nothing for a human to run. It adds no code from anyone else — npm links a directory that is already in this repo. See docs/android-native-code.md.",
   "dependencies": {
+    "foray-audio": "file:plugins/foray-audio",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.0.0",

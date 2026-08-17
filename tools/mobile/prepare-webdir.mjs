@@ -32,6 +32,23 @@
  * warns about. So an empty or implausibly short derivation is a hard error, and
  * a derived file that is not on disk is a hard error too.
  *
+ * THE ONE THING IN THE BUNDLE THAT IS NOT A COPY OF THE SITE (issue #27/#37)
+ * `mobile/plugins/foray-audio/web/foray-audio-shell.js` is shell-only code — it
+ * tells the native `mediaPlayback` foreground service when the WebView starts and
+ * stops making sound, which is the one thing Android needs that cannot come from
+ * the website (`docs/android-native-code.md`). It is copied into the bundle and one
+ * `<script type="module">` tag is added to the bundle's COPY of `index.html`.
+ *
+ * That is not the fork this header warns about, and the distinction is worth being
+ * precise about: the fork hazard is TWO COPIES OF THE SAME THING drifting apart.
+ * This file exists in one place and ships to one target. What it does mean is that
+ * the bundle's `index.html` is no longer byte-identical to the root's, so the
+ * injection is (a) derived from `SHELL_ONLY_FILES` rather than written out twice,
+ * (b) idempotent, and (c) RE-READ off disk and asserted afterwards. Without (c) a
+ * missed injection is the worst failure shape available here: the app builds, it
+ * installs, it plays, and audio dies in the background — silently, on a device,
+ * weeks later. Same reasoning as `inject-background-audio.mjs`'s re-parse.
+ *
  * WHAT IS DELIBERATELY NOT COPIED
  *   - `sw.js`. The shell must not register a service worker (#36 §2: the assets
  *     are already local, so it adds a stale-cache layer in front of local files
@@ -84,6 +101,123 @@ export const SHELL_FILES = [
 
 /** Never in the bundle, whatever else changes. See the header. */
 export const EXCLUDED_FROM_BUNDLE = ["sw.js"];
+
+/** Files that ship ONLY inside the native shell, with where each one lands.
+ *
+ *  `src` is repo-relative; `dest` is relative to the bundle root, and it is the
+ *  `src` a `<script>` tag will point at, so the two cannot drift — `shellScriptTags`
+ *  derives the tag from this list rather than restating the filename.
+ *
+ *  Deliberately flat at the bundle root rather than under a `mobile/` prefix: the
+ *  bundle root is the app's origin root, and a shallow path is one fewer thing for
+ *  the CSP's `script-src 'self'` to be interesting about. */
+export const SHELL_ONLY_FILES = [
+  {
+    src: "mobile/plugins/foray-audio/web/foray-audio-shell.js",
+    dest: "foray-audio-shell.js",
+    module: true,
+  },
+];
+
+/** The `<script>` tags the bundle's `index.html` needs for `SHELL_ONLY_FILES`.
+ *
+ *  `type="module"` so the file can `export` its factory and be imported directly by
+ *  `foray-audio-shell.test.mjs` in Node — the same reason `player/client.js` is a
+ *  module. Module scripts are deferred, which is correct here: the shell patches
+ *  `HTMLMediaElement.prototype.play`, and nothing can call `play()` before the
+ *  document has been parsed and a human has tapped something. */
+export function shellScriptTags(files = SHELL_ONLY_FILES) {
+  return files
+    .filter((f) => f.dest.endsWith(".js"))
+    .map((f) => `<script${f.module ? ' type="module"' : ""} src="${f.dest}"></script>`);
+}
+
+/** Where the tags go. Chosen so the injected script is governed by our CSP rather
+ *  than ahead of it: the policy `<meta>` is on line 22 of `index.html` and this
+ *  lands at the end of the head, so `script-src 'self'` really is what allows it.
+ *  (Contrast Capacitor's own bridge, which inserts at `indexOf("<head>")` and
+ *  therefore parses BEFORE the policy exists — `docs/android-shell-build.md` §2.2.
+ *  Being on the governed side of that line is the point: this file is ours, it is
+ *  same-origin, and it should have to satisfy the same policy the player does.) */
+const HEAD_CLOSE = "</head>";
+
+export class WebDirError extends Error {}
+
+/**
+ * Add the shell-only `<script>` tags to `html`, immediately before `</head>`.
+ *
+ * Idempotent — a tag already present is left where it is, because `cap sync` and CI
+ * both re-run this and a script that only works once is a script somebody will run
+ * twice.
+ *
+ * @returns {{html: string, changed: boolean, added: string[]}}
+ * @throws {WebDirError} if the anchor is missing or ambiguous.
+ */
+export function injectShellScripts(html, files = SHELL_ONLY_FILES) {
+  if (typeof html !== "string" || html.trim() === "") {
+    throw new WebDirError("empty index.html source");
+  }
+  const first = html.indexOf(HEAD_CLOSE);
+  if (first < 0) {
+    throw new WebDirError(
+      `index.html has no ${HEAD_CLOSE}, so there is nowhere to put the shell's script ` +
+        `tags. Refusing to guess: a bundle without them builds, installs, plays, and ` +
+        `loses background audio on a device.`
+    );
+  }
+  if (html.indexOf(HEAD_CLOSE, first + HEAD_CLOSE.length) >= 0) {
+    /* Two `</head>` means one of them is inside a comment or a string, and picking
+       the wrong one puts the tag outside the head. A hard error rather than "the
+       first one is probably right". */
+    throw new WebDirError(
+      `index.html contains ${HEAD_CLOSE} more than once. Which one closes the real head ` +
+        `is not something this script should be guessing at.`
+    );
+  }
+
+  const tags = shellScriptTags(files);
+  const missing = tags.filter((t) => !html.includes(t));
+  if (missing.length === 0) return { html, changed: false, added: [] };
+
+  const block = missing.map((t) => `${t}\n`).join("");
+  return {
+    html: html.slice(0, first) + block + html.slice(first),
+    changed: true,
+    added: missing,
+  };
+}
+
+/**
+ * Assert that `html` really carries every shell tag, inside the head.
+ *
+ * A SEPARATE, EXPORTED, TESTED FUNCTION rather than an inline `if`, for the reason
+ * `inject-background-audio.mjs`'s `assertModePresent` gives in its own comment: an
+ * adversarial pass replaced that guard's inline version with `if (false)` and left
+ * the whole suite green. Without this check every failure above degrades to
+ * "returned the input unchanged and reported success".
+ */
+export function assertShellScriptsPresent(html, files = SHELL_ONLY_FILES) {
+  const headEnd = html.indexOf(HEAD_CLOSE);
+  if (headEnd < 0) {
+    throw new WebDirError(`the bundled index.html has no ${HEAD_CLOSE} after injection.`);
+  }
+  for (const tag of shellScriptTags(files)) {
+    const at = html.indexOf(tag);
+    if (at < 0) {
+      throw new WebDirError(
+        `the bundled index.html does not carry ${tag}. The native shell would build and ` +
+          `run with no bridge to the foreground service, and nothing else would notice.`
+      );
+    }
+    if (at > headEnd) {
+      throw new WebDirError(
+        `${tag} is after ${HEAD_CLOSE} in the bundled index.html. It must be inside the ` +
+          `head, after the CSP meta, so the policy that allows it is the one we ship.`
+      );
+    }
+  }
+  return true;
+}
 
 /* --------------------------------------------------------------- derivation */
 
@@ -161,6 +295,27 @@ export function buildPlan(root = REPO_ROOT) {
   return plan;
 }
 
+/** `SHELL_ONLY_FILES`, with every source proven to be on disk.
+ *
+ *  A HARD ERROR rather than a skip, and this is the guard that matters most in this
+ *  file. Move or rename the plugin's `web/` directory and a silent skip would
+ *  produce a bundle that is a few kilobytes smaller, under the size cap, with a
+ *  valid `index.html`, that builds and installs and plays — and has no bridge to the
+ *  foreground service. Nothing downstream can tell that apart from a working app
+ *  except a phone in a pocket. */
+export function shellOnlyPlan(root = REPO_ROOT) {
+  const missing = SHELL_ONLY_FILES.filter((f) => !fs.existsSync(path.join(root, f.src)));
+  if (missing.length) {
+    throw new Error(
+      `these shell-only files are missing: ${missing.map((f) => f.src).join(", ")}. ` +
+        `They are the native shell's half of the foreground-service bridge ` +
+        `(docs/android-native-code.md); a bundle without them loses background audio on ` +
+        `Android and looks completely fine doing it.`
+    );
+  }
+  return SHELL_ONLY_FILES;
+}
+
 /* ------------------------------------------------------------------- output */
 
 /** Refuse to touch anything that is not a build artefact inside this repo.
@@ -185,16 +340,34 @@ export function prepare({ root = REPO_ROOT, out = DEFAULT_OUT, maxBytes = MAX_BY
   assertSafeOut(absOut, root);
 
   const plan = buildPlan(root);
+  const shellOnly = shellOnlyPlan(root);
 
   fs.rmSync(absOut, { recursive: true, force: true });
-  const files = [];
-  let total = 0;
-  for (const rel of plan) {
-    const src = path.join(root, rel);
-    const dest = path.join(absOut, rel);
+
+  const written = [];
+  const copy = (src, destRel) => {
+    const dest = path.join(absOut, destRel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.copyFileSync(src, dest);
-    const bytes = fs.statSync(dest).size;
+    written.push(destRel);
+  };
+
+  for (const rel of plan) copy(path.join(root, rel), rel);
+  for (const f of shellOnly) copy(path.join(root, f.src), f.dest);
+
+  /* THE INJECTION, and then the re-read. Done before anything is measured so the
+     reported size is the size that ships, and asserted against the bytes on disk
+     rather than against the string we just built — a write that failed halfway is
+     exactly the case a re-parse of an in-memory value cannot see. */
+  const indexAbs = path.join(absOut, "index.html");
+  const injected = injectShellScripts(fs.readFileSync(indexAbs, "utf8"), shellOnly);
+  if (injected.changed) fs.writeFileSync(indexAbs, injected.html);
+  assertShellScriptsPresent(fs.readFileSync(indexAbs, "utf8"), shellOnly);
+
+  const files = [];
+  let total = 0;
+  for (const rel of written) {
+    const bytes = fs.statSync(path.join(absOut, rel)).size;
     files.push({ rel, bytes });
     total += bytes;
   }
@@ -255,8 +428,12 @@ if (isMain) {
   try {
     if (listOnly) {
       const plan = buildPlan();
-      console.log(`${plan.length} files would be copied to ${out}:`);
+      const shellOnly = shellOnlyPlan();
+      console.log(`${plan.length + shellOnly.length} files would be copied to ${out}:`);
       for (const rel of plan) console.log(`  ${rel}`);
+      for (const f of shellOnly) console.log(`  ${f.src}  ->  ${f.dest}   (shell only)`);
+      console.log(`and these tags would be added to ${out}/index.html before </head>:`);
+      for (const tag of shellScriptTags(shellOnly)) console.log(`  ${tag}`);
     } else {
       const r = prepare({ out });
       console.log(`webDir ready: ${r.out}  (${r.files.length} files, ${fmt(r.total)} of ${fmt(r.maxBytes)})`);
