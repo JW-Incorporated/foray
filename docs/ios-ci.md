@@ -108,6 +108,19 @@ relaunch, and a 15 s + 90 s window — for about **95 s more**, so ~10 minutes a
 PR that added it is the measurement, and this line should be replaced with that
 number rather than left to be quoted as one.
 
+**Estimated, 2026-08-17, same standard:** the seam window went **90 s → 175 s**, so
+~11.5 minutes and **~115 billable minutes**. The 85 extra seconds are not slack —
+they are what puts the probe's first silence at 60 s of hidden time instead of 15 s,
+which is the only way to tell a platform suspension **ceiling** apart from a
+suspension that follows the probe's own silence (§4c, and
+`docs/research/mp1-background-audio.md` §4.1b-ii). The arithmetic lives at the
+`sleep 175` itself. Two things this does **not** license, spelled out because a
+slower job invites both: widening the path filter, and making this a required check.
+`.github/workflows/ios-build.yml` is **governed** — that change needs a founder
+label, and the probe change it pays for does not, which is why
+`ios-workflow.test.mjs` now derives the window's floor from `probe-seam.js`'s own
+constants rather than trusting the two files to move together.
+
 So: `workflow_dispatch` plus a path filter narrow enough that nightly content
 PRs never trigger it (`mobile/`, `tools/mobile/`, `index.html`, `app.js`,
 `player/`, and the workflow file itself). `concurrency` with
@@ -582,6 +595,66 @@ substring `App`, the reporter reads both logs, and the seam record now carries
 `saveSeq` + `firstSavedAtWall`. If `saveSeq` is high while `lastSavedAtWall` is old,
 the writes stopped landing — reading (b). If both are old and `saveSeq` matches
 elapsed/2 s, the page stopped being scheduled — reading (a).
+
+> **THAT LAST SENTENCE IS WRONG AND `probe-seam.js` SAYS SO IN ITS OWN COMMENT.**
+> `saveSeq` and `lastSavedAtWall` are serialised into the **same** `setItem` blob, so
+> whatever reaches disk always carries a matching pair: "high seq, old wall clock" is
+> unobservable by construction, and no counter inside a record can be otherwise —
+> a page cannot record that its own later write failed to persist. What the pair buys
+> is the **cadence**, which is worth having and is not a discriminator.
+
+### 4c-ii. What actually separates (a) from (b), and what it has already found
+
+Three channels, added 2026-08-17, because the two that existed were both the page's
+own account of itself.
+
+1. **`saveTrail`, in the record.** One stamp per save carrying the **wall clock and
+   the media clock together**. Different machinery drives them — `Date.now()` needs
+   the page scheduled, `currentTime` needs the audio pipeline running — so a **gap**
+   between stamps is proof the page was frozen **and resumed**, which no "the record
+   stops" observation can show, and the media delta across the gap says whether the
+   audio kept flowing through it.
+2. **The simulator log's own media clock and lifecycle**, parsed by
+   `parseSimulatorLifecycle` in `tools/mobile/ios-ci.mjs`. This is the only channel
+   that can see anything **after** the last write reached disk. It is deliberately
+   brittle-tolerant: needles copied out of a real log, degrading to "no coverage"
+   rather than to a confident number, and a log whose timestamps do not **overlap**
+   the record's hidden window is discarded rather than offset-corrected.
+3. **`suspensionVerdict`**, which combines them into section **3b** of the job
+   summary: where the record stops, whether audio was provably still playing then,
+   and which channel carried it. `suspended-while-audible` requires **positive**
+   evidence of audio from a channel — "no pause was recorded" lands on
+   `suspended-audio-unknown` instead, because an unobserved silence must not be able
+   to wear an observed one's headline.
+
+**Run 32064639785's artifact, re-read through it, already changes two things** — and
+`docs/research/mp1-background-audio.md` §4.1b-ii carries the log lines and the labels:
+
+- **The record's end is a real suspension, not a flush failure.** It lands at
+  **+27.86 s** of hidden time and `didChangeThrottleState(Suspended)` is at **+27.99 s**.
+  Reading (a) at that instant, not (b).
+- **But the suspension was already in motion.** WebKit armed a ~10 s
+  foreground-assertion release when the probe's **own** first boundary silenced the
+  audio at +15 s, and re-taking the media-playback assertion when `seg-b` became
+  audible at +20.16 s **failed** — `originator doesn't have entitlement
+  com.apple.runningboard.assertions.webkit`, which no `simctl`-launched Simulator app
+  holds. So this is not "suspended regardless of audio"; it is "suspended by a timer
+  our own beat started, which this instrument cannot cancel".
+- **And the Foray kept advancing.** The log runs 35 s past the record: the process
+  resumes at ~+41 s, `seg-b`'s out-point fires **11.1 s late in media time**, a fresh
+  load runs, and a third segment plays 20 → 26.2 s at +56 s — **both transitions
+  completed, hidden, never foregrounded by the harness.** `MIN_HIDDEN_TRANSITIONS = 2`
+  was satisfied by the *app* and not by the *record*.
+
+**So `too-few-transitions` on every past run is a statement about the artifact, not
+about the seam** — including the runs people (the founder included) described as
+successes. Quote it that way.
+
+**What is still open is narrower and still serious:** whether a hidden page is
+suspended at ~28 s **when its audio never stops at all**. Nothing measured so far can
+say, because the probe stopped its own audio at 15 s of hidden time in every run.
+`ARM_AFTER_HIDDEN_SEC = 60` and the 175 s window are the instrument for exactly that,
+and `HUMAN-ACTIONS.md` #11 on real hardware still outranks whatever it says.
 
 ### The audibility grace is **5 s**, not 10 s — and the beat blew straight through it
 

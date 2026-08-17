@@ -378,6 +378,14 @@ tail, and §8's argument rests on the median.
 > Added 2026-08-17. This bounds every hidden measurement in this document and it
 > was not known when §4.1a was written.
 >
+> **READ §4.1b-ii BEFORE QUOTING THIS SECTION.** The three record-end times below are
+> right; calling the cause "~26 s of hidden time" is not established. The probe stopped
+> its OWN audio 15 s into each of those windows, and 15 s + WebKit's ~12 s
+> assertion-release lands on the same number — so this section's reading and a
+> silence-driven one fit every run here equally. §4.1b-ii has the log lines, the
+> arithmetic, and what happened in the 35 s AFTER the record stops, which is not what
+> this section assumes.
+>
 > Across the three seam runs the durable `foray_probe_seam` record simply stops:
 > the last write lands **25.2 s, 26.8 s and 27.9 s** after the app went hidden
 > (runs 32036295743, 32057395270, 32064639785). `simulator-log-seam.txt` says it
@@ -396,11 +404,18 @@ tail, and §8's argument rests on the median.
 >   "does throttling deepen with time hidden?" question is currently
 >   unanswerable with this instrument: moving the probe's first boundary to 45-60 s
 >   of hidden time puts it *past the suspension*, so it would measure nothing.
+>   **THAT PREDICTION IS NOW THE EXPERIMENT, not a reason not to run it** — the arm is
+>   60 s as of 2026-08-17. If the record covers 60 s of hidden time, this bullet is
+>   wrong; if it stops at ~28 s with `seg-a` still playing, it is right and the answer
+>   is the bad one. Either way the run decides it, which is more than either of us can.
 > - **`MIN_HIDDEN_TRANSITIONS = 2` has never been met.** All three runs contain
 >   ONE transition and two audible items. `seg-b`'s out-point is armed
 >   (`outPoint.set 20.00s`) and the last durable write lands ~0.3 s before that
 >   boundary was due. The workflow's own 90 s derivation reaches transition 2 at
->   ~41 s; the app is not alive to get there.
+>   ~41 s; the app is not alive to get there. **Correction, §4.1b-ii: in run
+>   32064639785 the app WAS alive to get there — the log shows the second transition
+>   completing at +56 s, hidden, never resumed. What was never met is the RECORD, which
+>   stops at the suspension's last flush. "Never met" is a fact about the artifact.**
 > - **Whether this happens on a REAL PHONE is the open question, and it dwarfs
 >   everything else in this area.** `UIBackgroundModes: audio` is supposed to keep
 >   an app alive exactly while audio plays — §1's central finding — and the
@@ -410,6 +425,99 @@ tail, and §8's argument rests on the median.
 >   ~26 s after the screen locks and every seam refinement is moot.**
 >   `HUMAN-ACTIONS.md` #11 answers it in twenty minutes with no build: screen off,
 >   does the running order keep advancing?
+
+> **4.1b-ii — THE CEILING ABOVE IS CONFOUNDED WITH THE PROBE'S OWN SILENCE, AND THE
+> ARITHMETIC IS EXACT.** Added 2026-08-17, from run **32064639785**'s
+> `simulator-log-seam.txt` — the same artifact §4.1b cites, read further down. Nothing
+> in §4.1b is deleted: its three record-end times are right and its warning is worth
+> keeping. What is wrong is treating "~26 s of hidden time" as the cause.
+>
+> **The confound.** `probe-seam.js` armed its first boundary at
+> `ARM_AFTER_HIDDEN_SEC = 15`, so **the probe's own audio stopped 15 s into every one
+> of those hidden windows** — that is what a boundary is. WebKit then starts two
+> timers, and this log carries both, verbatim, for our process:
+>
+> ```
+> +15.73  updateAudibleMediaAssertions: Starting timer to clear audible activity in
+>         5 seconds because we are no longer playing audio
+> +16.30  updateThrottleState: UIProcess starting timer to release a foreground
+>         assertion in 10 seconds if audio doesn't start to play
+> +27.86  clearAudibleActivity: UIProcess is releasing a foreground assertion because
+>         we are no longer playing audio        <- the last durable write is +27.86
+> +27.87  didChangeThrottleState(Background) / uiAssertionWillExpireImminently
+> +27.99  didChangeThrottleState(Suspended)
+> +28.99  applicationIsAboutToSuspend: Terminating non-critical processes
+> ```
+>
+> (Offsets are seconds after the page recorded `document.hidden` — the same zero
+> §4.1b's 25.2/26.8/27.9 s are measured from; `applicationDidEnterBackground` is 0.88 s
+> earlier in this run.) **15 s of hidden playback plus a ~12 s assertion release lands
+> on ~28 s.** So does "the platform suspends a hidden WebView ~28 s in regardless of
+> audio". Every run we have fits both, and they have opposite consequences.
+>
+> *Which of the two timers fired at +27.86 is an **inference**, flagged because the
+> label does not settle it: the line is `WebPageProxy::clearAudibleActivity`, which
+> names the 5 s mechanism, but the 5 s timer was armed at +15.73 and due at +20.73 — by
+> which time `seg-b` was audible (+20.16) — while the 10 s one armed at +16.30 is due at
+> +26.30, ~1.6 s before it fired. The arithmetic fits the 10 s timer and not the 5 s
+> one. Nothing below depends on which.*
+>
+> **Why the audio restarting did not cancel it, and this is the Simulator-specific
+> part.** `seg-b` became audible at **+20.16 s**, well before the release fired, and
+> WebKit noticed (`updateAudibleMediaAssertions: Taking MediaPlayback assertion`,
+> +21.56). The RBS acquire that would have re-established the assertion then **failed**:
+>
+> ```
+> ProcessAssertion::acquireSync Failed to acquire RBS assertion 'WebKit Media Playback'
+>   error: (originator doesn't have entitlement com.apple.runningboard.assertions.webkit
+>           AND originator doesn't have entitlement com.apple.multitasking.systemappassertions)
+> ```
+>
+> This is the entitlement gate §7.4 documents as the reason a real app must carry the
+> background mode, and a `simctl`-launched Simulator app does not hold it (already
+> noted in `docs/ios-ci.md` §4c). **So on this instrument, audio resuming cannot cancel
+> a pending assertion release.** On a device it is supposed to. That is a mechanism, not
+> a measurement of a phone — labelled accordingly.
+>
+> **AND THE PART NOBODY HAD READ: THE FORAY KEPT GOING.** The log runs 35 s past the
+> last durable write, and in it (times still relative to going hidden):
+>
+> | | what the log shows | basis |
+> |---|---|---|
+> | +27.9 → +42.5 | the media element's own position advances **12→25.8 s** with `isPlaying = true` | **Measured** — `updateNowPlayingInfo` |
+> | +40.7 | `observedProcessStatesDidChange`; by +42.5 the WebContent process is executing again | **Measured** |
+> | +47.1 | `HTMLMediaElement::pause` at position **31.08** — `seg-b`'s out-point, armed at 20 s, fires **11.1 s late in media time** | **Measured** |
+> | +50.4 | `prepareForLoad` + `createMediaPlayer` — a fresh media load, hidden | **Measured** |
+> | +55.2 | position **20.0**, then playing at +56.2 → a third segment audible, stopping at **26.2** at +63.4 | **Measured**; that it is `seg-c` is **inferred** from bounds (`start_sec: 20`, `end_sec: 26`) plus the fresh load — the log carries no filename |
+>
+> **Both transitions completed, with the app hidden throughout and never foregrounded
+> by the harness.** `MIN_HIDDEN_TRANSITIONS = 2` was physically satisfied in run
+> 32064639785 and the *record* could not show it, because nothing after the
+> suspension's flush ever reached disk (`NetworkStorageManager::suspend()`, +28.0).
+> Every `too-few-transitions` verdict this project has printed is a statement about the
+> **record**, not about the app.
+>
+> **So what survives, and what does not.**
+>
+> - **Refuted for this run:** "a Foray stops advancing ~26 s after the screen locks."
+>   It advanced — late — and the queue ran to completion while hidden. Do **not**
+>   upgrade that to "audio never stopped": the element's position moved **19.1 s across
+>   the 26.9 s** from `seg-b` becoming audible to its late pause, so ~8 s of that window
+>   was not audio. Whether that is a genuine stall through the suspension or the
+>   coarseness of `updateNowPlayingInfo`'s position reports is **unresolved** — those
+>   reports arrive in bursts and one of them was 5.5 s late elsewhere in the same run.
+> - **Still open, and now the narrow question:** whether a hidden page is suspended at
+>   ~28 s of hidden time *when its audio never stops at all*. Nothing measured so far
+>   can say, because the probe has always stopped its own audio at 15 s.
+> - **The instrument for it** is `ARM_AFTER_HIDDEN_SEC = 60` (2026-08-17) with the
+>   seam window at 175 s, so the first silence falls at 60 s of hidden time. A record
+>   that stops at ~28 s with `seg-a` still audibly playing is the ceiling; a record
+>   that runs to 60 s is not. `tools/mobile/ios-ci.mjs`'s `suspensionVerdict` decides
+>   it from the artifact rather than from a human reading a log, and reports it as
+>   section 3b of the job summary.
+> - **`HUMAN-ACTIONS.md` #11 is unchanged and still worth more than any of this.** A
+>   Simulator that cannot hold the media-playback assertion is not a phone that can.
+
 
 **4.2 — The seam beat specifically.** One `setTimeout(2000)` — the real
 `SEAM_GAP_SEC` — armed in a hidden page, 4 reps each:
