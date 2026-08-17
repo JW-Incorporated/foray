@@ -7,6 +7,83 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### MP1 spike — background audio in a Capacitor WebView (2026-08-17, one docs PR, no follow-up)
+
+- **What:** `docs/mp1-background-audio`, issue #35 — the spike that gates #34.
+  Answer: **`<audio>` keeps playing when the app is backgrounded and the screen
+  locks on both platforms — but unprotected on Android without a foreground
+  service, and "the audio keeps playing" is the easy half.** Write-up:
+  `docs/research/mp1-background-audio.md`. **Deliberately not an ADR**, because
+  `docs/adr/` is auto-merge DENIED and this is research, not the decision.
+- **Owned files:** `docs/research/mp1-background-audio.md` (new). **Shared files
+  it touches:** `HUMAN-ACTIONS.md` (new items **#11** and **#12**; also added the
+  `**Status:** OPEN` line that item #9 was missing, so it can actually be
+  answered) and this file. **No code at all** — nothing in `data/`, `player/`,
+  `tools/`, `app.js` or `.github/`.
+- **Three findings that change issue scope:**
+  1. **iOS background audio costs ONE `Info.plist` line** — `UIBackgroundModes:
+     audio`. No plugin, no Swift, no `NativeAudioBackend`. WebKit sets the
+     `AVAudioSession` category to `MediaPlayback` itself, and
+     `MediaSessionManagerIOS.mm`'s restriction table deliberately omits
+     `MediaType::Audio` from both the background and the under-lock restriction
+     (Web Audio carries both — but we cannot use Web Audio anyway, for the CORS
+     reason already documented in `html-audio-backend.js`). **#35's own method
+     section is wrong on this** and says native session code is needed.
+  2. **`navigator.mediaSession` is DISABLED in Android WebView** by a Chromium
+     command-line switch (`kDisableMediaSessionAPI` in `aw_main_delegate.cc`,
+     comment: "WebView does not support MediaSession API"). So **#27 cannot be
+     delivered in the Android shell from JS at any price** — lock-screen and
+     steering-wheel controls become native work. Biggest scope change in the
+     spike, and nothing to do with backgrounding.
+  3. **A missed out-point is a ~15-minute defect, not a 1-second one.** Measured
+     over the real data: **0 of 32** Foray #1 segments (and 0 of 22 in Foray #2)
+     end within 30 s of their source file's end, so there is no benign case.
+     Median overrun **936.5 s**; worst 42 min. Miss only the FIRST out-point and
+     the listener gets 2.5 min of Foray then **20.4 min of one Origin Stories
+     episode**, with the UI still highlighting segment 1.
+- **Heads-up — the 2.0 s seam beat is SAFE backgrounded, and this was the
+  specific worry.** The beat pauses the element, which withdraws the audibility
+  everything else depends on — but both engines carry a far longer grace window:
+  **30 s** on Chromium (`kRecentAudioDelay`, whose source comment reads "A page
+  cannot be throttled or frozen 30 seconds after playing audio") and **10 s** on
+  WebKit (`audibleActivityClearDelay`). Measured on Chromium the beat stretches
+  to 2.8–4.6 s in a hidden page. Baggy, not broken. **Do not redesign the beat
+  for backgrounding.** The one unmeasured risk: a slow cross-episode advance
+  (`LOAD_SETTLE_TIMEOUT_MS` is 10 s) could push the silent window past WebKit's
+  10 s grace.
+- **Heads-up — NEVER set the Cordova preference `KeepRunning` to `false`.**
+  Verified in the installed `@capacitor/android` **8.5.0** source:
+  `Bridge.java:457` reads `KeepRunning` (default `true`), and when it is false
+  `MockCordovaWebViewImpl.setPaused(true)` calls `webView.pauseTimers()` — which
+  Android documents as process-global, "not restricted to just this WebView".
+  That would stop **every out-point in the app** firing, on every backgrounding.
+  The default is safe; the footgun is a one-line config change with a reassuring
+  name.
+- **THERE IS NO DEVICE MEASUREMENT — do not cite this as one.** Blink's timer
+  behaviour and the real `HtmlAudioBackend` out-point were measured in **desktop
+  Chromium** (the same engine as Android WebView, source-traced to the same
+  `PageSchedulerImpl` with no WebView bypass). Everything about **iOS is
+  documentation-derived and was never executed** — this is a Windows machine.
+  **The Android emulator run failed:** SDK installed, APK built (32.9 MB around
+  our real player modules), AVD up, APK pushed — but `pm install` never
+  succeeded and **not one line of app output was ever logged**. §6.2/§6.3 of the
+  write-up say so plainly and explain why no conclusion rested on it. Closing
+  the gap is `HUMAN-ACTIONS.md` #11.
+- **Do not re-attempt the emulator here without budgeting for it.** A cold **API
+  36 (Android 16)** x86_64 boot did not complete in ~35 minutes on a 13th-gen i7
+  with WHPX, three times. If #38 ever expects CI to boot an emulator, pin an
+  older API level or use a snapshot. Also: **Capacitor 8 requires JDK 21** (JDK
+  17 dies with `invalid source release: 21`) and generates
+  `compileSdk`/`targetSdk` **36**, which puts a stock Capacitor app inside
+  Android 15's audio-focus restriction from the first build.
+- **Tooling installed outside the repo, reclaimable — 15.5 GB measured:**
+  `%LOCALAPPDATA%\Temp\mp1-android` (11.31 GB), `~\.android\avd` (3.09 GB),
+  `~\.gradle` (0.92 GB), `%LOCALAPPDATA%\Temp\mp1cap` (0.18 GB). No Android
+  Studio, no admin rights, no system settings changed. The throwaway Capacitor
+  spike app is **not committed**, per #35 ("the code is expected to be deleted").
+  **The repo root still has no `package.json` and no `node_modules`.**
+- **Related:** #34, #36, #28, #27, #29, #40.
+
 ### classification — the six shard branches land on `main` (2026-08-17, one PR, no follow-up)
 
 - **READ THIS BEFORE YOU CONCLUDE THE CLASSIFY FLEET IS DEAD.** The six
