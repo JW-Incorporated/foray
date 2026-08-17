@@ -48,6 +48,12 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `probe-seam.js` pins it at `ARM_AFTER_HIDDEN_SEC = 15`. **So the pair cannot
   test the ramp — it does not vary the variable.** The hypothesis is neither
   supported nor refuted and stays open.
+  **2026-08-17, PR #240 varies the variable: the arm is 60 s and the seam window
+  175 s, so the first boundary lands past the ~28 s the record has always stopped
+  at.** That was aimed at the suspension question rather than the ramp, but it is
+  the same knob, and it also showed the ~28 s is `15 s of arm + a 10-13 s WebKit
+  assertion release` in all three prior runs. Read that PR's run before quoting
+  either paragraph.
 - **WHAT THE SAME PAIR DOES SHOW, and it is the more useful finding: 1.8x
   run-to-run variance on identical code.** Retreat **5,114 ms** against pre-#227
   **9,153 ms** — same one-element path, same 15.0 s hidden position, same local

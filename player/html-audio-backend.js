@@ -189,9 +189,15 @@ const LOAD_SETTLE_TIMEOUT_MS = 10_000;
  * ── WHAT THIS DELIBERATELY DOES NOT CLAIM ─────────────────────────────────
  *
  * Every hidden number above comes from the FIRST ~15 s OF HIDDEN TIME, because
- * `tools/mobile/probe/probe-seam.js` pins its first boundary at
- * `ARM_AFTER_HIDDEN_SEC = 15` and the record has never contained a second
- * transition. A phone locked for twenty minutes is UNMEASURED. If hidden
+ * `tools/mobile/probe/probe-seam.js` pinned its first boundary at
+ * `ARM_AFTER_HIDDEN_SEC = 15` and the record had never contained a second
+ * transition. **That constant is 60 s as of 2026-08-17 (PR #240), so numbers from
+ * deeper in the hidden window now exist — read the run linked from that PR before
+ * quoting the paragraph above as current.** The reason it moved is not this
+ * deadline: 15 s of playback plus WebKit's ~12 s assertion release landed on the
+ * same ~28 s the record always stopped at, so the probe could not tell a platform
+ * suspension ceiling apart from a suspension following its own silence.
+ * A phone locked for twenty minutes is still UNMEASURED. If hidden
  * throttling deepens with time hidden — plausible, untested, and NOT assumed
  * here — then 20 s is a floor rather than a bound, and the right shape may not
  * be a single number at all. What the change is worth does not depend on that:
