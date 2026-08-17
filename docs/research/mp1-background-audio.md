@@ -151,8 +151,9 @@ Two things follow, and the second one supersedes a "SAFE" reading in `STATE.md`.
    whether the page is audible or silent, because media-element load tasks are
    throttled by VISIBILITY rather than audibility. #227 relieved none of the three
    and made the third one certain (the segment was dropped), so it is parked
-   default-off. All three remain open; the live proposal is a visibility-aware
-   `LOAD_SETTLE_TIMEOUT_MS`, which converts a dropped segment into a slow seam.
+   default-off. **WebKit's two remain open and are not ours to move. OURS moved:**
+   `LOAD_SETTLE_TIMEOUT_MS` is visibility-aware as of 2026-08-17 — 10 s visible,
+   **20 s hidden** — which converts a dropped segment into a slow seam.
 
 **And the second transition — the one that would have tested whether audibility
 lapses after that silence — is exactly the one this run did not get.** The record
@@ -948,7 +949,7 @@ audible as a slightly baggy pause, not a stall and not a stop.** Nobody needs to
 redesign the beat for backgrounding.
 
 One genuine risk remains and it is worth naming: the beat's 2.0 s is *silence
-plus the next item's load*. `LOAD_SETTLE_TIMEOUT_MS` is 10 s, so a slow
+plus the next item's load*. `LOAD_SETTLE_TIMEOUT_MS` is 10 s VISIBLE and **20 s HIDDEN** as of 2026-08-17 (§4.1a) — so the window below is ~22 s in the hidden case this section is about, which makes the risk it describes WORSE, deliberately: a slow seam beats a dropped segment. A slow
 cross-episode advance (16 of Foray #1's 31 seams) can extend the silent window to
 ~12 s. That is still inside Chromium's 30 s but **outside WebKit's 10 s
 audible-activity grace** — so on iOS a slow advance could drop the foreground

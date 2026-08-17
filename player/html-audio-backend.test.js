@@ -2287,13 +2287,53 @@ test("the hidden deadline says which budget it used, so an artifact can be read"
   assert.ok(log.some((l) => /load\.deadline 20000ms \(hidden\)/.test(l)), log.join("\n"));
 });
 
-test("the hidden deadline still fires, and is still ref'd", async () => {
+test("a hidden load that never settles still rejects", async () => {
   /* The one-sided fact that matters: a hidden load which never settles must
      still reject, or the state machine sits in `loadingItem` forever. Driven at
      20 ms rather than 20 s by pinning the budget — the mechanism under test is
-     "does the deadline fire", not "how long is it". */
+     "does the deadline fire", not "how long is it".
+
+     This test does NOT assert ref'd-ness; it used to say it did, in its name,
+     which is worse than not covering it. `hasRef` is asserted below, per path. */
   const el = new FakeAudio();
   const b = new HtmlAudioBackend({ element: el, isHidden: () => true, loadTimeoutMs: 20 });
   el.load = () => { el.currentSrc = el.src; };   // a fetch that stalls silently
   await assert.rejects(() => b.load(item("stalls")), /did not settle within 20ms/);
+});
+
+test("THE SEEK PATH'S deadline is ref'd too — the half of the seams nothing covered", async () => {
+  /* Found by the reviewer with a mutation that survived: unref'ing the
+     same-source seek deadline left the whole suite green at 100/100. The
+     pre-existing "every deadline is ref'd" test stubs `el.load`, so it only ever
+     reaches the COLD path — and the seek path is the one 15 of Foray #1's 31
+     seams take.
+
+     That gap is not theoretical here. An unref'd deadline was THE CI failure on
+     #111: an unref'd timer only fires if something else keeps the event loop
+     alive, so Node 24 stayed green and Node 22 hung. Both paths arm a deadline
+     now, so both need this. */
+  const el = new FakeAudio();
+  const b = new HtmlAudioBackend({ element: el, loadTimeoutMs: 60 });
+  await b.load(item("a", "https://cdn.example/one.mp3"));
+
+  const armed = [];
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms) => { const t = realSetTimeout(fn, ms); armed.push(t); return t; };
+  try {
+    /* Same URL and already loaded => `_seekWithinLoadedSource`. `readyState` is
+       dropped below HAVE_FUTURE_DATA first, which is what a real element does
+       when it seeks into an unbuffered region — so the seek cannot settle on
+       readiness, no further events arrive, and only its own deadline can end it. */
+    el.readyState = 1;
+    await assert.rejects(
+      () => b.load(item("a2", "https://cdn.example/one.mp3"), { startOffset: 1800 }),
+      /in-place seek to 1800s did not settle within 60ms/
+    );
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+  assert.ok(armed.length >= 1, "the seek path must arm a deadline at all");
+  for (const t of armed) {
+    assert.ok(t?.hasRef?.() !== false, "the seek deadline must never be unref'd either");
+  }
 });

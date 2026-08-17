@@ -128,40 +128,63 @@ const LOAD_SETTLE_TIMEOUT_MS = 10_000;
  * machine rather than the same one running slower.
  *
  * WHY IT HAS TO BE SEPARATE. A visible load is measured at **590 ms**
- * (run 32064639785, `WebKit:Media` lifecycle). A hidden load runs the same
+ * (run 32057395270, `WebKit:Media` lifecycle). A hidden load runs the same
  * algorithm as a chain of queued tasks delivered SECONDS apart, so it takes
  * 5-11 s for the identical file. 10 s therefore has ~17x headroom while visible
- * and NEGATIVE headroom while hidden: a seam on a locked phone was measured at
+ * and NEGATIVE headroom while hidden: a seam on a backgrounded Simulator was measured at
  * 9,153 ms, i.e. 847 ms inside a budget it is supposed to be nowhere near, and
  * a run that crossed it DROPPED THE SEGMENT — the manager degrades, and the
  * listener loses ~110 s of Foray rather than waiting a few more seconds.
  *
- * ── DERIVED FROM BOTH BOUNDS, BECAUSE BOTH ARE MEASURED ───────────────────
+ * ── DERIVED FROM THE FLOOR. THERE IS NO USABLE CEILING — SEE BELOW ────────
  *
- * FLOOR — the worst chain we can evidence, not the median. Three device-class
- * runs, all on `probe-tone-b.wav`, a small file BUNDLED INSIDE THE APP:
+ * FLOOR — the worst CLEAN chain, times the observed spread. Three runs on an
+ * **iOS Simulator** (backgrounded by launching Settings; no real audio route; no
+ * phone was locked), all on `probe-tone-b.wav`, a small file BUNDLED INSIDE THE
+ * APP:
  *
- *     32064639785   5,114 ms   (clean, one element)
- *     32036295743   9,153 ms   (clean, one element)
- *     32057395270  11,140 ms   (a second element's discard sharing the queue)
+ *     32064639785   5,114 ms   clean, one element
+ *     32036295743   9,153 ms   clean, one element     <- the worst CLEAN sample
+ *     32057395270  11,140 ms   a second element's teardown sharing the task
+ *                              queue — that path is parked (see §"prefetch"),
+ *                              so it is EXCLUDED from the derivation rather
+ *                              than being the worst case. Stated, because
+ *                              "worst evidenced" would otherwise be false: at
+ *                              11.14 s the same arithmetic gives 21.5 s.
  *
- * The 1.8x spread between the first two is the important part: same code path,
- * same 15.0 s of hidden playback before the boundary, 5.1 s against 9.2 s. The
- * chain is not a constant to be bounded tightly — it is a distribution we have
- * three samples of. Add the cold cross-origin CDN this never exercised (ranged
- * GETs against six real sources: TTFB 0.99 s median, 1.41 s worst, on desktop,
- * a lower bound) and a bound wants to be a MULTIPLE of 9.2 s, not 9.2 s.
+ * The **1.8x spread between the two clean samples** is the load-bearing part:
+ * same code path, same 15.0 s of hidden playback before the boundary, same file,
+ * 5.1 s against 9.2 s — and the whole difference sits in one phase (`stalled` ->
+ * `loadedmetadata`, 1,902 ms against 5,954 ms). A hidden chain is a distribution
+ * we have three samples of, not a constant to bound tightly. So the bound wants
+ * to be a MULTIPLE of 9.2 s: 9.2 x 1.8 = 16.6 s, plus the cold cross-origin CDN
+ * none of these exercised (ranged GETs against six real sources: TTFB 0.99 s
+ * median, 1.41 s worst, desktop, a lower bound) ~= 18 s. Rounded to **20 s**.
  *
- * CEILING — and this is the bound that stops it being arbitrary. The page does
- * not survive indefinitely while hidden: in all three runs the durable record
- * ends after **25.2 s, 26.8 s and 27.9 s** of hidden time, and the seam log
- * shows why — `WebProcessProxy::didChangeThrottleState(Suspended)`,
- * `ProcessThrottler::uiAssertionWillExpireImminently`,
- * `WebProcessPool::applicationIsAboutToSuspend`. **A deadline longer than the
- * window in which the page runs at all cannot fire, so it is decoration.**
+ * ── AND THE THING THAT LOOKS LIKE A CEILING IS NOT ONE ────────────────────
  *
- * 1.8x of 9.2 s is 16.6 s; plus ~1.4 s of CDN is ~18 s; the observed hidden
- * execution window is ~25 s. **20 s** sits above the first and below the second.
+ * A first draft of this comment bounded 20 s from above by the page's hidden
+ * lifetime, and that was wrong twice over. The page IS suspended while hidden —
+ * the durable record ends after 25.2 s, 26.8 s and 27.9 s of hidden time, with
+ * `didChangeThrottleState(Suspended)` and `uiAssertionWillExpireImminently` in
+ * the log (§4.1b) — but:
+ *
+ *   1. **That clock starts when the app hides; this deadline starts at the
+ *      boundary**, which the probe pins 15.0 s later. The post-boundary budget is
+ *      therefore only **10.2 / 11.8 / 12.9 s** — and in two of three runs the
+ *      load finished with under a second to spare. NOTHING above ~13 s can fire
+ *      in the measured configuration, which includes 20 s.
+ *   2. The suspension is plausibly a Simulator artifact (§4.1b), so it is not
+ *      something to size a shipped constant against in either direction.
+ *
+ * **So the two constraints are incompatible, and that is the finding rather than
+ * a problem with the number.** No value both clears the floor (~18 s) and fits
+ * the measured post-boundary window (~13 s). Picking a value below the floor
+ * guarantees the drops this exists to prevent; picking 20 s means that when a
+ * hidden load is slow enough to matter, the thing that ends the Foray is the
+ * SUSPENSION rather than our impatience. That is strictly better — one cause
+ * removed, the next one exposed — and it is why §4.1b's suspension question,
+ * not this constant, is the top of the queue.
  *
  * ── WHAT THIS DELIBERATELY DOES NOT CLAIM ─────────────────────────────────
  *
@@ -331,6 +354,11 @@ const LOAD_SETTLE_TIMEOUT_HIDDEN_MS = 20_000;
  *     wait for a load before calling it broken. A lead shorter than that would
  *     leave a load the player still considers VALID missing the boundary
  *     anyway, which is the bug. So the lead must be at least the deadline.
+ *     **STALE AS OF 2026-08-17, AND IT MATTERS IF YOU UN-PARK THIS.** The
+ *     deadline is visibility-aware now — 20 s hidden — so this invariant is
+ *     violated by 8 s in the one case the handover exists for. It is inert only
+ *     because prefetch is default-off. Re-deriving the lead against the HIDDEN
+ *     deadline is part of re-opening the handover, not a detail after it.
  *   - The window opens on `timeupdate`, a media event, measured at a 252 ms
  *     median in a hidden page (mp1-background-audio.md §4) — but the widest
  *     tick this repo has actually recorded is 1,825 ms against a 250 ms
@@ -1148,11 +1176,27 @@ export class HtmlAudioBackend {
    * deadline on `visibilitychange` would be a second mechanism to get wrong for
    * a case nobody has measured.
    */
+  /** One phrasing for both load paths, so an artifact reads the same either way
+      — and so the SEEK half of this change (15 of Foray #1's 31 seams take the
+      same-source shortcut) is verifiable on a device rather than inferred. */
+  _describeDeadline(ms, what) {
+    const which = ms === LOAD_SETTLE_TIMEOUT_HIDDEN_MS ? "hidden" : "visible";
+    return `load.deadline ${ms}ms (${which}) for ${what}`;
+  }
+
   _loadDeadlineMs() {
     if (this._loadTimeoutMs != null) return this._loadTimeoutMs;
     let hidden = false;
     // A surface's throwing `isHidden` must not decide whether audio loads.
-    try { hidden = this._isHidden() === true; } catch (_) { hidden = false; }
+    try {
+      hidden = this._isHidden() === true;
+    } catch (err) {
+      // Every other throwing surface in this file says so. A broken `isHidden`
+      // silently reverting to the drop-prone visible budget is invisible in
+      // exactly the device artifact this constant exists to satisfy.
+      hidden = false;
+      this._emit(`load.deadline.visibilityThrew ${err?.message ?? err} — using the visible budget`);
+    }
     return hidden ? LOAD_SETTLE_TIMEOUT_HIDDEN_MS : LOAD_SETTLE_TIMEOUT_MS;
   }
 
@@ -1254,7 +1298,6 @@ export class HtmlAudioBackend {
       // A fetch that stalls without erroring would otherwise hang here forever.
       // Same hole as the in-place path, same fix, and NOT unref'd.
       const deadlineMs = this._loadDeadlineMs();
-      this._emit(`load.deadline ${deadlineMs}ms (${deadlineMs === LOAD_SETTLE_TIMEOUT_HIDDEN_MS ? "hidden" : "visible"})`);
       timer = setTimeout(
         () => fail(`load of ${item.id} did not settle within ${deadlineMs}ms`),
         deadlineMs
@@ -1266,6 +1309,11 @@ export class HtmlAudioBackend {
       this._expectPause = true;
       el.src = item.audio_url;
       el.load();
+      /* AFTER `load()`, deliberately. A probe's telemetry sink writes
+         localStorage synchronously and logs the whole record, and this line sits
+         on the hidden, throttled, seam-critical path — the instrument must not
+         perturb the measurement it exists to explain. */
+      this._emit(this._describeDeadline(deadlineMs, item.id));
     });
   }
 
@@ -1330,6 +1378,7 @@ export class HtmlAudioBackend {
       );
 
       try { el.currentTime = target; } catch (_) { /* not seekable yet; events will settle it */ }
+      this._emit(this._describeDeadline(deadlineMs, `seek->${Math.round(target)}s`));
       if (near()) done();
     });
   }

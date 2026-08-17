@@ -19,12 +19,25 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Shared files:** `player/html-audio-backend.js` (+ test),
   `docs/research/mp1-background-audio.md`, this file. **Nothing else** — no
   `data/`, no `tools/`, no `.github/`, no manager change, no reducer change.
-- **THE NUMBER IS BOUNDED FROM BOTH ENDS AND BOTH ENDS ARE MEASURED.** Floor: the
-  worst evidenced chain, 9,153 ms clean (32036295743), × the **1.8x run-to-run
-  spread** below, + the cold-CDN allowance this never exercised (TTFB 0.99 s
-  median / 1.41 s worst, desktop, a lower bound) ≈ 18 s. Ceiling: **the page does
-  not survive indefinitely while hidden** — see the next entry — so a deadline
-  above ~25 s cannot fire and would be decoration. 20 s sits between them.
+- **THE NUMBER COMES FROM A FLOOR. THERE IS NO USABLE CEILING — a first draft of
+  this entry claimed one and the reviewer took it apart.** Floor: the worst
+  **clean** chain, 9,153 ms (32036295743), × the **1.8x run-to-run spread**, + the
+  cold-CDN allowance none of these exercised (TTFB 0.99 s median / 1.41 s worst,
+  desktop, a lower bound) ≈ 18 s → **20 s**. The 11,140 ms sample is **excluded**,
+  and saying so matters: it had a second element's teardown sharing the task queue
+  (a path now parked), and at 11.14 s the same arithmetic gives 21.5 s — so "worst
+  evidenced" without the exclusion stated is simply false.
+- **WHY THE SUSPENSION IS NOT A CEILING, though it reads like one.** It is measured
+  from when the app HIDES; this deadline starts at the BOUNDARY, which the probe
+  pins 15.0 s later. Post-boundary the page has only **10.2 / 11.8 / 12.9 s** left,
+  and in two of three runs the load finished with **under a second** to spare. So
+  nothing above ~13 s can fire in the measured configuration, 20 s included:
+  **the floor (~18 s) and the measured post-boundary window (~13 s) are
+  incompatible.** That is the finding, not a problem with the number — a value
+  below the floor guarantees the drops this exists to prevent, and 20 s means that
+  when a hidden load is slow enough to matter, what ends the Foray is the
+  SUSPENSION rather than our own impatience. One cause removed, the next exposed,
+  which is why the suspension entry below is above this one in priority.
 - **CORRECTION — THE "THROTTLING DEEPENS WITH HIDDEN TIME" TABLE DOES NOT HOLD,
   and the reason is a cross-pass pairing.** `hiddenPlaybackSec` (3.294 s in the
   retreat run, 15.124 s pre-#227) lives on **`foray_probe_outpoint`** — a
