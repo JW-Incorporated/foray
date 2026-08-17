@@ -17,12 +17,14 @@
         carry the query's actual subject (a tag, title, or show substring
         we specify per case) -- if this fails, junk is leaking into results.
      3. Honest coverage: for topics the catalog genuinely doesn't cover (a
-        basketball team by name), status must be "empty" -- never a padded
-        list of unrelated filler. For a topic whose coverage is real but
-        THIN, the expectation is derived from the catalog rather than pinned
-        to a tier label (see the "nba" case), because the nightly refresh
-        grows the catalog by design and a hard-coded tier breaks the moment
-        it does.
+        basketball team by name, or a sport it barely mentions), status must
+        be "empty" -- never a padded list of unrelated filler. For a topic
+        whose coverage is real but THIN, the empty claim is gated on coverage
+        counted from the catalog rather than pinned to a tier label (see the
+        "nba" case), because the nightly refresh grows the catalog by design
+        and a hard-coded tier breaks the moment it does. What is asserted
+        UNCONDITIONALLY there is purity: whatever comes back must name the
+        subject.
      4. Diversity: no single show dominates a result, EXCEPT when the
         catalog genuinely can't diversify (a single-show topic like bbq, or
         a direct show-name query like "smartless") -- there the honest
@@ -47,17 +49,23 @@
         fiction/audio-drama. Coverage-gated throughout -- topics with no
         real catalog content (e.g. gardening, chess: verified zero tag
         hits despite the coverage report listing them) got no concept.
-     9. `sports` concept cleanup: zero-coverage league/team terms (nba,
+     9. `sports` concept cleanup: near-zero-coverage league/team terms (nba,
         basketball, baseball, tennis, ...) removed so a bare "nba"/
         "basketball" query no longer floods in generic sports-science
         content and instead returns only items that name the league
-        themselves -- which for "nba" was nothing at all until the
-        2026-08-17 refresh, and is two items now (see §3) -- verified via the
-        validator's new zero-coverage-term WARN (tools/validate-semantic-
-        index.mjs), which flagged exactly these two as strictly zero
-        (tagDF=0 AND corpusDF=0); the rest were removed by hand after
-        direct verification they're negligible (tagDF<=1, i.e. one
-        tangential mention for an entire league name).
+        themselves -- ONE item for "nba" before the 2026-08-17 refresh, two
+        after it (see §3) -- verified via the validator's zero-coverage-term
+        WARN (tools/validate-semantic-index.mjs), which flagged `basketball`
+        as strictly zero (tagDF=0 AND corpusDF=0); `nba` and the rest were
+        removed by hand after direct verification they're negligible
+        (tagDF<=1, i.e. one tangential mention for an entire league name).
+        Corrected 2026-08-17: this said the WARN flagged "exactly these two"
+        as strictly zero. It flagged one. Re-measured at the cleanup commit
+        itself (040c9f6): `basketball` tagDF=0/corpusDF=0, but `nba`
+        tagDF=1/corpusDF=0.00102 -- it was always the hand-removed,
+        one-tangential-mention case the next clause describes, and pretending
+        it was strictly zero is what made "no NBA content in catalog" look
+        true enough to assert in §3 for a month.
 
    Usage: node tools/test-search.mjs
    Exit code 0 = all pass, 1 = at least one failure (readable report to stdout). */
@@ -239,10 +247,10 @@ for (const c of topicalCases) {
    cleanup, a bare "nba" query flooded in generic sports-science content via
    full concept-vocabulary expansion. With the zero-coverage league terms
    removed, only items naming the league themselves can match.
-   Team names stay genuinely absent, and both tokens collide with ordinary
-   prose ("warriors" reaches an Ancient History episode about Scotland's
-   first warriors; "team" reaches "steam" -- see the collision cases below),
-   so anything returned here would be filler by construction.
+   The team names stay genuinely absent, and both collide with ordinary prose
+   ("warriors" reaches an episode of The Ancients about Scotland's first
+   warriors; and "team" reaches "steam", the §6 collision case below), so
+   anything returned here would be filler by construction.
    `basketball` stays here too, for a reason worth writing down: exactly ONE
    item in the pool carries the word (Freakonomics' Gary Gulman episode,
    which mentions basketball in passing in a comedy/mental-health hook), and
@@ -252,7 +260,10 @@ for (const c of topicalCases) {
    catalogue owner rather than patched from inside the oracle. */
 for (const query of ["the lakers", "warriors", "basketball"]) {
   const { status, picks } = search(query);
-  check(`"${query}" is honestly empty (no basketball-team content in catalog)`, status === "empty" && picks.length === 0,
+  /* The reason is "fewer than two catalog items name it", NOT "no such
+     content exists" -- `basketball` names one. Stating the mechanism in the
+     label is the whole lesson of the "nba" case below. */
+  check(`"${query}" is honestly empty (fewer than two catalog items name it)`, status === "empty" && picks.length === 0,
     `got status=${status}, picks=${picks.length}`);
 }
 
@@ -269,32 +280,78 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
    false positive: both name the league in prose a listener reads, and both
    match through the same `hitTag`/`hitText` the ranker scores with.
 
-   So this is a real topical case now -- but a COVERAGE-GATED one rather than
-   a pinned status label, because a pinned tier is exactly what broke. It has
-   broken three times: "how bbq works" on 2026-07-29 and again on -07-30, and
-   "plane crashes" on 2026-08-06. The nightly grows the catalog by design, so
-   the expectation is derived FROM the catalog: below the two-strong floor the
-   honest answer is nothing at all; at or above it, the query must surface
-   real NBA items and only those. Assert the behaviour, never the count.
+   So it becomes a real topical case -- split into the two claims the old
+   one-liner had fused together, because they do not deserve the same
+   treatment:
+
+   PURITY, asserted unconditionally: whatever comes back must name the
+   league. This is the half with teeth, and the half the old guard was really
+   protecting. Verified by reproduction, not by argument: re-adding
+   `nba`/`basketball` to the `sports` concept in data/semantic-index.json
+   recreates the pre-cleanup flood, and this check fails loudly on it, naming
+   "The Fascist World Cup: Mussolini's Football Dictatorship", "Can the LA
+   Olympics in 2028 be a catalyst for clean energy" and six more sports-
+   science items. Ungated on purpose: it is trivially true when nothing comes
+   back, so it costs nothing in the empty world, and an ungated check cannot
+   be switched off by a gate that guesses wrong.
+
+   HONEST EMPTY, gated on coverage counted from the catalog: below
+   classifyResults' two-strong floor the honest answer is nothing at all.
+   Gated rather than pinned to a tier, because a pinned tier is exactly what
+   broke -- three times in three weeks, twice as a pinned tier ("how bbq
+   works" 2026-07-30, "plane crashes" 2026-08-06) and once as a pinned pick
+   count (bbq again, 2026-07-29 -- see §4). The nightly grows the catalog by
+   design. Assert the behaviour, never the count.
+
+   THERE IS DELIBERATELY NO RECALL ASSERTION -- no "2 items name the league,
+   so search must show them". It was written, and it was a landmine: the
+   strong bar is RELATIVE (results[0].sum * STRONG_RATIO), so a second item
+   whose only mention is its `nba` tag scores 2.5 x 1.35 = 3.375 against a bar
+   of 4.05 and classifyResults correctly returns empty. Deleting one "NBA"
+   from one hook -- one nightly hook-authoring edit -- turns that into a red
+   battery over behaviour that is working as designed. No static predicate can
+   forecast a relative bar, so a recall claim here can only ever be a tripwire
+   on correct behaviour. Whether search should hide real coverage this way is
+   a genuine question; it belongs in an issue against classifyResults, not in
+   a nightly-blocking assertion.
 
    `nba` is the whole needle set on purpose. The query is one token, it
    expands to no concept (interpretQuery yields a single own-source term), so
-   `nba` is the only thing that can match -- and a needle that cannot fire is
-   how an oracle quietly goes loose. */
+   `nba` is the only thing that can match. Adding `basketball` would be worse
+   than dead weight: if someone later re-adds `nba` to a concept that also
+   carries `basketball`, a `basketball` needle would let the flood's own
+   filler satisfy the purity check and mask the exact regression it exists to
+   catch. */
 {
   const needle = "nba";
-  const covered = pool.filter((i) => itemHas(i, needle)).length;
-  const { status, picks } = search("nba");
+  /* Hook-inclusive on purpose, and this is the one place in the file that
+     needs to be. itemHas() reads tags/title/show/topics but NOT the hook (§2),
+     while scoreMatch() scores hitText(hook, t) at 1.5 x 1.35 = 2.025 -- enough
+     to clear minScore alone. So a hook-only mention is invisible to a coverage
+     count built on itemHas and fully visible to the ranker, and the catalogue
+     already holds an item in exactly that shape (the Gary Gulman episode names
+     basketball only in its hook). A gate blind to hooks would assert
+     honest-empty against a query that legitimately returned picks -- the same
+     false red this whole case exists to stop. Word-boundary rather than
+     `includes`, to stay no looser than the ranker's own short-term path: `nba`
+     must not match inside `NBAA`. Widening the shared itemHas() instead would
+     loosen every §1/§2 on-topic check in the file, which is a separate
+     decision with a 51-needle blast radius. */
+  const nbaWord = new RegExp("\\b" + needle + "\\b");
+  const namesLeague = (i) =>
+    itemHas(i, needle) || nbaWord.test((i.hook || "").toLowerCase());
+
+  const covered = pool.filter(namesLeague).length;
+  const { status, picks } = search(needle);
+
+  const offTopic = picks.filter((p) => !namesLeague(p.i));
+  check(`"nba" returns only items that name the league`, offTopic.length === 0,
+    `got status=${status}, picks=${picks.length}; off-topic: ${offTopic.map((p) => `${p.i.id} "${p.i.title}"`).join(", ")}`);
+
   if (covered < 2) {
-    check(`"nba" is honestly empty (catalog names the league in ${covered} item(s), below the two-strong floor)`,
-      status === "empty" && picks.length === 0, `got status=${status}, picks=${picks.length}`);
-  } else {
-    check(`"nba" surfaces the ${covered} catalog items that name the league`,
-      status !== "empty" && picks.length >= 2,
-      `got status=${status}, picks=${picks.length} -- ${covered} items name the league, so search hiding them means one swamped the relative strong bar (see issue #216)`);
-    const offTopic = picks.filter((p) => !itemHas(p.i, needle));
-    check(`"nba" returns only items that name the league`, offTopic.length === 0,
-      `off-topic: ${offTopic.map((p) => `${p.i.id} "${p.i.title}"`).join(", ")}`);
+    check(`"nba" is honestly empty (only ${covered} catalog item(s) name the league, below the two-strong floor)`,
+      status === "empty" && picks.length === 0,
+      `got status=${status}, picks=${picks.length} -- if these picks DO name the league, the coverage count above is what is wrong, not the engine`);
   }
 }
 
