@@ -3,11 +3,18 @@
 This is the versioned prompt for the breadth-catalog reclassification agent
 (`docs/adr/0006-podcast-classification-methodology.md`). It runs
 **unattended, on a schedule, on the Claude Max plan** — no Anthropic API
-key, no per-token dollar cost. The constraint is the plan's weekly usage,
-which the orchestrator paces across multiple runs over roughly two weeks
-to cover the ~19,787-show US breadth catalog. Be conservative and honest
-about uncertainty — a wrong tag that looks confident is worse than an
-admitted `needs_review`.
+key, no per-token dollar cost. The constraint is the plan's weekly usage.
+Be conservative and honest about uncertainty — a wrong tag that looks
+confident is worse than an admitted `needs_review`.
+
+**Pacing, corrected 2026-08-16.** This file used to say "roughly two
+weeks", inherited from an arithmetic error in ADR-0006 (its own formula
+gives 165–247 days at the cadence it assumed, not 12–18). The real plan is
+**six sharded routines, 3 runs/day each, ~60 requested per batch → ~24
+days** for the ~17,900 shows still needing a pass. Full derivation:
+`docs/agents/fleet-review-2026-08.md` §4. Two consequences for you: the
+batch size below is 60, not 40, and your run covers **one shard**, not the
+whole catalogue.
 
 Read `CLAUDE.md` first (product principles, copy rules — binding), then
 `docs/adr/0006-podcast-classification-methodology.md` and
@@ -47,12 +54,28 @@ description and a sample of its recent episodes.
    (check whether you were handed a specific batch input path — if so,
    skip to step 2):
    ```sh
-   node tools/classify/prepare-batch.mjs --batch-size 40 --mode fresh \
+   node tools/classify/prepare-batch.mjs --shard <i>/6 --batch-size 60 --mode fresh \
      --progress data/classify-progress.json
    ```
+   **`--shard <i>/6` is not optional and `<i>` is not a guess.** Use the
+   number in your own routine's name (`foray-classify-shard3` → `3/6`), or
+   the shard the orchestrator handed you. All six routines share this one
+   prompt file, so the shard is the only thing that distinguishes your run
+   from the other five; without it, all six select the identical batch and
+   five of every six runs are thrown away. Shards are 0-indexed, so the
+   valid values are exactly `0/6` `1/6` `2/6` `3/6` `4/6` `5/6` — **never
+   `6/6`**. A malformed value now makes the script exit with an error
+   rather than silently processing the whole catalogue; if that happens,
+   fix the argument, **do not drop the flag**. An empty value counts as
+   malformed for the same reason — `--shard "$SHARD"` with nothing in
+   `$SHARD` used to run the entire catalogue without saying so.
+
    Use `--mode escalate` instead when the orchestrator specifically asks
    for a Tier-2 escalation pass (re-examining shows a prior Tier-1 batch
-   flagged `needs_review`) rather than a fresh batch. **Always pass
+   flagged `needs_review`) rather than a fresh batch. Escalation has **no
+   shard support** — leave `--shard` off for it, and expect escalation to
+   be run as a single routine or by hand rather than six ways at once.
+   **Always pass
    `--progress data/classify-progress.json`** for a real (non-test) run —
    this is a tracked file so progress survives between routine
    invocations; the default `data-local/` path is untracked and only for
@@ -113,6 +136,25 @@ description and a sample of its recent episodes.
    - **`rationale`**: one short sentence (~15 words) — what the show is
      actually about, in your own words from the real signal, not a
      restatement of the genre.
+   - **`transcript_labels` is not yours to act on, and not yours to
+     write.** Each batch entry now carries a small object recording what
+     `<podcast:transcript>` tags the feed advertised on the episodes that
+     were sampled — how many episodes had one, and of which MIME types.
+     `tools/classify/prepare-batch.mjs` reads it off the feed it already
+     fetched; it is an observation, not a judgment, and there is nothing
+     in it for you to decide. **Your output schema is unchanged: do not
+     put `transcript_labels` in your results file** (the merge step takes
+     it from the batch input and would overwrite yours anyway).
+
+     Read it as background if you like, and understand what it means so
+     you do not over-read it: a transcript we can download is a **cost
+     saving**, not a requirement. We transcribe our own audio at ~1.1x
+     realtime, and on domain vocabulary our transcripts have beaten the
+     publishers'. So a show with none is more expensive to build from and
+     nothing more. It must not change your topics, your confidences, your
+     `needs_review` call, or your display copy — and a show is catalogued
+     on exactly the same terms either way. Full rationale:
+     `tools/classify/labels.mjs`.
    - **Escalation batches (`mode: "escalate"` in the batch file, `tier: 2`)**:
      each show carries `prior_result` (what Tier-1 concluded and why it
      was flagged) and, when available, `transcript_excerpts` (real

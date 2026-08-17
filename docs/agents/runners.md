@@ -19,12 +19,61 @@ changes a runner.
 |--------|-------|---------|-------|---------|-----------------|--------|
 | **nightly-refresh (scan+resolve)** | GitHub Actions (`.github/workflows/nightly-refresh.yml`) | Daily 06:40 UTC | — (deterministic) | Actions minutes (free tier, public repo) | workflow file | live |
 | **foray-nightly-enrich** | Claude Cloud routine | Daily ~11:40 UTC (≥2h after the Action) | Sonnet | Wyatt's account | `runner-prompts/foray-nightly.md` | live |
-| **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live |
+| **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h, staggered 40 min apart — see below | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live |
 
 ~19 runs/day, which as of 2026-07-25 was the majority of all agent spend across
 Foray and Swift2 combined (~19 of ~32). That is not a problem by itself — it is
 just where the money is, so it is the first place to look when trimming.
 Wyatt's standing decision is to leave the cadence as-is.
+
+### The six classify routines — arguments and phase
+
+**This table is the intended configuration, not an observed one, and it is not a
+new decision.** It records what `HUMAN-ACTIONS.md` #5 — filed by the fleet
+review, PR #198 — already asks the owner to set; it lives here too because this
+file's own header requires updating it in the same change that changes a runner,
+and the shard argument changed. The arguments and the phase live in each
+routine's config on Wyatt's account, which no session can read or write. Until
+#5 is done, this table documents intent and the auditor is truth (see the warning
+at the top of this file).
+
+Every routine keeps a **3-runs/day, 8-hour period** — the cadence is unchanged.
+Only the phase differs, so that no two classify runs overlap: two concurrent
+classify PRs conflict by construction, because `merge-results.mjs` rewrites
+`built_at` and the whole `provenance` block on lines 3 and 7–8 of the same
+184k-line file. Minimum separation is 40 minutes.
+
+| Routine | Cron (UTC) | Argument |
+|---|---|---|
+| `foray-classify-shard0` | `10 0,8,16 * * *` | `--shard 0/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
+| `foray-classify-shard1` | `50 0,8,16 * * *` | `--shard 1/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
+| `foray-classify-shard2` | `10 2,10,18 * * *` | `--shard 2/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
+| `foray-classify-shard3` | `50 2,10,18 * * *` | `--shard 3/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
+| `foray-classify-shard4` | `10 4,12,20 * * *` | `--shard 4/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
+| `foray-classify-shard5` | `50 4,12,20 * * *` | `--shard 5/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
+
+Three things about that table that are easy to get wrong:
+
+- **`--shard` is 0-indexed. `6/6` is invalid** and, as of this change, exits
+  with an error. It used to fail *open* — a malformed value silently ran the
+  full unsharded catalogue, which is exactly the six-way duplicate work the flag
+  exists to prevent.
+- **The shard key is `fnv1a32(String(apple_collection_id)) % N`**, not
+  `Number(id) % N`. The modulo key is **2.20x** unbalanced over the **17,936
+  shows still needing a pass** (shard0 1,514 against shard3 3,334) and would idle
+  a sixth of the fleet from around day 12. Do not "simplify" it back;
+  `tools/classify/shard.test.mjs` measures both against the real catalogue.
+  (`fleet-review-2026-08.md` §4 quotes 1,504 / 2.21x for the same key over the
+  slightly smaller **17,875 eligible** set — both are correct, over different
+  sets, so name the set whenever you quote either.)
+- **12:10 and 12:50 fall 30 and 70 minutes after `foray-nightly-enrich`
+  (11:40).** The two touch disjoint files so this is fine, but if the nightly
+  starts running long, move shard4/5 to `10 5,13,21` / `50 5,13,21`.
+
+Expected throughput at this configuration: ~774 shows/day, ~24 days for the
+~17,900 shows still needing a pass, at **no increase in run count and no extra
+token spend**. Derivation and the failure modes:
+`docs/agents/fleet-review-2026-08.md` §4.
 
 ## Planned (not yet registered)
 

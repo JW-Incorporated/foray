@@ -240,9 +240,26 @@ much silence goes at a seam".
 they are, and fixes a separate defect that has been costing 5/6 of their output
 the whole time they *were* alive. Both are needed; neither substitutes.
 
+> **Updated 2026-08-16 by the engineering PR (`feat/fleet-cataloguing`).** Three
+> things this item used to warn about are now fixed in the repo, and the values
+> in the table below are unchanged by them:
+>
+> - **The shard key is now hashed** (`fnv1a32(String(id)) % N`), not
+>   `Number(id) % N`. You still type `--shard 0/6`; the difference is only in
+>   which shows each shard gets, and it is what stops shard0 from running dry
+>   around day 12 with a sixth of the fleet idle.
+> - **A malformed `--shard` now exits with an error** instead of silently running
+>   the full unsharded catalogue. Step 4's warning still applies — get it right —
+>   but a typo now fails loudly rather than quietly costing six times the work.
+> - **The prompt's `--batch-size 40` is now 60**, so the "one thing to expect"
+>   note at the end of this item no longer applies: batches should come in at
+>   the intended size from the first run.
+>
+> Nothing here changes what you have to do. Same six values, same six crons.
+
 **Why it matters.** `tools/classify/prepare-batch.mjs` supports sharding
-(`--shard i/N` — take only shows where `Number(id) % N === i`). **The six
-routines do not pass it.** All six run one shared prompt file with one literal
+(`--shard i/N` — take only the shows that shard owns, by a hashed, stable key).
+**The six routines do not pass it.** All six run one shared prompt file with one literal
 command that has no `--shard`, so the shard number exists only in the routine
 *name*. Batch selection is fully deterministic, so **all six shards select the
 identical batch, in the identical order** — reproduced by simulation against the
@@ -303,17 +320,16 @@ Steps:
    (`docs/agents/runner-prompts/classify-batch-shard0.md` … `shard5.md`) so you
    only have to change one **path** per routine instead.
 
-4. **Do not guess the shard string.** `--shard` currently fails *open*: a
-   malformed value (`6/6`, `abc`, `0/0`, or a missing value) silently reverts to
-   the full unsharded catalogue with no warning, recreating exactly the bug this
-   item fixes. It must read `0/6`, `1/6`, `2/6`, `3/6`, `4/6`, `5/6` — one each,
-   no duplicates, none of them `6/6`.
+4. **Do not guess the shard string.** It must read `0/6`, `1/6`, `2/6`, `3/6`,
+   `4/6`, `5/6` — one each, no duplicates, **none of them `6/6`** (shards are
+   0-indexed). As of 2026-08-16 a malformed value makes the run exit with an
+   error instead of silently reverting to the full unsharded catalogue, so a typo
+   shows up as a failed run rather than as six times the work. Before that fix it
+   failed open, which is the bug this item exists to close.
 
-**One thing to expect, and it is not a fault.** Until an engineering PR lands the
-matching prompt fix, an agent that re-reads `classify-batch.md` will still use
-`--batch-size 40`, so early batches may come in around 40 rather than 50–60. The
-sharding benefit does not depend on that; the four-week timeline does. A session
-is picking it up.
+**The prompt fix has landed**, so nothing about batch size is outstanding:
+`classify-batch.md` now says `--batch-size 60` and carries the shard flag, and
+`docs/agents/runners.md` records the intended cron and argument per routine.
 
 **Worked if:** within one 8-hour window, **six different** `classify/*` PRs have
 merged, and no two of them classified the same show. Quick check after a day:
@@ -329,6 +345,29 @@ several batches per day rather than one, and the `classify-agent-tier1` count in
 
 **Tag:** `[BLOCKING]` · **Time:** ~10 minutes to decide · **Owner:** Joey (with
 Wyatt on the cost)
+
+> **Mostly answered 2026-08-16, and the question got much smaller.** Wyatt cut the
+> scope — *"I just want it to flag transcripts, not go overboard"* — and the
+> transcript flag itself has now landed (`feat/fleet-cataloguing`), which is the
+> "schema first" answer for the one field that was worth it. So there is no
+> second four-week pass hanging over this any more.
+>
+> What was dropped, deliberately, and is **not** waiting on you: the enclosure
+> host, `<language>`, feed liveness, and `format`/`depth`/`expertise_sourced`
+> content-shape labelling. All free or nearly free, all recommended by the review,
+> none of them asked for. If any of them turns out to be wanted later it is a
+> small PR, and the argument for it should be a use for the field rather than the
+> fact that it is cheap.
+>
+> **One framing correction worth carrying forward, because the review has it
+> wrong:** the review ranks transcript availability as the #1 binding constraint.
+> It is not a constraint at all — we make our own transcripts (measured rate and
+> source: `docs/curation/transcription-scale-plan.md` §1). A missing transcript
+> is therefore a **cost**, not a blocker, which is exactly why flagging
+> it is useful and why nothing filters on it. The one thing that genuinely gates
+> today is a bounded ad delta, per ADR-0008.
+>
+> Nothing below needs doing unless you want one of the dropped fields.
 
 **Why it matters.** This is a sequencing decision, and it is cheap now and
 expensive later — which is the only reason it is here rather than being decided
