@@ -75961,13 +75961,1028 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-16-fa0847e5",
       "classified_at": "2026-08-16T16:51:40.477Z"
+    },
+    "1837800218": {
+      "topics": [
+        "sports",
+        "sports/basketball",
+        "sports/football",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/football",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports analysis covering NBA, NFL, and college athletics with irreverent commentary and humor.",
+      "display_title": "Who's Next Show",
+      "blurb": "A sports show covering NBA, NFL, and college athletics with opinionated takes and humor from hosts Danny, Dr. Locks, and Glue Guy.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1837934108": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Murder investigation featuring interviews, suspects, and evidence in a single case narrative.",
+      "display_title": "Deadly Engagement",
+      "blurb": "True crime investigation into the murder of Denita Smith, a North Carolina graduate student, with interviews and evidence presented chronologically.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1838505248": {
+      "topics": [
+        "psychology/decision-making",
+        "education",
+        "education/self-improvement",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Research-driven podcast on human intelligence, IQ testing, and cognitive ability with expert interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1838863040": {
+      "topics": [
+        "tv-film/reviews",
+        "tv-film",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly analysis of television and film with Emmy award discussions and critical reviews.",
+      "display_title": "Contending at the Water Cooler",
+      "blurb": "Weekly film and TV criticism covering new releases, Emmy contenders, and industry trends with hosts Joey and Megan.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1838959910": {
+      "topics": [
+        "sports/golf",
+        "sports",
+        "comedy",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf-focused podcast featuring celebrity guests discussing the sport and their golf experiences with comedic commentary.",
+      "display_title": "We Need A Fourth",
+      "blurb": "Comedians and athletes discuss golf experiences with celebrity guests including PGA pros, actors, and athletes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1839058226": {
+      "topics": [
+        "true-crime",
+        "fiction",
+        "paranormal"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Creepypasta and internet horror stories presented with paranormal elements and unsettling narratives.",
+      "display_title": "Twisted Tales with Heidi Wong",
+      "blurb": "Paranormal obsessive Heidi Wong presents horror stories from creepypasta and internet folklore with chilling narratives.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1839075146": {
+      "topics": [
+        "tv-film/history",
+        "tv-film",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic film analysis where one host introduces another to beloved movies for the first time.",
+      "display_title": "Hix Nix Stix Pix",
+      "blurb": "Film lover Robb Spewak introduces first-time viewer Josh Sroka to classic movies, discussing their cultural impact.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1839323732": {
+      "topics": [
+        "music/classical",
+        "music",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/classical",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classical music interviews hosted by pianist Emanuel Ax with composers, performers, and creative voices.",
+      "display_title": "Classical Music Happy Hour",
+      "blurb": "Pianist Emanuel Ax hosts relaxed conversations with classical musicians and creative voices about music and craft.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1839781664": {
+      "topics": [
+        "psychology",
+        "health/mental",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Applied Behavior Analysis education and clinical practice with expert BCBA and parent perspectives.",
+      "display_title": "ABA Beyond the Data",
+      "blurb": "ACE-approved podcast on Applied Behavior Analysis practice with BCBA host Jay Burton blending professional expertise with personal experience.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1840006724": {
+      "topics": [
+        "sports/tennis",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth tennis match analysis, tournament previews, and player commentary by Tennis Channel broadcaster.",
+      "display_title": "Monday Match Analysis",
+      "blurb": "Tennis Channel broadcaster Gill Gross provides detailed match analysis, tournament previews, and player insights.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1840201052": {
+      "topics": [
+        "sports/cricket",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local cricket club updates covering matches, players, and championships for Ormskirk Cricket Club.",
+      "display_title": "The OCC pod",
+      "blurb": "Ormskirk Cricket Club's official podcast covering club news, match updates, and player interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1840236194": {
+      "topics": [
+        "sports",
+        "sports/basketball",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Michigan sports coverage including interviews with athletes and coaches from multiple collegiate programs.",
+      "display_title": "Champ Media",
+      "blurb": "Champions Circle brand podcasts covering University of Michigan sports, featuring athlete and coach interviews.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1840945550": {
+      "topics": [
+        "business/non-profit",
+        "society",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of healing and transformation from Homeboy Industries with social justice and redemption focus.",
+      "display_title": "The Homeboy Way",
+      "blurb": "Stories of healing and kinship from Homeboy Industries exploring trauma, redemption, and social justice with Fr. Greg Boyle.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1840969592": {
+      "topics": [
+        "business/careers",
+        "business",
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "CEO interviews discussing strategic decisions, organizational growth, and leadership challenges.",
+      "display_title": "Founder's Mentality: The CEO Sessions",
+      "blurb": "In-depth interviews with world leaders discussing strategic decisions, growth challenges, and organizational transformation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1840993910": {
+      "topics": [
+        "food",
+        "food/cooking-science",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cooking show with celebrity chefs providing recipes, food trends, and kitchen banter.",
+      "display_title": "Chewed UP",
+      "blurb": "Celebrity chefs Clinton Kelly, Carla Hall, and Michael Symon share recipes, cooking tips, and unscripted kitchen conversations.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1841272232": {
+      "topics": [
+        "psychology",
+        "society",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Forgiveness, peacebuilding, and conflict resolution with interviews and science-backed insights.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1841275934": {
+      "topics": [
+        "sports/endurance",
+        "sports",
+        "adventure/exploration"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Freediving sport discussions covering competitive organizations, training, and instructor pathways.",
+      "display_title": "Freedivers Talk",
+      "blurb": "Hosts Tanner Pedersen and Julien Borde discuss freediving competitions, training, and becoming a certified instructor.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1841493344": {
+      "topics": [
+        "tv-film/reviews",
+        "tv-film",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film and TV criticism from the Black perspective with reviews and cultural analysis.",
+      "display_title": "SEATED",
+      "blurb": "Movie critics Tre'vell Anderson and Ray Love Jr. discuss films from the Black gaze and celebrate Black cinema.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1841732390": {
+      "topics": [
+        "food",
+        "culture/performing-arts",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Culinary interviews exploring chef careers, food memories, and restaurant stories.",
+      "display_title": "Chef's Table: Talks",
+      "blurb": "Creator David Gelb interviews chefs and food personalities about pivotal meals and culinary careers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1841924132": {
+      "topics": [
+        "religion/christianity",
+        "religion",
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christ-centered family ministry addressing faith, relationships, and parenting with scriptural teaching.",
+      "display_title": "Keeping Families Connected",
+      "blurb": "Christ-centered ministry podcast helping families with faith, marriage, and parenting challenges.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1842827522": {
+      "topics": [
+        "religion/judaism",
+        "religion",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Torah values and real-life challenges with honest conversations and fresh perspectives.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1842968648": {
+      "topics": [
+        "true-crime",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime limited series investigating a parasocial relationship that went wrong with mystery elements.",
+      "display_title": "Beth's Dead",
+      "blurb": "Monica Padman investigates a mysterious story with podcasters Elizabeth Laime and Andy Rosen from their shuttered podcast empire.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1843004660": {
+      "topics": [
+        "sports/volleyball",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nebraska volleyball program coverage with assistant coach Jaylen Reyes discussing team updates.",
+      "display_title": "Serve & Volley w/Nebraska Volleyball AC Jaylen Reyes",
+      "blurb": "Nebraska volleyball assistant coach Jaylen Reyes provides updates on team roster, schedules, and program news.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1843192364": {
+      "topics": [
+        "nature",
+        "adventure/exploration",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wildlife conservation stories with expert interviews and ecosystem discussion from The Wildlife Society.",
+      "display_title": "Our Wild Lives",
+      "blurb": "Katie Perkins and Ed Arnett share stories from wildlife professionals on conservation, ecosystems, and species protection.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1843424690": {
+      "topics": [
+        "paranormal",
+        "culture/pop-culture",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Horror and paranormal interviews mixing entertainment, spiritual claims, and unexplained phenomena.",
+      "display_title": "HORRORble Podcast",
+      "blurb": "Host Askia Booker interviews guests about paranormal experiences, spiritual practices, and unexplained phenomena.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1843649030": {
+      "topics": [
+        "gaming/design",
+        "gaming",
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.75
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dungeons & Dragons actual play podcast with humor, character development, and roleplay-focused storytelling.",
+      "display_title": "Leveling Up by Elvish Brew",
+      "blurb": "Humor-focused D&D actual play podcast featuring chaotic player characters and campaign-driven storytelling.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1843974560": {
+      "topics": [
+        "education/self-improvement",
+        "psychology",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women leaders, entrepreneurs, and creatives discussing personal storytelling, brand building, and impact.",
+      "display_title": "Rise & Roar with the Badass Lioness",
+      "blurb": "Host Ginine Emily Smith guides women leaders and creatives in crafting powerful stories and building platforms.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1844134928": {
+      "topics": [
+        "music/classical",
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/classical",
+          "confidence": 0.9
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian-language podcast on classical music composers with cultural and historical context.",
+      "display_title": "ClassicBaz",
+      "blurb": "Reza Taheri presents Persian-language discussions of classical composers and their historical significance.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1844215628": {
+      "topics": [
+        "culture/fashion",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Fragrance history, reviews, and collector discussions with deep dives into perfume formulations.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1844447336": {
+      "topics": [
+        "sports/golf",
+        "sports",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf analysis, PGA tour news, local course discussions, and equipment talks with insider perspective.",
+      "display_title": "Kash and Matty Talkin' Golf Podcast",
+      "blurb": "Broadcaster Steve Kashul and Matt Smith discuss PGA Tour news, local courses, and golf equipment.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1844498690": {
+      "topics": [
+        "history",
+        "education/courses",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professor Jiang's lectures on history, literature, and current events with academic analysis.",
+      "display_title": "Prof Jiang's Predictive History and other lectures",
+      "blurb": "Audio versions of Prof. Jiang's lectures covering history, great books, and game theory.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1844687216": {
+      "topics": [
+        "culture/books",
+        "fiction",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy book chapter-by-chapter analysis with focus on Brandon Sanderson's Mistborn series.",
+      "display_title": "Fantasy FanFellas",
+      "blurb": "Steven and Hayden dive deep into fantasy books chapter-by-chapter, currently covering Mistborn by Brandon Sanderson.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
+    },
+    "1844698298": {
+      "topics": [
+        "news/tech",
+        "computing",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily tech news commentary on AI industry developments, trends, and critical analysis.",
+      "display_title": "Pivot to AI",
+      "blurb": "Daily commentary on AI industry news and tech developments with critical perspective on industry trends.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-17-f05973c4",
+      "classified_at": "2026-08-17T00:52:51.348Z"
     }
   },
-  "built_at": "2026-08-16T16:51:40.477Z",
+  "built_at": "2026-08-17T00:52:51.348Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-16-fa0847e5",
+    "last_batch_id": "fresh-2026-08-17-f05973c4",
     "last_batch_tier": 1
   }
 }
