@@ -953,10 +953,54 @@ rather than an agricultural history. The segment is also 61 s, under the 75 s ta
 because the passage immediately after it turns into a 200,000-year-old Israeli site
 and cannot be included.
 
-### Beat 20 — the West African inheritance — **still empty, and now for a settled reason**
+### Beat 20 — the West African inheritance — **re-opened on new evidence, and still empty**
 
-**Revised 2026-08-17. The episode bought for this beat does not serve it, and the
-negative is clean.** `The Moreish Podcast — Caribbean Food History with Dr. Candice
+**Revised 2026-08-18. The beat was re-opened deliberately and it closed again.** The
+instruction to re-open it was well-reasoned and it is worth recording why it did not
+work, because the reasoning will recur.
+
+**The argument for re-opening.** The 2026-08-17 rejection below rests on a clean
+word-level zero: the Goucher episode contains none of the fourteen fire and technique
+terms. The jerk-in-Jamaica episode is the opposite profile — jerk 85, pimento 15, wood
+19, smoke 6, pit 2 — so on the evidence that closed the beat, it looked like the beat's
+best remaining candidate. Beat 20 also matters disproportionately: it is one of only
+three empty beats that are **writable from what we already hold** (§10e), and closing a
+beat with tape is worth about two segments bought anywhere else.
+
+**Why it fails anyway, and it is not a close call.** The jerk-in-Jamaica episode is
+`moreish-jerk-jamaica`. **It is already in the pool, it is already cut, and it is
+already beat 15's carrier** — `#266` and `#555`, two segments, which is the maximum a
+beat may take. It was re-read end to end against this beat and the remaining 806
+seconds outside those two cuts are a first-jerk-chicken anecdote, jerk competitions,
+whether the author's own cast-iron-and-oven version counts, and the appropriation
+argument about who may sell jerk. There is no West or Central African fire technique in
+it, no whole-animal butchery, no pepper-and-acid lineage traced back across the
+Atlantic, and no mechanism of transfer to the **American South**, which is the beat's
+actual subject.
+
+**The deeper reason the vocabulary signal misled, and this generalises.** Beat 20's
+fire terms all belong to beat 15's tradition. An episode rich in *jerk, pimento, pit,
+smoke* is rich in exactly the vocabulary of the Jamaican synthesis, and beat 15 is the
+beat that spends it. The fourteen-term count cannot separate "West African inheritance
+in the American South" from "Maroon practice in Jamaica" because the two beats share
+almost all their nouns — so on this beat, and only on this beat, **a high count is
+evidence for the neighbouring beat rather than for this one.** The two other new
+Caribbean episodes make the same point from the other side: `jamaica-the-connection-bet`
+has maroon 37 and africa 40 and **zero fire terms**, and `more-than-jerk-chicken-jam`
+has maroon 10 and africa 20 and no `jerk` at all. Between them they hold 2.9 hours of
+Maroon and Africa material and not one sentence of transmitted fire practice.
+
+**Verdict unchanged, and now on three spent English sources rather than two.** The
+2026-08-17 recommendation stands exactly as written: stop buying general food-history
+and Caribbean episodes for this beat. `A Taste of the Past — Black Smoke` and any
+episode with Michael Twitty as guest are the remaining shots. If neither lands, beat 20
+is a narration beat permanently — and §10e's finding that it is **writable and already
+demonstrated**, with a 182-word Carry drafted and all six tests run in
+`narration-craft.md` §7b, means that is not a bad outcome. **Closing it with tape would
+have been better than narrating it; narrating it is not a failure state.**
+
+*Revised 2026-08-17, retained. The episode bought for this beat does not serve it, and
+the negative is clean.* `The Moreish Podcast — Caribbean Food History with Dr. Candice
 Goucher` (3,466 s) was transcribed specifically for beat 20 and read end to end. It
 contains, in 6,920 words, **zero occurrences of barbecue, barbacoa, jerk, Maroon,
 smoke, fire, grill, pit, charcoal, wood, butcher, allspice, pimento or vinegar.** The
