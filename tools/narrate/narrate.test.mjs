@@ -191,17 +191,26 @@ test("an edited script re-bills, and only the edited one", () => {
 test("the dumped index round-trips and is key-sorted for a stable diff", () => {
   /* The index is meant to be committed; an unstable key order would churn the
      diff on every run and make review useless.
-     MUTATION THAT KILLS THIS: drop the `.sort()` in dump(). */
+     MUTATION THAT KILLS THIS: drop the `.sort()` in dump().
+
+     The keys here are deliberately PLAIN STRINGS in a known-unsorted insertion
+     order, not real hashes. The first draft of this test recorded three real
+     scripts and compared `Object.keys(dump())` against its own `.sort()` — which
+     is tautological when dump() sorts, and happened to pass when it did NOT,
+     because the sha256 hashes of those three particular scripts came out in
+     ascending insertion order. Mutation testing caught it surviving. A cache key
+     is opaque to dump(), so the contract can be tested with strings that make
+     the ordering visible. */
+  const unsorted = new NarrationCache({ entries: { ccc: { chars: 3 }, aaa: { chars: 1 }, bbb: { chars: 2 } } });
+  assert.deepEqual(Object.keys(unsorted.dump().entries), ["aaa", "bbb", "ccc"]);
+
+  // And a real entry survives a dump/restore as a cache hit.
   const cache = new NarrationCache();
-  for (const t of ["zzz", "aaa", "mmm"]) {
-    const p = cache.plan(spec(t));
-    cache.record(p.key, { chars: p.chars });
-  }
-  const dumped = cache.dump();
-  const keys = Object.keys(dumped.entries);
-  assert.deepEqual(keys, [...keys].sort());
-  const restored = new NarrationCache(dumped);
-  assert.equal(restored.plan(spec("aaa")).billedChars, 0, "a restored index must still be a hit");
+  const p = cache.plan(spec("a line of narration"));
+  cache.record(p.key, { chars: p.chars });
+  const restored = new NarrationCache(cache.dump());
+  assert.equal(restored.plan(spec("a line of narration")).billedChars, 0, "a restored index must still be a hit");
+  assert.equal(restored.plan(spec("a different line")).billable, true);
 });
 
 /* ---------- the adapter: dry by construction ---------- */
