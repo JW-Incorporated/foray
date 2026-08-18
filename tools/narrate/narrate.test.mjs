@@ -271,6 +271,37 @@ test("the request carries the key only when there is one, and is otherwise ident
   assert.equal(dry.body.text, "a\nb");
 });
 
+test("the request body carries exactly the fields the cache key covers", () => {
+  /* THE HOLE THIS CLOSES. `assertKeyInputsComplete` guards the cache SPEC, but
+     nothing stopped someone adding a field to buildRequest()'s BODY — say
+     `voice_settings` or `seed` — which changes the returned audio while leaving
+     the key untouched and the guard silent. Then every existing entry becomes a
+     stale hit serving audio generated under different settings.
+
+     So the body's shape is pinned. Adding a field here fails this test, which
+     forces the author to decide whether it belongs in KEY_INPUTS.
+     MUTATION THAT KILLS THIS: add `seed: 42` to the body in buildRequest(). */
+  const body = buildRequest(spec("t")).body;
+  assert.deepEqual(Object.keys(body).sort(), ["model_id", "text"]);
+  /* And each of those maps to a hashed input: `text` -> "text", `model_id` ->
+     "modelId". The other two hashed inputs travel in the URL, not the body. */
+  const url = buildRequest(spec("t")).url;
+  assert.match(url, /\/text-to-speech\/v1\?/, "voiceId is in the path");
+  assert.match(url, /output_format=mp3_44100_64/, "outputFormat is in the query");
+});
+
+test("a plan never carries the api key, because a plan is a reportable object", () => {
+  /* The CLI prints plans and a caller may log or serialise one. A secret must
+     not ride inside it. The billable unit is the BODY and the key only ever
+     reaches a HEADER, so omitting it costs nothing.
+     MUTATION THAT KILLS THIS: in adapter.plan(), restore
+     `buildRequest({ ...specFor(text), apiKey })`. */
+  const adapter = createAdapter({ apiKey: "sk-secret-value", transport: capturingTransport(), voiceId: "v1" });
+  const p = adapter.plan({ id: "b", text: "some narration" });
+  assert.equal(p.request.headers["xi-api-key"], undefined);
+  assert.ok(!JSON.stringify(p).includes("sk-secret-value"), "no serialisation of a plan may leak the key");
+});
+
 test("a dry run never writes cache entries", () => {
   /* The most damaging bug this pipeline could have: a dry run that recorded
      entries would make the next run believe the audio exists and skip it, so

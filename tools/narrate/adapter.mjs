@@ -124,8 +124,14 @@ export function createAdapter(opts = {}) {
    */
   function plan(beat = {}) {
     const text = beat.text ?? "";
-    // Build the REAL request and measure IT. This is the whole design.
-    const request = buildRequest({ ...specFor(text), apiKey });
+    /* Build the real request and measure ITS BODY. This is the whole design.
+       Deliberately WITHOUT the api key: a plan is a reportable object — the CLI
+       prints it, a caller may log or serialise it — and a secret must not ride
+       along inside it. That costs nothing, because the key only ever reaches a
+       HEADER and the billable unit is the BODY: "the request carries the key only
+       when there is one, and is otherwise identical" pins `dry.body` as deep-equal
+       to `real.body`, so the string measured here is the string sent. */
+    const request = buildRequest(specFor(text));
     const chars = request.body.text.length;
     const cachePlan = cache.plan(specFor(text));
 
@@ -200,7 +206,19 @@ export function createAdapter(opts = {}) {
     if (!p.billable) return { ...p, skipped: "cached", bytes: null };
     if (p.empty) return { ...p, skipped: "empty", bytes: null };
 
-    const result = await transport(p.request);
+    /* The same request with the key attached. Built here rather than carried on
+       the plan so no secret sits inside a reportable object, and then CHECKED
+       against what the plan measured — the guarantee this module exists for is
+       "we are billed for the string we counted", and this is that guarantee
+       executing at runtime rather than only in a test. */
+    const keyed = buildRequest({ ...specFor(beat.text ?? ""), apiKey });
+    if (keyed.body.text.length !== p.chars) {
+      throw new Error(
+        `internal: planned ${p.chars} characters but the outgoing body has ${keyed.body.text.length}. ` +
+        `buildRequest() must not vary its body with the api key.`
+      );
+    }
+    const result = await transport(keyed);
     // Recorded ONLY after a real generation. A dry run must never write here —
     // see `cache.record`'s comment.
     cache.record(p.key, {
