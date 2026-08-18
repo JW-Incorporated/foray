@@ -748,6 +748,18 @@ locally — either from six `classify/*` PRs, or from one
 
 ### 11. Put a Foray on a real phone with the screen off — the one test no machine here can run
 
+> **RUN A SECOND TIME, 2026-08-17, and both faults it found are now fixed.** Wyatt drove with the
+> screen off. First result: *"Off screen play worked well, it didn't get hung up"* — which settled
+> the entitlement question, because the Simulator's ~30 s suspension came from an **unsigned** build
+> being unable to hold `com.apple.runningboard.assertions.webkit`. Second result, on the harder
+> `capital-types-1` (**10 of 21 cross-episode seams** against `grilling-history-2`'s 5 of 9): it
+> stopped at a seam and then resumed to the wrong place. The stop is **#224**; the transport lying
+> about playing and the fabricated resume position were **#263**, fixed in **#266**.
+>
+> **What is still worth a phone:** two consecutive cross-episode seams with the screen off, on a
+> build at or after `813bcc2`, and this time with the local diagnostic record open (**#264**) so the
+> result carries seam durations instead of an anecdote. Android remains untested on a device.
+
 **Tag:** `[BLOCKING]` for any store submission · **Time:** ~5 minutes to start, then a 15-minute walk · **Owner:** Joey (an iPhone) and/or Wyatt (an Android phone) — either one alone is worth doing
 
 > **Substantially answered 2026-08-17. Wyatt ran this on a real phone and it FAILED — filed as #224.** The failure was not the one this item was written to catch. Read the two paragraphs below before running it again; what remains to test is narrower and specific.
@@ -905,6 +917,10 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 
 ### 16. On a Mac: generate the iOS shell, add one `Info.plist` line, and build it
 
+> **STATUS IS STALE — read the obsolescence box below before doing anything.** CI has built this
+> on `macos-latest` and succeeded: simulator Debug **and** arm64 device Release, unsigned. Nothing
+> here needs a Mac any more; what remains is **signing**, which is item **#19**.
+
 **Tag:** no longer blocking for the build · **Time:** ~0 minutes — CI does this now · **Owner:** nobody; kept for the signing step only
 
 > **Largely obsolete as of 2026-08-17 — do not follow the steps below as written; two of them are wrong.** PR #220 landed `.github/workflows/ios-build.yml`, a `macos-latest` job that does everything this item describes, and **it has already succeeded**: `BUILD SUCCEEDED` for the iOS Simulator (Debug) **and** for an arm64 device (Release, unsigned), with `window.Capacitor` present, 9 plugins loaded, **0 CSP violations**, and `UIBackgroundModes = ["audio"]` verified by Apple's own plist parser. Run it with `gh workflow run ios-build.yml --ref main -f probes=true`; ~8 minutes, free while the repo is public.
@@ -1011,6 +1027,12 @@ For a product whose promise is "four picks, every day", that is the difference b
 
 ### 18. On Android: settle whether our CSP kills Capacitor's bridge
 
+> **ANSWERED BY INFERENCE, NOT BY MEASUREMENT, 2026-08-17 (#232).** Our CSP does **not** block
+> Capacitor's bridge: on 8.5.0 `Bridge.loadWebView()` prefers `WebViewCompat.addDocumentStartJavaScript`
+> and nulls the injector, and on the fallback path the script lands at `indexOf("<head>")`, ahead of
+> the CSP meta. **Nothing was executed in a WebView** — no emulator, no device — so this stays open
+> as a measurement even though the reasoning is solid. Do not upgrade it to a measurement.
+
 **Tag:** `[BLOCKING]` for Android · **Time:** ~45 minutes, most of it downloads · **Owner:** Wyatt (or anyone with an Android phone and a USB cable)
 
 **Why it matters.** This is the **top open risk** in the whole native-app change, and it can be settled by reading one line in a console.
@@ -1116,6 +1138,12 @@ One iOS finding that does bear on your step 6, though: `navigator.serviceWorker`
 ---
 
 ### 20. Revoke one leaked anonymous Supabase session, and delete one CI artifact
+
+> **FOUNDER REPORTS THE REVOKE IS DONE, 2026-08-17.** Wyatt: *"I did that urgent step on supabase but nothing else."*
+> So the leaked anonymous session is revoked and **the credential half of this item is closed**.
+> The artifact deletion is **still open**, and is now hygiene rather than urgent: the token it
+> carried is inert. Delete artifact `9290947062` only **after** the numbers it holds are quoted in
+> committed docs — for a while it was the only place the seam measurement existed.
 
 **Tag:** `[BLOCKING]` · **Time:** ~5 minutes ·
 **Owner:** Wyatt (it is a credential, so CLAUDE.md decision-authority item 2 puts
