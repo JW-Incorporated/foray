@@ -2062,6 +2062,17 @@ async function deleteRemoteData() {
  * with a reason, because a cleared mirror is not cleared storage.
  */
 async function clearLocalData() {
+  /* FIRST, AND HERE RATHER THAN IN `stopForDataDeletion()` (#264). `purge()` empties
+     both tiers of every `cp_` key including `cp_diag`, but the player module holds
+     that ring IN MEMORY — so without this the next time the listener pockets their
+     phone, the record is written straight back under a key they just asked to be
+     emptied. It belongs in THIS function and not in the stop, because the stop runs
+     before the server step and a remote failure leaves the device untouched on
+     purpose; clearing there destroyed the record on a path that promises not to. */
+  try {
+    if (typeof window.forayForgetDiagnostics === "function") window.forayForgetDiagnostics();
+  } catch (_) { /* a diagnostic that will not clear is not a reason to refuse a deletion */ }
+
   const store = storageBackend();
   if (!store) return { ok: false, keys: [], remaining: [], reason: "no-storage" };
   if (typeof store.purge === "function") {

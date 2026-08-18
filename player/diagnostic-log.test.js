@@ -145,7 +145,10 @@ test("the stated cap is 200 entries — roughly three complete Forays", () => {
      MUTATION: change DIAG_CAP without changing `docs/legal/privacy-policy.md`
      §1's "200" — this fails, and the policy row is then a false statement. */
   assert.equal(DIAG_CAP, 200);
-  assert.equal(STAGE_CAP, 24);
+  /* 12, down from 24 after review did the arithmetic on `save()`: the ring is
+     re-serialised once per stage, so a stage cap is a cost multiplier as much as a
+     bound. A healthy seam produces about seven. */
+  assert.equal(STAGE_CAP, 12);
 });
 
 test("a sequence number SURVIVES eviction, so a wrapped ring is not a cleared one", () => {
@@ -468,6 +471,174 @@ test("a stop landing inside an open seam does not hide how far the load got", ()
   assert.equal(seam.lastStage, "reconcile.externalStop", "the reconcile IS the last thing that happened");
   const line = formatDiagnosticReport(log.read()).split("\n").find((l) => / seam /.test(l));
   assert.match(line, /waiting > stalled/, "and the line still says the load never settled");
+});
+
+test("A CUT BEAT CLOSES THE SEAM, so a listener's pause is never measured as a gap", () => {
+  /* THE WORST BUG REVIEW FOUND IN THIS CHANGE. `_cutSeamGap` fires from `_transport`
+     for pause, next, previous, reconcile and dispose, so pressing pause inside the
+     2.0 s beat used to leave the seam row OPEN — and then the `playing` that came ten
+     minutes later measured the listener's own pause as `observedGapMs: 600000`. That
+     number became the report's `worst` and dragged its median, which are the two
+     headline numbers this whole change exists to produce.
+
+     MUTATION: go back to `if (hit && this._seam) { this._seam.cutBy = hit[1]; }` with
+     no `_closeSeam`. The gap reads 600000 and this fails on the first assertion. */
+  const { diag, log, clock: c } = mk();
+  diag.note(REAL.outPoint);
+  diag.note(REAL.armed);
+  c.tick(400);
+  diag.note("seam.gap.cut.pause");
+  c.tick(600_000);
+  diag.mediaEvent("playing");
+
+  const seams = log.entries.filter((e) => e.type === "seam");
+  assert.equal(seams.length, 1, "one boundary, one row");
+  assert.equal(seams[0].observedGapMs, null, "a beat the listener cut was never measured");
+  assert.equal(seams[0].cutBy, "pause", "and the row says what ended it");
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /cut short by pause/);
+  /* NOT A STALL EITHER. Counting it as one would make every listener who pauses
+     mid-beat produce a failure the instrument invented. */
+  assert.match(text, /seams 1: 0 measured, 0 never started, 1 cut short/);
+  assert.doesNotMatch(text, /NEVER STARTED/);
+});
+
+test("a cut beat does not swallow the NEXT boundary's row", () => {
+  /* THE THIRD CONSEQUENCE, and the quietest. `_openSeam` returns an already-open
+     seam, so with the cut leaving the row open, the next real boundary overwrote its
+     ids, deadline and asked gap — two boundaries collapsed into one row, and the seam
+     count came out low. A count that under-reports is worse than no count.
+
+     MUTATION: same as above. `seams.length` is 1 and this fails. */
+  const { diag, log, clock: c } = mk();
+  diag.note(REAL.outPoint);
+  diag.note(REAL.armed);
+  diag.note("seam.gap.cut.skipToNext");
+  c.tick(5000);
+  // The skip's own load and boundary, later in the Foray.
+  diag.note("outPoint.reached target=300.00 at=300.01 overshoot=0.010s");
+  diag.note("seam.gap.armed 2.0s beat: sb -> sc");
+  c.tick(2100);
+  diag.mediaEvent("playing");
+
+  const seams = log.entries.filter((e) => e.type === "seam");
+  assert.equal(seams.length, 2, "two boundaries, two rows");
+  assert.equal(seams[0].cutBy, "skipToNext");
+  assert.equal(seams[0].toId, "sb", "the cut row keeps the ids it had");
+  assert.equal(seams[1].toId, "sc", "and the later boundary gets its own");
+  assert.equal(seams[1].observedGapMs, 2100);
+});
+
+test("a recognised audio route is recorded as a FACT, never as its name", () => {
+  /* `route.autoResume.knownCar=<name>` carries the audio route's name — a device a
+     person named. This repo's own tests use "Some Headphones" and "Civic"; a real one
+     says somebody's first name. It is not a number, not an authored segment id and
+     not a stage name, so it is none of the three classes this record may hold — and
+     this record is pasted into issues by hand.
+
+     Latent rather than live today (no JS caller passes a route name yet; the native
+     shells will), which is exactly how it would have shipped unnoticed.
+
+     MUTATION: restore the `(\S+)` capture and `why: \`autoResume.${hit[1]}\``. The
+     name appears in the blob and this fails. */
+  const { diag, log, store } = mk();
+  diag.note("route.autoResume.knownCar=Wyatts-Civic");
+  const stop = log.entries.find((e) => e.type === "stop");
+  assert.equal(stop.source, "route");
+  assert.equal(stop.known, true, "the diagnostic fact survives");
+  assert.equal(stop.why, "autoResume.knownRoute");
+  assert.ok(
+    !store.getItem(DIAG_KEY).includes("Wyatts"),
+    `a device name reached the record:\n${store.getItem(DIAG_KEY)}`
+  );
+  assert.ok(!store.getItem(DIAG_KEY).includes("Civic"));
+});
+
+test("a caller field cannot overwrite an entry's seq, wall or type", () => {
+  /* `record()` spreads `...fields` BEFORE the frame for this reason. Spread after and
+     a stray `wall` silently replaces the clock that every ordering, eviction and
+     cadence claim in this file rests on. Nothing collides today, which is the only
+     reason it was not already a bug.
+     MUTATION: move `...fields` to the end of the object literal. All three fail. */
+  const { log, clock: c } = mk();
+  const e = log.record("seam", { seq: 999, wall: 1, type: "notASeam", fromId: "sa" });
+  assert.equal(e.seq, 1);
+  assert.equal(e.wall, c.now());
+  assert.equal(e.type, "seam");
+  assert.equal(e.fromId, "sa", "and the legitimate field still lands");
+});
+
+test("one unrenderable row is dropped; the rest of the record still reads", () => {
+  /* A row with a missing or non-numeric `wall` used to poison the record
+     PERMANENTLY: `lineFor` formats `new Date(e.wall)`, which throws a RangeError, so
+     the report threw, the surface said "the record could not be read", `save()`
+     faithfully rewrote the bad row, and the only way out was Clear — which discards
+     the evidence.
+
+     MUTATION 1: drop the `Number.isFinite(e.wall)` guard from `_load`. `formatDiagnosticReport`
+     throws and this fails.
+     MUTATION 2: keep the guard but remove `clockOf`'s try/catch — that one is belt to
+     these braces and is not covered here, deliberately; it exists for a row this
+     guard has not thought of. */
+  const store = fakeStore();
+  store.map.set(DIAG_KEY, JSON.stringify({
+    v: 1, cap: 200, seq: 4, dropped: 0,
+    entries: [
+      { seq: 1, wall: 1_700_000_000_000, type: "boot", hidden: false },
+      { seq: 2, wall: "not a clock", type: "seam" },
+      { seq: 3, type: "seam", fromId: "sa" },
+      { seq: 4, wall: 1_700_000_001_000, type: "outPoint", overshootSec: 0.02 },
+    ],
+  }));
+  const log = new DiagnosticLog({ storage: store, now: clock().now });
+  assert.deepEqual(log.entries.map((e) => e.seq), [1, 4], "the two unrenderable rows are gone");
+  const text = formatDiagnosticReport(log.read());
+  assert.match(text, /overshoot 0\.020s/, "and the readable rows still read");
+  assert.match(text, /entries 2 of 200/);
+});
+
+test("reset() drops the seam in flight, so a Clear mid-playback loses nothing after it", () => {
+  /* `clear()` removes the ring; this is its other half. Without it, a Clear pressed
+     during playback left `_seam` pointing at an entry no longer in `entries` — so
+     `_openSeam` handed that orphan back for the NEXT boundary, which was written
+     outside the record and never appeared; and the orphan's next stage called
+     `save()`, putting `cp_diag` back with `entries: []` one tick after `clear()`
+     deliberately removed it.
+
+     MUTATION: delete `this._seam = null` from `reset()`. The seam after the Clear is
+     missing and the first assertion fails. */
+  const { diag, log, store, clock: c } = mk();
+  diag.note(REAL.outPoint);
+  diag.note(REAL.armed);
+  // The founder presses Clear while a beat is in flight.
+  log.clear();
+  diag.reset();
+  assert.equal(store.getItem(DIAG_KEY), null, "the key really went");
+
+  // The seam that follows must land in the record like any other.
+  diag.note("outPoint.reached target=300.00 at=300.01 overshoot=0.010s");
+  diag.note("seam.gap.armed 2.0s beat: sb -> sc");
+  c.tick(2100);
+  diag.mediaEvent("playing");
+  const seams = log.entries.filter((e) => e.type === "seam");
+  assert.equal(seams.length, 1, "the seam after the Clear is IN the record");
+  assert.equal(seams[0].toId, "sc");
+  assert.equal(seams[0].observedGapMs, 2100);
+});
+
+test("a Clear mid-seam does not put the key back with an empty record", () => {
+  /* The other half of the same bug, and the one that breaks a promise rather than a
+     measurement: `clear()`'s own comment says it removes the key so that "Delete my
+     data" does not leave a `cp_` row on a device a listener just emptied. An orphan
+     seam's next stage undid exactly that.
+     MUTATION: delete `this._seam = null` from `reset()`. `cp_diag` comes back and this
+     fails. */
+  const { diag, log, store } = mk();
+  diag.note(REAL.outPoint);
+  log.clear();
+  diag.reset();
+  diag.note(REAL.hold);          // a stage from the seam that was in flight
+  assert.equal(store.getItem(DIAG_KEY), null, "no cp_ key came back");
 });
 
 test("the end of the queue is not a stall", () => {

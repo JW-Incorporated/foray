@@ -454,6 +454,61 @@ test("nothing about the record enters cp_events", () => {
   );
 });
 
+test("clearing the device forgets the record, and the STOP does not", () => {
+  /* THE DELETE PROMISE, and the ordering is the whole finding. `purge()` removes
+     `cp_diag` from both tiers like any other `cp_` key, but the player module holds
+     that ring in memory — so without a call the next `visibilitychange` writes every
+     purged entry back under a key a listener just asked to be emptied.
+
+     It has to be called from `clearLocalData()` and NOT from
+     `stopForDataDeletion()`. The stop runs FIRST in `deleteMyData`, before the server
+     step, and a remote failure returns early with the device deliberately untouched —
+     "its token is the only way back to those rows". A clear in the stop destroyed the
+     field record on exactly that path: someone offline who taps Delete, fails the
+     call and declines device-only lost it silently.
+
+     MUTATION 1: remove the `forayForgetDiagnostics()` call from `clearLocalData`. The
+     first assertion fails.
+     MUTATION 2: move it back into `stopForDataDeletion`. `player/diagnostic-record.test.js`
+     fails on the same finding from the other side. */
+  const forgot = [];
+  const { ctx } = mount();
+  ctx.window.forayForgetDiagnostics = () => { forgot.push(true); return true; };
+  ctx.clearLocalData();
+  assert.strictEqual(forgot.length, 1, "clearing the device must forget the record");
+
+  const src = APP_SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  const stop = src.slice(src.indexOf("stopForDataDeletion"), src.indexOf("stopForDataDeletion") + 400);
+  assert.ok(
+    !/forayForgetDiagnostics|forayDiagnosticClear/.test(stop),
+    "the stop must not clear it: a remote failure leaves the device untouched on purpose"
+  );
+});
+
+test("a page whose player module never loaded still deletes cleanly", async () => {
+  /* The call is guarded, because `clearLocalData` runs on a page where the ES module
+     may have failed to load at all — and a missing diagnostic bridge is not a reason
+     to refuse a deletion. `app.js`'s own comment on the `stopForDataDeletion` call
+     makes the same argument.
+     AWAITED, and that is not a formality: `clearLocalData` is `async`, so an unguarded
+     call returns a REJECTED PROMISE rather than throwing. A synchronous
+     `assert.doesNotThrow` passed with the guard removed — the mutation survived until
+     the await went in, which is the vacuous-test shape this repo keeps producing.
+
+     TWO GUARDS, and the test statement is about the OUTCOME rather than either one:
+     the `typeof` check for the ordinary case (the module is simply not there) and the
+     try/catch for a bridge that throws. Removing only the `typeof` check leaves the
+     try/catch to absorb it, so that mutation is inert on purpose — belt and braces
+     where the cost of a wrong answer is a deletion that refuses to run.
+
+     MUTATION: remove BOTH. The promise rejects, the delete never reaches `purge()`,
+     and this fails. */
+  const { ctx } = mount({ report: null });
+  delete ctx.window.forayForgetDiagnostics;
+  const out = await ctx.clearLocalData();
+  assert.ok(out && typeof out === "object", "the delete still returns a result");
+});
+
 test("the transmitted-row mapper has no case for anything diagnostic", () => {
   /* A source-level check, and it earns its place: the two tests above prove the
      SURFACE sends nothing, and this one proves the SYNC has no route for it even if

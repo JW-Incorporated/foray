@@ -197,25 +197,58 @@ const diag = new PlayerDiagnostics({
   log: diagLog,
   isHidden: () => typeof document !== "undefined" && document.hidden === true,
 });
-/* AFTER HYDRATION, and this ordering is load-bearing rather than tidy. The ring is
-   read lazily on its first write, and the first write must not happen before
-   `hydrate()` has pulled the IndexedDB tier up: localStorage is the tier Safari
-   clears after about seven days, so the case where the two disagree is the case
-   where the durable copy is the only copy — and a `boot` row written first would
-   have overwritten it with an empty ring. `storageReady` never rejects (every tier
-   failure is caught into `health()`), but it is attached anyway. */
-storageReady.then(() => diag.boot()).catch(() => {});
-if (typeof document !== "undefined") {
-  document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
-}
+/* EVERY WRITER WAITS FOR HYDRATION, and it is the LISTENER — not just the boot row
+   — that has to wait. This ordering is load-bearing rather than tidy.
+
+   The ring is read lazily on its first write, and that first write must not happen
+   before `hydrate()` has pulled the IndexedDB tier up. localStorage is the tier
+   Safari clears after about seven days without a visit, so the case where the two
+   tiers disagree is the case where the durable copy is the ONLY copy — and a write
+   that landed first would read an empty localStorage, stamp a newer `updatedAt`, win
+   `isNewer`, and overwrite the record it was built to keep.
+
+   A FIRST ATTEMPT AT THIS DEFERRED ONLY `diag.boot()` AND WAS NOT ENOUGH, which is
+   why the registration itself is inside the `then` now: `visibility()` records too,
+   and a listener who pockets the phone during the hydration window would have been
+   the first writer. A transition genuinely missed inside that window costs one row
+   and no data; the alternative cost the whole record.
+
+   `storageReady` never rejects (every tier failure is caught into `health()`), but
+   the catch is attached anyway. */
+storageReady.then(() => {
+  diag.boot();
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
+  }
+}).catch(() => {});
 
 /** The record, as text, for the surface app.js builds. Published beside
     `forayStorageHealth` and for the same reason: app.js is a classic script and
     cannot import this module, so anything it needs is handed over on `window`. */
 window.forayDiagnosticReport = () => formatDiagnosticReport(diagLog.read());
-/** Empty it. The founder's loop is clear, drive, copy — three earlier drives in
-    the buffer make the drive under test hard to find. */
-window.forayDiagnosticClear = () => { diagLog.clear(); return true; };
+/**
+ * Empty it — the founder's loop is clear, drive, copy, and three earlier drives in
+ * the buffer make the drive under test hard to find.
+ *
+ * BOTH HALVES, and the second is not optional. `diagLog.clear()` removes the ring;
+ * `diag.reset()` drops what is in flight. Without the reset, a Clear pressed during
+ * playback leaves the open seam pointing at an entry no longer in the ring — so the
+ * next boundary is written outside the record and lost, and the orphan's next stage
+ * calls `save()`, putting `cp_diag` back one tick after it was deliberately removed.
+ */
+window.forayDiagnosticClear = () => { diagLog.clear(); diag.reset(); return true; };
+/**
+ * The same clear, for "Delete my data".
+ *
+ * A SEPARATE NAME FROM A SEPARATE CALLER, because the two are called at different
+ * moments and one of them must not be early. `purge()` removes `cp_diag` from both
+ * tiers like any other `cp_` key — but this module holds the ring IN MEMORY, so
+ * without this the next `visibilitychange` writes every purged entry straight back
+ * under a key a listener has just asked to be emptied. `app.js` calls it from the
+ * LOCAL clear, not from `stopForDataDeletion`: a run that fails at the server step
+ * leaves the device untouched on purpose, and that has to include this record.
+ */
+window.forayForgetDiagnostics = () => { diagLog.clear(); diag.reset(); return true; };
 
 /* ---------- DOM ---------- */
 
@@ -556,13 +589,13 @@ function persistForayProgress({ force = false } = {}) {
   const elapsedSec = forayPlayhead();
   if (elapsedSec == null) { note({ wrote: false, why: "playhead-unknown" }); return; }
   const seg = forayProgressSegments()[foray.index] ?? null;
-  note({
-    wrote: true,
-    elapsedSec: Math.round(elapsedSec),
-    segmentId: seg ? seg.id : null,
-    intoSec: seg ? Math.round(Math.max(0, elapsedSec - seg.startSec)) : 0,
-  });
-  forayProgress.save({
+  /* `wrote` IS THE STORE'S ANSWER, NOT OUR INTENTION. `ForayProgressStore.save`
+     returns false when `writeProgress` is refused — a full localStorage with no live
+     durable tier — and counts it into `refusedWrites`. An earlier draft recorded
+     `wrote: true` before this call and threw the return value away, which put a false
+     statement in the one row that exists because "there is no record of what the
+     error path wrote". A diagnostic that lies is worse than a missing one. */
+  const wrote = forayProgress.save({
     forayId: id,
     title: foray.resolved.title,
     elapsedSec,
@@ -571,6 +604,13 @@ function persistForayProgress({ force = false } = {}) {
     segmentId: seg ? seg.id : null,
     intoSec: seg ? Math.max(0, elapsedSec - seg.startSec) : 0,
     force,
+  });
+  note({
+    wrote,
+    ...(wrote ? {} : { why: "store-refused" }),
+    elapsedSec: Math.round(elapsedSec),
+    segmentId: seg ? seg.id : null,
+    intoSec: seg ? Math.round(Math.max(0, elapsedSec - seg.startSec)) : 0,
   });
 }
 
@@ -1458,14 +1498,19 @@ const ForayPlayer = {
    * one outcome a delete control must never produce. Nothing booted is not an
    * error here: no element, no queue, nothing writing.
    */
+  /**
+   * Stop, and persist nothing on the way out.
+   *
+   * THE FIELD RECORD IS NOT CLEARED HERE, and that is a correction. This method runs
+   * FIRST in `deleteMyData`, before the server step, and a remote failure returns
+   * early with the device deliberately untouched — "its token is the only way back
+   * to those rows". Clearing the ring here destroyed it on exactly that path: a
+   * listener who is offline, taps Delete, fails the server call and then declines
+   * "clear this device only" keeps every other `cp_` key and silently loses the one
+   * record we asked them to collect. `forgetDiagnostics()` is called from the local
+   * clear instead, which only runs when the device really is being emptied.
+   */
   async stopForDataDeletion() {
-    /* BEFORE the early return, and outside it. The field record is a `cp_` key
-       like any other, so `purge()` removes it from both tiers — but this module
-       holds the ring IN MEMORY, and the very next `visibilitychange` would write
-       every purged entry straight back under a new key. A listener who asked for
-       their data to be gone must not get a seam log back for pocketing the phone.
-       Unconditional, because that listener may never have pressed play. */
-    diagLog.clear();
     if (!manager || !ui) { foray = null; return false; }
     await stopAndClose({ persist: false });
     return true;

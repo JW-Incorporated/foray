@@ -61,25 +61,26 @@ const FLOORS = {
                                     the cap and its eviction DIRECTION, the
                                     durable-on-write property, the parse table,
                                     and the rule that no telemetry TEXT is ever
-                                    stored. 29 mutations killed, each named in
+                                    stored. 41 mutations killed, each named in
                                     the test that kills it.
        `diagnostic-record.test.js`  the wiring, through the real client, the real
                                     manager and the real backend over a real seam.
                                     The only thing in the repo that would
                                     notice a telemetry FORMAT change silently
-                                    emptying the record. 17 mutations killed.
+                                    emptying the record, and the suite a review
+                                    round grew by seven. 26 mutations killed.
        `diagnostics-surface.test.js` the drawer item and the sheet: reachable on a
                                     phone, copyable, and — asserted, not assumed —
                                     making no network request and never entering
-                                    the ungated `cp_events` pipeline. 18 mutations
+                                    the ungated `cp_events` pipeline. 22 mutations
                                     killed, one of which is why that suite boots the
                                     real `init()`.
 
      Zero slack, like media-session and data-deletion below and for the same
      reason: what these guard is a set of decisions each one edit from its
      opposite. Raise them when the suites grow. */
-  "player/diagnostic-log.test.js": 31,
-  "player/diagnostic-record.test.js": 14,
+  "player/diagnostic-log.test.js": 38,
+  "player/diagnostic-record.test.js": 21,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
@@ -91,7 +92,11 @@ const FLOORS = {
   "player/foray-queue.test.js": 37,
   "player/foray-resolve.test.js": 54,
   "player/foray-sources.test.js": 24,
-  "player/html-audio-backend.test.js": 108,
+    /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
+     became reachable when `player/client.js` gave this backend its first real sink —
+     two `_emit` calls sit inside a Promise executor — so the guard and its test landed
+     together. */
+  "player/html-audio-backend.test.js": 109,
   /* What the player believes after an interruption it could not observe (#263).
      Floored because this suite is the only thing in the repo that boots
      `player/client.js` for real, and the cheapest way to lose that is for
@@ -135,7 +140,7 @@ const FLOORS = {
   "test/data-deletion.test.js": 51,
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
-  "test/diagnostics-surface.test.js": 17,
+  "test/diagnostics-surface.test.js": 19,
   /* The standing gate on topic ids in `data/*.json`. Floored because the metric
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a

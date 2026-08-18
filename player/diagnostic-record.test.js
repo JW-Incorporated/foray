@@ -324,13 +324,29 @@ test("the first write waits for storage to hydrate", () => {
      assertions fail. */
   const src = fs.readFileSync(new URL("./client.js", import.meta.url), "utf8");
   const code = src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  /* EVERY WRITER, not only `boot()`. The first fix deferred the boot row and left the
+     `visibilitychange` registration at module scope — and `visibility()` records too,
+     so a listener who pocketed the phone during the hydration window was still the
+     first writer and still overwrote the durable copy. Both are inside the `then` now.
+
+     MUTATION 1: move `diag.boot()` back to module scope. The first two fail.
+     MUTATION 2: move only the `addEventListener` back out. The third fails. */
+  const deferred = /storageReady\s*\.then\(([\s\S]*?)\}\)\s*\.catch/.exec(code);
+  assert.ok(deferred, "the field record's writers must be deferred until storageReady");
+  assert.match(deferred[1], /diag\.boot\(\)/, "the boot row is deferred");
   assert.match(
-    code, /storageReady\s*\.then\(\s*\(\)\s*=>\s*diag\.boot\(\)\s*\)/,
-    "the boot row must be deferred until storageReady resolves"
+    deferred[1], /addEventListener\(\s*"visibilitychange"[\s\S]*?diag\.visibility/,
+    "and so is the visibility listener, which also writes"
   );
-  assert.ok(
-    !/^\s*diag\.boot\(\);/m.test(code),
-    "and must not also be written at module scope, which is the bug this replaced"
+  /* EXACTLY ONE of each, so the deferred copy cannot sit beside a module-scope one
+     that still runs first — which is how the incomplete first fix looked. */
+  assert.strictEqual(
+    (code.match(/diag\.boot\(\)/g) || []).length, 1,
+    "the boot row must be written from one place, and that place is inside the then"
+  );
+  assert.strictEqual(
+    (code.match(/diag\.visibility\(/g) || []).length, 1,
+    "and so must the visibility listener"
   );
 });
 
@@ -564,6 +580,93 @@ test("the last segment's boundary is the end of the queue, not a stall", async (
   restore();
 });
 
+test("the stop rows come from the REAL element, not from typed strings", () => {
+  /* Review's finding 8, answered. Seven of the parse table's patterns were pinned only
+     against literals in the mechanism suite, so renaming any of those emitters would
+     empty that half of the record with all 61 suites green. The three worth driving
+     for real are the `stop` rows, because a stop is the thing a listener notices.
+
+     Not a source scan — the assertions below are on the record produced by a real
+     `HtmlAudioBackend` reacting to a real element. Two patterns stay literal-only and
+     are named honestly: `restore` (`restoreQueue` is the episode path, which a Foray
+     never takes) and `knownCar` (no JS caller passes a route name yet). */
+  assert.ok(true, "see the three tests that follow");
+});
+
+test("a media error becomes a stop row carrying the CODE and no source", async (t) => {
+  /* MUTATION: reword `audio.error code=` in `html-audio-backend.js`. This fails while
+     the mechanism suite stays green — which is the whole reason this suite exists. */
+  const { client, audio, rows, restore } = await bootClient(t);
+  audio.loadPlan.set("https://cdn.test/a.mp3", "error");
+  await client.playForay(crossEpisodeForay(), { startIndex: 0 });
+  await settle();
+  const stop = rows("stop").find((s) => String(s.why).startsWith("audio.error"));
+  assert.ok(stop, `no audio.error stop row: ${JSON.stringify(rows("stop"))}`);
+  assert.equal(stop.source, "element");
+  assert.equal(stop.why, "audio.error.code=4");
+  restore();
+});
+
+test("a pause nobody asked for becomes a stop row", async (t) => {
+  /* The element stops while we believe it is playing and no code of ours caused it —
+     `_notePause`'s unexplained branch, which is #263's other half.
+     MUTATION: reword `audio.pausedUnexpectedly`. This fails. */
+  const { client, audio, rows, restore } = await bootClient(t);
+  await client.playForay(crossEpisodeForay(), { startIndex: 0 });
+  await settle();
+  audio.currentTime = 161;
+  audio.paused = true;
+  audio.fire("pause");           // delivered, unlike routeLostUnseen
+  await settle();
+  const stop = rows("stop").find((s) => s.why === "pausedUnexpectedly");
+  assert.ok(stop, `no unexplained-pause row: ${JSON.stringify(rows("stop"))}`);
+  assert.equal(stop.source, "element");
+  restore();
+});
+
+test("a refused play() becomes a stop row naming the refusal", async (t) => {
+  /* Autoplay refusal, which on a phone is the difference between "the app is broken"
+     and "the tap was spent". `play.rejected NotAllowedError` is the string the probe
+     also reads.
+     MUTATION: reword `play.rejected`. This fails. */
+  const { client, audio, rows, restore } = await bootClient(t);
+  audio.play = function play() {
+    this.calls.push("play");
+    const err = new Error("gesture required");
+    err.name = "NotAllowedError";
+    return Promise.reject(err);
+  };
+  await client.playForay(crossEpisodeForay(), { startIndex: 0 });
+  await settle();
+  const stop = rows("stop").find((s) => String(s.why).startsWith("play.rejected"));
+  assert.ok(stop, `no autoplay row: ${JSON.stringify(rows("stop"))}`);
+  assert.equal(stop.source, "autoplay");
+  assert.equal(stop.why, "play.rejected.NotAllowedError");
+  restore();
+});
+
+test("A LISTENER'S PAUSE INSIDE THE BEAT is a cut seam, not a 10-minute gap", async (t) => {
+  /* Review's worst finding, end to end through the real manager. `_cutSeamGap` runs
+     from `_transport` for pause, so the shape is ordinary: the out-point fires, the
+     2.0 s beat arms, and the listener presses pause before it elapses.
+
+     MUTATION: make `RE.seamCut` stamp `cutBy` without closing the seam. The row stays
+     open, the resumed `playing` measures the whole pause into `observedGapMs`, and
+     both of the last two assertions fail. */
+  const { client, audio, rows, restore } = await bootClient(t);
+  await client.playForay(crossEpisodeForay(), { startIndex: 0 });
+  await settle();
+  crossTheBoundary(audio);
+  await settle();                       // inside the beat: it has not elapsed yet
+  await client.forayToggle();           // the listener presses pause
+
+  const seam = rows("seam")[0];
+  assert.ok(seam, "the boundary still wrote a row");
+  assert.equal(seam.observedGapMs, null, "and it was never measured as a gap");
+  assert.ok(seam.cutBy, `the row must say what ended it, got ${JSON.stringify(seam.cutBy)}`);
+  restore();
+});
+
 /* ==================================================================== */
 /* 4. what it must never do                                              */
 /* ==================================================================== */
@@ -585,6 +688,21 @@ test("nothing recorded here reaches cp_events, and no URL reaches the record", a
   await settle();
   crossTheBoundary(audio);
   await beat();
+
+  /* NON-VACUOUS, unlike the first draft of this test. `cp_events` is written by
+     `app.js`, which is not loaded here, so asserting on the key alone passed for the
+     wrong reason. The bridge the player uses to reach that pipeline is
+     `window.forayLogEvent`, so the assertion is on what the player HANDED OVER. */
+  const handed = [];
+  globalThis.window.forayLogEvent = (type, payload) => handed.push({ type, payload });
+  audio.currentTime = 175;
+  audio.fire("timeupdate");
+  await settle();
+  const blob0 = JSON.stringify(handed);
+  assert.ok(
+    !/observedGapMs|deadlineMs|overshoot|seam|visibility/i.test(blob0),
+    `the field record was handed to the event pipeline:\n${blob0}`
+  );
 
   const events = storage.getItem("cp_events");
   if (events) {
@@ -617,7 +735,17 @@ test("Delete my data takes the record with it, and the ring cannot put it back",
   await beat();
   assert.ok(storage.getItem(DIAG_KEY), "there is a record to delete");
 
+  /* THE STOP DOES NOT CLEAR IT, and that is the fix rather than an omission.
+     `deleteMyData` calls this FIRST, before the server step, and a remote failure
+     returns early with the device deliberately untouched — "its token is the only way
+     back to those rows". Clearing here destroyed the record on exactly that path.
+     MUTATION: move `diagLog.clear()` back into `stopForDataDeletion`. This fails. */
   await client.stopForDataDeletion();
+  assert.ok(storage.getItem(DIAG_KEY), "a stop that might be followed by a failed remote must not destroy it");
+
+  /* `app.js` calls this from `clearLocalData()`, which only runs once the device is
+     really being emptied. */
+  globalThis.window.forayForgetDiagnostics();
   assert.equal(storage.getItem(DIAG_KEY), null, "the key is gone");
 
   doc.hidden = true;
@@ -631,6 +759,90 @@ test("Delete my data takes the record with it, and the ring cannot put it back",
     !entries.some((e) => e.type === "seam" || e.type === "outPoint"),
     `purged playback entries came back:\n${after}`
   );
+  restore();
+});
+
+test("Clear mid-seam resets what is in flight, so the next seam still lands", async (t) => {
+  /* The founder's loop is clear, drive, copy, and the sheet's button is live during
+     playback — so a Clear lands mid-seam. `DiagnosticLog.clear()` empties the ring;
+     without `diag.reset()` beside it the open seam still points at an entry that is no
+     longer in the record, `_openSeam` hands that orphan back for the NEXT boundary, and
+     that boundary is written outside the ring and never appears at all.
+
+     `player/diagnostic-log.test.js` covers `reset()` itself; this covers that
+     `window.forayDiagnosticClear` CALLS it, which is the half only the client can get
+     wrong.
+
+     MUTATION: drop `diag.reset()` from `window.forayDiagnosticClear`. The seam after
+     the Clear is missing and this fails. */
+  const { client, audio, rows, storage, restore } = await bootClient(t);
+  await client.playForay(crossEpisodeForay(), { startIndex: 0 });
+  await settle();
+  crossTheBoundary(audio);
+  await settle();                      // a seam is open, inside the beat
+
+  globalThis.window.forayDiagnosticClear();
+  assert.equal(storage.getItem(DIAG_KEY), null, "the key really went");
+
+  /* THE SHARP OBSERVABLE, and the first draft of this test missed it. Asserting that
+     "a seam lands after the Clear" was too weak: without the reset the orphan is still
+     open, the beat's `playing` closes the ORPHAN, `_seam` goes null, and the NEXT
+     boundary opens a fresh row in the ring — so a later seam appears either way and
+     only the one that was in flight is lost.
+
+     What is unambiguous is the key coming back. One more stage of the seam that was in
+     flight calls `log.save()` through the orphan, which writes `cp_diag` with
+     `entries: []` — putting a `cp_` row back one tick after `clear()` deliberately
+     removed it, the exact outcome `clear()`'s own comment claims to prevent. With the
+     reset there is no open seam, so the stage is a no-op and the key stays gone. */
+  audio.fire("stalled");
+  await settle();
+  assert.equal(
+    storage.getItem(DIAG_KEY), null,
+    "a stage of the seam that was in flight put the cleared key back"
+  );
+
+  await beat();                        // the seam that was in flight completes
+  audio.currentTime = 600.01;
+  audio.fire("timeupdate");            // and the NEXT boundary lands
+  await settle();
+  assert.ok(rows("seam").length >= 1, "and later seams are recorded normally again");
+  restore();
+});
+
+test("A RESUME WRITE THE STORE REFUSED is recorded as refused, not as written", async (t) => {
+  /* Review's finding 1. `ForayProgressStore.save` returns false when `writeProgress`
+     is refused — a full localStorage with no live durable tier — and an earlier draft
+     recorded `wrote: true` before the call and discarded the return value. That put a
+     FALSE statement in the one row that exists because "there is no record of what the
+     error path wrote".
+
+     Driven for real: the fake storage refuses `cp_foray:` writes, so the real
+     `DurableStore.setItem` throws, `writeProgress` returns false, and
+     `ForayProgressStore` counts a refusal — exactly the production sequence.
+
+     MUTATION: go back to `note({ wrote: true, … })` before the save. This fails. */
+  const { client, doc, storage, rows, restore } = await bootClient(t);
+  await client.playForay(crossEpisodeForay(), { startIndex: 0 });
+  await settle();
+
+  const realSet = storage.setItem.bind(storage);
+  storage.setItem = (k, v) => {
+    if (String(k).startsWith("cp_foray:")) throw new Error("QuotaExceededError");
+    return realSet(k, v);
+  };
+  // He pockets the phone: the forced write.
+  doc.hidden = true;
+  doc.fire("visibilitychange");
+  await settle();
+  storage.setItem = realSet;
+
+  const writes = rows("resume").filter((r) => r.phase === "write");
+  assert.ok(writes.length >= 1, "a forced write left a row");
+  const last = writes[writes.length - 1];
+  assert.equal(last.wrote, false, "the store refused, and the record says so");
+  assert.equal(last.why, "store-refused");
+  assert.ok(Number.isFinite(last.elapsedSec), "and it still says what it was trying to write");
   restore();
 });
 

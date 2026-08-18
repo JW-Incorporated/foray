@@ -85,13 +85,31 @@
  * Stages inside a seam are capped separately (`STAGE_CAP`) so one pathological
  * seam cannot make a single entry unbounded.
  *
- * ── THE INSTRUMENT MUST NOT PERTURB THE MEASUREMENT ────────────────────────
+ * ── THE COST, STATED HONESTLY ──────────────────────────────────────────────
  * `html-audio-backend.js:1421` carries the warning in its own words: a telemetry
  * sink that writes localStorage synchronously sits on the hidden, throttled,
- * seam-critical path. Two things keep the cost flat here. Nothing is recorded per
- * `timeupdate` — the tick is 4 Hz and is not a diagnostic. And `save()` NEVER
- * THROWS: a failing write is counted into `saveErrors` and rides out on the next
- * one, so diagnostics cannot become the outage.
+ * seam-critical path.
+ *
+ * THE COST IS NOT FLAT, and an earlier draft of this comment claimed it was.
+ * `save()` re-serialises the WHOLE ring and runs once per stage of the seam in
+ * flight — 8 to 15 times per seam — so the per-write cost grows with how much is
+ * already recorded, and is therefore HIGHEST at the end of a long drive, which is
+ * the case #224 is about. That is the wrong direction for a cost to grow in, so it
+ * is bounded by arithmetic rather than waved at: `DIAG_CAP` 200 entries, about half
+ * of them ~130-byte `outPoint` rows, and `STAGE_CAP` 12 capping a seam row near 900
+ * bytes — so a full ring is roughly 100 KB serialised per write, against a seam
+ * that happens about every 100 seconds. `STAGE_CAP` came down from 24 to halve it.
+ *
+ * WHAT IS NOT NEGOTIABLE IS THE PER-STAGE WRITE ITSELF. Debouncing would be the
+ * cheap fix and it would break the requirement: every stage of a seam is a separate
+ * point at which the page can be suspended, and a stage that was not written is a
+ * stage the record cannot report. The whole value of an unstarted seam is the trail
+ * it left.
+ *
+ * Two things DO hold flat. Nothing is recorded per `timeupdate` — the tick is 4 Hz
+ * and is not a diagnostic. And `save()` NEVER THROWS: a failing write is counted
+ * into `saveErrors` and rides out on the next one, so diagnostics cannot become the
+ * outage.
  *
  * Pure by construction: no `localStorage`, `document` or `Date` of its own.
  * Everything is injected, which is what makes the failure paths testable.
@@ -105,9 +123,15 @@ export const DIAG_KEY = "cp_diag";
 /** Entries kept, oldest evicted first. See §"Bounded" above. */
 export const DIAG_CAP = 200;
 
-/** Stages kept per seam. A seam has ~8 in the healthy case; a load that thrashes
-    `waiting`/`stalled` could otherwise emit them without limit. */
-export const STAGE_CAP = 24;
+/**
+ * Stages kept per seam, oldest dropped first.
+ *
+ * 12, not 24, and the number is a cost decision as much as a bound. A healthy seam
+ * produces about seven stages; twelve keeps the tail of a load that is thrashing
+ * `waiting`/`stalled`, which is all a reader needs from one. It was 24, and review
+ * did the arithmetic that brought it down — see the cost note above.
+ */
+export const STAGE_CAP = 12;
 
 /** The serialised record's shape version, so a reader can tell an old blob from
     a corrupt one instead of guessing. */
@@ -173,7 +197,17 @@ export class DiagnosticLog {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.entries)) {
         for (const e of parsed.entries) {
-          if (e && typeof e === "object" && typeof e.type === "string") this._entries.push(e);
+          /* `wall` AND `seq` ARE CHECKED, not only `type`, because one bad row used
+             to poison the whole record permanently. `lineFor` formats
+             `new Date(e.wall)`, which throws a RangeError on a missing or
+             non-numeric clock — so the report threw, the surface said "the record
+             could not be read", `save()` faithfully rewrote the bad row, and the only
+             way out was Clear, which discards the evidence. A row that cannot be
+             rendered is not a row; dropping it keeps every other row readable. */
+          if (!e || typeof e !== "object") continue;
+          if (typeof e.type !== "string") continue;
+          if (!Number.isFinite(e.wall) || !Number.isFinite(e.seq)) continue;
+          this._entries.push(e);
         }
       }
       if (Number.isInteger(parsed?.dropped) && parsed.dropped >= 0) this._dropped = parsed.dropped;
@@ -202,7 +236,11 @@ export class DiagnosticLog {
   /** Append one entry and persist immediately. Returns the live entry. */
   record(type, fields = {}) {
     const entries = this._load();
-    const entry = { seq: ++this._seq, wall: this._now(), type: String(type), ...fields };
+    /* THE FRAME LAST, so no caller field can overwrite it. Spread first and a stray
+       `wall` or `seq` in `fields` silently replaces the two values every ordering,
+       eviction and cadence claim in this file rests on. Nothing collides today, which
+       is the only reason this was not already a bug. */
+    const entry = { ...fields, seq: ++this._seq, wall: this._now(), type: String(type) };
     entries.push(entry);
     while (entries.length > this.cap) { entries.shift(); this._dropped += 1; }
     this.save();
@@ -333,7 +371,9 @@ const RE = {
   unexpectedPause: /^audio\.pausedUnexpectedly/,
   audioError: /^audio\.error code=(\S+)/,
   playRejected: /^play\.rejected (\S+)/,
-  knownCar: /^route\.autoResume\.knownCar=(\S+)/,
+  /* Matched, never CAPTURED — see the handler. The route name is a device a person
+     named, and it must not reach a record that gets pasted into an issue. */
+  knownCar: /^route\.autoResume\.knownCar=/,
   restore: /^restore\.index=(\d+)\.position=(\d+)s/,
   queueEnded: /^queue\.ended/,
 };
@@ -428,7 +468,27 @@ export class PlayerDiagnostics {
     if (hit && this._seam) { this._seam.holdMs = num(hit[1]); handled = true; }
 
     hit = RE.seamCut.exec(m);
-    if (hit && this._seam) { this._seam.cutBy = hit[1]; handled = true; }
+    if (hit && this._seam) {
+      /* A CUT BEAT ENDS THE SEAM. This used to only stamp `cutBy` and leave the row
+         open, and that was wrong in three compounding ways. `_cutSeamGap` fires from
+         `_transport` for pause, next, previous, reconcile and dispose, so an ordinary
+         pause inside the 2.0 s beat left an open seam, and then:
+           1. the listener's own ten-minute pause was measured as
+              `observedGapMs: 600000` by the next `playing` — and that number became
+              the report's `worst` and dragged its median, which are the two headline
+              numbers this whole change exists to produce;
+           2. never resuming left the row reading NEVER STARTED, a manufactured
+              failure on a perfectly healthy drive;
+           3. `_openSeam` returns an already-open seam, so the NEXT real boundary
+              overwrote this row's ids, deadline and asked gap — collapsing two
+              boundaries into one row and under-counting the seams.
+         `observedGapMs` stays null, `cutBy` says what ended it, and the report counts
+         a cut seam separately from a stall: a listener pressing pause is not a defect
+         and must not read as one. */
+      this._seam.cutBy = hit[1];
+      this._closeSeam("seam.gap.cut." + hit[1], null);
+      handled = true;
+    }
 
     hit = RE.deadline.exec(m);
     if (hit && this._seam) {
@@ -504,10 +564,20 @@ export class PlayerDiagnostics {
       handled = true;
     }
 
-    hit = RE.knownCar.exec(m);
-    if (hit) {
+    if (RE.knownCar.test(m)) {
+      /* THE FACT, NEVER THE NAME. `route.autoResume.knownCar=<name>` carries the
+         AUDIO ROUTE's name — a device a person named. This repo's own tests use
+         "Some Headphones" and "Civic"; a real one says somebody's first name. That is
+         not a number, not an authored segment id and not a stage name, so it is none
+         of the three classes this record is allowed to hold — and it would ride out
+         of the app inside a report pasted into an issue. Latent rather than live
+         today (no JS caller passes a route name yet; the native shells will), which
+         is exactly how it would have shipped unnoticed. `known: true` answers the
+         diagnostic question — was the route recognised — and says nothing about
+         whose it is. */
       this.log.record("stop", {
-        source: "route", why: `autoResume.${hit[1]}`, state: null, hidden: this._isHidden(),
+        source: "route", why: "autoResume.knownRoute", known: true,
+        state: null, hidden: this._isHidden(),
       });
       handled = true;
     }
@@ -599,6 +669,29 @@ export class PlayerDiagnostics {
     return this.log.record("resume", { phase: "start", ...fields });
   }
 
+  /**
+   * Forget everything in flight, for a record that has just been emptied.
+   *
+   * `DiagnosticLog.clear()` removes the ring; this is its other half, and without it
+   * `clear()` is unsafe at exactly the moment it was designed for. The documented
+   * founder loop is "clear, drive, copy", and the sheet's button is live during
+   * playback, so a Clear lands mid-seam — leaving `_seam` pointing at an entry that
+   * is no longer in `entries`. Two consequences, both bad: `_openSeam` hands that
+   * orphan back for the NEXT boundary, so the first seam after a Clear is written
+   * outside the ring and never appears at all; and every `_stage()` on the orphan
+   * calls `log.save()`, which puts `cp_diag` back with `entries: []` one tick after
+   * `clear()` deliberately removed the key — the precise outcome `clear()`'s own
+   * comment claims to avoid.
+   *
+   * The visibility clock is restamped rather than nulled, so the next transition
+   * still carries a duration.
+   */
+  reset() {
+    this._seam = null;
+    this._stop = null;
+    this._visSince = this._now();
+  }
+
   /* ---------- the seam in flight ---------- */
 
   _openSeam(opener) {
@@ -662,17 +755,24 @@ export class PlayerDiagnostics {
 
 const pad = (s, n) => String(s).padEnd(n, " ");
 const ms = (v) => (v == null ? "—" : `${Math.round(v)}ms`);
+/** Belt to `_load`'s braces. `_load` drops any row with a non-finite `wall`, so this
+    should be unreachable — but the report is the only way a founder ever sees any of
+    this, and a RangeError here would lose the whole record rather than one row. */
+const clockOf = (wall) => {
+  try { return new Date(wall).toISOString().slice(11, 23); } catch (_) { return "??:??:??.???"; }
+};
 
 /** One entry, as one line a founder can read on a phone. */
 function lineFor(e) {
-  const head = `#${pad(e.seq, 4)} ${new Date(e.wall).toISOString().slice(11, 23)} ${pad(e.type, 10)}`;
+  const head = `#${pad(e.seq, 4)} ${clockOf(e.wall)} ${pad(e.type, 10)}`;
   switch (e.type) {
     case "seam": {
       const kind = e.crossEpisode === true ? "cross-episode"
         : e.crossEpisode === false ? "same-source" : "kind unknown";
-      const gap = e.observedGapMs == null
-        ? (e.endOfQueue ? "end of queue" : "NEVER STARTED")
-        : `gap ${ms(e.observedGapMs)}`;
+      const gap = e.observedGapMs != null ? `gap ${ms(e.observedGapMs)}`
+        : e.endOfQueue ? "end of queue"
+        : e.cutBy != null ? `cut short by ${e.cutBy}`
+        : "NEVER STARTED";
       /* THE TRAIL, and only on a seam that never started, where it is the whole
          answer. `lastStage` alone is not enough: a stop or a reconcile can land
          inside an open seam and become the last thing that happened, so a stalled
@@ -681,7 +781,7 @@ function lineFor(e) {
          says which, on the one line a founder reads. A completed seam does not need
          it: `gap` and `last=playing` are the answer, and the full trail is in the
          JSON for anyone who wants it. */
-      const trail = e.observedGapMs == null && e.endOfQueue !== true
+      const trail = e.observedGapMs == null && e.endOfQueue !== true && e.cutBy == null
         ? `  trail=${(e.stages ?? []).slice(-5).map((st) => st.stage).join(" > ") || "—"}`
         : "";
       return `${head} ${e.fromId ?? "?"} -> ${e.toId ?? "?"}  ${gap}` +
@@ -724,24 +824,41 @@ export function formatDiagnosticReport(record) {
   const entries = Array.isArray(r.entries) ? r.entries : [];
   const seams = entries.filter((e) => e.type === "seam");
   const measured = seams.filter((e) => typeof e.observedGapMs === "number");
-  const open = seams.filter((e) => e.observedGapMs == null && e.endOfQueue !== true);
+  const cut = seams.filter((e) => e.observedGapMs == null && e.cutBy != null);
+  /* NEITHER THE END OF THE QUEUE NOR A CUT BEAT IS A STALL. Both are seams that
+     never completed, and counting either as one would make the instrument
+     manufacture its own findings: every healthy Foray ends at a boundary, and every
+     listener who pauses mid-beat cuts one. */
+  const open = seams.filter(
+    (e) => e.observedGapMs == null && e.endOfQueue !== true && e.cutBy == null
+  );
   const gaps = measured.map((e) => e.observedGapMs).sort((a, b) => a - b);
   const worst = gaps.length ? gaps[gaps.length - 1] : null;
   const mid = gaps.length
     ? (gaps.length % 2 ? gaps[gaps.length >> 1] : (gaps[(gaps.length >> 1) - 1] + gaps[gaps.length >> 1]) / 2)
     : null;
 
+  /* ── THE HEADER IS THE ANSWER, SO IT HAS TO FIT ON A PHONE ──────────────
+     Kept under ~44 characters a line, one fact a line. The first draft ran the
+     counts together at 74 characters, which at this monospace size is about 500 px
+     — wider than the ~340 px a phone panel gives, so the one part of this record a
+     founder reads ON SCREEN (rather than pastes) needed horizontal scrolling to
+     read. The per-entry rows below are inherently long and scroll sideways in their
+     own box; that is fine, because those are for pasting.
+
+     `recorded`, NOT "saves". `seq` counts entries ever recorded, and `save()` also
+     runs on stages that add no entry — "saves" would invite a reader to divide it
+     by the elapsed wall clock and call the answer a write cadence, which it is
+     not. */
   const head = [
     `Foray playback diagnostics — v${r.v ?? "?"}`,
     `Local only. Nothing here is sent anywhere.`,
-    /* `recorded`, NOT "saves". `seq` counts entries ever recorded, and `save()`
-       also runs on stages that add no entry — labelling it "saves" would invite a
-       reader to divide it by the elapsed wall clock and call the answer a write
-       cadence, which it is not. */
-    `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)` +
-      `  dropped ${r.dropped ?? 0}  recorded ${r.seq ?? 0}  writeErrors ${r.saveErrors ?? 0}`,
-    `seams ${seams.length}: ${measured.length} measured, ${open.length} never started` +
-      `  median ${ms(mid)}  worst ${ms(worst)}`,
+    "",
+    `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)`,
+    `dropped ${r.dropped ?? 0} · recorded ${r.seq ?? 0} · writeErrors ${r.saveErrors ?? 0}`,
+    `seams ${seams.length}: ${measured.length} measured, ${open.length} never started`
+      + (cut.length ? `, ${cut.length} cut short` : ""),
+    `gap median ${ms(mid)}, worst ${ms(worst)}`,
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,
     `updated ${r.updatedAt ?? "—"}`,
     "",

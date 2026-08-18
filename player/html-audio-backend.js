@@ -1728,7 +1728,25 @@ export class HtmlAudioBackend {
     this._currentUrl = null;
   }
 
-  _emit(m) { if (this._telemetry) this._telemetry(m); }
+  /**
+   * Tell the sink, and never let the sink break the player.
+   *
+   * The guard arrived with #264, which gave this backend its first real telemetry
+   * consumer — before that the only sinks were test arrays and a probe. Two of these
+   * calls now sit inside a `Promise` executor (`load`, `_seekWithinLoadedSource`,
+   * both immediately after `el.load()`), so a sink that threw would REJECT THE LOAD:
+   * a diagnostic would become a segment that will not play. That is the same shape as
+   * `durable-store.js`'s rule that diagnostics must not become the outage, and every
+   * other surface this file calls out to — `onPrefetchWindow`, `isHidden` — is already
+   * guarded for exactly this reason.
+   *
+   * Swallowed rather than reported: there is nowhere to report it TO. The only
+   * channel out of here is the sink that just threw.
+   */
+  _emit(m) {
+    if (!this._telemetry) return;
+    try { this._telemetry(m); } catch (_) { /* a sink must never break the player */ }
+  }
 }
 
 /** A second element of the same kind as the first, so the two are genuinely

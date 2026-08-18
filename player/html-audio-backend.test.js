@@ -249,6 +249,33 @@ test("seek moves the playhead and ignores junk", async () => {
   }
 });
 
+test("A TELEMETRY SINK THAT THROWS CANNOT BREAK THE PLAYER (#264)", async () => {
+  /* The guard in `_emit` arrived with #264, which gave this backend its first real
+     telemetry consumer — before that the only sinks were test arrays and a probe, so a
+     throwing one was hypothetical. It is not any more, and the danger is specific: two
+     `_emit` calls sit INSIDE a `Promise` executor, in `load` and in
+     `_seekWithinLoadedSource`, immediately after `el.load()`. An unguarded throw there
+     rejects the load — so a diagnostic would become a segment that will not play,
+     which is the worst possible way for an instrument to fail.
+
+     MUTATION: remove the try/catch from `_emit`. The load rejects and this fails on the
+     first assertion. */
+  const el = new FakeAudio();
+  const seen = [];
+  const b = new HtmlAudioBackend({
+    element: el,
+    telemetry: (m) => { seen.push(m); throw new Error("the sink is broken"); },
+  });
+  await assert.doesNotReject(
+    b.load({ id: "a", audio_url: "https://cdn.test/a.mp3", kind: "episode" }),
+    "a throwing sink must not reject the load"
+  );
+  assert.ok(seen.length > 0, "the sink was called, or this test is about nothing");
+  // And the element really did get the source, so nothing else was skipped either.
+  assert.equal(el.src, "https://cdn.test/a.mp3");
+  assert.doesNotThrow(() => b.play(), "nor break the transport");
+});
+
 test("seek carries the precise flag into telemetry without changing behaviour", async () => {
   const { b, log } = mk();
   await b.load(item("a"));
