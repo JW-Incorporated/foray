@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "notes": "One node, so the fixture Foray's `topic` resolves without borrowing a live taxonomy id.",
+  "nodes": [
+    {
+      "id": "fixture/boundary",
+      "parent": null,
+      "label": "Boundary fixture",
+      "weight": 0.5,
+      "confidence": 0.5
+    }
+  ]
+}

@@ -1,0 +1,251 @@
+{
+  "version": 1,
+  "notes": "Issue #236. A committed boundary fixture, NOT curation: nothing here is listenable and nobody edits it editorially. It exists so the #182 acceptance proofs sit on data whose job is to sit on the boundaries. See tools/foray/fixtures/README.md for the derivation of every number.",
+  "forays": [
+    {
+      "id": "boundary-1",
+      "kind": "deep-dive",
+      "status": "draft",
+      "title": "The D1, D5 and M4 boundary fixture",
+      "topic": "fixture/boundary",
+      "summary": "Thirty synthetic segments built to sit exactly on the tier-A boundaries, so no curator has to.",
+      "runtime_sec": 3121,
+      "source_doc": "tools/foray/fixtures/README.md",
+      "label_prefixes": {
+        "A": "boundary-ep-a",
+        "B": "boundary-ep-b",
+        "C": "boundary-ep-c",
+        "D": "boundary-ep-d",
+        "E": "boundary-ep-e",
+        "F": "boundary-ep-f",
+        "HELD": "boundary-ep-held"
+      },
+      "slots": [
+        {
+          "id": "one",
+          "title": "The first block"
+        },
+        {
+          "id": "two",
+          "title": "The second block"
+        },
+        {
+          "id": "three",
+          "title": "The third block"
+        }
+      ],
+      "items": [
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "A-1",
+          "segment_id": "boundary-ep-a#200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "B-1",
+          "segment_id": "boundary-ep-b#200",
+          "role": "exchange"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "C-1",
+          "segment_id": "boundary-ep-c#200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "D-1",
+          "segment_id": "boundary-ep-d#200",
+          "role": "narrative"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "E-1",
+          "segment_id": "boundary-ep-e#200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "F-1",
+          "segment_id": "boundary-ep-f#200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "B-2",
+          "segment_id": "boundary-ep-b#700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "C-2",
+          "segment_id": "boundary-ep-c#700",
+          "role": "exchange"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "D-2",
+          "segment_id": "boundary-ep-d#700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "one",
+          "label": "E-2",
+          "segment_id": "boundary-ep-e#700",
+          "role": "narrative"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "F-2",
+          "segment_id": "boundary-ep-f#700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "A-2",
+          "segment_id": "boundary-ep-a#700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "C-3",
+          "segment_id": "boundary-ep-c#1200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "D-3",
+          "segment_id": "boundary-ep-d#1200",
+          "role": "exchange"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "E-3",
+          "segment_id": "boundary-ep-e#1200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "F-3",
+          "segment_id": "boundary-ep-f#1200",
+          "role": "narrative"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "A-3",
+          "segment_id": "boundary-ep-a#1200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "B-3",
+          "segment_id": "boundary-ep-b#1200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "D-4",
+          "segment_id": "boundary-ep-d#1700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "two",
+          "label": "E-4",
+          "segment_id": "boundary-ep-e#1700",
+          "role": "exchange"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "F-4",
+          "segment_id": "boundary-ep-f#1700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "A-4",
+          "segment_id": "boundary-ep-a#1700",
+          "role": "narrative"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "B-4",
+          "segment_id": "boundary-ep-b#1700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "C-4",
+          "segment_id": "boundary-ep-c#1700",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "E-5",
+          "segment_id": "boundary-ep-e#2200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "F-5",
+          "segment_id": "boundary-ep-f#2200",
+          "role": "exchange"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "A-5",
+          "segment_id": "boundary-ep-a#2200",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "B-5",
+          "segment_id": "boundary-ep-b#2200",
+          "role": "narrative"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "C-5",
+          "segment_id": "boundary-ep-c#2200",
+          "role": "quote"
+        },
+        {
+          "type": "segment",
+          "slot": "three",
+          "label": "D-5",
+          "segment_id": "boundary-ep-d#2200",
+          "role": "explanation"
+        }
+      ]
+    }
+  ]
+}

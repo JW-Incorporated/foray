@@ -2,8 +2,14 @@
 
    Two of these tests run against the REAL committed documents rather than a
    fixture, for the same reason player/foray-playback.test.js does: the question
-   worth answering is "does Foray #1 credit the nine episodes it actually plays",
-   and a fixture cannot be wrong about that in a way that matters. */
+   worth answering is "does Foray #1 credit the episodes it actually plays", and
+   a fixture cannot be wrong about that in a way that matters.
+
+   The counts those two assert are DERIVED from the resolved Foray, not pinned
+   (#236): "credits five shows and nine episodes" was Foray #1's curation, so it
+   made a curator's edit a test edit — while proving less than the derived form,
+   which says the credit block accounts for exactly the shows and episodes the
+   running order draws on, whatever they turn out to be. */
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -205,10 +211,28 @@ test("creditsSummary counts episodes and shows, and gets the singulars right", (
 
 /* ---------- against the real Foray ---------- */
 
-test("Foray #1 credits five shows and nine episodes", () => {
-  const credits = forayCredits(realResolve());
-  assert.equal(credits.length, 5, credits.map((c) => c.show).join(", "));
-  assert.equal(creditsSummary(credits), "9 episodes from 5 shows");
+test("Foray #1 credits exactly the shows and episodes its running order plays", () => {
+  /* The publisher-credit obligation in one line: everything played is credited,
+     and nothing else is. Derived from the resolved Foray on both sides, so it
+     scales with the curation and cannot be satisfied by editing a number here.
+
+     `creditsSummary`'s singular/plural branches are unit-tested above against
+     synthetic inputs; the assertion here is asserted through the plural branch
+     deliberately, and the two `> 1` checks are what say so out loud rather than
+     leaving it to luck. */
+  const r = realResolve();
+  const credits = forayCredits(r);
+  /* SEGMENT entries only. `forayCredits` credits publishers, and a narration
+     bridge has no publisher — its entry carries no `show` and no `item_id`, so
+     including it would put `undefined` in both sets and inflate them by one.
+     None exists yet, which is exactly when this is cheap to get right. */
+  const played = r.entries.filter((e) => e.playable === true && e.segment_id);
+  const shows = new Set(played.map((e) => e.show));
+  const episodes = new Set(played.map((e) => e.item_id));
+  assert.ok(shows.size > 1 && episodes.size > 1, "a one-show Foray would take a different summary line");
+  assert.equal(credits.length, shows.size, credits.map((c) => c.show).join(", "));
+  assert.equal(credits.reduce((n, c) => n + c.episodes.length, 0), episodes.size, "an episode credited twice or not at all");
+  assert.equal(creditsSummary(credits), `${episodes.size} episodes from ${shows.size} shows`);
   assert.ok(credits.every((c) => c.show && c.clips > 0 && c.seconds > 0));
   assert.ok(credits.every((c) => c.episodes.every((e) => e.title)), "a credit with no episode title credits nothing");
 });

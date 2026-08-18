@@ -142,8 +142,23 @@ const FLOORS = {
   /* 82 since #226 (PR #237) added "Foray #1 is labelled superseded". Raised in a
      follow-up rather than in that PR, which is the mistake this floor exists to
      catch: it left one test of slack, and slack is what lets the new gate be
-     deleted later with CI green. Zero slack here, deliberately, as at the top. */
-  "tools/foray/check-forays.test.mjs": 106,
+     deleted later with CI green. Zero slack here, deliberately, as at the top.
+
+     110 since #236 extracted the boundary fixture. That change moved the #182
+     acceptance proofs off `grilling-history-1` and onto
+     `tools/foray/fixtures/boundary/`, and it is a NET addition: three per-Foray
+     literal pins collapsed into one derived law, and eight proofs were added —
+     seven the live data could not host (the fixture control, the
+     CLI-on-the-fixture control, the id seam between the two data sets, the
+     held-back invariant, the 21 s D1 slack, the M4 boundary in both directions,
+     and the exhaustive 435-swap D5 isolation search) plus one review added: each
+     curation doc's §0 summary against the checker's report, which nothing checked
+     once the runtime and mean literals went.
+
+     The control is the one to look at first if this ever has to be lowered: "the
+     boundary fixture itself passes with zero errors" is what stops every proof
+     below it from becoming a demonstration that broken data is broken. */
+  "tools/foray/check-forays.test.mjs": 110,
   /* The narration pipeline's dry run (#247). Zero slack. Two of its tests are
      the only things standing between this repo and a paid API call: one asserts
      `synthesize()` refuses without a key, and one greps every `.mjs` in
