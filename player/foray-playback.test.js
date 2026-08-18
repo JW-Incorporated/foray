@@ -2015,6 +2015,41 @@ test("the Foray page carries a speed button, labelled from the player", async ()
   );
 });
 
+test("the speed button says its value to a screen reader AT NORMAL SPEED too", async () => {
+  /* The case a memo swallowed. The MARKUP ships `1×` as the button text and a bare
+     `aria-label="Playback speed"`, so at the default speed the visible label already
+     matches on the first paint — and the early return in `paintRateButton` skipped
+     the `aria-label` with it. A screen-reader user was then told what the control
+     does and never what it is set to, for every listener who had not changed the
+     speed, which is most of them.
+
+     THE MARKUP'S STARTING STATE IS SET BY HAND HERE, and that is the whole reason
+     this test is written the way it is. `StubEl` constructs with `textContent = ""`
+     rather than parsing the page's HTML, so a fresh mount does not reproduce the
+     match that triggers the memo — the first draft of this test asserted the right
+     thing and passed with the bug fully present, because the fake was kinder than
+     the browser. `watchForay` hands the page's callback over at bind time, so the
+     repaint below needs nothing to be playing.
+
+     MUTATION THAT KILLS THIS: drop `&& btn.getAttribute("aria-label") === aria`
+     from the memo in `paintRateButton`. */
+  const { dom, bridge } = await mountForayPage();          // rate 1, the default
+  const btn = dom.el("fy-rate");
+  assert.equal(btn.textContent, "1×", "the page labels it from the player on bind");
+
+  btn.textContent = "1×";                                  // as index.html ships it
+  btn.setAttribute("aria-label", "Playback speed");         // likewise: no value in it
+  bridge.lastOnChange()({
+    forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false,
+    elapsedSec: 5, totalSec: 3673, error: null, rate: 1,
+  });
+
+  assert.match(
+    btn.getAttribute("aria-label") ?? "", /1×/,
+    "aria-label REPLACES the text, so a bare 'Playback speed' tells a screen reader nothing"
+  );
+});
+
 test("tapping the speed button cycles through the player and relabels", async () => {
   /* MUTATION THAT KILLS THIS: have the binder call `player.playbackRate()` instead
      of `player.cycleRate()`. The label stays at 1× and `cycleRate` never appears in

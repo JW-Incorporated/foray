@@ -1547,7 +1547,12 @@ function bindForayTransport(r, player, resume = null) {
      it for the next one. `paintForay` relabels it on every tick from the snapshot,
      so a change made in the mini-player's sheet shows up here too. */
   const rateBtn = $("#fy-rate");
-  if (rateBtn && typeof player.playbackRate === "function") {
+  /* BOTH methods checked, not just one. app.js and the module refresh
+     independently, and a bridge with `playbackRate` but no `cycleRate` would bind a
+     handler that throws into `guardForayTap` on every tap — a control that reports
+     "that didn't take" forever. They ship together, so this is belt and braces, and
+     it costs one `typeof`. */
+  if (rateBtn && typeof player.playbackRate === "function" && typeof player.cycleRate === "function") {
     paintRateButton(player, player.playbackRate());
     rateBtn.addEventListener("click", () => guardForayTap(() => {
       // Synchronous, and no `playerHasForay` branch: unlike every other control on
@@ -1646,9 +1651,18 @@ function paintRateButton(player, rate) {
   const btn = $("#fy-rate");
   if (!btn || typeof player?.rateLabel !== "function") return;
   const label = player.rateLabel(rate);
-  if (btn.textContent === label) return;   // 4 Hz, and this changes once an hour
+  const aria = player.rateAriaLabel(rate);
+  /* The memo checks BOTH, and the second half is not symmetry — it is a bug this
+     had. `paintForay` runs at 4 Hz for a value that changes once an hour, so the
+     early return is worth having; but the markup ships `1×` as the button's text,
+     so on the ordinary first bind at normal speed the label already MATCHED and the
+     `aria-label` was never written. The button then kept the markup's bare
+     "Playback speed", and a screen-reader user was told what the control does and
+     never what it is set to — for every listener who had not changed the speed,
+     which is most of them. */
+  if (btn.textContent === label && btn.getAttribute("aria-label") === aria) return;
   btn.textContent = label;
-  btn.setAttribute("aria-label", player.rateAriaLabel(rate));
+  btn.setAttribute("aria-label", aria);
 }
 
 /** The only thing that changes 4x a second. Deliberately not a re-render: the

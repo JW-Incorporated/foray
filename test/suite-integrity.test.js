@@ -58,7 +58,7 @@ const FLOORS = {
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
-  "player/foray-playback.test.js": 82,
+  "player/foray-playback.test.js": 83,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 42,
