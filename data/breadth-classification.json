@@ -80298,13 +80298,838 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-18-018133bb",
       "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1879609706": {
+      "topics": [
+        "music",
+        "nature",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cellist Yo-Yo Ma explores connections between music and nature across regional communities.",
+      "display_title": "Our Common Nature",
+      "blurb": "Cellist Yo-Yo Ma travels America exploring how music connects people to the natural world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1879629164": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hip-hop artist interviews covering music, street culture beefs, and industry politics.",
+      "display_title": "Cam Capone News",
+      "blurb": "Interviews with hip-hop artists discussing music, feuds, and Chicago street culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1879840988": {
+      "topics": [
+        "music",
+        "history",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Three-decade record store conversations with hip-hop legends and music industry architects.",
+      "display_title": "FatBeats: Behind The Counter",
+      "blurb": "DJ Eclipse interviews hip-hop legends and A&Rs about underground music history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1879902572": {
+      "topics": [
+        "society",
+        "personal-journals"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.65
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "National Association of Guide Dog Users discusses service dog partnerships and daily life.",
+      "display_title": "NAGDU Unleashed",
+      "blurb": "Guide dog users share stories about partnership, training, and community experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1880320670": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Four mates analyze weekly rugby with deep focus on Springboks and URC tactics.",
+      "display_title": "RugbyBits",
+      "blurb": "Rugby analysts discuss weekly matches with focus on South African and URC rugby.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1880460158": {
+      "topics": [
+        "sports/wrestling",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Wrestling legends discuss mindset, discipline, and sacrifice for elite athletic performance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1880711858": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dateline investigates suspicious Marine death with legal twists and courtroom drama.",
+      "display_title": "Trace of Suspicion",
+      "blurb": "Dateline investigates a Marine's suspicious death, uncovering stunning legal reversals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1880823770": {
+      "topics": [
+        "business/founders",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Hall of Fame speaker discusses leadership, purpose, and authentic storytelling with guests.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1881265304": {
+      "topics": [
+        "sports/football"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bradley Sutton analyzes football tactics, team performance frameworks, and match strategy.",
+      "display_title": "The Football Radar",
+      "blurb": "Football analysis covering team dynamics, tactical frameworks, and match strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1881857018": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "James Hooper and team provide daily NRL commentary, player transfers, and season analysis.",
+      "display_title": "Rugby League Insider",
+      "blurb": "Daily NRL commentary with expert analysis, player transfers, and round breakdowns.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882028660": {
+      "topics": [
+        "health/mental",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports psychologist teaches youth resilience and mindful toughness through wrestling lens.",
+      "display_title": "Wrestling Through Adversity",
+      "blurb": "Dr. Silverstein teaches youth resilience and mental toughness through real stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882034204": {
+      "topics": [
+        "nature/earth-science",
+        "science/storytelling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Academic discussion of environmental literature examining biodiversity, ecology, and climate.",
+      "display_title": "Nature in Crisis",
+      "blurb": "Scholars discuss environmental literature examining ecology and our relationship with nature.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882188536": {
+      "topics": [
+        "sports/rugby"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/rugby",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Newcastle Knights NRL team coverage with match reviews and upcoming game previews.",
+      "display_title": "The Knighted",
+      "blurb": "Newcastle Knights fans provide NRL match analysis and game previews with tactics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882270502": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese podcast covering viral Western pop and international music trending February 2026.",
+      "display_title": "Viral Western Pop",
+      "blurb": "Commentary on trending Western pop and international music from February 2026.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882271762": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chinese music playlist featuring trending songs from 2025 going viral on social media.",
+      "display_title": "Hottest Songs 2026",
+      "blurb": "Curated playlist of trending Chinese and international music from 2025.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882453166": {
+      "topics": [
+        "relationships",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Writers discuss relationships, aging, shame, and cultural moments with candor and humor.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882523636": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "IT industry reporters analyze AI, cybersecurity, technology trends, and business impact.",
+      "display_title": "The Register Kettle",
+      "blurb": "Tech reporters analyze industry news, AI developments, and cybersecurity trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882553792": {
+      "topics": [
+        "relationships",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Producer reveals sperm donation secret and discovers biological families through DNA.",
+      "display_title": "Donor Dad",
+      "blurb": "Adam Saltzberg shares his journey as a sperm donor meeting his biological children's families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1882857116": {
+      "topics": [
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cox Automotive analysts discuss industry trends, consumer behavior, and market forecasts.",
+      "display_title": "The Auto Market Brief",
+      "blurb": "Industry analysts discuss automotive trends, consumer spending, and market forecasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1883148266": {
+      "topics": [
+        "fiction/drama",
+        "culture/mythology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/mythology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama investigating supernatural crimes in New Orleans with horror atmosphere.",
+      "display_title": "Something Wicked",
+      "blurb": "Horror audio drama investigating supernatural crimes in New Orleans with dark elements.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1884146372": {
+      "topics": [
+        "culture/pop-culture",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Morgan Stewart discusses relationships, entertainment, and culture with unfiltered perspective.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1884203624": {
+      "topics": [
+        "religion/christianity",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrated biblical stories exploring Christian faith, theology, and spiritual meaning.",
+      "display_title": "Bible Stories",
+      "blurb": "Narrated biblical stories exploring faith, theology, and spiritual meaning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1884261908": {
+      "topics": [
+        "relationships",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hosts discuss relationship red flags, dating culture, and connection patterns.",
+      "display_title": "Flag Us Podcast",
+      "blurb": "Hosts break down relationship red flags, dating culture, and connection patterns.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1884364376": {
+      "topics": [
+        "personal-journals",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Holly Brown explores family secrets revealed through DNA tests and family trauma.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1884834608": {
+      "topics": [
+        "medicine/biology",
+        "science",
+        "engineering/ai-robotics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Life sciences professionals discuss practical AI application in drug discovery and research.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1884941084": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Irish Times covers 2026 World Cup with expert analysis, match breakdowns, and interviews.",
+      "display_title": "America 2026: A World Cup Podcast",
+      "blurb": "Irish Times covers the 2026 World Cup with expert analysis and match breakdowns.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1885391492": {
+      "topics": [
+        "business/careers",
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nelson Torres teaches ASIS PSP certification content for physical security professionals.",
+      "display_title": "Unlocking PSP",
+      "blurb": "Comprehensive guide to ASIS PSP certification for physical security professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1885398884": {
+      "topics": [
+        "relationships",
+        "psychology/decision-making"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Lisa examines unhealthy relationship patterns and psychology of emotional recovery.",
+      "display_title": "Pattern Breakers Collective",
+      "blurb": "Lisa examines unhealthy relationship patterns and the psychology of recovery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1885536008": {
+      "topics": [
+        "education/language-learning",
+        "linguistics/language"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily German A1 lessons using real news with full transcripts for complete beginners.",
+      "display_title": "Learn German A1",
+      "blurb": "Daily German A1 lessons using real news stories with full transcripts and translations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1885988006": {
+      "topics": [
+        "business/founders",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Steven Bartlett interviews CEOs and experts on entrepreneurship and personal development.",
+      "display_title": "Diary of a CEO",
+      "blurb": "Steven Bartlett interviews CEOs and experts on entrepreneurship and personal development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1886017466": {
+      "topics": [
+        "hobbies",
+        "adventure/exploration"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Waterfowl hunting and fishing podcast covering gear, techniques, and habitat management.",
+      "display_title": "Southern Flight Podcast",
+      "blurb": "Waterfowl hunting and fishing podcast covering gear, techniques, and conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-76810232",
+      "classified_at": "2026-08-18T16:51:01.626Z"
     }
   },
-  "built_at": "2026-08-18T08:50:22.424Z",
+  "built_at": "2026-08-18T16:51:01.626Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-18-018133bb",
+    "last_batch_id": "fresh-2026-08-18-76810232",
     "last_batch_tier": 1
   }
 }
