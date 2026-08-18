@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-17T11:46:24.674Z",
+  "built_at": "2026-08-18T11:43:23.489Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -13299,6 +13299,185 @@
       "brain",
       "learning",
       "memory"
+    ],
+    "cbc-ideas--how-to-brace-for-a-world": [
+      "philosophy",
+      "climate",
+      "collapsology",
+      "activism",
+      "crisis",
+      "canada",
+      "ecology",
+      "resilience"
+    ],
+    "smartless--tim-robbins": [
+      "smartless",
+      "comedy",
+      "celebrity",
+      "interview",
+      "banter",
+      "casual",
+      "actors"
+    ],
+    "my-brother-my-brother-and-me--mbmbam-827-advanced-jesus-studies-for": [
+      "mcelroy-brothers",
+      "comedy",
+      "advice",
+      "banter",
+      "absurdist",
+      "humor",
+      "casual"
+    ],
+    "making-chips--groundcontrol-turning-first-articles-from-a": [
+      "manufacturing",
+      "machining",
+      "industry",
+      "engineering",
+      "cnc",
+      "software",
+      "quality-control"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3401": [
+      "engineering-history",
+      "biography",
+      "history-of-technology",
+      "inventors",
+      "industrial-revolution",
+      "engineers",
+      "history"
+    ],
+    "this-week-in-startups--bittensor-creator-const-on-affine-dtao": [
+      "ai",
+      "startups",
+      "venture-capital",
+      "decentralization",
+      "crypto",
+      "technology",
+      "founders"
+    ],
+    "this-podcast-will-kill-you--ep-219-the-brown-recluse-fearsome": [
+      "spiders",
+      "medicine",
+      "toxicology",
+      "biology",
+      "entomology",
+      "science",
+      "animals"
+    ],
+    "switched-on-pop--we-have-confessions-to-make": [
+      "pop-music",
+      "music-analysis",
+      "album",
+      "music",
+      "pop",
+      "songwriting"
+    ],
+    "advent-of-computing--episode-187-what-s-better-than": [
+      "computing-history",
+      "computing",
+      "retrocomputing",
+      "mathematics",
+      "technology",
+      "history-of-technology"
+    ],
+    "odd-lots--what-the-openai-hugging-face-hack": [
+      "ai",
+      "ai-safety",
+      "openai",
+      "cybersecurity",
+      "artificial-intelligence",
+      "technology",
+      "ai-labs"
+    ],
+    "hidden-brain--how-to-be-a-better-partner": [
+      "relationships",
+      "psychology",
+      "attachment",
+      "trust",
+      "communication",
+      "intimacy"
+    ],
+    "unexplainable--can-these-corals-take-the-heat": [
+      "reefs",
+      "climate",
+      "ocean",
+      "marine-biology",
+      "conservation",
+      "climate-science",
+      "ecology"
+    ],
+    "we-have-ways-of-making-you-talk--before-the-storm-midnight-approaches-part": [
+      "world-war-2",
+      "military-history",
+      "britain",
+      "nazi-germany",
+      "history",
+      "war"
+    ],
+    "huberman-lab--neuroscience-of-emotions-tools-for-improving": [
+      "neuroscience",
+      "emotions",
+      "psychology",
+      "emotional-intelligence",
+      "mental-health",
+      "brain",
+      "cognition"
+    ],
+    "palaeocast--episode-177-cambrian-fecal-revolution": [
+      "paleontology",
+      "fossils",
+      "evolution",
+      "prehistory",
+      "science",
+      "earth-science"
+    ],
+    "the-archaeology-show--the-mystery-of-rongorongo-an-etruscan": [
+      "archaeology",
+      "decipherment",
+      "ancient-history",
+      "history",
+      "excavation"
+    ],
+    "mwa-woodworking--mwa620-joe-bass-returns": [
+      "woodworking",
+      "craftsmanship",
+      "furniture-making",
+      "craft",
+      "interview",
+      "hand-tools"
+    ],
+    "sigma-nutrition-radio--fiber-independent-benefits-or-just-a": [
+      "nutrition",
+      "nutrition-science",
+      "diet",
+      "health",
+      "evidence-based",
+      "food-science"
+    ],
+    "kill-tony--781-jeff-arcuri": [
+      "kill-tony",
+      "stand-up",
+      "comedy",
+      "live-comedy",
+      "live",
+      "open-mic",
+      "crowd-work"
+    ],
+    "morbid--the-hunt-for-john-list-part": [
+      "true-crime",
+      "murder",
+      "cold-case",
+      "morbid",
+      "investigation",
+      "criminal-justice"
+    ],
+    "we-can-do-hard-things--who-invented-gender-amanda-with-alok": [
+      "gender",
+      "identity",
+      "psychology",
+      "relationships",
+      "culture",
+      "society"
     ]
   }
 }
