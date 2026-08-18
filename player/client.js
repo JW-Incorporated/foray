@@ -183,9 +183,11 @@ const forayProgress = new ForayProgressStore({ storage });
    through it would increase what is collected without one.
 
    Built at module evaluation like the store it writes through, but it READS
-   lazily — `DiagnosticLog._load()` runs on the first record, which is many
-   seconds after `hydrate()`, so it sees the durable copy rather than the
-   localStorage-only one.
+   lazily — `DiagnosticLog._load()` runs on the first write, and the first write is
+   held until `storageReady` below. An earlier draft argued the laziness was enough
+   on its own because "nothing records until the first seam, which is seconds after
+   hydration". That was wrong: `diag.boot()` was itself a record, at module scope,
+   ahead of hydration. The ordering is now explicit rather than inferred.
 
    `visibilitychange` is bound HERE and not in `bind()`, because a hidden window
    has to be measurable whether or not anything has been played: `bind()` runs
