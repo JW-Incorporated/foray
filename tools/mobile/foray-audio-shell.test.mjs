@@ -89,6 +89,24 @@
  * mental model as the code cannot falsify that model. `DEFAULT_ANSWERS` exists so the
  * bridge protocol lives in ONE place here, and `shell-invariants.test.mjs` asserts
  * those field names against the Java rather than against this file.
+ *
+ * ── AND A SECOND REVIEW PASS FOUND FIVE MORE (section 9) ──────────────────────
+ *
+ * Against this suite at 51 tests with 21 caught mutations. The one that matters most is
+ * §5.4 finding 1's re-issue loop arriving by a different route: `inFlight` held the bare
+ * method NAME, so across a start/stop/start interleave an earlier call's clear link
+ * nulled a later call's marker and let a redundant background start through. It is now
+ * a monotonic token per call.
+ *
+ * **AND TWO OF THE TESTS IN THIS FILE WERE VACUOUS IN THE SAME WAY, TWICE.** The
+ * `inFlight` dedupe test, and then the interleave test written to catch the bug above,
+ * both asserted the dispatch list WHILE A CALL WAS STILL IN FLIGHT — where a redundant
+ * call sits in the queue undispatched and therefore invisible. Both now drain the queue
+ * with `settleNext()` and assert `pending.length === 0` before reading the list.
+ *
+ * SO THE RULE, FOR ANYONE ADDING A TEST HERE: an assertion about what native was asked
+ * is only true once nothing is in flight. That is the specific way an async fake lies —
+ * the bug is queued, and the assertion is on what was sent.
  */
 
 import test from "node:test";
@@ -1162,4 +1180,223 @@ test("uninstall still restores when ours IS the one on the prototype", async () 
   assert.notEqual(proto.play, original);
   assert.equal(shell.uninstall(), true);
   assert.equal(proto.play, original, "uninstall stopped restoring the original play");
+});
+
+test("a refresh() that fails does not invalidate an accepted start", async () => {
+  /* Found on a re-read, not by a failing test. The rejection handler cleared the gate
+     for ANY method, so a `state()` call that did not arrive made the next play()
+     re-issue a start — the redundant-background-start behaviour section 8's first
+     finding was about, arriving through the error path instead. */
+  const capacitor = makeCapacitor({
+    results: { state: () => Promise.reject(new Error("bridge busy")) },
+  });
+  const { shell, proto, logs } = setup({ capacitor });
+  shell.install();
+  makeElement(proto).play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, true);
+
+  await shell.refresh();
+  await flush();
+  assert.ok(logs.some((l) => /state failed/.test(l.m)), "the failed diagnostic was not reported");
+  assert.equal(shell.inspect().startAccepted, true, "a failed diagnostic cleared the start gate");
+
+  makeElement(proto).play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "state"], "a failed state() caused a redundant start");
+});
+
+test("a NON-state call that fails DOES clear the gate, so the exemption is not a blanket skip", async () => {
+  /* THE OTHER DIRECTION, and the first version of this test was vacuous — the mutation
+     harness said so. It had a `start` reject on the first attempt and then asserted the
+     gate was false, which it already was: the gate starts false, and a rejected start
+     never runs the handler that would set it true. `if (false) startAccepted = false;`
+     passed it.
+
+     Catching that mutant needs the gate to be TRUE first, so the sequence is: a start
+     that succeeds, then a `stop` that REJECTS, whose only path to clearing the gate is
+     the error handler under test. */
+  const capacitor = makeCapacitor({
+    results: { stop: () => Promise.reject(new Error("bridge gone")) },
+  });
+  const { shell, proto, clock } = setup({ capacitor });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, true, "the gate was never set, so this proves nothing");
+
+  el.paused = true;
+  el.emit("pause");
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"]);
+  assert.equal(
+    shell.inspect().startAccepted,
+    false,
+    "a failed stop left the gate set, so the shell still believes it holds a service"
+  );
+});
+
+/* ── 9. a second review pass, and the interleave the first one's tests missed ─── */
+
+test("THE IN-FLIGHT MARKER SURVIVES A START, STOP, START INTERLEAVE", async () => {
+  /* Found by a review pass with a dispatch trace, and it is §5.4 finding 1's re-issue
+     loop reached by a different route. `inFlight` used to be the bare method NAME, so
+     with two starts outstanding and a stop between them, start#1's clear link ran while
+     the marker already belonged to start#2 and nulled it — leaving start#2 in flight
+     but unmarked, so the next play() queued a redundant third start. Hidden, Android
+     12+ refuses that start, which clears the gate WHILE THE SERVICE IS UP, and every
+     later play() re-issues a refused start.
+
+     The two existing dedupe tests could not see it: they cover two starts with nothing
+     in between. The trigger is exactly the seam sequence the design is built around. */
+  const capacitor = makeDeferredCapacitor();
+  const { shell, proto, clock } = setup({ capacitor });
+  shell.install();
+
+  const a = makeElement(proto);
+  a.play(); // start#1
+  await flush();
+
+  a.paused = true;
+  a.emit("pause");
+  clock.fireAll(); // stop
+  await flush();
+
+  const b = makeElement(proto);
+  b.play(); // start#2, queued behind the stop
+  await flush();
+
+  await capacitor.settleNext(); // answer start#1 — must NOT clear start#2's marker
+  await capacitor.settleNext(); // answer stop
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop", "start"]);
+
+  /* start#2 is dispatched and unanswered. A release event now reconciles, and with the
+     old name-only marker this is where the fourth, redundant start appeared. */
+  b.paused = true;
+  b.emit("pause");
+  b.paused = false;
+  b.emit("playing");
+  await flush();
+
+  /* AND THE QUEUE HAS TO BE DRAINED BEFORE ASSERTING, which the first version of this
+     test did not do — the same mistake that made the original `inFlight` dedupe test
+     vacuous. A redundant start queued behind the unanswered start#2 is undispatched and
+     therefore invisible; answering start#2 is what lets it through, or proves there
+     never was one. */
+  await capacitor.settleNext();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor),
+    ["start", "stop", "start"],
+    "a stale clear from start#1 let a redundant start through while start#2 was in flight"
+  );
+  assert.equal(capacitor.pending.length, 0, "something is still in flight, so the list above is incomplete");
+});
+
+test("a stop native reports as FAILED does not claim the service is down", async () => {
+  /* `lastKnownRunning` is the instrument docs/android-native-code.md §6.4 points a
+     device pass at, and it read `wasRunning` — native's truthful PRE-call read, always
+     present — so it went false even when `stopService` threw and the service and its
+     notification were still up. The field claiming more than it knows is the same
+     defect as §5.4 finding 1, in the one place the doc says to trust. */
+  const capacitor = makeCapacitor({
+    results: {
+      state: { running: true, platform: "android" },
+      stop: { stopped: false, wasRunning: true, reason: "SecurityException: not allowed" },
+    },
+  });
+  const { shell, proto, clock } = setup({ capacitor });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  await shell.refresh();
+  await flush();
+  assert.equal(shell.inspect().lastKnownRunning, true);
+
+  el.paused = true;
+  el.emit("pause");
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "state", "stop"]);
+  assert.equal(
+    shell.inspect().lastKnownRunning,
+    true,
+    "a failed stop reported the service as down while it was still up"
+  );
+  assert.match(shell.inspect().lastReason, /SecurityException/);
+});
+
+test("a stop native reports as SUCCEEDED does mark the service down", async () => {
+  /* The other direction, so the guard above cannot be satisfied by never updating. */
+  const capacitor = makeCapacitor({ results: { state: { running: true, platform: "android" } } });
+  const { shell, proto, clock } = setup({ capacitor });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  await shell.refresh();
+  await flush();
+  assert.equal(shell.inspect().lastKnownRunning, true);
+
+  el.paused = true;
+  el.emit("pause");
+  clock.fireAll();
+  await flush();
+  assert.equal(shell.inspect().lastKnownRunning, false);
+});
+
+test("UNINSTALL DOES NOT STRAND THE FOREGROUND SERVICE", async () => {
+  /* `uninstall` is on `window.ForayAudioShell`, which is the object §6.4 tells a device
+     pass to drive from chrome://inspect. It used to leave `wanted: true` and no JS path
+     back — the prototype is restored, so no future play() reaches the shell, and only
+     stopWithTask or the Activity's destruction would ever clear the service. A
+     diagnostic that strands a foreground service and its notification for the life of
+     the process is worse than no diagnostic. */
+  const { shell, proto, capacitor } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"]);
+
+  assert.equal(shell.uninstall(), true);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"], "uninstall left the service running");
+  assert.equal(shell.inspect().wanted, false);
+});
+
+test("uninstall with nothing running asks for no stop", async () => {
+  /* So the fix above is not "always call stop", which would be a bridge round-trip on
+     every teardown and a stop for a service nobody started. */
+  const { shell, capacitor } = setup();
+  shell.install();
+  assert.equal(shell.uninstall(), true);
+  await flush();
+  assert.deepEqual(methods(capacitor), []);
+});
+
+test("an event on a watched element after uninstall does not resurrect it into the active set", async () => {
+  /* `reconcile` checked `installed`, but `acquire` mutated the Set FIRST. So after
+     uninstall a `playing` event put a discarded element back into `active`, where
+     nothing prunes it any more — a strong reference outliving the shell, and a
+     re-installed shell starting dirty at `active: 1`. */
+  const { shell, proto } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  shell.uninstall();
+  await flush();
+  assert.equal(shell.inspect().active, 0);
+
+  el.paused = false;
+  el.emit("playing");
+  assert.equal(shell.inspect().active, 0, "an uninstalled shell took a reference to a discarded element");
+
+  shell.install();
+  assert.equal(shell.inspect().active, 0, "the re-installed shell started with a stale active element");
 });

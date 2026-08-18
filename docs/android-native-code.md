@@ -38,7 +38,7 @@ MP1 §1 keep the same table for the same reason.
 | A local Capacitor plugin at `mobile/plugins/foray-audio/` is discovered and wired into the generated project | **Executed.** `cap add android` reports `Found 5 Capacitor plugins for android: foray-audio@0.1.0`, and the generated Gradle files name it. §3.1 |
 | Both APKs still build, with sizes and wall clock | **Executed on this machine.** §4 |
 | The `<service>` and both `FOREGROUND_SERVICE*` permissions reach the app's merged manifest | **Executed** — read out of `app/build/intermediates/merged_manifest/…/AndroidManifest.xml` after `assembleDebug`. §4.2 |
-| The web half's state machine — start on first play, stop after a settle window, survive a seam, self-correct a refused play | **Executed, against fakes.** 49 tests in Node (45 `test()` declarations, two of them looped into six runs), 19 mutations, 19 caught. §5.3. **No WebView ran.** |
+| The web half's state machine — start on first play, stop after a settle window, survive a seam, self-correct a refused play | **Executed, against fakes.** 57 tests in Node (53 `test()` declarations, two of them looped into six runs), 23 mutations, 23 caught. §5.3. **No WebView ran.** |
 | The foreground service actually starts, or holds process importance, or keeps audio alive | **NEITHER MEASURED NOR INFERRED — UNVERIFIED.** Nothing has run this code on an emulator or a device. §6 |
 | A `mediaPlayback` FGS prevents freezing | **INFERRED**, and the inference is MP1 §5.3's, not upgraded here |
 | Our CSP does not block the injected Capacitor bridge | **INFERRED** by `docs/android-shell-build.md` §2, unchanged. This change does not depend on it: the script it adds is an ordinary same-origin `<script src>` placed **after** the CSP meta, so `script-src 'self'` is genuinely what allows it |
@@ -231,14 +231,19 @@ set.
 | | Result | APK | vs #37 | Wall clock |
 |---|---|---|---|---|
 | `./gradlew assembleDebug` | **BUILD SUCCESSFUL** | `app-debug.apk`, **5,025,787 bytes** | +93,302 B | 11 m 40 s from cold, 243 tasks all executed |
-| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **3,889,209 bytes** | +36,936 B | 18 m 33 s, 316 of 323 executed |
+| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **3,890,405 bytes** | +38,132 B | 18 m 33 s, 316 of 323 executed |
 
 **Three builds, and saying so precisely because the alternative is the quiet rounding
 §1 exists to prevent.** Both configurations were built **from cold** at the wall clocks
 above; both were rebuilt after §5.4's review fixes changed the Java (3 m 42 s for the
-pair); and both were rebuilt again after this branch was **rebased onto a `main` that
-had gained #241** (4 m 40 s, `:app:lintVitalRelease` included every time). The byte
-counts are from that last pair — the tree this actually lands as.
+pair); both were rebuilt again after this branch was **rebased onto a `main` that had gained
+#241** (4 m 40 s), and both were rebuilt a fourth time after §5.6's fixes changed the
+bundled JS (17 m 40 s — slower than the 4 m 40 s incremental because the full test suite
+was running concurrently on the same machine, which is worth noting only because #37
+recorded a test flake under exactly that condition and **this run did not reproduce it**:
+2,270 tests, 0 failures, under saturating Gradle load). `:app:lintVitalRelease` was
+included every time. The byte counts are from that last pair — the tree this actually
+lands as.
 
 **So the "vs #37" column is no longer attributable to this change alone, and should not
 be quoted as if it were.** The `webDir` grew from #37's **2.63 MB** to **2.73 MB** over
@@ -329,7 +334,7 @@ on the governed side of that line is the point.
 
 ### 5.3 `foray-audio-shell.test.mjs` — and the two bugs it found
 
-49 tests against a fake bridge, a fake prototype and a fake clock. **It found two
+57 tests against a fake bridge, a fake prototype and a fake clock. **It found two
 real bugs in code that had already been read twice:**
 
 1. A `playing` event reconciled but never put the element **back** in the active set
@@ -361,7 +366,7 @@ dispatch and it is the first term of that guard. The line was removed rather tha
 with a truer comment. A surviving mutant is not always a missing test; sometimes it is
 a mechanism that was never doing anything.
 
-**Mutation results, in full: 19 mutations of the shell, 19 caught** — plus the one
+**Mutation results, in full: 23 mutations of the shell, 23 caught** — plus the one
 above, which was removed instead. The two that would matter most on a device are
 `activeCount`'s prune (20 tests fail) and the call-through ordering in the `play`
 wrapper (40 fail).
@@ -410,6 +415,46 @@ until asked). The truthful reading is `await window.ForayAudioShell.refresh()` f
 by `window.ForayAudioShell.inspect()` — and `refresh()` is also the only thing that can
 see a service that started and then failed its own `startForeground()`, which is the
 API 34 service-type and permission failure mode.
+
+### 5.6 A SECOND review pass, five more, and the same lesson twice
+
+The pass that closed §5.4 was itself reviewed, against a 51-test suite and 21 caught
+mutations. It found five more, and the fact that it did is the honest summary of what
+a fake-driven suite is worth: **every one of these was green.**
+
+1. **The in-flight marker was cleared by name, and an interleave defeated it.**
+   `inFlight` held the bare method name, so with two `start` requests outstanding and a
+   `stop` between them, start#1's clear link ran while the marker already belonged to
+   start#2 and nulled it. start#2 was then in flight but unmarked, so the next `play()`
+   queued a redundant third start. Hidden, Android 12+ refuses that, which clears the
+   gate **while the service is actually up** — and from there every `play()` re-issues a
+   refused start. **That is §5.4 finding 1's re-issue loop reached by a different
+   route**, and its trigger is the exact seam sequence this design is built around. Now
+   a monotonic token per call, cleared only on match.
+2. **`lastKnownRunning` was cleared by a stop native reported as FAILED.** It read
+   `wasRunning` — the truthful *pre*-call read, always present — instead of `stopped`, so
+   a `stopService` that threw left the instrument saying the service was down while it
+   and its notification were still up. The field claiming more than it knows, in the one
+   place §6.4 points a device pass at.
+3. **`uninstall()` stranded the foreground service.** It is on `window.ForayAudioShell`,
+   which is what §6.4 tells a device pass to drive from `chrome://inspect` — and it left
+   `wanted: true` with no JS path back, because the prototype is restored and no future
+   `play()` reaches the shell. A diagnostic that leaks a foreground service for the life
+   of the process is worse than no diagnostic.
+4. **`acquire` mutated the active Set ahead of the `installed` guard**, so an event after
+   `uninstall()` resurrected a discarded element into a Set nothing prunes any more.
+5. **A tautological assertion**, and its own message named what it could not check:
+   `assert.equal(r.total, sum(r.files.bytes))` — where `prepare()` *defines* `total` as
+   that sum. The guarantee it was written for (sizes measured *after* the injection)
+   survived its own deletion. Now checked against the source file's size and the bytes
+   on disk, with the growth pinned to the injected tags' own length.
+
+**And two of my own tests were vacuous in the same way, both caught by the harness
+rather than by reading them.** The `inFlight` dedupe test and then the interleave test
+above both asserted the dispatch list **while a call was still in flight** — where a
+redundant call sits in the queue undispatched and therefore invisible. Draining the
+queue first is the whole difference. It is worth naming twice because it is the specific
+way an async fake lies: the bug is queued, the assertion is on what was sent.
 
 ### 5.5 One thing the review could not pin down, recorded rather than dropped
 

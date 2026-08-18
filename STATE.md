@@ -126,13 +126,13 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `docs/android-shell-build.md`, this file. **Nothing under `player/`** — #224 and
   PR #241 are live there — and nothing in `.github/`.
 - **Both APKs still build**, no version pin needed: debug **5,025,787 B**, unsigned
-  release **3,889,209 B**, measured after the rebase onto post-#241 `main`. 11 m 40 s
+  release **3,890,405 B**, measured after the rebase onto post-#241 `main`. 11 m 40 s
   and 18 m 33 s from cold, then two incremental rebuilds (3 m 42 s, 4 m 40 s).
   `lintVitalRelease` passed, including `:foray-audio:lintVitalAnalyzeRelease`. The
   growth against #37 is mostly `webDir` (2.63 → 2.73 MB), not the plugin. Same toolchain as #37 (Gradle 8.14.3, AGP
   8.13.0, JDK 21.0.12+8, minSdk 24, compile/target 36).
 - **STILL NEVER EXECUTED, and read this before quoting the above.** No emulator, no
-  device. The web half's state machine has 49 Node tests against fakes and 19 caught
+  device. The web half's state machine has 57 Node tests against fakes and 23 caught
   mutations; the manifest merge and both APK payloads were read out of build output.
   Whether the service *starts*, holds process importance, or keeps audio alive is
   **unverified** — as is Android 15's audio-focus rule, which cuts both ways
@@ -147,6 +147,15 @@ docs/. Completed workstreams move to their plan doc's retro section.
   service leaked for the session), the visibility net cancelled settle windows that
   were still counting, and `uninstall()` deleted later patches of `play`.
   `docs/android-native-code.md` §5.4.
+- **A SECOND review pass found five more**, including the same re-issue loop reached by
+  another route: the bridge-call in-flight marker was keyed on the method NAME, so
+  across a start/stop/start interleave an earlier call cleared a later one's marker and
+  let a redundant background start through. Also: a failed `stopService` reported the
+  service as down, `uninstall()` stranded the foreground service, and two of my own
+  tests were vacuous in the same way — asserting the dispatch list while a call was
+  still in flight, where the queued duplicate is invisible. §5.6. **The lesson, stated
+  because it is the transferable part: a fake written from the same mental model as the
+  code cannot falsify that model, and an async fake lies specifically about ordering.**
 - **DO NOT READ THIS AS A SEAM FIX.** Hidden-page throttling is on the media-load
   task chain and keyed to **visibility**, not audibility, so an FGS does not shorten
   a seam and neither do local files. The seam entries below are unaffected.

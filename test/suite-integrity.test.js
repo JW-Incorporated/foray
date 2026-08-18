@@ -152,12 +152,12 @@ const FLOORS = {
      bounds, which sit between #239's 20 s hidden load deadline and Blink's 30 s
      `kRecentAudioDelay` with 5 s of room in total.
 
-     THE STATIC COUNT IS 45 AND THE RUN COUNT IS 49, and the gap is not a discrepancy:
-     two of those 45 `test()` declarations sit inside `for` loops over the exported
+     THE STATIC COUNT IS 53 AND THE RUN COUNT IS 57, and the gap is not a discrepancy:
+     two of those 53 `test()` declarations sit inside `for` loops over the exported
      RELEASE_EVENTS and ACQUIRE_EVENTS lists, so they expand into six runs. The floor is
      the static count, because a regex over source is what this file measures. Raise it
      when the suite grows. */
-  "tools/mobile/foray-audio-shell.test.mjs": 45,
+  "tools/mobile/foray-audio-shell.test.mjs": 53,
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them

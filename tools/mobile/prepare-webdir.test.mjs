@@ -363,7 +363,32 @@ test("prepare copies the shell-only file and leaves the tag in the written index
      case an in-memory assertion cannot see. */
   const written = fs.readFileSync(path.join(outDir, "index.html"), "utf8");
   assert.equal(assertShellScriptsPresent(written), true);
-  assert.equal(r.total, r.files.reduce((n, f) => n + f.bytes, 0), "the injected bytes are not in the total");
+
+  /* THE REPORTED SIZE MUST INCLUDE THE INJECTION, and the first version of this
+     assertion could not tell. It compared `r.total` against the sum of `r.files`
+     bytes — but `prepare()` DEFINES `total` as exactly that sum, so it held no matter
+     when the measurement happened, which is the "passes with the mechanism deleted"
+     shape this repo keeps paying for. The real guarantee is that sizes are taken AFTER
+     the write, so it is checked against the source file and against the disk. */
+  const sourceBytes = fs.statSync(path.join(fake, "index.html")).size;
+  const reported = r.files.find((f) => f.rel === "index.html");
+  assert.ok(reported, "index.html is not in the reported file list");
+  assert.equal(
+    reported.bytes,
+    fs.statSync(path.join(outDir, "index.html")).size,
+    "the reported size of index.html is not the size on disk"
+  );
+  assert.ok(
+    reported.bytes > sourceBytes,
+    `index.html was reported as ${reported.bytes} B, not more than the ${sourceBytes} B source — ` +
+      `the size was measured before the script tags were injected.`
+  );
+  const expectedGrowth = shellScriptTags().reduce((n, t) => n + t.length + 1, 0);
+  assert.equal(
+    reported.bytes - sourceBytes,
+    expectedGrowth,
+    "the bundled index.html grew by something other than the injected tags"
+  );
 });
 
 test("the SITE's index.html is not modified — the injection is to the copy only", () => {

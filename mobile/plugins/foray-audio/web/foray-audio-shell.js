@@ -186,6 +186,11 @@ export function createForayAudioShell(env) {
   let queue = Promise.resolve();
   /** The method dispatched and not yet answered, or null. */
   let inFlight = null;
+  /** Which dispatch `inFlight` belongs to. A bare name is not enough — see the clear
+   *  link in `callAndRecord`, where an earlier call of the same method used to clear a
+   *  later one's marker. */
+  let inFlightToken = 0;
+  let callSeq = 0;
 
   function call(method) {
     try {
@@ -216,7 +221,9 @@ export function createForayAudioShell(env) {
    */
   function callAndRecord(method, onResult) {
     if (inFlight === method) return;
+    const token = ++callSeq;
     inFlight = method;
+    inFlightToken = token;
     queue = queue.then(function () {
       return call(method).then(
         function (result) {
@@ -227,7 +234,14 @@ export function createForayAudioShell(env) {
           }
         },
         function (e) {
-          startAccepted = false;
+          /* NOT for `state`, and the distinction is not fussiness. A failed `start`
+             means we do not hold the service and the next `play()` should try again; a
+             failed `stop` means we asked and cannot know, so false is right there too.
+             But `state` is a DIAGNOSTIC — clearing the gate because a `refresh()` did
+             not arrive would make the next `play()` re-issue a start for no reason,
+             which is the redundant-background-start behaviour §5.4's first finding was
+             about, reintroduced through the error path. */
+          if (method !== "state") startAccepted = false;
           lastReason = String((e && e.message) || e);
           log("foray-audio: " + method + " failed", e);
         }
@@ -239,8 +253,22 @@ export function createForayAudioShell(env) {
        above cannot reject today — `call(method).then(ok, err)` handles both sides —
        but `err` calls `log`, which is the embedder's function and not ours. One
        argument here is one whole class of dead shell. */
+    /* CLEARED BY TOKEN, NOT BY NAME, and a review pass demonstrated why with a
+       dispatch trace. `inFlight` used to be the bare method name, so with two `start`
+       requests outstanding and a `stop` between them, start#1's clear link ran while
+       `inFlight` already held start#2's marker and nulled it — leaving start#2 in
+       flight but unmarked, so the next `play()` queued a third. That third is a
+       redundant `startForegroundService`; hidden, Android 12+ refuses it, which sets
+       `startAccepted = false` WHILE THE SERVICE IS ACTUALLY UP, and from there every
+       `play()` re-issues a refused start. It is §5.4 finding 1's re-issue loop reached
+       by a different route, and its trigger is the seam sequence this design is built
+       around: settle fires, stop dispatched, next episode plays, any release event
+       lands while that start is in flight. */
     const clearInFlight = function () {
-      if (inFlight === method) inFlight = null;
+      if (inFlightToken === token) {
+        inFlight = null;
+        inFlightToken = 0;
+      }
     };
     queue = queue.then(clearInFlight, clearInFlight);
   }
@@ -300,12 +328,18 @@ export function createForayAudioShell(env) {
        not" is worth more written down than quietly dropped. */
     wanted = false;
     callAndRecord("stop", function (result) {
-      /* `startAccepted` is about a START, so a stop clears it rather than reading
-         anything back: whatever native says, we are no longer holding a service we
-         asked for. `wasRunning` is native's truthful pre-call read and is kept only as
-         diagnostics. */
+      /* `startAccepted` is about a START, so a stop clears it either way: whatever
+         native says, we are no longer holding a service we asked for. */
       startAccepted = false;
-      lastKnownRunning = result.wasRunning === undefined ? lastKnownRunning : false;
+      /* GATED ON `stopped`, and a review pass found the version that was not. It read
+         `wasRunning` — native's truthful PRE-call read — and set `lastKnownRunning`
+         false whenever that field was present, which is always. So a stop that native
+         reported as FAILED (`stopped: false`, e.g. a SecurityException from
+         `stopService`) left the instrument saying the service was down while the
+         service and its notification were still up. That is this field claiming more
+         than it knows, which is the same defect as §5.4 finding 1 in the doc, in the
+         one place the doc points a device pass at. */
+      if (result.stopped) lastKnownRunning = false;
       lastReason = result.reason || "";
     });
   }
@@ -403,6 +437,13 @@ export function createForayAudioShell(env) {
        over `el` rather than reading `event.target`, so a retargeted event cannot
        point them at the wrong element. */
     const acquire = function () {
+      /* THE GUARD IS AHEAD OF THE SET MUTATION, and a review pass found the version
+         where it was not. `reconcile` checks `installed`, but `active.add(el)` ran
+         first — so after `uninstall()` a `playing` event on a previously-watched
+         element put it back into `active`, where nothing prunes it any more, holding a
+         strong reference to a discarded media element and leaving a re-installed shell
+         starting dirty at `active: 1`. */
+      if (!installed) return;
       try {
         active.add(el);
         reconcile();
@@ -411,6 +452,7 @@ export function createForayAudioShell(env) {
       }
     };
     const release = function () {
+      if (!installed) return;
       try {
         reconcile();
       } catch (e) {
@@ -495,10 +537,19 @@ export function createForayAudioShell(env) {
     return true;
   }
 
-  /** Undo everything. Exists for the test suite, and because a patch with no
-   *  inverse is a patch nobody can bisect. */
+  /** Undo everything, INCLUDING the foreground service.
+   *
+   *  Exists for the test suite, and because a patch with no inverse is a patch nobody
+   *  can bisect — but it is also on `window.ForayAudioShell`, which is the object
+   *  `docs/android-native-code.md` §6.4 tells a device pass to drive from
+   *  `chrome://inspect`. A review pass found that it left the service running with
+   *  `wanted: true` and no JS path back: the prototype is restored, so no future
+   *  `play()` reaches the shell, and only `stopWithTask` or the Activity's destruction
+   *  would ever clear it. So the service is asked to stop FIRST, while `wanted` still
+   *  says we hold one. */
   function uninstall() {
     if (!installed) return false;
+    if (wanted) requestStop();
     /* ONLY IF OURS IS STILL THE ONE ON THE PROTOTYPE. If anything patched
        `HTMLMediaElement.prototype.play` after we did — another Capacitor plugin, an
        injected script — restoring blindly would silently DELETE that wrapper, which is
