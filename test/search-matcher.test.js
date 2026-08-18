@@ -226,8 +226,8 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
      and 13 vocabulary terms land in a different bucket than the shared matcher
      would give them (`ship` 155 -> dropped, against 6 -> kept at full weight, on
      a count made entirely of `relationships`/`championship` substring hits the
-     ranker would never make). Changing it moves rankings, so it is filed rather
-     as #249 rather than bundled, and named in this comment so the tick below is not
+     ranker would never make). Changing it moves rankings, so it is filed as #249
+     rather than bundled, and named in this comment so the tick below is not
      read as a claim it is clean. */
   const DECL = /(?:^|[^.\w])(?:const|let|var|function)\s+(hitText|hitTag)\s*(?:=|\()/;
   const SKIP = new Set(["node_modules", ".git", "audio-cache", "data-local", "ios", "mobile"]);
