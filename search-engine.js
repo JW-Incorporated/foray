@@ -64,13 +64,67 @@ function branchOf(item) {
   return t.split("/")[0] || "other";
 }
 
+/* How many tagged items carry `term` as a tag, THROUGH THE SHARED MATCHER.
+   #249. This inlined the pre-#211 loose predicate as an anonymous arrow:
+
+     tags.some(tag => term.length < 4
+       ? (tag === term || tag.split("-").includes(term))
+       : tag.includes(term))
+
+   -- bare `tag.includes(term)` on the long branch with no collision guard, and no
+   plural allowance on the short branch. It was the FOURTH copy of the matcher.
+   #219 counted three and fixed them; this one survived because
+   test/search-matcher.test.js's reimplementation scan matches NAMED declarations
+   and skips search-engine.js by path, so an anonymous arrow in this very file was
+   invisible to it. The scan was green with the copy sitting in the same module as
+   the original.
+
+   IT WAS NOT A REPORTING BUG. `tagDF` drives expansion pruning in
+   interpretQuery: `df > 60` DELETES a term from the expansion and `df > 25` cuts
+   its weight to 0.4x, so an inflated count silently removes vocabulary. It also
+   sets `group.df`, which picks scoreMatch's per-group multiplier
+   (<=10 -> 1.35, <=30 -> 1, else 0.75). Two consumers, two sets of thresholds,
+   both reading a number the ranker itself would never produce.
+
+   Measured over the whole vocabulary (1,364 terms against 1,540 tagged items,
+   2026-08-17): 102 terms change count, 94 narrower and 8 wider, 10,035 -> 8,665
+   summed. 13 change PRUNING bucket, all of them toward keeping more vocabulary:
+
+     ship          155 -> 6    dropped -> full weight
+     story         460 -> 31   dropped -> 0.4x
+     tech          137 -> 23   dropped -> full weight
+     improv         69 -> 12   dropped -> full weight
+     sport          72 -> 49   dropped -> 0.4x
+     hang           61 -> 54   dropped -> 0.4x
+     entrepreneurs  51 -> 0    0.4x    -> full weight
+     search         44 -> 1    0.4x    -> full weight
+     wood           41 -> 1    0.4x    -> full weight
+     ships          41 -> 6    0.4x    -> full weight
+     film           36 -> 21   0.4x    -> full weight
+     myth           30 -> 11   0.4x    -> full weight
+     physics        27 -> 24   0.4x    -> full weight
+
+   `ship` is the clearest: deleted as "too broad" on a tally built entirely out of
+   `relationships` and `championship` substring hits, matches the ranker could
+   never make because the ranker uses the guarded matcher. `entrepreneurs` is the
+   sharpest -- a true count of ZERO was being read as 51 and having its weight cut.
+
+   A 14th term, `train` (31 -> 7, 0.4x -> full weight), changes bucket only
+   because #248 landed first: the loose predicate and the pre-#248 shared matcher
+   both counted `training` tags and agreed at 31. It is #248's sense lock becoming
+   visible here, not this change's own effect.
+
+   FORWARD REFERENCE, and it is safe: `hitTag` is a `const` arrow declared below.
+   `tagDF` is only ever called from query time (interpretQuery / suggestAdjacent-
+   Topics), long after module evaluation, so the binding is initialized. Do not
+   move a CALL to tagDF to module scope. */
 function tagDF(term, ctx) {
   if (!ctx._dfMemo) ctx._dfMemo = new Map();
   if (ctx._dfMemo.has(term)) return ctx._dfMemo.get(term);
   const tagsMap = ctx.itemTags?.tags || {};
   let n = 0;
   for (const tags of Object.values(tagsMap)) {
-    if (tags.some(tag => term.length < 4 ? (tag === term || tag.split("-").includes(term)) : tag.includes(term))) n++;
+    if (tags.some(tag => hitTag(tag, term))) n++;
   }
   ctx._dfMemo.set(term, n);
   return n;
@@ -210,13 +264,29 @@ function passesFilters(item, filters) {
 /* Terms >=4 chars used to match via plain substring (text.includes(t)),
    which collides on an unrelated word that happens to CONTAIN the term:
    "fusion" inside "diffusion", "roman" inside "romance"/"romantic",
-   "team" inside "steam". All three known collisions add extra letters
-   BEFORE the term, never after -- so instead of a blanket switch to
-   word-boundary matching (which would also break legitimate plural
-   matches some concepts rely on, e.g. a term "rocket" matching text
-   "rockets"), this requires no letter/digit immediately before the
-   match and allows an optional trailing "s". Blocks all three known
+   "team" inside "steam". So instead of a blanket switch to word-boundary
+   matching (which would break legitimate plural matches some concepts
+   rely on, e.g. a term "rocket" matching text "rockets"), this is a
+   word-boundary match on BOTH sides with a bounded suffix allowance in
+   between: no letter/digit immediately before, the named inflections
+   below, then no letter/digit immediately after. Blocks all three known
    collisions, keeps plural matching, touches nothing else.
+
+   THE TWO GUARDS BLOCK DIFFERENT COLLISIONS, and conflating them cost this
+   file two wrong claims. Earlier revisions of this comment said "all three
+   known collisions add extra letters BEFORE the term, never after", and
+   tools/test-search.mjs §6 said the romance case could not witness the
+   guard because scoring kept it out. Both are wrong, measured 2026-08-17:
+
+     LEADING lookbehind  blocks dif+fusion and s+team -- letters before.
+     TRAILING lookahead  blocks roman+ce and roman+tic -- letters AFTER.
+
+   Delete the lookbehind and the `diffusion` case goes red; delete the
+   lookahead and the `romance` case goes red, scoring notwithstanding -- with
+   the lookbehind gone the romance item still scores 0, because "romance" was
+   never a prefix collision. Each guard has its own witness; neither is
+   redundant. See test/search-matcher.test.js, where they are pinned as two
+   separate tests for this reason.
 
    MODULE SCOPE AND EXPORTED, as of 2026-08-17. These were closures inside
    scoreMatch, and `tools/test-search.mjs` — the battery that judges whether a
@@ -263,24 +333,25 @@ function passesFilters(item, filters) {
    first thing dropped if a measurement found it costing precision. It did, so it
    is.
 
-   WHAT THIS SET STILL GETS WRONG, stated plainly rather than left to be
-   rediscovered: the scan behind the table above applied a MORPHOLOGICAL test --
-   is the surface word an inflection of the term -- and passing it does not make a
+   WHAT THIS SET GETS WRONG ON ITS OWN, and what SENSE_LOCKED_STEMS below does
+   about it: the scan behind the table above applied a MORPHOLOGICAL test -- is
+   the surface word an inflection of the term -- and passing it does not make a
    match right. A term can be a genuine inflection of the wrong SENSE of an
    ambiguous stem. `train` is a term of the `trains` concept
    (topics: transport/trains) and carries only the railway sense, but `training`
-   is a real inflection of the unrelated verb, so `ing` newly matches 32 fitness,
-   dog-training and AI-pre-training items. That is user-visible, not just an
-   oracle count: `search("train history")` now returns "The Pre-Training Wall"
-   and a speed-training episode inside its top 10. Same shape, 1-2 items each,
-   for `book`/booking and `wind`/winding.
+   is a real inflection of the unrelated verb, so `ing` newly matched 32 fitness,
+   dog-training and AI-pre-training items. That was user-visible, not just an
+   oracle count: `search("train history")` returned "The Pre-Training Wall" and a
+   speed-training episode inside its top 10.
    This is NOT fixable by choosing different suffixes -- `ing` is exactly what
    #218 asks for, and `grill`/`grilling` needs it. It is a vocabulary problem: an
    ambiguous bare stem in a single-sense concept. #218 names the substitution
-   ("matcher changes and vocabulary changes can substitute for each other here")
-   and it is filed as #248 rather than bundled, because dropping `train` from
-   the concept would stop the natural singular from triggering it at all, which
-   is the very defect #218 exists to fix.
+   ("matcher changes and vocabulary changes can substitute for each other here"),
+   and #248 is the fix: a second, smaller named set that subtracts `ing` for the
+   handful of stems where it is provably the wrong verb. Note what #248 rules out
+   as the tempting non-fix -- dropping `train` from the concept would stop the
+   natural singular from triggering it at all, no topic boost and no expansion to
+   `railway`/`locomotive`, which is the very defect #218 exists to fix.
 
    Deliberately OUT: y->ies (story/stories), e-dropping (bake/baking) and any
    consonant doubling. Each needs to MUTATE the stem rather than append to it,
@@ -309,6 +380,105 @@ function passesFilters(item, filters) {
 const LONG_INFLECTIONS = "(?:s|es|ing)?";
 const SHORT_INFLECTIONS = "s?";
 
+/* Stems that take the plural and NOTHING ELSE: `(?:s|es)?` instead of the set
+   above. #248. A second named list is a cost -- the paragraph above argues for
+   "one bounded, named set" and this breaks that property -- so it carries a
+   MEMBERSHIP RULE, not just members, and a measurement per member. Without a
+   rule a reader cannot tell whether a new term belongs, and a list nobody can
+   extend correctly rots into a list of whatever happened to get reported.
+
+   THE RULE. A term belongs here when ALL THREE hold:
+
+     1. The concept carries the term's NOUN sense, and the `-ing` form is the
+        gerund of a DISTINCT VERB -- not a metaphor or an unusual reading of the
+        same verb. `train` (railway carriage) vs. `to train` (instruct); `book`
+        (printed volume) vs. `to book` (reserve). This noun/verb split is the
+        shape every member below has, and stating it that way is what makes the
+        rejected list decidable: where the concept's own sense IS the verb
+        (`to grill`, `to coach`, `to engineer`), the gerund is on-sense and the
+        term does not belong here.
+     2. Every concept carrying the term carries only that ONE sense of it, so
+        there is no reading under which the `-ing` match would be on-sense. A
+        term in two concepts fails this by construction.
+     3. Measured over the pool, the items the `-ing` form adds are OFF-SENSE for
+        those concepts' topics. This is the clause with teeth: 1 and 2 are
+        arguments, 3 is a count, and 3 is what disqualified two of the terms
+        #248 proposed on the strength of 1 and 2 alone.
+
+   Rule out an over-reading: this is NOT "the -ing form is a different part of
+   speech" and NOT "some off-topic item matched". `powering` in "just powering
+   through" is the same verb as `power`, used figuratively, and `searching` in
+   "soul searching" is the same verb as `search` -- both surface an off-topic item
+   and NEITHER belongs here, because the fix for a figurative use is ranking, not
+   the matcher. Membership needs a different VERB.
+
+   MEMBERS, each with the count of pool items its `-ing` form adds that clause 3
+   finds off-sense (whole vocabulary against every surface word in the pool, 1,322
+   terms of >=4 chars over 1,540 items, 2026-08-17):
+
+     train    32  `trains` [transport/trains]. `training` -- to instruct/exercise.
+                  All 32 are fitness (sports/biomechanics), dog-training or
+                  AI-pre-training (computing/history); none is a railway. The
+                  reason #248 exists.
+     market   10  `markets` [economics/markets]. `marketing` -- to advertise. The
+                  concept is unambiguously the finance NOUN (investing, stocks,
+                  wall-street, commodities, valuation); the verb "to market" is
+                  the distinct advertising sense. All 10 land in
+                  business/founders, health/nutrition, medicine/neuroscience or
+                  business/startups; zero in economics/markets -- "wellness
+                  marketing", "brand building", "separating scientific promise
+                  from marketing hype".
+                  NOT reported in #248 -- found by re-running its scan -- and it
+                  REVERSES A CHOICE #218 MADE: test/search-matcher.test.js
+                  asserted `hitText("marketing", "market")` as a WIN of the `ing`
+                  allowance, on a morphological reading, with no item-level
+                  measurement attached. Clause 3 is the disagreement, and clause 3
+                  is a count. That assertion now pins the opposite, and says so.
+     hang      2  `comedy` [comedy/casual-hangs, comedy/stand-up]. `hanging` -- to
+                  suspend. Both topics are the one "casual hangout" sense of the
+                  noun. #248 guessed this was "arguably on-sense"; the two items
+                  are an F1 refuelling debate ("the dilemma hanging over F1's
+                  future") and an Odd Lots episode ("Fed Independence Is Now
+                  Hanging by a Thread"). Idiom, not comedy.
+     book      1  `books` [linguistics/language, culture/books]. `booking` -- to
+                  reserve. Both topics are the printed-volume sense. The item is a
+                  Delta CEO episode on summer travel.
+     wind      1  `clean-energy` [engineering/energy-*, automotive]. `winding` --
+                  to twist. The item is an Armchair Expert true-crime interview.
+
+   REJECTED, which is where the rule earns its place -- these are the terms whose
+   `-ing` form the same scan reports, kept OUT by clause 1 or 2, and together they
+   are 212 of the 258 `-ing`-only (term, item) pairs in the pool:
+
+     engineer 188  `engineering` is the SAME verb. Fails 1. This is the bulk of
+                   what #218 bought, and a rule that touched it would be wrong.
+     coach      8  `coaching`, same verb, and the concept is `training`
+                   [sports/biomechanics] -- squarely on-sense. Fails 1.
+     grill      7  `grilling`, same verb. Fails 1, and it is #218's whole point.
+     homebrew   3  `homebrewing`, same verb. Fails 1.
+     film       2  `filming`, same verb (fails 1), AND `film` is carried by both
+                   `celebrities` and `filmmaking` (fails 2 independently).
+     power      1  `powering`, same verb used figuratively. Fails 1 -- see the
+                   over-reading note above.
+     search     1  `searching` ("soul searching"), same verb. Fails 1.
+     craft      1  `crafting`, same verb. Fails 1.
+     murder     1  `murdering`, same verb. Fails 1.
+
+   `es` STAYS ON for these five, so the list subtracts exactly one suffix and no
+   more: none of "traines"/"marketes"/"hanges"/"bookes"/"windes" is a word, so the
+   allowance is inert here and keeping it means one fewer axis on which this list
+   can differ from the main set.
+
+   WHAT THIS DOES NOT COST, checked rather than assumed: none of the five is a
+   needle in tools/test-search.mjs's 51, and none of `marketing`/`hanging`/
+   `booking`/`winding`/`training` is itself a term in data/semantic-index.json --
+   except that a typed query word always matches its own literal text, so
+   search("marketing") is unaffected either way. `training` additionally has its
+   own concept (`training`, sports/biomechanics), so search("dog training")
+   reaches it through that concept and not through `train`. */
+const SENSE_LOCKED_STEMS = new Set(["train", "market", "hang", "book", "wind"]);
+const SENSE_LOCKED_INFLECTIONS = "(?:s|es)?";
+
 /* Compiled patterns are CACHED per term, which is a real cost here rather than
    premature tuning. scoreMatch calls hitText five times per term per item over a
    1,540-item pool, so a single battery run is millions of calls, and the terms
@@ -333,8 +503,12 @@ function compiledPattern(key, build) {
   }
   return re;
 }
+/* The suffix set is chosen per TERM, and it is a pure function of the term, so the
+   existing "long:"+t cache key stays correct -- a sense-locked stem can only ever
+   compile to its own narrower pattern. */
 const longTermPattern = (t) =>
-  compiledPattern("long:" + t, () => new RegExp("(?<![a-z0-9])" + t + LONG_INFLECTIONS + "(?![a-z0-9])"));
+  compiledPattern("long:" + t, () => new RegExp("(?<![a-z0-9])" + t +
+    (SENSE_LOCKED_STEMS.has(t) ? SENSE_LOCKED_INFLECTIONS : LONG_INFLECTIONS) + "(?![a-z0-9])"));
 const shortTermPattern = (t) =>
   compiledPattern("shortText:" + t, () => new RegExp("\\b" + t + SHORT_INFLECTIONS + "\\b"));
 const shortTagPattern = (t) =>
@@ -590,7 +764,7 @@ function prettyConceptLabel(id) {
 
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
-  STRONG_RATIO, RICH_MIN, PER_SHOW_CAP, LISTENED_PENALTY,
+  STRONG_RATIO, RICH_MIN, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagDF, corpusDF, hitText, hitTag,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   suggestAdjacentTopics, prettyConceptLabel,

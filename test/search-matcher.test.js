@@ -39,7 +39,13 @@ const { hitText, hitTag } = require(path.join(ROOT, "search-engine.js"));
 test("hitText: a term matches its own -ing form (the #218 defect)", () => {
   assert.equal(hitText("grilling with steven raichlen", "grill"), true);
   assert.equal(hitText("murdering her father", "murder"), true);
-  assert.equal(hitText("marketing", "market"), true);
+  /* This third example WAS `hitText("marketing", "market")`, and it was wrong --
+     see the sense-lock tests below. `engineer`/`engineering` replaces it because
+     it is the largest real win the `ing` allowance buys (188 pool items, against
+     `marketing`'s 10 that all turned out off-sense) and because the concept's own
+     sense IS the verb `to engineer`, which is what makes a gerund on-sense. */
+  assert.equal(hitText("school of nuclear science & engineering", "engineer"), true);
+  assert.equal(hitText("the human skills of nutrition coaching", "coach"), true);
 });
 
 test("hitText: a term matches its own plural, including the -es plural", () => {
@@ -92,13 +98,147 @@ test("hitText: stem-mutating inflections stay out (they need a stemmer, not a su
   assert.equal(hitText("baking", "bake"), false);
 });
 
+/* ---------- #248: the sense-locked stems take s/es but never ing ---------- */
+
+/* Each member is asserted INDIVIDUALLY rather than in a loop over the exported
+   set, deliberately. A loop over `SENSE_LOCKED_STEMS` would be a tautology --
+   delete a member and the loop simply stops checking it, silently and green,
+   which is the "assertion that asserts nothing" this file's history is made of.
+   Naming the five surface words pins the behaviour independently of the set. */
+
+test("hitText: a sense-locked stem does not reach its -ing form (#248)", () => {
+  /* `training` is a real inflection of `to train` -- the wrong verb for a concept
+     carrying only the railway noun. 32 pool items, the largest single off-sense
+     bucket the `ing` allowance opened. */
+  assert.equal(hitText("constraint-led speed training", "train"), false);
+  assert.equal(hitText("the pre-training wall", "train"), false);
+  assert.equal(hitText("wellness marketing vs. evidence", "market"), false);
+  assert.equal(hitText("the dilemma hanging over f1's future", "hang"), false);
+  assert.equal(hitText("summer travel and booking", "book"), false);
+  assert.equal(hitText("a long winding road", "wind"), false);
+});
+
+test("hitText: a sense-locked stem keeps its bare form and its plural (#248)", () => {
+  /* The point of #248 is that the fix is NOT deleting `train` from the concept.
+     If the lock ever cost the natural singular or plural, it would have
+     reintroduced the #218 defect it is built to preserve. */
+  assert.equal(hitText("american civil war railroads and trains", "train"), true);
+  assert.equal(hitText("a train", "train"), true);
+  assert.equal(hitText("the tungsten market", "market"), true);
+  assert.equal(hitText("markets all around the world", "market"), true);
+  assert.equal(hitText("banned books", "book"), true);
+  assert.equal(hitText("a book", "book"), true);
+  assert.equal(hitText("offshore wind", "wind"), true);
+  assert.equal(hitText("a comedy hang", "hang"), true);
+});
+
+test("hitText: the sense lock is NARROW -- on-sense stems keep their -ing (#248)", () => {
+  /* The lock is a subtraction from a set that #218 measured, so the thing that
+     makes it acceptable is that it subtracts almost nothing: 46 off-sense (term,
+     item) pairs out of 258, leaving these. Adding any of them to the set would
+     undo #218 in the same motion. */
+  assert.equal(hitText("grilling with steven raichlen", "grill"), true);
+  assert.equal(hitText("school of nuclear science & engineering", "engineer"), true);
+  assert.equal(hitText("nutrition coaching", "coach"), true);
+  assert.equal(hitText("homebrewing a wet-hopped ipa", "homebrew"), true);
+  /* Not an inflection at all, so the suffix set never applied to it -- the
+     `homebrew` items in the pool are reached through the tag `homebrewing`. */
+  assert.equal(hitText("homebrewcon asheville", "homebrew"), false);
+  assert.equal(hitText("shooting in remote regions", "film"), false); // unrelated word, sanity
+  assert.equal(hitText("filming in remote regions", "film"), true);
+  assert.equal(hitText("murdering her father", "murder"), true);
+  assert.equal(hitText("crafting characters", "craft"), true);
+});
+
+test("hitText: the sense lock does not admit -ed either, or any other suffix (#248)", () => {
+  /* The locked set is `(?:s|es)?`, so everything the main set already excluded
+     stays excluded. If someone "simplifies" the lock to a bare `s?` this still
+     passes -- that is what the -es claim below is for. */
+  assert.equal(hitText("trained", "train"), false);
+  assert.equal(hitText("marketed", "market"), false);
+  assert.equal(hitText("trainer", "train"), false);
+  assert.equal(hitText("bookish", "book"), false);
+  assert.equal(hitText("window", "wind"), false);
+  assert.equal(hitText("hanger", "hang"), false);
+});
+
+test("hitText: the sense lock keeps -es, so it subtracts exactly one suffix (#248)", () => {
+  /* None of "traines"/"marketes"/"bookes"/"windes"/"hanges" is a word, so this
+     allowance is inert on today's five members and cannot be verified against the
+     pool. It is pinned on a synthetic string precisely BECAUSE it is inert: the
+     locked set must differ from the main set on `ing` and on nothing else, so
+     that a future member ending in a sibilant (the coach/coaches shape) gets a
+     working plural without anyone having to rediscover why. */
+  assert.equal(hitText("traines", "train"), true);
+  assert.equal(hitText("bookes", "book"), true);
+});
+
+test("hitText: the sense lock does not weaken the prefix guard (#248)", () => {
+  /* A narrower suffix set must not accidentally become a looser prefix rule --
+     these terms are still long-branch terms and still carry the lookbehind. */
+  assert.equal(hitText("retraining", "train"), false);
+  assert.equal(hitText("supermarket", "market"), false);
+  assert.equal(hitText("supermarkets", "market"), false);
+  assert.equal(hitText("ebook", "book"), false);
+  assert.equal(hitText("headwind", "wind"), false);
+  assert.equal(hitText("2train", "train"), false);
+});
+
+test("hitTag: the sense lock applies to TAGS too, not just prose (#248)", () => {
+  /* tagDF and scoreMatch's +2.5 tag bonus both run through hitTag, and tags are
+     where the off-sense count concentrates (`wellness-marketing`, `marketing`,
+     `referral-marketing` are real tags in data/item-tags.json). A lock that lived
+     only in hitText would leave the strongest signal in the ranker unlocked. */
+  assert.equal(hitTag("training", "train"), false);
+  assert.equal(hitTag("speed-training", "train"), false);
+  assert.equal(hitTag("wellness-marketing", "market"), false);
+  assert.equal(hitTag("referral-marketing", "market"), false);
+  /* ...while the plural and the bare tag still hit. */
+  assert.equal(hitTag("trains", "train"), true);
+  assert.equal(hitTag("freight-trains", "train"), true);
+  assert.equal(hitTag("markets", "market"), true);
+});
+
+test("the sense-locked set is exported and holds exactly its documented members", () => {
+  /* A pin, not a tautology: the membership RULE lives in a comment, so the only
+     mechanical guard against a member arriving without a measurement is that
+     changing this set is a visible, deliberate edit. Five members, each argued
+     and counted in search-engine.js. If you are here because this went red, the
+     rule and the per-member counts are what you need to satisfy -- and the
+     rejected list right below them is where `engineer` (188 on-sense items) and
+     `grill` (#218's whole purpose) are kept out. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  assert.ok(SE.SENSE_LOCKED_STEMS instanceof Set);
+  assert.deepEqual([...SE.SENSE_LOCKED_STEMS].sort(), ["book", "hang", "market", "train", "wind"]);
+});
+
 /* ---------- THE PREFIX GUARD: must stay exactly as strict ---------- */
 
-test("hitText: prefix guard blocks the three documented collisions", () => {
+test("hitText: the LEADING guard blocks the two prefix collisions", () => {
+  /* Split from the trailing-guard test below, 2026-08-17. These two collisions
+     add letters BEFORE the term and are the lookbehind's own work: delete
+     `(?<![a-z0-9])` and exactly these fail. */
   assert.equal(hitText("diffusion llms", "fusion"), false);
+  assert.equal(hitText("kings of the steam age", "team"), false);
+});
+
+test("hitText: the TRAILING guard blocks the romance collision", () => {
+  /* `roman` inside "romance"/"romantic" adds letters AFTER the term, so the
+     lookbehind has nothing to do with it -- this is `(?![a-z0-9])` after the
+     suffix alternation. It used to sit in the prefix-guard test above, which
+     made the prefix guard look like it was doing work it was not, and led
+     tools/test-search.mjs §6 to record the "rome" collision case as vacuous
+     when in fact it is witnessed by mutating THIS guard: drop the trailing
+     lookahead and the Huberman romance episode is retrieved for "rome".
+     Keeping the two in separate tests is what keeps each witness legible. */
   assert.equal(hitText("romance and compatibility", "roman"), false);
   assert.equal(hitText("romantic", "roman"), false);
-  assert.equal(hitText("kings of the steam age", "team"), false);
+  /* The suffix allowance must not become a hole in the trailing guard either:
+     "romances" is `roman` + a suffix outside the named set, and stays out. */
+  assert.equal(hitText("romances", "roman"), false);
+  /* ...while a term followed by a genuine word boundary still matches. */
+  assert.equal(hitText("the roman empire", "roman"), true);
+  assert.equal(hitText("romans", "roman"), true);
 });
 
 test("hitText: prefix guard blocks the oracle's historical false friends for `war`", () => {
@@ -218,17 +358,19 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
      exist anywhere". It catches a NAMED declaration reusing one of these two
      identifiers, in a file other than search-engine.js. It does NOT catch a copy
      under a different name, nor an anonymous inline one, nor anything inside
-     search-engine.js itself -- and there IS one, found reviewing this change:
-     `tagDF` inlines the pre-#211 loose predicate (`tag.includes(term)`, no
-     collision guard, no plural on the short branch) as an anonymous arrow. So the
-     count was four copies, not three. That one is BEHAVIOURAL -- tagDF feeds
-     expansion pruning, where df > 60 deletes a term and df > 25 cuts its weight,
-     and 13 vocabulary terms land in a different bucket than the shared matcher
-     would give them (`ship` 155 -> dropped, against 6 -> kept at full weight, on
-     a count made entirely of `relationships`/`championship` substring hits the
-     ranker would never make). Changing it moves rankings, so it is filed as #249
-     rather than bundled, and named in this comment so the tick below is not
-     read as a claim it is clean. */
+     search-engine.js itself. There WAS one of exactly that shape -- `tagDF`
+     inlined the pre-#211 loose predicate (`tag.includes(term)`, no collision
+     guard, no plural on the short branch) as an anonymous arrow, making the count
+     four copies rather than three -- and #249 collapsed it onto `hitTag`.
+     THE SCAN IS STILL NOT WHAT CAUGHT IT and still could not catch its return, so
+     do not read the tick below as coverage of this file. #249 deliberately did NOT
+     widen the scan to chase anonymous or differently-named copies: the predicate
+     has no stable syntax to match, so any regex would be a guess that reads as a
+     guarantee. What guards it instead is the BEHAVIOURAL pair of tagDF tests
+     below, which compare counts against hitTag on synthetic tags and fail for any
+     disagreeing predicate regardless of how it is spelled or whether it is named.
+     search-engine.js therefore stays exempt from this scan, on the grounds that
+     the scan was never the right instrument for it. */
   const DECL = /(?:^|[^.\w])(?:const|let|var|function)\s+(hitText|hitTag)\s*(?:=|\()/;
   const SKIP = new Set(["node_modules", ".git", "audio-cache", "data-local", "ios", "mobile"]);
   const offenders = [];
@@ -248,6 +390,72 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
   assert.deepEqual(offenders, [],
     `these files declare their own hitText/hitTag instead of importing search-engine.js's: ${offenders.join(", ")}. ` +
     `Three copies existed and two drifted looser than the ranker (#211, #219) -- import them.`);
+});
+
+/* ---------- #249: tagDF counts through the shared matcher ---------- */
+
+test("tagDF counts tags through hitTag, not a loose substring (#249)", () => {
+  /* THE FOURTH COPY. `tagDF` inlined the pre-#211 loose predicate as an anonymous
+     arrow -- `tag.includes(term)` on the long branch, no collision guard, and no
+     plural on the short branch -- inside search-engine.js itself, where the
+     reimplementation scan above cannot see it (it matches NAMED declarations and
+     skips this file by path).
+     This is a BEHAVIOURAL test, not a scan, and that is the point: a scan can only
+     ever catch the copies it knows how to describe, whereas this fails for any
+     predicate that disagrees with hitTag on these tags, named or anonymous.
+     Synthetic ctx on purpose -- no data dependency, so a nightly refresh cannot
+     flip it. The tag shapes are the real ones from #249's report: `ship` was
+     counted at 155 and DELETED from expansions (df > 60) on a tally made of
+     `relationships` and `championship` substring hits, against a true count of 6. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const ctx = {
+    itemTags: { tags: {
+      a: ["ship", "maritime"],          // a real `ship` tag
+      b: ["relationships", "dating"],   // loose predicate counted this as `ship`
+      c: ["championship", "sports"],    // and this
+      d: ["ships", "naval"],            // a genuine plural, which the loose short
+      e: ["shipwrecks"],                // branch missed; this one is a collision
+    } },
+  };
+  /* 2, not 5: `relationships` and `championship` are substring hits the ranker
+     would never make, and `shipwrecks` adds letters after the term. Only the
+     literal `ship` (item a) and the genuine plural `ships` (item d) count -- the
+     plural is in the named suffix set, and the loose SHORT branch had no plural
+     allowance at all, which is the other half of the same defect. The loose
+     predicate scores this same fixture 5 -- every one of the five items -- so it
+     fails here by 3. */
+  assert.equal(SE.tagDF("ship", ctx), 2);
+
+  /* The short branch, where the loose predicate had no plural allowance at all.
+     `car` is 3 chars: exact tag, hyphen segment, or their plurals. */
+  const shortCtx = {
+    itemTags: { tags: {
+      a: ["car"], b: ["cars"], c: ["electric-car"], d: ["car-culture"],
+      e: ["carbon"], f: ["nascar"],
+    } },
+  };
+  assert.equal(SE.tagDF("car", shortCtx), 4);
+
+  /* And the sense lock reaches tagDF too, since tagDF is now a hitTag consumer:
+     `training` tags must not inflate the railway term's count. */
+  const trainCtx = {
+    itemTags: { tags: {
+      a: ["trains", "railway"], b: ["training"], c: ["strength-training"], d: ["train"],
+    } },
+  };
+  assert.equal(SE.tagDF("train", trainCtx), 2);
+});
+
+test("tagDF memoizes per ctx without leaking between ctxs (#249)", () => {
+  /* The memo is keyed by term on the ctx object, and tagDF is the only writer.
+     Two ctxs with different data must not share an answer -- a cache keyed
+     globally would make the count depend on which query ran first. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const one = { itemTags: { tags: { a: ["ship"] } } };
+  const two = { itemTags: { tags: { a: ["ship"], b: ["ships"] } } };
+  assert.equal(SE.tagDF("ship", one), 1);
+  assert.equal(SE.tagDF("ship", two), 2);
+  assert.equal(SE.tagDF("ship", one), 1);
 });
 
 test("the matcher is actually exported, so sharing it is possible at all", () => {

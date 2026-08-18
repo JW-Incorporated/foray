@@ -578,20 +578,100 @@ const collisionCases = [
    derives any relative bar -- the same argument the "nba" retrieval check above
    makes for reading it. With the guard intact all three banned ids are absent
    from `results` entirely, so this costs nothing today.
-   HONEST ABOUT THE OTHER TWO: they stay vacuous under that mutation, and
-   promoting them to `results` does not change it. The romance item never reaches
-   `results` because `roman` arrives as a low-weight expansion whose title-only
-   hit does not clear minScore, and "an nba team" is AND-gated as a proper-noun
-   query so it returns nothing at all. Both are kept out by SCORING, not by the
-   matcher, so neither can witness the guard. The direct witnesses live in
-   test/search-matcher.test.js, where breaking the guard kills five tests
-   including all three collisions by name, in milliseconds. */
+   ONE OF THE OTHER TWO IS NOT VACUOUS AFTER ALL, corrected 2026-08-18 (#249).
+   This said both stayed vacuous because "the romance item never reaches `results`
+   -- `roman` arrives as a low-weight expansion whose title-only hit does not clear
+   minScore", i.e. that scoring kept it out. That was reasoned, not measured, and
+   it is wrong. Measured: with the prefix guard deleted the romance item scores
+   0.00 -- not a low score, NO MATCH -- because "romance" is `roman` plus letters
+   AFTER the term, and it is the TRAILING `(?![a-z0-9])`, not the leading
+   lookbehind, that blocks it. The prefix mutation was simply the wrong mutation
+   for this case.
+   Delete the trailing guard instead and this case goes red exactly as intended:
+   the Huberman romance episode is retrieved for "rome" and both assertions fire.
+   So two of the three §6 cases have real witnesses, one per guard:
+
+     "...about fusion" / diffusion   witnessed by deleting the LEADING lookbehind
+     "rome" / romance                witnessed by deleting the TRAILING lookahead
+
+   THE THIRD IS GENUINELY VACUOUS AND CANNOT BE FIXED HERE. "an nba team" is
+   AND-gated as a proper-noun query (neither `nba` nor `team` is concept
+   vocabulary), so every primary token must match and no item carries both --
+   the query returns nothing whatever the matcher does. That is a property of the
+   query shape, not of the guard, so no matcher mutation can ever witness it and
+   no rewrite of this case will change that. It is kept because it costs nothing
+   and documents the collision; it is not evidence of anything.
+   The fast direct witnesses live in test/search-matcher.test.js, where the two
+   guards are now pinned as SEPARATE tests -- they were one test named after the
+   prefix guard, which is what made a trailing-guard claim look like a
+   prefix-guard claim and produced the wrong note above. */
 for (const c of collisionCases) {
   const { picks, results } = search(c.query);
   check(`"${c.query}" excludes ${c.bannedId} from picks (${c.note})`, !picks.some((p) => p.i.id === c.bannedId),
     `still present in picks`);
   check(`"${c.query}" never even retrieves ${c.bannedId} (${c.note})`, !results.some((r) => r.i.id === c.bannedId),
     `absent from picks but PRESENT in the raw result set -- the collision is back and is only hidden by the 10-pick truncation`);
+}
+
+/* ---------- 6b. sense-locked stems: off-sense inflections (#248) ---------- */
+
+/* #246 widened the suffix set to `(?:s|es|ing)?`, which is what `grill`/`grilling`
+   needed and what `train`/`training` did not: `train` is a term of the `trains`
+   concept and carries only the railway noun, so 32 fitness, dog-training and
+   AI-pre-training items started matching a railway term, two of them inside the
+   top 10 for "train history". #248, fixed by SENSE_LOCKED_STEMS in
+   search-engine.js.
+   ASSERTED ON RAW `results` AS WELL AS `picks`, for exactly the reason §6 records
+   above: the `diffusion` case proved that a 10-pick truncation hides a collision
+   that ranks 11th, and an assertion that cannot see rank 11 is most of the way to
+   vacuous. Here that is not hypothetical -- of the two items below, the speed-
+   training episode sat at pick 10 and the pre-training one at pick 8, and the
+   other 30 off-sense items were in `results` behind them, one catalogue refresh
+   away from being promoted. `results` sees all of them.
+   NOT a needle check. A needle list ("must contain train/rail/railway") would
+   have to enumerate the legitimate expansion -- `transit`, `locomotive`,
+   `steam-engine`, and a Gershwin episode whose hook names a train -- and would go
+   red on catalogue growth rather than on a regression. Banned ids are the same
+   instrument §6 uses, and they are specific to the mechanism. */
+const senseLockCases = [
+  { query: "train history", bannedId: "corecursive--pre-training-wall",
+    note: "`train` should not match inside training -- AI pre-training is the wrong verb" },
+  { query: "train history", bannedId: "just-fly-performance-podcast--scott-leech",
+    note: "`train` should not match inside training -- speed training is the wrong verb" },
+  { query: "stock market", bannedId: "the-peter-attia-drive--403-peptides-separating-scientific-promise-from",
+    note: "`market` should not match inside marketing -- to advertise is the wrong verb" },
+  { query: "stock market", bannedId: "maintenance-phase--salt",
+    note: "`market` should not match inside marketing -- the tag is wellness-marketing" },
+];
+for (const c of senseLockCases) {
+  const { picks, results } = search(c.query);
+  check(`"${c.query}" excludes ${c.bannedId} from picks (${c.note})`, !picks.some((p) => p.i.id === c.bannedId),
+    `still present in picks`);
+  check(`"${c.query}" never even retrieves ${c.bannedId} (${c.note})`, !results.some((r) => r.i.id === c.bannedId),
+    `absent from picks but PRESENT in the raw result set -- the off-sense inflection is back and is only hidden by the 10-pick truncation`);
+}
+
+/* THE TEMPTING WRONG FIX, pinned so it cannot be taken. #248 could be made green
+   by deleting `train` from the `trains` concept, and that would be a regression
+   dressed as a fix: `interpretQuery` triggers a concept on an exact query token,
+   so removing the term stops the natural singular "train" from triggering
+   `trains` at all -- no `transport/trains` topic boost, no expansion to
+   `railway`/`locomotive`/`rail`. That is precisely the defect #218 exists to fix,
+   which is why #248 names it and refuses it.
+   So the vocabulary side is asserted directly, on the interpretation rather than
+   on the picks: a ranking assertion could stay green while the concept quietly
+   stopped firing, because the literal token `train` still matches railway items
+   by itself. This reads the mechanism instead. */
+{
+  const { interp } = search("train");
+  check(`"train" still triggers the trains concept (topic boost survives #248)`,
+    interp.topicBoosts.has("transport/trains"),
+    `topicBoosts=${JSON.stringify([...interp.topicBoosts])} -- if transport/trains is absent, the term "train" was probably deleted from the concept, which is the fix #248 rules out`);
+  const expansion = interp.groups[0]?.terms ?? new Map();
+  const expected = ["railway", "locomotive", "rail", "trains"];
+  const missing = expected.filter((t) => !expansion.has(t));
+  check(`"train" still expands to the railway vocabulary (${expected.join("/")})`, missing.length === 0,
+    `missing from the expansion: ${missing.join(", ")} -- the sense lock must narrow what a TERM matches in text, never what a query token maps to`);
 }
 
 /* ---------- 7. proper-noun matching (fix B) ---------- */
