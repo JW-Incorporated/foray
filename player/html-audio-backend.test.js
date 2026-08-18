@@ -746,17 +746,37 @@ test("on a real clock the boundary fires and never clips, at every phase of a ti
   t.diagnostic(`the fine timer beat the tick outright in ${decisive}/${PHASE_SWEEP_WALL_SEC.length} runs`);
 });
 
-test("on a real clock the boundary fires and never clips at 2x either", async (t) => {
-  // At 2x one timeupdate is half a second of CONTENT — a whole sentence. What is
-  // asserted here is only what a real clock can show and load cannot break: the
-  // boundary fires at 2x and does not stop short. That the fine timer's CONTENT
-  // window stays flat as the rate rises is proved as arithmetic below, with no
-  // clock, which is where that claim belongs.
-  const r = await measureBoundary(0.82, 2);
-  const naive = assertBoundaryHeld(r);
+test("on a real clock the boundary fires and never clips at 2x either, at every phase of a tick", async (t) => {
+  /* At 2x one timeupdate is half a second of CONTENT — a whole sentence. What is
+     ASSERTED here is only what a real clock can show and load cannot break: the
+     boundary fires at 2x and does not stop short. That the fine timer's CONTENT
+     window stays flat as the rate rises is proved as arithmetic below, with no
+     clock, which is where that claim belongs.
+
+     SWEPT ACROSS A TICK, like the 1x run above, since the speed control shipped
+     (2026-08-17). A lone target can make any implementation look good by luck of
+     alignment — that is the lesson `PHASE_SWEEP_WALL_SEC` was written down for —
+     and the whole question "is 2x worse than 1x at the boundary?" is a question
+     about the WORST phase, so measuring one phase at 2x against four at 1x could
+     not answer it. The two tests now print comparable numbers from the same run,
+     which is what makes the comparison in the PR body a measurement rather than
+     an argument. */
+  let decisive = 0;
+  let worst = 0;
+  for (const wallSec of PHASE_SWEEP_WALL_SEC) {
+    const r = await measureBoundary(wallSec, 2);
+    const naive = assertBoundaryHeld(r);
+    if (naive === null) decisive++;
+    worst = Math.max(worst, r.overshoot);
+    t.diagnostic(
+      `2x boundary ${r.target.toFixed(2)}: overshoot ${(r.overshoot * 1000).toFixed(0)}ms vs a bare ` +
+      `timeupdate check's ${naive === null ? "(no tick ever saw the boundary)" : `${(naive * 1000).toFixed(0)}ms`}` +
+      ` — ${r.ticks.length} ticks delivered`
+    );
+  }
   t.diagnostic(
-    `2x boundary ${r.target.toFixed(2)}: overshoot ${(r.overshoot * 1000).toFixed(0)}ms vs a bare ` +
-    `timeupdate check's ${naive === null ? "(no tick ever saw the boundary)" : `${(naive * 1000).toFixed(0)}ms`}`
+    `2x: worst overshoot ${(worst * 1000).toFixed(0)}ms of content; the fine timer beat the tick ` +
+    `outright in ${decisive}/${PHASE_SWEEP_WALL_SEC.length} runs`
   );
 });
 
@@ -862,22 +882,41 @@ test("a faster rate does not loosen the boundary: armed wall time x rate is cons
 });
 
 test("the fine watch stays out of the way until the boundary is within the lead", () => {
-  // It is deliberately NOT armed a whole segment early: timeupdate is free and
-  // already firing, and a fine timer armed minutes out would just be rescheduled
-  // hundreds of times. The lead is 0.5 s of WALL clock, so the rate changes WHEN
-  // arming happens — not how tight the boundary ends up being.
+  /* It is deliberately NOT armed a whole segment early: timeupdate is free and
+     already firing, and a fine timer armed minutes out would just be rescheduled
+     hundreds of times. The lead is 2.0 s of WALL clock, so the rate changes WHEN
+     arming happens — not how tight the boundary ends up being.
+
+     The numbers moved with the lead (0.5 s -> 2.0 s, 2026-08-17, with the speed
+     control): the lead now has to exceed the widest tick this repo has recorded,
+     1,825 ms, or a run that delivers one arms nothing and the boundary is stopped
+     by the LATE TICK — a cost that scales with rate, unlike the fine timer's.
+     `OUT_POINT_ARM_LEAD_SEC` carries the derivation. The shape of the claim is
+     unchanged; only the distances are, and they stay dyadic so `Math.ceil` is not
+     a coin-flip. */
   assert.deepStrictEqual(
-    armedFineDelaysMs({ at: 100, outPoint: 100.75, rate: 1 }), [],
-    "0.75 s of wall clock out — timeupdate's job, not the fine timer's"
+    armedFineDelaysMs({ at: 100, outPoint: 104, rate: 1 }), [],
+    "4 s of wall clock out — timeupdate's job, not the fine timer's"
   );
   assert.deepStrictEqual(
-    armedFineDelaysMs({ at: 100, outPoint: 100.75, rate: 2 }), [375],
-    "the same boundary at 2x is 0.375 s of wall clock out, so it arms"
+    armedFineDelaysMs({ at: 100, outPoint: 104, rate: 2 }), [2000],
+    "the same boundary at 2x is 2.0 s of wall clock out, so it arms"
   );
   assert.deepStrictEqual(
-    armedFineDelaysMs({ at: 100, outPoint: 100.5, rate: 1 }), [500],
+    armedFineDelaysMs({ at: 100, outPoint: 102, rate: 1 }), [2000],
     "a boundary exactly at the lead still arms"
   );
+  /* AND THE LEAD IS THE REASON A LATE TICK IS SURVIVABLE. 1,825 ms is the widest
+     interval measured here; a boundary that far out has to arm at every stop on
+     the ladder, or the tick that finally arrives is what stops the item. This is
+     the assertion that fails if the lead is ever quietly put back to 0.5 s. */
+  for (const rate of [0.75, 1, 1.25, 1.5, 1.75, 2]) {
+    const [ms] = armedFineDelaysMs({ at: 100, outPoint: 100 + 1.825 * rate, rate });
+    assert.equal(
+      typeof ms, "number",
+      `at ${rate}x a boundary one worst-case tick out armed nothing — the late tick would stop it`
+    );
+  }
 });
 
 test("an out-point already behind the playhead arms no timer, at any rate", () => {
@@ -901,6 +940,107 @@ test("an out-point already behind the playhead arms no timer, at any rate", () =
       `${rate}x: the playhead is past it, so there is no crossing to wait for`
     );
   }
+});
+
+/* ---------- changing speed mid-segment (the founder's control) ---------- */
+
+/** Arm a boundary at `from`x, then change to `to`x, and report every wall delay
+    the backend asked for. `SteppedAudio` does NOT fire `ratechange` when
+    `playbackRate` is assigned, and that is the point of using it here: it models
+    the page where the event is late — a hidden one, where DOM tasks are throttled
+    ~21x and where a listener changing speed with the screen locked actually is. */
+function armedAcrossRateChange({ at, outPoint, from, to }) {
+  const el = new SteppedAudio({ at, rate: from });
+  const realSetTimeout = globalThis.setTimeout;
+  const asked = [];
+  globalThis.setTimeout = (fn, ms) => { asked.push(ms); return { hasRef: () => true }; };
+  try {
+    const b = new HtmlAudioBackend({ element: el });
+    b.setOutPoint(outPoint);
+    const armedBefore = [...asked];
+    b.setRate(to);
+    return { armedBefore, armedAfter: asked.slice(armedBefore.length), rate: el.playbackRate };
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+}
+
+test("speeding up mid-segment re-derives the boundary on the same tick, not on ratechange", () => {
+  /* THE HOLE THIS CLOSES. The fine timer is armed for `(end - now) / rate` of
+     WALL clock. Speed up and the boundary moves CLOSER in wall time, so a timer
+     armed at the old rate now fires LATE — and it is late by exactly the content
+     the listener would hear of the next episode.
+
+     2.0 s of content out at 1x arms a 2,000 ms timer. Switch to 2x and the
+     boundary is 1,000 ms away; the old timer would wake 1,000 ms of wall clock
+     late, which at 2x is 2.0 s of the wrong show. `ratechange` does fire in a real
+     element and `_onRateChange` reschedules on it — but that is a queued DOM task,
+     and this fake fires no such event, so what is asserted here is the
+     SYNCHRONOUS correction inside `setRate`. */
+  const up = armedAcrossRateChange({ at: 100, outPoint: 102, from: 1, to: 2 });
+  assert.deepStrictEqual(up.armedBefore, [2000], "2.0 s of content at 1x is a 2,000 ms wait");
+  assert.deepStrictEqual(up.armedAfter, [1000], "the same boundary at 2x is 1,000 ms away, and must be re-armed for it");
+});
+
+test("slowing down re-derives it too — the timer must not fire before the audio arrives", () => {
+  // The other direction, which costs an early wake rather than a late one. It is
+  // harmless (the wake re-reads the playhead and reschedules) but re-deriving is
+  // one line and a spurious wake at the 4 ms floor is not free on a phone.
+  const down = armedAcrossRateChange({ at: 100, outPoint: 102, from: 2, to: 1 });
+  assert.deepStrictEqual(down.armedBefore, [1000]);
+  assert.deepStrictEqual(down.armedAfter, [2000]);
+});
+
+test("a rate change with no boundary armed arms nothing — it is not a reason to start watching", () => {
+  // `setRate` reaches `_scheduleFineWatch`, which must still refuse when there is
+  // no out-point: an unbounded episode has no boundary to watch and a timer here
+  // would be a wakeup per rate change forever.
+  const el = new SteppedAudio({ at: 100, rate: 1 });
+  const realSetTimeout = globalThis.setTimeout;
+  const asked = [];
+  globalThis.setTimeout = (fn, ms) => { asked.push(ms); return { hasRef: () => true }; };
+  try {
+    const b = new HtmlAudioBackend({ element: el });
+    b.setRate(1.5);
+    assert.deepStrictEqual(asked, []);
+    assert.equal(el.playbackRate, 1.5, "and the rate itself still applied");
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+});
+
+test("an element that refuses a playback rate does not take the Foray down with it", () => {
+  /* Safari refuses some playback rates outright, and `_promoteWarm` already
+     guards its own assignment for that reason. An unguarded throw in `setRate`
+     lands in the manager's effect loop -> `_loadItem`'s catch -> `E.error` ->
+     idle + pause, so a refused SPEED would stop the hour. The rate we asked for is
+     still remembered, because `play()` re-applies it and the next element may
+     accept it. */
+  const el = new SteppedAudio({ at: 100, rate: 1 });
+  Object.defineProperty(el, "playbackRate", {
+    get: () => 1,
+    set: () => { throw new DOMException("not supported", "NotSupportedError"); },
+  });
+  const b = new HtmlAudioBackend({ element: el });
+  assert.doesNotThrow(() => b.setRate(2));
+  assert.equal(b.rate, 1, "and `rate` reports what the element is actually doing, not what we wanted");
+});
+
+test("`rate` reports the element's real rate, so the lock screen cannot disagree with the audio", () => {
+  /* `setPositionState` hands the OS a position AND a rate, and the OS extrapolates
+     the playhead forward as `position + rate x wall` between reports. Report a
+     rate the element is not running at and the lock-screen scrubber drifts away
+     from the audio for as long as the difference lasts — which is worse than no
+     scrubber. So this getter reads the element, not what we asked for. */
+  const el = new SteppedAudio({ at: 100, rate: 1 });
+  const b = new HtmlAudioBackend({ element: el });
+  assert.equal(b.rate, 1);
+  b.setRate(1.75);
+  assert.equal(b.rate, 1.75);
+  // The engine moved it underneath us (a user gesture on native controls, a
+  // handover, an engine clamp). The truth is the element's.
+  el.playbackRate = 1;
+  assert.equal(b.rate, 1);
 });
 
 /** Arm a boundary and hand back the fine timer's callback, so a test can wake it
