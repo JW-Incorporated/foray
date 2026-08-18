@@ -132,9 +132,9 @@
        segment — a median 103 s — and then reverted with nothing on screen to
        say so.
 
-   So `restoreRate` restores `this._rate` now. An authored `item.rate` still
-   wins, because that is the escape hatch the effect was named for; nothing
-   authors one today.
+   So `restoreRate` restores `this._rate` now, and the per-item read is gone
+   rather than demoted — see the effect for why a vestigial `item.rate` that only
+   a test helper populates is worse than no override at all.
 
    TTS IS STILL 1.0x, and `setRate` respects that live (corner case #18). A
    bridge is one line of our own narration at a level and pace we chose; playing
@@ -629,16 +629,25 @@ export class PlayerQueueManager {
         // to override the listener's speed rather than to consult it.
         return this.backend.setRate(1.0);
 
-      case "restoreRate": {
-        const item = this._currentItem();
-        /* §12. This used to be `item?.rate ?? 1.0`, which — since no queue item
-           has ever carried a `rate` — was an unconditional reset to 1x on every
-           `itemLoaded`, i.e. at the first play AND at every seam. That is the
-           whole "the speed silently reverts mid-listen" defect, and it was ours
-           rather than the engine's. An authored per-item rate still wins; the
-           listener's speed is the floor under it. */
-        return this.backend.setRate(item?.rate ?? this._rate);
-      }
+      case "restoreRate":
+        /* §12. This used to be `item?.rate ?? 1.0` — an unconditional reset to 1x
+           on every `itemLoaded`, i.e. at the first play AND at every seam, since
+           no queue item this repo builds carries a `rate`. That is the whole
+           "the speed silently reverts mid-listen" defect, and it was ours rather
+           than the engine's.
+           THE PER-ITEM READ IS GONE, not merely demoted, and that is deliberate.
+           It is the port of the Swift's `item.showRate` (PlayerQueueManager.swift
+           line 335) — a per-SHOW speed override, which Apple Podcasts really does
+           have and which this product may want one day. But `foray-queue.js` and
+           `foray-resolve.js` never set it, so the only thing in this repo that
+           populates the field is a test helper, which sets a meaningless `1.0` —
+           and `?? ` cannot tell that apart from a deliberate override. Left in, it
+           silently beat the listener's explicit choice for every item any future
+           test happened to build with that helper. A per-show speed needs its own
+           key, its own control and its own decision about precedence; it does not
+           get to arrive by accident through a vestigial field. Retiring the Swift
+           copy is #28. */
+        return this.backend.setRate(this._rate);
 
       case "playTransitionTTS":
         return this._playTransitionBridge();
