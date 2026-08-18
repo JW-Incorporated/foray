@@ -264,38 +264,51 @@ biography, product and promo. That is a better outcome than it sounds — it ret
 "probably under-cut" as an open question on three episodes.
 
 **Every existing anchor re-verified against the new transcripts, and this is the
-strongest incidental result in the pass.** All 13 anchors on the three episodes
-resolve as whole-word subsequences, and every anchor phrase my matcher located lands
-at **exactly** the recorded `start_sec`/`end_sec` — drift 0.00 s, not the ±0.12 s
-median §2c measured. So these three episodes were cut from this same ASR pass, the
-timings in `data/segments.json` are exact rather than tolerant, and nothing in the
-committed data needs revisiting.
+strongest incidental result in the pass.** The three episodes carry 13 cuts and
+therefore **26 anchor phrases**; all 26 resolve uniquely as whole-word subsequences,
+and every one lands at **exactly** the recorded `start_sec`/`end_sec` — drift 0.00 s,
+not the ±0.12 s median §2c measured. So these three episodes were cut from this same
+ASR pass, the timings in `data/segments.json` are exact rather than tolerant, and
+nothing in the committed data needs revisiting.
 
-#### The fire-vocabulary table the batch arrived with is wrong in three places
+**A note on durations in this section.** Every figure below is the **end of the last
+ASR segment**, which is where speech stops, not the audio length. It runs 3–14 s short
+of the `itunes:duration` the manifest and `data/segment-sources.json` record — the
+asado episode is 2,391.75 s of speech against 2,414 s declared. Where an existing
+document quotes the declared figure, that is why it differs; neither is wrong.
 
-The batch came with a measured summary of fire and technique terms per episode,
-offered to prioritise the reading. It was re-derived here over the **exact fourteen
-terms the beat 20 rejection was counted on** (barbecue, barbacoa, jerk, maroon, smoke,
-fire, grill, pit, charcoal, wood, butcher, allspice, pimento, vinegar), whole-word,
-across every ASR segment. Three of its rows do not survive that check, and in each
-case the error points the same way — toward reading an episode as more on-plot than it
-is.
+#### The fire-vocabulary table the batch arrived with, checked
 
-| Episode | Table claimed | Verified over the fourteen |
+The batch came with a summary of fire and technique terms per episode, offered to
+prioritise the reading. It was re-derived here over the **exact fourteen terms the beat
+20 rejection was counted on** (barbecue, barbacoa, jerk, maroon, smoke, fire, grill,
+pit, charcoal, wood, butcher, allspice, pimento, vinegar). **Counts below are
+whole-word token counts** — the term, or its plural, as a complete word — which is the
+standard the Goucher zero was measured on; where a looser stem match would have caught
+more, the difference is stated, because in three cases the difference is the whole
+finding.
+
+**One row is wrong on the counts and two are accurate but misleading**, and all three
+errors point the same way — toward reading an episode as more on-plot than it is.
+
+| Episode | Table claimed | Verified over the fourteen, whole-word |
 |---|---|---|
-| `more-than-jerk-chicken-jam` | jerk, **maroon, pit, fire** | maroon 10 — **`pit` does not occur at all**; the one `fire` is *"firearms"* in a list of trade goods; the one `wood` is *"Zaimaka Land of Wood and Water"* (the ASR's punctuation, unrepaired); **`jerk` occurs zero times** in an episode titled *More Than Jerk Chicken* |
-| `jamaica-the-connection-bet` | jerk, maroon | maroon 37, jerk 2, and **zero for the other twelve** — no fire, smoke, pit, grill, wood, charcoal, butcher or pimento anywhere in 8,010 words |
-| `heritage-food-stories` | fire, grill | 4 hits total: `barbecue` and `grill` are the **same 7.5-second aside**; the one `fire` is *"the fire for resistance"*, a metaphor; the one `wood` is *"Woodrow"* |
-| `origin-stories-episode-09` | fire, grill | accurate (fire 17), and the episode was already cut |
-| `argentina-open-fire-cooking` | pit, smoke, fire, asado, grill, charcoal | accurate and understated (fire 41, grill 35, asado 25), and the episode was already cut |
-| `the-history-of-jerk-in-jam` | jerk, maroon, pit, smoke, allspice, pimento | accurate (jerk 85, pimento 15), and the episode was already cut |
-| `eat-this-podcast-prehistoric-cooking-pots` | none | **confirmed: 0 of 14.** The prediction that it would fail was right |
+| `more-than-jerk-chicken-jam` | jerk, **maroon, pit, fire** | **Wrong.** maroon 11 — but **`pit` does not occur at all** and **`fire` is 0**: the sole stem hit is *"firearms"* in a list of trade goods. The one `wood` is *"Zaimaka Land of Wood and Water"* (the ASR's punctuation, unrepaired). And **`jerk` occurs zero times** in an episode titled *More Than Jerk Chicken*. 12 hits in total |
+| `jamaica-the-connection-bet` | jerk, maroon | **Accurate but misleading.** maroon 45 and jerk 4 are both present — and that is the entire tally: **zero for the other twelve.** No fire, smoke, pit, grill, wood, charcoal, butcher or pimento anywhere in 8,010 words. The two terms it has are the two that belong to beat 15 |
+| `heritage-food-stories` | fire, grill | **Accurate but misleading.** Both present, once each, and 3 hits in total: `barbecue` and `grill` are the **same 7.5-second aside**, and the one `fire` is *"the fire for resistance"*, a metaphor. `wood` is 0 whole-word; the stem hit is *"Woodrow"* |
+| `origin-stories-episode-09` | fire, grill | Accurate on `fire` (17); `grill` is 0 whole-word, the stem hit being *"grilling"*. Already cut |
+| `argentina-open-fire-cooking` | pit, smoke, fire, asado, grill, charcoal | Accurate and understated: fire 39, grill 27, barbecue 24, pit 7. (`asado`, 25, is not one of the fourteen.) Already cut |
+| `the-history-of-jerk-in-jam` | jerk, maroon, pit, smoke, allspice, pimento | Accurate: jerk 85, wood 19, pimento 15, barbecue 9, pit 2. `smoke` is 2 whole-word and 6 by stem, the rest being *"smoked"* | 
+| `eat-this-podcast-prehistoric-cooking-pots` | none | **Confirmed: 0 of 14.** The prediction that it would fail was right |
 
 **The lesson is the one #226 keeps re-teaching, one level down.** A term-presence table
-is a proxy for a proxy: it stands in for subject, which stands in for beat service. Two
-of the three errors above would have sent a reader hunting for a pit in an episode that
-has none. The counts are worth deriving; they are not worth trusting, and they never
-substitute for the beat's own reject line.
+is a proxy for a proxy: it stands in for subject, which stands in for beat service.
+Only one row here is factually wrong — but it is wrong in the way that costs most,
+promising a `pit` in an episode that has none. The other two are *accurate and still
+misleading*, which is the more instructive failure: a table that reports presence
+cannot report that the two terms an episode has are the two that belong to a
+**different, already-filled beat**. The counts are worth deriving; they are not worth
+trusting, and they never substitute for the beat's own reject line.
 
 #### The four genuinely new episodes, scored against the beat each would serve
 
@@ -304,7 +317,7 @@ substitute for the beat's own reject line.
 as an identity factor in Jamaican Maroon and Rastafari communities: salt as the
 commodity that made the middle passage possible, women as its primary producers, Mary
 Prince's diaries of the Bermuda salt ponds, the flying-back-to-Africa belief and salt
-as what binds a spirit to the earth, Lot's wife, hypertension, white quartz as a
+as what binds a spirit to the earth, the story of Lot, hypertension, white quartz as a
 substitute when salt is unavailable. It is a good episode and it is on the Foray's
 adjacent territory. It has **no fire content of any kind**, so it cannot serve a fire
 beat, and there is no salt beat in the spine. Three specific rejections, since this was
@@ -347,8 +360,9 @@ beat 12."* The transcript settles it. The episode is annexation, the ban on Kore
 language and food, rice requisitioning and the demonising of kimchi, then a closing
 list of dishes now globally loved. The **entire** Korean-grill content is 7.5 seconds
 inside that list, at 759.86 → 767.32: *"Korean barbecue has become a global social
-experience. The communal grill at the center of the table is a whole vibe."* That is
-below the 30 s floor, it has no history, no economics and no diner-as-cook mechanism,
+experience … the communal grill at the center of the table is a whole vibe"* — the
+heritage transcript is wholly unpunctuated, so the ellipsis marks a segment boundary and
+no sentence-ending has been added. That is below the 30 s floor, it has no history, no economics and no diner-as-cook mechanism,
 and beat 12's reject line is *"menu explainer."* Beat 12 remains empty under the
 English-only ruling and is a permanent narration beat.
 
@@ -372,7 +386,7 @@ reason beat 20 already established: the registry's contract is that every episod
 pool refers to must resolve to audio, so an entry with no segments earns a checker
 warning and would be recording a transcription rather than a playable source. The
 passages named above carry their timestamps here so a playlist pass can find them
-without re-reading 2.6 hours of tape — that is what **label, never exclude** means when
+without re-reading two hours of tape — that is what **label, never exclude** means when
 nothing was minted.
 
 ---
@@ -449,13 +463,19 @@ the stated blocker is gone. **Beat 2 does not move, and timings were never the
 blocker.**
 
 Every preservation and smoke sentence in the episode falls in a single band, 341.84 →
-608.02, and that band lies **inside the two cuts that already exist**. The core is
+608.02, and **every one of those sentences sits inside one or other of the two cuts that
+already exist** — the band itself is not a subset of the cuts, because the 50.7 s gap
+between them lies within it, but nothing in that gap is a usable sentence. The core is
 341.84 → 412.24 (70 s): the meat had to be preserved, salt was not reliably available,
 wood ash substituted, the pit was dug, *"and it was almost smoked … historically we've
 seen smoke as another form of preservation."* That span is **nested wholly within
-`#266`** (266.01 → 503.94). The only preservation words outside the two cuts are a
-dependent clause at 515.48 → 521.20, in the 50-second gap between them, and a clause is
-not a segment.
+`#266`** (266.01 → 503.94). The only preservation words outside the two cuts are one
+sentence at 508.32 → 521.20, wholly inside the 50.7 s gap between them: *"and so now
+today, people don't necessarily think of jerk chicken as in cooking with pimento wood
+and wrapping it up in leaves and being smoked together with the wood ash and all
+that."* At 12.9 s it is under half the floor, and it is a **negation** — a description
+of what listeners no longer picture — so it is not the beat's evidence even in
+principle.
 
 So the choice a timed transcript actually offers is not "give beat 2 its own cut"; it is
 **"split beat 15's carrier in two"** — and that is a worse trade three ways. It would
@@ -729,8 +749,9 @@ would, and under the English-only ruling they cannot be used.
 
 **Confirmed 2026-08-18, and the prediction above held exactly.** The episode was
 transcribed and read. Its whole Korean-grill content is **7.5 seconds** at 759.86 →
-767.32 — *"Korean barbecue has become a global social experience. The communal grill
-at the center of the table is a whole vibe"* — one line in a closing list of dishes
+767.32 — *"Korean barbecue has become a global social experience … the communal grill
+at the center of the table is a whole vibe"* (unpunctuated in the source; the ellipsis is a
+segment boundary) — one line in a closing list of dishes
 that also names kimchi, bibimbap, japchae and Korean fried chicken. Below the 30 s
 floor, no history, no economics, no diner-as-cook mechanism, and squarely inside beat
 12's *"reject: menu explainer."* The episode is genuinely about the ban on Korean
@@ -802,12 +823,27 @@ than asserting it, and it is the present-tense cattle ratio rather than the
 19th-century export economy the beat wants.
 
 **Ad reads, now visible for the first time (`ADR-0008`).** No earlier pass could see
-this episode's interstitials. It carries two host-read Holstein Manufacturing spots —
-**606.92 → 639.74** and **1,755.82 → 1,777.62**, the second announced outright as
-*"this segment is brought to you by Holstein Manufacturing"* — plus AlfredGoney.com
-plugs at 566–585 and 1,118–1,130. **All eight existing cuts sit clear of all four**,
-the closest being `#1796`, which opens 18 s after the second Holstein read ends. No
-existing anchor needs moving.
+this episode's interstitials. It carries two host-read Holstein Manufacturing spots plus
+two plugs for the guest's own site and seasoning line. The bands below are **rounded out
+to whole ASR segments, so each is deliberately wider than the read itself** — the first
+Holstein copy ends at 636.26 and 637.14–639.74 is the show's return line, and the second
+band likewise opens on the return line and closes on *"man, I'm ready to jump back in,
+Todd."* Wider is the right direction for a clearance test.
+
+| Band | What it is |
+|---|---|
+| 566–585 | host plug for the guest's site, newsletter and Texas open-fire meetup |
+| **606.92 → 639.74** | Holstein Manufacturing spot, *"find your new grill now at …"* |
+| 1,118–1,130 | second host plug for the guest's site and newsletter |
+| **1,755.82 → 1,777.62** | Holstein spot, announced as *"this segment is brought to you by Holstein Manufacturing"* |
+
+**All eight existing cuts sit clear of all four bands.** The tightest clearance is
+`#1005`, which ends at 1,106.36, **11.6 s** before the second site plug begins; among
+the two Holstein reads specifically the tightest is `#1796`, opening 17.9 s after the
+second read's band closes. No existing anchor needs moving. Note that the ASR renders
+the advertiser as *"whole steam manufacturing"* and the guest as *"Alfred Goney"*; the
+correct names are Holstein Manufacturing and **Al Frugoni**, and they are given
+correctly here rather than quoted from the garble.
 
 ### Beat 15 — jerk as Maroon synthesis, and the seam — **strong**
 
@@ -846,11 +882,13 @@ only two fan beats with strong tape. It hands to beat 16, which is empty — see
 **The episode is now exhausted, confirmed 2026-08-18.** §2c could only read this
 episode's untimed publisher transcript, *"enough to confirm what the two existing cuts
 contain but not to time new ones."* It has since been transcribed with word timestamps
-(§2d) and read end to end. The two cuts took the beat: the 806 s outside them are a
-first-jerk-chicken anecdote, jerk competitions and a Westmoreland roadside stand,
-whether the author's own cast-iron-and-oven version counts as jerk, the appropriation
-argument about who may sell it, and a housekeeping outro. **No third cut is available
-and none is wanted** — beat 15 is at the two-segment maximum. A companion episode by
+(§2d) and read end to end. The two cuts took the beat. Of the **1,119.0 s outside
+them**, the 266 s before `#266` is a cold-open teaser that duplicates `#555` plus the
+guest introduction and the pimento framing that leads into `#266`, and the 802 s after
+`#555` is a first-jerk-chicken anecdote, jerk competitions and a Westmoreland roadside
+stand, whether the author's own cast-iron-and-oven version counts as jerk, the
+appropriation argument about who may sell it, and a housekeeping outro. **No third cut
+is available and none is wanted** — beat 15 is at the two-segment maximum. A companion episode by
 the same researcher, `jamaica-the-connection-bet`, was also read and its jerk passage
 is a weaker duplicate of `#555`; see §2d. Beat 2's dependency on `#266` is therefore
 unchanged, and beat 2 stays thin.
@@ -1082,10 +1120,16 @@ beat with tape is worth about two segments bought anywhere else.
 **Why it fails anyway, and it is not a close call.** The jerk-in-Jamaica episode is
 `moreish-jerk-jamaica`. **It is already in the pool, it is already cut, and it is
 already beat 15's carrier** — `#266` and `#555`, two segments, which is the maximum a
-beat may take. It was re-read end to end against this beat and the remaining 806
-seconds outside those two cuts are a first-jerk-chicken anecdote, jerk competitions,
-whether the author's own cast-iron-and-oven version counts, and the appropriation
-argument about who may sell jerk. There is no West or Central African fire technique in
+beat may take. It was re-read end to end against this beat. **1,119.0 s of the episode's
+1,440.9 s lie outside the two cuts** — 266.0 s before `#266`, the 50.7 s gap between
+them, and 802.3 s after `#555` — and the inventory is: a cold open at 1.38–34.26 that
+is a **teaser lifted from `#555`** and so duplicates tape we already hold; the guest
+introduction and her salt research; the jerk-origins framing at 199–265 (*"in the
+beginning, it was not any of those. In fact, it was the cooking style that made it
+jerk"*) which runs straight into `#266`; then, after `#555`, a first-jerk-chicken
+anecdote, jerk competitions and a Westmoreland roadside stand, whether the author's own
+cast-iron-and-oven version counts, the appropriation argument about who may sell jerk,
+and a housekeeping outro. There is no West or Central African fire technique anywhere in
 it, no whole-animal butchery, no pepper-and-acid lineage traced back across the
 Atlantic, and no mechanism of transfer to the **American South**, which is the beat's
 actual subject.
@@ -1098,8 +1142,8 @@ in the American South" from "Maroon practice in Jamaica" because the two beats s
 almost all their nouns — so on this beat, and only on this beat, **a high count is
 evidence for the neighbouring beat rather than for this one.** The two other new
 Caribbean episodes make the same point from the other side: `jamaica-the-connection-bet`
-has maroon 37 and africa 40 and **zero fire terms**, and `more-than-jerk-chicken-jam`
-has maroon 10 and africa 20 and no `jerk` at all. Between them they hold 2.9 hours of
+has maroon 45 and africa 40 and **zero fire terms**, and `more-than-jerk-chicken-jam`
+has maroon 11 and africa 20 and no `jerk` at all. Between them they hold 1.4 hours of
 Maroon and Africa material and not one sentence of transmitted fire practice.
 
 **Verdict unchanged, and now on three spent English sources rather than two.** The
@@ -2228,27 +2272,49 @@ and would have saved this pass a transcription.
 
 ## 9. Recommended next actions, in value order
 
-**Revision note, 2026-08-18. Item 2 was not done, and the seven-transcript pass is what
-happens when it is skipped.** Item 2 below asks for the ASR work order to be re-sorted
-against the spine, on the ground that *"priority 1 currently holds sources for three
-beats that are already strong from existing cuts — beat 1 (Origin Stories), beat 15
-(Moreish jerk), beat 14 (the asado episode) — plus Santa Maria, for which no beat
-exists."* The 2026-08-18 batch transcribed **every remaining priority-2 and priority-3
-row in the manifest** — which is those exact three already-strong episodes, plus the
-Korean episode this report had already predicted would fail, plus three more. It moved
-nothing (§2d).
+**Revision note, 2026-08-18. Item 2 has been done, and the seven-transcript pass shows
+that doing it was not enough.** This note originally claimed item 2 was skipped. That was
+wrong, and the manifest says so plainly: `grilling-asr-manifest.json`'s `arc_slots_note`
+records the six-slot arc as *"SUPERSEDED as a sorting instrument … kept for provenance
+only. The spine's 40 beats are what rows are now scored against, via `spine_beats`"*, and
+every row carries `spine_beats`, a `beat_verdict` and a `why_this_priority`. Item 2's
+quoted complaint about priority 1 is **stale**: those episodes have since been demoted to
+priority 2 and 3, which is exactly why they were the only rows left to transcribe.
 
-That is not a wasted pass, and the distinction matters for whoever schedules the next
-one. It **retired four open questions** — beat 14's "probably under-cut", beat 2's
-"blocked on timings", beat 12's "transcribing it would probably not fill it", and beat
-3's mechanism — and it re-verified 13 anchors at zero drift. Those are worth having.
-But it bought no beat, and the reason is legible in the manifest: five of the seven rows
-are filed under the single arc slot `world-traditions`, which spans beats 8 to 15, **and
-beats 14 and 15 were already strong while 8, 10, 11, 12 and 13 need sources
-`world-traditions` does not contain.** The old six-slot arc cannot express "this slot is
-already full", so it kept recommending episodes for it. **Item 2 is now the highest-value
-unstarted action in this list**, ahead of any further transcription: re-sort the manifest
-against the 40 beats, and mark rows whose beats are already carried.
+**So the finding is sharper than a sorting failure, and it is a finding about how the
+manifest is read rather than how it is ordered.** The manifest had already scored six of
+these seven rows as depth on beats it knew were carried, in its own words:
+
+| Row | `beat_verdict` | `why_this_priority` |
+|---|---|---|
+| `more-than-jerk-chicken-jam` | 15 strong | *"Depth on a slot priority 1 already opens."* |
+| `jamaica-the-connection-bet` | 2 thin | *"55:44 for material only tangentially about fire."* |
+| `prehistoric-cooking-pots` | strong | *"Both its slots already have material, so it is depth rather than rescue."* |
+| `origin-stories-episode-09` | *"strong, and the only over-supplied beat in the report"* | opening slot, more room to cut |
+| `heritage-food-stories` | 12 empty | *"Best minutes-per-slot ratio of any English row."* |
+| `argentina-open-fire-cooking` | 14 strong | only English interview with an Argentine asador |
+
+**Every one of those verdicts held.** The salt episode was *"only tangentially about
+fire"* and turned out to contain no fire vocabulary at all. `more-than-jerk` was *"depth
+on a slot priority 1 already opens"* and beat 15 was full. Origin Stories was *"the only
+over-supplied beat"* and the cap held. The one row with a specific falsifiable hypothesis
+— the jerk episode, bought to unblock beat 2 on timings — is the one this pass falsified
+(§3, beat 2). The only row whose stated case pointed the other way is the Korean episode,
+whose *"best minutes-per-slot ratio"* argument was contradicted by this report's own beat
+12 prediction, and the report was right.
+
+**The recommendation, therefore, is not another re-sort.** It is that a row whose
+`beat_verdict` is `strong` or whose `why_this_priority` says *depth rather than rescue*
+should be treated as a **stop, not a low priority** — the manifest already contains the
+judgement, and priority ordering is the wrong instrument for expressing "do not buy
+this." Draining the tail of a correctly-sorted queue is what produced a seven-episode
+pass that moved nothing.
+
+**And it was not a wasted pass**, which matters for whoever schedules the next one. It
+**retired four open questions** — beat 14's "probably under-cut", beat 2's "blocked on
+timings", beat 12's "transcribing it would probably not fill it", and beat 3's mechanism —
+and re-verified 26 anchor phrases at zero drift. Those are worth having. They are just
+not beats.
 
 **Revision note, 2026-08-17.** Items **1** and **4** below have been done, and they are
 left in place so the list can be read as a scorecard rather than rewritten into
