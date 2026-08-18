@@ -231,6 +231,14 @@ the number that breaks first**, at 11.1 MB per Foray play if nothing caches:
 **450 plays/month on the free tier is the real constraint** — not storage, and
 not synthesis. It is also the number caching moves, which is §2.4.
 
+**The quota figures in that table were NOT verified in this pass.** Only the
+ElevenLabs pricing was re-fetched (2026-08-18). Supabase's 1 GB / 5 GB free and
+250 GB Pro allowances, GitHub Pages' 100 GB soft bandwidth limit, and the 2 GB
+per-file Release limit are quoted from general knowledge and should be confirmed
+before anyone commits to a tier. **The 11.1 MB per play is ours and is
+arithmetic**, so the shape of the table survives whatever the quotas turn out to
+be: storage is trivial, egress is what binds, and caching is what moves it.
+
 ### 2.4 "The one asset we can cache freely" — true, and worth less than it sounds
 
 The charter's hopeful note is **correct on rights and half-correct on mechanism.**
@@ -530,6 +538,8 @@ run to need a correction there, and treat that as the plan rather than a defect.
 - **Whether 192 kbps needs Creator or Pro.** The API reference says Creator; the
   pricing page advertises it as a Pro upgrade. Unresolvable from public sources.
   Irrelevant at the recommended 64 kbps.
+- **Every hosting quota except our own byte arithmetic** — see the note in §2.3d.
+  Supabase's and GitHub's allowances were not re-fetched.
 - **How much of rule X1 beat narration absorbs** — needs an authored interleaving.
 - **Rule M6's elision bridges**, a known undercount.
 - **Whether `media-src` blocking bundled audio on `capacitor://localhost` is
