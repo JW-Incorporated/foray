@@ -803,25 +803,32 @@ both spines. 80 appear in claim text, 103 times, across 46 % of beats. This is t
 § 5.7 fixture; each term needs a carrier sentence, and the whole set fits in one
 5,000-character request.
 
-**Fermentation and process vocabulary:** koji, nuruk, jora, keeving, malting-adjacent
-loanwords, azeotrope, fructan, fructans, acetaldehyde, diacetyl, anethole, vanillin,
-lactones, cinchona, gentian, quebracho.
+**Process, chemistry and organisms (23):** acetaldehyde, anethole, azeotrope,
+cinchona, diacetyl, fructan, fructans, gentian, jora, keeving, koji, lactones,
+nuruk, quebracho, vanillin, *Artemisia*, *Aspergillus*, *Brettanomyces*,
+*Saccharomyces*, *cerevisiae*, *eubayanus*, *oryzae*, *pastorianus*.
 
-**Latin binomials and organism names:** *Saccharomyces*, *cerevisiae*,
-*pastorianus*, *eubayanus*, *Aspergillus*, *oryzae*, *Brettanomyces*, *Artemisia*.
-
-**Drinks, vessels and methods:** aguamiel, airag, akvavit, alembic, arak, arkhi,
+**Drinks and vessels (31):** aguamiel, airag, akvavit, alembic, arak, arkhi,
 arrack, awamori, baijiu, burukutu, chicha, destilados, eisbock, genever, huangjiu,
-kumis, lambic, makgeolli, mezcal, ouzo, pastis, pito, pulque, qvevri, quinquinas,
+kumis, lambic, makgeolli, mezcal, ouzo, pastis, pito, pulque, quinquinas, qvevri,
 raki, sambuca, shochu, soju, tella, tinajas.
 
-**Fire and cooking terms:** barbacoa, asado, asador, braai, mangal, döner,
-binchōtan, ch'arki.
+**Fire and cooking (8):** asado, asador, barbacoa, binchotan, binchōtan, braai,
+döner, mangal.
 
-**Proper nouns whose pronunciation is not guessable from spelling:** Taíno,
-Quechua, Juneteenth, Bérard, Cellier-Blumenthal, Aeneas, Coffey, Pilsen,
-Commandaria, Bénédictine, Fernet, Aperol, Angostura, Marsala, Batavia, Calvados,
-Armagnac, Meiji, Taipei.
+**Proper nouns whose pronunciation is not guessable from spelling (19):** Aeneas,
+Angostura, Aperol, Armagnac, Batavia, Bénédictine, Bérard, Calvados,
+Cellier-Blumenthal, Coffey, Commandaria, Fernet, Juneteenth, Marsala, Meiji,
+Pilsen, Quechua, Taipei, Taíno.
+
+`binchotan` and `binchōtan` are the same word audited under both spellings on
+purpose — only the accented form occurs, which is what makes it the one term of
+the 81 absent from claim text. One term that **should** be in the fixture is
+missing from the count for a mechanical reason worth stating: **`ch'arki`** appears
+in the barbecue spine and is one of the harder items in it, but its apostrophe
+breaks the word-boundary matching the count relies on, so it was excluded from the
+81 rather than counted unreliably. Add it to the fixture; do not add it to the
+statistics.
 
 **The 22 diacritic-bearing tokens across both spines**, which are additionally at
 risk from any ASCII-normalising step in the pipeline: binchōtan, tōji, hāngī,
