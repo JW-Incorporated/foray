@@ -35,6 +35,7 @@ import {
 } from "./foray-resolve.js";
 import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./foray-progress.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
+import { nextRate, rateLabel, rateAriaLabel } from "./playback-rate.js";
 import { createDurableStore } from "./durable-store.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -726,6 +727,8 @@ class StubDom {
       "intro-close", "pl-form", "pl-input", "pl-note", "pl-remove", "banner-done",
       "drawer", "drawer-overlay", "drawer-playlists", "family-toggle", "player-toggle",
       "menu-btn", "refresh-btn",
+      // Playback speed (#242).
+      "fy-rate",
     ]) this.byId.set(id, new StubEl(this, { id }));
 
     this.byId.get("fy-strip").children = this.segs;
@@ -771,7 +774,8 @@ const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 /** Records every call app.js makes into the player, and resolves the running
     order with the REAL resolver against the REAL data files. */
-function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
+function fakeBridge(resolved, { resume = null, startThrows = null, rate = 1 } = {}) {
+  let liveRate = rate;
   const calls = [];
   let onChange = null;
   /** A transport call that throws while the Foray is genuinely live — the other
@@ -813,6 +817,20 @@ function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
     forayDriftIsClean: (point) => !point || point.drift === "exact" || point.drift === "unverified",
     forayResumeList: () => (resume ? [{ id: resolved.id, title: resolved.title, percent: 32, label: "42 min left", finished: false }] : []),
     clearForayResume: record("clearForayResume"),
+
+    /* Playback speed (#242), backed by a real value and the REAL ladder functions
+       rather than by a stub returning a fixed string. What is under test is that
+       the page shows what the PLAYER says: a stub label would pass just as well
+       with the page computing its own, which is the second opinion about copy this
+       bridge exists to prevent. */
+    playbackRate: () => liveRate,
+    cycleRate: () => {
+      calls.push({ name: "cycleRate", args: [] });
+      liveRate = nextRate(liveRate);
+      return liveRate;
+    },
+    rateLabel: (r) => rateLabel(r),
+    rateAriaLabel: (r) => rateAriaLabel(r),
     // A real credit, so the block is actually emitted and bindSourceLinks has
     // something to bind — an empty list made that binder untested by accident.
     forayCredits: () => ({ credits: [credit], summary: "1 episode from 1 show" }),
@@ -856,11 +874,16 @@ function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
     point, and is what the inert build did. */
 async function mountForayPage({
   resume = null, durable = false, seed = {}, durableRows = {}, failLocalWrites = false,
-  startThrows = null,
+  startThrows = null, rate = 1, resolved: resolvedOverride = null,
 } = {}) {
-  const resolved = realResolve();
+  /* `resolvedOverride` exists for one case: a Foray with nothing playable, which
+     `renderForay` handles by disabling the transport and returning early. Mounting
+     that through this harness rather than rebuilding the vm context beside it keeps
+     one copy of the page's wiring — a second copy would be a second thing to keep
+     in step with app.js. */
+  const resolved = resolvedOverride ?? realResolve();
   const dom = new StubDom(resolved);
-  const bridge = fakeBridge(resolved, { resume, startThrows });
+  const bridge = fakeBridge(resolved, { resume, startThrows, rate });
   const store = new Map(Object.entries(seed));
   let failLocal = failLocalWrites;
 
@@ -1966,4 +1989,121 @@ test("the seam beat stays 2.0 s of WALL clock at 2x — it does not scale with s
   await ended;
   assert.equal(m.inSeamGap, false);
   assert.equal(m.currentIndex, 1, "and only then does the next segment start");
+});
+
+/* ---------- the Foray page's speed button (#242) ----------
+
+   The mini-player's sheet already had a speed button. The Foray PAGE — the
+   surface a listener is actually looking at for the hour — had none, so the
+   founder's control was two taps and a sheet away from the only screen it
+   matters on. These test the page half: that the button is there, that it is
+   labelled by the PLAYER rather than by the page, that it does not start
+   playback, and that a change made elsewhere reaches it. */
+
+test("the Foray page carries a speed button, labelled from the player", async () => {
+  const { dom, bridge } = await mountForayPage({ rate: 1.5 });
+  const btn = dom.el("fy-rate");
+  assert.equal(btn.textContent, "1.5×", "the stored speed, on the page, before anything is played");
+  assert.equal(btn.listeners("click"), 1, "and it is actually bound");
+  assert.match(
+    btn.getAttribute("aria-label") ?? "", /1\.5×/,
+    "aria-label REPLACES a button's text, so the value has to be inside it"
+  );
+  assert.ok(
+    !bridge.calls.some((c) => c.name === "playForay"),
+    "and rendering the page must not have started anything"
+  );
+});
+
+test("tapping the speed button cycles through the player and relabels", async () => {
+  /* MUTATION THAT KILLS THIS: have the binder call `player.playbackRate()` instead
+     of `player.cycleRate()`. The label stays at 1× and `cycleRate` never appears in
+     the call log. */
+  const { dom, bridge } = await mountForayPage();
+  const btn = dom.el("fy-rate");
+  assert.equal(btn.textContent, "1×");
+
+  await btn.click();
+  assert.equal(btn.textContent, "1.25×", "the next stop on the ladder");
+  await btn.click();
+  await btn.click();
+  assert.equal(btn.textContent, "1.75×");
+
+  assert.equal(bridge.calls.filter((c) => c.name === "cycleRate").length, 3);
+  assert.match(btn.getAttribute("aria-label") ?? "", /1\.75×/, "the accessible name moves with the label");
+});
+
+test("changing the speed does NOT start playback", async () => {
+  /* Every other control on that row means "start it" before anything is loaded —
+     `#fy-next` and `#fy-prev` both fall through to `startOrResume()`, because a
+     next that begins at segment 2 would silently drop the opening. The speed button
+     must NOT: it is a preference, it is meaningful with nothing playing, and
+     starting an hour of audio because someone set 1.5x first would be the worst
+     surprise on this page. */
+  const { dom, bridge } = await mountForayPage();
+  await dom.el("fy-rate").click();
+  assert.deepStrictEqual(
+    bridge.calls.filter((c) => c.name === "playForay"), [],
+    "a speed change is not a play"
+  );
+  assert.equal(dom.el("fy-play").textContent, "▶ Play", "and the main button still says so");
+});
+
+test("the speed button survives a Foray with nothing playable", async () => {
+  /* The bail-out that disables `#fy-play`/`#fy-next`/`#fy-prev` returns early, so
+     the speed binder has to sit ABOVE it: the speed is global and settable for
+     whatever the listener plays next, and a dead button on a page they are already
+     looking at is the kind of small breakage nobody reports.
+
+     MUTATION THAT KILLS THIS: move the `#fy-rate` block below the
+     `if (!r.playable.length)` return. `listeners("click")` drops to 0. */
+  const base = realResolve();
+  const empty = {
+    ...base,
+    playable: [],
+    entries: base.entries.map((e) => ({ ...e, playable: false, reason: "no audio" })),
+    unplayable: base.entries.map((e) => ({ ...e, playable: false, reason: "no audio" })),
+  };
+  const { dom } = await mountForayPage({ resolved: empty, rate: 2 });
+
+  assert.equal(dom.el("fy-play").disabled, true, "the premise: this Foray cannot play");
+  assert.equal(dom.el("fy-rate").disabled, false, "but the speed is not this Foray's property");
+  assert.equal(dom.el("fy-rate").listeners("click"), 1);
+  assert.equal(dom.el("fy-rate").textContent, "2×");
+});
+
+test("a speed changed in the mini-player's sheet reaches the page's button", async () => {
+  /* There is ONE speed and TWO controls. `client.js`'s `applyRate` notifies the
+     Foray page, so the snapshot carries the value and `paintForay` relabels — a
+     stale label on either control is the app disagreeing with itself about a number
+     the listener just set.
+
+     MUTATION THAT KILLS THIS: delete the `paintRateButton` call in `paintForay`.
+     The label stays at whatever the page was bound with. */
+  const { dom, bridge } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  assert.equal(typeof onChange, "function");
+
+  onChange({
+    forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false,
+    elapsedSec: 240, totalSec: 3673, error: null, rate: 1.75,
+  });
+  assert.equal(dom.el("fy-rate").textContent, "1.75×");
+  assert.match(dom.el("fy-rate").getAttribute("aria-label") ?? "", /1\.75×/);
+});
+
+test("a snapshot from an OLDER player module leaves the label alone rather than blanking it", async () => {
+  /* app.js and player/client.js are cached and refreshed independently by the
+     service worker, so this page is regularly paired with a module of a different
+     vintage — the same skew `renderForay` and `FY_AUTOPLAY_HINT` are written
+     around. A module with no `rate` on its snapshot must not produce
+     "undefined×"; the value lives in `cp_rate`, not in the tick. */
+  const { dom, bridge } = await mountForayPage({ rate: 1.5 });
+  await dom.el("fy-play").click();
+  bridge.lastOnChange()({
+    forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false,
+    elapsedSec: 240, totalSec: 3673, error: null,   // no `rate` at all
+  });
+  assert.equal(dom.el("fy-rate").textContent, "1.5×");
 });

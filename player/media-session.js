@@ -113,13 +113,25 @@
 
    THE COST, NAMED. While the OS believes we are playing it extrapolates
    position forward from the last report using `playbackRate` and wall clock. So
-   during a beat the reported elapsed can run up to `SEAM_GAP_SEC` (2.0 s) ahead
-   of the truth, and snaps back once when audio resumes. That error is BOUNDED
-   BY THE BEAT ITSELF, is 0.065% of a 51-minute bar, self-corrects on the next
-   tick, and lands at the one moment the display is redrawing its title anyway.
-   Reporting zero rate instead is not available: the spec makes a zero
-   `playbackRate` a `TypeError`. We took a bounded 2 s of drift over a state
-   that blinks.
+   during a beat the reported elapsed runs ahead of the truth, and snaps back
+   once when audio resumes. Reporting zero rate instead is not available: the
+   spec makes a zero `playbackRate` a `TypeError`. We took a bounded drift over
+   a state that blinks.
+
+   **THE BOUND IS `SEAM_GAP_SEC x playbackRate`, NOT 2.0 s** — restated when the
+   speed control shipped (#242), because the original text said "up to
+   `SEAM_GAP_SEC` (2.0 s)" and that was only true at 1x. The beat is 2.0 s of WALL
+   clock and does not scale with rate (`seam-gap.js`, and the decision is pinned in
+   `player/foray-playback.test.js`), while the OS extrapolates in CONTENT seconds
+   at the rate we reported — so a beat costs 2.0 s of apparent progress at 1x and
+   4.0 s at 2x, which is the top of the ladder and therefore the bound.
+
+   Still the right trade, and the arithmetic barely moves: 4.0 s is 0.11% of a
+   51-minute bar against 0.065%, it is bounded by the beat rather than growing, it
+   self-corrects on the next tick, and it lands at the one moment the display is
+   redrawing its title anyway. What matters is that the number is stated
+   correctly — a documented bound that is quietly wrong at 2x is worse than a
+   larger one that is right.
 
    A FINISHED Foray reports `"none"`, not `"paused"`. A car display offering a
    play button that does nothing is worse than no display at all.
