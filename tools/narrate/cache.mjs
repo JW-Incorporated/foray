@@ -1,0 +1,180 @@
+/* Idempotence — a re-run must never re-bill for an unchanged script (#247 item 12).
+
+   ── The rule, stated once ─────────────────────────────────────────────────
+
+   A cache entry is keyed by a content hash of EVERYTHING that changes the
+   bytes we would receive back. Nothing else. Concretely, the key covers:
+
+     1. the billable script text, canonicalised by `billable.mjs`
+     2. the voice id
+     3. the model id
+     4. the output format (bitrate/sample rate)
+
+   So an entry is INVALIDATED by exactly four things, and each one genuinely
+   produces different audio:
+
+     - **a script edit** — including a single character of punctuation, because
+       punctuation is prosody to a TTS engine and is billed besides
+     - **a voice change** — a different narrator reading the same words
+     - **a model change** — a different engine reading the same words, and per
+       `pricing.json` a different price per character
+     - **an output-format change** — 64 kbps and 128 kbps are different files
+
+   And it is NOT invalidated by anything else, which is the half that saves
+   money. Re-running the pipeline, re-ordering beats within a Foray, renaming a
+   beat, re-titling the Foray, editing a `why` line, moving a script between
+   Forays, or changing the estimate's chars-per-minute rate all leave every key
+   untouched. **Beat identity is deliberately NOT in the key**: the same
+   sentence voiced for two beats is one billable generation, and keying by beat
+   would pay twice for one file.
+
+   ── The two ways a cache like this leaks money, both closed here ──────────
+
+   **Leak 1: canonicalisation drift.** If the key hashed the RAW text but the
+   request submitted the canonicalised text, then re-saving a script file in an
+   editor that flips LF to CRLF would change every key and re-bill the entire
+   Foray, with no audible difference and nothing visible in a diff. Both the key
+   and the payload therefore come from `billableText()`, so a line-ending change
+   is a cache HIT. On a Windows-developed repo whose `.gitattributes` already
+   records a CRLF incident, this is not hypothetical.
+
+   **Leak 2: a key that omits an input that changes the audio.** Then a voice or
+   model switch silently serves the OLD narrator from cache — the failure that
+   costs nothing and ships the wrong product, which is worse. Hence
+   `assertKeyInputsComplete`, which fails loudly if a caller invents a
+   generation parameter this module does not know how to hash.
+
+   ── What this file does NOT do ────────────────────────────────────────────
+
+   It does not store audio. It records, per key, that a generation HAPPENED and
+   what it cost. Audio bytes live wherever `docs/narrator-pipeline.md` §hosting
+   says, which is deliberately not git. The index is small, text, diffable and
+   safe to commit; the mp3s are none of those things.
+*/
+
+import { createHash } from "node:crypto";
+import { billableText, countChars } from "./billable.mjs";
+
+/** Every input that changes the bytes we get back, and therefore every input
+    that belongs in the key. Order is fixed so the hash is stable. */
+export const KEY_INPUTS = Object.freeze(["text", "voiceId", "modelId", "outputFormat"]);
+
+/**
+ * Guard against a caller passing a generation parameter that would change the
+ * audio but that this module would silently drop out of the key.
+ *
+ * This is the expensive-mistake direction: an unhashed parameter means a
+ * changed request serves a stale cache hit forever.
+ *
+ * @param {object} spec
+ * @throws {Error} naming the unknown keys
+ */
+export function assertKeyInputsComplete(spec) {
+  const unknown = Object.keys(spec ?? {}).filter((k) => !KEY_INPUTS.includes(k));
+  if (unknown.length) {
+    throw new Error(
+      `cache key would ignore ${unknown.map((k) => `\`${k}\``).join(", ")}. ` +
+      `If that parameter changes the audio, add it to KEY_INPUTS in tools/narrate/cache.mjs ` +
+      `and accept that every existing entry is invalidated. If it does not change the audio, ` +
+      `do not pass it to the cache.`
+    );
+  }
+}
+
+/**
+ * The content hash. sha256 of the four inputs, newline-delimited with the field
+ * name included so that two different fields cannot collide by swapping values.
+ *
+ * @param {object} spec
+ * @param {string} spec.text          the script, raw; canonicalised in here
+ * @param {string} spec.voiceId
+ * @param {string} spec.modelId
+ * @param {string} spec.outputFormat
+ * @returns {string} 64-char hex
+ */
+export function cacheKey(spec = {}) {
+  assertKeyInputsComplete(spec);
+  const h = createHash("sha256");
+  // The TEXT is hashed canonicalised, so a line-ending or trailing-space change
+  // is a hit rather than a re-bill. See "Leak 1" in the header.
+  h.update(`text\n${billableText(spec.text)}\n`);
+  for (const field of ["voiceId", "modelId", "outputFormat"]) {
+    h.update(`${field}\n${String(spec[field] ?? "")}\n`);
+  }
+  return h.digest("hex");
+}
+
+/**
+ * An in-memory cache index. `load`/`dump` make it persistable as JSON by a
+ * caller; this module deliberately does no file IO, so it stays testable and
+ * so nothing here can write to the repo by accident.
+ */
+export class NarrationCache {
+  /** @param {object} [index] a previously dumped index */
+  constructor(index = {}) {
+    this.entries = new Map(Object.entries(index?.entries ?? {}));
+    this.hits = 0;
+    this.misses = 0;
+  }
+
+  /** @returns {boolean} */
+  has(key) { return this.entries.has(key); }
+
+  /** @returns {object|null} the recorded entry */
+  get(key) { return this.entries.get(key) ?? null; }
+
+  /**
+   * Decide, for one script, whether a generation would be billed.
+   *
+   * This is the function the whole file exists for: `billable: false` means a
+   * re-run costs nothing.
+   *
+   * @param {object} spec  as `cacheKey`
+   * @returns {{key: string, cached: boolean, billable: boolean, chars: number, billedChars: number}}
+   */
+  plan(spec) {
+    const key = cacheKey(spec);
+    const cached = this.has(key);
+    const chars = countChars(spec.text);
+    if (cached) this.hits++; else this.misses++;
+    return {
+      key,
+      cached,
+      billable: !cached,
+      chars,
+      // The number that reaches an invoice. A hit bills nothing, which is the
+      // entire point of the module.
+      billedChars: cached ? 0 : chars,
+    };
+  }
+
+  /**
+   * Record that a generation happened. Called on a real synthesis, never on a
+   * dry run — a dry run that wrote entries would make the NEXT run believe the
+   * audio exists and skip it forever, which is the most damaging bug this
+   * module could have.
+   *
+   * @param {string} key
+   * @param {object} record
+   */
+  record(key, record = {}) {
+    this.entries.set(key, {
+      chars: record.chars ?? null,
+      voiceId: record.voiceId ?? null,
+      modelId: record.modelId ?? null,
+      outputFormat: record.outputFormat ?? null,
+      asset: record.asset ?? null,
+      generated_at: record.generated_at ?? new Date().toISOString(),
+    });
+  }
+
+  /** @returns {object} a JSON-serialisable index, key order sorted for a stable diff */
+  dump() {
+    const entries = {};
+    for (const key of [...this.entries.keys()].sort()) entries[key] = this.entries.get(key);
+    return { version: 1, entries };
+  }
+
+  /** @returns {{hits: number, misses: number}} */
+  stats() { return { hits: this.hits, misses: this.misses }; }
+}
