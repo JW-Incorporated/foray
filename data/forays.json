@@ -281,11 +281,11 @@
     {
       "id": "grilling-history-2",
       "kind": "deep-dive",
-      "title": "Barbecue: six beats of a forty-beat history",
+      "title": "Barbecue: eight beats of a forty-beat history",
       "topic": "food/grilling-bbq",
       "status": "draft",
-      "summary": "Fire, satay, asado and jerk, then America's civic barbecue. A fragment: most of the history is missing.",
-      "runtime_sec": 1054.55,
+      "summary": "Fire, satay, asado and jerk, then who cooked America's barbecue and who was credited for it.",
+      "runtime_sec": 1315.93,
       "source_doc": "docs/curation/grilling-history-assembly.md",
       "spine_doc": "docs/curation/grilling-history-spine.md",
       "beats_total": 40,
@@ -294,6 +294,8 @@
         9,
         14,
         15,
+        21,
+        22,
         23,
         37
       ],
@@ -302,7 +304,8 @@
         "SATAY": "satay-okay-e01-satay-myth",
         "ARG": "bbqrn-argentina-open-fire",
         "JERK": "moreish-jerk-jamaica",
-        "MOSS": "bbqc-moss-school"
+        "MOSS": "bbqc-moss-school",
+        "GC": "grill-coach-adrian-miller"
       },
       "slots": [
         {
@@ -370,6 +373,22 @@
           "segment_id": "moreish-jerk-jamaica#266",
           "role": "exchange",
           "beat": 15
+        },
+        {
+          "type": "segment",
+          "slot": "the-american-case",
+          "label": "GC-1",
+          "segment_id": "grill-coach-adrian-miller#1792",
+          "role": "exchange",
+          "beat": 21
+        },
+        {
+          "type": "segment",
+          "slot": "the-american-case",
+          "label": "GC-2",
+          "segment_id": "grill-coach-adrian-miller#2668",
+          "role": "explanation",
+          "beat": 22
         },
         {
           "type": "segment",

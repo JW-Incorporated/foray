@@ -1859,8 +1859,8 @@ test("dropping a segment from Foray #1 degrades the row rather than seeking wron
    listener meets.
 
    `grilling-history-2` rather than Foray #1, deliberately. It is the ON-PLOT short
-   version that #226 shipped (Foray #1 is labelled superseded), it is 8 segments
-   over 7 seams, and **4 of those seams cross to a different episode** — which is
+   version that #226 shipped (Foray #1 is labelled superseded), it is 10 segments
+   over 9 seams, and **5 of those seams cross to a different episode** — which is
    the only kind that reassigns `src` and therefore the only kind where an engine
    resets `playbackRate` to 1. A test that only played one segment, or only
    same-source seams, would pass with the bug fully present. */
@@ -1887,14 +1887,18 @@ test("grilling-history-2 still has the cross-episode seams these speed tests nee
   // The premise, asserted, so the two tests below cannot go vacuously green if the
   // Foray is ever re-sourced onto a single episode.
   const r = shortResolve();
-  assert.equal(r.playable.length, 8);
+  assert.equal(r.playable.length, 10);
+  /* Tightened from `>= 3` to `>= 5` when GC-1/GC-2 landed: the header above states
+     the count as 5, and a bound three below the real value lets that sentence rot
+     without failing. 5 is the floor the prose claims, not the exact value, so
+     re-sourcing that ADDS a cross-episode seam still passes. */
   assert.ok(
-    crossEpisodeSeams(r.playable) >= 3,
+    crossEpisodeSeams(r.playable) >= 5,
     `only ${crossEpisodeSeams(r.playable)} cross-episode seams — the reset this guards cannot happen`
   );
 });
 
-test("1.5x set before play holds through all 7 seams of grilling-history-2", async () => {
+test("1.5x set before play holds through all 9 seams of grilling-history-2", async () => {
   /* THE TEST THE BRIEF ASKED FOR: at a seam, not just on first play.
 
      MUTATION THAT KILLS IT: `restoreRate` back to `setRate(item?.rate ?? 1.0)`.
