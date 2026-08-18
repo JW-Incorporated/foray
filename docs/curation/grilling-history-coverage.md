@@ -10,7 +10,7 @@ the spine — including, at length, where it does not.
 **Revised 2026-08-17** against two newly transcribed episodes — §2c is the entry point
 for what changed, §5 carries the revised Act IV verdicts, and §5b records what the
 assembly could actually play. Counts moved from 6 strong / 10 thin / 24 empty to
-**11 / 8 / 21**. Unlike the first pass, this revision *did* touch
+**11 / 9 / 20**. Unlike the first pass, this revision *did* touch
 `data/forays.json`: beats 21 and 22 are now played by `grilling-history-2` as `GC-1` and
 `GC-2`, which is recorded in `grilling-history-assembly.md` §2. That Foray stays
 `draft`; publishing is a founder action.
@@ -186,7 +186,7 @@ come back the same way, and the difference is the useful part of this revision.*
 | Episode | Length | Ad status | Verdict |
 |---|---|---|---|
 | `The Grill Coach — Adrian Miller and The History of BBQ` | 3,306 s | ad-free, ratio 1.0; range-probed 206 with declared bytes exactly matched | **Six segments, five beats.** Moves 18, 21, 22 and 38 off empty and upgrades 24 |
-| `The Moreish Podcast — Caribbean Food History with Dr. Candice Goucher` | 3,467 s | not measured; moot | **Nothing. No segments cut.** See §5c |
+| `The Moreish Podcast — Caribbean Food History with Dr. Candice Goucher` | 3,466 s | not measured; moot | **Nothing. No segments cut.** See §5, beat 20 |
 
 **The Grill Coach delivers, and it delivers exactly where §9 predicted.** Miller is
 named in the spine itself as the archetype of the register the authorship beats want,
@@ -605,10 +605,10 @@ only two fan beats with strong tape. It hands to beat 16, which is empty — see
 
 ## 5. Act IV — the American case (chain, beats 16–30)
 
-**Revised 2026-08-17: five beats in this act now have strong tape, where the first
+**Revised 2026-08-17: four beats in this act now have strong tape, where the first
 draft of this report found none.** Beats 18, 21, 22 and 24 moved on The Grill Coach
-(§2c), and 38 moved with them in Act V. The act now stands at **five strong, two thin,
-eight empty**. The original finding is left stated below because it is what motivated
+(§2c), and 38 moved with them in Act V. The act now stands at **four strong, four thin,
+seven empty**. The original finding is left stated below because it is what motivated
 the transcription, and because the shape of the act has changed less than the count
 suggests.
 
@@ -620,7 +620,7 @@ load-bearing and which the first draft found could not be served at all, are the
 that moved. That is the single most valuable change available to this Foray and it
 came from one episode.
 
-What did **not** change: beats 16, 17, 25, 26, 28 and 29 are still empty, so Act IV
+What did **not** change: beats 16, 17, 20, 25, 26, 28 and 29 are still empty, so Act IV
 still opens on two narration beats and its whole regional stretch is still narration.
 The act is no longer a hole where a chain should be; it is a chain with its middle
 links in place and both ends missing.
@@ -703,9 +703,10 @@ the decisive one:**
    etymology with no source"*, which this does not quite clear.
 3. **Cutting it would mean cutting the beat 18 segment in two.** The etymology sits
    31 s inside a 182 s argument that runs continuously into the pit method. Isolating
-   it yields about 35 s — legal, above the 30 s floor, but under the target band and,
-   worse, it would take the opening off the beat 18 cut, where *"not everybody agrees
-   with this"* is doing real work. Trading a strong beat 18 for a partial beat 16 is a
+   it yields **about 28 s** (1640.34 → 1668.10), which is under the 30 s hard floor, so
+   it is not a legal segment at all — and padding it out to clear the floor would take
+   the opening off the beat 18 cut, where *"not everybody agrees with this"* is doing
+   real work. Trading a strong beat 18 for a partial beat 16 is a
    bad trade, and manufacturing two overlapping cuts from one span so that two beats
    both show green is precisely the fill behaviour §1 exists to stop.
 
@@ -761,16 +762,13 @@ closes on the three-inheritance synthesis rather than on the tidier *"southern p
 barbecue"* sentence 14 s earlier — the fuller ending is the one that credits African and
 European practice alongside the indigenous template, which is the spine's own framing.
 
-**It also does the source-criticism the beat asks for, in its first sentence.** The
-segment opens *"not everybody agrees with this in the wrong, but barbecue starts with
-native Americans"* — the ASR garbles the clause, and the audio should be checked, but
+**It also does the source-criticism the beat asks for, in Miller's first sentence.**
+About 25 s in, once the host's question is done, he opens *"not everybody agrees with
+this in the wrong, but barbecue starts with native Americans"* (1633.46) — the ASR garbles the clause, and the audio should be checked, but
 the concession is unambiguous and it is what separates this from the slogan the beat
 rejects. He states the pit-method claim as **his argument** (*"so my argument is that
 the pit method that we talk about in the south was based on how Native Americans were
-cooking meat"*), not as settled fact, and closes on the three-inheritance synthesis:
-*"you could see the antecedents of it in Native American cooking and European cooking
-and African cooking and smoking, but it starts to become something different with that
-interaction."*
+cooking meat"*), not as settled fact.
 
 **What is missing.** Which peoples and which regions, and any dating; no engagement
 with the counter-position that the "learned it from the Indians" story is itself
@@ -817,7 +815,7 @@ and cannot be included.
 
 **Revised 2026-08-17. The episode bought for this beat does not serve it, and the
 negative is clean.** `The Moreish Podcast — Caribbean Food History with Dr. Candice
-Goucher` (3,467 s) was transcribed specifically for beat 20 and read end to end. It
+Goucher` (3,466 s) was transcribed specifically for beat 20 and read end to end. It
 contains, in 6,920 words, **zero occurrences of barbecue, barbacoa, jerk, Maroon,
 smoke, fire, grill, pit, charcoal, wood, butcher, allspice, pimento or vinegar.** The
 single "roast" is *"roasting human flesh"* in a passage demolishing the Carib
@@ -907,8 +905,10 @@ atmosphere, and it gets three specifics in order.
   supplies the rest of the labour inventory — burning the wood down to coals, the
   butterflying, the person whose whole job is turning the meat, a second person keeping
   a separate fire to replenish cold spots, a third swabbing with vinegar and spices —
-  and closes it with *"so this is very labor intensive."* The two segments play back to
-  back in the pool's tape order and the inventory is continuous across them.
+  and closes it with *"so this is very labor intensive"* (1716.16). The two segments are
+  adjacent in the tape — `#1609` ends at 1791.30 and `#1792` starts at 1791.70 — but the
+  two halves of the inventory are not continuous within them: about 220 s of pit method,
+  transmission and the informal-economy passage sit between 1717 and 1938.
 - **The coercion, named precisely rather than atmospherically.** The segment's last
   sentence is the causal claim with nothing softening it: the work was labour-intensive,
   *"they didn't want to pay people"*, so they made enslaved people do it. That is the
@@ -995,11 +995,11 @@ lot of my research is based on going through historical newspapers"* — and the
 the thing the beat is actually about, which is to describe **what the record captures
 at different dates**:
 
-> before the mid-1800s, when it came to barbecues, they would probably note who hosted
-> it, how many people showed up, there might be some references to what was
-> consumed. By the time you get to the turn of the 20th century, they're telling you
-> how many people came, you're often getting the name of the cook. The cook might even
-> be interviewed a little bit. You get an exhaustive list of what was cooked.
+> before the mid 1800s, when it came to barbecues, they would probably note who hosted
+> it. How many people showed up, there might be some references to what was consumed.
+> By the time you get to the turn of the 20th century, they're telling you how many
+> people came, you're often getting the name of the cook. The cook might even be
+> interviewed a little bit. […] You get an exhaustive list of what was cooked.
 
 That is a dated account of an archival silence and of its closing — the host is named
 and the cook is not, until suddenly the cook is. It is source practice rather than a
@@ -1013,10 +1013,17 @@ weakness in the tape.** The spine's claim is that the individuals *"are named un
 and often not at all."* Miller pushes back on the strong version of that, on the
 evidence of the newspapers:
 
-> sometimes you hear people say, oh, this country's so racist, these cooks have never
-> been celebrated. For the most part, that has not been my experience. These cooks were
-> celebrated in their time. Now granted, there was often a context of racism, right?
-> There was a lot of condescension that went with it. But the skill was noted.
+> sometimes you hear people say, Oh, this country's so racist. These cooks have never
+> been celebrated. You know, for the most part, I that has not been my experience. These
+> cooks were celebrated in their time. Now granted, there was often a context of racism,
+> right? There was a lot of condescension that went with it. But there's the skill was
+> noted.
+
+That is transcribed exactly as the ASR has it, garbles included — *"I that has not been
+my experience"* and *"But there's the skill was noted"* are recognition errors, and the
+sense is unambiguous. It is quoted unrepaired because it is the evidence for a proposed
+spine amendment, and a cleaned quote is a worse basis for one. Listen at 2704–2719 s
+before the amendment is made.
 
 **This does not contradict the beat, it relocates its mechanism**, and the relocation is
 more useful than the original. The loss was not primarily a failure to record; Miller's
@@ -1039,9 +1046,9 @@ interviews are not mentioned; there are no named recovered figures used as worke
 examples inside this cut; and how recovery is actually done is implied by *"going
 through historical newspapers"* rather than described. Note that named figures do exist
 elsewhere in the episode — the hosts raise one, and Miller's next book on Black street
-vendors is discussed at 2980–3040 s with a striking archival detail, newspapers printing
-street-cry sheet music in bars and scales. None of that is inside this cut and none of it
-is beat 22's claim.
+vendors is discussed from 2980 s, with a striking archival detail at **3049–3056 s**:
+newspapers printing street-cry sheet music as bars and scales, inside the article. None of
+that is within this cut and none of it is beat 22's claim.
 
 **Previously (2026-08-16): empty**, and §5 predicted it, on the correct reasoning that
 the beat needs a historian discussing method. That reasoning was right and is what
@@ -1529,10 +1536,13 @@ questions — who is called a pitmaster, whose tradition it is said to be, who p
 and for a speaker who states the argument as unresolved. This is the third of Miller's
 three answers and the segment is cut to land on it:
 
-> the shift in barbecue, whether the people wanted to acknowledge it or not, was based on
-> a black aesthetic. It was the way that these black people cooked it that defined
-> barbecue. What's been happening in the last couple of decades is now barbecue has a
-> white aesthetic.
+> the third part is the shift in barbecue barbecue, where the people wanted to
+> acknowledge it or not, was based on a black aesthetic. It was the way that these black
+> people cooked it that defined barbecue. What's been happening in the last couple of
+> decades is now barbecue has a white aesthetic.
+
+Unrepaired again: the ASR doubles *"barbecue"* and reads *"where"* for what is almost
+certainly *"whether"*. Neither affects the claim.
 
 Whose tradition it is said to be, contested in the present tense, by a historian, with a
 mechanism — not a claim about ownership but about which practice counts as the definition.
@@ -1540,9 +1550,9 @@ The beat's reject line is *"a single sentence of credit inside a segment about s
 else"*, and the test is whether the authorship point is the segment's destination or its
 decoration. Here it is the destination: the question is why Black-owned barbecue
 businesses are scarce, the first two answers are commercial, and the third reframes the
-first two. **Be honest about the proportion** — roughly 26 of the 90 seconds are the
-aesthetic argument, and the first two-thirds is the commercial-decline material that beat
-30 above examines and rejects. A reader who thinks that proportion is too thin should
+first two. **Be honest about the proportion** — the aesthetic argument is about 22 of the
+90 seconds (2234.72 to the out-point), and the first three-quarters is the
+commercial-decline material that beat 30 above examines and rejects. A reader who thinks that proportion is too thin should
 prefer `#1346` alone, in which case the beat is strong on one segment and loses the
 present-tense half.
 
@@ -1552,13 +1562,13 @@ Aaron Franklin's, who appears later in the episode as a business lesson rather t
 authorship case. So the beat has the argument and not its cast. Narration should supply
 the names.
 
-**A related passage, deliberately not cut.** At 2042–2050 s Miller says that when white
-men entered barbecue at the turn of the century *"they start getting the press and the
-publicity for this, even though most of them rely on all Black workforce."* That is the
-same argument at its historical origin and it is the single best sentence in the episode
-for joining beat 22 to beat 38. It is not cut because it sits inside the beat 24 span and
-isolating it yields under ten seconds, far below the 30 s floor. It is recorded here because
-narration bridging Act IV to Act V should use it.
+**A related passage, deliberately not cut.** At **2036.28 → 2046.40** Miller says that
+when white men entered barbecue at the turn of the century *"they start getting the press
+and the publicity for this, even though most of them rely on all Black workforce."* That
+is the same argument at its historical origin and it is the single best sentence in the
+episode for joining beat 22 to beat 38. It is not cut because it falls just **outside** the
+beat 24 cut, which ends at 2032.00, and on its own it is 10.1 s — far below the 30 s
+floor. It is recorded here because narration bridging Act IV to Act V should use it.
 
 **Previously (2026-08-16): empty.** All four Act IV sources were relevant — *Black Smoke:
 African Americans and the United States of Barbecue* is one of the works this beat's
@@ -1594,8 +1604,8 @@ No action.
 | Verdict | Beats | Which |
 |---|---|---|
 | **Strong** | **11** | 1, 4, 5, 14, 15, **18**, **21**, **22**, **24**, 32, **38** |
-| **Thin** | **8** | 2, 6, 7, 9, 19, 23, 27, 30 |
-| **Empty** | **21** | 3, 8, 10, 11, 12, 13, 16, 17, 20, 25, 26, 28, 29, 31, 33, 34, 35, 36, 39, 40 |
+| **Thin** | **9** | 2, 6, 7, 9, 19, 23, 27, 30, 37 |
+| **Empty** | **20** | 3, 8, 10, 11, 12, 13, 16, 17, 20, 25, 26, 28, 29, 31, 33, 34, 35, 36, 39, 40 |
 
 *Previously, 2026-08-16: 6 strong / 10 thin / 24 empty.* One transcription moved five
 beats — four in Act IV and one in Act V — and every one of them is on the authorship
@@ -1603,16 +1613,16 @@ chain the spine says is the editorial test of the whole document.
 
 Three caveats on those numbers, and they do not all push the same way.
 
-**The SYSK sensitivity is smaller than it was.** Three of the eight thin verdicts — 7,
+**The SYSK sensitivity is smaller than it was.** Three of the nine thin verdicts — 7,
 19 and 30 — still rest entirely on Stuff You Should Know, which passes the relevance
 gate and fails the authority gate (§2b), and which cannot be played at all until the
 locate step exists. A founder who rules that register out returns those three to empty
-and the counts to **11 / 5 / 24**. Beat 24 used to be the fourth item in this list and is
+and the counts to **11 / 6 / 23**. Beat 24 used to be the fourth item in this list and is
 no longer exposed: it is now carried by a historian on ad-free tape, so ruling SYSK out
 costs it an illustration rather than its verdict.
 
 **Beat 4's strong verdict depends on minting the proposed new cut.** On the existing
-`#3315` alone it is thin, which would make the counts 10 / 9 / 21.
+`#3315` alone it is thin, which would make the counts 10 / 10 / 20.
 
 **Eleven strong beats is more than the assembly can play, and that is now the binding
 problem.** §5b works through it for one episode: M4's 25 % concentration cap lets
@@ -1631,12 +1641,12 @@ table to a middling one.
 | I (1–5) | chain | 3 | 1 | 1 |
 | II (6–7) | chain | 0 | 2 | 0 |
 | III (8–15) | **fan** | 2 | 1 | 5 |
-| IV (16–30) | chain | **4** (was 0) | 2 (was 5) | **9** (was 10) |
+| IV (16–30) | chain | **4** (was 0) | 4 (was 5) | **7** (was 10) |
 | V (31–40) | chain | 2 (was 1) | 1 | 7 (was 8) |
 
-**Act IV's holes have changed shape, which matters more than the count.** The nine
-remaining empty beats are not spread evenly: they are **16 and 17 at the opening**, and
-**25, 26, 28 and 29 across the whole regional stretch**, plus 20. So the act now reads as
+**Act IV's holes have changed shape, which matters more than the count.** The seven
+remaining empty beats are not spread evenly: they are **16 and 17 at the opening**, **20**,
+and **25, 26, 28 and 29 across the whole regional stretch**. So the act now reads as
 a strong, continuous authorship argument — 18, 21, 22, 24 in chronological order, three of
 them from one voice — with a missing prologue and a missing regional tour on either side of
 it. The first draft's image of *"one hole where the act was, with a few planks laid across
@@ -1653,8 +1663,8 @@ predicted direction:
   authorship beats — 20, 21, 22, 30, the 12 % the spine calls the honest weight — **21 and
   22 are strong**, on a historian making the argument rather than acknowledging it, and 20
   and 30 remain unsourced for reasons now settled rather than pending (§5, §5a). The act's
-  remaining nine holes are its prologue (16, 17) and its entire regional stretch (25, 26,
-  28, 29). **This bullet previously read "no strong tape at all", and that was the finding
+  remaining seven holes are its prologue (16, 17), beat 20, and its entire regional stretch
+  (25, 26, 28, 29). **This bullet previously read "no strong tape at all", and that was the finding
   that bought the transcription.** For the record of what it cost to fix: one 55-minute
   episode, ad-free, no publisher transcript, transcribed locally.
 - **Act V is a ten-beat chain with two strong beats**, and its peak (38) is now one of

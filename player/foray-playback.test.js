@@ -1888,8 +1888,12 @@ test("grilling-history-2 still has the cross-episode seams these speed tests nee
   // Foray is ever re-sourced onto a single episode.
   const r = shortResolve();
   assert.equal(r.playable.length, 10);
+  /* Tightened from `>= 3` to `>= 5` when GC-1/GC-2 landed: the header above states
+     the count as 5, and a bound three below the real value lets that sentence rot
+     without failing. 5 is the floor the prose claims, not the exact value, so
+     re-sourcing that ADDS a cross-episode seam still passes. */
   assert.ok(
-    crossEpisodeSeams(r.playable) >= 3,
+    crossEpisodeSeams(r.playable) >= 5,
     `only ${crossEpisodeSeams(r.playable)} cross-episode seams — the reset this guards cannot happen`
   );
 });
