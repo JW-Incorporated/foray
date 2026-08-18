@@ -7,6 +7,14 @@ the spine — including, at length, where it does not.
 
 **Status:** proposed. This is a coverage report, not a playlist.
 
+**Revised 2026-08-18** against seven newly transcribed episodes. **No beat moved and no
+segment was cut**; §2d is the entry point, and §5's beat 20 records why the beat was
+re-opened on new evidence and closed again. Counts are unchanged at **11 strong / 9 thin
+/ 20 empty**, `data/segments.json` and `data/segment-sources.json` are untouched, and
+`grilling-history-2` is unchanged at 10 items and 1,315.93 s. What the pass did buy is
+the retirement of four open questions — see §9's revision note. A beat that stays empty
+because the tape genuinely does not serve it is a result, not a failure.
+
 **Revised 2026-08-17** against two newly transcribed episodes — §2c is the entry point
 for what changed, §5 carries the revised Act IV verdicts, and §5b records what the
 assembly could actually play. Counts moved from 6 strong / 10 thin / 24 empty to
@@ -428,6 +436,36 @@ organic acids, and why salt plus smoke plus drying do together what none does
 alone. Also missing are the worked examples the beat asks for — biltong, bacon,
 kippers — and the distinction between drying, pounding and smoking that separates
 pemmican from *boucan*. No tape in the pool contains any of it.
+
+**The timed transcript arrived, and it does not buy what the ASR manifest expected —
+2026-08-18.** This is worth recording precisely, because `grilling-asr-manifest.json`
+committed a specific reasoned purchase for this episode and the purchase does not
+complete. Its row reads: *"the episode's publisher transcript is UNTIMED, which is
+precisely why beat 2's preservation passage cannot be cut separately from beat 15's
+carrier today. A timed transcript would let beat 2 have its own cut instead of
+double-booking one passage across two beats — moving a chain beat in Act I from thin
+toward carried."* The episode has now been transcribed with word timestamps (§2d), so
+the stated blocker is gone. **Beat 2 does not move, and timings were never the
+blocker.**
+
+Every preservation and smoke sentence in the episode falls in a single band, 341.84 →
+608.02, and that band lies **inside the two cuts that already exist**. The core is
+341.84 → 412.24 (70 s): the meat had to be preserved, salt was not reliably available,
+wood ash substituted, the pit was dug, *"and it was almost smoked … historically we've
+seen smoke as another form of preservation."* That span is **nested wholly within
+`#266`** (266.01 → 503.94). The only preservation words outside the two cuts are a
+dependent clause at 515.48 → 521.20, in the 50-second gap between them, and a clause is
+not a segment.
+
+So the choice a timed transcript actually offers is not "give beat 2 its own cut"; it is
+**"split beat 15's carrier in two"** — and that is a worse trade three ways. It would
+cut into the segment §4 calls *"the beat almost line for line"*, whose power is the
+whole arc from self-provisioning to the pimento constant. It would not make beat 2
+strong, because the mechanism the beat is actually about is absent from this episode at
+every timestamp — what is here is the historical *ordering*, which is one clause of the
+claim. And a 30 s floor applies to both halves. **Beat 2 stays thin, its dependency on
+`#266` is confirmed rather than provisional, and it should be written as a narration
+beat.** The manifest row should be marked as answered.
 
 ### Beat 3 — low and slow is a specific chemical bargain — **empty**
 
@@ -2105,8 +2143,9 @@ to hear, since narration always sounds on-topic.
 
 ## 8. Where the spine, not the tape, is the problem
 
-Three findings that are not sourcing outcomes. Recording them rather than quietly
-reshaping the spine, per the brief.
+Four findings that are not sourcing outcomes. Recording them rather than quietly
+reshaping the spine, per the brief. **The fourth is a recommended addition to §6b and
+is the only one arising from the 2026-08-18 pass; the spine itself is untouched.**
 
 **1. Beat 27's German mustard trace is contradicted by the tape.** Beat 27 asserts
 "a mustard belt in the South Carolina midlands with a German settlement trace".
@@ -2147,9 +2186,69 @@ segment. That is defensible on runtime, and beat 29 arguably absorbs it in
 principle, but the omission should be recorded in §6b so that the next sourcing pass
 does not keep re-finding Santa Maria tape and wondering where it goes.
 
+**4. §6b has no entry for preservation without fire, and that is the gap the
+2026-08-18 pass walked into.** *Recommended addition, not made here.*
+
+§6b's never-a-beat list is good at the categories that have already caused trouble —
+general food history, health and carcinogens, sauce taxonomy, gear. It has no entry for
+**salt, drying, curing and fermentation as subjects in their own right**, and after this
+pass that is the most under-defended boundary in the document. `jamaica-the-connection-bet`
+is 56 minutes on salt as commodity, labour and spiritual identity: the Atlantic passage
+that salt made possible, women as the primary producers, Mary Prince in the Bermuda salt
+ponds, salt withheld to keep a spirit able to fly home. It has **zero fire, smoke, pit,
+grill, wood or charcoal** in 8,010 words, and it was rejected on that basis (§2d) — but
+notice how nearly it slipped through. Beat 2's evidence line asks for *"why smoke plus
+salt plus drying together do what none does alone"*, so salt is named **inside** the beat
+it does not serve; beat 2 is thin and beat 31 is empty; and both beats are about
+preservation, which is genuinely what this episode is about. The only thing that kept it
+out is that beat 2's subject is *smoke* specifically.
+
+That is the same structure §6b already flags for health and carcinogens — *"it would slot
+in beside beat 3 without looking wrong, which makes it the most dangerous available
+filler"* — and it deserves the same explicit line. The suggested wording, for the
+founders to accept or reject:
+
+> **Preservation without fire** — salt, drying, curing and fermentation as subjects in
+> their own right, including salt's role in the Atlantic trade. Real subjects, and the
+> nearest neighbours to beats 2 and 31, which is what makes them dangerous: both of those
+> beats are about preservation and both are under-sourced. The test is smoke. A source
+> that explains preservation *without* explaining what smoke does is not beat 2's
+> evidence, however good it is.
+
+**A second, smaller addition worth making at the same time:** §6b's *"general food
+history"* entry names *"historical baking, table manners, dinner parties, culinary history
+at large."* Every example is European and domestic. The shape this pass actually met was
+the **national or regional food-history survey** — `more-than-jerk-chicken-jam` runs Taíno
+arrival to Marcus Garvey to ackee in 29 minutes — which reads as on-topic because it names
+a tradition the fan contains, and which the ASR manifest will keep surfacing because
+keyword matching cannot tell a survey from an argument. Naming that shape costs one clause
+and would have saved this pass a transcription.
+
 ---
 
 ## 9. Recommended next actions, in value order
+
+**Revision note, 2026-08-18. Item 2 was not done, and the seven-transcript pass is what
+happens when it is skipped.** Item 2 below asks for the ASR work order to be re-sorted
+against the spine, on the ground that *"priority 1 currently holds sources for three
+beats that are already strong from existing cuts — beat 1 (Origin Stories), beat 15
+(Moreish jerk), beat 14 (the asado episode) — plus Santa Maria, for which no beat
+exists."* The 2026-08-18 batch transcribed **every remaining priority-2 and priority-3
+row in the manifest** — which is those exact three already-strong episodes, plus the
+Korean episode this report had already predicted would fail, plus three more. It moved
+nothing (§2d).
+
+That is not a wasted pass, and the distinction matters for whoever schedules the next
+one. It **retired four open questions** — beat 14's "probably under-cut", beat 2's
+"blocked on timings", beat 12's "transcribing it would probably not fill it", and beat
+3's mechanism — and it re-verified 13 anchors at zero drift. Those are worth having.
+But it bought no beat, and the reason is legible in the manifest: five of the seven rows
+are filed under the single arc slot `world-traditions`, which spans beats 8 to 15, **and
+beats 14 and 15 were already strong while 8, 10, 11, 12 and 13 need sources
+`world-traditions` does not contain.** The old six-slot arc cannot express "this slot is
+already full", so it kept recommending episodes for it. **Item 2 is now the highest-value
+unstarted action in this list**, ahead of any further transcription: re-sort the manifest
+against the 40 beats, and mark rows whose beats are already carried.
 
 **Revision note, 2026-08-17.** Items **1** and **4** below have been done, and they are
 left in place so the list can be read as a scorecard rather than rewritten into
