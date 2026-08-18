@@ -382,6 +382,16 @@ it buys the Android *app* nothing. On Android those controls are native work, an
 
 ## 5. The foreground service, given #227 — reasoning, not a verdict
 
+> **BUILT SINCE, 2026-08-17 — `docs/android-native-code.md`.** This section is left
+> exactly as written because its reasoning is still the reasoning; only its opening
+> words are out of date. What decided it was not a new measurement but §5.2 plus §4:
+> the OS-level arguments were never weakened (and #227's retraction above strengthened
+> the engine-level one back to full), and §4 means #27 cannot be delivered on Android
+> without native code either way, so the FGS and #27's Android half really were one
+> job. It is built, it compiles into both APKs, and **it has still never been
+> executed** — every "unverified" in this section is still unverified, including
+> §5.2's audio-focus question, which a device is the only thing that answers.
+
 **Not built, and deliberately not decided.** #227 (`c1c4e69`) changes the inputs
 enough that MP1's Android §5.3 should not simply be re-quoted, and not enough to
 answer the question. Both halves below matter.
@@ -516,7 +526,7 @@ things the question is made of.
 | CSP versus the injected bridge | **Answered by inference**, §2. Unmeasured, §3 |
 | App launched, or any line read from a running WebView | **No.** No emulator, no device |
 | `navigator.mediaSession` absent | **Inferred**, §4. Unchanged from MP1 |
-| Foreground service | **Not built, not decided**, §5 |
+| Foreground service | **BUILT SINCE, and still never executed** — `docs/android-native-code.md`. §5's reasoning is unchanged and its conclusion is not: the FGS was built because §5.2's OS-level arguments were never weakened, and because §4 means #27 needs native code on Android regardless. A `mediaPlayback` service starts on the first `play()` and stops after a settle window; both APKs still build. Lock-screen metadata and transport controls are still not done |
 | Signed release / Play upload | **Not attempted.** No keystore, no Play account |
 
 Unchanged and still blocking a store submission, from #36: **bundled data is

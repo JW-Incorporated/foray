@@ -102,6 +102,26 @@ ios/capacitor-cordova-ios-plugins/
 *.xcuserstate
 DerivedData/
 
+# ── Our OWN plugins' Gradle build output ──────────────────────────────────────
+#
+# `mobile/plugins/*/android/` is a real Gradle library module (docs/android-native-code.md),
+# so Gradle writes a `build/` tree into it exactly as it does for the generated app.
+# None of the `android/…` rules below cover it: a gitignore pattern containing a
+# slash is anchored to THIS directory, so `android/build/` means `mobile/android/build/`
+# and nothing else.
+#
+# FOUND BY A FAILURE, not by foresight. `git add -A` tried to stage this tree and
+# died with *"Filename too long"* on
+# `plugins/foray-audio/android/build/.transforms/<hash>/transformed/bundleLibRuntimeToDirRelease/…/PlaybackKeepAliveService.dex`.
+# A shorter hash would have committed several hundred build artefacts into a
+# directory that AUTO-MERGES with no post-merge review window. `shell-invariants.test.mjs`
+# now asserts this is ignored, in the same test that asserts the plugin's SOURCES
+# are not.
+plugins/*/android/build/
+plugins/*/android/.gradle/
+plugins/*/android/.cxx/
+plugins/*/android/local.properties
+
 # Android
 android/.gradle/
 android/build/

@@ -700,6 +700,16 @@ test("mobile/.gitignore ignores the GENERATED platform and not our own android/ 
       "the foreground service's plugin class must be committable",
     ],
     [PLUGIN_REL + "/android/src/main/AndroidManifest.xml", false, "the service declaration must be committable"],
+    /* THE MIRROR OF THE SAME MISTAKE, and it also cost a real failure. The plugin's
+       android/ IS a Gradle library module, so Gradle writes a build/ tree into it —
+       and none of the `android/build/` rules cover it, because a gitignore pattern
+       containing a slash is anchored to mobile/ and so means `mobile/android/build/`
+       and nothing else. `git add -A` died with "Filename too long" on a .dex path
+       under it; a shorter hash would have committed several hundred build artefacts
+       into a directory that auto-merges with no post-merge review window. */
+    [PLUGIN_REL + "/android/build/intermediates/whatever.dex", true, "the plugin's Gradle build output must be ignored"],
+    [PLUGIN_REL + "/android/.gradle/8.14.3/checksums/checksums.lock", true, "the plugin's Gradle cache must be ignored"],
+    [PLUGIN_REL + "/android/local.properties", true, "a machine-absolute sdk.dir must never be committable"],
   ];
   for (const [rel, shouldBeIgnored, why] of cases) {
     const res = git(["check-ignore", "-q", "--no-index", rel]);
