@@ -776,12 +776,12 @@ been told that.
 
 #### 17. The grape is the best fermentable on earth, and wine is mostly the consequence of that
 
-**Claim.** A ripe wine grape arrives with everything a fermentation needs already
-in roughly the right proportions — about 20 to 25 % sugar by weight, enough acidity
-to protect the must from spoilage, colour and tannin in the skins, and wild yeast
-on the skin itself — so wine is the one major drink that can very nearly make
-itself, and the grape's sugar level at harvest, not the winemaker, sets the
-finished alcohol.
+**Claim.** A ripe wine grape arrives with everything a fermentation needs already in
+roughly the right proportions — about 20 to 25 % sugar by weight, enough acidity to
+protect the must from spoilage, colour and tannin in the skins, and wild yeasts on
+the skin and throughout the cellar — so wine is the one major drink that can very
+nearly make itself, and the grape's sugar level at harvest, not the winemaker, sets
+the finished alcohol.
 
 **Why it belongs.** It is the cleanest possible demonstration of beat 6's
 free-sugar branch and beat 2's arithmetic working in the real world: ripeness in,
@@ -790,16 +790,18 @@ why average strengths have moved measurably as the climate has. Cut it and wine
 becomes a sequence of steps rather than an argument about a raw material, and the
 listener loses the most useful available cross-check on the key.
 
-**Evidence that counts.** A winemaker or viticulturist connecting the vineyard to
-the number: sugar accumulation and ripeness, acid falling as sugar rises and why
-that tension is the whole harvest decision, potential alcohol calculated from must
-weight in Brix, Baumé or Oechsle, and chaptalisation and acidification as the
-interventions that exist because the raw material does not always cooperate.
-Strong signal: an explicit statement that the winemaker's main control over final
-strength is the picking date, plus an honest separation of the parts of terroir
-that are measurable production variables — water stress, drainage, diurnal range —
-from the parts that are a marketing claim. Reject: vineyard lyricism with no
-numbers, and wine-region geography with no process.
+**Evidence that counts.** A winemaker or viticulturist connecting the vineyard to the
+number: sugar accumulation and ripeness, acid falling as sugar rises and why that
+tension is the whole harvest decision, potential alcohol calculated from must weight
+in Brix, Baumé or Oechsle, and chaptalisation and acidification as the interventions
+that exist because the raw material does not always cooperate. Strong signal: an
+explicit statement that the winemaker's main control over final strength is the
+picking date, plus an honest separation of the parts of terroir that are measurable
+production variables — water stress, drainage, diurnal range — from the parts that
+are a marketing claim. Also strong: an accurate account of the wild flora, which at
+the start of a spontaneous ferment is mostly not *Saccharomyces* at all and hands
+over to it partway. Reject: vineyard lyricism with no numbers, and wine-region
+geography with no process.
 
 **Share.** 1.8 % (~2.7 min).
 
@@ -821,11 +823,11 @@ which is only comprehensible once maceration is understood as a clock.
 **Evidence that counts.** A winemaker on maceration as a process: cap management,
 punchdown and pumpover, why colour and tannin extract on different timescales, cold
 soak, carbonic maceration as the case where fermentation begins inside the intact
-berry, and skin-contact whites as the same operation on white grapes. Strong
-signal: the blanc de noirs point made explicitly, and rosé's two genuinely
-different routes — a brief maceration versus bleeding liquid off a red fermentation
-— distinguished rather than merged. Reject: colour and style description with no
-reference to contact time.
+berry, and skin-contact whites as the same operation on white grapes. Strong signal:
+the blanc de noirs point made explicitly, and rosé's three genuinely different routes
+— direct pressing, which is the dominant Provençal method, a brief maceration, and
+bleeding liquid off a red fermentation — distinguished rather than merged. Reject:
+colour and style description with no reference to contact time.
 
 **Share.** 1.8 % (~2.7 min).
 
@@ -895,12 +897,11 @@ production fact rather than an anecdote: rootstock choice is a live viticultural
 decision about vigour, drought tolerance and soil, and the few surviving ungrafted
 regions are commercially significant precisely because they are exceptions.
 
-**Why it belongs.** This is the touch of history doing exactly the work §2c
-requires — it passes the "and that is why the process looks like this" test
-cleanly — and it seasons the wine chain with a real catastrophe instead of a
-founding legend. It also sets up two later beats: the wine shortage's push of
-drinkers and capital toward spirits, which beat 59 needs, and the varietal
-composition of cognac and madeira, which beat 45 needs.
+**Why it belongs.** This is the touch of history doing exactly the work §2c requires
+— it passes the "and that is why the process looks like this" test cleanly — and it
+seasons the wine chain with a real catastrophe instead of a founding legend. It also
+sets up beat 59, which needs the wine shortage's push of drinkers and capital toward
+spirits in order to explain why the absinthe bans arrived when they did.
 
 **Evidence that counts.** A wine historian, viticulturist or plant scientist on the
 epidemic and the fix: the insect's life cycle and why American roots survive it,
@@ -935,10 +936,12 @@ compensations: why cider apples are inedible and what their tannin does, the
 classification of varieties by sugar, acid and tannin, natural strength before any
 intervention, and keeving explained mechanically — pectin, added calcium, the brown
 cap that rises, nutrient removal and the arrested ferment — as against simply
-back-sweetening or sterile filtering. Strong signal: perry treated as genuinely
-different because of unfermentable sorbitol, and an honest account of concentrate-based
-industrial cider as a separate product. Reject: orchard heritage colour, and cider
-style guides.
+back-sweetening or sterile filtering. Worth flagging for assembly: the enzyme that
+makes keeving work is the same pectin methylesterase that supplies beat 13's
+methanol, which is one mechanism with two opposite uses, and a bridge should say so.
+Strong signal: perry treated as genuinely different because of unfermentable
+sorbitol, and an honest account of concentrate-based industrial cider as a separate
+product. Reject: orchard heritage colour, and cider style guides.
 
 **Share.** 1.6 % (~2.4 min).
 
@@ -1007,11 +1010,12 @@ yeasts work alongside lactic acid bacteria, producing a sour, lightly alcoholic
 drink of roughly one to three per cent that is a dairy product and an alcoholic one
 at the same time.
 
-**Why it belongs.** It is the completeness beat that proves the key's first
-question is genuinely general: sugar is sugar, but not every sugar is available to
-every organism, and that qualification is real chemistry rather than a footnote. It
-is also the only place in the Foray where the feedstock is an animal, and it makes
-beat 51's distilled version intelligible rather than arbitrary.
+**Why it belongs.** It is the completeness beat that proves the key's first question
+is genuinely general: sugar is sugar, but not every sugar is available to every
+organism, and that qualification is real chemistry rather than a footnote. It is also
+the only place in the Foray where the feedstock is a milk — honey at beat 23 is the
+other animal product — and it makes beat 51's distilled version intelligible rather
+than arbitrary.
 
 **Evidence that counts.** A food scientist, anthropologist or dairy specialist on
 lactose fermentation: which organisms can use lactose and why most cannot, the
@@ -1028,14 +1032,14 @@ any tape whose only content is that the drink is unusual.
 
 ### Act III — Sugar that had to be unlocked (fan of families, 16.1 %)
 
-The second branch of the key, and by volume most of the world's drinking. Beer is
-a six-beat chain because it is the family where the conversion step is most
-visible and because Act IV's grain spirits inherit the whole apparatus. The koji
-family is a two-beat chain for the same reason. The remaining stops — the sorghum
-and millet beers, the chewed and tuber brews, and the modern industrial lager —
-are single stops, and the last of those is here because it is what most of the
-world actually drinks: a Foray that covers lambic and not adjunct lager has taken
-its priorities from a taproom rather than from the world.
+The second branch of the key, and by volume most of the world's drinking. Beats 26 to
+30 are a five-beat chain on beer, because it is the family where the conversion step
+is most visible and because Act IV's grain spirits inherit the whole apparatus. Beats
+32 and 33 are a two-beat chain on the koji family for the same reason. The remaining
+stops — the sorghum and millet beers, the chewed and tuber brews, and the modern
+industrial lager — are single stops, and the last of those is here because it is what
+most of the world actually drinks: a Foray that covers lambic and not adjunct lager
+has taken its priorities from a taproom rather than from the world.
 
 #### 26. Beer is the malting chain made visible, and the order of operations is not negotiable
 
@@ -1098,29 +1102,32 @@ folklore asserted without the shipping and hopping-rate evidence.
 **Claim.** The split that organises the beer world is biological: ale yeast is
 *Saccharomyces cerevisiae* working warm and finishing near the top of the vessel,
 while lager yeast is *Saccharomyces pastorianus* — not a variety but a hybrid of
-*cerevisiae* with a cold-tolerant wild species — working slowly near freezing and
-settling out, which produces exactly the clean profile beat 10 predicts; and because
-that requires months of cold, lager remained a regional Alpine technique dependent
-on ice houses and caves until mechanical refrigeration in the 1870s and rail freight
-together made it the default beer of the planet.
+*cerevisiae* with the cold-tolerant *S. eubayanus* — which ferments slowly at around
+seven to thirteen degrees, then conditions for months near freezing, and settles out
+rather than rising, producing exactly the clean profile beat 10 predicts; and because
+that requires months of cold, lager remained a regional Bavarian and Bohemian
+technique dependent on ice houses and caves until mechanical refrigeration in the
+1870s and rail freight together made it the default beer of the planet.
 
-**Why it belongs.** It is the third of the Foray's history-is-mechanism beats and
-the most economically consequential of them: the world's most-consumed alcoholic
-drink is the product of a hybrid organism plus an industrial cooling machine, and
-neither half is optional to the explanation. It also collects on beats 4 and 10 at
-once, since pure culture and temperature control are precisely what lager brewing
-cannot do without. Cut it and pale lager's global dominance is an unexplained fact.
+**Why it belongs.** It is the last link in the Foray's pure-culture-and-cold chain,
+after beats 4 and 12, and the most economically consequential of the three: the
+world's most-consumed alcoholic drink is the product of a hybrid organism plus an
+industrial cooling machine, and neither half is optional to the explanation. It also
+collects on beats 4 and 10 at once, since pure culture and temperature control are
+precisely what lager brewing cannot do without. Cut it and pale lager's global
+dominance is an unexplained fact.
 
 **Evidence that counts.** A brewer, yeast scientist or beer historian on the two
 yeasts and the cold chain: top and bottom fermentation and what actually
 distinguishes them, the hybrid origin of lager yeast and the identification of its
-cold-tolerant wild parent, lagering time and what happens during it, cave storage
-and commercial ice harvesting as the pre-industrial method, and the arrival of
-ammonia refrigeration together with the brewery that commissioned it. Strong
-signal: the causal chain stated in order — cold-tolerant hybrid, then pure culture,
-then mechanical cooling, then rail — because the beat is the sequence rather than
-any single item in it. Reject: ale-versus-lager taste comparison, and
-"lager is boring" advocacy.
+cold-tolerant wild parent, lagering time and what happens during it, cave storage and
+commercial ice harvesting as the pre-industrial method, and the arrival of ammonia
+refrigeration together with the brewery that commissioned it. Strong signal: the
+enabling conditions stated as jointly necessary and dated correctly, because the tidy
+version gets the order wrong: the hybrid organism is old, Linde's machine is 1873 and
+Hansen's pure culture is 1883, so mechanical cooling arrived before reproducible
+yeast rather than after it. Reject: ale-versus-lager taste comparison, and "lager is
+boring" advocacy.
 
 **Share.** 2.0 % (~3.0 min).
 
@@ -1203,9 +1210,11 @@ differs from barley's, the souring step and whether it precedes or runs alongsid
 alcoholic fermentation, the strength, why the drink is served turbid and active, and
 the industrialised versions that now package it. Strong signal: the nutritional
 rationale — B vitamins, calories, microbial safety against untreated water — treated
-as a production reason, and the commercial scale named. Reject: development-report
-framing with no process, and any tape that treats these as primitive versions of
-beer rather than as a different design.
+as a production reason, and the commercial scale named. A speaker who sets Slavic
+*kvass* beside these as the same design decision, a low-alcohol soured grain ferment
+drunk fresh rather than stored, serves this beat as well as anything about sorghum
+does. Reject: development-report framing with no process, and any tape that treats
+these as primitive versions of beer rather than as a different design.
 
 **Share.** 1.3 % (~1.95 min).
 
@@ -1296,10 +1305,11 @@ prehistory rather than as living production.
 
 #### 35. The world's most-drunk alcoholic drink is industrial adjunct lager, and how it is really made is not a secret
 
-**Claim.** Global pale lager is the result of a set of deliberate engineering
-choices that the craft conversation treats as failings but which are internally
-coherent: part of the malt is replaced with cheaper rice or maize, purchased enzymes
-make up for what the adjuncts cannot convert, the wort is fermented stronger than
+**Claim.** Global pale lager is the result of a set of deliberate engineering choices
+that the craft conversation treats as failings but which are internally coherent:
+part of the malt is replaced with cheaper rice or maize and the malt's surplus enzyme
+is made to convert the adjunct as well as itself, with purchased enzymes added once
+the adjunct rate outruns what the malt can cover, the wort is fermented stronger than
 the finished beer and diluted afterwards so that the same plant yields more, and
 fermentation and maturation are accelerated on pressure and temperature schedules —
 producing a drink engineered for identity across dozens of countries.
@@ -1312,12 +1322,13 @@ genuinely surprising piece of process that most drinkers have never heard of.
 
 **Evidence that counts.** A production brewer, brewing engineer or industry analyst
 on the choices and their reasons: adjunct rates and what maize and rice contribute
-beyond cost, cereal cooking, exogenous enzymes, high-gravity fermentation and
-dilution with deaerated water, accelerated schedules, and the quality-control
-apparatus that keeps a global brand identical across breweries. Strong signal: an
-even-handed account that states the engineering rationale rather than prosecuting
-it, with honest numbers on cost and volume. Reject: craft-versus-macro advocacy in
-either direction, and brand history.
+beyond cost, cereal cooking, diastatic power as the thing that caps the adjunct rate
+and exogenous enzymes as what lifts the cap, high-gravity fermentation and dilution
+with deaerated water, accelerated schedules, and the quality-control apparatus that
+keeps a global brand identical across breweries. Strong signal: an even-handed
+account that states the engineering rationale rather than prosecuting it, with honest
+numbers on cost and volume. Reject: craft-versus-macro advocacy in either direction,
+and brand history.
 
 **Share.** 1.3 % (~1.95 min).
 
