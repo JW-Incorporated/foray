@@ -13,6 +13,10 @@ the two touch, this document defers.
 Every second-figure below is derived from a word count, and the word count is the
 figure to trust — see §2a.
 
+**A note on references.** A bare `§` points inside this document. This document and
+`segment-length-rules.md` share section numbering by coincidence, so every reference to
+that document names the file.
+
 ---
 
 ## 0. TL;DR — the numbers
@@ -527,8 +531,8 @@ strangers is ~0.5 s of pad and the narrator's voice. Three consequences for the 
   `segment-length-rules.md` §2a establishes on measured grounds that a segment's first
   ~4 s carries nothing load-bearing, because the listener is re-orienting to a new
   voice and room. The narrator's voice recurs and is loudness-normalised, so the cost
-  is smaller — but §2a's finding is specifically that this cost **does not habituate**,
-  so it is not zero. **Rule: no narration item opens on a load-bearing proper noun,
+  is smaller — but that document's finding is specifically that the cost **does not
+  habituate**, so it is not zero. **Rule: no narration item opens on a load-bearing proper noun,
   number or date.** Two or three words of orientation first. *"Two thousand miles
   south, the same problem…"* before the name.
 - **The Hinge is the ear's calibration point.** AES TD1004.1.15-10 warns of loudness
@@ -1121,11 +1125,12 @@ types in one stretch.
   not a preference. So the report's instruction that the missing antecedent goes "ahead
   of `#1205`" resolves, in the assembly, to *ahead of `#700`*.
 - **The gap between `#700` and `#1205` is 356.5 s — five minutes fifty-six seconds.**
-  Past 180 s, so §6a keeps them separate; past 5 minutes, so §6b **requires narration**
+  Past 180 s, so `segment-length-rules.md` §6a keeps them separate; past 5 minutes, so its §6b
+  **requires narration**
   rather than silence, "because across a large gap the listener will otherwise build a
   false model of continuity."
-- **The gap between `#266` and `#555` is 50.7 s**, which lands in §6a's *should merge*
-  band. The coverage report keeps them separate. See the note at the end of this
+- **The gap between `#266` and `#555` is 50.7 s**, which lands in `segment-length-rules.md`
+  §6a's *should merge* band. The coverage report keeps them separate. See the note at the end of this
   example.
 
 **The script.**
@@ -1158,7 +1163,8 @@ rather than becoming plausible prose.
 > *"Six minutes later, the same conversation, and the question is how you know when the
 > fire is ready."*
 
-Seam type S3. It **states the elision** as §6b requires, in §6b's own idiom. Then it
+Seam type S3. It **states the elision** as `segment-length-rules.md` §6b requires, in that
+document's own idiom. Then it
 poses the question the tape answers — the hand over the grill, the two-second count,
 "you are actually engaged in the cooking process" — and states none of it (§3c). At
 7.2 s it is inside the 8 s target with no exception needed, because a same-episode Hinge
@@ -1222,8 +1228,8 @@ demonstration.
 
 **Two loose ends recorded rather than resolved.**
 
-- **The merge question.** `#266` and `#555` are 50.7 s apart, in §6a's *should merge*
-  band, kept separate by the coverage report. Merging removes one Hinge — about 250
+- **The merge question.** `#266` and `#555` are 50.7 s apart, in `segment-length-rules.md`
+  §6a's *should merge* band, kept separate by the coverage report. Merging removes one Hinge — about 250
   characters (§3k) — and it also changes where A4 can go, because a merged segment ends
   on `#555`'s out-anchor and the correction still lands immediately after. The counter is
   that the merged segment is 372.6 s, which is inside the 480 s `exchange` maximum and
@@ -1487,7 +1493,7 @@ behind them and which have one afternoon of reasoning.
 | A radio feature's published baseline is ~50 % copy / 50 % tape | the ratio Foray inverts | B-Side Radio, via `segment-length-rules.md` §2b |
 | The orienting response to a voice change **does not habituate** in a distracted listener | the measured finding all the rate rules rest on | `segment-length-rules.md` §2a |
 | Uniformity of length is itself a defect | film shot-length evidence | `segment-length-rules.md` §2d |
-| 2–3.5 s of silence marks a section break | audiobook convention | Narrators Roadmap, via §2e |
+| 2–3.5 s of silence marks a section break | audiobook convention | Narrators Roadmap, via `segment-length-rules.md` §2e |
 
 **Secondary, and no rule rests on it.** Ira Glass's *anecdote and reflection* pairing
 and the raise-a-question engine. The accessible texts are third-party transcripts and
@@ -1506,10 +1512,10 @@ someone has the book, §3c gains a second primary source; until then it does not
 
 | | inference | what it is reasoned from |
 |---|---|---|
-| Narration has a **~1 s sacrificial head**, and it is not zero | §2a's evidenced 4 s finding for tape, discounted for a familiar loudness-normalised voice, but not to zero because §2a's specific finding is non-habituation |
-| **One axis per seam** (§3e) | §2a: the listener is already spending attention on the voice change, so extra labels are dropped and the author does not choose which |
+| Narration has a **~1 s sacrificial head**, and it is not zero | `segment-length-rules.md` §2a's evidenced 4 s finding for tape, discounted for a familiar loudness-normalised voice, but not to zero because that document's specific finding is non-habituation |
+| **One axis per seam** (§3e) | `segment-length-rules.md` §2a: the listener is already spending attention on the voice change, so extra labels are dropped and the author does not choose which |
 | **Attribute on the way in**, and the tease is the rare exception | Everett's *Title First* plus MacAdam's caution that teases confuse when voices are similar |
-| Narration items need **anti-uniformity** too | §2d's texture finding, transferred from segments to items |
+| Narration items need **anti-uniformity** too | `segment-length-rules.md` §2d's texture finding, transferred from segments to items |
 | **Tense is the only cue** separating mechanism from history in audio | both spines' decision to interleave history inside process beats rather than gathering it into an act |
 | Planning constants: **150 wpm** (convention), **6.0 chars/word** (arithmetic) | neither is a measurement of our output; §7d is the first evidence and it says 5.85 |
 | The alcohol coverage projection of **15 strong / 18 thin / 30 empty** | barbecue's measured proportions plus the alcohol spine's own prediction that it runs thinner; **replace it with the real report the moment one exists** |
@@ -1520,9 +1526,9 @@ someone has the book, §3c gains a second primary source; until then it does not
 |---|---|
 | **The six modes** — Hinge, Frame, Marker, Correction, Patch, Carry — and their word budgets | the vocabulary a script author picks from |
 | **Transition items vs narration items** (§2b), and the ruling that the ≤ 8 s spec budget and the payback rule apply to the first and not the second | the structural finding of this document |
-| The **12 s exception** for a required attribution or correction, and the demonstration that 8 s is unachievable alongside §6c's attribution rule | a real spec conflict, resolved |
+| The **12 s exception** for a required attribution or correction, and the demonstration that 8 s is unachievable alongside `segment-length-rules.md` §6c's attribution rule | a real spec conflict, resolved |
 | **Carry hard max 180 s**: the narrator is never the longest item in the Foray | |
-| The **narration merge rule** and the two-consecutive cap (§2e) | §6a's same-episode argument applied to adjacent empty beats |
+| The **narration merge rule** and the two-consecutive cap (§2e) | `segment-length-rules.md` §6a's same-episode argument applied to adjacent empty beats |
 | The **eight-seam taxonomy** S1–S8 (§3b) | |
 | The **spoiler rule** as a general seam rule (§3c) | the principle is Everett's and the spec's; the seam-level formulation and the tape-becomes-confirmation reasoning are ours |
 | **Correct forward for framing, backward for facts** (§3f) | |
@@ -1585,7 +1591,7 @@ coverage report.
   predict it: an empty beat whose literature the report can name is writable; one where
   the report cannot say what would be said is not.
 - **A small correction to record.** Beat 14's entry says the missing antecedent goes
-  "ahead of `#1205`". In the assembly it goes ahead of **`#700`**, because §6c makes
+  "ahead of `#1205`". In the assembly it goes ahead of **`#700`**, because `segment-length-rules.md` §6c makes
   chronological order mandatory and `#700` is the earlier window. The report's
   "Chosen"/"Second" labels are a quality ranking, not a play order, and it is worth a
   sentence saying so where a script author will see it.
