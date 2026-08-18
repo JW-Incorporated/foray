@@ -109,6 +109,39 @@
      the authored 2.0 s instead of 9.2 s of nothing. The beat is an editorial
      pause between two voices, not an artifact of loading; shortening it was
      never the fix.
+
+   ── 12. THE LISTENER'S SPEED, AND WHY IT LIVES HERE ────────────────────────
+   The ladder and the labels are `player/playback-rate.js`; the chosen value is
+   `this._rate`, and this class is the only thing that owns it. That is not
+   layering for its own sake — it is where the bug was.
+
+   `playbackRate` resets to 1 when a media element loads a new source in several
+   engines, and a Foray changes source at every cross-episode seam, so the naive
+   version of this feature works until the first seam and then silently drops
+   back to 1x mid-listen. `html-audio-backend.js` already survives THAT: it holds
+   `_pendingRate` and re-applies it in `play()`.
+
+   **The reset that actually shipped was ours, and it was worse than the engine's
+   one.** `restoreRate` read `item?.rate ?? 1.0` — and no queue item in this repo
+   has ever carried a `rate` field, so the effect was an unconditional
+   `setRate(1.0)`. The reducer emits `restoreRate` on EVERY `itemLoaded` for a
+   non-TTS item, which means the listener's speed was thrown away:
+
+     - at the first `play()`, so a stored 1.5x never applied at all; and
+     - at every single seam, so a speed changed mid-Foray survived exactly one
+       segment — a median 103 s — and then reverted with nothing on screen to
+       say so.
+
+   So `restoreRate` restores `this._rate` now. An authored `item.rate` still
+   wins, because that is the escape hatch the effect was named for; nothing
+   authors one today.
+
+   TTS IS STILL 1.0x, and `setRate` respects that live (corner case #18). A
+   bridge is one line of our own narration at a level and pace we chose; playing
+   it at 2x is not a feature. `resetRateForTTS` forces 1.0 on the way in and
+   `restoreRate` brings the listener's speed back on the way out, so the only new
+   rule is that a tap arriving WHILE narration is audible is stored and applied
+   when the narration ends rather than mid-word.
 */
 
 import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
@@ -116,6 +149,7 @@ import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
 import { seekPrecision, FOREIGN, APPROXIMATE } from "./seek-policy.js";
 import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
+import { normalizeRate, DEFAULT_RATE } from "./playback-rate.js";
 
 const POSITION_INTERVAL_MS = 15_000;
 
@@ -153,10 +187,15 @@ export class PlayerQueueManager {
    * @param {Function} [opts.onSeamGapChange] (inGap: boolean) => void — fires
    *   when a beat starts and when it ends. A surface needs this because a beat
    *   produces no media events to repaint on.
+   * @param {number}   [opts.rate]  the listener's speed (§12). Stored, not
+   *   applied: a constructor that reached into the backend would make building a
+   *   manager audible. `setRate()` is what applies it, and `client.js` calls it
+   *   once at boot with the stored value.
    */
   constructor({
     backend, positionStore = null, strategy = SINGLE_ITEM, telemetry = null, allowMultiple = false,
     seamGapSec: gapSec = SEAM_GAP_SEC, scheduler = REAL_SCHEDULER, onSeamGapChange = null,
+    rate = DEFAULT_RATE,
   } = {}) {
     if (!backend) throw new Error("PlayerQueueManager requires a backend");
     if (liveInstance && !allowMultiple) {
@@ -198,6 +237,13 @@ export class PlayerQueueManager {
     this._loadedId = null;
     /** Set by setQueueFromForay; consulted by the load-time ladder. */
     this._forayOptions = { isLocalFile: false, allowAdPad: false };
+    /** The listener's chosen speed (§12). The ONE place it lives: the backend's
+        `_pendingRate` is a cache of whatever it was last told, and the button's
+        label is painted from here, so a divergence between them is not
+        expressible. Normalised on the way in so nothing downstream — the
+        element, `setPositionState`, a label — ever sees a value off the
+        ladder. */
+    this._rate = normalizeRate(rate);
 
     /* ---- the seam beat (see §10 in the header) ----
        `_gapUntil` is an ABSOLUTE deadline, stamped when the out-point fires,
@@ -422,6 +468,59 @@ export class PlayerQueueManager {
     return this._transport("seek", () => this._handle(E.seek(seconds, Boolean(opts.precise))));
   }
 
+  /* ---------- the listener's speed (§12) ---------- */
+
+  /** The chosen speed. What the button's label is painted from — never the
+      element's live `playbackRate`, which is 1 for the moment after a load
+      assigns a src and would make the label flicker at every seam. */
+  get rate() { return this._rate; }
+
+  /**
+   * Change the listener's speed. Survives every seam, because `restoreRate` now
+   * reads `this._rate` (§12).
+   *
+   * DELIBERATELY NOT A `_transport` ACTION, and the distinction is the seam
+   * beat's own rule (`seam-gap.js`): every transport method cuts a running beat
+   * because the beat marks an edit the listener did not ask for, and touching the
+   * transport means they have named a destination. Changing speed names no
+   * destination — it is a preference about how the rest of the hour sounds — so
+   * cutting the beat here would start the next segment early and swallow the
+   * authored 2.0 s for a tap that was not about going anywhere.
+   *
+   * It also does not need to be: the beat is wall clock and the element is paused
+   * for it, so writing the rate mid-beat is applied to a stopped element and
+   * `play()` re-applies it at the far side.
+   *
+   * @param {number} rate  snapped onto the ladder by `normalizeRate`
+   * @returns {number} the rate now in force
+   */
+  setRate(rate) {
+    const r = normalizeRate(rate);
+    const was = this._rate;
+    this._rate = r;
+    /* NARRATION IS NOT SPED UP, EVER (corner case #18). If a bridge is what is
+       audible right now, the value is STORED and applied when `restoreRate` fires
+       at the end of it — so a tap during narration is not lost, it just does not
+       take effect mid-word. Without this the guarantee `resetRateForTTS` exists
+       to make would hold for every path except a listener touching the control at
+       the wrong moment, which is precisely when a guarantee stops being one. */
+    if (this._narrationIsAudible()) {
+      this._emit(`rate.deferred=${r} — narration is audible and plays at 1.0x`);
+      return r;
+    }
+    this.backend.setRate(r);
+    if (r !== was) this._emit(`rate.set=${r} (was ${was})`);
+    return r;
+  }
+
+  /** Is the thing making sound right now one of our own narration lines? Read
+      from the LOADED item rather than from the reducer's state, because
+      `transitioning` covers the bridge loading as well as playing and the item
+      is what carries the kind. */
+  _narrationIsAudible() {
+    return this.state.type === "transitioning" || this._currentItem()?.kind === TTS;
+  }
+
   /* ---------- interruptions and routes ---------- */
 
   async interruptionBegan() {
@@ -525,11 +624,20 @@ export class PlayerQueueManager {
         return this.backend.setOutPoint(effect.seconds);
 
       case "resetRateForTTS":
+        // Corner case #18. Deliberately the literal 1.0 and NOT `this._rate`:
+        // narration is our own line at a pace we chose, and this effect exists
+        // to override the listener's speed rather than to consult it.
         return this.backend.setRate(1.0);
 
       case "restoreRate": {
         const item = this._currentItem();
-        return this.backend.setRate(item?.rate ?? 1.0);
+        /* §12. This used to be `item?.rate ?? 1.0`, which — since no queue item
+           has ever carried a `rate` — was an unconditional reset to 1x on every
+           `itemLoaded`, i.e. at the first play AND at every seam. That is the
+           whole "the speed silently reverts mid-listen" defect, and it was ours
+           rather than the engine's. An authored per-item rate still wins; the
+           listener's speed is the floor under it. */
+        return this.backend.setRate(item?.rate ?? this._rate);
       }
 
       case "playTransitionTTS":
