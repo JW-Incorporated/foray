@@ -992,3 +992,300 @@ the other low-alcohol dairy ferments. Reject: steppe colour with no process, and
 any tape whose only content is that the drink is unusual.
 
 **Share.** 1.0 % (~1.5 min).
+
+---
+
+### Act III — Sugar that had to be unlocked (fan of families, 16.1 %)
+
+The second branch of the key, and by volume most of the world's drinking. Beer is
+a six-beat chain because it is the family where the conversion step is most
+visible and because Act IV's grain spirits inherit the whole apparatus. The koji
+family is a two-beat chain for the same reason. The remaining stops — the sorghum
+and millet beers, the chewed and tuber brews, and the modern industrial lager —
+are single stops, and the last of those is here because it is what most of the
+world actually drinks: a Foray that covers lambic and not adjunct lager has taken
+its priorities from a taproom rather than from the world.
+
+#### 26. Beer is the malting chain made visible, and the order of operations is not negotiable
+
+**Claim.** Brewing is beat 7 executed as a production line — milled malt mashed in
+hot water so its own enzymes convert starch to sugar, the sweet liquid separated
+from the grain husks, boiled with hops for bitterness and sterility, cooled fast,
+pitched with yeast, fermented, then conditioned — and the reason that order is
+fixed is that each step destroys the conditions the previous one required, which is
+what makes brewing the clearest end-to-end process narrative in the subject.
+
+**Why it belongs.** It is the worked example the founder's "walk me through the
+production process" most obviously asks for, and it is the one family whose entire
+sequence a listener can hold in their head at once. It is also the foundation of
+every grain-spirit beat in Act IV: malt whisky is this process stopped before the
+hops and handed to a still, and establishing that once here saves establishing it
+four times later. Cut it and Act III has no spine of its own.
+
+**Evidence that counts.** A brewer walking the sequence with reasons rather than
+steps: mash thickness and temperature and what each is for, lautering and the grain
+bed acting as its own filter, why the boil is not optional, hot and cold break, why
+cooling speed matters for both infection and haze, pitching rate, and what
+conditioning accomplishes after the yeast has finished. Strong signal: the enzymes'
+fate stated — that the boil ends conversion permanently, which is why mash
+temperature is a one-way decision — and a brewer naming the step they would change
+first if the beer came out wrong. Reject: brewery-tour narration, ingredient lists,
+and homebrew recipes.
+
+**Share.** 2.0 % (~3.0 min).
+
+#### 27. Hops were adopted as a preservative and kept as a flavour, and when you add them decides which one you get
+
+**Claim.** Hops earned their place because their resins are specifically
+antibacterial against the lactic organisms that spoil beer, which is why heavily
+hopped beer could be stored and shipped when unhopped ale could not — and the
+production consequence is a trade the brewer cannot escape, because the bittering
+compounds only form through prolonged boiling while the aromatic oils boil away, so
+bitterness and aroma are bought at opposite ends of the same kettle.
+
+**Why it belongs.** It is where beer stops being a recipe and becomes an
+engineering trade-off, and the preservation-before-flavour ordering is the same
+structural insight the barbecue spine used for smoke: a taste now bought
+deliberately began as a way of not losing the batch. It also lets the Foray handle
+the most-cited legal date in beer accurately, which matters because the popular
+version of it is wrong in an instructive way.
+
+**Evidence that counts.** A brewer, hop grower or beer historian on the chemistry
+and the timing: alpha acids and their conversion during the boil, the aroma oils and
+why late, whirlpool and dry-hop additions exist, the antimicrobial action against
+Gram-positive bacteria and its consequence for shipping, and the displacement of the
+earlier herb mixtures brewers used instead. Strong signal: the 1516 Bavarian statute
+described accurately — a purity rule that was also a price control and a measure
+reserving wheat and rye for bakers, written before anyone knew yeast existed —
+rather than as a heritage boast. Reject: hop-variety listicles, and IPA origin
+folklore asserted without the shipping and hopping-rate evidence.
+
+**Share.** 1.7 % (~2.55 min).
+
+#### 28. Ale and lager are two species at two temperatures, and lager needed refrigeration to leave Bavaria
+
+**Claim.** The split that organises the beer world is biological: ale yeast is
+*Saccharomyces cerevisiae* working warm and finishing near the top of the vessel,
+while lager yeast is *Saccharomyces pastorianus* — not a variety but a hybrid of
+*cerevisiae* with a cold-tolerant wild species — working slowly near freezing and
+settling out, which produces exactly the clean profile beat 10 predicts; and because
+that requires months of cold, lager remained a regional Alpine technique dependent
+on ice houses and caves until mechanical refrigeration in the 1870s and rail freight
+together made it the default beer of the planet.
+
+**Why it belongs.** It is the third of the Foray's history-is-mechanism beats and
+the most economically consequential of them: the world's most-consumed alcoholic
+drink is the product of a hybrid organism plus an industrial cooling machine, and
+neither half is optional to the explanation. It also collects on beats 4 and 10 at
+once, since pure culture and temperature control are precisely what lager brewing
+cannot do without. Cut it and pale lager's global dominance is an unexplained fact.
+
+**Evidence that counts.** A brewer, yeast scientist or beer historian on the two
+yeasts and the cold chain: top and bottom fermentation and what actually
+distinguishes them, the hybrid origin of lager yeast and the identification of its
+cold-tolerant wild parent, lagering time and what happens during it, cave storage
+and commercial ice harvesting as the pre-industrial method, and the arrival of
+ammonia refrigeration together with the brewery that commissioned it. Strong
+signal: the causal chain stated in order — cold-tolerant hybrid, then pure culture,
+then mechanical cooling, then rail — because the beat is the sequence rather than
+any single item in it. Reject: ale-versus-lager taste comparison, and
+"lager is boring" advocacy.
+
+**Share.** 2.0 % (~3.0 min).
+
+#### 29. The classic beer styles are a map of local water chemistry, and the listener can now read it
+
+**Claim.** Before anyone could adjust water, a brewery could only make what its
+well allowed: Burton's heavily sulphated water sharpens hop bitterness and produced
+pale ale, Dublin's carbonate-rich water buffers the acidity of dark roasted grain
+and produced stout, Pilsen's very soft water suits pale malt and delicate hopping
+and produced the pale lager the world then copied, and Munich's moderate carbonate
+produced dark lager — so the style map is substantially a geology map, and modern
+brewers reproduce those waters deliberately with added salts.
+
+**Why it belongs.** It is the best "reason it yourself" beat in Act III and the
+direct analogue of the barbecue spine's fuel beat: one environmental variable
+explains a pattern the listener assumed was cultural preference. It also inoculates
+against style-guide thinking, which is the form beer drift would take here, by
+making styles into consequences rather than categories.
+
+**Evidence that counts.** A brewer or brewing scientist on water chemistry
+mechanistically: mash pH as the thing water actually controls, sulphate and chloride
+and the perceptual effect of their ratio, carbonate as a buffer against the acidity
+of roasted malt, calcium's role in enzyme activity, and burtonisation as the
+deliberate reproduction of a natural water. Strong signal: at least two cities
+contrasted with their water analyses and the styles derived from them, plus the
+honest modern qualification that water treatment has made the geography optional.
+Reject: style history with no chemistry, and brewery-town civic pride.
+
+**Share.** 1.6 % (~2.4 min).
+
+#### 30. One branch of brewing deliberately gives the control back, and it is the older branch
+
+**Claim.** Everything in beats 26 to 29 is the pursuit of control, and the wild and
+mixed-fermentation traditions — Belgian lambic cooled overnight in a wide shallow
+open vessel and inoculated by whatever is in the air and the wood, *Brettanomyces*
+kept for its phenols rather than eliminated, lactic bacteria allowed to sour the
+wort or the beer — are a working demonstration that the pre-Pasteur method makes
+something the controlled method cannot, at the price of one to three years and
+partial unpredictability.
+
+**Why it belongs.** It is the counterweight the act needs, and it retroactively
+sharpens beat 4: if pure culture was such an advance, why would anyone refuse it?
+Because the organisms it excluded were doing something. It is also where the Foray
+covers sour beer, barrel ageing and blending as production techniques rather than as
+fashions, and it hands the listener vocabulary that beat 43's high-ester rum reuses
+directly.
+
+**Evidence that counts.** A lambic or mixed-fermentation brewer, or a microbiologist
+working on them, on the organisms and the timeline: the coolship and why the season
+restricts brewing, the succession of organisms over months, what *Brettanomyces*
+metabolises that *cerevisiae* leaves behind and which compounds it produces,
+*Pediococcus* and *Lactobacillus* and the acidity they contribute, the barrel as
+habitat rather than as flavour, and blending young and old beer to trigger a bottle
+refermentation. Strong signal: an honest account of the failure rate and of barrels
+that have to be dumped. Reject: sour-beer enthusiasm with no microbiology, and
+kettle souring presented as the same thing.
+
+**Share.** 1.5 % (~2.25 min).
+
+#### 31. Africa's sorghum and millet beers are one of the world's great brewing traditions, and they are opaque, live and sour on purpose
+
+**Claim.** Across much of the continent the staple alcoholic drink is a grain beer
+made from malted sorghum or millet — Nigerian *burukutu* and *pito*, southern
+African sorghum beer, Ethiopian *tella* — which uses the same malting chemistry as
+European beer and arrives at an unrecognisably different product: thick, unfiltered,
+still actively fermenting when it is drunk, deliberately soured by lactic bacteria,
+low in alcohol, and consumed within a day or two, which makes it a nutritional and
+social staple rather than a shelf product.
+
+**Why it belongs.** It is a completeness beat with real analytic content, and the
+strongest available test of whether the key generalises: same conversion technology,
+same organism family, a completely different drink, and all of the difference
+explicable from the deliberate lactic step and the absence of filtration and
+packaging. Leaving it out would make Act III a European act with an Asian annexe,
+which would misrepresent where the world's beer is actually drunk.
+
+**Evidence that counts.** A food scientist, brewing scientist or anthropologist on
+sorghum and millet brewing: the malting of sorghum and how its enzyme complement
+differs from barley's, the souring step and whether it precedes or runs alongside
+alcoholic fermentation, the strength, why the drink is served turbid and active, and
+the industrialised versions that now package it. Strong signal: the nutritional
+rationale — B vitamins, calories, microbial safety against untreated water — treated
+as a production reason, and the commercial scale named. Reject: development-report
+framing with no process, and any tape that treats these as primitive versions of
+beer rather than as a different design.
+
+**Share.** 1.3 % (~1.95 min).
+
+#### 32. Sake is brewed, not made like wine, and its process is the most elaborate fermentation in the world
+
+**Claim.** Sake takes rice whose outer layers have been milled away to a stated
+percentage, steams it, converts part of it to koji, builds a concentrated yeast
+starter, and then adds rice, koji and water in three staged additions over four days
+so that conversion and fermentation proceed together for weeks at low temperature —
+and that staged parallel design is what lets the ferment reach roughly 18 to 20 %
+ABV, above anything in Act II, before it is diluted back to about 15 for sale.
+
+**Why it belongs.** It is beat 8's mechanism at its highest development and the
+concrete payoff of beat 5's ceiling, and it corrects the most persistent
+English-language error about the drink — that it is a rice wine — by showing that it
+is a brew with a conversion step, closer to beer than to wine in process and unlike
+either in result. Cut it and the koji branch of the key has no worked example.
+
+**Evidence that counts.** A sake brewer, *tōji* or specialist writer on the sequence
+and its reasons: the milling ratio and what is in the discarded outer layer, washing
+and steeping and steaming, koji propagation over about two days, the yeast starter
+and the difference between the fast modern method with added lactic acid and the
+traditional methods that cultivate it, the three-stage addition and why it stops the
+ferment being overwhelmed, low-temperature fermentation over weeks, pressing, and
+dilution to bottling strength. Strong signal: the parallel nature of conversion and
+fermentation stated explicitly as the reason for the strength. Reject: sake service
+and vocabulary material, and "rice wine" left uncorrected.
+
+**Share.** 2.0 % (~3.0 min).
+
+#### 33. The koji family is much larger than sake, and China's version uses a whole ecosystem rather than one mould
+
+**Claim.** The same conversion principle produces Chinese *huangjiu*, Korean
+*makgeolli* and a wide range of related brews, but the starter differs in kind:
+where Japanese koji is a single domesticated mould grown on rice, the Chinese *qu*
+and Korean *nuruk* are cakes of grain colonised by a mixed community of moulds,
+yeasts and bacteria, so the starter supplies conversion, fermentation and acidity
+all at once — and that same kind of starter, applied to a solid mash, is what beat
+47's baijiu then distils.
+
+**Why it belongs.** It makes the East Asian half of the taxonomy complete rather
+than represented by Japan alone, and it is the direct prerequisite for beat 47,
+which would otherwise be the most alien process in the Foray arriving unexplained.
+The single-organism versus mixed-community distinction is also genuinely important
+and almost never drawn in English-language coverage, which makes it exactly the kind
+of thing the founder asked to be educated about.
+
+**Evidence that counts.** A Chinese or Korean drinks specialist, food microbiologist
+or fermentation writer on the starters and the drinks: how a *qu* cake is made and
+what colonises it, the *Rhizopus* and *Aspergillus* moulds and the yeasts and lactic
+bacteria alongside them, *huangjiu* production and its long ageing, *makgeolli* as
+an unfiltered live brew and the filtration that produces its clear relatives, and
+the strengths these reach. Strong signal: the mixed starter contrasted explicitly
+with single-organism koji, and *huangjiu* placed as a major world drink by volume
+rather than as a cooking ingredient. Reject: Shaoxing wine treated only as a kitchen
+product, and any tape that flattens the Chinese, Korean and Japanese methods into
+one.
+
+**Share.** 1.4 % (~2.1 min).
+
+#### 34. Chewing and sprouting are the Americas' conversion technologies, and cassava beer runs on the same logic
+
+**Claim.** In the Andes, maize is converted either by sprouting it into *jora* —
+malting under another name — or, in the older and still living method, by chewing
+it so that salivary amylase does the work, and the same mastication route appears in
+Amazonian cassava beers, which means the New World independently solved question one
+twice; and the tuber brews add a problem the grain world does not have, since bitter
+cassava has to be detoxified before it can be fermented at all.
+
+**Why it belongs.** It is the third conversion technology from beat 9 given a real
+family, and without it the key's answer to "what unlocks starch" is Old World only,
+which is both incomplete and, against the founder's "all of them", a substantive
+gap. The cassava detoxification point is also the only place in the Foray where the
+raw material is actively poisonous, which is a genuinely different production
+constraint from anything else here.
+
+**Evidence that counts.** An anthropologist, archaeologist or food scientist on
+Andean and Amazonian brewing: *jora* production and how sprouted maize compares
+with barley malt, mastication as an enzymatic step with the enzyme named, the
+communal organisation of that labour, cassava processing to remove cyanogenic
+compounds and how fermentation fits around it, and the strength and shelf life of
+the results. Strong signal: archaeological evidence of large-scale chicha production
+tied to a named site and period, treated as industrial capacity rather than as
+ritual colour. Reject: novelty framing of chewing, and any tape that files these as
+prehistory rather than as living production.
+
+**Share.** 1.3 % (~1.95 min).
+
+#### 35. The world's most-drunk alcoholic drink is industrial adjunct lager, and how it is really made is not a secret
+
+**Claim.** Global pale lager is the result of a set of deliberate engineering
+choices that the craft conversation treats as failings but which are internally
+coherent: part of the malt is replaced with cheaper rice or maize, purchased enzymes
+make up for what the adjuncts cannot convert, the wort is fermented stronger than
+the finished beer and diluted afterwards so that the same plant yields more, and
+fermentation and maturation are accelerated on pressure and temperature schedules —
+producing a drink engineered for identity across dozens of countries.
+
+**Why it belongs.** A Foray that explains lambic but not this would be describing
+the world's beer by its exceptions, and the founder asked to be educated about what
+alcohol is, which includes the overwhelming majority case. It also closes Act III by
+showing the key works on industrial products too, and high-gravity brewing is a
+genuinely surprising piece of process that most drinkers have never heard of.
+
+**Evidence that counts.** A production brewer, brewing engineer or industry analyst
+on the choices and their reasons: adjunct rates and what maize and rice contribute
+beyond cost, cereal cooking, exogenous enzymes, high-gravity fermentation and
+dilution with deaerated water, accelerated schedules, and the quality-control
+apparatus that keeps a global brand identical across breweries. Strong signal: an
+even-handed account that states the engineering rationale rather than prosecuting
+it, with honest numbers on cost and volume. Reject: craft-versus-macro advocacy in
+either direction, and brand history.
+
+**Share.** 1.3 % (~1.95 min).
