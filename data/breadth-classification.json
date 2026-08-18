@@ -78804,13 +78804,732 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-17-bd802de3",
       "classified_at": "2026-08-17T16:52:05.307Z"
+    },
+    "1865054486": {
+      "topics": [
+        "news/politics",
+        "espionage",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on politics; covers related topics from description and episodes.",
+      "display_title": "The Steady State Sentinel",
+      "blurb": "The Steady State Sentinel is produced by The Steady State , a community of former national security professionals who spent their careers safeguarding the United States at home and abroad.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1865761256": {
+      "topics": [
+        "sports/golf",
+        "nature",
+        "business",
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        },
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on golf; covers related topics from description and episodes.",
+      "display_title": "Yoga for Golf® Podcast",
+      "blurb": "Welcome to the Yoga for Golf® Podcast, where you'll learn how to move better, feel better, and ultimately play better golf.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1866392480": {
+      "topics": [
+        "sports/cricket",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on cricket; covers related topics from description and episodes.",
+      "display_title": "The Cow Corner Cricket Podcast",
+      "blurb": "Join our WhatsApp community! https://chat.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1866612890": {
+      "topics": [
+        "news/tech",
+        "engineering/ai-robotics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on tech; covers related topics from description and episodes.",
+      "display_title": "AI Daily",
+      "blurb": "AI Daily Your daily briefing on AI, machine learning, and software engineering—delivered in 15 minutes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1867282706": {
+      "topics": [
+        "news/politics",
+        "business",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on politics; covers related topics from description and episodes.",
+      "display_title": "Voices of Liberty",
+      "blurb": "Voices of Liberty is a podcast powered by Young Americans for Liberty and hosted by Sean Themea.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1867470680": {
+      "topics": [
+        "sports/cricket",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused on cricket; covers related topics from description and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1867669952": {
+      "topics": [
+        "sports/endurance",
+        "nature",
+        "health/fitness",
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on endurance; covers related topics from description and episodes.",
+      "display_title": "Trail Mix Running Podcast",
+      "blurb": "TMRP is a podcast about all things ultramarathon and trail running with stories from the back of the pack at your local race to the biggest podiums around the world.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1867817816": {
+      "topics": [
+        "math",
+        "nature",
+        "philosophy/ideas",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on math; covers related topics from description and episodes.",
+      "display_title": "Peace, Love, and Pollinators 🐝",
+      "blurb": "Welcome to Peace, Love & Pollinators — a podcast by ReEarth Solutions This is the show for anyone who wants a more beautiful yard and a healthier planet.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1867855646": {
+      "topics": [
+        "sports/endurance",
+        "nature/ocean-science",
+        "travel",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on endurance; covers related topics from description and episodes.",
+      "display_title": "Kansas City Bucket List Podcast",
+      "blurb": "🎙️Telling the stories of the local people + businesses that make Kansas City amazing! 🎧 Streaming on YouTube, Spotify, + Apple!.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1867925336": {
+      "topics": [
+        "nature/ocean-science",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on ocean science; covers related topics from description and episodes.",
+      "display_title": "Deep Sleep Ocean Waves Sounds",
+      "blurb": "Deep Sleep Ocean Waves Sounds delivers hours of steady ocean wave ambience designed to help you fall asleep faster, stay asleep longer, and relax more deeply.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1868225420": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on endurance; covers related topics from description and episodes.",
+      "display_title": "Trail Brakers | An IMSA focused podcast",
+      "blurb": "Join us on our journey into the world of IMSA racing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1868229968": {
+      "topics": [
+        "education/courses",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on courses; covers related topics from description and episodes.",
+      "display_title": "Nursing & Healthcare Exam Prep",
+      "blurb": "Nursing & Healthcare Exam Prep is a daily podcast designed to help future nurses and healthcare professionals pass their licensing and admission exams with clarity and confidence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1868870960": {
+      "topics": [
+        "sports/endurance",
+        "math",
+        "business/marketing",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/marketing",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on endurance; covers related topics from description and episodes.",
+      "display_title": "Uncensored Renegades",
+      "blurb": "Kory Marchisotto, the trailblazing CMO of e.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1868904050": {
+      "topics": [
+        "math",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on math; covers related topics from description and episodes.",
+      "display_title": "aboutlogic",
+      "blurb": "aboutlogic is a podcast on logic, foundations of mathematics, philosophy, and theoretical computer science.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1869515072": {
+      "topics": [
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on health; covers related topics from description and episodes.",
+      "display_title": "m4m/mlm/m4a sfw audios",
+      "blurb": "I DO NOT OWN ANY OF THESE AUDIOS!!! Please check for the credit in each episode descriptions! MORE AUDIOS WILL COME SOOON!!! Thank you and I love you all! ❤️🧡💛💚💙💜🖤🤎🩵🩷🤍.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1870281854": {
+      "topics": [
+        "health",
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on health; covers related topics from description and episodes.",
+      "display_title": "Deep Sleep Tibetan Singing Bowls Sounds",
+      "blurb": "Deep Sleep Tibetan Singing Bowls Sounds features over 8 hours of continuous Tibetan singing bowl tones designed to support deep sleep, relaxation, and stress relief.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1870845014": {
+      "topics": [
+        "travel",
+        "news/politics",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on travel; covers related topics from description and episodes.",
+      "display_title": "Game Recognize Game with Stewie and Myles",
+      "blurb": "Two active pro hoopers at the highest level, Breanna Stewart and Myles Turner, talk basketball, culture, and everything in between.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1870904228": {
+      "topics": [
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on health; covers related topics from description and episodes.",
+      "display_title": "Deep Sleep Thunderstorm Sounds",
+      "blurb": "Deep Sleep Thunderstorm Sounds features hours of thunderstorm ambience designed to support deep sleep, relaxation, and stress relief.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1871015834": {
+      "topics": [
+        "news/politics",
+        "espionage"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on politics; covers related topics from description and episodes.",
+      "display_title": "La Voz de la Generación Irrompible",
+      "blurb": "Como logia radial, somos un proyecto filantrópico y fraternal cuyo propósito es visibilizar la voz de aquellos que no la tienen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1871321030": {
+      "topics": [
+        "news/politics",
+        "espionage"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "espionage",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on politics; covers related topics from description and episodes.",
+      "display_title": "Stock Market Today",
+      "blurb": "Welcome to Capital Copilot Daily Market Brief – your essential 3-minute pre-market intelligence briefing designed specifically for active traders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1871417144": {
+      "topics": [
+        "math",
+        "nature",
+        "philosophy/ideas",
+        "nature/animal-cognition"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Focused on math; covers related topics from description and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1872352760": {
+      "topics": [
+        "travel",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on travel; covers related topics from description and episodes.",
+      "display_title": "The Karl Stefanovic Show",
+      "blurb": "Introducing The Karl Stefanovic Show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1872827762": {
+      "topics": [
+        "news/politics",
+        "business",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on politics; covers related topics from description and episodes.",
+      "display_title": "The Drivecast",
+      "blurb": "The Drivecast gives you an inside, behind-the-scenes look at the biggest stories, controversies, and people shaping the car industry from one of the top automotive news sites in the country.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1873058942": {
+      "topics": [
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Focused on business; covers related topics from description and episodes.",
+      "display_title": "Fuel Throttle Podcast",
+      "blurb": "Powered by performance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-2873c34c",
+      "classified_at": "2026-08-18T00:54:26.816Z"
     }
   },
-  "built_at": "2026-08-17T16:52:15.255Z",
+  "built_at": "2026-08-18T00:54:26.816Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-17-bd802de3",
+    "last_batch_id": "fresh-2026-08-18-2873c34c",
     "last_batch_tier": 1
   }
 }
