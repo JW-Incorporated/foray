@@ -16,14 +16,32 @@
    segments.
 
    Issue #236 removed the last counts this file named. They were a second copy of
-   a fact the document already carries, so a curator could not change Foray #1
-   without editing this suite — backwards, for the product's core activity. Every
-   count below is now read off the resolved Foray, which also makes the
-   assertions stronger: "every authored segment resolves" was 32 literals ago a
-   claim about 32, and is now a claim about however many there are. The guard
-   against "Foray #1 lost a segment and nobody noticed" moved to
+   a fact the document already carries, so a curator could not change the LENGTH
+   of Foray #1 without editing this suite — backwards, for the product's core
+   activity. Every count below is now read off the resolved Foray, which also
+   makes the assertions stronger: "every authored segment resolves" was a claim
+   about 32 and is now a claim about however many there are. The guard against
+   "Foray #1 lost a segment and nobody noticed" moved to
    tools/foray/check-forays.test.mjs, which compares the running order against
    the doc table a curator edits, row for row.
+
+   WHAT THIS SUITE STILL ASSUMES, stated because a first draft of #236 wrongly
+   claimed otherwise: that no committed Foray authors a NARRATION BRIDGE. #260
+   made bridges legal in the data, the queue and the checker, and nothing uses one
+   yet. This suite is not ready for one — a single voiced 40 s bridge in Foray #1
+   turns 22 tests across five player suites red, most of them because `entries`
+   then carries a row with no `why`, `show` or `segment_id` and several of them
+   with a TypeError rather than a readable assertion. That is a real gap and it is
+   not #236's: it predates this change and it is about narration support, not
+   about counts. `assertNoBridges()` below makes the assumption explicit at the
+   two places that would otherwise fail obscurely, so the day a bridge lands the
+   failure says what to do.
+
+   The distinction that matters for #236: a count of SEGMENTS and a length of the
+   QUEUE are different numbers the moment a bridge exists, and comparing one to
+   the other is a bug waiting for a curator. Where this file needs "how many
+   segments", it reads `segmentEntries(r)`; where it needs "how many things play",
+   it reads `r.playable.length`.
 
    The fake backend is the one from queue-manager.test.js, reduced to what a
    Foray needs. Nothing here touches the network: `audio_url` is asserted on,
@@ -75,6 +93,28 @@ function realResolve() {
     narration bridge is not a segment and is deliberately not counted. */
 function authoredSegments() {
   return realForay().items.filter((i) => i.type === "segment");
+}
+
+/** The resolved ENTRIES that are segments. `r.playable` is the QUEUE and a
+    voiced bridge is in it, so a segment count must come from here — comparing
+    `authoredSegments().length` to `r.playable.length` is only correct while no
+    Foray has a bridge, which is exactly the assumption #236 is trying to stop
+    this file from making silently. */
+const segmentEntries = (r) => r.entries.filter((e) => e.segment_id);
+
+/** The premise the seam-beat assertions rest on: every transition in Foray #1 is
+    unbridged, so every one of them gets the full 2.0 s. `seam-gap.js` spends 0 s
+    at a bridged seam on purpose ("narration is a better marker than silence"), so
+    a bridge makes "one beat per transition" false rather than merely untested. */
+function assertNoBridges() {
+  const bridges = realForay().items.filter((i) => i.type !== "segment");
+  assert.deepEqual(
+    bridges.map((i) => i.id ?? i.type),
+    [],
+    "Foray #1 now authors a narration bridge, so not every transition is unbridged any more. " +
+      "Split the beat assertions into bridged seams (0 s, per seam-gap.js) and unbridged ones " +
+      "(SEAM_GAP_SEC) rather than relaxing the count."
+  );
 }
 
 /* ---------- the fake ---------- */
@@ -200,9 +240,14 @@ test("Foray #1 is in data/forays.json, is a draft, and its items are #134's type
 test("every authored segment of Foray #1 resolves to real audio", () => {
   const r = realResolve();
   assert.deepEqual(r.unplayable, [], "a segment that cannot play is a shorter Foray — fix the data or the join");
-  // Against the AUTHORED count, not a literal: "every authored segment resolves"
-  // is the contract, and reading the count off the document is what makes it one.
-  assert.equal(r.playable.length, authoredSegments().length);
+  /* Against the AUTHORED count, not a literal: "every authored segment resolves"
+     is the contract, and reading the count off the document is what makes it one.
+     Counted through `segmentEntries` rather than `r.playable.length`, because the
+     queue also holds voiced bridges — the first draft of this compared a segment
+     count to a queue length and would have been wrong the day one landed. */
+  const segs = segmentEntries(r);
+  assert.equal(segs.length, authoredSegments().length, "an authored segment resolved to no entry at all");
+  assert.ok(segs.every((e) => e.playable === true), "a segment entry that will not play is a shorter Foray");
   assert.ok(r.playable.every((i) => /^https:/.test(i.audio_url)), "every source must be https (the CSP is media-src https:)");
 });
 
@@ -224,10 +269,15 @@ test("the total runtime matches what the Foray document declares, and the clock 
      tested against literals in foray-resolve.test.js, where the input is
      synthetic; what is worth asserting HERE is that the string a surface renders
      is the runtime it resolved — so it is parsed back and compared. */
+  /* Hours OPTIONAL, and parsed from the RIGHT. `fmtClock` returns `M:SS` under an
+     hour, so a `H:MM:SS` pattern would have re-pinned "Foray #1 is at least an
+     hour long" — and after the very edit #236 exists to allow (dropping one
+     segment) the margin is 4.91 s. */
   const clock = fmtClock(r.totalSec);
-  assert.match(clock, /^\d+:[0-5]\d:[0-5]\d$/, clock);
-  const [h, m, s] = clock.split(":").map(Number);
-  assert.equal(h * 3600 + m * 60 + s, Math.floor(r.totalSec));
+  assert.match(clock, /^(?:\d+:[0-5]\d|[0-9]{1,2}):[0-5]\d$/, clock);
+  const parts = clock.split(":").map(Number).reverse();
+  const seconds = parts.reduce((t, v, i) => t + v * [1, 60, 3600][i], 0);
+  assert.equal(seconds, Math.floor(r.totalSec));
 });
 
 test("every why-line the UI will render is inside the copy budget", () => {
@@ -305,6 +355,7 @@ test("every one of Foray #1's seams holds a beat, and neither end of it does", a
      transitions in the document, so the assertion is still "one beat per seam,
      no beat at either end" — it just no longer needs Foray #1 to be 32 segments
      long to say it. */
+  assertNoBridges();
   const r = realResolve();
   const n = r.playable.length;
   const scheduler = manualScheduler();
@@ -344,6 +395,7 @@ test("the beats cost about a minute of the Foray, and cost no audio at all", asy
      `seams === 31` and `costSec === 62` went with #236: both were restatements
      of Foray #1's length, and the assertion that carries the claim is the SHARE
      of the runtime, which holds for any Foray. */
+  assertNoBridges();
   const r = realResolve();
   const seams = r.playable.length - 1;
   const costSec = seams * SEAM_GAP_SEC;
@@ -495,8 +547,12 @@ test("a missing source file costs its segments and nothing else", async () => {
 
 test("segments.json going missing entirely leaves an empty, non-crashing Foray", async () => {
   const r = resolveForay(realForay(), { segments: indexSegments(null), sources: indexSources(SOURCES) });
-  assert.equal(r.playable.length, 0);
-  assert.equal(r.unplayable.length, authoredSegments().length, "every authored segment must be reported lost");
+  assert.equal(segmentEntries(r).filter((e) => e.playable).length, 0, "no segment can play with no segments file");
+  assert.deepEqual(
+    r.unplayable.map((u) => u.label).sort(),
+    authoredSegments().map((i) => i.label).sort(),
+    "every authored segment must be reported lost, by name"
+  );
 
   const { m } = make();
   const report = await startForay(m, r);
@@ -642,9 +698,11 @@ test("every second of the Foray maps back to the segment it came from", async ()
     assert.ok(Math.abs(back.into - into) < 0.001);
     checked++;
   }
-  // A loop that silently iterates nothing is the failure this guards against.
-  assert.ok(checked > 0, "no segment was checked");
-  assert.equal(checked, r.playable.length, "every second of the Foray means every segment");
+  /* A loop that silently iterates nothing is the failure this guards against.
+     Only the `> 0`: `checked` is incremented once per `r.playable` entry, so
+     comparing it back to `r.playable.length` cannot fail and reads as coverage it
+     does not have. */
+  assert.ok(checked > 0, "no queue item was checked");
 });
 
 test("a backend with no out-point watch refuses the Foray instead of playing whole episodes", () => {

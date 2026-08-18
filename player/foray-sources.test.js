@@ -222,7 +222,11 @@ test("Foray #1 credits exactly the shows and episodes its running order plays", 
      leaving it to luck. */
   const r = realResolve();
   const credits = forayCredits(r);
-  const played = r.entries.filter((e) => e.playable === true);
+  /* SEGMENT entries only. `forayCredits` credits publishers, and a narration
+     bridge has no publisher — its entry carries no `show` and no `item_id`, so
+     including it would put `undefined` in both sets and inflate them by one.
+     None exists yet, which is exactly when this is cheap to get right. */
+  const played = r.entries.filter((e) => e.playable === true && e.segment_id);
   const shows = new Set(played.map((e) => e.show));
   const episodes = new Set(played.map((e) => e.item_id));
   assert.ok(shows.size > 1 && episodes.size > 1, "a one-show Foray would take a different summary line");

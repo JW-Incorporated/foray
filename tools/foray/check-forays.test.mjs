@@ -155,11 +155,19 @@ test("every committed Foray is still a draft, so no client may surface one", () 
 
 test("every committed Foray's report is consistent with the items it lists", () => {
   /* #236 replaced three per-Foray literal pins — 32 items, 3,673.03 s, 114.8 s
-     mean, and Foray #2's four — with the law they were instances of. This is
-     strictly stronger than the literals were: it holds for Foray #4 on the day
-     it lands, it cannot be satisfied by editing a number in this file, and every
-     quantity the old pins named is checked against the items rather than against
-     a remembered value.
+     mean, and Foray #2's four — with the law they were instances of. It holds for
+     Foray #4 on the day it lands, it cannot be satisfied by editing a number in
+     this file, and every quantity the old pins named is recomputed from the items
+     rather than compared to a remembered value.
+
+     Honest about which lines carry independent weight, since a first draft of
+     this called the whole test "strictly stronger". The recomputations do: the
+     segment count, the tape sum, tape-plus-narration, the mean and the stated
+     runtime are all this file's own arithmetic against the checker's. The two
+     rule verdicts below (D1 within budget, no D5 triples) do NOT — they are
+     implied by "the committed data passes with zero errors" above, and they are
+     kept only because a failure here names WHICH Foray and by how much, which
+     that test cannot.
 
      What used to be lost by dropping the literals — "an unpinned number is what
      drifted last time" — is covered by the §2 doc-table loop below, which pins
@@ -179,7 +187,6 @@ test("every committed Foray's report is consistent with the items it lists", () 
       `${where}the listener's clock is not tape plus narration`
     );
     assert.ok(Math.abs(r.mean_sec - tape / segs.length) < 0.06, `${where}mean ${r.mean_sec}`);
-    assert.equal(r.d1_budget, d1Budget(r.runtime_sec), `${where}the D1 band must follow the listener's clock`);
     assert.ok(r.d1_max_starts_in_window <= r.d1_budget, `${where}D1 ${r.d1_max_starts_in_window}/${r.d1_budget}`);
     assert.equal(r.d5_pairwise_violations, 0, `${where}D5 triples`);
     assert.ok(r.d5_iqr_sec >= D5_IQR_FLOOR_SEC, `${where}IQR ${r.d5_iqr_sec}`);
@@ -217,22 +224,48 @@ test("every played segment past L4's soft maximum carries both escape-hatch fiel
   assert.ok(found > 0, "no committed Foray plays a segment past L4's soft maximum, so this proved nothing");
 });
 
-test("every Foray draws on at least the four episodes M4's 25 % cap needs", () => {
-  /* Was "Foray #2 draws on exactly eight episodes". The eight is curation; the
-     floor is arithmetic — a Foray of three episodes cannot clear a 25 % cap on
-     any of them, so four is the minimum M4 permits and the least a Foray can be
-     before it is an edit of one show (§6c).
+test("M4's concentration cap holds on every Foray, recomputed here rather than read off the report", () => {
+  /* Was "Foray #2 draws on exactly eight episodes" — the eight is curation. The
+     first #236 draft replaced it with `eps.size >= ceil(1 / 25 %)`, and review was
+     right that this cannot fail on its own: a three-episode Foray necessarily puts
+     one episode over 25 %, so the checker's own M4 error fires first.
+
+     So it recomputes M4 instead. This is a second implementation of §6c's cap —
+     "<= 25 % of a Foray's segments AND <= 25 % of its runtime from any single
+     `item_id`" — reading the data directly, which is work "the committed data
+     passes with zero errors" genuinely cannot do: that test trusts the checker's
+     arithmetic, and this one does not. The mutation it exists for is a wrong
+     denominator in `check-forays.mjs` (tape versus the listener's clock, or
+     played versus pooled), which would pass the gate and fail here.
 
      The editorial claim in foray2-capital.md §0 — that only one of its episodes
-     is a VC show — is NOT checked here: "is this a VC show" is not a property of
-     the data. An earlier version asserted no source id began with `fr-`, which
-     was vacuous (no such id exists) and read as if it were checking the claim.
-     The real guard against a DAI source playing is `check-forays.mjs` itself. */
-  const floor = Math.ceil(1 / M4_SHARE_MAX);
+     is a VC show — is NOT checked: "is this a VC show" is not a property of the
+     data. An earlier version asserted no source id began with `fr-`, which was
+     vacuous (no such id exists) and read as if it were checking the claim. */
+  let checked = 0;
   for (const f of live.forays.forays) {
-    const eps = new Set(segmentItems(f).map((i) => live.segments.segments.find((s) => s.id === i.segment_id).item_id));
-    assert.ok(eps.size >= floor, `${f.id} draws on ${eps.size} episode(s); M4's cap needs at least ${floor}`);
+    const played = segmentItems(f).map((i) => live.segments.segments.find((s) => s.id === i.segment_id));
+    const tape = played.reduce((t, s) => t + (s.end_sec - s.start_sec), 0);
+    assert.ok(tape > 0, `${f.id} plays no tape`);
+    const byEpisode = new Map();
+    for (const s of played) {
+      const e = byEpisode.get(s.item_id) ?? { n: 0, sec: 0 };
+      e.n += 1; e.sec += s.end_sec - s.start_sec;
+      byEpisode.set(s.item_id, e);
+    }
+    for (const [id, e] of byEpisode) {
+      assert.ok(
+        e.n / played.length <= M4_SHARE_MAX,
+        `${f.id}: "${id}" is ${e.n}/${played.length} = ${(100 * e.n / played.length).toFixed(1)} % of the segments`
+      );
+      assert.ok(
+        e.sec / tape <= M4_SHARE_MAX,
+        `${f.id}: "${id}" is ${(100 * e.sec / tape).toFixed(1)} % of the tape`
+      );
+      checked += 1;
+    }
   }
+  assert.ok(checked > 0, "no episode was checked, so this proved nothing");
 });
 
 test("the pool segments held back from their Foray are not in any running order", () => {
@@ -268,12 +301,13 @@ test("the pool segments held back from their Foray are not in any running order"
      held back. That identity is wrong about the ordinary authoring state and
      #236 removed it: a transcription batch lands segments in the pool before
      anyone places them, so an equality here turns "we have new tape to work
-     with" red. What is left is the direction that is always true, plus the
-     duplicate-id check the equality was accidentally doing. */
-  assert.ok(
-    live.segments.segments.length >= used.size + held.length,
-    "the pool is smaller than the segments the Forays reference plus the ones the docs hold back"
-  );
+     with" red.
+
+     What replaced it was `length >= used.size + held.length`, which review
+     pointed out cannot fail — it is implied by the two loops above. Gone, rather
+     than left sitting there reading as coverage. The duplicate-id check stays: it
+     is the one part of the old identity that was doing independent work, and
+     nothing else in this suite asserts the pool's ids are unique. */
   assert.equal(
     new Set(live.segments.segments.map((s) => s.id)).size,
     live.segments.segments.length,
@@ -313,9 +347,9 @@ test("every label resolves to exactly one segment by (episode, duration)", () =>
  * has as many rows as the Foray has segments" an assertion rather than a pair of
  * numbers somebody kept in step by hand. */
 const RUNNING_ORDER_DOCS = [
-  { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order" },
-  { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a." },
-  { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run" },
+  { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order", tldr: true },
+  { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", tldr: false },
+  { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", tldr: true },
 ];
 
 test("every committed Foray has a running-order doc pinned above", () => {
@@ -364,6 +398,60 @@ for (const { forayId, doc, endsBefore } of RUNNING_ORDER_DOCS) {
     }
   });
 }
+
+test("each running-order doc's §0 summary numbers are the ones the checker computes", () => {
+  /* The gap review found in the first #236 draft. Dropping the `3673.03`,
+     `114.8`, `57.81` and `620.5` pins moved the D1/D5 proofs onto the fixture,
+     which was the point — but it also left grilling-foray.md §0's OWN summary
+     ("Tape runtime 3,673.0 s", "Mean / median 114.8 s", "IQR 57.8 s") checked by
+     nothing at all. The §2 loop pins rows, not totals, so the worked edit in this
+     PR's own description left the suite green with three false numbers in the doc.
+     A stale doc is what #182 called "the order silently rots".
+
+     Read out of the doc and compared to the report, so it stays a doc-agreement
+     check rather than becoming a literal again — and to the doc's OWN precision,
+     because §0 rounds ("3,673.0" against 3673.03) and demanding more would fail
+     on a rounding nobody got wrong.
+
+     `tldr: false` is declared per doc rather than inferred, and asserted in both
+     directions below: a doc that grows a §0 must be checked, and a doc that has
+     one must not be able to lose it silently. */
+  let checked = 0;
+  for (const { forayId, doc, tldr } of RUNNING_ORDER_DOCS) {
+    const md = fs.readFileSync(path.join(REPO_ROOT, doc), "utf8");
+    const section = md.split("## 0. TL;DR")[1]?.split(/^## /m)[0] ?? null;
+    assert.equal(
+      section !== null, tldr,
+      `${doc}: §0 TL;DR ${section ? "exists but is declared absent" : "is declared present but missing"}`
+    );
+    if (!section) continue;
+
+    const r = checkForays(live).report.forays.find((x) => x.id === forayId);
+    /** A doc figure and the tolerance its own decimal places justify. */
+    const stated = (label, rx) => {
+      const m = section.match(rx);
+      assert.ok(m, `${doc} §0 has no parseable "${label}" row`);
+      const text = m[1].replace(/,/g, "");
+      const dp = (text.split(".")[1] ?? "").length;
+      return { value: Number(text), tol: 0.5 * Math.pow(10, -dp), text };
+    };
+    const rows = [
+      ["Segments in the running order", /\| Segments in the running order \| \*\*([\d,]+)\*\* \|/, r.segments],
+      ["Tape runtime", /\| Tape runtime \| \*\*([\d,.]+) s/, r.tape_runtime_sec],
+      ["Mean segment", /\| Mean \/ median segment \| \*\*([\d,.]+) s/, r.mean_sec],
+      ["Interquartile range", /\| Interquartile range \| ([\d,.]+) s/, r.d5_iqr_sec],
+    ];
+    for (const [label, rx, actual] of rows) {
+      const { value, tol, text } = stated(label, rx);
+      assert.ok(
+        Math.abs(value - actual) <= tol,
+        `${doc} §0 says ${label} is ${text} and the checker computes ${actual}`
+      );
+      checked += 1;
+    }
+  }
+  assert.ok(checked > 0, "no doc summary was checked, so this proved nothing");
+});
 
 test("labels are unique and every prefix is declared, in every Foray", () => {
   for (const f of live.forays.forays) {
@@ -816,7 +904,12 @@ test("D5 FAILS in isolation on a swap that breaks only D5, and only two such swa
   assert.equal(errors.length, 1, `expected D5 alone, got:\n${errors.join("\n")}`);
   assert.match(errors[0], /D5 FAIL: E-1 \/ A-1 \/ B-2 are 65\.0 \/ 72\.0 \/ 72\.0 s/);
 
-  const n = segmentItems(boundary(fixture)).length;
+  /* Bounded by the ITEM list, not by the segment count. They are the same today
+     because the fixture is all segments, and review was right that they would not
+     be if a bridge were ever added to it: the search would silently stop short of
+     the tail and the exhaustiveness claim below would quietly become false. */
+  const n = boundary(fixture).items.length;
+  assert.equal(n, 30, "the fixture's item count, which the 435 below is C(n, 2) of");
   const isolating = [];
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
@@ -827,6 +920,7 @@ test("D5 FAILS in isolation on a swap that breaks only D5, and only two such swa
       if (e.length && e.every((x) => /D5 FAIL/.test(x))) isolating.push(`${items[j].label}<->${items[i].label}`);
     }
   }
+  assert.equal(n * (n - 1) / 2, 435, "the search has to cover every pair for the claim below to be exhaustive");
   assert.deepEqual(
     isolating,
     ["A-1<->F-1", "C-3<->B-3"],
