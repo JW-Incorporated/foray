@@ -1611,6 +1611,12 @@ No action.
 beats — four in Act IV and one in Act V — and every one of them is on the authorship
 chain the spine says is the editorial test of the whole document.
 
+**A second axis on those counts, added 2026-08-18 — see §10.** The twenty empty and nine
+thin verdicts are unchanged, and each now also carries a depth mode, a `writable` /
+`unwritable` verdict against `narration-craft.md`'s six-test gate, and a character budget.
+**Twenty-six of the twenty-nine are writable and three are not — 33, and thin beats 23 and
+27** — and sixteen of the writable ones cannot be voiced until a citation is obtained.
+
 Three caveats on those numbers, and they do not all push the same way.
 
 **The SYSK sensitivity is smaller than it was.** Three of the nine thin verdicts — 7,
