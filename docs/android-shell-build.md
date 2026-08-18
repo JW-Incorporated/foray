@@ -118,6 +118,88 @@ position than iOS (`UIBackgroundModes` still has to be injected, which is what
   filename, directory name, or volume label syntax is incorrect"*.
   `mobile/android/local.properties` is gitignored, so every machine writes its own.
 
+### 1.2a The toolchain is no longer in `%TEMP%` — #245
+
+**This is the section to read first if the build has stopped working on this
+machine.** #244 §4.3 recorded the defect: the JDK and the Android SDK lived in
+`%TEMP%\mp1-android\`, MP1's spike had downloaded them there, and **every Android
+build in this repo's history depended on a directory Windows is entitled to
+delete**. No test could notice — nothing in the repo references the path — so the
+failure mode was a machine that could build the product yesterday and cannot today,
+reporting a missing SDK rather than anything pointing at the cause.
+
+**Fixed by copying, not moving.** The `%TEMP%` copy is untouched and still works;
+if the copy below is wrong in some way nobody has noticed yet, nothing was
+destroyed to find out.
+
+**Where it lives now:**
+
+| | |
+|---|---|
+| JDK 21 | `%LOCALAPPDATA%\android-build\jdk21\jdk-21.0.12+8` |
+| Android SDK | `%LOCALAPPDATA%\android-build\sdk` |
+
+On this machine `%LOCALAPPDATA%` is `C:\Users\wjduv\AppData\Local`. The layout
+under `android-build\` is a **mirror** of the old `mp1-android\` layout on purpose:
+the two paths then differ only in their prefix, so an old `local.properties`, an old
+`JAVA_HOME` or an old shell script is repointed by changing one directory name and
+nothing else.
+
+**The exact steps, as executed:**
+
+```sh
+# 1. Copy. robocopy, because it handles the SDK's deep paths and 22,944 files
+#    without the path-length failures `git add -A` hit in #244.
+robocopy "$env:TEMP\mp1-android\jdk21" "$env:LOCALAPPDATA\android-build\jdk21" /E
+robocopy "$env:TEMP\mp1-android\sdk"   "$env:LOCALAPPDATA\android-build\sdk"   /E \
+  /XD "$env:TEMP\mp1-android\sdk\emulator" "$env:TEMP\mp1-android\sdk\system-images"
+
+# 2. Point local.properties at the copy. FORWARD SLASHES — see the trap above.
+echo 'sdk.dir=C:/Users/wjduv/AppData/Local/android-build/sdk' > mobile/android/local.properties
+
+# 3. Point JAVA_HOME at the copy, per build.
+export JAVA_HOME="C:/Users/wjduv/AppData/Local/android-build/jdk21/jdk-21.0.12+8"
+export ANDROID_HOME="C:/Users/wjduv/AppData/Local/android-build/sdk"
+```
+
+**Run robocopy from PowerShell, not from Git Bash.** The first attempt ran it
+through the Bash tool and both copies died on `ERROR : Invalid Parameter #3 :
+"E:/"` — MSYS rewrites the bare switch `/E` into a path. Recorded because the error
+message names a drive letter that does not exist on this machine and says nothing
+about the shell that invented it.
+
+**What was copied, and what was deliberately left behind.** 326.99 MB of JDK
+(the whole thing) and **770.33 MB of SDK across 22,944 files, 0 failures** —
+`build-tools` 34/35/36.0.0, `platforms` android-34 and android-36,
+`platform-tools`, `cmdline-tools`, and `licenses` (without which every Gradle build
+stops on an unaccepted licence). **`emulator` (1.1 GB) and `system-images`
+(8.5 GB) were excluded**: nothing in this repo has ever used them, MP1 §6.2 already
+paid ~75 minutes to establish that an emulator produces nothing here, and they are
+re-downloadable by `sdkmanager` if a future pass wants to try again. That is 9.6 GB
+of the 10.4 GB, so the durable copy is ~1.1 GB rather than ~10.7 GB.
+
+**The proof, and it is a build rather than an argument.** Before any other change
+in this branch, from a clean `npm ci` and a clean `npm run add:android`, with
+`JAVA_HOME` and `sdk.dir` pointed at the copy and **no reference to `%TEMP%`
+anywhere in the build**:
+
+| | |
+|---|---|
+| `./gradlew assembleDebug --no-daemon` | **BUILD SUCCESSFUL in 9 m 38 s**, 243 actionable tasks, 243 executed |
+| `app-debug.apk` | **5,053,504 bytes** |
+| JDK, read out of the copy | `openjdk 21.0.12 2026-07-21 LTS`, Microsoft-14653896, `21.0.12+8-LTS` |
+
+The APK is 27,717 bytes larger than #244's 5,025,787 with the same source, which is
+`data/` having grown since — the `webDir` is now **2.92 MB of the 3.00 MB cap**, up
+from 2.73 MB. Nothing about the toolchain move touches it, and the headroom is
+worth watching for its own reasons.
+
+**What this does NOT fix.** The toolchain is still one directory on one machine,
+undeclared by anything in the repo, so a wipe of `%LOCALAPPDATA%` costs the same
+archaeology `%TEMP%` used to — it is merely now a directory the OS does not clean on
+its own schedule. The durable answer is #245's option 3, an Android CI job, and it
+is `.github/` — governed, so it is described in §3.3 and deliberately not added.
+
 ### 1.3 The lockfile, and a claim in §0 of `docs/mobile-shell.md` that was never true
 
 `docs/mobile-shell.md` §0 and `mobile/README.md` both said all seven
