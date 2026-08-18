@@ -102,6 +102,15 @@ const FLOORS = {
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
   "test/data-topic-integrity.test.js": 12,
+  /* The shared search matcher (#218/#219). Floored because both of the things it
+     pins are invisible when they break. Loosening the prefix guard buys recall
+     and reintroduces a documented collision flood that only the ~110-second
+     battery would notice, and only if a catalogue item happens to carry the
+     colliding word that day. Deleting the reimplementation scan re-opens the
+     drift that produced THREE copies of hitText/hitTag, two of them looser than
+     the ranker they claimed to describe. Every test in there was
+     mutation-checked — see the suite header. */
+  "test/search-matcher.test.js": 22,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
