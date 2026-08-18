@@ -896,7 +896,10 @@ function bind() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { flush(); return; }
-    reconcileOnReturn();
+    /* Nothing awaits an event handler, so the rejection needs somewhere to land
+       other than the console's unhandled bucket — and a reconcile that failed
+       must not be the reason the surface never repaints at all. */
+    reconcileOnReturn().catch((err) => console.warn("[player] reconcile failed", err));
   });
   window.addEventListener("pagehide", flush);
 }
