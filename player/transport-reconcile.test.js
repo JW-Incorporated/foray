@@ -42,7 +42,7 @@ import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
 import { itemRef } from "./queue-state.js";
 import { indexSegments, indexSources, resolveForay, segmentStarts } from "./foray-resolve.js";
-import { progressKey } from "./foray-progress.js";
+import { ForayProgressStore, progressKey } from "./foray-progress.js";
 
 /* ==================================================================== */
 /* fakes                                                                */
@@ -790,6 +790,60 @@ test("A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN
   assert.ok(
     after.into_sec >= 95,
     `and it must still be near A's end, not any in-point — got into_sec=${after.into_sec}`
+  );
+  restore();
+});
+
+test("THE STORE IS NEVER HANDED A POSITION NOBODY READ", async (t) => {
+  /* The invariant, asserted at the call rather than at the row.
+   *
+   * The test above proves the ROW survives a failed seam, and it passes with
+   * `persistForayProgress`'s `elapsedSec == null` guard deleted — because
+   * `ForayProgressStore.save` refuses a non-finite clock at its own first line.
+   * Found by mutation: removing the guard left the whole suite green.
+   *
+   * That refusal is not a substitute for the guard, and the difference is
+   * visible only here. `save`'s early return does NOT increment `refusedWrites`
+   * — the counter that exists so "the resume store silently stopped recording"
+   * is a detectable defect rather than a silent one. So a fabricated position
+   * handed to the store lands in the one path that neither writes nor counts:
+   * indistinguishable, afterwards, from the player never having asked. The
+   * client owns its own uncertainty; it must not post it to the store and let a
+   * type check downstream be the reason the listener's row survived.
+   *
+   * Kill this by deleting `if (elapsedSec == null) return;` from
+   * `persistForayProgress`: `save` is then called with `elapsedSec: null`. */
+  const seen = [];
+  const real = ForayProgressStore.prototype.save;
+  ForayProgressStore.prototype.save = function (args) {
+    seen.push(args?.elapsedSec);
+    return real.call(this, args);
+  };
+  t.after(() => { ForayProgressStore.prototype.save = real; });
+
+  const { client, doc, audio, restore } = await bootClient(t);
+  audio.loadPlan.set("https://cdn.test/b.mp3", "error");
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+
+  audio.currentTime = 195;
+  audio.fire("timeupdate");
+  await settle();
+  // The seam fails, then the listener presses play — the repaint that wrote the
+  // fabricated position in the field report.
+  audio.currentTime = 200.01;
+  audio.fire("timeupdate");
+  await settle();
+  await settle();
+  transport(doc).press();
+  await settle();
+  await settle();
+
+  assert.ok(seen.length > 0, "the writer must have been exercised at all");
+  const bad = seen.filter((v) => typeof v !== "number" || !Number.isFinite(v));
+  assert.deepEqual(
+    bad, [],
+    `every position offered to the store must be one the player actually read, got ${JSON.stringify(seen)}`
   );
   restore();
 });
