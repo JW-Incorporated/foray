@@ -5,9 +5,15 @@ five acts) was written source-blind by stage 1. This document scores the availab
 tape against it, beat by beat and independently, and reports where the tape fits
 the spine — including, at length, where it does not.
 
-**Status:** proposed. This is a coverage report, not a playlist. Nothing here
-assembles the Foray, and `data/forays.json` is untouched. Stage 4 assembles, after
-a human has read this.
+**Status:** proposed. This is a coverage report, not a playlist.
+
+**Revised 2026-08-17** against two newly transcribed episodes — §2c is the entry point
+for what changed, §5 carries the revised Act IV verdicts, and §5b records what the
+assembly could actually play. Counts moved from 6 strong / 10 thin / 24 empty to
+**11 / 8 / 21**. Unlike the first pass, this revision *did* touch
+`data/forays.json`: beats 21 and 22 are now played by `grilling-history-2` as `GC-1` and
+`GC-2`, which is recorded in `grilling-history-assembly.md` §2. That Foray stays
+`draft`; publishing is a founder action.
 
 ---
 
@@ -167,6 +173,57 @@ and **32** gain second segments that close gaps narration would otherwise have h
 fill; note that if the register is ruled out, beat 5's availability-determines-tradition
 clause and beat 32's briquette origin both go back to narration even though the beats
 stay strong.
+
+### 2c. Two ASR transcripts arrived, and one of them is the answer to Act IV
+
+**Revision, 2026-08-17.** §9's items 1 and 4 were acted on: the two English episodes
+this report named as the best unread candidates for the core of Act IV were
+transcribed locally (`base.en`, word timestamps, measured drift −0.12 s median with
+100 % inside 2 s, so anchor text plus timestamp is trustworthy at the tolerances
+`ADR-0007` sets). Both were read end to end and scored beat by beat. **They did not
+come back the same way, and the difference is the useful part of this revision.**
+
+| Episode | Length | Ad status | Verdict |
+|---|---|---|---|
+| `The Grill Coach — Adrian Miller and The History of BBQ` | 3,306 s | ad-free, ratio 1.0; range-probed 206 with declared bytes exactly matched | **Six segments, five beats.** Moves 18, 21, 22 and 38 off empty and upgrades 24 |
+| `The Moreish Podcast — Caribbean Food History with Dr. Candice Goucher` | 3,467 s | not measured; moot | **Nothing. No segments cut.** See §5c |
+
+**The Grill Coach delivers, and it delivers exactly where §9 predicted.** Miller is
+named in the spine itself as the archetype of the register the authorship beats want,
+and the episode's second half is a 37-minute interview in which he makes his argument
+rather than being asked to summarise his book. It is the first source in this whole
+pass that reaches beats 21 and 22 at all. Four things make it unusually easy to cut
+against:
+
+- **It is ad-free at ratio 1.0**, so it needs no locate step and no padding — the
+  constraint that keeps SYSK unplayable does not apply. Nothing here is
+  authored-but-unplayable.
+- **The interview is a single unbroken block**, 937 s to 3,180 s. The house promo and
+  the patron read are both in the first fifteen minutes (888–935 s), so no cut in
+  this pass opens or closes near a read (`ADR-0008`).
+- **The host chat is separable rather than interleaved.** The first fifteen minutes
+  are the hosts' own weekend cooks, a listener question about garlic rub and a grilled
+  potato salad. None of it is on plot, and none of it is inside the interview, so
+  rejecting it costs nothing and required no judgement.
+- **Miller is doing history out loud**, including the parts that cut against a tidy
+  story: he opens the transmission answer with "not everybody agrees with this",
+  and he declines the "these cooks have never been celebrated" framing on the evidence
+  of his own newspaper research. That is the register beats 18 and 22 ask for, and it
+  is what separates this tape from the SYSK passages the beats rejected.
+
+**One caveat that travels with every quotation below.** This is a `base.en` machine
+transcript and the wording is indicative, not verbatim; anyone writing narration
+against it should listen at the timestamp given. The anchors, by contrast, are exact
+against that transcript by construction — all six merged through
+`merge-segments.mjs`, which verifies both anchors as whole-word subsequences and
+rejects rather than repairs. Six authored, **zero rejected, zero flagged for
+review**.
+
+**What it moves.** Beats **18**, **21**, **22** and **38** go from empty to
+**strong**, and beat **24** goes from thin-on-SYSK to **strong**. Beat **16** gains
+material and stays **empty**, on its own criteria. Beat **30** gains material and
+stays **thin**, on its own criteria. Those last two are in §5 and they are not
+formalities — §5a explains why.
 
 ---
 
@@ -548,16 +605,32 @@ only two fan beats with strong tape. It hands to beat 16, which is empty — see
 
 ## 5. Act IV — the American case (chain, beats 16–30)
 
-**No beat in this act has strong tape. Five are thin and ten are empty.** This is the
-most important finding in the report and it is stated before the beats because reading
-them one at a time understates it: Act IV is a fifteen-beat chronological chain from
-1492 to about 1970, it is 36.5 % of the spine's runtime, and no segment available today
-carries any part of it well enough to be called strong.
+**Revised 2026-08-17: five beats in this act now have strong tape, where the first
+draft of this report found none.** Beats 18, 21, 22 and 24 moved on The Grill Coach
+(§2c), and 38 moved with them in Act V. The act now stands at **five strong, two thin,
+eight empty**. The original finding is left stated below because it is what motivated
+the transcription, and because the shape of the act has changed less than the count
+suggests.
 
-The act is also where the spine says the editorial test of the whole document lies. Of
-the four beats that are the honest weight of the authorship argument — 20, 21, 22 and
-30, together 12 % of runtime — **three are empty and the fourth is thin on a single
-anecdote from a show with no sourced expertise.**
+What changed is the part that mattered most. Of the four beats the spine calls the
+honest weight of the authorship argument — 20, 21, 22 and 30, together 12 % of runtime
+— **two are now strong on a historian's own argument, one is still thin on a single
+Atlanta anecdote, and one is still empty.** Beats 21 and 22, which the spine calls
+load-bearing and which the first draft found could not be served at all, are the two
+that moved. That is the single most valuable change available to this Foray and it
+came from one episode.
+
+What did **not** change: beats 16, 17, 25, 26, 28 and 29 are still empty, so Act IV
+still opens on two narration beats and its whole regional stretch is still narration.
+The act is no longer a hole where a chain should be; it is a chain with its middle
+links in place and both ends missing.
+
+*The original finding, 2026-08-16:* no beat in this act had strong tape — five thin
+and ten empty. It was stated before the beats because reading them one at a time
+understated it: Act IV is a fifteen-beat chronological chain from 1492 to about 1970,
+it is 36.5 % of the spine's runtime, and no segment available then carried any part of
+it well enough to be called strong. Of the four authorship beats, three were empty and
+the fourth was thin on a single anecdote from a show with no sourced expertise.
 
 **Four English sources for the core of this act are identified. One is readable, and
 reading it moved three beats in this act off empty.** The act is thin rather than
@@ -607,6 +680,42 @@ and no date, and does not touch the "barbe à queue" story the beat exists partl
 demolish. Beat 16 says *"reject: assertion of either etymology with no source"*, so
 this is rejected on the beat's own terms rather than on register.
 
+**Also considered and rejected, 2026-08-17 — and this one is a genuinely close call.**
+The Grill Coach carries the etymology at 1640.34 → 1668.10 s, inside the span cut for
+beat 18. Miller: Columbus and his crew were the first Europeans to see people cooking
+this way, in the Caribbean islands; *"the word barbecue came from what the Spanish
+people heard, the indigenous people calling the raised platform of sticks that had
+iguanas, other meat and vegetables on it that was being slowly smoked"*; *"so it was
+barbacoa in Spanish and the word barbecue is the English approximation of the Spanish.
+So it's like a game of historical telephone."*
+
+That is the right substance from the right kind of speaker — a raised frame, named by
+the people who used it, before it named a method — and it is far better than the SYSK
+version rejected above. **It still fails this beat, for three reasons, and the third is
+the decisive one:**
+
+1. **No attestation and no date.** Beat 16's claim is built on datable record — the
+   early-16th-century chronicles, the 1620s English usage as a structure, the cooking
+   sense around 1661. None of that is on the tape, and "Columbus and his crew" is a
+   scene rather than a source.
+2. **It never says Taíno**, and never rejects "barbe à queue" — and the beat exists
+   partly to demolish that story. Beat 16's reject line is *"assertion of either
+   etymology with no source"*, which this does not quite clear.
+3. **Cutting it would mean cutting the beat 18 segment in two.** The etymology sits
+   28 s inside a 168 s argument that runs continuously into the pit method. Isolating
+   it yields about 35 s — legal, above the 30 s floor, but under the target band and,
+   worse, it would take the opening off the beat 18 cut, where *"not everybody agrees
+   with this"* is doing real work. Trading a strong beat 18 for a partial beat 16 is a
+   bad trade, and manufacturing two overlapping cuts from one span so that two beats
+   both show green is precisely the fill behaviour §1 exists to stop.
+
+**Verdict: still empty, still narration, and the tape is better than the verdict.**
+This is the clearest case in the report of the difference between *relevant and
+authoritative* and *sufficient for the beat*. The narration for beat 16 should be
+written to the beat's standard — the chroniclers, the dates, the false etymology named
+and dismissed — and it can now be written knowing that the Foray's own Miller segment
+says the compatible thing 28 seconds after Act IV's narration hands over.
+
 **Chain hole, and it is the first link.** Act IV opens on the assertion that the
 technique and its name are indigenous American, and that assertion is the first half
 of the authorship argument. Narrate it; the beat exists partly because it gives the
@@ -627,19 +736,55 @@ makes it moot.
 living practitioners, and beat 18's raised grate and this beat's buried pit have no
 fork to be two branches of.
 
-### Beat 18 — the adopted indigenous apparatus — **empty**
+### Beat 18 — the adopted indigenous apparatus — **strong** (was empty)
 
-**Nothing that passes.** The Grill Coach episode is the only one of the four Act IV
-sources described as covering indigenous roots, and it is untranscribed. SYSK (§2b)
-has one clause at 1132–1139 s — Native Americans *"eventually would make these wooden
-frames that they would put the meat on"* — which is the apparatus with no region, no
-peoples, no date and no source, and no account of the transmission. Beat 18 says
-explicitly to reject *"'Native Americans invented barbecue' as a slogan with no
-apparatus, no region and no source"*; this has the apparatus and nothing else.
+**Candidate, and the beat's best available tape:** `grill-coach-adrian-miller#1609`
+(1608.86 → 1777.40, **168.5 s**). In on the host's *"But you, you talk about the
+transition from Native Americans to African American slaves and how, you know, that
+happened."*; out on *"So then based on that Native American template, it gets us on the
+road to what we would later call southern pit barbecue."*
 
-**Chain hole.** This is the transmission event that connects the Caribbean word to
-the mainland. Without it the act jumps from a Taíno word to a Southern pork
-tradition across a two-century gap.
+**Why it advances beat 18.** It is the beat's claim, argued rather than asserted, with
+the apparatus described in enough detail to be checked. Miller gives the indigenous
+method concretely — a shallow hand-dug pit filled with a mix of rocks and wood, set
+alight, *"and it's ingenious, right? Because the heat of the rocks would continue
+cooking long after the fire had gone out"*, with chunks of meat laid straight on the
+coals. Then he gives the transmission as a change to that apparatus rather than as
+influence: *"later when you get colonizing Europeans and enslaved Africans, they bring
+their meat cooking traditions. And all of a sudden that shallow pit gets sticks set
+across it so that you could lay meat above the cooking, the shallow pit becomes deeper
+and then the European animals are cooked over this."* The raised grate arriving on top
+of an existing indigenous pit is exactly the technology-transfer form the spine says
+this beat wants, and the word "template" is his.
+
+**It also does the source-criticism the beat asks for, in its first sentence.** The
+segment opens *"not everybody agrees with this in the wrong, but barbecue starts with
+native Americans"* — the ASR garbles the clause, and the audio should be checked, but
+the concession is unambiguous and it is what separates this from the slogan the beat
+rejects. He states the pit-method claim as **his argument** (*"so my argument is that
+the pit method that we talk about in the south was based on how Native Americans were
+cooking meat"*), not as settled fact, and closes on the three-inheritance synthesis:
+*"you could see the antecedents of it in Native American cooking and European cooking
+and African cooking and smoking, but it starts to become something different with that
+interaction."*
+
+**What is missing.** Which peoples and which regions, and any dating; no engagement
+with the counter-position that the "learned it from the Indians" story is itself
+substantially a European construction, and no discussion of what the early engravings
+do and do not show. So the beat is strong on the *claim* and the *apparatus* and thin
+on the *provenance of the evidence*. Narration should supply the region and the
+critical-source note, and it now has a segment to hang them on rather than carrying the
+whole beat.
+
+**Also considered.** The same span carries beat 16's etymology at 1640–1668 s, which is
+why beat 16 is worth reading directly below rather than assumed to have moved with
+this one.
+
+**Previously (2026-08-16): empty.** The only tape was SYSK's single clause at
+1132–1139 s — Native Americans *"eventually would make these wooden frames that they
+would put the meat on"* — the apparatus with no region, no peoples, no date, no source
+and no transmission, rejected on the beat's own terms. That verdict was correct and it
+is what the transcription was bought to fix.
 
 ### Beat 19 — pork won the South for ecological reasons — **thin**
 
@@ -664,9 +809,64 @@ rather than an agricultural history. The segment is also 61 s, under the 75 s ta
 because the passage immediately after it turns into a 200,000-year-old Israeli site
 and cannot be included.
 
-### Beat 20 — the West African inheritance — **empty**
+### Beat 20 — the West African inheritance — **still empty, and now for a settled reason**
 
-**Nothing**, and §5 ranked this third most likely to be empty. The nearest miss is
+**Revised 2026-08-17. The episode bought for this beat does not serve it, and the
+negative is clean.** `The Moreish Podcast — Caribbean Food History with Dr. Candice
+Goucher` (3,467 s) was transcribed specifically for beat 20 and read end to end. It
+contains, in 6,920 words, **zero occurrences of barbecue, barbacoa, jerk, Maroon,
+smoke, fire, grill, pit, charcoal, wood, butcher, allspice, pimento or vinegar.** The
+single "roast" is *"roasting human flesh"* in a passage demolishing the Carib
+cannibalism myth; the single "pepper" is *"chili peppers in parts of Europe"* in a
+list of crop transfers. That is a word-level count over the whole episode, not an
+impression.
+
+**What the episode is actually about**, so the rejection is auditable rather than
+asserted: Goucher's own training as an Africanist and archaeologist; the indigenous
+Caribbean as a maritime culture; the cannibalism libel and why Europeans manufactured
+it; the ecological damage of European livestock; creolization as a linguistic and
+culinary process; the global circulation of crops and curry; shipboard provisioning
+laws and how they manufactured a single "East Indian" identity in Trinidad and Guyana;
+salt, and women's oral transmission of cooking rules inside African-derived religions.
+It is a good episode and Goucher is exactly the authority the beat wanted.
+
+**Why it is rejected anyway.** Beat 20's claim is about **technique**: West and Central
+African live-fire cookery, whole-animal butchery, and the pepper-and-acid seasoning
+lineage, plus how the transfer is traced. Its reject line is *"generic statements that
+African cooking influenced Southern food, with no technique and no mechanism of
+transfer."* The nearest thing the episode offers is 1647.52 → 1732.80 s, where Goucher
+argues that *"food and cultural life was dominated by the African experience"* and that
+*"slave owners were dependent on enslaved peoples for their day-to-day food"* — the
+dependence stated structurally, with the enslaved dictating ingredients, bargaining in
+the marketplace and growing the crops. That is real culinary-authorship material and it
+is on the Foray's through-line. **It contains no fire, no butchery, no seasoning
+lineage, and it is about the Caribbean rather than the American South.** Admitting it
+would be admitting good tape because it is adjacent to the subject, which is the exact
+mechanism #226 was opened to stop.
+
+**No segments were cut from this episode, and it is not registered in
+`data/segment-sources.json`.** The registry's contract is that every episode the pool
+refers to must resolve to audio; an entry with no segments earns a checker warning and
+would be recording a transcription, not a playable source. The passage above is
+recorded here with its timestamps so a playlist pass can find it without re-reading
+the episode — that is what "label, never exclude" means when nothing was minted.
+
+**This is the second English-language source spent on beat 20 without result**, and it
+was the best-described candidate in the pool. The beat's problem is now visible as a
+*subject-matter* problem rather than an availability one: the argument lives in Twitty
+and in Miller's own book, and the podcast form that carries it is a barbecue show
+interviewing one of them, not a Caribbean food-history show. Note that The Grill Coach
+touches the inheritance in one clause — *"European cooking and African cooking and
+smoking"* — inside the beat 18 cut, which is a mention, not the beat.
+
+**Recommendation, replacing §9 item 4:** stop buying general food-history episodes for
+this beat. The remaining shots worth taking are `A Taste of the Past — Black Smoke`
+(named after Miller's book, so likely to reach the inheritance directly) and any
+episode where Michael Twitty is the guest. If neither lands, beat 20 is a narration
+beat permanently and should be written as one rather than left open.
+
+*Original assessment, 2026-08-16, retained:* nothing, and §5 ranked this third most
+likely to be empty. The nearest miss is
 `dis-a-fi-mi-moreish-flavours` 1361.1 → 1422.8 (62 s, in the passages file):
 Caribbean dishes carrying indigenous, enslaved, indentured and colonial imprints at
 once. That is a general statement of blending with no technique in it and no
@@ -675,14 +875,76 @@ Podcast — Caribbean Food History with Dr. Candice Goucher` (3,466 s, English,
 priority 2, untranscribed, no publisher transcript) is the most promising unread
 candidate given Goucher's work on African and Caribbean transmission, ahead of the
 three Act IV sources in the table above, none of which is described as reaching back
-across the Atlantic.
+across the Atlantic. **That prediction was wrong, and the paragraph above records why**
+— which is worth leaving side by side, because it was a reasonable prediction from the
+episode description and the guest's expertise, and it is the second time in this report
+that an episode description has failed to survive contact with the transcript.
 
 **Chain hole, and it weakens the Foray's central argument.** Without beat 20 the
 act's causal story is indigenous technique plus European livestock plus Black
 labour, and authorship then rests only on hours worked. The spine added this beat in
 revision specifically to prevent that.
 
-### Beat 21 — slavery as the labour system, and the enslaved as authors — **empty**
+### Beat 21 — slavery as the labour system, and the enslaved as authors — **strong** (was empty)
+
+**Candidate, and it is the most important cut in this report:**
+`grill-coach-adrian-miller#1792` (1791.70 → 1962.90, **171.2 s**). In on the host's
+*"Yeah. And another thing you mentioned in the book too, that you had instances where
+slaves were allowed to sell barbecue."*; out on *"And because it was labor intensive and
+they didn't want to pay people, they made enslaved African Americans do that work."*
+**Played in `grilling-history-2` as `GC-1`.**
+
+**Why it advances beat 21.** The beat asks for the argument in specifics rather than in
+atmosphere, and it gets three specifics in order.
+
+- **The tasks, named.** *"Somebody had to clear the field, somebody had to do all of
+  that prep work, somebody had to serve the food, do the cleanup, and then provide the
+  entertainment. And so that was Black people from A to Z."* The preceding beat 18 cut
+  supplies the rest of the labour inventory — burning the wood down to coals, the
+  butterflying, the person whose whole job is turning the meat, a second person keeping
+  a separate fire to replenish cold spots, a third swabbing with vinegar and spices —
+  and closes it with *"so this is very labor intensive."* The two segments play back to
+  back in the pool's tape order and the inventory is continuous across them.
+- **The coercion, named precisely rather than atmospherically.** The segment's last
+  sentence is the causal claim with nothing softening it: the work was labour-intensive,
+  *"they didn't want to pay people"*, so they made enslaved people do it. That is the
+  register the spine asks for — the mechanism stated, no emotional amplification.
+- **The expertise, recognised and monetised at the time.** The first half is the
+  plantation informal economy: slaveholders who let enslaved people sell food in nearby
+  towns and *"would take a cut of what the enslaved people sold"*, and barbecue sold at
+  the plantation perimeter to neighbouring plantations, poor whites and Native
+  Americans. This is the closest available tape to the beat's *"documented valuation and
+  hiring-out of skilled cooks"*, and it does the work that valuation evidence does: it
+  shows the skill was worth money to someone other than the person who had it.
+
+**The authorship step is in the tape, in the hosts' voice as well as Miller's.** The
+host reaches it independently, from craft rather than from history: the measure of a
+pitmaster is *"the size of your ash pile"*, most people doing that work were enslaved,
+*"and they are the ones that were building up that ash pile"*, learning *"the nuances of
+all what it takes to put this together."* That is expertise as accumulated judgement,
+which is the step the spine says makes this authorship rather than exertion. Miller
+then states the conclusion outright: *"barbecue for most of our nation's history was a
+Black experience."*
+
+**What is missing.** The overnight shift as labour extracted *on top of* field work is
+not stated as such; there is no named valuation or hiring-out document; and the
+plantation barbecue as an instrument of the enslaver's public standing is present only
+obliquely (*"they still got status from having slaves"*). Also absent, and the spine
+asks for it separately and carefully: the place barbecue occupied in the lives of
+enslaved people themselves. Narration should supply that fourth thing in particular,
+because it is the part this segment leaves entirely open and the part most easily done
+badly.
+
+**On handling.** The spine names sanitising as the worse of two failure modes and
+sensationalising as the other. This tape does neither, which is why it is graded strong:
+it is a historian and two barbecue hosts talking about work, wages and skill, and the
+coercion arrives as an economic fact in a sentence that does not flinch. Nothing in the
+cut has been softened at the boundary — the out-point is chosen so the segment ends on
+*"they made enslaved African Americans do that work"* rather than on the host's
+*"Interesting."* one second later.
+
+**Previously (2026-08-16): empty**, and the beat's own rejection criteria excluded both
+near-misses. That assessment follows, unchanged.
 
 **Nothing this beat can use.** This is the load-bearing beat of the Foray, 4 % of
 runtime, and nothing in the pool touches it. Two passages in the readable SYSK
@@ -715,13 +977,74 @@ made them. Three of the four sources in the table above are described as carryin
 this argument, and transcribing any one of them would give the beat a chance at tape
 instead.
 
-### Beat 22 — the record preserves the labour and erases the labourer — **empty**
+### Beat 22 — the record preserves the labour and erases the labourer — **strong** (was empty), and the tape refines the spine
 
-**Nothing**, and §5 predicted it, on the correct reasoning that the beat needs a
-historian discussing method.
+**Candidate:** `grill-coach-adrian-miller#2668` (2667.52 → 2757.70, **90.2 s**). In on
+the host's *"But I really appreciate like that your book dug down into the history and
+try to put some shine like, especially where you have so many figures that were in
+barbecue."*; out on *"So we get more foodie over time when you're looking at the
+newspaper coverage."* **Played in `grilling-history-2` as `GC-2`.**
 
-**Chain hole.** Beat 22 is what stops beat 21 being a claim taken on trust, and
-without it beat 38's revival has nothing whose loss was ever explained.
+**Why it advances beat 22.** The beat asks for a historian talking about method and
+sources, and this is that and almost nothing else. Miller names his own archive — *"a
+lot of my research is based on going through historical newspapers"* — and then does
+the thing the beat is actually about, which is to describe **what the record captures
+at different dates**:
+
+> before the mid-1800s, when it came to barbecues, they would probably note who hosted
+> it, how many people showed up, there might be some references to what was
+> consumed. By the time you get to the turn of the 20th century, they're telling you
+> how many people came, you're often getting the name of the cook. The cook might even
+> be interviewed a little bit. You get an exhaustive list of what was cooked.
+
+That is a dated account of an archival silence and of its closing — the host is named
+and the cook is not, until suddenly the cook is. It is source practice rather than a
+general remark that history forgets people, which is precisely the distinction the
+beat's reject line draws. The host's setup earns its place too: the figures are *"even
+lost on somebody like me. And I've been hosting a barbecue show for the last couple
+years"* — the erasure demonstrated on a practitioner rather than asserted.
+
+**The refinement, and it should be read as a correction to the spine rather than a
+weakness in the tape.** The spine's claim is that the individuals *"are named unevenly
+and often not at all."* Miller pushes back on the strong version of that, on the
+evidence of the newspapers:
+
+> sometimes you hear people say, oh, this country's so racist, these cooks have never
+> been celebrated. For the most part, that has not been my experience. These cooks were
+> celebrated in their time. Now granted, there was often a context of racism, right?
+> There was a lot of condescension that went with it. But the skill was noted.
+
+**This does not contradict the beat, it relocates its mechanism**, and the relocation is
+more useful than the original. The loss was not primarily a failure to record; Miller's
+own sentence for it is *"we just haven't been good about carrying on these stories. And
+so they get lost."* So the archive is better than the received story and the
+**transmission** is worse — which is a sharper claim, and it is checkable, and it makes
+the recovery work in beat 38 legible as *reading the record again* rather than
+*conjuring names from nothing*. It also strengthens beat 21 rather than weakening it:
+contemporaries knew who the skilled cooks were, which is independent evidence that the
+skill was recognised.
+
+**Recommended spine amendment**, alongside the beat 27 one already in §8: beat 22's
+claim should be restated so that the erasure sits in transmission and in the shift of
+credit, not solely in the record's silence. As written, the beat and its best available
+tape disagree on a point of fact, and the tape is a working historian describing his own
+sources.
+
+**What is missing.** Plantation records, runaway and sale advertisements and WPA-era
+interviews are not mentioned; there are no named recovered figures used as worked
+examples inside this cut; and how recovery is actually done is implied by *"going
+through historical newspapers"* rather than described. Note that named figures do exist
+elsewhere in the episode — the hosts raise one, and Miller's next book on Black street
+vendors is discussed at 2980–3040 s with a striking archival detail, newspapers printing
+street-cry sheet music in bars and scales. None of that is inside this cut and none of it
+is beat 22's claim.
+
+**Previously (2026-08-16): empty**, and §5 predicted it, on the correct reasoning that
+the beat needs a historian discussing method. That reasoning was right and is what
+identified the source.
+
+**Chain hole, closed.** Beat 22 is what stops beat 21 being a claim taken on trust, and
+the two now play consecutively as `GC-1` and `GC-2`, in the same voice, in tape order.
 
 ### Beat 23 — the political barbecue and its hierarchy — **thin**
 
@@ -762,7 +1085,51 @@ barbecue, and **the spine has no beat for it.** Beat 25 covers the 20th-century
 Black Migration only. This is the strongest single piece of American tape in the
 pool and there is no beat it fits squarely. See §8.
 
-### Beat 24 — emancipation into enterprise — **thin**
+### Beat 24 — emancipation into enterprise — **strong** (was thin), and the authority problem is solved
+
+**Preferred candidate, replacing the SYSK cut:** `grill-coach-adrian-miller#1964`
+(1964.16 → 2032.00, **67.8 s**). In on the host's *"So I have a question. So this idea of
+what we do now consider, you know, barbecue and its prominence"*; out on *"What does
+start to change though, by the time you get to the turn of the 20th century, is you start
+getting white men involved in barbecue."*
+
+**Why it advances beat 24, and why it beats the SYSK cut on the one axis that
+mattered.** The beat's strong signal is *"an explicit statement that the asset was
+skill"*, and Miller gives it in the beat's own terms: after the Civil War the formerly
+enslaved emerge *"with this very lucrative and marketable skill because people still want
+to barbecue, but you know, Black people, the ones that made it."* He then supplies
+something the beat did not ask for and clearly wants — the geography of that skill being
+sold: *"they were put on trains, stage coaches and boats all across the country to bring
+a taste of Southern barbecue to places that normally wouldn't get it."* Post-emancipation
+barbecue as a portable, saleable expertise, stated by a historian.
+
+**The SYSK cut is not withdrawn, and the two are complementary rather than
+competing.** SYSK has what Miller lacks: the ladder in physical detail — sharecropping in
+the week, pitmaster for the church at the weekend, a shack built around an existing pit,
+a couple of stools and a window, then the car arrives and the joint becomes a
+destination — which is the beat's low-capital mechanism made concrete. Miller has what
+SYSK lacks: authority, and playability. §2b graded the SYSK passage thin because it is
+hosts reconstructing a plausible sequence out of *"maybe"*, and it cannot play at all
+until the locate step exists. **So the beat is strong because the claim is now carried by
+a historian on ad-free tape; the SYSK cut remains the better illustration and the worse
+evidence.** If the founder rules the SYSK register in, use both; if out, beat 24 keeps
+this verdict rather than falling back to empty, which is a change to §7's sensitivity
+note.
+
+**What is still missing, and it is half the beat.** Named early proprietors and their
+cities; the absence of credit stated as a constraint; and Emancipation Day and Juneteenth
+barbecues as institutions with their own committees and finances — entirely absent from
+both candidates. That last omission is the beat's whole civic half and it is narration.
+
+**A note on the out-point**, because it is doing deliberate work. The segment ends on
+white men entering barbecue at the turn of the century, one beat before Miller's
+explanation of it (*"they see how lucrative it is"*, and they take the press and the
+publicity *"even though most of them rely on all Black workforce"*, 2032–2050 s). That
+follow-through is beat 22 and beat 38 material rather than beat 24's, so it is left out
+of this cut. Whoever assembles a Foray that plays both this and a beat 38 segment should
+know the connective sentence exists and is not in either.
+
+*The original thin verdict on SYSK, retained in full:*
 
 **Candidate, from SYSK (see §2b):** **2505.20 → 2583.28 (78.1 s)**. In on *"barbecue
 joints were almost exclusively take out"*; out on *"And then that's how the barbecue
@@ -880,6 +1247,36 @@ claim without establishing it. §5 predicted this beat would be hard because the
 material lives in urban history rather than food podcasting, and that is still right —
 what turned up is an anecdote from a general-interest show, not the policy history.
 
+**Considered and rejected, 2026-08-17 — The Grill Coach reaches this beat and does not
+serve it.** Miller answers the host's *"I don't see a lot of black owned barbecue joints
+even today"* with four mechanisms (2166–2258 s, cut for beat 38 — see below). Scored
+against beat 30 specifically, they miss it in three different ways:
+
+- **Succession**, but not the beat's succession. Miller's version is owners retiring or
+  dying with *"very few people that want to do that"* hard work. Beat 30's version is the
+  succession problem that *follows from not owning property* — a legal and financial
+  constraint, not a labour-supply one. Different claim with the same name.
+- **Gentrification, not urban renewal.** The neighbourhood joint becomes a destination
+  joint as its customers disperse. That is a market process in the wrong direction of
+  causation for a beat whose claim is that *law and public works* did this. The one
+  genuinely regulatory lever in the answer is real and worth having — new white neighbours
+  complain about the smoke *"and then all of a sudden you're getting all these
+  violations"* — but nuisance enforcement is not the interstate-and-renewal clearances the
+  beat is about, and it is one sentence.
+- **The fourth mechanism is one the beat explicitly declines.** Miller's strongest
+  point is that barbecue's defining aesthetic shifted from Black to white. Beat 30 says to
+  reject *"anything that attributes the change to consumer preference without evidence"*,
+  and a change in what barbecue is said to be is a preference claim, however well
+  Miller frames it as imposed rather than chosen. It is a strong argument in the wrong
+  beat, and its right beat is 38.
+
+**So beat 30 stays thin on the Atlanta anecdote, and its gap is unchanged**: lending and
+insurance discrimination, the inability to capitalise or bequeath, and the clearances as a
+pattern across cities. This is the one authorship beat the transcription did not move, and
+it is the clearest evidence in this pass that §5's prediction was right about *why* —
+the material is in urban and policy history, and no barbecue podcast is going to supply
+it. Recommend narration, and stop looking for tape.
+
 **Two seam warnings for stage 4.** SYSK's Jim Crow segregation material (2461–2480 s,
 about 200 s earlier) is also beat 30 material, and it is not included because twenty
 seconds after it the show says barbecue *"kind of transcends race and class"* — a cut
@@ -889,6 +1286,61 @@ the ninety seconds immediately *before* this cut's in-point (2583–2674 s) are 
 harmony passage — all stripes and classes of people side by side, ending at a Falcons
 tailgate — so the in-point at 2679.24 has to be exact, and a segment that opened even a
 little early would land in the worst available material.
+
+### 5a. Two beats gained good tape and did not move, and that is the report working
+
+Beats **16** and **30** both received material in this pass from a historian, on
+playable ad-free audio, squarely about their subject — and both keep their previous
+verdict. It is worth naming that as a result rather than leaving it implicit in two long
+beat entries, because it is the thing stage 2 was written to be able to do.
+
+| Beat | What arrived | Why it does not move |
+|---|---|---|
+| 16 — the word named a frame | The Taíno-to-Spanish-to-English etymology, from Miller, inside the beat 18 cut | No attestation, no date, no "barbe à queue" rejection — and isolating it would break the beat 18 segment in two |
+| 30 — policy produced the invisibility | Four mechanisms for the commercial thinning of Black barbecue | Succession-by-labour-supply not by property, gentrification not urban renewal, and a fourth mechanism the beat explicitly declines |
+
+Neither rejection is about quality or authority. Both are about the beat's claim being
+a narrower thing than its subject, which is founder rule 4 in #226 doing exactly the job
+it was written for. Had "relevant, authoritative and adjacent" been the test, both would
+have gone green and beat 16's segment would have been carved out of the middle of a
+stronger one.
+
+### 5b. What the assembly could actually play, and why it is two segments of six
+
+Recorded here because the gap between what this report authored and what
+`grilling-history-2` plays will otherwise read as an oversight.
+
+**Six segments were authored from The Grill Coach. The Foray plays two.** The binding
+constraint is **M4**, the concentration cap in `segment-length-rules.md` §6c and gated by
+`tools/foray/check-forays.mjs`: no single `item_id` may exceed **25 % of a Foray's
+segments or 25 % of its runtime**. Against the eight segments and 1,054.55 s
+`grilling-history-2` already had, that permits **two segments and 351.5 s** — and a third
+would have put the episode at 27.3 % of segments however short it was.
+
+That is not a tooling accident and it should not be worked around. The rule's own
+justification is that past 25 % *"we have made an edit of one episode and called it a
+Foray, and the honest action is to recommend the episode"*. A single 55-minute interview
+is exactly the shape that would trip it.
+
+**Beats 21 and 22 were chosen**, for two reasons in this order:
+
+1. **Editorial.** They are two of the four beats the spine calls the honest weight of
+   the authorship argument, both were empty, and the spine designs them as interdependent
+   — beat 22 is what stops beat 21 being a claim taken on trust. They also play
+   consecutively, in the same voice, in tape order.
+2. **Mechanical.** The obvious alternative pairing, beats 18 and 21, is unavailable.
+   At 168.5 / 171.2 s they sit within 1.6 % of each other and form a **D5 pairwise
+   violation** with MOSS-1 at 151.3 s (max/min 1.132); and taking beat 18 at its fuller
+   168.5 s-plus length puts the episode at **25.1 % of runtime**, over M4. Both were
+   checked rather than assumed.
+
+**The four held back — 18, 24, and both beat 38 cuts — stay in the pool**, and they are
+named in `tools/foray/check-forays.test.mjs` as held-back ids so they cannot be quietly
+played later without that being a visible change. They are authored, anchor-verified and
+playable; what they lack is room. Any future re-assembly that lengthens this Foray, or
+the rebuild of `grilling-history-1`, gains beats 18, 24 and 38 for no further sourcing
+work at all — which makes this the cheapest coverage improvement now available to the
+project, and it is already paid for.
 
 ---
 
@@ -1034,19 +1486,78 @@ too.
 sits, so that one segment is not double-booked. Beat 27's use of the same passage is
 recorded as a spine correction in §8, which costs no runtime.
 
-### Beat 38 — the authorship argument, unconcluded — **empty**
+### Beat 38 — the authorship argument, unconcluded — **strong** (was empty), on two segments
 
-**Nothing.** All four Act IV sources are relevant here — *Black Smoke: African
-Americans and the United States of Barbecue* is one of the works this beat's argument
-runs through, and A Taste of the Past has an episode named after it — and none is
-readable.
+This is the one beat in this pass given two segments rather than one, because its claim
+is explicitly two-part — restoration *and* contest — and the two halves are 13 minutes
+apart in the tape. §4a of the spine names beat 38 as one of the four beats that warrant
+two or three. Two is the maximum taken, and neither is a second bite at the same
+material.
 
-**Chain hole, and it is the beat that makes the Foray current.** The spine warns that
-the failure mode here is a single sentence of credit inside a segment about something
-else. With the beat empty, the risk is worse: an entire Foray whose authorship
-argument exists only in narration written by the same process that produced the
-bakestone version. Beats 21, 22, 30 and 38 stand or fall together, and one
-transcription would give all four a chance at tape.
+**Best candidate — the restoration half:** `grill-coach-adrian-miller#1346` (1345.66 →
+1427.90, **82.2 s**). In on *"And I think a seminal moment came when I was watching the
+Food Network. And this was 2004."*; out on *"And so my book, Black Smoke is a thump on the
+head to say, look, if you're going to talk about barbecue in the US, you have to include
+African Americans."*
+
+**Why it advances the beat.** It is the scholarship that reopened the record, described
+by the person who did it, as a method rather than a sentiment. Miller sits down to watch
+a Paula Deen barbecue special to find out *"who are the people that are being followed,
+you know, getting the shine"*, and *"60 minutes later, when the credits were rolling, I
+just realized that no black people were featured on that show."* He then does what a
+researcher does with a single observation — doubts it, and widens the sample: *"So I
+started looking at other media, TV shows, newspapers, magazines. And it was the same
+thing, man. You know, black people were either pushed to the sidelines of barbecue
+storytelling or left out altogether."* That is a small content audit with a stated year, a
+stated finding and a stated remedy, and the remedy is the book this beat's argument runs
+through. The cut ends on the book's purpose in his own words.
+
+**Second candidate — the contest half:** `grill-coach-adrian-miller#2167` (2166.64 →
+2257.20, **90.6 s**). In on *"So I might be jumping the gun here, but I don't see a lot of
+black owned barbecue joints even today."*; out on *"So the way that white dudes are saying
+barbecue should be made is now becoming the norm."*
+
+**Why it advances the beat.** The beat asks for tape *"directly on the contested
+questions — who is called a pitmaster, whose tradition it is said to be, who profits"*,
+and for a speaker who states the argument as unresolved. This is the third of Miller's
+three answers and the segment is cut to land on it:
+
+> the shift in barbecue, whether the people wanted to acknowledge it or not, was based on
+> a black aesthetic. It was the way that these black people cooked it that defined
+> barbecue. What's been happening in the last couple of decades is now barbecue has a
+> white aesthetic.
+
+Whose tradition it is said to be, contested in the present tense, by a historian, with a
+mechanism — not a claim about ownership but about which practice counts as the definition.
+The beat's reject line is *"a single sentence of credit inside a segment about something
+else"*, and the test is whether the authorship point is the segment's destination or its
+decoration. Here it is the destination: the question is why Black-owned barbecue
+businesses are scarce, the first two answers are commercial, and the third reframes the
+first two. **Be honest about the proportion** — roughly 26 of the 90 seconds are the
+aesthetic argument, and the first two-thirds is the commercial-decline material that beat
+30 above examines and rejects. A reader who thinks that proportion is too thin should
+prefer `#1346` alone, in which case the beat is strong on one segment and loses the
+present-tense half.
+
+**What is missing from both.** Named practitioners receiving major recognition, and what
+that recognition changed — no awards, no restaurants, no names other than Miller's own and
+Aaron Franklin's, who appears later in the episode as a business lesson rather than as an
+authorship case. So the beat has the argument and not its cast. Narration should supply
+the names.
+
+**A related passage, deliberately not cut.** At 2039–2050 s Miller says that when white
+men entered barbecue at the turn of the century *"they start getting the press and the
+publicity for this, even though most of them rely on all Black workforce."* That is the
+same argument at its historical origin and it is the single best sentence in the episode
+for joining beat 22 to beat 38. It is not cut because it sits inside the beat 24 span and
+isolating it yields about 11 seconds, far under the floor. It is recorded here because
+narration bridging Act IV to Act V should use it.
+
+**Previously (2026-08-16): empty.** All four Act IV sources were relevant — *Black Smoke:
+African Americans and the United States of Barbecue* is one of the works this beat's
+argument runs through — and none was readable. The prediction that one transcription
+would give beats 21, 22, 30 and 38 a chance at tape was three-quarters right: 21, 22 and
+38 moved, and 30 did not.
 
 ### Beat 39 — automation as a real challenge — **empty**
 
@@ -1071,51 +1582,77 @@ No action.
 
 ### Counts
 
+**Current, after the 2026-08-17 revision (§2c):**
+
 | Verdict | Beats | Which |
 |---|---|---|
-| **Strong** | **6** | 1, 4, 5, 14, 15, 32 |
-| **Thin** | **10** | 2, 6, 7, 9, 19, 23, 24, 27, 30, 37 |
-| **Empty** | **24** | 3, 8, 10, 11, 12, 13, 16, 17, 18, 20, 21, 22, 25, 26, 28, 29, 31, 33, 34, 35, 36, 38, 39, 40 |
+| **Strong** | **11** | 1, 4, 5, 14, 15, **18**, **21**, **22**, **24**, 32, **38** |
+| **Thin** | **8** | 2, 6, 7, 9, 19, 23, 27, 30 |
+| **Empty** | **21** | 3, 8, 10, 11, 12, 13, 16, 17, 20, 25, 26, 28, 29, 31, 33, 34, 35, 36, 39, 40 |
 
-Two caveats on those numbers, and both push the other way from each other.
+*Previously, 2026-08-16: 6 strong / 10 thin / 24 empty.* One transcription moved five
+beats — four in Act IV and one in Act V — and every one of them is on the authorship
+chain the spine says is the editorial test of the whole document.
 
-**Four of the ten thin verdicts — 7, 19, 24 and 30 — rest entirely on Stuff You Should
-Know**, which passes the relevance gate and fails the authority gate (§2b), and which
-cannot be played at all until the locate step exists. A founder who rules that register
-out returns those four beats to empty and the counts to **6 / 6 / 28**. A founder who
-rules it in gets four Act IV beats and one of them, 24, is close to strong.
+Three caveats on those numbers, and they do not all push the same way.
+
+**The SYSK sensitivity is smaller than it was.** Three of the eight thin verdicts — 7,
+19 and 30 — still rest entirely on Stuff You Should Know, which passes the relevance
+gate and fails the authority gate (§2b), and which cannot be played at all until the
+locate step exists. A founder who rules that register out returns those three to empty
+and the counts to **11 / 5 / 24**. Beat 24 used to be the fourth item in this list and is
+no longer exposed: it is now carried by a historian on ad-free tape, so ruling SYSK out
+costs it an illustration rather than its verdict.
 
 **Beat 4's strong verdict depends on minting the proposed new cut.** On the existing
-`#3315` alone it is thin, which would make the counts 5 / 11 / 24.
+`#3315` alone it is thin, which would make the counts 10 / 9 / 21.
+
+**Eleven strong beats is more than the assembly can play, and that is now the binding
+problem.** §5b works through it for one episode: M4's 25 % concentration cap lets
+`grilling-history-2` play two of the six Miller segments. The project's constraint has
+moved from *finding tape for Act IV* to *having enough distinct episodes to distribute
+it across* — which is a much better problem, and it changes what §9 should recommend.
 
 ### Where the holes fall — chain versus fan
 
-This is the part of the report that matters most, and it inverts the spine's hope.
+This is the part of the report that matters most, and it inverted the spine's hope. The
+2026-08-17 revision does not undo that, but it changes Act IV's row from the worst in the
+table to a middling one.
 
 | Act | Structure | Strong | Thin | Empty |
 |---|---|---|---|---|
 | I (1–5) | chain | 3 | 1 | 1 |
 | II (6–7) | chain | 0 | 2 | 0 |
 | III (8–15) | **fan** | 2 | 1 | 5 |
-| IV (16–30) | chain | **0** | 5 | **10** |
-| V (31–40) | chain | 1 | 1 | 8 |
+| IV (16–30) | chain | **4** (was 0) | 2 (was 5) | **9** (was 10) |
+| V (31–40) | chain | 2 (was 1) | 1 | 7 (was 8) |
 
-**Of the 24 empty beats, 19 are in chains and 5 are in the fan.** The spine
+**Act IV's holes have changed shape, which matters more than the count.** The nine
+remaining empty beats are not spread evenly: they are **16 and 17 at the opening**, and
+**25, 26, 28 and 29 across the whole regional stretch**, plus 20. So the act now reads as
+a strong, continuous authorship argument — 18, 21, 22, 24 in chronological order, three of
+them from one voice — with a missing prologue and a missing regional tour on either side of
+it. The first draft's image of *"one hole where the act was, with a few planks laid across
+it"* no longer holds. What does hold is that the act's geography is entirely unsourced,
+and that beats 20 and 30 remain the two authorship beats without tape.
+
+*Of the 24 empty beats in the original pass, 19 were in chains and 5 in the fan.* The spine
 established that a fan break reads as a change of subject and a chain break reads as
 a hole, and concluded that Act III is the safest place to come back thin and Act IV
 the most dangerous. Both halves of that are now measured, and the news is bad in the
 predicted direction:
 
-- **Act IV is a fifteen-beat chain with no strong tape at all**, 36.5 % of the
-  spine's runtime. Its four authorship beats — 20, 21, 22, 30, the 12 % the spine calls
-  the honest weight — are three empty and one thin, and the thin one is a single Atlanta
-  anecdote from a show with no sourced expertise. As a listening experience this is not
-  ten small holes; it is one hole where the act was, with a few planks laid across it.
-  **Beats 21 and 22, which the spine calls load-bearing, have nothing either beat can
-  use** — beat 21 rejects the two SYSK passages that come near it, on the beat's own
-  criteria, and beat 22 has no candidate at all.
-- **Act V is a ten-beat chain with one strong beat**, and the empty beats include
-  its hinge (31) and its peak (38).
+- **Act IV's authorship spine is now sourced and its geography is not.** Of the four
+  authorship beats — 20, 21, 22, 30, the 12 % the spine calls the honest weight — **21 and
+  22 are strong**, on a historian making the argument rather than acknowledging it, and 20
+  and 30 remain unsourced for reasons now settled rather than pending (§5, §5a). The act's
+  remaining nine holes are its prologue (16, 17) and its entire regional stretch (25, 26,
+  28, 29). **This bullet previously read "no strong tape at all", and that was the finding
+  that bought the transcription.** For the record of what it cost to fix: one 55-minute
+  episode, ad-free, no publisher transcript, transcribed locally.
+- **Act V is a ten-beat chain with two strong beats**, and its peak (38) is now one of
+  them. Its hinge (31) is still empty, and it is still the closest thing in this report to
+  a free win.
 - **Act III's five empty beats are the least of the problem**, exactly as designed,
   and they divide by the tiers in §2a rather than being one kind of hole. **13 (braai)**
   is unsourceable outright and the negative there is unusually clean. **11 (yakitori)**
@@ -1330,7 +1867,32 @@ does not keep re-finding Santa Maria tape and wondering where it goes.
 
 ## 9. Recommended next actions, in value order
 
-Not decisions — this report does not own them. Ordered by how many beats each moves.
+**Revision note, 2026-08-17.** Items **1** and **4** below have been done, and they are
+left in place so the list can be read as a scorecard rather than rewritten into
+hindsight. Item 1 (The Grill Coach) moved five beats and was the single most valuable
+action in this report. Item 4 (Moreish/Goucher) moved none — see §5 beat 20 — and the
+two together are the useful lesson: **an episode description predicted the outcome
+correctly once out of twice**, and the difference was not the guest's expertise but
+whether the episode was about fire.
+
+Three things have changed about what should come next, and the first is new:
+
+- **The binding constraint is now episode diversity, not tape.** Eleven beats are
+  strong and `grilling-history-2` can play two segments per source episode at its current
+  length (§5b). Transcribing a second long interview would author more held-back
+  segments, not a longer Foray. The actions that now increase what a listener hears are
+  the ones that add *distinct episodes* on beats that are still empty, and the ones that
+  make the Foray longer so the 25 % cap admits more of what is already authored.
+- **Beat 20 should be treated as nearly closed, not open.** Two English sources have
+  been spent on it. §5's beat 20 entry names the only two shots left worth taking and
+  recommends writing the narration if neither lands.
+- **Beat 30 should be closed as narration now.** It is the one authorship beat the
+  transcription did not move, and §5 records that the four mechanisms the tape offers are
+  each the wrong claim. The material is in urban and policy history and no barbecue
+  podcast will supply it.
+
+Below, as originally written. Not decisions — this report does not own them. Ordered by
+how many beats each moves.
 
 1. **Transcribe `The Grill Coach — Adrian Miller and The History of BBQ` (3,306 s,
    English, measured ad-free at ratio 1.0, currently priority 3).** Of the four
