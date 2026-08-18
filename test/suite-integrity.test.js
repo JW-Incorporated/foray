@@ -64,6 +64,14 @@ const FLOORS = {
   "player/foray-resolve.test.js": 54,
   "player/foray-sources.test.js": 24,
   "player/html-audio-backend.test.js": 108,
+  /* What the player believes after an interruption it could not observe (#263).
+     Floored because this suite is the only thing in the repo that boots
+     `player/client.js` for real, and the cheapest way to lose that is for
+     somebody to find its DOM stub inconvenient. The three facts it holds down
+     are all a single line from reverting: the surface reconciles against the
+     element on becoming visible, the reconcile never starts audio, and a
+     position nobody could read is never written down. */
+  "player/transport-reconcile.test.js": 22,
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
