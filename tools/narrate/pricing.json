@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "provider": "elevenlabs",
+  "verified_at": "2026-08-18",
+  "verified_how": "Public pricing page, public API reference and public docs, fetched 2026-08-18. NO API key was used and nothing was synthesised (#247 forbids it).",
+  "supersedes": {
+    "file": "data-local/corpus/markdown/040-elevenlabs-pricing-official.md",
+    "why": "That file is a DOM dump of elevenlabs.io/pricing with a `url:` and a `fetched: ... (200)` header and NO DATE anywhere in it, so it cannot be aged. Re-checked against the live page on 2026-08-18: every tier name, price and credit figure still matches, so the snapshot has not drifted. It carries one trap, recorded below as `creator.price_trap`."
+  },
+  "notes": "Prices in USD. `credits_per_month` is the subscription allowance. A credit is NOT always a character — see `credit_per_character`, which is the single most load-bearing correction in this file.",
+
+  "tiers": [
+    {
+      "id": "free",
+      "price_usd_month": 0,
+      "credits_per_month": 10000,
+      "commercial_license": false,
+      "commercial_note": "VERBATIM from docs/help-center/legal: \"The free plan does not include a commercial license and cannot be used for any commercial purpose.\" Publishing from Free additionally requires attributing elevenlabs.io in the title. **This makes Free unusable for any narration that ships in Foray**, which removes the obvious \"pilot it for nothing\" option. A pilot must start at Starter.",
+      "credits_roll_over": false
+    },
+    {
+      "id": "starter",
+      "price_usd_month": 6,
+      "price_usd_month_annual_equivalent": 5,
+      "credits_per_month": 30000,
+      "commercial_license": true,
+      "commercial_note": "Lowest tier that grants commercial use. \"All paid plans include a commercial license, provided you're not using Beta Services.\" Beta Services output may not be used commercially or in production at ANY tier.",
+      "credits_roll_over": true
+    },
+    {
+      "id": "creator",
+      "price_usd_month": 22,
+      "price_usd_month_annual_equivalent": 18.33,
+      "credits_per_month": 121000,
+      "commercial_license": true,
+      "credits_roll_over": true,
+      "price_trap": "The pricing card renders as \"$22 First month 50% off / $11per month\", and a scrape reads that as $11/month. It is not. The FAQ on the same page disambiguates: \"Creator $22 (121,000 credits, $11 for the first month)\". **$11 is a first-month promotion, not a standing price.** The #247 cost sketch described the target as \"their $6-11/month tiers\"; in that band there is exactly ONE standing tier, Starter at $6."
+    },
+    { "id": "pro", "price_usd_month": 99, "price_usd_month_annual_equivalent": 82.5, "credits_per_month": 600000, "commercial_license": true, "credits_roll_over": true },
+    { "id": "scale", "price_usd_month": 299, "price_usd_month_annual_equivalent": 249.17, "credits_per_month": 1800000, "commercial_license": true, "credits_roll_over": true },
+    { "id": "business", "price_usd_month": 990, "price_usd_month_annual_equivalent": 825, "credits_per_month": 6000000, "commercial_license": true, "credits_roll_over": true }
+  ],
+
+  "credit_per_character": {
+    "ui_all_models": 1,
+    "ui_note": "VERBATIM, and repeated identically on every model's help-center page: \"For UI generations, 1 character costs 1 credit, excluding credit multipliers. API generations are discounted.\" So the discount below is API-ONLY. A cost model that assumes a cheap model halves the burn in the web app is wrong.",
+    "api_multilingual_v2": 1,
+    "api_flash_turbo_low": 0.5,
+    "api_flash_turbo_high": 1,
+    "api_note": "The only OFFICIALLY BOUNDED statement is the pricing FAQ's \"costing between 0.5 and 1 credit per character\" for Flash/Turbo API usage. The 0.5 endpoint is STRONGLY IMPLIED — docs/models says Flash v2.5 is \"50% lower price per character for API generations\", and elevenlabs.io/pricing/api lists Flash/Turbo at $0.05 per 1K characters against Multilingual v2 at $0.10, a clean 2x — but NO primary page publishes a numeric per-model credit multiplier. Treat 0.5 as strongly-implied-but-uncited and budget at 1.0 unless a real run measures otherwise.",
+    "voice_multiplier_warning": "The phrase \"excluding credit multipliers\" points at a SECOND multiplier axis: Voice Library community voices carry an owner-set multiplier that STACKS on the model rate. The docs confirm the mechanism; no primary page publishes the values. **A voice chosen from the community library can therefore cost more per character than the model rate implies** — a reason to prefer a first-party/default voice, or to measure before committing. This is a live unknown, not a solved input."
+  },
+
+  "api_dollar_per_1k_chars": {
+    "flash_turbo": 0.05,
+    "multilingual_v2_and_v3": 0.10,
+    "source": "elevenlabs.io/pricing/api, which quotes dollars per 1K characters and mentions no credits at all."
+  },
+
+  "overage": {
+    "mechanism": "pay-as-you-go",
+    "min_topup_usd": 5,
+    "default_auto_topup_usd": 20,
+    "default_low_balance_threshold_usd": 10,
+    "topup_credits_expire_months": 12,
+    "consumption_order": "subscription credits first, then PAYG balance",
+    "usd_per_1000_credits": null,
+    "usd_per_1000_credits_note": "NOT PUBLISHED, and deliberately so: \"PAYG pricing varies depending on whether you're generating content using the API or the UI.\" Legacy usage-based billing quotes a fixed per-1,000-credit price that is \"displayed when you enable usage based billing\", i.e. only visible inside an account. Third-party blogs circulate $0.30/$0.24/$0.18/$0.12 per 1K for Creator/Pro/Scale/Business; the primary source (help.elevenlabs.io) returns HTTP 403 to automated fetches, so those numbers are UNVERIFIED and are not recorded as fact here.",
+    "public_marginal_proxy_usd_per_minute": { "free": 0.36, "starter": 0.20, "creator": 0.18, "pro": 0.17, "scale": 0.17, "business": 0.17 },
+    "public_marginal_proxy_note": "The pricing compare table's \"Extra minutes\" row — verified live, and the best PRIMARY public proxy for marginal cost. Per minute, not per 1,000 credits."
+  },
+
+  "rollover": {
+    "months": 2,
+    "max_balance_multiple_of_quota": 3,
+    "requires": "an active paid subscription with no downgrade or cancellation",
+    "applies_to_free": false,
+    "forfeit_note": "Downgrading or cancelling forfeits unused credits at the end of the cycle. PAYG top-ups sit outside the rollover cap but expire 12 months after purchase.",
+    "why_it_matters_here": "Narration generation is BURSTY — a Foray is authored and then voiced in one go. Rollover to 3x quota means a tier can absorb a burst up to three times its monthly number, which changes the tier answer for a one-time corpus build."
+  },
+
+  "output_formats": {
+    "default": "mp3_44100_128",
+    "default_note": "VERBATIM from docs/api-reference/text-to-speech/convert. 128 kbps mp3 needs NO upgrade — it is the API default and the pricing compare table lists \"128 kbps, 44.1kHz\" for Free, Starter and Creator alike.",
+    "kbps_by_format": { "mp3_22050_32": 32, "mp3_24000_48": 48, "mp3_44100_32": 32, "mp3_44100_64": 64, "mp3_44100_96": 96, "mp3_44100_128": 128, "mp3_44100_192": 192 },
+    "tier_gated": {
+      "mp3_44100_192": "Creator or above per the API reference; the pricing page instead advertises 192 kbps as a Pro-and-above upgrade. **The docs and the marketing page disagree and this was not resolvable from public sources.** Assume Pro if 192 kbps ever matters.",
+      "pcm_44100_and_wav_44100": "Pro or above."
+    },
+    "recommended_for_narration": "mp3_44100_64",
+    "recommended_why": "Narration is one dry mono voice, which 64 kbps carries cleanly, and it quarters the bytes against the 128 kbps default (see docs/narrator-pipeline.md for the hosting arithmetic). Going lower is tempting and should be resisted: narration sits directly against publisher tape at every seam, and an audible quality drop at the join is the exact artefact the 2.0 s seam beat exists to smooth over. 32 kbps saves 6 MB a Foray and spends it on sounding like a different, worse product."
+  },
+
+  "provider_implied_rate": {
+    "credits_per_minute": 1000,
+    "derivation": "The pricing page's own minutes column: 10,000 credits is quoted as ~10 minutes and 121,000 as ~121 minutes. Exactly 1,000 credits per minute in both.",
+    "why_it_matters": "This is the PROVIDER'S OWN characters-to-minutes conversion, and at 1 credit per character it means 1,000 characters per minute of speech. That is 19% ABOVE the 840 chars/min used in the #247 sketch and 14% above the 880 this repo measured. Since characters are what get billed, a LOW chars/min rate UNDERSTATES the cost of a fixed duration budget. It is probably a round marketing number rather than a measurement, but it is the provider's, it errs toward the expensive side, and it is therefore the right figure to BUDGET with."
+  }
+}
