@@ -1829,9 +1829,10 @@ sugar added, botanicals added — which makes them the one part of the taxonomy 
 cannot be derived from a feedstock at all, and therefore the part a listener is
 most likely to have permanently misfiled.
 
-Beat 52 is a **chain** link and must come first. Beats 53 to 56 are a **chain**
-ordered by *when* the spirit goes in, which is the variable that explains all of
-them. Beats 57 to 60 are a **fan**.
+Beat 52 is a **chain** link and must come first. Beats 53 to 55 are a **chain**
+ordered by *when* the spirit goes in, which is the variable that explains all three.
+Beat 56 is the hinge out of it, since its spirit goes into a wine that has already
+finished. Beats 57 to 60 are a **fan**.
 
 #### 52. Fortification is a valve on fermentation, and when you open it decides whether the wine is sweet or dry
 
@@ -2260,40 +2261,61 @@ landing from a summary.
 | 63 | coda: four questions, open list | VI | 1.3 % | 1.95 |
 | | | | **100 %** | **150** |
 
-Act totals: I 26.6 %, II 13.5 %, III 16.1 %, IV 25.8 %, V 13.4 %, VI 4.6 %.
+Act totals: I 26.6 %, II 13.5 %, III 16.1 %, IV 25.8 %, V 13.4 %, VI 4.6 %. **Bold
+marks the fifteen beats the argument leans on hardest** — the ones whose loss would
+break a chain rather than remove a stop. It is deliberately not the same set as the
+twelve at 2.0 % in §4a step 5: beat 5 is load-bearing and small, beats 2 and 7 are
+large and replaceable by narration without structural damage.
 
-### 4a. Why 63 beats, derived rather than chosen
+### 4a. Why 63 beats, and which part of that is arithmetic
 
 The barbecue spine chose 40 beats for a 150-minute reference. This subject wants
 more breadth and less depth per item, and the length rules put a hard bracket
 around how much more. The arithmetic, all against `segment-length-rules.md`:
 
-1. **The cut budget sets the ceiling.** Above 120 minutes, D1 permits at most 5
-   segment starts per rolling 600 s, which is one start per 120 s. A 150-minute
-   Foray is 9,000 s, so it permits **at most about 75 segments**.
-2. **One strong segment per beat is the discipline, not an economy.** #226 and the
-   barbecue spine's §4a both land there: hunting for a second and third segment on
-   a beat is what generates fill pressure, which is the mechanism that produced the
-   bakestones. So the segment ceiling is also a **beat ceiling of about 75**.
-3. **The segment floor sets a minimum share, and therefore a beat ceiling from the
-   other direction.** Each beat has to be able to hold one segment inside D-target's
-   75–180 s band, and D3 requires the whole-Foray mean to be ≥ 90 s. A share below
-   1.0 % buys less than 90 s and cannot carry a beat at the mean, so **1.0 % is the
-   floor** — which is why beats 25 and 51 sit exactly there and nothing sits below.
-4. **The two constraints meet in the headroom.** *n* beats at the 1.0 % floor commit
-   *n* per cent of the runtime before any beat has been weighted at all. At 63 beats
-   that is 63 %, leaving **37 % of headroom** to give the beats that carry the
-   argument two or three times the floor. At 70 beats the headroom is 30 %; at 75 it
-   is 25 %, and every beat converges on the floor, which is D5's defect written into
-   the plan rather than committed at assembly.
-5. **63 also leaves exactly the right number of spare segment starts.** 75 − 63 =
-   **12**, and there are exactly **12 beats at the top share of 2.0 %** — beats 2, 6,
-   7, 12, 14, 26, 28, 32, 36, 37, 43 and 44. Those twelve are the ones whose 3.0 min
-   allowance splits naturally into two segments. Every other beat gets one.
+1. **The cut budget sets the ceiling, and this step is a real derivation.** Above
+   120 minutes, D1 permits at most 5 segment starts per rolling 600 s, which is one
+   start per 120 s. A 150-minute Foray is 9,000 s, so it permits **at most 75
+   segments** — and the rolling form of the rule really does cap the total, since
+   fifteen non-overlapping 600 s windows at 5 starts each give the same bound.
+2. **One strong segment per beat is the working assumption.** #226's rule is that a
+   beat is covered when its claim is advanced, and the barbecue spine's §4a is
+   blunter than it first looks: it recommends one *or two* per beat and says hunting
+   for four is not diligence. So a second segment on a beat is legitimate; a pile is
+   not. Taking one per beat as the planning figure makes the segment ceiling a
+   **beat ceiling of 75** and leaves the second segments as the headroom in step 5.
+3. **A 1.0 % floor on any beat's share.** This is a *pacing convention*, not a
+   derivation, and it is worth being honest about which. D3's 90 s is a whole-Foray
+   mean rather than a per-segment minimum, so a beat at 0.7 % carrying a 63 s
+   segment breaks no rule as long as something else compensates — the third bullet
+   below insists on exactly that kind of compensation. What the floor actually buys
+   is that **every beat can stand on one segment inside the 75–180 s band without
+   help**, which matters because a beat that needs a neighbour's slack to exist is a
+   beat that quietly disappears when its neighbour comes back empty. Beats 25 and 51
+   sit exactly on the floor and nothing sits below it.
+4. **The headroom argument, which is where the judgement is.** *n* beats at the
+   1.0 % floor commit *n* per cent of the runtime before any beat has been weighted
+   at all. At 63 beats that is 63 %, leaving **37 % of headroom** to give the beats
+   that carry the argument up to twice the floor. At 70 beats the headroom is 30 %
+   and at 75 it is 25 %, and the spread available to the share column compresses
+   accordingly — not to a single value, but toward one. **Nothing here picks 63
+   rather than 60 or 66**; the arithmetic gives a range of roughly 55 to 70 and the
+   exact number is a judgement about how much breadth this subject wants, which
+   §1 argues is a great deal. What the arithmetic does rule out is the barbecue
+   spine's 40, which would leave 60 % of headroom and force far more depth per item
+   than "all of them" asks for, and anything above about 70, which flattens the
+   share column.
+5. **An observation that fell out, rather than a step.** 75 − 63 = **12**, and there
+   are exactly **12 beats at the top share of 2.0 %** — beats 2, 6, 7, 12, 14, 26,
+   28, 32, 36, 37, 43 and 44. That is a coincidence and not a derivation, since step
+   1's ceiling is a bound rather than a quantity, but it is a useful one: those
+   twelve are the beats whose 3.0 min allowance splits into two segments if a second
+   is wanted, and they are where stage 2 should look for one.
 
-So the shape is **63 beats and 63 to 70 segments**, and 75 is a ceiling to stay
-away from rather than a target: at 75 segments the Foray sits exactly on the cut
-budget with no slack anywhere, and any assembly adjustment breaks it.
+So the shape is **63 beats and 63 to 70 segments** — which means roughly half of the
+twelve take a second segment and the rest do not. 75 is a ceiling to stay away from
+rather than a target: at 75 the Foray sits exactly on the cut budget with no slack
+anywhere, and any assembly adjustment breaks it.
 
 Four consequences for stage 2 and stage 4, and the third is new relative to the
 barbecue spine.
@@ -2305,17 +2327,20 @@ barbecue spine.
   The spine is deliberately sized so that some holes are structurally fine. Holes
   are not merely tolerable, they are budgeted.
 - **The share table on its own fails D5, and this is the spine's most concrete
-  instruction to assembly.** The shares span 1.0 % to 2.0 %, which is 90 s to 180 s
-  — the target band and nothing outside it — and the resulting interquartile range
-  of implied segment durations is about **36 s, below D5's 45 s floor**. If assembly
-  aims each segment at its beat's share, the Foray fails the one anti-uniformity
-  rule with measured evidence behind it. The fix is not a different share table: it
-  is that **a share is a per-beat runtime allowance, never a per-segment target.**
-  Assembly must deliberately break share fidelity segment by segment — a 55 s
-  segment on one beat paid for by a 200 s segment on the next, and the twelve
-  two-segment beats split unevenly rather than in half — and it must do so with the
-  burst rule in hand, since two short segments in a row followed by a long recovery
-  segment is the preferred shape rather than a tolerated one.
+  instruction to assembly.** The shares span 1.0 % to 2.0 %, which is 90 s to 180 s —
+  the target band and nothing outside it — and the resulting interquartile range of
+  implied segment durations is about **36 s, below D5's 45 s floor** — Q1 at 1.4 %
+  and Q3 at 1.8 %, and the figure comes out at 36 s under the exclusive definition,
+  the inclusive one and Tukey's hinges alike, which matters because the length rules'
+  §10 records the quartile convention as unresolved. If assembly aims each segment at
+  its beat's share, the Foray fails the one anti-uniformity rule with measured
+  evidence behind it. The fix is not a different share table: it is that **a share is
+  a per-beat runtime allowance, never a per-segment target.** Assembly must
+  deliberately break share fidelity segment by segment — a 55 s segment on one beat
+  paid for by a 200 s segment on the next, and the twelve two-segment beats split
+  unevenly rather than in half — and it must do so with the burst rule in hand, since
+  two short segments in a row followed by a long recovery segment is the preferred
+  shape rather than a tolerated one.
 - **Act I's uniformity is the specific risk.** Sixteen consecutive beats between
   1.2 % and 2.0 % is where three-in-a-row similarity is most likely to occur, and it
   is also the act most likely to be narration-heavy. Assembly should treat Act I as
@@ -2344,7 +2369,8 @@ before the cut budget does: at ≤ 45 min, D1 allows 8 starts per 600 s, which w
 permit 36 segments in 2,700 s, but the whole-Foray mean of ≥ 90 s caps it at **30**.
 And §5d predicts the dense mode wants the *longest*, most self-contained segments
 with the most narration between them, so the realistic figure is **20 to 25 beats**
-at 110 to 140 s each.
+at 100 to 120 s each — and note that 25 beats at 140 s would be 58 minutes, not 45,
+so the top of that range only fits once the bridges are counted out of it.
 
 A 25-beat proposal, chosen to keep the derivation intact rather than to keep the
 famous drinks: **2, 5, 6, 7, 8, 11, 12, 14, 16** — nine of Act I, enough to carry all
@@ -2507,9 +2533,7 @@ named inside a beat rather than given one.
   which needs a different part of it. As its own beat it is a job description rather
   than a claim.
 - **A beat on the low-alcohol ferments** — kombucha, kvass, tepache, tejuino, and the
-  fermented drinks where ethanol is a by-product rather than the product. Dropped,
-  with kvass named at beat 34. This is the weakest of the drops and a reviewer could
-  restore it as a short stop after beat 31 without damaging anything; I left it out
+  fermented drinks where ethanol is a by-product rather than the product. Dropped, with *kvass* named at beat 31, whose design it shares — a low-alcohol soured grain ferment drunk fresh. This is the weakest of the drops and a reviewer could restore it as a short stop after beat 31 without damaging anything; I left it out
   because "forms of alcohol" reasonably means drinks made *for* their alcohol.
 - **A beat on illicit distilling** — moonshine, poitín, samogon, and the recurring
   mass methanol poisonings. Dropped as a beat and sourced *into* beat 13, where the
@@ -2526,7 +2550,7 @@ is a beat. Tape that only serves one of them is rejected.**
 - **Prohibition, temperance and alcohol policy.** The named drift risk, per §2c.
   Dramatic, abundant, adjacent to every beat, and it explains almost no production
   fact. Admissible only where a specific measure explains a specific process — the
-  Korean rice ban at beat 48, bottled-in-bond at beat 61 — and then it enters that
+  Korean rice ban at beat 48, bottled-in-bond at beat 39 — and then it enters that
   beat as evidence for that beat's claim, never as a subject.
 - **Alcohol and health** — harm, dependence, drinking guidelines, the cardiovascular
   literature, cancer risk. A real, important and entirely different Foray. Flagged
@@ -2547,6 +2571,17 @@ is a beat. Tape that only serves one of them is rejected.**
 - **Religious rules on alcohol**, except where a specific rule explains a specific
   production fact.
 - **Home brewing and home distilling as a how-to.**
+- **The Atlantic slave trade and plantation history as subjects in their own
+  right.** This needs writing down precisely because it is *not* a trivial
+  exclusion. Beat 43 rests on molasses being a waste stream, beats 45, 50 and 58
+  rest on colonial freight and the cinchona and sugar trades, and the tape adjacent
+  to all four is enormous. The boundary is the same one prohibition gets: a
+  historical fact is admissible where it explains a production fact — why molasses
+  was worthless, why concentrating wine paid for itself, why a bark from the Andes
+  ended up in a British tonic — and it enters the beat as evidence for that beat's
+  claim. The history of the plantation economy as a subject is a large and serious
+  Foray, and it is not this one. Excluded on scope, not on merit, and stated here so
+  that beat 43 cannot be used as a doorway.
 
 **One honest omission, not a rejection.** The fan is not exhaustive, and saying so
 is better than implying that twenty-odd family stops are the world. The first
@@ -2567,25 +2602,25 @@ qualifies on volume but shares beat 33's mechanism, so it headlines a beat it sh
 rather than getting its own. Fame earns nothing at all, which is why there is no
 champagne beat and no Islay beat.
 
-| named at | where | why not a full beat |
+| named at | in beat | why not a full beat |
 |---|---|---|
 | perry, and the fruit and country wines | 22 | the same operation on different fruit; sorbitol is the only real distinction and it fits in a sentence |
 | *tej* | 23 | mead with a bittering herb in place of hops |
 | birch and maple sap wines | 24 | the same sap mechanism as palm, in a colder place |
 | kefir and the dairy ferments | 25 | alcohol is a by-product rather than the product — see §6a |
-| kvass | 34 | a low-alcohol grain ferment whose conversion route is already beat 7's |
+| *kvass* | 31 | a low-alcohol soured grain ferment drunk fresh, which is beat 31's own design; its conversion route is already beat 7's |
 | *huangjiu*, *makgeolli*, *nuruk* | 33 | they headline the mixed-starter beat; the starter is the beat, so one stop serves all three |
 | *awamori* | 48 | shochu with a different koji and a different rice |
 | cachaça and rhum agricole | 43 | cane juice rather than molasses, under their own statutes, but the same three variables |
 | pisco | 45 | distilled wine; its no-wood, no-dilution rules are most useful as a contrast inside brandy |
-| grappa, marc, slivovitz, rakia, *țuică*, pálinka, kirsch, calvados | 46 | one family with one pectin problem; Calvados is the ageing exception and is explained as such |
+| grappa, marc, slivovitz, rakia, *țuică*, pálinka, kirsch, poire, Calvados | 46 | one family with one pectin problem; Calvados is the ageing exception and is explained as such |
 | *feni* | 46 | the outlier that shows the technique travels beyond Europe |
 | *sotol*, *raicilla*, *bacanora* | 44 | neighbours of the agave spirits, and *sotol* comes from a different genus, which is the point of the mention |
 | *żubrówka* and the Eastern European infusions | 49 | gin's method with different botanicals, which is beat 49's claim |
 | Batavia arrack | 50 | a rice-and-cane variant of the beat's own family |
 | ouzo, raki, arak, pastis, sambuca | 59 | one aroma compound, one beat; the production routes differ and that difference *is* the beat |
-| vins doux naturels, marsala, commandaria | 52 | the fortification-timing rule already explains all of them |
-| quinquina, americano, retsina | 56 | the same stacked construction with a different bittering or aromatising agent |
+| vins doux naturels, Marsala, Commandaria | 52 | the fortification-timing rule already explains all of them |
+| quinquina, americano | 56 | the same stacked construction with a different bittering agent |
 | Chartreuse, Bénédictine and the monastic liqueurs | 57 | multi-stage combinations of the extraction methods that are beat 57's actual subject |
 | Campari, Fernet, Aperol, Angostura, tonic water | 58 | instances of beat 58's bitter-compound claim |
 | *arkhi*, whey spirit, *destilado de pulque* | 51 | they *are* beat 51, which is a method demonstrated on the margins rather than a family |
@@ -2605,19 +2640,20 @@ champagne beat and no Islay beat.
 - **Whether Act I really deserves a quarter of the runtime.** It does here, and the
   argument is §1: the founder asked to be educated, and Act I is the education while
   the rest is its application. The counter-argument is honest and a founder may
-  prefer it — twenty-six minutes of chemistry before the first drink is a real risk
-  of losing a listener early. If that judgement is reversed, the right move is to
-  **interleave**, not to cut: put beats 1 to 6 first, then wine, then beats 7 and 8
-  before beer, then beats 11 to 14 before the spirits. That preserves every claim
-  and every dependency while shortening the wait for a drink. I rejected it because
+  prefer it — forty minutes of chemistry before the first drink — 26.6 % of the 150-minute reference, not twenty-six minutes — is a real risk of losing a listener early. If that judgement is reversed, the right move is to
+  **interleave**, not to cut: put beats 1 to 6 and 10 first, then wine, then beats 7 to 9 before beer, then beats 11 to 15 before the spirits, with beat 16 left where it is. That preserves every claim and every dependency while shortening the wait for a drink to about twelve minutes. I rejected it because
   it destroys beat 16 — the key cannot be assembled from parts the listener met
   hours apart — and beat 16 is the beat the Foray is for. This is an editorial
   decision and it should be made on that argument, not because Act I sourced badly.
 - **Whether history should have been its own act.** It should not, and §2c gives the
   rule and the reason. Reversible, but reversing it re-opens the exact failure mode
   #226 documents, so it needs a founder decision rather than an agent's.
-- **Whether the low-alcohol ferments get a stop.** §6a records the drop as the
-  weakest one in the document.
+- **Whether the low-alcohol ferments get a stop.** §6a records the drop as the weakest one in the document.
+- **Whether beats 49 and 51 survive a second reviewer.** They are the two beats
+  whose why-it-belongs is thinnest — 49 was challenged outright and rewritten, 51 is
+  a method demonstrated rather than a family. If runtime ever has to come from
+  inside the spine rather than from the runtime target, the document's own logic
+  points here first, and it should point somewhere rather than nowhere.
 - **Whether the fan is extended** to the traditions listed at the end of §6b.
 - **The `tier` vocabulary** — §4b proposes a default mapping; #174 owns the field.
 - **How the twelve two-segment beats split.** §4a says unevenly and says why; the
@@ -2627,3 +2663,102 @@ champagne beat and no Islay beat.
   most valuable thing that could happen to this document is the founder listening to
   the assembled Foray and saying which beat lost them — and, specifically, whether
   Act I earned its runtime or exhausted its welcome.
+
+---
+
+## 8. Revision note
+
+Drafted at 63 beats and revised after a reviewer pass run **in the foreground and
+before pushing**, because `docs/` auto-merges and there is no post-merge review
+window (CLAUDE.md workflow rule 7). The reviewer was instructed to be source-blind
+and confirmed compliance; no finding turned on tape availability and nothing was
+cut, shortened or reordered on those grounds. The beat count did not change. What
+changed is recorded here rather than only in the commit log, because several
+findings changed claims rather than wording.
+
+**Science corrected.** Beat 5 enumerated three routes past the alcohol ceiling when
+there are four — freeze concentration removes water as ice rather than as vapour,
+and eisbock and traditional applejack are the working examples — which also
+corrected §1 and gave beat 11 a much better contrast for distillation's mechanism.
+Beat 7 had the sprouting grain manufacturing both amylases, when beta-amylase is
+largely pre-formed in the resting endosperm and only alpha is synthesised anew.
+Beat 11's azeotrope figure was unqualified, and 95.6 % is by weight where every
+other percentage in the document is by volume. Beat 17 asserted *Saccharomyces* on
+grape skins, which the microbiology does not support. Beat 28 had lager fermenting
+near freezing, which is the conditioning stage, and located Bavaria and Bohemia in
+the Alps. Beat 1 had isopropanol metabolising to something worse than formic acid
+when it goes to acetone. Beat 8's aflatoxin genes are silenced rather than removed.
+Beat 44's autoclaves caramelise, so the honest contrast with a pit is smoke rather
+than flavour. Beat 50 had Batavia arrack's cane base and rice starter inverted.
+Beat 52 had fortifying spirit killing yeast on contact rather than inhibiting it.
+Beat 43's "only spirit from a by-product" is contradicted by beat 46's pomace
+spirits. Beat 39 said bourbon has no geographic requirement; it must be American.
+Beat 41's "largest by value" collided with beat 47's correct claim for baijiu. Beat
+12 credited the continuous column to Cellier-Blumenthal alone. Beat 45's pisco rules
+are Peruvian only. Beat 56 filed retsina as vermouth's construction when it has
+neither added spirit nor added sugar.
+
+**Three findings changed the argument rather than a fact.**
+
+- **§2c's history budget was roughly half the real figure.** It claimed about eight
+  per cent of runtime; counted honestly it is nearer fifteen. That number is the
+  instrument for detecting drift later, so understating it would have disarmed the
+  boundary it was written to defend. The discipline is now stated as distribution
+  rather than as quantity.
+- **§4a claimed to derive 63 when one step is a judgement.** The cut budget really
+  does cap the Foray at 75 segments, and the D5 interquartile finding really does
+  hold. But the 1.0 % share floor is a pacing convention rather than a consequence of
+  D3, which is a whole-Foray mean, and the headroom argument brackets the beat count
+  at roughly 55 to 70 without picking a number inside it. §4a now says which step is
+  which, and §3's preamble no longer claims a derivation. The arithmetic still rules
+  out the barbecue spine's 40 for this subject, which was the point of running it.
+- **§6b had no boundary for colonial and plantation history, and beat 43 opens
+  straight onto it.** Rum's molasses, brandy's freight, arrack's punch trade and
+  quinine's bark are four beats resting on the Atlantic economy, with an enormous
+  adjacent body of tape and nothing bounding it. The boundary is now written down on
+  the same terms prohibition gets, so that beat 43 cannot be used as a doorway.
+
+**One beat was challenged as failing the document's own test.** Beat 49 (aquavit and
+the northern infusions) had a purely structural justification — it made gin look
+like a template — which is a claim about the document rather than about production,
+and by §3's rule such a beat should be deleted. It was rewritten rather than cut,
+on the argument that flavoured and infused spirits are one of the largest commercial
+categories in the world and no other beat covers them at all. Beat 51 was flagged as
+the next weakest and kept on the same reasoning; §7 now records both, so that if
+runtime ever has to come out of the spine the document points somewhere rather than
+nowhere. Neither judgement was made on availability grounds and neither could have
+been, since nobody involved has seen the catalogue.
+
+**§6c was systematically over-claiming, and the fix improved the spine rather than
+the table.** The section listed drinks as "named inside" beats where they never
+appeared: Marsala, Commandaria, the quinquinas, Chartreuse, Bénédictine, Campari,
+Fernet, Aperol, Angostura, raicilla, bacanora and *rhum agricole*. Since the
+completeness claim in §1 depends on those mentions actually existing, the drinks
+were written into their beats rather than struck from the table. *Kvass* was cited
+as living at beat 34, whose conversion route is the wrong one for it, and now lives
+at beat 31, whose design it genuinely shares.
+
+**Cross-references repaired.** Bottled-in-bond is at beat 39 and was cited twice as
+beat 61. §2c promised a shipping payoff at beat 53 that beat 53 does not deliver.
+Beat 21 promised a varietal payoff at beat 45 that beat 45 does not deliver. §2a's
+worked example of the beer chain described a mash beat that does not exist. §2b and
+the Act III intro disagreed with each other and with the beats about whether the
+beer chain is five beats or six. §2b's stated ordering principle for Act IV did not
+match the order the beats are in. Beat 4 miscounted Act I's history beats and beat
+28 called itself the third of them from inside Act III. Beat 15 said port and sherry
+are separated by oxidative versus reductive ageing when that distinction operates
+*inside* each of them. §7 read 26.6 per cent as twenty-six minutes when it is forty,
+which understated the very counter-argument it was trying to state fairly, and its
+interleaving alternative silently dropped four beats while claiming to preserve
+every dependency. §4c's short-mode durations did not fit the runtime they were
+quoted against. One invented rule id was removed.
+
+**Prose.** One garbled sentence at beat 62 ("older than the evidence for it"), one
+value claim in a beat heading at beat 8, and one marketing seam at beat 38 where
+§6b's excluded business material would have arrived looking plausible. No
+exclamation marks, no malformed tables, and the structural checks re-run after every
+batch of edits: 63 beats in order, 63 share lines summing to 100.0, the §4 table
+matching every beat body and every act heading, and every drink §6c claims is named
+inside a beat verified as actually appearing there.
+
+Source-blindness held through drafting and revision.
