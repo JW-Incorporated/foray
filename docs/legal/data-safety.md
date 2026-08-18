@@ -26,9 +26,11 @@ collection.
 Read `privacy-policy.md` §1–§4 for the full table. The three facts that decide
 every answer below:
 
-1. **20 `cp_*` storage keys live on the device**, each mirrored into both
+1. **21 `cp_*` storage keys live on the device**, each mirrored into both
    `localStorage` and IndexedDB (`player/durable-store.js` mirrors the whole
-   `cp_` prefix; db `foray`, store `kv`).
+   `cp_` prefix; db `foray`, store `kv`). Two of the 21 are diagnostics rather
+   than a listener's data — `cp_storage_health` and `cp_diag` — and neither is
+   transmitted.
 2. **Exactly 5 of 18 event types are transmitted**, to one endpoint
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
    Mapping: `app.js:220–256`. Transmission: `app.js:258–284`, called from
@@ -82,7 +84,7 @@ ones a template gets wrong.
 | **App activity — Other actions** | **Yes** | No | Thumbs direction and the fixed reason codes (`app.js:966–970`, sent at `app.js:246`). |
 | **Web browsing history** | **No** | No | The app cannot see your browsing. |
 | **App info and performance — Crash logs** | **No** | No | **No crash reporter.** Nothing bundled, nothing sent. |
-| **App info and performance — Diagnostics** | **No** | No | `cp_storage_health` records storage-tier faults **on the device only**; `storage_fault` is a local-only event type. Never transmitted. |
+| **App info and performance — Diagnostics** | **No** | No | Two local-only records, neither transmitted. `cp_storage_health` records storage-tier faults; `storage_fault` is a local-only event type. `cp_diag` (#264) records how the audio player behaved — seam durations, load deadlines, out-point overshoot, stops, resume decisions, and background/foreground transitions with their durations — capped at 200 entries, oldest dropped first, readable and clearable from the drawer's **Playback diagnostics** (`player/diagnostic-log.js`). It holds no audio, no URLs, no account id and no device names: only numbers matched by an explicit pattern, authored segment ids, and stage names from a fixed vocabulary — a telemetry line's text is never stored, and a recognised audio route is recorded as a fact rather than by name. It is deliberately OUTSIDE the `cp_events` pipeline, so no code path can send it. |
 | **App info and performance — Other app performance data** | **No** | No | — |
 | **Device or other IDs** | **No** | No | No advertising id, no device id, no fingerprinting. `cp_profile_id` is a locally-generated random string (`app.js:152–159`) and is **deliberately not included** in any transmitted row — `toEventRow` never copies it. |
 
@@ -273,7 +275,7 @@ longer than the real-time request needs**. Same conclusion as Play — the local
 | **Usage Data — Product Interaction** | **Yes** | picked / finished / saved / thumbs / session shown (`app.js:223–255`). |
 | **Usage Data — Advertising Data** | **No** | No ads anywhere. |
 | **Usage Data — Other Usage Data** | **No** | Nothing beyond the five mapped types. |
-| **Diagnostics** (crash, performance, other) | **No** | No crash reporter; `storage_fault` and `cp_storage_health` never leave the device. |
+| **Diagnostics** (crash, performance, other) | **No** | No crash reporter; `storage_fault`, `cp_storage_health` and `cp_diag` never leave the device. |
 | **Surroundings** / **Body** | **No** | No sensors, camera or microphone. |
 | **Other Data** | **No** | — |
 

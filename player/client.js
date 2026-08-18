@@ -62,6 +62,27 @@
    state becomes durable, and where it stops existing. This module's own
    contribution is `stopForDataDeletion()` — a stop that persists nothing, because
    a player left running writes a position back one tick after the clear.
+
+   ── The field record (#264) ───────────────────────────────────────────────
+   This file's telemetry hook used to be a console filter rather than a pipeline:
+   a three-word regex dropped `outPoint.reached`, `seam.gap.armed`, `load.deadline`
+   and every load timing, and what survived went to `console.warn` — which the
+   comment beneath it calls "a console line nobody has open", true of a phone in a
+   car. Five changes shipped into the seam and transport area (#227, #235, #239,
+   #260, #266) with no field measurement between them.
+
+   So the whole telemetry stream now also reaches `player/diagnostic-log.js`, a
+   bounded local ring, and `window.forayDiagnosticReport()` renders it as copyable
+   text for the surface app.js builds. Three things to know before changing any of
+   it, all argued at length in that file's header:
+
+     - IT DOES NOT TRANSMIT, and that is the design. The `cp_events` pipeline has
+       NO consent gate, so a richer record of a person's listening must not ride
+       it. Nothing here touches `cp_events` or `trySyncEvents`.
+     - WRITES ARE DURABLE AT THE MOMENT OF THE EVENT, not flushed on unload. A page
+       suspended mid-seam is exactly when the record matters.
+     - THE MESSAGE TEXT IS NEVER STORED — only matched numbers, authored segment
+       ids, and stage names from a fixed vocabulary. No audio, no URLs, no identity.
 */
 
 import { PlayerQueueManager } from "./queue-manager.js";
@@ -78,6 +99,9 @@ import {
   ForayProgressStore, resumePoint, remainingLabel, percentDone,
   DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED,
 } from "./foray-progress.js";
+import {
+  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport,
+} from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { createDurableStore } from "./durable-store.js";
 import { makeIdbTier } from "./idb-tier.js";
@@ -149,6 +173,82 @@ window.forayStorageHealth = () => storage.health();
    before anything has been played, and booting an <audio> element to answer a
    question about storage would be absurd. */
 const forayProgress = new ForayProgressStore({ storage });
+
+/* ---------- the field record (#264) ----------
+
+   LOCAL ONLY. Nothing below reaches `cp_events`, `trySyncEvents` or the network,
+   and `player/diagnostic-log.js`'s header carries the argument: the `cp_events`
+   pipeline has NO consent gate (`trySyncEvents()` is called unconditionally at
+   `app.js:664` and `:686`), so routing a richer record of a person's listening
+   through it would increase what is collected without one.
+
+   Built at module evaluation like the store it writes through, but it READS
+   lazily — `DiagnosticLog._load()` runs on the first write, and the first write is
+   held until `storageReady` below. An earlier draft argued the laziness was enough
+   on its own because "nothing records until the first seam, which is seconds after
+   hydration". That was wrong: `diag.boot()` was itself a record, at module scope,
+   ahead of hydration. The ordering is now explicit rather than inferred.
+
+   `visibilitychange` is bound HERE and not in `bind()`, because a hidden window
+   has to be measurable whether or not anything has been played: `bind()` runs
+   inside `ensureBooted`, which does not happen until the first tap. */
+const diagLog = new DiagnosticLog({ storage });
+const diag = new PlayerDiagnostics({
+  log: diagLog,
+  isHidden: () => typeof document !== "undefined" && document.hidden === true,
+});
+/* EVERY WRITER WAITS FOR HYDRATION, and it is the LISTENER — not just the boot row
+   — that has to wait. This ordering is load-bearing rather than tidy.
+
+   The ring is read lazily on its first write, and that first write must not happen
+   before `hydrate()` has pulled the IndexedDB tier up. localStorage is the tier
+   Safari clears after about seven days without a visit, so the case where the two
+   tiers disagree is the case where the durable copy is the ONLY copy — and a write
+   that landed first would read an empty localStorage, stamp a newer `updatedAt`, win
+   `isNewer`, and overwrite the record it was built to keep.
+
+   A FIRST ATTEMPT AT THIS DEFERRED ONLY `diag.boot()` AND WAS NOT ENOUGH, which is
+   why the registration itself is inside the `then` now: `visibility()` records too,
+   and a listener who pockets the phone during the hydration window would have been
+   the first writer. A transition genuinely missed inside that window costs one row
+   and no data; the alternative cost the whole record.
+
+   `storageReady` never rejects (every tier failure is caught into `health()`), but
+   the catch is attached anyway. */
+storageReady.then(() => {
+  diag.boot();
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
+  }
+}).catch(() => {});
+
+/** The record, as text, for the surface app.js builds. Published beside
+    `forayStorageHealth` and for the same reason: app.js is a classic script and
+    cannot import this module, so anything it needs is handed over on `window`. */
+window.forayDiagnosticReport = () => formatDiagnosticReport(diagLog.read());
+/**
+ * Empty it — the founder's loop is clear, drive, copy, and three earlier drives in
+ * the buffer make the drive under test hard to find.
+ *
+ * BOTH HALVES, and the second is not optional. `diagLog.clear()` removes the ring;
+ * `diag.reset()` drops what is in flight. Without the reset, a Clear pressed during
+ * playback leaves the open seam pointing at an entry no longer in the ring — so the
+ * next boundary is written outside the record and lost, and the orphan's next stage
+ * calls `save()`, putting `cp_diag` back one tick after it was deliberately removed.
+ */
+window.forayDiagnosticClear = () => { diagLog.clear(); diag.reset(); return true; };
+/**
+ * The same clear, for "Delete my data".
+ *
+ * A SEPARATE NAME FROM A SEPARATE CALLER, because the two are called at different
+ * moments and one of them must not be early. `purge()` removes `cp_diag` from both
+ * tiers like any other `cp_` key — but this module holds the ring IN MEMORY, so
+ * without this the next `visibilitychange` writes every purged entry straight back
+ * under a key a listener has just asked to be emptied. `app.js` calls it from the
+ * LOCAL clear, not from `stopForDataDeletion`: a run that fails at the server step
+ * leaves the device untouched on purpose, and that has to include this record.
+ */
+window.forayForgetDiagnostics = () => { diagLog.clear(); diag.reset(); return true; };
 
 /* ---------- DOM ---------- */
 
@@ -440,14 +540,32 @@ function notifyForay() {
 function persistForayProgress({ force = false } = {}) {
   if (!foray || foray.index < 0) return;
   const id = foray.resolved.id;
-  if (manager?.state?.type === "ended") { forayProgress.clear(id); return; }
+  /* ── THE RESUME DECISION, RECORDED (#264) ────────────────────────────────
+     ONLY ON `force`, and the rule is not arbitrary. This function runs from
+     `render()`, which every media event drives, so the unforced path is a 4 Hz
+     tick and recording it would flood a 200-entry ring inside a minute. `force`
+     is exactly the set of moments a resume point becomes the thing read back
+     next time — pause, page-hide, closing the bar, and the #263 reconcile — and
+     it is bounded by human actions rather than by the clock.
+
+     THE REFUSALS ARE THE HALF THAT MATTERS. The second field report was a WRONG
+     RESUME, and the path that declines to write (below, when the playhead is
+     unknown after a failed load) is the path with no record of what it did. A
+     forced write that refused is the defect; a throttled tick that refused is
+     noise, which is the other reason this is gated on `force`. */
+  const note = (fields) => { if (force) diag.resumeWrite({ forayId: id, index: foray.index, ...fields }); };
+  if (manager?.state?.type === "ended") {
+    forayProgress.clear(id);
+    note({ wrote: false, why: "finished-cleared" });
+    return;
+  }
   /* A resume is TWO steps — load the segment at its in-point, then seek into it
      — and the load fires real media events in between. Without this the tick
      between them writes the segment's in-point over the precise position we are
      in the middle of restoring, and a resume that then failed (or a tab closed
      inside that second) would have quietly rounded the listener back by up to a
      whole segment, again on every attempt. */
-  if (foray.resumeSeekPending) return;
+  if (foray.resumeSeekPending) { note({ wrote: false, why: "resume-in-flight" }); return; }
   /* WHICH segment, not only which index (#40). `data/forays.json` is served
      network-first, so the document this row is read back against can have moved
      a segment or lost one — and an index is a position, which stops meaning
@@ -469,9 +587,15 @@ function persistForayProgress({ force = false } = {}) {
      five seconds of a segment they had already heard is not a defect. An unknown
      position must never overwrite a known one. */
   const elapsedSec = forayPlayhead();
-  if (elapsedSec == null) return;
+  if (elapsedSec == null) { note({ wrote: false, why: "playhead-unknown" }); return; }
   const seg = forayProgressSegments()[foray.index] ?? null;
-  forayProgress.save({
+  /* `wrote` IS THE STORE'S ANSWER, NOT OUR INTENTION. `ForayProgressStore.save`
+     returns false when `writeProgress` is refused — a full localStorage with no live
+     durable tier — and counts it into `refusedWrites`. An earlier draft recorded
+     `wrote: true` before this call and threw the return value away, which put a false
+     statement in the one row that exists because "there is no record of what the
+     error path wrote". A diagnostic that lies is worse than a missing one. */
+  const wrote = forayProgress.save({
     forayId: id,
     title: foray.resolved.title,
     elapsedSec,
@@ -480,6 +604,13 @@ function persistForayProgress({ force = false } = {}) {
     segmentId: seg ? seg.id : null,
     intoSec: seg ? Math.max(0, elapsedSec - seg.startSec) : 0,
     force,
+  });
+  note({
+    wrote,
+    ...(wrote ? {} : { why: "store-refused" }),
+    elapsedSec: Math.round(elapsedSec),
+    segmentId: seg ? seg.id : null,
+    intoSec: seg ? Math.round(Math.max(0, elapsedSec - seg.startSec)) : 0,
   });
 }
 
@@ -887,6 +1018,13 @@ function bind() {
        audio; a stale transport costs a press. */
     render();
     if (!corrected) return;
+    /* WHICH STATE IT LANDED IN (#264/#266). `reconcileWithBackend` emits
+       `reconcile.externalStop why=visible` BEFORE it runs the reducer, so the
+       record's `stop` row is written with `state: null` — stamping it at emit time
+       would record `playing`, which is about to stop being true. This is the one
+       place the landed state is readable: the correction happens inside the
+       player, and only this caller awaits it. */
+    diag.reconciled("visible", manager?.state?.type ?? null);
     /* The playhead the route died at. The reconcile's own `savePosition` covered
        the episode row; a Foray keeps its position in its own store and on its own
        clock, so it needs saying separately — and it can be said, because the
@@ -923,7 +1061,21 @@ function ensureBooted() {
     },
   });
 
-  backend = new HtmlAudioBackend();
+  /* THE BACKEND GETS THE SINK TOO (#264), and its absence was the whole reason
+     the field record could not answer #224.
+
+     Every number that bounds a seam is emitted at the ELEMENT layer, not the
+     manager's: `outPoint.reached … overshoot=`, `load.deadline Nms (hidden|visible)
+     for X`, `load.sameSource`, `audio.error code=`, `play.rejected`. This
+     constructor took no `telemetry` at all, so all of it went nowhere — the iOS CI
+     probe reads exactly these strings and this page discarded them. A record built
+     on the manager's stream alone knows a seam happened and not how long its load
+     took or whether it was a cold cross-origin fetch, which is precisely the
+     question #239's 20 s deadline was tuned against a bundled local file to answer.
+
+     `onTelemetry` is hoisted (a function declaration below), so referencing it here
+     is safe and keeps the sink defined once. */
+  backend = new HtmlAudioBackend({ telemetry: onTelemetry });
   manager = new PlayerQueueManager({
     backend,
     positionStore: positions,
@@ -941,7 +1093,28 @@ function ensureBooted() {
        reaches it at all, so the beat is invisible and the main button still
        means "start". This is the only repaint during a beat, at both edges. */
     onSeamGapChange: () => render(),
-    telemetry: (m) => {
+    telemetry: onTelemetry,
+  });
+
+  /* The one sink, for BOTH the manager and the backend (#264). Extracted from the
+     manager's option so it can be handed to the element layer as well — see
+     `HtmlAudioBackend` above.
+
+     THE CONSOLE HALF IS UNCHANGED, and deliberately so: it drives `foray.error`,
+     which is a listener-facing surface, and that is a different job from measuring
+     the seam. The one behavioural consequence of the second caller is that a media
+     error and a refused `play()` now also reach `console.warn`, which is an
+     improvement on reaching nothing — and neither matches the narrower
+     `foray.error` test below, so the Foray page's standing-error rule is untouched
+     (#225's argument still holds exactly as written). */
+  function onTelemetry(m) {
+      /* FIRST, AND BEFORE THE FILTER (#264). Everything diagnostic used to be
+         dropped by the regex below — `outPoint.reached … overshoot=0.003s`,
+         `seam.gap.armed`, `load.deadline`, `prefetch.window` — because none of
+         those words is "error", "rejected" or "skipped". The record takes the
+         whole stream and keeps only numbers it matched and stage names from a
+         fixed vocabulary; the message text itself is never stored. */
+      diag.note(m);
       if (!/error|rejected|skipped/i.test(m)) return;
       console.warn("[player]", m);
       /* A Foray that stops on a dead segment must SAY so. Without this the
@@ -961,8 +1134,7 @@ function ensureBooted() {
         foray.error = m;
         notifyForay();
       }
-    },
-  });
+  }
 
   /* The lock screen / car / headphone surface (#27). `createMediaSession`
      returns an inert bridge where `navigator.mediaSession` is absent — desktop
@@ -1000,6 +1172,26 @@ function ensureBooted() {
   backend.addMediaListener("timeupdate", render);
   backend.addMediaListener("play", render);
   backend.addMediaListener("pause", render);
+
+  /* The four element events the record needs, and no more (#264).
+
+     `playing` is what CLOSES a seam — audio actually flowing, which is the only
+     honest end point for `observedGapMs`; the manager's `itemLoaded` says the
+     asset is ready, which is a different and earlier claim. `waiting` and
+     `stalled` are the shape a network stall takes, and browsers fire them and
+     never `error`, so they are the only evidence that separates "the load never
+     settled" from "the beat's timer never fired". `ended` OPENS one: a file that
+     runs out before its authored `end_sec` produces no `outPoint.reached` at all.
+
+     `timeupdate` is deliberately absent. It fires at 4 Hz and is not a
+     diagnostic, and a record that wrote localStorage on it would be the
+     instrument perturbing the measurement — see `html-audio-backend.js:1421`.
+
+     `addMediaListener`, like the repaints above, so these survive the handover
+     to the second element at a cross-episode seam. */
+  for (const type of ["playing", "waiting", "stalled", "ended"]) {
+    backend.addMediaListener(type, () => diag.mediaEvent(type));
+  }
 }
 
 /* ---------- public surface ---------- */
@@ -1176,6 +1368,21 @@ const ForayPlayer = {
     // highlights the row once the audio arrives reads as a dead button.
     setForayIndex(clampIndex(at ? at.index : startIndex, report.items.length));
     try {
+      /* WHAT WAS READ BACK, AND WHAT IT RESOLVED TO (#264). The page reads the
+         row (`forayResume`) and hands the answer down as `startElapsedSec`; this
+         is where that number becomes a segment and an offset inside it. Recorded
+         as ONE row, before the load, because the pair is what the second field
+         report needs and either half alone is unreadable: "resume at 1,240 s"
+         means nothing without "segment 12, 41 s in", and a resume that then
+         failed leaves this row saying where it was aiming. */
+      diag.resumeStart({
+        forayId: resolved.id,
+        requestedElapsedSec: Number.isFinite(startElapsedSec) ? Math.round(startElapsedSec) : null,
+        index: foray.index,
+        segmentId: report.items[foray.index]?.id ?? null,
+        intoSec: at ? Math.round(at.into) : 0,
+        resolvedBy: at ? "elapsed" : "index",
+      });
       await manager.play(foray.index);
       if (at) {
         const item = report.items[foray.index];
@@ -1290,6 +1497,18 @@ const ForayPlayer = {
    * undone by the next tick — a success message over restored data, which is the
    * one outcome a delete control must never produce. Nothing booted is not an
    * error here: no element, no queue, nothing writing.
+   */
+  /**
+   * Stop, and persist nothing on the way out.
+   *
+   * THE FIELD RECORD IS NOT CLEARED HERE, and that is a correction. This method runs
+   * FIRST in `deleteMyData`, before the server step, and a remote failure returns
+   * early with the device deliberately untouched — "its token is the only way back
+   * to those rows". Clearing the ring here destroyed it on exactly that path: a
+   * listener who is offline, taps Delete, fails the server call and then declines
+   * "clear this device only" keeps every other `cp_` key and silently loses the one
+   * record we asked them to collect. `forgetDiagnostics()` is called from the local
+   * clear instead, which only runs when the device really is being emptied.
    */
   async stopForDataDeletion() {
     if (!manager || !ui) { foray = null; return false; }
