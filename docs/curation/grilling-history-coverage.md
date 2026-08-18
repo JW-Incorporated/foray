@@ -1968,3 +1968,150 @@ these documents that `catalogue-broadening.md` §3 still frames it as unresolved
 its §0 summary still calls tandoor unsourceable, both of which ADR-0008 and
 `DECISIONS.md` have since overtaken. Reconciling those two paragraphs would stop the
 next agent making the same mistake this one did.
+
+---
+
+## 10. The narration work list — mode, writability and budget
+
+**Added 2026-08-18.** This section applies `narration-craft.md`'s vocabulary to the
+verdicts above, and it answers that document's §6d ask directly: **carry `writable` /
+`unwritable` as a second axis on empty beats, and record it at the same time as the
+empty verdict rather than discovering it at script time.**
+
+**Nothing below changes a coverage verdict.** Twenty beats are empty and nine are thin,
+exactly as §7 records. What is added is three fields per beat — the **depth mode** its
+narration would use, whether a script for it could pass the six-test rejection gate,
+and what that script costs — for all twenty empty beats and all nine thin ones.
+
+**Status:** proposed, and it is a work list rather than a script. No narration has been
+written, no voice has been chosen and no API was called. The companion document
+`grilling-beat-cut-plan.md` carries the consequence: which of these beats an assembly
+can afford to attempt.
+
+### 10a. The three fields, and how each was decided
+
+**Mode** comes from `narration-craft.md` §2c — a thin beat takes a **Patch**, an empty
+beat takes a **Carry**. Two corrections to that mapping fall out of this report's own
+contents, and both cost money:
+
+- **Three thin beats have no tape of their own in an assembly, so their mode is Carry
+  and not Patch.** Beat 2's only candidate sits inside `moreish#266` and §3 keeps it on
+  beat 15; beat 6's `#700` is beat 14's second cut; beat 27's `#2779` is assigned to
+  beat 37 "so that one segment is not double-booked". A Patch supplies the part of a
+  beat its tape misses, and a beat whose only candidate went to a neighbour has no tape
+  for a Patch to supplement. **That is 780 characters becoming 1,360, three times over,
+  and `narration-craft.md` §4d's per-beat cost model does not see it** — its thin
+  constant assumes a thin beat plays tape.
+- **Beat 29's Carry is not a standard one.** §5 tells it to "carry the region material
+  on its own", which is a larger job than stating the beat's own claim, and with 26 and
+  28 empty and 27 thin it is the only place that material can go.
+
+**Carry provenance.** `narration-craft.md` §2d splits Carry two ways — **by-default**,
+where sourcing could still close the beat, and **by-design**, where the claim is a
+conclusion nobody states in one breath so no tape can exist. **Four of this Foray's
+twenty empty beats fit neither**, and the reason is already in §2a above: they are empty
+because of a ruling, or because sourcing has been proven not to help. The four-way split
+the two documents imply together:
+
+| provenance | meaning | beats |
+|---|---|---|
+| **by-default (open)** | tape could exist and the avenue is open | 3, 8, 10, 16, 25, 26, 28, 31, 34, 35, 36, 39 |
+| **by-default (exhausted)** | the negative is clean and sourcing has been proven not to help | 13 |
+| **by-ruling** | a source exists and a decision bars it — permanently, not pending | 11, 12, 17 |
+| **by-design** | the claim is a synthesis, so no tape can exist | 29, 33, 40 |
+
+The distinction is not cosmetic, because §2d's rejection posture turns on it: a
+by-default Carry may be deferred to more sourcing or dropped, and a by-design Carry may
+never be dropped. **A by-ruling Carry can be neither deferred nor treated as
+provisional**, which makes it the most permanent narration in the Foray and the kind
+most worth writing well. Recorded as an ask on `narration-craft.md` §2d, not an edit to
+it.
+
+**Budget** is `narration-craft.md` §4d's per-beat constant — **240 characters for a
+strong beat, 780 for a thin one, 1,360 for a carried one** — with the two corrections
+above applied where they bite, and with the §2c mode band recorded so a script author
+can see which item is doing the spending.
+
+### 10b. The writability test actually applied, because §6d's shorthand does not survive contact
+
+§6d offers a heuristic: "an empty beat whose literature the report can name is writable;
+an empty beat where the report cannot say what would be said is not." **Applied
+literally that makes nineteen of twenty beats unwritable**, because this report names
+literature for exactly one of them — beat 20, Twitty and Miller. That is not what the
+rule means, and the sentence that says what it does mean is §6d's other one: the
+material "genuinely is not in reach of anybody writing from what we have."
+
+**From what we have** is the operative phrase and it is the test used below. A Carry or
+Patch is **`writable`** if R3 can be satisfied — every factual assertion attributable to
+a named source recorded in the script, and at least one source spoken on air — from one
+of three places, none of which requires invention:
+
+1. **Literature this report or the spine names.** Beat 20 is the only instance, and
+   `narration-craft.md` §7b has already drafted the script to prove it.
+2. **A datable public record the spine itself supplies** — an attestation, a date, a
+   patent, a named campaign. Beat 16's 1620s structure sense against its 1661 cooking
+   sense is the clearest case, and a Carry that names such a record is doing exactly the
+   thing §5f says a narration beat can do better than tape.
+3. **The Foray's own prior tape** — under R3's synthesis exception where the beat is
+   genuinely a conclusion, and as corroboration where it is not. Beat 16 is corroborated
+   by Miller's own etymology about thirty seconds into the beat 18 segment; beat 34's
+   vocabulary split is stated on tape by Moss inside beat 4.
+
+A beat is **`unwritable`** where none of the three reaches the beat's **reason to
+belong** — not merely its subject. That distinction is §5a of this report doing its job
+a second time: the same narrowness that stopped beats 16 and 30 moving on good tape is
+what makes beats 23, 27 and 33 unwritable while their subjects stay perfectly
+discussable.
+
+**The result, and its shape matters more than the count.**
+
+| | empty (20) | thin (9) |
+|---|---|---|
+| **writable** from what we have, no new citation | **3** — 16, 20, 40 | 0 |
+| **writable†** — needs one source the corpus does not contain | **16** | **7** |
+| **unwritable** | **1** — 33 | **2** — 23, 27 |
+
+**Nineteen of the twenty empty beats are writable, and sixteen of those nineteen carry a
+dagger.** The dagger is not a hedge. It means what §5f says an unfilled attribution slot
+means — **a generation-blocking condition, not a warning** — so a dagger row is a
+citation to obtain before a script can be voiced, and the sixteen of them together are
+the largest single queue of work this report has produced. **The honest reading is that
+this Foray's narration problem is not primarily a writing problem. It is sixteen
+citations.**
+
+### 10c. Acts I and II — four beats
+
+| beat | verdict | structure | mode | provenance | writable | budget |
+|---|---|---|---|---|---|---|
+| **2** — smoke as preservation | thin | chain link | **Carry**, not Patch — its candidate stays on beat 15 | by-default (open) | writable† | **1,360** |
+| **3** — the low-and-slow bargain | empty | chain link | Carry, 45–110 s | by-default (open) | writable† | 1,360 |
+| **6** — a whole animal needs a crowd | thin | chain link | Patch **if** `#700` is assigned here rather than to beat 14; Carry if not | by-default (open) | writable† | 780 / **1,360** |
+| **7** — feeding a crowd is authority | thin | chain link | Patch, placed **ahead** of the tape | — | writable† | 780 |
+
+**What R3 would have to name.**
+
+- **Beat 2.** The preservation mechanism is uncontested food science — water activity,
+  the surface pellicle, the antimicrobial and antioxidant action of phenols and organic
+  acids — and the spine supplies the worked examples plus the *boucan*-to-buccaneer
+  record, which is datable. **No food-science source is named anywhere in this corpus**,
+  so the on-air citation is the dagger. This beat and beat 3 are the two places where
+  the missing source is a textbook rather than a scholar, which is the cheapest kind of
+  dagger to clear.
+- **Beat 3.** The same shape, and the mechanism is dense enough that R2 is safe by
+  construction: collagen to gelatin, the two clocks, the evaporative stall, what
+  wrapping does about it, Maillard and the bark, why smoke deposits on a moist surface.
+  A script built from those cannot be relocated to another beat. `narration-craft.md`
+  §5e uses this beat's own claim as its U1 exemplar — *"collagen converts to gelatin
+  above about seventy degrees"* — and the clause that licenses U1 is "**and a named
+  source supports it**", which is the half we do not have.
+- **Beat 6.** Pre-refrigeration meat economics, the fuel and labour arithmetic of a
+  whole carcass, and why the feast *is* the storage technology. The SYSK cut states the
+  economics and states them well, but at low authority and LOCATE-REQUIRED, so a Patch
+  that leans on it inherits both problems.
+- **Beat 7.** The missing half is everything before America — sacrifice and
+  distribution, hospitality obligation, patronage through meat — and the beat exists so
+  that the power clause arrives *before* Act IV. So this is the one Patch in the report
+  with a placement requirement as strict as its content requirement: written after the
+  tape it is useless, because the tape is 19th-century American electioneering and the
+  Patch is what stops that reading as the origin of the pattern rather than one instance
+  of it.
