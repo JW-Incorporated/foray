@@ -71,7 +71,7 @@ const FLOORS = {
      are all a single line from reverting: the surface reconciles against the
      element on becoming visible, the reconcile never starts audio, and a
      position nobody could read is never written down. */
-  "player/transport-reconcile.test.js": 23,
+  "player/transport-reconcile.test.js": 25,
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
