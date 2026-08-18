@@ -746,37 +746,29 @@ test("on a real clock the boundary fires and never clips, at every phase of a ti
   t.diagnostic(`the fine timer beat the tick outright in ${decisive}/${PHASE_SWEEP_WALL_SEC.length} runs`);
 });
 
-test("on a real clock the boundary fires and never clips at 2x either, at every phase of a tick", async (t) => {
+test("on a real clock the boundary fires and never clips at 2x either", async (t) => {
   /* At 2x one timeupdate is half a second of CONTENT — a whole sentence. What is
-     ASSERTED here is only what a real clock can show and load cannot break: the
-     boundary fires at 2x and does not stop short. That the fine timer's CONTENT
-     window stays flat as the rate rises is proved as arithmetic below, with no
-     clock, which is where that claim belongs.
+     asserted here is only what a real clock can show and load cannot break: the
+     boundary fires at 2x and does not stop short.
 
-     SWEPT ACROSS A TICK, like the 1x run above, since the speed control shipped
-     (2026-08-17). A lone target can make any implementation look good by luck of
-     alignment — that is the lesson `PHASE_SWEEP_WALL_SEC` was written down for —
-     and the whole question "is 2x worse than 1x at the boundary?" is a question
-     about the WORST phase, so measuring one phase at 2x against four at 1x could
-     not answer it. The two tests now print comparable numbers from the same run,
-     which is what makes the comparison in the PR body a measurement rather than
-     an argument. */
-  let decisive = 0;
-  let worst = 0;
-  for (const wallSec of PHASE_SWEEP_WALL_SEC) {
-    const r = await measureBoundary(wallSec, 2);
-    const naive = assertBoundaryHeld(r);
-    if (naive === null) decisive++;
-    worst = Math.max(worst, r.overshoot);
-    t.diagnostic(
-      `2x boundary ${r.target.toFixed(2)}: overshoot ${(r.overshoot * 1000).toFixed(0)}ms vs a bare ` +
-      `timeupdate check's ${naive === null ? "(no tick ever saw the boundary)" : `${(naive * 1000).toFixed(0)}ms`}` +
-      ` — ${r.ticks.length} ticks delivered`
-    );
-  }
+     DELIBERATELY STILL ONE RUN, not the four-phase sweep the 1x case gets, and
+     that is a decision rather than an oversight (2026-08-17, with the speed
+     control). Sweeping the phase HERE was drafted and then taken out: it doubled
+     this file's real-clock boundary runs from five to eight, on the one suite that
+     has already reddened CI at random for a day, and it bought nothing — because
+     "how much does 2x overshoot, and is it worse than 1x?" is now answered on a
+     DRIVEN clock further down, exactly and identically on every box, across five
+     phases and all six ladder stops. A busy box cannot change those numbers and
+     could only ever have made these ones louder.
+
+     The rule this follows is the section header's own: a test may assert an
+     ordering on a real clock, but not a duration. The ordering is here; the
+     durations are on the driven clock. */
+  const r = await measureBoundary(0.82, 2);
+  const naive = assertBoundaryHeld(r);
   t.diagnostic(
-    `2x: worst overshoot ${(worst * 1000).toFixed(0)}ms of content; the fine timer beat the tick ` +
-    `outright in ${decisive}/${PHASE_SWEEP_WALL_SEC.length} runs`
+    `2x boundary ${r.target.toFixed(2)}: overshoot ${(r.overshoot * 1000).toFixed(0)}ms vs a bare ` +
+    `timeupdate check's ${naive === null ? "(no tick ever saw the boundary)" : `${(naive * 1000).toFixed(0)}ms`}`
   );
 });
 
@@ -938,6 +930,218 @@ test("an out-point already behind the playhead arms no timer, at any rate", () =
     assert.deepStrictEqual(
       armedFineDelaysMs({ at: 200, outPoint: 100.5, rate }), [],
       `${rate}x: the playhead is past it, so there is no crossing to wait for`
+    );
+  }
+});
+
+/* ---------- overshoot at 1x vs the top speed, on a DRIVEN clock ----------
+
+   The real-clock sweeps above cannot answer "is the boundary worse at 2x?", and
+   measuring them harder is the wrong instinct. Four runs of the same two sweeps
+   on this box gave a 1x worst of 354 / 197 / 183 ms and a 2x worst of 80 / 710 /
+   944 / 147 ms — an order of magnitude of run-to-run spread in both columns, with
+   the 944 ms sample landing exactly on what a bare tick check would have cost in
+   that same run. That is the box, not the product: two independently scheduled OS
+   timers decorrelate at the tail (see the section header, and the 1,825 ms tick
+   that made this file flaky once already).
+
+   So the question moves to a clock nothing else can touch. Everything below is
+   driven event by event: the wall clock is a variable, `timeupdate` is fired at
+   an exact spacing, and the fine timer is delivered at its due time plus a fixed
+   latency. There is no `setInterval`, no OS timer, and no way for a busy box to
+   change a single number — the same discipline as the arithmetic tests, extended
+   to cover the COARSE stage as well, which is the stage rate actually hurts.
+
+   WHAT IT MEASURES, and why it is the honest form of the claim. Content overshoot
+   is `wall lateness x rate`, so no timer-based boundary can make 2x numerically
+   identical to 1x. What CAN be true, and is what "no worse" has to mean, is that
+   the lateness being multiplied is the FINE timer's (single-digit to tens of ms)
+   rather than the COARSE stage's (up to 1,825 ms measured). Under the fine stage
+   2x costs tens of milliseconds; under the coarse stage it costs seconds and is
+   strictly worse than 1x. These tests pin which of the two is in force. */
+
+/** An `<audio>` whose playhead is a pure function of a clock the test owns. */
+class DrivenAudio {
+  constructor({ at, rate, nowMs }) {
+    this.listeners = new Map();
+    this.src = ""; this.currentSrc = "";
+    this.duration = 3600;
+    this.playbackRate = rate;
+    this.volume = 1;
+    this.preload = "none";
+    this.readyState = 4;
+    this.error = null;
+    this.paused = false; // already rolling, so the fine watch may arm
+    this.calls = [];
+    this.playResult = Promise.resolve();
+    this._nowMs = nowMs;
+    this._base = at;
+    this._t0 = nowMs();
+  }
+  get currentTime() { return this._base + ((this._nowMs() - this._t0) / 1000) * this.playbackRate; }
+  set currentTime(v) { this._base = v; this._t0 = this._nowMs(); this._fire("seeked"); }
+  addEventListener(t, fn) {
+    if (!this.listeners.has(t)) this.listeners.set(t, new Set());
+    this.listeners.get(t).add(fn);
+  }
+  removeEventListener(t, fn) { this.listeners.get(t)?.delete(fn); }
+  _fire(t) { for (const fn of [...(this.listeners.get(t) ?? [])]) fn(); }
+  load() { this.calls.push("load"); }
+  play() { this.calls.push("play"); this.paused = false; return this.playResult; }
+  pause() { this.calls.push("pause"); this.paused = true; }
+  removeAttribute(a) { this.calls.push(`removeAttribute:${a}`); this.src = ""; }
+}
+
+/**
+ * Run one boundary to completion on a clock the test advances by hand.
+ *
+ * @param {object} o
+ * @param {number} o.rate             the ladder stop under test
+ * @param {number} o.tickMs           WALL spacing of `timeupdate`
+ * @param {number} o.contentSec       how much CONTENT sits between the in-point and
+ *                                    the boundary
+ * @param {number} o.phaseMs          when the first tick lands, so the boundary can
+ *                                    fall anywhere between two ticks
+ * @param {number} [o.timerLatencyMs] how late the fine timer is delivered
+ * @returns {{ overshootSec: number, stoppedBy: string, wakes: number }}
+ */
+function drivenBoundary({ rate, tickMs, contentSec, phaseMs, timerLatencyMs = 10 }) {
+  let nowMs = 0;
+  const IN = 100;
+  const el = new DrivenAudio({ at: IN, rate, nowMs: () => nowMs });
+  const boundary = IN + contentSec;
+
+  /** The single pending fine timer, as the backend's own `setTimeout` contract:
+      one is armed, cleared, and re-armed, never two at once. */
+  let pending = null;
+  let nextId = 1;
+  const realSetTimeout = globalThis.setTimeout;
+  const realClearTimeout = globalThis.clearTimeout;
+  globalThis.setTimeout = (fn, ms) => {
+    const id = nextId++;
+    pending = { id, due: nowMs + ms + timerLatencyMs, fn };
+    return id;
+  };
+  globalThis.clearTimeout = (id) => { if (pending && pending.id === id) pending = null; };
+
+  const ends = [];
+  let stoppedBy = null;
+  try {
+    const b = new HtmlAudioBackend({ element: el });
+    b.onItemEnded = (reason) => ends.push(reason ?? "natural");
+    b.setOutPoint(boundary);
+
+    let nextTick = phaseMs;
+    let wakes = 0;
+    // A ceiling on the simulation, not a budget: ten tick intervals past the
+    // boundary is far longer than any correct implementation needs, and reaching
+    // it means the boundary never fired at all.
+    const cap = contentSec / rate * 1000 + tickMs * 10;
+    while (!ends.length && nowMs <= cap) {
+      const tickDue = nextTick;
+      const timerDue = pending ? pending.due : Infinity;
+      if (timerDue <= tickDue) {
+        nowMs = timerDue;
+        const fn = pending.fn;
+        pending = null;
+        wakes++;
+        stoppedBy = "fine";
+        fn();
+      } else {
+        nowMs = tickDue;
+        nextTick += tickMs;
+        stoppedBy = "tick";
+        el._fire("timeupdate");
+      }
+    }
+    return {
+      overshootSec: b.lastOutPointOvershootSec,
+      stoppedBy: ends.length ? stoppedBy : "nothing",
+      wakes,
+    };
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+    globalThis.clearTimeout = realClearTimeout;
+  }
+}
+
+/** Phases across one tick interval, so no result depends on a lucky alignment. */
+const DRIVEN_PHASES = [0.1, 0.3, 0.5, 0.7, 0.9];
+
+/** The worst overshoot any phase produces for one (rate, tickMs) pair. */
+function worstDriven({ rate, tickMs, contentSec = 3 }) {
+  let worst = { overshootSec: -1 };
+  for (const frac of DRIVEN_PHASES) {
+    const r = drivenBoundary({ rate, tickMs, contentSec, phaseMs: Math.round(tickMs * frac) });
+    assert.equal(r.stoppedBy !== "nothing", true, `${rate}x / ${tickMs}ms ticks: the boundary never fired`);
+    if (r.overshootSec > worst.overshootSec) worst = r;
+  }
+  return worst;
+}
+
+/** The widest `timeupdate` interval this repo has actually recorded, against a
+    250 ms nominal. `OUT_POINT_ARM_LEAD_SEC` is sized off exactly this number. */
+const WORST_RECORDED_TICK_MS = 1825;
+
+test("with the worst recorded tick, the FINE stage stops the boundary at every speed", (t) => {
+  /* THE ASSERTION THAT PAYS FOR THE LEAD. A tick 1,825 ms wide is the measured
+     worst case; if the fine stage is not armed inside it, the item is stopped by
+     the tick itself and the overshoot is that lateness times the rate.
+
+     MUTATION THAT KILLS THIS: put `OUT_POINT_ARM_LEAD_SEC` back to 0.5. Every stop
+     below becomes `tick` instead of `fine` and this fails at the first speed. */
+  for (const rate of [0.75, 1, 1.25, 1.5, 1.75, 2]) {
+    const worst = worstDriven({ rate, tickMs: WORST_RECORDED_TICK_MS });
+    assert.equal(
+      worst.stoppedBy, "fine",
+      `at ${rate}x a ${WORST_RECORDED_TICK_MS}ms tick stopped the item instead of the fine timer — ` +
+      `overshoot ${(worst.overshootSec * 1000).toFixed(0)}ms of content`
+    );
+    t.diagnostic(`${rate}x: worst overshoot ${(worst.overshootSec * 1000).toFixed(0)}ms of content`);
+  }
+});
+
+test("the top speed's overshoot is the fine timer's latency times the rate, not a tick's", (t) => {
+  /* "No worse at 2x than at 1x", in the only form that can be true of a
+     timer-based boundary. Content overshoot IS `wall lateness x rate`, so what has
+     to hold is that the lateness being multiplied is the fine timer's 10 ms and
+     not the coarse stage's 1,825 ms. At 2x that is 20 ms of content, against the
+     250 ms a bare tick check costs at 1x on a HEALTHY tick — so the top of the
+     ladder stays inside the 1x cost of the implementation this backend replaced.
+
+     Driven clock, so the numbers are exact and identical on every box. MUTATION
+     THAT KILLS THIS: lead back to 0.5 (2x becomes 1,650 ms), or drop the `/ rate`
+     from `_scheduleFineWatch` (2x becomes ~1,500 ms). */
+  const LATENCY_MS = 10;
+  const NOMINAL_TICK_MS = 250;
+  for (const tickMs of [NOMINAL_TICK_MS, WORST_RECORDED_TICK_MS]) {
+    const one = worstDriven({ rate: 1, tickMs });
+    const top = worstDriven({ rate: 2, tickMs });
+    t.diagnostic(
+      `${tickMs}ms ticks — 1x: ${(one.overshootSec * 1000).toFixed(0)}ms, ` +
+      `2x: ${(top.overshootSec * 1000).toFixed(0)}ms of content`
+    );
+    /* THE MECHANISM, EXACTLY. A wake `LATENCY_MS` late spills `LATENCY_MS x rate`
+       of content, plus whatever the `Math.ceil` on the armed wall delay rounded up
+       — at most one further millisecond of wall clock, so `rate` more of content.
+       Compared in whole milliseconds because the quantity is a float product of
+       integers and `0.022 <= 0.022` is a coin-flip in binary; the numbers
+       themselves are exact and identical on every box. */
+    const ms = (sec) => Math.round(sec * 1000);
+    const budget = (rate) => (LATENCY_MS + 1) * rate;
+    assert.ok(
+      ms(top.overshootSec) <= budget(2),
+      `2x overshot ${ms(top.overshootSec)}ms — more than a late fine wake can account for (${budget(2)}ms)`
+    );
+    // And the top of the ladder stays under what one HEALTHY tick costs at 1x,
+    // which is the cost of the naive implementation this stage exists to beat.
+    assert.ok(
+      ms(top.overshootSec) < NOMINAL_TICK_MS,
+      `2x overshot ${ms(top.overshootSec)}ms, past a whole nominal tick`
+    );
+    assert.ok(
+      ms(one.overshootSec) <= budget(1),
+      `1x must be the same mechanism, unmultiplied — ${ms(one.overshootSec)}ms against ${budget(1)}ms`
     );
   }
 });
