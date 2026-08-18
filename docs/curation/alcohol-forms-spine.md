@@ -51,9 +51,9 @@ into a Foray.
 > the same organism: yeast eating sugar. The thousands of drinks are not
 > thousands of inventions — they are the answers to four questions asked in
 > order, and the whole taxonomy is a decision tree, not a catalogue. Where did
-> the sugar come from, and did it have to be unlocked first? How far was the
-> yeast allowed to go? Was the result concentrated? And what was added or done to
-> it while it waited? Learn to ask those four in that order and you can place a
+> the sugar come from, and did it have to be unlocked first? What converted it, and
+> how far was the yeast allowed to go? Was the result concentrated? And what was
+> added or done to it while it waited? Learn to ask those four in that order and you can place a
 > drink you have never heard of, which is what "educates me" actually asks for.**
 
 The four questions, stated once here because the entire document is their
@@ -65,10 +65,10 @@ expansion:
    fructan rather than starch. This question alone splits the fermented world in
    two, and Acts II and III are its two halves.
 2. **What converts it, and how far can it go?** Yeast, mostly one domesticated
-   species, which makes a poison it eventually cannot survive. That gives a hard
+   species, which makes a poison it eventually cannot survive. That gives a
    ceiling near 14 to 16 % ABV, and that number is the load-bearing constant of
-   the subject: it is why every drink above about 16 % had to be either
-   concentrated or fortified.
+   the subject: it is why every drink above about 16 % had to be concentrated,
+   fortified, or fermented by one of the specialised routes beat 5 enumerates.
 3. **Was it concentrated?** Distillation is the second operation, it separates
    rather than creates, and it is the fork between the fermented drinks and the
    spirits. It is also historically recent — most of the world's drinking is
@@ -124,10 +124,10 @@ assembly.
 **The families are a fan. The inside of each family is a chain.** Wine, beer,
 sake, rum and sherry do not descend from one another — a listener who never hears
 the mead beat has missed a stop, not a link. But *inside* the beer family the
-beats are malt, then mash, then hops, then yeast, in that order, because that is
-the order the process happens in. Drop the mash beat and the listener is left
-holding an explanation with a hole in the middle of it, which is much worse than
-a missing family.
+beats run the sequence itself, then hops, then yeast, then water, in that order,
+because that is the order the decisions are made in. Drop the hops beat and the
+listener is left holding an explanation with a hole in the middle of it, which is
+much worse than a missing family.
 
 So the coverage report has three grades of hole, not two:
 
@@ -147,9 +147,9 @@ through V are the safest.**
 |---|---|---|---|
 | I — One molecule, four questions | 1–16 | **chain**, causal | each beat is required by the one before; nothing here is skippable |
 | II — Sugar that was already sweet | 17–25 | **fan** of families, **chain** inside wine (17–21) | the first question answered the easy way |
-| III — Sugar that had to be unlocked | 26–35 | **fan** of families, **chain** inside beer (26–31) and koji (32–33) | the same physics, one extra step, and most of the world's drinking |
+| III — Sugar that had to be unlocked | 26–35 | **fan** of families, **chain** inside beer (26–30) and koji (32–33) | the same physics, one extra step, and most of the world's drinking |
 | IV — Concentration | 36–51 | beat 36 is a **chain** link; 37–51 a **fan** by feedstock, with a **chain** inside whisky (37–40) | one machine, applied to everything already met |
-| V — Made by addition | 52–60 | beat 52 is a **chain** link; 53–56 a **chain** by *when* the spirit goes in; 57–60 a **fan** | the categories that are not a fermentation at all |
+| V — Made by addition | 52–60 | beat 52 is a **chain** link; 53–55 a **chain** by *when* the spirit goes in; 56 is the hinge out; 57–60 a **fan** | the categories that are not a fermentation at all |
 | VI — The rules, and the coda | 61–63 | **chain**, closing | what the listener now holds, and how much of it is statute rather than chemistry |
 
 Four notes on the seams, all of which are assembly instructions as much as
@@ -171,12 +171,15 @@ editorial ones.
   rule from the barbecue spine, applied more often because there are more fans. An
   unannounced move from mead to sap wines reads as the narrative losing its place;
   announced, it reads as the next branch of the key.
-- **Acts IV and V are ordered by process, not by prestige or geography.** Act IV
-  runs feedstock by feedstock in the order Acts II and III established — grain
-  first because Act III just left the listener holding malting and koji, then
-  cane, then fruit, then agave, then the rest — so that every spirit arrives as
-  "the thing you already met, concentrated." A listener will try to infer a
-  principle from the order and will be misled by an arbitrary one. Do not reorder
+- **Acts IV and V are ordered by process, not by prestige or geography.** Act IV's
+  order is: grain first, because Act III has just left the listener holding
+  malting; then the two categories the column still brought into existence and
+  which have no characteristic feedstock at all, vodka and gin; then cane, agave
+  and fruit; then the East Asian grain spirits, which have to wait until beats 32
+  and 33 are behind them; then botanical, palm and the margins. Every spirit
+  therefore arrives as "the thing you already met, concentrated." A listener will
+  try to infer a principle from the order and will be misled by an arbitrary one,
+  so if this act is reordered the principle has to be restated here. Do not reorder
   Act IV into a tour of famous brown spirits.
 
 ### 2c. Where history goes, and the rule that keeps it there
@@ -193,32 +196,43 @@ Foray. The places where the history genuinely *is* the mechanism, and where it
 therefore lives:
 
 - the alchemists' alembic, and what distillation was originally *for* — beat 36;
-- the continuous column still, 1813 to 1831, which is the single most
-  consequential machine in the subject — beat 12;
+- the continuous column still, worked out between about 1801 and 1830, which is
+  the single most consequential machine in the subject — beat 12;
 - pure yeast culture and artificial refrigeration, which is why lager could leave
   Bavaria — beats 4 and 28;
 - phylloxera, which is why nearly every vine on earth is now a graft — beat 21;
-- the shipping problems that invented brandy, port and madeira — beats 45, 53, 55;
+- the shipping problems that invented brandy and madeira — beats 45 and 55;
 - the post-war Korean rice ban, which is why mass-market soju is not distilled
   from rice — beat 48;
 - the statutes that define whole categories, which are production specifications
   wearing legal clothing — beat 61;
-- the tax hydrometer, which is why so much of the world's spirit sits at 40 % —
-  beat 62.
+- the revenue hydrometer and the minimum bottling strengths built around it,
+  which is why so much of the world's spirit sits at 40 % — beat 62.
 
-That is the touch of history, and it is about eight per cent of the runtime
-distributed across process beats rather than gathered into an act. Gathering it
-into an act is precisely what would let it grow, because the tape for it is
+That is the touch of history, and it is worth counting honestly rather than
+reassuringly. The beats where a historical fact carries most of the claim — 21, 36,
+38, 48 and 62 — come to 7.7 % between them, and the historical halves of beats 4,
+12, 20, 27, 28, 42, 45, 55, 59 and 61 take the real figure to something nearer
+15 %. So history is a substantial minority of this Foray, and the discipline is not
+its quantity: it is that all of it sits inside process beats rather than gathered
+into an act, and that every piece of it passes the test above. Gathering it into an
+act is precisely what would let it grow past that, because the tape for it is
 abundant and the tape for mash-tun chemistry is not.
 
 **The named drift risk.** In this subject the Welsh bakestone is **prohibition and
 temperance**. It is dramatic, heavily covered, adjacent to every beat, and it
 explains almost no production fact. It is not a beat. It is named in §6b so the
 boundary is written down, and the only prohibition-shaped material that may enter
-this Foray is material that explains a *process* — the Korean rice ban at beat 48,
-bottled-in-bond at beat 61, the collapse and re-composition of specific
-categories at beat 61 — and it enters those beats as evidence, not as its own
-subject.
+this Foray is material that explains a *process*: the Korean rice ban at beat 48,
+bottled-in-bond at beat 39, the 18th-century London gin panic at beat 42 in so far
+as it explains why that category rests on a purchased neutral base, and the
+collapse and re-composition of specific categories at beat 61. It enters those
+beats as evidence for those beats' claims, never as its own subject. **Beat 59's
+account of the absinthe bans is licensed by a different rule and not by this one**
+— §3 requires a mythologised claim to be corrected wherever the spine rests on it,
+and correcting this one means saying what the bans actually tracked. That
+distinction matters, because otherwise beat 59 becomes the precedent by which
+temperance tape argues its way into everything else.
 
 The second drift risk is **cocktails**, for the same reason: abundant, adjacent,
 and about assembly in a glass rather than about how any of it was made.
@@ -227,7 +241,8 @@ and about assembly in a glass rather than about how any of it was made.
 
 ## 3. The beats
 
-**63 beats.** §4a derives that number rather than choosing it. Each has four
+**63 beats.** §4a sets out the arithmetic that brackets the number, and marks the
+one step in it that is a judgement rather than a derivation. Each beat has four
 fields.
 
 - **Claim** — the specific thing this beat asserts. This is what tape is scored
@@ -271,10 +286,11 @@ ends pointed at the fan, which is what beat 16 is for.
 #### 1. There are many alcohols and we drink exactly one of them, for a reason
 
 **Claim.** "Alcohol" in chemistry is a whole family of compounds, we drink only
-ethanol, and the reason is metabolic rather than cultural: the enzymes that break
-down ethanol turn methanol into formic acid and the longer alcohols into worse
-things, so ethanol is the one our biochemistry happens to tolerate at recreational
-doses — and every drink in this Foray is essentially the same ethanol and water,
+ethanol, and the reason is metabolic rather than cultural: the same enzyme that
+breaks ethanol down turns methanol into formaldehyde and then formic acid, which
+acidifies the blood and destroys the optic nerve, while the other alcohols carry
+hazards of their own, so ethanol is the one our biochemistry happens to tolerate at
+recreational doses — and every drink in this Foray is essentially the same ethanol and water,
 differing in a fraction of a percent of everything else.
 
 **Why it belongs.** It is the beat that makes the whole spine's promise credible:
@@ -287,7 +303,9 @@ specific mechanism, which beat 13 collects on.
 **Evidence that counts.** A chemist, food scientist or distiller stating the
 distinction and the numbers: the hydroxyl group and what makes an alcohol an
 alcohol, ethanol versus methanol versus isopropanol, alcohol dehydrogenase acting
-on both, formaldehyde and formic acid as the reason methanol blinds and kills. The
+on all three, formaldehyde and formic acid as the reason methanol blinds and kills,
+and the contrast with isopropanol, which oxidises to acetone and sedates without
+producing the same acidosis. The
 strongest version also states the proportion plainly — that a spirit is
 approximately 40 % ethanol, 60 % water and a fraction of a percent of congeners,
 and that the fraction is where all the argument is. Reject: tasting-note
@@ -300,8 +318,8 @@ vocabulary, and "alcohol is a depressant" pharmacology, which is §6b.
 **Claim.** One molecule of glucose becomes two of ethanol and two of carbon
 dioxide — the yeast is extracting energy without needing oxygen, ethanol is the
 dead end it excretes, and the reaction has a fixed theoretical yield of about
-51 % of the sugar's weight as ethanol, of which real ferments deliver roughly 48 %
-because some sugar goes to yeast biomass and glycerol instead.
+51 % of the sugar's weight as ethanol, of which real ferments deliver roughly 46 to
+48 % because some sugar goes to yeast biomass and glycerol instead.
 
 **Why it belongs.** This is the shared chemistry the whole through-line rests on,
 and stating it as an equation rather than as a mood is what lets every later beat
@@ -315,8 +333,8 @@ scientist working through the pathway out loud: glycolysis, pyruvate,
 decarboxylation to acetaldehyde, reduction to ethanol, and the CO2 accounting.
 Strong signal: someone who corrects the common simplification that fermentation
 only happens without oxygen — a well-fed yeast ferments in air as well, and needs a
-little oxygen early to build its own cell membranes, so "anaerobic" is a
-convenience rather than a rule. Also strong: gravity or Brix or Plato used as a
+little oxygen early to build the sterols and unsaturated fatty acids its membranes
+are made of, so "anaerobic" is a convenience rather than a rule. Also strong: gravity or Brix or Plato used as a
 working instrument, with the conversion to expected ABV done aloud. Reject:
 "yeast turns sugar into alcohol" with no mechanism and no numbers — that is a
 label, not this beat.
@@ -363,9 +381,8 @@ happened to something that could be repeated.
 **Why it belongs.** It answers the question a listener will otherwise carry
 through the whole Foray: if it is all the same reaction, why does it taste
 different? Because the organism is a variable, and because before 1883 it was an
-uncontrolled one. It is also the first of the three genuine history-is-mechanism
-beats in Act I — the ancestor of every consistent industrial drink is a pure
-culture — and it sets up beat 10, beat 28 and beat 30, which is the branch of
+uncontrolled one. It is also the first of Act I's two genuine history-is-mechanism
+beats — the ancestor of every consistent industrial drink is a pure culture — and it sets up beat 10, beat 28 and beat 30, which is the branch of
 brewing that deliberately gives the control back.
 
 **Evidence that counts.** A yeast scientist, brewer or historian of science on
@@ -384,10 +401,12 @@ yeast anecdote with no genetics and no consequence.
 
 **Claim.** Ethanol is toxic to the organism producing it, so most fermentations
 stall somewhere between 14 and 16 % ABV whatever sugar remains — which means every
-drink stronger than that on earth got there by one of exactly three routes:
-distillation, fortification with spirit, or a specialised high-tolerance process,
-of which sake's staged fermentation reaching about 18 to 20 % before dilution is
-the world's most successful example.
+drink stronger than that on earth got there by one of exactly four routes:
+distillation, fortification with spirit, a specialised high-tolerance process — of
+which sake's staged fermentation reaching about 18 to 20 % before dilution is the
+world's most successful example — or freeze concentration, which takes the water out
+as ice rather than as vapour and is how eisbock and traditional applejack get where
+they get.
 
 **Why it belongs.** This is the load-bearing constant of the through-line and the
 single most useful fact in the Foray. It is what makes the taxonomy a decision
@@ -401,8 +420,9 @@ listener has no way to know why anyone bothered inventing a still.
 explaining ethanol tolerance mechanically — membrane stress, why some strains
 tolerate more, why stuck fermentations happen and what a producer does about them —
 and stating the ceiling as a number. Strong signal: someone enumerating the ways
-around it, and getting sake right as an unusually high fermentation rather than
-as a fortified or distilled drink. Also strong: the reverse case, where a producer
+around it, getting sake right as an unusually high fermentation rather than as a
+fortified or distilled drink, and treating freezing as a genuine fourth route
+rather than as a curiosity. Also strong: the reverse case, where a producer
 *wants* the yeast to stop early and uses cold, sulphur, filtration or spirit to
 stop it. Reject: any claim of a naturally fermented 25 % drink, and unexamined use
 of "wine" for things well above the ceiling.
@@ -442,8 +462,9 @@ chemistry.
 
 **Claim.** The European and Middle Eastern answer to locked starch is to let the
 grain begin to germinate and then stop it — steeping, sprouting, kilning — because
-a sprouting seed manufactures the amylase enzymes needed to break its own starch
-down, so the maltster is harvesting enzymes rather than flavour; and then mashing
+a sprouting seed manufactures alpha-amylase and mobilises the beta-amylase already
+stored in the resting grain, so the maltster is harvesting enzymes rather than
+flavour; and then mashing
 at a chosen temperature between about 63 and 70 °C decides how completely those
 enzymes work, which is a direct dial between a thin fermentable wort and a fuller
 sweeter one.
@@ -467,7 +488,7 @@ flavour adjective.
 
 **Share.** 2.0 % (~3.0 min).
 
-#### 8. East Asia's answer was to hire a mould, and it is a better technology than malting
+#### 8. East Asia's answer was to hire a mould, and it reaches strengths malting cannot
 
 **Claim.** Instead of germinating the grain, the koji and qu traditions grow a
 filamentous mould — principally *Aspergillus oryzae* in Japan, a mixed culture in
@@ -490,7 +511,8 @@ not, the distinction between Japanese single-organism koji and Chinese and Korea
 mixed starters that carry yeasts and lactic bacteria along with the moulds, and
 why parallel conversion and fermentation raises the achievable strength. Strong
 signal: *A. oryzae* named as a domesticated relative of a toxin-producing wild
-species, and what domestication removed. Reject: koji as a chef's umami
+species, and what domestication did to it — the aflatoxin genes are still there and
+no longer work, rather than gone. Reject: koji as a chef's umami
 ingredient with no mention of starch, which is a real and different subject.
 
 **Share.** 1.6 % (~2.4 min).
@@ -502,7 +524,8 @@ same amylase and chewing grain was a working industrial process for chicha and
 several Amazonian and Pacific brews; heat alone will hydrolyse agave's fructans,
 which is why tequila and mezcal begin in an oven rather than with an enzyme; and
 industrial producers today simply buy purified enzymes or use acid, which is how
-most of the world's cheap spirit and adjunct beer is actually made.
+a great deal of the world's cheap spirit is made, and how adjunct beer is made
+wherever the malt's own surplus enzyme will not cover the adjunct.
 
 **Why it belongs.** It completes question one, and completeness here is what makes
 the classification key at beat 16 trustworthy — a key with three routes in it
@@ -513,8 +536,9 @@ Cut it and both of those beats have to stop and explain chemistry mid-family.
 
 **Evidence that counts.** A food scientist, anthropologist or producer on any of
 the three: salivary amylase and what chewing accomplishes, treated as process
-rather than as a shock fact; thermal hydrolysis of inulin and fructans and why
-cooking agave for hours or days is a conversion step and not just softening; and
+rather than as a shock fact; thermal hydrolysis of the agave's fructans —
+inulin-type but branched, and not the same molecule as chicory inulin — and why
+cooking for hours or days is a conversion step and not just softening; and
 exogenous enzymes and acid hydrolysis in industrial fermentation, stated plainly
 rather than as a scandal. Any one of the three advances the beat; two is strong.
 Reject: "they chew it, isn't that gross" with no enzymology, and any tape treating
@@ -555,8 +579,9 @@ flavour comes from an ingredient rather than from the ferment.
 **Claim.** A still separates rather than creates: ethanol boils at about 78 °C and
 water at 100, so the vapour above a heated wash is richer in alcohol than the
 liquid, and repeating that enrichment is all distillation is — but the enrichment
-runs out, because at roughly 95 to 96 % ethanol the mixture boils as though it were
-a single substance and no amount of ordinary distilling will pass that point.
+runs out, because at about 95.6 % ethanol by weight — roughly 97 % by volume — the
+mixture boils as though it were a single substance, and no amount of ordinary
+distilling will pass that point.
 
 **Why it belongs.** It is the mechanism of the third question, and stating it as
 separation rather than as transformation kills the single most common
@@ -573,7 +598,10 @@ increase and repeated passes give more, the constant-boiling mixture and its
 approximate composition, and what has to be done — drying agents, molecular
 sieves, azeotropic distillation — to get past it. Strong signal: a correction of
 the "the alcohol boils off first" picture, since that picture is wrong in a way
-that matters. Reject: still tours, copper mysticism, and any explanation that has
+that matters. Also strong: freeze concentration set beside distillation as the
+other way to concentrate a ferment — separation without heat, and the fourth route
+beat 5 names — because the contrast is what makes distillation's own mechanism
+legible. Reject: still tours, copper mysticism, and any explanation that has
 alcohol being created.
 
 **Share.** 1.8 % (~2.7 min).
@@ -583,8 +611,10 @@ alcohol being created.
 **Claim.** A pot still is a batch device that gives a small number of enrichment
 stages, so it carries much of the wash's character forward; a continuous column
 gives dozens of stages in one pass and can be run to near-neutral spirit; and the
-column's arrival — Cellier-Blumenthal's 1813 patent, Robert Stein's and Aeneas
-Coffey's designs of 1826 and 1830 — is the hinge on which vodka, gin, blended
+column's arrival — Édouard Adam's and Isaac Bérard's earlier stills of 1801 and
+1806, Cellier-Blumenthal's 1813 patent for the first true continuous column, then
+Robert Stein's and Aeneas Coffey's designs of 1826 and 1830 — is the hinge on which
+vodka, gin, blended
 whisky, light rum and industrial spirit all turn, which makes it the most
 consequential machine in the subject.
 
@@ -673,8 +703,8 @@ marketing, and "the barrel imparts notes of" with no mechanism.
 
 **Claim.** Maturation is a choice, and a large share of what the world drinks is
 built on declining it — vodka, most gin, blanco tequila, the overwhelming majority
-of beer, and most white wine are all products whose identity is that nothing was
-allowed to happen after fermentation or distillation — while the vessels chosen
+of beer, and most white wine are all products whose identity is that no deliberate
+maturation vessel was used after fermentation or distillation — while the vessels chosen
 instead are themselves process decisions: stainless steel for inertness, buried
 clay for the slow micro-oxygenation of Georgian qvevri and Iberian tinajas,
 concrete, and the bottle itself, where reductive ageing is a different chemistry
@@ -684,7 +714,8 @@ from oxidative ageing in wood.
 half the taxonomy is misfiled. It is also the beat that prevents the Foray from
 adopting the industry's own prejudice that wood equals quality, and it gives the
 listener a real analytic distinction — oxidative versus reductive ageing — that pays
-off in beats 53 and 54, where port and sherry are separated by precisely that.
+off inside beats 53 and 54, each of which splits internally on it: tawny against
+vintage, fino against oloroso.
 
 **Evidence that counts.** A winemaker, distiller or brewer arguing for a
 non-wood vessel or for no maturation at all, on mechanistic grounds: what
