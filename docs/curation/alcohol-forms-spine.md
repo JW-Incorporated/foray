@@ -1765,3 +1765,366 @@ unusual feedstock is worth the trouble, or explaining that it is not. Reject:
 weird-booze listicles, and any tape whose only content is that the drink exists.
 
 **Share.** 1.0 % (~1.5 min).
+
+---
+
+### Act V — Made by addition (chain link, a short chain, then a fan, 13.4 %)
+
+The fourth question, taken to its conclusion. These are the categories that are not
+a fermentation or a distillation but an *operation performed on* one — spirit added,
+sugar added, botanicals added — which makes them the one part of the taxonomy that
+cannot be derived from a feedstock at all, and therefore the part a listener is
+most likely to have permanently misfiled.
+
+Beat 52 is a **chain** link and must come first. Beats 53 to 56 are a **chain**
+ordered by *when* the spirit goes in, which is the variable that explains all of
+them. Beats 57 to 60 are a **fan**.
+
+#### 52. Fortification is a valve on fermentation, and when you open it decides whether the wine is sweet or dry
+
+**Claim.** Adding grape spirit to a fermenting wine raises the alcohol past the
+ceiling from beat 5 and kills the yeast on contact, which means the timing of the
+addition is the only variable that matters: add it while sugar remains and the wine
+stays sweet, wait until the yeast has finished and it is dry — and that single fact
+generates the entire fortified category, with port on one side, sherry on the other,
+and the sweet fortified muscats of southern France and Spain sitting alongside port
+on the same logic.
+
+**Why it belongs.** It is the most economical explanatory beat in the whole Foray:
+one mechanism, four famous drinks, and a listener who now understands why port is
+sweet and dry sherry is not without having memorised anything. It is also the third
+of the three routes past the ceiling that beat 5 promised and never demonstrated, so
+without it beat 5 is incomplete. Cut it and Act V has no chain link and the
+fortified wines become four house styles.
+
+**Evidence that counts.** A producer, cellar master or wine scientist on the
+mechanism and the timing: the strength of the added spirit and how much is used, why
+it stops fermentation rather than merely slowing it, residual sugar as the direct
+consequence of timing, and the alcohol levels the finished wines arrive at. Strong
+signal: two of the four categories contrasted explicitly on timing in one breath,
+since that contrast *is* the beat, plus the point that the spirit itself is a
+production choice — neutral grape spirit rather than a flavouring agent. Reject:
+category tours, and any tape that treats fortified wine as strong wine.
+
+**Share.** 1.7 % (~2.55 min).
+
+#### 53. Port fortifies early, so everything else about it is a race, and the styles are a maturation taxonomy
+
+**Claim.** Because the spirit goes in about halfway through fermentation to leave
+sugar behind, port has roughly two days to extract all its colour and tannin from
+the skins — which is why the traditional foot treading and the modern
+pumping-over tanks that imitate it exist, both being methods of maximising
+extraction against a clock — and once that is done the remaining decision is
+entirely beat 14's: long slow oxidative ageing in small casks gives the nutty
+tawny styles, while a short spell in large vessels followed by decades in a sealed
+bottle gives the reductive vintage styles, from the same wine.
+
+**Why it belongs.** It is beat 18 and beat 15 collected at once: maceration as a
+clock, and oxidative versus reductive ageing as the real distinction between two
+things sold under one name. That is a genuinely useful piece of education and it is
+almost never explained, since the category is usually presented as a hierarchy of
+prestige rather than as two different chemistries.
+
+**Evidence that counts.** A port producer or wine writer on the compressed
+extraction and the two ageing paths: the timing and strength of the spirit addition,
+treading and *lagares* and the mechanical systems built to replace them, why
+extraction speed is the binding constraint, and then the divergence — small oxidative
+casks and the resulting aldehyde and nutty character versus bottle ageing in the
+absence of oxygen. Strong signal: the oxidative and reductive distinction named as
+such and applied, and an honest statement that the two styles are made from
+comparable base wine. Reject: vintage-declaration and estate-history material, and
+serving advice.
+
+**Share.** 1.4 % (~2.1 min).
+
+#### 54. Sherry fortifies after the ferment finishes, and then does two completely different things with the result — one of them under a living film of yeast
+
+**Claim.** Sherry starts dry because the spirit arrives only after all the sugar is
+gone, and then splits on a genuinely remarkable mechanism: fortified to about 15 %,
+a film-forming yeast will grow across the wine's surface and live on it, consuming
+oxygen and alcohol and protecting the wine from oxidation to give the pale
+biologically aged styles; fortified higher, the film dies and the wine oxidises
+slowly instead to give the dark styles — and both are then aged not as vintages but
+in a cascade of casks where wine is drawn from the oldest and replaced from the next
+youngest, so every bottle is a blend of many years.
+
+**Why it belongs.** This is the best single case study in the entire Foray for
+question four, because it is the one place where maturation is performed by a living
+organism, and because the fractional-blending system is a production design nothing
+else in the subject matches. It also completes beat 15's oxidative-versus-reductive
+distinction with the most extreme available example, and any listener who
+understands this beat has genuinely learned the subject rather than a list.
+
+**Evidence that counts.** A sherry producer, capataz or wine scientist on the flor
+and the cascade: how the film establishes itself and what it metabolises, the
+strength window in which it survives and what happens above it, the deliberate
+classification of casks that sends a wine down one path or the other, the criaderas
+and solera system explained as fractional blending with an account of what it does to
+consistency and to average age, and the intermediate styles that arise when the film
+fails partway. Strong signal: the flor described as an organism doing work rather
+than as a curiosity, and the solera distinguished from simple vintage blending.
+Reject: sherry-revival advocacy, and food-pairing material.
+
+**Share.** 1.8 % (~2.7 min).
+
+#### 55. Madeira is cooked on purpose, and the process is an accident that was worth keeping
+
+**Claim.** Madeira is heated deliberately — either in warmed tanks for a few months
+or, for the finest wines, by years in hot lofts — which caramelises sugars and
+drives the Maillard reactions that give the style its character, and it is
+maturation by *heat* rather than by wood or by an organism; the tradition's own
+account is that the effect was discovered when barrels crossed the tropics as
+ballast, and whether or not that is the whole story, the result is a fortified wine
+so oxidatively and thermally stable that an opened bottle keeps for months and a
+century-old one is routinely sound.
+
+**Why it belongs.** It is the fourth variable in question four — not wood, not
+oxygen, not an organism, but temperature — and its inclusion is what makes the
+Foray's account of maturation complete rather than oak-shaped. The indestructibility
+is also a genuinely satisfying payoff, and it lets the Foray connect back to the
+shipping logic of beat 45: the ocean is a production input in this family twice
+over.
+
+**Evidence that counts.** A madeira producer or wine scientist on heat as a
+process: the two methods and the temperatures and durations involved, the chemistry
+of caramelisation and Maillard browning in a wine, the very high acidity that
+survives it and why that matters for stability, and what happens to a wine already
+fully oxidised when it meets air again. Strong signal: the ship's-ballast origin
+marked as the tradition's account rather than asserted, and the estufagem-versus-canteiro
+distinction treated as a quality tier with a mechanism behind it. Reject: heritage
+and vintage-collectors material.
+
+**Share.** 1.2 % (~1.8 min).
+
+#### 56. Vermouth is the bridge between wine and liqueur, and it is three additions stacked on one base
+
+**Claim.** Vermouth is a wine — a large majority of the volume by law — that has
+been fortified with spirit, flavoured with botanicals in which a species of
+*Artemisia* must feature, and usually sweetened, which makes it the point in the
+taxonomy where the wine categories and the flavoured-spirit categories meet; and
+the related aromatised wines built on cinchona bark, gentian or resin are the same
+construction with a different bittering agent, which is the last thing the listener
+needs before liqueurs and bitters make sense.
+
+**Why it belongs.** It is the structural hinge of Act V, and it is where the Foray
+demonstrates that the additions *stack* — a base, a fortification, a botanical
+infusion, a sweetening — which is the general form of every remaining category. It
+also handles a family of drinks most listeners consume without any idea what is in
+them, which is squarely within what "educate me" asked for.
+
+**Evidence that counts.** A vermouth producer or drinks writer on the construction:
+the base wine and why a neutral one is chosen, the legal wine proportion and the
+*Artemisia* requirement, how the botanicals are introduced and whether by maceration
+or by distilled extract, the sugar levels that separate the sweet and dry styles, and
+caramel's role as colour rather than flavour. Strong signal: the stacking made
+explicit, and the quinine-based and gentian-based aromatised wines placed as
+siblings. Reject: cocktail-history framing, and brand narrative.
+
+**Share.** 1.3 % (~1.95 min).
+
+#### 57. A liqueur is sugar plus a flavour on a base spirit, and the interesting variable is how the flavour was captured
+
+**Claim.** The liqueur category is defined in law by a minimum sugar content rather
+than by any ingredient or method, so what actually distinguishes one from another is
+the extraction technique: cold maceration for delicate fruit and fresh material,
+percolation for barks and roots, redistillation for volatile aromatics, and modern
+purchased essences at the industrial end — and the famous monastic liqueurs are
+notable not for secrecy but for being complex multi-stage combinations of several of
+those methods on a large botanical set.
+
+**Why it belongs.** It generalises beat 42's three gin methods into the full set of
+extraction techniques, which is the last piece of process apparatus the Foray needs,
+and it makes a category most listeners regard as arbitrary into something they can
+reason about. It is also where the medical origin from beat 36 lands: these drinks
+descend from apothecary preparations, and the sugar was originally there to make a
+medicine drinkable.
+
+**Evidence that counts.** A liqueur producer or drinks writer on the extraction
+methods and the sugar: the legal sugar minimum and the higher thresholds that certain
+names require, which materials suit maceration and which suit percolation or
+redistillation, what heat does to delicate aromatics, emulsion stability in cream
+liqueurs as a genuine formulation problem, and the difference between a distilled or
+macerated flavour and a purchased extract. Strong signal: a producer walking one
+recipe through several stages, and the monastic-recipe secrecy handled as a
+commercial convention rather than as mystique. Reject: cocktail applications, and
+brand founding legends.
+
+**Share.** 1.6 % (~2.4 min).
+
+#### 58. Bitters and amari are the same operation aimed at bitterness, and their medical origin is not a marketing story
+
+**Claim.** Amari and aromatic bitters are liqueurs built around genuinely bitter
+plant compounds — gentian root, cinchona bark, wormwood, citrus peel, and dozens of
+regional additions — and their pharmacy origin is literal rather than decorative:
+several were formulated as tonics and antimalarials, the quinine in tonic water is
+the same bark, and the modern aperitivo and digestivo split preserves a
+pre-pharmaceutical theory of digestion in the shape of the product range.
+
+**Why it belongs.** It is where beat 36's medicine framing finally pays off, which
+is the longest-range structural payment in the spine, and it is the completeness beat
+for a large and popular family that the taxonomy would otherwise leave sitting
+awkwardly inside liqueurs. Bitterness is also chemically specific — a small set of
+named compounds — which keeps the beat mechanistic rather than atmospheric.
+
+**Evidence that counts.** A producer, botanist or drinks historian on the bitter
+compounds and the medical lineage: which plant contributes which compound, cinchona
+and quinine and the antimalarial trade that spread it, wormwood and its bitter
+principle, how bitterness is extracted and balanced against sugar, and the
+documented medicinal registration or patent history of specific products. Strong
+signal: a distinction drawn between the products whose medical claims were real
+pharmacology and those that were patent-medicine advertising. Reject: bartender
+brand-preference material, and any tape whose medical content is decorative.
+
+**Share.** 1.5 % (~2.25 min).
+
+#### 59. The anise family is one compound in many countries, and its most notorious member was banned for the wrong reason
+
+**Claim.** Absinthe, pastis, ouzo, raki, arak and sambuca are one family united by a
+single aroma compound, anethole, which is soluble in strong alcohol and not in water
+— which is why adding water makes them turn cloudy, a physical emulsion rather than a
+trick — and they differ by production route, with some distilled with the botanicals
+and others merely macerated; while absinthe's reputation for causing madness has not
+survived analysis of pre-ban bottles, and the bans of the early 20th century tracked
+temperance politics and a wine industry rebuilding after beat 21's blight far better
+than they tracked any toxin.
+
+**Why it belongs.** It is the completeness beat for a family drunk across the
+Mediterranean, the Balkans and the Levant, and it carries the Foray's clearest
+example of the §3 instruction on mythologised accounts: the popular story is
+checkable and it is wrong, and saying so with the actual evidence is worth more than
+either repeating the myth or ignoring it. The louche is also a nice piece of physical
+chemistry the listener can verify in a glass.
+
+**Evidence that counts.** A distiller, chemist or drinks historian on the compound
+and the history: anethole's solubility and the emulsion that forms on dilution, the
+distinction between distilled and macerated members of the family, the actual
+botanical set in absinthe and what wormwood contributes, the measured thujone
+content of surviving pre-ban bottles compared with the levels the panic assumed, and
+the political and economic context of the bans. Strong signal: the correction made
+with numbers rather than as an assertion, and the family treated as one production
+category across national borders. Reject: bohemian-Paris colour, and any tape that
+repeats the hallucination story straight.
+
+**Share.** 1.5 % (~2.25 min).
+
+#### 60. The additive frontier runs in both directions now, and hard seltzer is the taxonomy's punchline
+
+**Claim.** The fastest-moving part of the industry is pure question four: hard
+seltzer is fermented cane sugar stripped to near-neutrality and then flavoured,
+which makes it a fermented drink by law and a flavoured neutral base in practice —
+the same construction as gin with none of the heritage — while the ready-to-drink
+and flavoured-spirit categories are the same move applied to existing spirits; and
+the newest operation of all runs the process backwards, using vacuum distillation,
+spinning cones or reverse osmosis to *remove* the ethanol from a finished drink,
+which is a fifth question the four cannot answer and worth admitting as such.
+
+**Why it belongs.** It is the closing beat of the taxonomy proper and the one that
+proves the key handles the present rather than only the heritage categories, which
+matters because the founder asked what all the forms *are*, in the present tense. The
+dealcoholisation point is the honest limit of the framework, and stating a limit is
+what distinguishes a taxonomy from a claim.
+
+**Evidence that counts.** A production technologist, industry analyst or drinks
+writer on either half: how a seltzer base is fermented and stripped and why sugar
+rather than malt, the legal category it falls into and why that matters commercially,
+flavour systems and how they differ from botanical extraction, and on the other side
+the three dealcoholisation technologies with an account of what each one damages and
+how producers compensate. Strong signal: the seltzer construction stated in the
+Foray's own terms — ferment, strip, flavour — and dealcoholisation described as a
+separation problem with the same physics as beat 11. Reject: market-forecast
+material, and health positioning of low-alcohol products, which is §6b.
+
+**Share.** 1.4 % (~2.1 min).
+
+---
+
+### Act VI — The rules, and the coda (chain, 4.6 %)
+
+Three beats to land it. The listener now holds a process taxonomy, and the last
+thing they need is to know which parts of what they have learned are chemistry and
+which are law, because the two are constantly presented as one thing and the
+difference is the most practically useful distinction in the subject.
+
+#### 61. Half the categories the listener has learned are legal definitions, and a statute is a production specification
+
+**Claim.** Scotch, bourbon, cognac, tequila and champagne are not descriptions of a
+process that happens to occur in a place — they are legal instruments that *mandate*
+a process: minimum maturation periods, permitted vessels, permitted additions,
+permitted grape and agave species, geographic boundaries, minimum strengths — which
+means a large part of the world's drinks taxonomy was written by legislators and
+trade bodies, and the listener's key from beat 16 answers the chemistry while these
+rules answer the naming.
+
+**Why it belongs.** It is the beat that makes the education honest. Without it, a
+listener who has learned to reason from process will be repeatedly confused by
+labels, because they will be looking for a chemical difference where the difference
+is statutory — a whisky that is identical in process but cannot be called Scotch, a
+sparkling wine identical to champagne, a molasses spirit that is whisky in one
+jurisdiction and not in another. It also collects beats 38, 39, 40, 42, 43, 44 and
+48, each of which met a rule locally, and states the general form.
+
+**Evidence that counts.** A drinks lawyer, regulator, trade-body specialist or
+well-briefed writer on category law as production law: what a specific standard
+actually requires and forbids, geographical indication as a legal mechanism, how
+these rules are enforced and litigated across borders, and cases where a rule
+plainly protects incumbents rather than a technique. Strong signal: at least two
+jurisdictions contrasted so that the arbitrariness is visible — the same liquid
+legal under one name and not another — plus an honest account of what the rules
+genuinely preserve, since they are not merely protectionism. Reject: appellation
+boosterism, and label-reading guides with no account of the underlying rule.
+
+**Share.** 1.8 % (~2.7 min).
+
+#### 62. Almost every spirit in the world sits at 40 % because of a tax instrument, not because of taste
+
+**Claim.** Alcoholic strength is measured as a percentage by volume nearly
+everywhere now, but the older systems were tax instruments: the British proof spirit
+was a specific reference strength of roughly 57 % against which duty was levied and
+which hydrometers were built to read, the American convention set proof at exactly
+twice the ABV, and the widespread convergence of bottled spirits on 40 % reflects
+minimum legal strengths and duty thresholds far more than any sensory optimum —
+which is why cask-strength bottlings taste like a different product rather than a
+stronger one.
+
+**Why it belongs.** It answers a question nearly every listener has and nobody
+explains, and it is history doing §2c's work again: a measuring device built for a
+tax collector shaped what is in the bottle. It also closes a loop opened in beat 14,
+because the reason a spirit is reduced with water at all is that maturation left it
+above the strength anyone wanted to sell.
+
+**Evidence that counts.** A historian of measurement, a distiller or a spirits
+writer on hydrometry and duty: what proof originally referred to and how it was
+tested before instruments, the hydrometers commissioned for revenue purposes and the
+strengths they were calibrated against, the American doubling convention, minimum
+bottling strengths in law, and reduction with water as a production step with its own
+consequences for stability and haze. Strong signal: the gunpowder-test etymology
+handled as the traditional account rather than asserted, since the story is older
+than the evidence for it. Reject: proof-versus-ABV conversion trivia with no
+institutional history.
+
+**Share.** 1.5 % (~2.25 min).
+
+#### 63. Coda: four questions, one molecule, and a list that is still open
+
+**Claim.** Everything in this Foray was the same molecule made by the same organism
+from whatever sugar was locally available, and the listener can now place any drink
+by asking where the sugar came from, what converted it and how far it went, whether
+it was concentrated, and what was added or done to it afterwards — and the honest
+closing note is that the list of the world's alcohols is not finished, because a
+great many local ferments have never been described in English and new categories
+are being constructed commercially every year.
+
+**Why it belongs.** The listener was promised completeness and an education, and the
+coda is where the promise is restated as something they now have the evidence for
+rather than as an opening claim. It is also the right place to admit what the Foray
+left out — §6b's excluded subjects and §6c's mentions — because a taxonomy that
+admits its edges is more trustworthy than one that implies it covered the world.
+Keep it short: this is a landing, not a summary.
+
+**Evidence that counts.** Almost certainly narration, and that is correct — a coda
+in someone else's words is usually worse. If tape is used, the only kind that serves
+is a speaker articulating the shared mechanism across families rather than within
+one, ideally while conceding that the catalogue of the world's ferments is
+incomplete. Reject: anything that reads as a recap of the preceding beats.
+
+**Share.** 1.3 % (~1.95 min).
