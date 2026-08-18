@@ -702,7 +702,7 @@ the decisive one:**
    partly to demolish that story. Beat 16's reject line is *"assertion of either
    etymology with no source"*, which this does not quite clear.
 3. **Cutting it would mean cutting the beat 18 segment in two.** The etymology sits
-   28 s inside a 168 s argument that runs continuously into the pit method. Isolating
+   31 s inside a 182 s argument that runs continuously into the pit method. Isolating
    it yields about 35 s — legal, above the 30 s floor, but under the target band and,
    worse, it would take the opening off the beat 18 cut, where *"not everybody agrees
    with this"* is doing real work. Trading a strong beat 18 for a partial beat 16 is a
@@ -714,7 +714,7 @@ This is the clearest case in the report of the difference between *relevant and
 authoritative* and *sufficient for the beat*. The narration for beat 16 should be
 written to the beat's standard — the chroniclers, the dates, the false etymology named
 and dismissed — and it can now be written knowing that the Foray's own Miller segment
-says the compatible thing 28 seconds after Act IV's narration hands over.
+says the compatible thing about thirty seconds after Act IV's narration hands over.
 
 **Chain hole, and it is the first link.** Act IV opens on the assertion that the
 technique and its name are indigenous American, and that assertion is the first half
@@ -739,10 +739,11 @@ fork to be two branches of.
 ### Beat 18 — the adopted indigenous apparatus — **strong** (was empty)
 
 **Candidate, and the beat's best available tape:** `grill-coach-adrian-miller#1609`
-(1608.86 → 1777.40, **168.5 s**). In on the host's *"But you, you talk about the
+(1608.86 → 1791.30, **182.4 s**). In on the host's *"But you, you talk about the
 transition from Native Americans to African American slaves and how, you know, that
-happened."*; out on *"So then based on that Native American template, it gets us on the
-road to what we would later call southern pit barbecue."*
+happened."*; out on *"So you could see the antecedents of it in Native American cooking
+and European cooking and African cooking and smoking, but it starts to become something
+different with that, with that interaction, you know, over the years."*
 
 **Why it advances beat 18.** It is the beat's claim, argued rather than asserted, with
 the apparatus described in enough detail to be checked. Miller gives the indigenous
@@ -755,7 +756,10 @@ their meat cooking traditions. And all of a sudden that shallow pit gets sticks 
 across it so that you could lay meat above the cooking, the shallow pit becomes deeper
 and then the European animals are cooked over this."* The raised grate arriving on top
 of an existing indigenous pit is exactly the technology-transfer form the spine says
-this beat wants, and the word "template" is his.
+this beat wants, and the word "template" is his. The out-point is chosen so the segment
+closes on the three-inheritance synthesis rather than on the tidier *"southern pit
+barbecue"* sentence 14 s earlier — the fuller ending is the one that credits African and
+European practice alongside the indigenous template, which is the spine's own framing.
 
 **It also does the source-criticism the beat asks for, in its first sentence.** The
 segment opens *"not everybody agrees with this in the wrong, but barbecue starts with
@@ -1328,11 +1332,14 @@ is exactly the shape that would trip it.
    the authorship argument, both were empty, and the spine designs them as interdependent
    — beat 22 is what stops beat 21 being a claim taken on trust. They also play
    consecutively, in the same voice, in tape order.
-2. **Mechanical.** The obvious alternative pairing, beats 18 and 21, is unavailable.
-   At 168.5 / 171.2 s they sit within 1.6 % of each other and form a **D5 pairwise
-   violation** with MOSS-1 at 151.3 s (max/min 1.132); and taking beat 18 at its fuller
-   168.5 s-plus length puts the episode at **25.1 % of runtime**, over M4. Both were
-   checked rather than assumed.
+2. **Mechanical.** The obvious alternative pairing, beats 18 and 21, is unavailable
+   either way, and this was checked rather than assumed. The beat 18 segment as authored
+   is 182.4 s; 182.4 + 171.2 s is **25.1 % of the resulting runtime**, over M4 by a tenth
+   of a point. Trimming beat 18 to the shorter *"southern pit barbecue"* out-point to fit
+   costs the segment its synthesis ending and does not help: at 168.5 / 171.2 s the pair
+   sits within 1.6 % of itself and forms a **D5 pairwise violation** with MOSS-1 at
+   151.3 s (max/min 1.132). So the pairing fails M4 at its honest length and D5 at its
+   trimmed one.
 
 **The four held back — 18, 24, and both beat 38 cuts — stay in the pool**, and they are
 named in `tools/foray/check-forays.test.mjs` as held-back ids so they cannot be quietly
@@ -1545,12 +1552,12 @@ Aaron Franklin's, who appears later in the episode as a business lesson rather t
 authorship case. So the beat has the argument and not its cast. Narration should supply
 the names.
 
-**A related passage, deliberately not cut.** At 2039–2050 s Miller says that when white
+**A related passage, deliberately not cut.** At 2042–2050 s Miller says that when white
 men entered barbecue at the turn of the century *"they start getting the press and the
 publicity for this, even though most of them rely on all Black workforce."* That is the
 same argument at its historical origin and it is the single best sentence in the episode
 for joining beat 22 to beat 38. It is not cut because it sits inside the beat 24 span and
-isolating it yields about 11 seconds, far under the floor. It is recorded here because
+isolating it yields under ten seconds, far below the 30 s floor. It is recorded here because
 narration bridging Act IV to Act V should use it.
 
 **Previously (2026-08-16): empty.** All four Act IV sources were relevant — *Black Smoke:

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "notes": "Anchored segment pool (issue #106). Schema: docs/adr/0007-segment-anchoring.md; field-by-field reference in tools/segments/README.md. Written ONLY by tools/segments/merge-segments.mjs — never by hand, because every record here has been checked against the transcript its anchors were authored from, and a hand-edited one has not. First populated 2026-08-16 by the hand-run BFH hearth batch (docs/curation/grilling-foray-batch-1.md); the Lane C extraction fan-out (docs/curation/segment-extraction-pipeline.md) appends to it.",
-  "built_at": "2026-08-18T05:49:56.923Z",
+  "built_at": "2026-08-18T06:17:35.843Z",
   "provenance": {
     "produced_by": "tools/segments/merge-segments.mjs",
     "method": "Claude Code segment-extraction agent (Max-plan routine) — see docs/curation/segment-extraction-pipeline.md",
@@ -728,10 +728,10 @@
       "item_id": "grill-coach-adrian-miller",
       "topic": "food/grilling-bbq",
       "start_sec": 1608.86,
-      "end_sec": 1777.4,
+      "end_sec": 1791.3,
       "reference_duration_sec": 3306.02,
       "start_anchor": "But you, you talk about the transition from Native Americans to African American slaves and how, you know, that happened.",
-      "end_anchor": "So then based on that Native American template, it gets us on the road to what we would later call southern pit barbecue.",
+      "end_anchor": "So you could see the antecedents of it in Native American cooking and European cooking and African cooking and smoking, but it starts to become something different with that, with that interaction, you know, over the years.",
       "why": "Miller argues the Southern pit method was learned from a Native American template, not invented",
       "confidence": "high",
       "transcript_source": "asr-local",
