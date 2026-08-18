@@ -58,12 +58,12 @@ const FLOORS = {
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
-  "player/foray-playback.test.js": 62,
+  "player/foray-playback.test.js": 82,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 29,
   "player/foray-resolve.test.js": 42,
   "player/foray-sources.test.js": 24,
-  "player/html-audio-backend.test.js": 101,
+  "player/html-audio-backend.test.js": 108,
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that
@@ -75,7 +75,17 @@ const FLOORS = {
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
   "player/media-session.test.js": 129,
-  "player/queue-manager.test.js": 89,
+  /* Playback speed (#242). Floored with ZERO SLACK, like media-session and
+     data-deletion above and for the same reason: what this suite guards is a set of
+     PRODUCT decisions, each one edit from its opposite and none of them visible in
+     a browser tab. Which speeds exist (copied from Apple Podcasts, Spotify,
+     YouTube, Pocket Casts, Overcast and Audible rather than invented); that 2x is
+     the top, because a Foray pays per seam and #224 is the weakest path; that the
+     key is `cp_rate`, whose rename would forget every listener's speed; and that a
+     stale stored value SNAPS onto the ladder rather than resetting to 1x. Raise it
+     when the suite grows. */
+  "player/playback-rate.test.js": 22,
+  "player/queue-manager.test.js": 98,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
