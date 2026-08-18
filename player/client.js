@@ -287,13 +287,50 @@ function isRunning() {
   return isPlaying() || manager?.inSeamGap === true;
 }
 
-/** Where we are, in the Foray's own seconds. The playhead only counts when the
-    segment we are showing is the one actually loaded; mid-jump, the honest
-    answer is that segment's start. */
+/**
+ * Where we are in the Foray's own seconds, or NULL when the player cannot say.
+ *
+ * Null is the whole point of this function existing (#263). The element's clock
+ * only means something about a particular piece of audio, and there are ordinary
+ * moments when it means nothing about the segment on screen:
+ *
+ *   - mid-jump, before the load lands; and
+ *   - after a load FAILED, which is the reported case. `_loadItem` moves
+ *     `currentIndex` before calling `backend.load`, and assigning `src` resets
+ *     the element's `currentTime` to 0 — so a seam whose load timed out leaves
+ *     the manager pointing at segment N+1 with a playhead of 0. Reading that
+ *     through `forayElapsed` produces the segment's IN-POINT, a position the
+ *     listener was never at, and the writer below was storing it over a good
+ *     resume row. That is the founder's "restarted the segment".
+ *
+ * `playheadItemId` is the manager's answer to "which item is the playhead
+ * about", and asking it is what separates a real position from a fabricated one.
+ */
+function forayPlayhead() {
+  if (!foray || foray.index < 0) return null;
+  if (manager?.currentIndex !== foray.index) return null;
+  const item = foray.resolved.playable[foray.index];
+  if (!item || !item.id || manager?.playheadItemId !== item.id) return null;
+  const t = backend?.currentTime;
+  if (typeof t !== "number" || !Number.isFinite(t)) return null;
+  return forayElapsed(foray.resolved.playable, foray.index, t);
+}
+
+/** Where we are, in the Foray's own seconds — a number, always, because a clock
+    has to paint something. A readable playhead is remembered as we go, so a
+    segment whose position stops being readable keeps showing where the listener
+    actually got to rather than snapping back; with nothing remembered for this
+    segment the honest answer is still its start. Only `forayPlayhead` may be
+    used to decide what to WRITE DOWN. */
 function forayPosition() {
   if (!foray || foray.index < 0) return 0;
-  const loaded = manager?.currentIndex === foray.index;
-  return forayElapsed(foray.resolved.playable, foray.index, loaded ? (backend?.currentTime ?? null) : null);
+  const live = forayPlayhead();
+  if (live != null) {
+    foray.knownElapsedSec = live;
+    return live;
+  }
+  if (foray.knownElapsedSec != null) return foray.knownElapsedSec;
+  return forayElapsed(foray.resolved.playable, foray.index, null);
 }
 
 /**
@@ -308,6 +345,11 @@ function forayPosition() {
  */
 function setForayIndex(index, { pending = true } = {}) {
   if (!foray) return;
+  /* Dropped with the segment it belonged to. `knownElapsedSec` is the last
+     position we could actually READ, and it is only ever a sane fallback for the
+     segment it was read from — carried across a move it would paint the previous
+     segment's clock against the new one's row. */
+  if (index !== foray.index) foray.knownElapsedSec = null;
   foray.index = index;
   foray.pendingFrom = pending ? (manager?.currentIndex ?? -1) : null;
   const item = foray.resolved.playable[index];
@@ -410,12 +452,6 @@ function persistForayProgress({ force = false } = {}) {
   if (!foray || foray.index < 0) return;
   const id = foray.resolved.id;
   if (manager?.state?.type === "ended") { forayProgress.clear(id); return; }
-  /* Only write once the segment we are showing is the one actually loaded.
-     Mid-jump — and on the first paint of a RESUME, which happens before the
-     load — `forayPosition()` honestly reports the segment's start, and storing
-     that would overwrite a precise resume point with a rounded-down one every
-     time the listener re-opened the page. */
-  if (manager?.currentIndex !== foray.index) return;
   /* A resume is TWO steps — load the segment at its in-point, then seek into it
      — and the load fires real media events in between. Without this the tick
      between them writes the segment's in-point over the precise position we are
@@ -428,7 +464,23 @@ function persistForayProgress({ force = false } = {}) {
      a segment or lost one — and an index is a position, which stops meaning
      anything the moment the order changes. The authored id plus the offset INTO
      the segment is what survives that; see `reconcileSegment`. */
-  const elapsedSec = forayPosition();
+  /* THE POSITION HAS TO BE ONE WE ACTUALLY READ (#263). `forayPlayhead` is null
+     mid-jump — which is what the `currentIndex !== foray.index` check used to
+     cover — and it is also null after a load FAILED, which nothing covered: the
+     element's clock had been reset to 0 by the `src` assignment while the manager
+     had already moved to the segment that would not load, so `forayPosition()`
+     honestly reported that segment's in-point and this function wrote it down.
+     The founder then re-opened the site and got sent back to the start of a
+     segment, having asked for none of it.
+
+     Refusing to write is the whole fix, and it is deliberately not "write
+     something better": at that moment nobody knows where the listener was. The
+     last row still says where they got to, at most SAVE_EVERY_SEC of clock
+     earlier, which is a few seconds before the boundary they stopped at — and
+     five seconds of a segment they had already heard is not a defect. An unknown
+     position must never overwrite a known one. */
+  const elapsedSec = forayPlayhead();
+  if (elapsedSec == null) return;
   const seg = forayProgressSegments()[foray.index] ?? null;
   forayProgress.save({
     forayId: id,
@@ -814,7 +866,43 @@ function bind() {
        nothing and often wins the race anyway. */
     storage.flush().catch(() => {});
   };
-  document.addEventListener("visibilitychange", () => { if (document.hidden) flush(); });
+  /**
+   * Coming BACK is a boundary too, and that is the whole of #263.
+   *
+   * The founder drove with the screen off, switched the car off, and the audio
+   * route vanished — the audio stopped, correctly. When he re-opened the app the
+   * transport still said playing, so his first press went on correcting the
+   * app's belief and his second one did what he had wanted. One press must do
+   * what the listener meant.
+   *
+   * This handler only ever flushed on the way OUT, so the surface kept whatever
+   * state it last wrote for however long the page was gone. A stop that happened
+   * while the page was suspended left no event to catch, but it left the element
+   * paused — and `paused` can be read at any later moment. Becoming visible is
+   * the boundary where a stop the page could not observe becomes observable, so
+   * it is where the surface stops trusting itself and asks.
+   *
+   * `reconcileWithBackend` never starts audio and is idempotent, so this is safe
+   * to fire on every return; `render()` afterwards only because the correction
+   * happened outside the media events that normally drive it.
+   */
+  const reconcileOnReturn = async () => {
+    if (!manager) return;
+    const corrected = await manager.reconcileWithBackend("visible");
+    if (!corrected) return;
+    render();
+    /* The playhead the route died at, which the reconcile's own `savePosition`
+       has just written for the episode row. A Foray keeps its position in its
+       own store and on its own clock, so it needs saying separately — and by now
+       `forayPlayhead()` can be read, because the element still holds this
+       segment's audio at the moment it stopped. */
+    persistForayProgress({ force: true });
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { flush(); return; }
+    reconcileOnReturn();
+  });
   window.addEventListener("pagehide", flush);
 }
 
@@ -1071,7 +1159,12 @@ const ForayPlayer = {
        passes `startElapsedSec`, and a running-order row, which passes
        `startIndex`) come through here, so both are covered by one line. */
     backend.notePlayGesture();
-    foray = { resolved, index: -1, pendingFrom: null, onChange, error: null };
+    foray = {
+      resolved, index: -1, pendingFrom: null, onChange, error: null,
+      /* The last Foray-clock position we could read off the element for
+         `index`, or null. See `forayPlayhead`. */
+      knownElapsedSec: null,
+    };
     setSkipButtonMode(true);
     // Once per Foray, not once per tick: this walks the whole discover pool.
     artworkByShow = artworkUrlsByShow(discoverDoc);
