@@ -2302,3 +2302,268 @@ and the reason Acts II to V are shaped as they are, **the short version is a
 substantively different product and should be commissioned as one — not used as the
 fallback if sourcing goes badly.** The correct response to bad sourcing is narration
 on the empty beats, or a shorter Foray with the beat count intact.
+
+---
+
+## 5. Prediction: which beats will be hardest to source
+
+**This is a prediction for the coverage report, not a filter that was applied.**
+Nothing above was cut, shortened or softened on the basis of it. I have not seen
+the catalogue, so every line here is inference about what English-language
+podcasting tends to cover, recorded now specifically so that stage 3 can check it.
+If these predictions are wrong that is useful information about the sourcing
+process; if they are right it is weak evidence the spine was written honestly.
+
+One structural prediction first, because it shapes everything else. **This spine
+will be narration-heavier than the barbecue one, and the reason is the founder's
+own weighting.** Process at mechanism depth is a narrow interview register: a
+podcast guest will happily talk for ten minutes about a distillery's history and
+rarely for ninety seconds about why beta-amylase dies at the temperature
+alpha-amylase prefers. Act I asks for that register sixteen times in a row. So I
+expect Act I to be the thinnest act in the coverage report despite being the most
+important, and that is a cost the founder's request implies rather than a fault in
+the spine. The right response is well-written narration on those beats, not a
+softening of the claims toward what interviews naturally produce — because
+softening the claims is exactly how "educate me about production" becomes "tell me
+some drink stories."
+
+**Likely narration, in descending order of my confidence that no adequate tape
+exists:**
+
+1. **Beat 16 (the classification key).** Designed as narration. Nobody says this in
+   one breath because it is the conclusion of an argument rather than a topic. It is
+   the most important beat in the Foray and almost certainly the least sourceable,
+   which is a good illustration of why source-blindness matters.
+2. **Beat 9 (saliva, heat and bought enzymes).** Three narrow mechanisms, none of
+   which has a natural interview home. Adjacent tape on chicha will be plentiful and
+   mostly anthropological rather than enzymatic.
+3. **Beat 51 (the margins).** By construction a survey of things nobody covers.
+   *Arkhi* is the only candidate I would expect to exist at all.
+4. **Beat 25 (the milk alcohols).** English-language material on Central Asian
+   pastoral fermentation is thin, and what exists will be travel-shaped. The barbecue
+   spine predicted the same thing about its steppe beat, which gives stage 3 a useful
+   comparison.
+5. **Beat 5 (the ABV ceiling).** Universally assumed and almost never stated.
+   Practitioners talk around it constantly — stuck ferments, fortification, sake
+   strength — without ever naming the constant, which is the specific thing this beat
+   needs.
+6. **Beat 50 (arrack).** A genuine tradition with almost no English coverage that is
+   not colonial-trade history or cocktail revivalism.
+7. **Beat 31 (sorghum and millet beers).** I expect the material to exist but in
+   food-science and development registers rather than in drinks podcasting, which
+   makes it findable but stylistically hard to cut.
+8. **Beat 62 (proof and the hydrometer).** Requires a historian of measurement or
+   taxation. Charming, obscure, and unlikely to have been recorded at length.
+9. **Beat 11 (the azeotrope) and beat 12's mechanism half.** Distillers talk about
+   stills constantly and about vapour-liquid equilibrium almost never. I expect
+   plenty of *near*-tape here that fails on being a tour rather than an explanation,
+   which is the most dangerous kind of near-miss because it will look like a hit.
+10. **Beat 47 (baijiu at process depth).** English coverage of baijiu has grown, but
+    solid-state fermentation, *daqu* microbiology and pit inheritance are a further
+    step in, and I expect most candidates to be tasting reactions.
+11. **Beat 3 (carbonation as containment).** The mechanism is simple enough that
+    speakers skip it, and the tape that mentions bottles will mostly be champagne
+    romance, which the beat rejects.
+12. **Beat 24 (sap drinks).** Palm wine and pulque have coverage; coverage that
+    treats the few-hour timeline and the shipping impossibility as the *point* is
+    narrower.
+13. **Beat 34 (chewed and tuber brews).** Same shape as beat 9 and likely to be
+    served by the same tape if any exists, which is a reason for stage 2 to check
+    whether one candidate can advance both without being double-counted.
+14. **Beat 15 (refusing to mature).** Requires a producer arguing *against* wood,
+    which is a real position but a quiet one.
+15. **Beat 63 (coda).** Designed as narration.
+
+**The opposite risk, which is the one that produced the original bug.** Several
+beats will be heavily over-supplied, and the share column is the only defence:
+
+- **beats 37 to 40 (whisky)** — the single most podcast-covered subject in drinks,
+  and the place this Foray will bloat first if anyone lets it;
+- **beat 42 (gin)** and **beats 57 to 59 (liqueurs, amari, absinthe)** — abundant
+  because they are cocktail-adjacent, and the tape will mostly be about drinking
+  them rather than making them;
+- **beat 20 (champagne)** and **beat 19 (winemaking choices)** — the wine podcast
+  world is large and its natural register is region and producer, not mechanism;
+- **beat 30 (wild fermentation)** and **beat 44 (agave)** — currently fashionable,
+  so expect volume and expect a high rejection rate on identity talk;
+- **beat 36 (the origin of distillation)** — abundant, and abundant in exactly the
+  single-inventor register the beat is written to refuse.
+
+**An over-supplied beat has no claim on runtime that an under-supplied beat lost.**
+Time freed by an empty beat 9 does not transfer to beat 37; it becomes narration on
+beat 9, or it becomes a shorter Foray, and a shorter Foray is a legitimate outcome.
+
+**And the drift attractor, stated once more because it is the whole reason for
+#226.** The single largest body of adjacent tape in this subject is prohibition,
+temperance and drinking culture, followed by brand and distillery histories,
+followed by health. None of them is a beat. All of them will look plausible next to
+a beat. If the coverage report comes back with those subjects filling gaps, the
+process has failed in precisely the way the bakestones failed, and the correct
+action is to reject them and leave the gap.
+
+---
+
+## 6. What is not in the spine
+
+Three different questions, kept apart: candidate beats that failed the
+why-it-belongs test, whole subjects that were never beats, and drinks that are
+named inside a beat rather than given one.
+
+### 6a. Candidate beats that were dropped
+
+- **A beat on ethanol's pharmacology** — absorption, the two enzymes that metabolise
+  it, tolerance, hangover chemistry, the common East Asian variant of the second
+  enzyme. Dropped: it is a claim about the drink's effects, and this spine's
+  through-line is about how drinks are made. Recorded here rather than only in §6b
+  because it is a genuinely close call — beat 1 has to touch metabolism to explain
+  why we drink ethanol rather than methanol, and that single mention is where the
+  boundary sits. It is also the most dangerous available filler after prohibition,
+  because it would slot in beside beat 1 without looking wrong.
+- **A beat on the archaeology of the earliest alcohol** — the Chinese, Iranian and
+  Levantine residue finds, and the argument that fruit-eating primates were adapted
+  to ethanol before there were humans. Dropped and folded into beat 6's evidence
+  note. As its own beat it answers "how do we know" about a claim the listener met
+  ninety seconds earlier, which is a detour four minutes into a Foray — the same
+  reasoning the barbecue spine used at its first beat.
+- **A beat on where the domesticated yeasts came from** — oak bark, wasp guts, the
+  separate Mediterranean and East Asian lineages, the genomics of brewing strains.
+  Folded into beat 4. Genuinely interesting and it carries no claim that beats 4 and
+  30 do not already need.
+- **A separate beat on carbonation as a packaging technology** — bottle strength,
+  crown caps, kegs, forced carbonation, dissolved-gas measurement. Folded into beat
+  3, which carries the mechanism, and beat 20, which carries the hard case.
+- **A beat on any single appellation, region or country as a subject** — Champagne,
+  Islay, Jerez, Kentucky, Speyside. Dropped on principle rather than on merit: this
+  spine is organised by process, and a region beat is the first step of exactly the
+  drift #226 exists to prevent. Whatever is analytically useful about appellations
+  lives in beat 61.
+- **A beat on cooperage as an industry** — stave selection, air seasoning, the
+  sherry-cask supply chain, the toasting trade, cask reuse economics. Folded into
+  beat 14. Recorded because a reviewer might reasonably reverse it: the sherry-cask
+  supply chain in particular is a hard economic constraint on whisky production, and
+  if it is sourced it belongs inside beat 14 as evidence rather than as a beat about
+  equipment.
+- **A beat on blending as a discipline.** Folded into beats 38, 43 and 54, each of
+  which needs a different part of it. As its own beat it is a job description rather
+  than a claim.
+- **A beat on the low-alcohol ferments** — kombucha, kvass, tepache, tejuino, and the
+  fermented drinks where ethanol is a by-product rather than the product. Dropped,
+  with kvass named at beat 34. This is the weakest of the drops and a reviewer could
+  restore it as a short stop after beat 31 without damaging anything; I left it out
+  because "forms of alcohol" reasonably means drinks made *for* their alcohol.
+- **A beat on illicit distilling** — moonshine, poitín, samogon, and the recurring
+  mass methanol poisonings. Dropped as a beat and sourced *into* beat 13, where the
+  risk chemistry belongs, and beat 62, where the tax motive belongs. As its own beat
+  it is a crime story, and the interesting question in it — which risk is real — is
+  beat 13's claim already.
+
+### 6b. Subjects that were never beats
+
+Recorded because a boundary that is written down is much harder to drift across,
+and because stage 2 will encounter abundant tape for most of these. **None of these
+is a beat. Tape that only serves one of them is rejected.**
+
+- **Prohibition, temperance and alcohol policy.** The named drift risk, per §2c.
+  Dramatic, abundant, adjacent to every beat, and it explains almost no production
+  fact. Admissible only where a specific measure explains a specific process — the
+  Korean rice ban at beat 48, bottled-in-bond at beat 61 — and then it enters that
+  beat as evidence for that beat's claim, never as a subject.
+- **Alcohol and health** — harm, dependence, drinking guidelines, the cardiovascular
+  literature, cancer risk. A real, important and entirely different Foray. Flagged
+  explicitly because the tape is plentiful and it is the second most dangerous
+  available filler.
+- **Cocktails, mixology, bartending and service.** About assembly in a glass rather
+  than about how anything was made. The second-largest adjacent body of tape.
+- **Tasting, criticism, scores, vocabulary, food pairing, collecting and
+  investment.** A taxonomy of aromas is not a claim about production.
+- **The drinks industry as a business** — brands, acquisitions, marketing, celebrity
+  ownership, distribution, duty-free.
+- **Individual producer and distillery histories.** Worth naming separately because
+  it is probably the single most abundant category of drinks tape in existence and
+  almost never a beat: a founding story advances no claim about process. Where a
+  producer explains their own *mechanism*, that is not this — that is the best
+  possible evidence for the beat it advances.
+- **Drinking cultures, pubs, bars and nightlife as subjects in their own right.**
+- **Religious rules on alcohol**, except where a specific rule explains a specific
+  production fact.
+- **Home brewing and home distilling as a how-to.**
+
+**One honest omission, not a rejection.** The fan is not exhaustive, and saying so
+is better than implying that twenty-odd family stops are the world. The first
+candidates if it is ever extended: Georgian and Armenian buried-vessel winemaking as
+a stop rather than as a mention at beat 15; the Nordic farmhouse ales including
+juniper-infused *sahti*; Filipino *lambanog* and the Pacific palm distillates in
+their own right; West African *ogogoro*; Himalayan *chhaang* and *raksi*; Mexican
+*tepache* and *tejuino*; Japanese *mirin* and the cooking ferments; and *tuba* and
+*toddy* as their own stop rather than inside beat 24. Each has as good a claim as
+several stops that are in. They are out for runtime, not on merit.
+
+### 6c. Named inside a beat rather than given one, and the test used
+
+**The test for a full beat is whether the drink does something to the *process*
+that no other beat covers.** Volume alone earns a beat only where the process is
+also distinct — baijiu qualifies on both counts, which is why it has one; *huangjiu*
+qualifies on volume but shares beat 33's mechanism, so it headlines a beat it shares
+rather than getting its own. Fame earns nothing at all, which is why there is no
+champagne beat and no Islay beat.
+
+| named at | where | why not a full beat |
+|---|---|---|
+| perry, and the fruit and country wines | 22 | the same operation on different fruit; sorbitol is the only real distinction and it fits in a sentence |
+| *tej* | 23 | mead with a bittering herb in place of hops |
+| birch and maple sap wines | 24 | the same sap mechanism as palm, in a colder place |
+| kefir and the dairy ferments | 25 | alcohol is a by-product rather than the product — see §6a |
+| kvass | 34 | a low-alcohol grain ferment whose conversion route is already beat 7's |
+| *huangjiu*, *makgeolli*, *nuruk* | 33 | they headline the mixed-starter beat; the starter is the beat, so one stop serves all three |
+| *awamori* | 48 | shochu with a different koji and a different rice |
+| cachaça and rhum agricole | 43 | cane juice rather than molasses, under their own statutes, but the same three variables |
+| pisco | 45 | distilled wine; its no-wood, no-dilution rules are most useful as a contrast inside brandy |
+| grappa, marc, slivovitz, rakia, *țuică*, pálinka, kirsch, calvados | 46 | one family with one pectin problem; Calvados is the ageing exception and is explained as such |
+| *feni* | 46 | the outlier that shows the technique travels beyond Europe |
+| *sotol*, *raicilla*, *bacanora* | 44 | neighbours of the agave spirits, and *sotol* comes from a different genus, which is the point of the mention |
+| *żubrówka* and the Eastern European infusions | 49 | gin's method with different botanicals, which is beat 49's claim |
+| Batavia arrack | 50 | a rice-and-cane variant of the beat's own family |
+| ouzo, raki, arak, pastis, sambuca | 59 | one aroma compound, one beat; the production routes differ and that difference *is* the beat |
+| vins doux naturels, marsala, commandaria | 52 | the fortification-timing rule already explains all of them |
+| quinquina, americano, retsina | 56 | the same stacked construction with a different bittering or aromatising agent |
+| Chartreuse, Bénédictine and the monastic liqueurs | 57 | multi-stage combinations of the extraction methods that are beat 57's actual subject |
+| Campari, Fernet, Aperol, Angostura, tonic water | 58 | instances of beat 58's bitter-compound claim |
+| *arkhi*, whey spirit, *destilado de pulque* | 51 | they *are* beat 51, which is a method demonstrated on the margins rather than a family |
+
+---
+
+## 7. What this document does not decide
+
+- **Which beats have tape.** Stage 2, and the whole point of writing this first.
+- **The Foray's runtime.** An output. The 150-minute reference in §4 is arithmetic
+  scaffolding for the share column and for the beat-count derivation in §4a, not a
+  target, and #226 is explicit that a tight 40 minutes ships over a wandering 61.
+- **Narration scripts for the empty beats.** Stage 4. Written and queued, not voiced
+  — ElevenLabs spend is founder-gated. Given §5's structural prediction, this Foray
+  will need more of them than the barbecue one did, and that should be planned for
+  rather than discovered.
+- **Whether Act I really deserves a quarter of the runtime.** It does here, and the
+  argument is §1: the founder asked to be educated, and Act I is the education while
+  the rest is its application. The counter-argument is honest and a founder may
+  prefer it — twenty-six minutes of chemistry before the first drink is a real risk
+  of losing a listener early. If that judgement is reversed, the right move is to
+  **interleave**, not to cut: put beats 1 to 6 first, then wine, then beats 7 and 8
+  before beer, then beats 11 to 14 before the spirits. That preserves every claim
+  and every dependency while shortening the wait for a drink. I rejected it because
+  it destroys beat 16 — the key cannot be assembled from parts the listener met
+  hours apart — and beat 16 is the beat the Foray is for. This is an editorial
+  decision and it should be made on that argument, not because Act I sourced badly.
+- **Whether history should have been its own act.** It should not, and §2c gives the
+  rule and the reason. Reversible, but reversing it re-opens the exact failure mode
+  #226 documents, so it needs a founder decision rather than an agent's.
+- **Whether the low-alcohol ferments get a stop.** §6a records the drop as the
+  weakest one in the document.
+- **Whether the fan is extended** to the traditions listed at the end of §6b.
+- **The `tier` vocabulary** — §4b proposes a default mapping; #174 owns the field.
+- **How the twelve two-segment beats split.** §4a says unevenly and says why; the
+  actual durations are an assembly decision under D5 and the burst rule.
+- **Anything about this spine against a real listener.** Same caveat as
+  `segment-length-rules.md` §10 and the barbecue spine: nobody has heard this. The
+  most valuable thing that could happen to this document is the founder listening to
+  the assembled Foray and saying which beat lost them — and, specifically, whether
+  Act I earned its runtime or exhausted its welcome.
