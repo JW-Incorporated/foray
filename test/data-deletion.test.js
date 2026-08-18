@@ -401,18 +401,27 @@ async function mount({
 
 /* ================= 1. enumeration, not a list ================= */
 
-test("the shipped source names exactly the 20 cp_ key families the audit found", () => {
+test("the shipped source names exactly the 21 cp_ key families the audit found", () => {
   /* The count is pinned deliberately. 20-not-11 is the whole reason this control
-     enumerates instead of carrying a list, and a 21st key is a privacy-policy
-     change as much as a code change — see the next test. */
+     enumerates instead of carrying a list, and a new key is a privacy-policy
+     change as much as a code change — see the next test.
+
+     20 -> 21 on 2026-08-18: `cp_diag`, the local field record (#264). It arrived
+     the way this check is written to make sure a key arrives — the count failed,
+     then the policy check failed, and both stayed red until
+     `docs/legal/privacy-policy.md` §1 documented the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 20,
-    `expected 20 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 21,
+    `expected 21 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
   assert.ok(families.includes("cp_storage_health"), "the diagnostic key is a key too");
+  /* Both diagnostic keys, named individually. They are the two rows a reader is
+     most likely to assume are not "user data" and therefore exempt from the
+     delete promise — and the whole point is that they are not exempt. */
+  assert.ok(families.includes("cp_diag"), "the field record (#264) is a key too");
 });
 
 test("every key family in the code is documented in the privacy policy, and vice versa", () => {

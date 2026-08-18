@@ -64,6 +64,14 @@ diagnostic the outage (`player/durable-store.js:636–643`). And until the playe
 module has loaded, writes go to plain `localStorage` only; if that module fails
 to load, they stay there for the session (`app.js:78–96`).
 
+**Two of these keys are diagnostics rather than your data**, and neither is
+transmitted. `cp_storage_health` records storage failures. `cp_diag` records how
+the audio player behaved — see its row below — and exists because two playback
+faults were reported from a car with no measurements attached, so there was
+nothing to diagnose them with. It is capped, the oldest entries are dropped
+first, and the drawer's **Playback diagnostics** is where you read it, copy it or
+clear it (`player/diagnostic-log.js`).
+
 The app also asks the browser to mark its storage as persistent
 (`navigator.storage.persist()`), and records the answer rather than assuming it.
 
@@ -89,6 +97,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_profile_id` | A random local id (e.g. `p-a1b2c3d4...`) generated on this device | **No** — it is stamped on local events but is **not** included in anything sent |
 | `cp_sb_session` | The access and refresh token for your anonymous account, and its user id | It **is** your credential for our database — see §3 |
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
+| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, and when the app went to the background and for how long. It holds no audio, no URLs and no account id | **No** — it is never transmitted; the drawer's **Playback diagnostics** shows it and lets you copy or clear it |
 
 The web app also keeps a Cache Storage bucket named `foray-v4` holding the app
 shell and the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
