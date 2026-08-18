@@ -284,9 +284,12 @@ test("the request body carries exactly the fields the cache key covers", () => {
   const body = buildRequest(spec("t")).body;
   assert.deepEqual(Object.keys(body).sort(), ["model_id", "text"]);
   /* And each of those maps to a hashed input: `text` -> "text", `model_id` ->
-     "modelId". The other two hashed inputs travel in the URL, not the body. */
-  const url = buildRequest(spec("t")).url;
-  assert.match(url, /\/text-to-speech\/v1\?/, "voiceId is in the path");
+     "modelId". The other two hashed inputs travel in the URL, not the body.
+     A distinctive voice id on purpose: the default fixture's "v1" is
+     indistinguishable from the API's own `/v1` path segment, which made the
+     first draft of this assertion read as if it were matching the API version. */
+  const url = buildRequest(spec("t", { voiceId: "NARRATOR_X", outputFormat: "mp3_44100_64" })).url;
+  assert.match(url, /\/v1\/text-to-speech\/NARRATOR_X\?/, "voiceId is in the path");
   assert.match(url, /output_format=mp3_44100_64/, "outputFormat is in the query");
 });
 
