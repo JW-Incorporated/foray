@@ -83,12 +83,14 @@ import { makeIdbTier } from "./idb-tier.js";
 import {
   createMediaSession, mediaSessionView, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
 } from "./media-session.js";
+import {
+  readRate, writeRate, nextRate, normalizeRate, rateLabel, rateAriaLabel,
+} from "./playback-rate.js";
 
 /* The in-page buttons and the lock screen use ONE pair of numbers, imported
    rather than declared twice — `04_VOICE_AUDIO_SPEC.md`'s "±30/15 s seek". */
 const SEEK_BACK = SEEK_BACKWARD_SEC;
 const SEEK_FWD = SEEK_FORWARD_SEC;
-const RATES = [1, 1.25, 1.5, 1.75, 2];
 
 let manager = null;
 let backend = null;
@@ -377,6 +379,12 @@ function forayStateSnapshot() {
     // and it is silent otherwise: the manager pauses and the page just sits
     // there. Hand it up so the surface can say what happened.
     error: foray.error ?? null,
+    /* The chosen speed, so the Foray page can label its own speed button from the
+       same value the mini-player's is labelled from (#242). On the snapshot rather
+       than fetched by the page for one reason: the page repaints from `onChange`,
+       and a tap on EITHER button has to move BOTH — `applyRate` notifies, so it
+       does. */
+    rate: currentRate(),
   };
 }
 
@@ -526,6 +534,55 @@ function setNowPlaying(item, why) {
   render();
 }
 
+/* ---------- playback speed (#242) ----------
+
+   `player/playback-rate.js` owns the ladder, the labels and the stored value;
+   `player/queue-manager.js` owns applying it across a Foray (its §12). This is
+   the wiring, and there is exactly one of each function so the mini-player
+   button, the Foray page button and a future lock-screen control cannot hold
+   different opinions about what the speed is. */
+
+/** The chosen speed, booted or not. `manager.rate` once there is one, because it
+    is the thing that will actually be restored at the next seam; the stored value
+    before that, because a listener can set the speed before pressing play. */
+function currentRate() {
+  return manager ? manager.rate : readRate(storage);
+}
+
+/**
+ * Apply and persist a speed.
+ *
+ * WORKS WITH NOTHING BOOTED, deliberately. Setting the speed before pressing play
+ * is an ordinary thing to do on the Foray page, and booting an `<audio>` element
+ * to record a number would be absurd — so with no manager this writes the value
+ * and stops, and `ensureBooted` reads it back when the listener does press play.
+ * That is also why `cp_rate` is the single source of truth rather than a variable
+ * up here: the two entry points would otherwise disagree across a boot.
+ *
+ * The write is not guarded here because `writeRate` never throws: a speed that
+ * cannot be stored is still a speed that should govern this session, and the
+ * refusal lands in `storage.health()` like every other one.
+ */
+function applyRate(rate) {
+  const r = normalizeRate(rate);
+  writeRate(storage, r);
+  if (manager) manager.setRate(r);
+  paintRate(r);
+  // The Foray page paints its own copy of this button, and a beat produces no
+  // media event to repaint on — so tell it rather than waiting for a tick.
+  notifyForay();
+  return r;
+}
+
+/** Put the value on the button. Both the visible label and the accessible name,
+    because `aria-label` REPLACES a button's text: without the second line a
+    screen-reader user is told "Playback speed" and never told what it is. */
+function paintRate(rate = currentRate()) {
+  if (!ui) return;
+  ui.rateBtn.textContent = rateLabel(rate);
+  ui.rateBtn.setAttribute("aria-label", rateAriaLabel(rate));
+}
+
 /* ---------- transport, in one place ---------- */
 
 /**
@@ -639,7 +696,17 @@ function syncMediaSession() {
       showArtworkUrl: artworkByShow.get(items[index]?.show ?? "") ?? null,
       durationSec: foray.resolved.totalSec,
       positionSec: forayPosition(),
-      playbackRate: backend?.el?.playbackRate ?? 1,
+      /* THE ELEMENT'S REAL RATE, not the chosen one, and the distinction is the
+         whole honesty requirement. The OS extrapolates the playhead forward as
+         `position + rate x wall` between our reports, so a rate the element is not
+         actually running at makes the lock-screen scrubber drift away from the
+         audio — which is worse than no scrubber. `backend.rate` reads the element
+         and falls back to what we asked for only when it has no usable answer, so
+         a speed Safari refused is a speed the lock screen does not claim.
+         The clock these seconds are on is the FORAY's, which is media time, so the
+         extrapolation is dimensionally right: position and duration are content
+         seconds and the rate is content-per-wall. */
+      playbackRate: backend?.rate ?? 1,
       playing: isPlaying(),
       // The 2.0 s authored beat reads as playing, exactly as `isRunning()` has
       // it for the in-page buttons. `media-session.js` §4 is the argument.
@@ -657,7 +724,14 @@ function syncMediaSession() {
     showArtworkUrl: current.artwork_url ?? null,
     durationSec: backend?.duration ?? current.duration_sec ?? null,
     positionSec: backend?.currentTime ?? 0,
-    playbackRate: backend?.el?.playbackRate ?? 1,
+    /* The rate the element is really running at, for the reason spelled out
+       above. A BLOCK comment, deliberately: `media-session.test.js` scans this
+       file with a stripper that removes `//` comments LAST, so an apostrophe in
+       one reads as an unterminated string literal and swallows the code after it
+       until the next apostrophe — which is exactly how "element's" here turned
+       four of that suite's wiring assertions red. Block comments go first and are
+       safe. */
+    playbackRate: backend?.rate ?? 1,
     playing: isPlaying(),
     ended: manager?.state?.type === "ended",
   }));
@@ -709,15 +783,7 @@ function bind() {
     render();
   });
 
-  ui.rateBtn.addEventListener("click", () => {
-    const cur = Number(storage.getItem("cp_rate")) || 1;
-    const next = RATES[(RATES.indexOf(cur) + 1) % RATES.length];
-    // Throws only when NO tier accepted it — a rate that cannot be stored is
-    // still a rate that should apply for this session.
-    try { storage.setItem("cp_rate", String(next)); } catch (_) { /* health() has it */ }
-    backend.setRate(next);
-    ui.rateBtn.textContent = `${next}×`;
-  });
+  ui.rateBtn.addEventListener("click", () => applyRate(nextRate(currentRate())));
 
   // Corner case #17: pocketing the phone must not lose the position. This is
   // the path that actually matters on mobile — beforeunload is unreliable there.
@@ -741,6 +807,12 @@ function bind() {
 function ensureBooted() {
   if (manager) return;
 
+  /* Read BEFORE the manager is built, so `manager.rate` is never momentarily
+     wrong: `render()` can run from a media event before anything else in this
+     function finishes, and a label that paints "1×" and then corrects itself is
+     the flicker this whole feature is about. */
+  const rate = readRate(storage);
+
   positions = new PositionStore({
     storage,
     onSave: (id, seconds, meta) => {
@@ -756,6 +828,12 @@ function ensureBooted() {
     backend,
     positionStore: positions,
     strategy: SINGLE_ITEM,
+    /* The stored speed, as STATE. It reaches the element through the `setRate`
+       below — the constructor deliberately touches no backend — but the manager
+       has to know it from the first instant, because `restoreRate` fires on the
+       very first `itemLoaded` and that is the load a stored 1.5x used to be
+       thrown away on. */
+    rate,
     /* A seam beat produces NO media events — the element is paused for the
        whole 2 s, so `timeupdate` has stopped and neither `play` nor `pause`
        fires. Without this hook the page keeps whatever frame it had when the
@@ -804,11 +882,12 @@ function ensureBooted() {
   ui = buildUI();
   bind();
 
-  // Through the durable store, like every other cp_ key: a playback rate is
-  // small, but "the app forgot I listen at 1.5x" is the same defect in miniature.
-  const rate = Number(storage.getItem("cp_rate")) || 1;
-  backend.setRate(rate);
-  ui.rateBtn.textContent = `${rate}×`;
+  /* Through the durable store, like every other cp_ key: a playback rate is
+     small, but "the app forgot I listen at 1.5x" is the same defect in miniature.
+     `manager.setRate`, not `backend.setRate` — the manager is what re-applies it
+     at every seam, and going round it would restore the old defect exactly. */
+  manager.setRate(rate);
+  paintRate(rate);
 
   /* `addMediaListener`, NOT `backend.el.addEventListener`, and this is not a
      style preference. The backend now owns two `<audio>` elements and hands the
@@ -880,6 +959,47 @@ const ForayPlayer = {
 
   fmtClock,
   fmtSpan,
+
+  /* ---------- playback speed (#242) ---------- */
+
+  /** The chosen speed, as a number. Readable before anything has booted, so a
+      page can label its own control on first paint. */
+  playbackRate() {
+    return currentRate();
+  },
+
+  /** "1.5×" — re-exported so the Foray page's button and the mini-player's are
+      written by the same function. app.js is a classic script and cannot import
+      the module, which is the whole reason this bridge exists. */
+  rateLabel(rate) {
+    return rateLabel(rate);
+  },
+
+  /** The accessible name, likewise. A page that wrote its own would be a second
+      opinion about copy, and this one has to say the value because `aria-label`
+      replaces the button's text. */
+  rateAriaLabel(rate) {
+    return rateAriaLabel(rate);
+  },
+
+  /**
+   * Advance to the next speed and return it. The whole of what a button needs.
+   *
+   * Works with nothing playing: the value is stored and applied at the next boot,
+   * so a listener can set the speed before pressing play. Not `async`, and that
+   * is worth stating — `applyRate` touches storage synchronously and reaches the
+   * element synchronously, so a caller wrapping this in a guard gets a real
+   * return value rather than a promise.
+   */
+  cycleRate() {
+    return applyRate(nextRate(currentRate()));
+  },
+
+  /** Set a specific speed, snapped onto the ladder. For a settings row or a
+      console; the shipped controls all cycle. */
+  setPlaybackRate(rate) {
+    return applyRate(rate);
+  },
 
   /** Which segment `elapsedSec` lands in, and how far into it — re-exported so
       the page paints the strip's fill with exactly the maths `foraySeek` uses
