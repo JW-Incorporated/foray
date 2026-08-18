@@ -17,17 +17,23 @@
    agent improving the search engine (app.js + semantic-index.json) — it
    should not need to re-derive any of this.
 
-   Matching semantics are deliberately copied from app.js's interpretQuery/
-   scoreMatch (hitTag/hitText/tokenize) so "coverage" here means what a user
-   actually gets from search today, not an idealized match.
+   Matching semantics are IMPORTED from search-engine.js (hitTag/hitText), not
+   copied, so "coverage" here means what a user actually gets from search today
+   rather than an idealized match. That claim used to be false: this file kept
+   its own looser copy and over-counted. See the matching-semantics section
+   below for what changed and for the one helper (tokenize) deliberately left
+   unshared.
 
    Usage: node tools/topic-coverage-report.mjs [--out path] */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+const SE = require(join(ROOT, "search-engine.js"));
 const args = process.argv.slice(2);
 const outPath = args.includes("--out")
   ? args[args.indexOf("--out") + 1]
@@ -45,8 +51,34 @@ const taxonomy = readJson("data/taxonomy.json").nodes;
 const nodeIds = new Set(taxonomy.map((n) => n.id));
 const branchOf = (nodeId) => nodeId.split("/")[0];
 
-/* ---------- matching semantics copied from app.js (STOPWORDS/tokenize/
-   hitText/hitTag in the "query interpreter (playlist builder)" section) ---- */
+/* ---------- matching semantics ----------------------------------------------
+   `hitText`/`hitTag` are IMPORTED from search-engine.js, not reimplemented
+   (#219). This file used to hold the THIRD copy of them, and it was the loose
+   one: bare `text.includes(t)` / `tag.includes(t)`, with none of the ranker's
+   collision guard. So it accepted `software` and `toward` for "war", `romance`
+   for "roman", `confusion` for "fusion" -- the exact collisions
+   search-engine.js documents and tools/test-search.mjs asserts the ranker must
+   not make. That made this report OPTIMISTIC, which is the one direction that
+   matters: it reported a topic as covered when search would not return it, so
+   it hid gaps rather than inventing them. The header's claim that coverage here
+   means "what a user actually gets from search today" is only true if the
+   matcher is literally the one search uses.
+
+   Three copies existed and two disagreed with the ranker; the copies are how
+   they drifted. test/search-matcher.test.js now fails if any file reimplements
+   these helpers instead of importing them.
+
+   `tokenize` and `STOPWORDS` below are deliberately NOT shared, and that is a
+   decision rather than an oversight. This file's STOPWORDS carries question
+   words search-engine.js's does not ("how", "does", "is", "are", "works",
+   "what", "explained") because its input is a topic's hand-written
+   `example_queries`, not a live query box. More importantly, search-engine.js's
+   tokenize filters GENERIC_WORDS unconditionally, while coreTermsFor() below
+   must keep a generic word when it IS the topic's own label -- that is what
+   stops the "History" topic from being unable to anchor on itself. Sharing
+   tokenize would silently change which terms every topic is measured on, which
+   is a coverage-methodology change wearing a deduplication costume. Do it in
+   its own PR against its own before/after, or not at all. */
 
 const STOPWORDS = new Set([
   "a", "an", "the", "about", "series", "playlist", "of", "on", "for", "me", "my",
@@ -61,8 +93,7 @@ function tokenize(q) {
   return [...new Set(base)];
 }
 
-const hitText = (text, t) => (t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : text.includes(t));
-const hitTag = (tag, t) => (t.length < 4 ? tag === t || tag.split("-").includes(t) : tag.includes(t));
+const { hitText, hitTag } = SE;
 
 /* Words so generic they're substrings of dozens of unrelated concept ids/tags
    (e.g. "-history" tags on film/music/computing/engineering/science items all
@@ -250,7 +281,12 @@ const doc = {
   built_at: new Date().toISOString(),
   provenance: {
     produced_by: "topic-coverage-report.mjs",
-    method: "deterministic cross-reference (mirrors app.js query matching); no LLM",
+    method:
+      "deterministic cross-reference; no LLM. tag_count/text_hits use " +
+      "search-engine.js's exported hitTag/hitText directly (#219), so they are " +
+      "the ranker's own matching semantics rather than a copy of them. Counts " +
+      "before 2026-08-17 came from a looser local copy (bare substring, no " +
+      "collision guard) and were optimistic.",
     inputs: [
       "data/top-topics.json",
       "data/discover.json",
