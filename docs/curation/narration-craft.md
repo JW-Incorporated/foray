@@ -698,8 +698,9 @@ Four caveats, because the figure is only as honest as they are.
   candidate sits inside `moreish#266` and thin beat 6's inside `bbqrn#700` — both
   already counted in beats 15 and 14 — and `moss#2779` is a candidate for both beat 27
   and beat 37, which the report resolves by assigning it to 37 only, "so that one
-  segment is not double-booked". So the covered beats share tape, and the total above counts each segment once, which is
-  correct for a runtime and worth stating so nobody adds them twice.
+  segment is not double-booked". So the covered beats share tape, and the total above
+  counts each segment once, which is correct for a runtime and worth stating so nobody
+  adds them twice.
 - **And the fourth caveat, which the first three do not cover: this base is not
   assemblable as one Foray.** Six Grill Coach segments at 684.4 s of a 2,737 s
   runtime is **25.0 %** — fractionally over M4, the ≤ 25 % single-episode
