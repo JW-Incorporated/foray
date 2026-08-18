@@ -95,8 +95,10 @@ export function buildRequest(spec = {}) {
  *   **A THIN WRAPPER AROUND `fetch`, NOT `fetch` ITSELF.** A bare `Response` is
  *   rejected on purpose: its body has not been read yet, so it cannot evidence
  *   that any audio arrived. The wrapper must read the body and AFFIRM success —
- *   forward `ok: true` or the numeric `status`, and return the audio as `bytes`
- *   (a count, a `Buffer`, a `Uint8Array` or an `ArrayBuffer` all work). A result
+ *   forward `ok: true` or the numeric `status`, and return the audio as `bytes` —
+ *   a count, or anything carrying `byteLength` or `size` (`Buffer`, any
+ *   `TypedArray`, `ArrayBuffer`, `DataView`, `Blob`). A bare `.length` is NOT
+ *   read, so do not pass a string or a `content-length` header value. A result
  *   that affirms nothing is treated as a failure and records nothing, because
  *   `fetch` resolves on 429/500 and a cached failure skips the beat forever.
  *   Roughly:
@@ -236,7 +238,7 @@ export function createAdapter(opts = {}) {
     const result = await transport(keyed);
 
     /* A FAILED CALL MUST NOT BE CACHED, and this is the sharpest edge in the
-       module. `transport` is `fetch` in production, and **fetch resolves for
+       module. `transport` wraps `fetch` in production, and **fetch resolves for
        429 and 500** -- it only rejects on a network-level failure. So the
        obvious `await transport(...)` followed by `cache.record(...)` writes a
        cache entry for a generation that never happened, and every later run
@@ -263,13 +265,19 @@ export function createAdapter(opts = {}) {
        status), no contradicting one, and real bytes. A transport that reports
        nothing is treated as a failure, which is the safe direction — it re-bills
        rather than skipping the beat forever. */
-    const status = typeof result?.status === "number" ? result.status : null;
+    const rawStatus = result?.status;
+    const status = typeof rawStatus === "number" ? rawStatus : null;
+    /* A status that is PRESENT but not a number cannot be read, and an unreadable
+       status must not be silently ignored: treating it as absent let
+       `{ ok: true, status: "404" }` through as a success, caching a genuine
+       failure. Unparseable therefore contradicts. */
+    const statusUnparseable = rawStatus !== undefined && rawStatus !== null && status === null;
     const statusAffirms = status !== null && status >= 200 && status < 300;
     const okAffirms = result?.ok === true;
     // `ok` present but not strictly true contradicts, which catches `ok: 0` and
     // `ok: null` as well as `ok: false`.
     const okContradicts = result?.ok !== undefined && result?.ok !== true;
-    const statusContradicts = status !== null && !statusAffirms;
+    const statusContradicts = statusUnparseable || (status !== null && !statusAffirms);
     const bytes = byteCountOf(result?.bytes);
 
     if (okContradicts || statusContradicts || !(okAffirms || statusAffirms) || bytes == null) {
@@ -316,8 +324,18 @@ export function createAdapter(opts = {}) {
  */
 export function byteCountOf(b) {
   if (typeof b === "number") return Number.isFinite(b) && b > 0 ? b : null;
-  // Buffer/TypedArray expose byteLength; ArrayBuffer does too; a string has length.
-  const n = b?.byteLength ?? b?.length;
+  /* `byteLength` covers Buffer, every TypedArray, ArrayBuffer and DataView;
+     `size` covers Blob, which is one of the four natural ways to read a fetch
+     body and was missed by the first draft.
+
+     `.length` is deliberately NOT consulted, though it is tempting and the first
+     draft used it. It duck-types far too widely for a module whose whole job is
+     distrusting what a transport hands back: `byteCountOf("1234")` would answer
+     4, a forwarded JSON error body would answer its character count, and the
+     natural-looking `bytes: r.headers.get("content-length")` — a STRING — would
+     report "41234" as 5 bytes. Refusing all of those means such a transport
+     re-bills rather than recording a wrong number, which is the safe direction. */
+  const n = b?.byteLength ?? b?.size;
   return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
 }
 

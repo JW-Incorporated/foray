@@ -585,8 +585,8 @@ test("a transport that reports HTTP failure records NOTHING, so a retry re-bills
      shipping with a silent gap and no error anywhere.
 
      Paying twice is recoverable. A permanently skipped beat is not.
-     MUTATION THAT KILLS THIS: in synthesize(), delete the `if (result?.ok ===
-     false || !statusOk || bytes == null)` early return. */
+     MUTATION THAT KILLS THIS: in synthesize(), delete the whole
+     `if (okContradicts || statusContradicts || ...)` early return. */
   for (const bad of [
     { ok: false, status: 429 },
     { ok: false, status: 500 },
@@ -838,4 +838,110 @@ test("an unknown model costs the cost line, not the whole report", () => {
   assert.match(r.text, /16 characters/, "and so must the counts");
   assert.match(r.text, /COST UNAVAILABLE: .*unknown model/);
   assert.equal(r.totals.chars, 16);
+});
+
+/* ---------- third review round: boundaries and duck-typing ---------- */
+
+test("the 2xx window has both edges pinned, so a 3xx cannot be cached as success", async () => {
+  /* THIS TEST EXISTS BECAUSE A MUTATION SURVIVED. Changing `status < 300` to
+     `status < 400` passed the entire suite: the code was right and the assertion
+     was missing, so a redirect — which carries no audio — could have become a
+     cached "generation" with nothing to catch it.
+     MUTATION THAT KILLS THIS: change `status < 300` to `status < 400`, or
+     `status >= 200` to `status >= 100`, in synthesize(). */
+  const probe = async (status) => {
+    const cache = new NarrationCache();
+    const adapter = createAdapter({
+      apiKey: "fake", cache, voiceId: "v1",
+      transport: async () => ({ status, bytes: 2048 }),
+    });
+    const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+    return { ok: !r.failed, cached: Object.keys(cache.dump().entries).length };
+  };
+  for (const s of [200, 201, 299]) {
+    assert.deepEqual(await probe(s), { ok: true, cached: 1 }, `${s} is a success`);
+  }
+  for (const s of [100, 199, 300, 301, 302, 400, 429, 500]) {
+    assert.deepEqual(await probe(s), { ok: false, cached: 0 }, `${s} must NOT be cached`);
+  }
+});
+
+test("a present but unreadable status contradicts rather than being ignored", async () => {
+  /* Treating a non-numeric status as absent let `{ ok: true, status: "404" }`
+     through as a success — a genuine failure cached, which is the HIGH class.
+     MUTATION THAT KILLS THIS: drop `statusUnparseable` from the
+     `statusContradicts` expression. */
+  for (const status of ["404", "200", {}, [], true, NaN]) {
+    const cache = new NarrationCache();
+    const adapter = createAdapter({
+      apiKey: "fake", cache, voiceId: "v1",
+      transport: async () => ({ ok: true, status, bytes: 2048 }),
+    });
+    const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+    assert.ok(r.failed, `status ${JSON.stringify(status)} is unreadable and must not pass`);
+    assert.equal(Object.keys(cache.dump().entries).length, 0);
+  }
+});
+
+test("byteCountOf reads byteLength and size, and refuses bare length", () => {
+  /* `.length` duck-types far too widely for a module whose job is distrusting
+     what a transport returns: it would answer 4 for the string "1234", the
+     character count for a forwarded JSON error body, and 5 for the natural-looking
+     `bytes: r.headers.get("content-length")`.
+     MUTATION THAT KILLS THIS: restore `?? b?.length` in byteCountOf. */
+  assert.equal(byteCountOf(new Blob(["abcdefghij"])), 10, "Blob carries size, not byteLength");
+  assert.equal(byteCountOf(new DataView(new ArrayBuffer(64))), 64);
+  assert.equal(byteCountOf(new Float32Array(8)), 32, "byteLength, not element count");
+  // The duck-typing hazards, all refused.
+  assert.equal(byteCountOf("1234"), null, "a string is not audio");
+  assert.equal(byteCountOf('{"detail":"quota_exceeded"}'), null, "an error body is not audio");
+  assert.equal(byteCountOf("41234"), null, "a content-length header value is not audio");
+  assert.equal(byteCountOf([1, 2, 3]), null, "an array is not audio");
+  assert.equal(byteCountOf({ length: 5 }), null, "a bare length is not audio");
+});
+
+test("a Blob-carrying transport is recorded, end to end", async () => {
+  /* `await r.blob()` is one of the four natural ways to read a fetch body, and
+     the previous draft rejected it — a genuine success recorded as a failure,
+     re-billing every run forever.
+     MUTATION THAT KILLS THIS: drop `?? b?.size` from byteCountOf. */
+  const cache = new NarrationCache();
+  const adapter = createAdapter({
+    apiKey: "fake", cache, voiceId: "v1",
+    transport: async () => ({ ok: true, status: 200, bytes: new Blob(["x".repeat(4096)]) }),
+  });
+  const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+  assert.equal(r.failed, undefined);
+  assert.equal(r.bytes, 4096);
+  assert.equal(Object.keys(cache.dump().entries).length, 1);
+});
+
+test("a transport that throws records nothing and propagates", async () => {
+  /* The network-level failure case, as opposed to the resolved-but-failed one.
+     MUTATION THAT KILLS THIS: wrap the `await transport(keyed)` call in a
+     try/catch that falls through to cache.record(). */
+  const cache = new NarrationCache();
+  const adapter = createAdapter({
+    apiKey: "fake", cache, voiceId: "v1",
+    transport: async () => { throw new Error("ECONNRESET"); },
+  });
+  await assert.rejects(() => adapter.synthesize({ id: "b", text: "a line" }), /ECONNRESET/);
+  assert.equal(Object.keys(cache.dump().entries).length, 0);
+});
+
+test("the pipeline doc does not describe a transport contract the code rejects", () => {
+  /* A doc-vs-code divergence here is expensive in a specific way: someone writes
+     the transport from the doc, the adapter rejects every result, and the beat
+     re-bills forever with no clue why. The doc described the REVERTED rule for one
+     commit, so this pins the two claims that matter.
+     MUTATION THAT KILLS THIS: reinstate "a non-false `ok`" in the doc, or drop the
+     "wraps" so it reads "`transport` is `fetch` in production". */
+  const doc = fs.readFileSync(path.join(HERE, "..", "..", "docs", "narrator-pipeline.md"), "utf8");
+  /* Case-INSENSITIVE: the first draft of this assertion used /a non-false `ok`/
+     and a mutation inserting "A non-false `ok` suffices." survived it. */
+  assert.ok(!/non-false `ok`/i.test(doc),
+    "the doc must not describe the reverted absence-of-denial rule");
+  assert.ok(!/`transport` is `fetch` in production/i.test(doc),
+    "the doc must not say transport IS fetch — a bare Response is rejected");
+  assert.match(doc, /affirms?/i, "it must describe the positive rule");
 });
