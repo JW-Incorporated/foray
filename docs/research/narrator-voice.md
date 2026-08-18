@@ -63,14 +63,31 @@ happens to be the assumption that the founder's "I'll provide an ElevenLabs key"
 also rests on. That does not make it wrong. It makes it untested, which is a
 different thing, and §6 below says how to test it for nothing.
 
-**A second dossier figure that does not hold up.** § 6 gives ElevenLabs as
-"~$0.05-0.10 per 1K characters effective". Recomputed from the official pricing
-page actually in the corpus (source 40), the real range is **$0.082 to $0.20 per
-1K characters** depending on plan and model — see § 6. The dossier's own Caveats
-section already warned that "several TTS price points ... were sourced partly
-from third-party trackers and should be verified against official vendor pricing
-pages"; this is that verification, and the low end of its range was optimistic by
-roughly a factor of two.
+**A second dossier figure, which turns out to be right for a reason the corpus
+cannot see.** § 6 gives ElevenLabs as "~$0.05-0.10 per 1K characters effective".
+Recomputing from the pricing page actually captured in the corpus (source 40)
+gives $0.165 to $0.20 per 1K characters — apparently a factor of two worse. The
+discrepancy is real and it is not the dossier's error: **source 40 captured the
+ElevenCreative subscription page, and ElevenLabs sells the API as a separate
+product line at a separate price.** `https://elevenlabs.io/pricing/api` states
+"$0.05" per 1K characters for Flash and Turbo and "$0.10" per 1K for Multilingual
+v2 and v3 — exactly the dossier's range.
+
+That is worth stating loudly because it points the other way from the usual
+caution. The credit arithmetic on the Creative page — Creator at $22 for 121,000
+credits is $0.182 per 1K, Pro at $99 for 600,000 is $0.165 per 1K, and
+multilingual models bill one credit per character — makes the **subscription line
+1.65 to 1.8× more expensive per character than the API line for the same model**.
+Anyone costing narration off source 40 alone will over-state it by that much, and
+anyone who buys the wrong product line will pay it. Which line to buy belongs to
+`docs/narrator-pipeline.md`; the finding is recorded here because this is where it
+surfaced.
+
+This correction is also the honest example of why this document carries labels.
+The paragraph above originally read "optimistic by roughly a factor of two" and
+was committed to this branch that way. It was wrong: two documented sources
+disagreed, and instead of resolving them the first draft picked the one already in
+the corpus and called the other one careless. Resolving it took one fetch.
 
 **What the corpus did answer**, and answered well: the three pricing pages
 (sources 38, 39, 40), loudness normalisation practice (12, 36), and disclosure
@@ -207,3 +224,56 @@ speaking rate trade against each other, so **speaking rate has to be an explicit
 setting, not an accepted default** — and it has to be a setting we can prove is
 being applied, because it is the one voice parameter whose absence is invisible in
 a script review and obvious in the ear.
+
+### 3.2 What a 2026 voice can actually be told to do
+
+The useful way to ask "which characteristics can TTS deliver" is not to listen to
+demos — we are not allowed to — but to read the control surface. A vendor exposes
+knobs for what it can do and stays quiet about what it cannot.
+
+**Documented**, from ElevenLabs' own API and prompting references:
+
+| characteristic | control | documented range | documented catch |
+|---|---|---|---|
+| speaking rate | `speed` | 0.7–1.2, default 1.0 | "extreme values may affect the quality of the generated speech" |
+| expressive range | `stability` | default 0.5 | "Lower values introduce broader emotional range"; "Higher values can result in a monotonous voice" |
+| style intensity | `style` | default 0 | "style exaggeration of the voice"; numeric bounds not documented |
+| pauses (v2 models) | `<break time="x.xs" />` | up to 3 s | "Using too many break tags in a single generation can cause instability" |
+| delivery cues (v3) | inline `[whispers]`-style audio tags | open vocabulary | "The voice you choose and its training samples will affect tag effectiveness" |
+| v3 expressiveness | three-mode `stability` — Creative / Natural / Robust | — | Creative is "prone to hallucinations"; Robust is "less responsive to directional prompts" |
+
+**Judgement, and it is the important read of that table.** Pace is a real,
+bounded, documented dial and nothing else in the list is. Everything else is a
+*tendency* control with a documented failure mode on both sides: turn stability
+down and you get range plus randomness, turn it up and the vendor's own word for
+the result is "monotonous". There is no knob for warmth, none for breathiness,
+none for authority, and no documented way to ask for a specific pitch. Those
+characteristics are properties of the **voice you pick**, not settings you apply
+afterwards — which makes voice selection the decision and parameter tuning the
+afterthought, the opposite of how it is usually approached.
+
+**Documented, and it constrains selection harder than anything else in this
+document.** ElevenLabs' voices capability page states: "All our Default voices
+will expire on December 31, 2026, and they will no longer be accessible after this
+date", alongside "Our Default voices are being replaced with new voices that you
+will be able to use in perpetuity."
+
+**Judgement.** That is four months away and it disqualifies an entire class of
+choice. A Foray back catalogue is an archive: beats get edited, claims get
+corrected, and a corrected beat has to be re-voiced *in the same voice as the
+other ninety-nine* or the repair is audible. Picking a voice that stops existing
+on 31 December 2026 means every Foray narrated before that date becomes
+un-repairable after it. **So the voice must be one documented as usable in
+perpetuity — a replacement default or a Voice Library voice — and the identity of
+the chosen voice must be pinned in the repo by ID, not by name**, because names
+are display strings and this vendor has just demonstrated it will retire the
+things they point at.
+
+**Documented.** The Voice Library "contains over 10,000 voices shared by the
+ElevenLabs community", is filterable by gender (Male / Female / Neutral), age
+(Young / Middle Aged / Old), and use case — where "Narration" and "Educational"
+are both first-class categories — and is "not available via the API to free tier
+users". No official catalogue of named voices with per-voice descriptors is
+currently documented; the pages that used to hold one return 404. So the selection
+process is a library filter plus an ear, not a documented shortlist, and that ear
+requires the key.
