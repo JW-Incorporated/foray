@@ -79246,6 +79246,33 @@
       "batch_id": "fresh-2026-08-18-2873c34c",
       "classified_at": "2026-08-18T00:54:26.816Z"
     },
+    "1869074726": {
+      "topics": [
+        "news/daily",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and political commentary on current events and policy decisions.",
+      "display_title": "Beans Talk",
+      "blurb": "Daily news with humor and political commentary on current events, politics, and policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
     "1869515072": {
       "topics": [
         "health"
@@ -79267,6 +79294,50 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-18-2873c34c",
       "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1870029686": {
+      "topics": [
+        "religion/spirituality"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical folk witchcraft practice, landwork, seasonal living, and magical traditions.",
+      "display_title": "Between 3 Witches",
+      "blurb": "Practical witchcraft covering everyday magic, folklore, and seasonal living from three practitioners.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1870171382": {
+      "topics": [
+        "sports/tennis"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily updates and analysis of professional tennis from major tournaments.",
+      "display_title": "The Tennis",
+      "blurb": "Daily coverage of Australian Open and Grand Slam tennis with expert analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
     },
     "1870281854": {
       "topics": [
@@ -79376,6 +79447,33 @@
       "batch_id": "fresh-2026-08-18-2873c34c",
       "classified_at": "2026-08-18T00:54:26.816Z"
     },
+    "1871261648": {
+      "topics": [
+        "medicine",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.92
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physician-led patient education on cardiovascular treatments and heart disease management.",
+      "display_title": "Cardiovascular Therapeutics Unplugged",
+      "blurb": "Cardiologist breaks down heart treatments, medications, and procedures for informed patient decisions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
     "1871321030": {
       "topics": [
         "news/politics",
@@ -79442,6 +79540,28 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-18-2873c34c",
       "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1872119768": {
+      "topics": [
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity and notable person interviews exploring personal stories and life defining moments.",
+      "display_title": "Glass Half Full with Craig Melvin",
+      "blurb": "Intimate conversations with celebrities and interesting people about defining life moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
     },
     "1872352760": {
       "topics": [
@@ -79523,13 +79643,668 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-18-2873c34c",
       "classified_at": "2026-08-18T00:54:26.816Z"
+    },
+    "1873383776": {
+      "topics": [
+        "news/tech",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Brief daily tech news covering computers, phones, AI, and computing innovations.",
+      "display_title": "Tech Trends",
+      "blurb": "Daily updates on computers, phones, AI, and emerging technology trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1873624058": {
+      "topics": [
+        "education/self-improvement",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian classical education philosophy and formation for parents and educators.",
+      "display_title": "Virtue and Verse",
+      "blurb": "Thoughtful conversations on Christian classical education and raising children in truth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1873851248": {
+      "topics": [
+        "sports/hockey",
+        "sports/baseball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.92
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Unfiltered Toronto sports commentary on Maple Leafs, Blue Jays, and regional teams.",
+      "display_title": "The Sid Seixeiro Show",
+      "blurb": "High-energy Toronto sports coverage with opinionated analysis of the Leafs and regional teams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1873930772": {
+      "topics": [
+        "kids-family/parenting",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live parent coaching on discipline, communication, and navigating modern parenting challenges.",
+      "display_title": "Transforming Parenthood",
+      "blurb": "Real-time parent coaching addressing discipline, boundaries, and childhood behavior challenges.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1873942532": {
+      "topics": [
+        "culture/performing-arts",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intimate documentary portrait of Stephen Sondheim through interviews with his friends.",
+      "display_title": "Loving You: The Untold Sondheim",
+      "blurb": "Personal tribute to Stephen Sondheim told through candid interviews with close friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1874385512": {
+      "topics": [
+        "travel",
+        "culture/art"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "In-depth exploration of Spanish culture, traditions, food, and daily life practices.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1874641982": {
+      "topics": [
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Six-part investigative series on the disappearance and murder case of Sarah Stern.",
+      "display_title": "Bridge of Lies",
+      "blurb": "Six-part investigation into the unsolved disappearance and murder of Sarah Stern.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1874805194": {
+      "topics": [
+        "religion/hinduism"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio recitation of the Ramayana with scholarly commentary from Hindu tradition.",
+      "display_title": "Sri Ramayanam by Chaganti Koteshwar Rao",
+      "blurb": "Devotional recitation of the Ramayana with scholarly exploration from Hindu tradition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1875382970": {
+      "topics": [
+        "psychology/decision-making",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Depth psychology and soul-centered conversations on authenticity, ego, and self-discovery.",
+      "display_title": "Cheaper Than Therapy",
+      "blurb": "Depth psychology conversations on ego, authenticity, personal growth, and inner work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1875407186": {
+      "topics": [
+        "sports/fantasy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football strategy, draft analysis, player rankings, and decision-making frameworks.",
+      "display_title": "Pretend GM Fantasy Football Show",
+      "blurb": "Fantasy football strategy, rankings, draft preparation, and decision-making guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1875966986": {
+      "topics": [
+        "music",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.92
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with performers and artists about their personal music preferences and influences.",
+      "display_title": "Songversations With Eric Hutchinson",
+      "blurb": "Musicians and celebrities share their personal music tastes and life soundtracks.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1876135394": {
+      "topics": [
+        "business/startups",
+        "news/tech"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI-narrated exploration of digital business strategy, content creation, and online growth.",
+      "display_title": "The Cast Nexa Show",
+      "blurb": "Business strategy and digital growth for entrepreneurs and creators in the modern economy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1876233278": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Elite running training, coaching insights, and athlete interviews on distance running.",
+      "display_title": "The HAX Show",
+      "blurb": "Elite running training, coaching philosophy, and athlete interviews on distance racing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1876878536": {
+      "topics": [
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy interviews in casket setting exploring celebrity perspectives on mortality and legacy.",
+      "display_title": "Grave Conversations",
+      "blurb": "Comedic celebrity interviews about mortality, legacy, and life perspective in unique setting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1877146334": {
+      "topics": [
+        "religion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audiobook recordings of religious and spiritual texts from various world traditions.",
+      "display_title": "Book of Jubilees",
+      "blurb": "Audiobook recordings of religious texts from Jewish, Christian, and global spiritual traditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1877611346": {
+      "topics": [
+        "comedy/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.92
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Queer comedy interviews with Chicago-based performers on identity, religion, and culture.",
+      "display_title": "Cross My Heart with Hannah Beck",
+      "blurb": "Queer comedy conversations on identity, religion, relationships, and LGBTQ+ culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1877662688": {
+      "topics": [
+        "education/courses",
+        "religion/christianity"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "University-level biblical scholarship exploring chapters with academic research.",
+      "display_title": "The Bible Bar",
+      "blurb": "Scholarly biblical analysis from Bar-Ilan University translating research into engaged discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1877905664": {
+      "topics": [
+        "sports",
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.92
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wisconsin sports content featuring interviews with current and former Badger athletes.",
+      "display_title": "Butchie's Den",
+      "blurb": "Wisconsin sports coverage with interviews from current and former Badger athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1877924660": {
+      "topics": [
+        "business/founders",
+        "kids-family/parenting"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.88
+        },
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations balancing motherhood, entrepreneurship, business building, and identity.",
+      "display_title": "Raising Hustle",
+      "blurb": "Honest conversations on building businesses while navigating motherhood and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1878194150": {
+      "topics": [
+        "culture/design",
+        "business/founders"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with creative entrepreneurs and innovators building meaningful projects.",
+      "display_title": "The Sandbox Collective",
+      "blurb": "Interviews with creative entrepreneurs exploring innovation, design, and meaningful impact.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1878707228": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Monthly conversations about diamond painting hobby, artists, and community.",
+      "display_title": "You Know The Drill",
+      "blurb": "Monthly conversations about diamond painting as a craft hobby and artistic practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1878732152": {
+      "topics": [
+        "craft/diy-home"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical guidance on bathroom remodeling decisions and home renovation planning.",
+      "display_title": "Bathroom Remodeling Boca Raton",
+      "blurb": "Practical guidance on bathroom remodeling decisions and home renovation planning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1878759572": {
+      "topics": [
+        "sports/basketball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Boston Celtics coverage with game recaps, analysis, and NBA conversations.",
+      "display_title": "Celtics Daily Podcast",
+      "blurb": "Daily Boston Celtics coverage with game analysis and NBA-wide reporting.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1878825320": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Pittsburgh Penguins hockey coverage with analysis and team updates.",
+      "display_title": "DK's Double Shot of Penguins",
+      "blurb": "Daily Pittsburgh Penguins coverage with expert analysis and team updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1878825632": {
+      "topics": [
+        "nature/ocean-science",
+        "adventure/exploration"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Natural and human history of San Francisco Bay with environmental advocacy.",
+      "display_title": "Once Upon A Bay",
+      "blurb": "Stories of San Francisco Bay history, ecology, and environmental protection efforts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
+    },
+    "1879036034": {
+      "topics": [
+        "religion",
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Critical biblical scholarship and historical context from secular scholarly perspective.",
+      "display_title": "The Exvangelical Bible Study",
+      "blurb": "Critical biblical scholarship exploring historical context and text compilation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-18-018133bb",
+      "classified_at": "2026-08-18T08:50:22.424Z"
     }
   },
-  "built_at": "2026-08-18T00:54:26.816Z",
+  "built_at": "2026-08-18T08:50:22.424Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-18-2873c34c",
+    "last_batch_id": "fresh-2026-08-18-018133bb",
     "last_batch_tier": 1
   }
 }
