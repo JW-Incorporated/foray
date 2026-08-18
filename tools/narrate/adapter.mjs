@@ -90,7 +90,10 @@ export function buildRequest(spec = {}) {
 /**
  * @param {object} opts
  * @param {string|null} [opts.apiKey]  supply this and the adapter becomes real
- * @param {Function|null} [opts.transport]  `async (request) => {bytes}`. Injected
+ * @param {Function|null} [opts.transport]  `async (request) => {ok, status, bytes, asset}`.
+ *   Must report failure via `ok: false` or a non-2xx `status`, and must return a
+ *   positive `bytes` on success -- `synthesize` records nothing otherwise, because
+ *   `fetch` resolves on 429/500 and a cached failure skips the beat forever. Injected
  *   in tests. In production this would be `fetch`; it is NOT defaulted to
  *   `fetch` here, so that a missing transport cannot silently reach the network.
  * @param {NarrationCache} [opts.cache]
@@ -219,15 +222,74 @@ export function createAdapter(opts = {}) {
       );
     }
     const result = await transport(keyed);
-    // Recorded ONLY after a real generation. A dry run must never write here —
-    // see `cache.record`'s comment.
+
+    /* A FAILED CALL MUST NOT BE CACHED, and this is the sharpest edge in the
+       module. `transport` is `fetch` in production, and **fetch resolves for
+       429 and 500** -- it only rejects on a network-level failure. So the
+       obvious `await transport(...)` followed by `cache.record(...)` writes a
+       cache entry for a generation that never happened, and every later run
+       reads that entry as "already voiced" and skips the beat. The Foray then
+       ships with a silent gap and no error anywhere: exactly what `cache.mjs`'s
+       header calls "the most damaging bug this module could have", which was
+       guarded for dry runs and open for failed real ones.
+
+       So success is asserted POSITIVELY rather than assumed from the absence of
+       a throw: an explicit non-false `ok`, a 2xx status when one is reported,
+       and actual bytes. Anything else returns a `failed` result and records
+       nothing, so a retry re-bills -- which is the correct direction: paying
+       twice is recoverable, a permanently skipped beat is not. */
+    const status = result?.status ?? null;
+    const statusOk = status == null || (status >= 200 && status < 300);
+    const bytes = typeof result?.bytes === "number" && result.bytes > 0 ? result.bytes : null;
+    if (result?.ok === false || !statusOk || bytes == null) {
+      return {
+        ...p,
+        bytes: null,
+        asset: null,
+        failed: {
+          status,
+          reason: result?.ok === false || !statusOk
+            ? `transport reported failure (status ${status ?? "unknown"})`
+            : "transport returned no audio bytes",
+        },
+      };
+    }
+
+    // Recorded ONLY after a generation that demonstrably produced audio. A dry
+    // run must never write here either -- see `cache.record`'s comment.
     cache.record(p.key, {
       chars: p.chars, voiceId, modelId, outputFormat, asset: result?.asset ?? null,
     });
-    return { ...p, bytes: result?.bytes ?? null, asset: result?.asset ?? null };
+    return { ...p, bytes, asset: result?.asset ?? null };
   }
 
   return { plan, planForay, synthesize, dryRun, cache, config: { voiceId, modelId, outputFormat, charsPerMin } };
+}
+
+/** The two pricing buckets `pricing.json` is keyed by. */
+export const FLASH_TURBO = "flash_turbo";
+export const MULTILINGUAL = "multilingual_v2_and_v3";
+
+/** Provider model id -> the pricing bucket that prices it.
+ *
+ *  This map is the seam between two namespaces that are easy to confuse: the
+ *  provider's model ids, which is what `buildRequest` sends and what the cache
+ *  key hashes, and the pricing buckets, which is what `pricing.json` quotes
+ *  rates against. `costOf` accepts either and refuses anything it does not
+ *  recognise -- see the comment in its body for why a silent zero was the bug. */
+export const MODEL_PRICING_BUCKET = Object.freeze({
+  eleven_flash_v2_5: FLASH_TURBO,
+  eleven_flash_v2: FLASH_TURBO,
+  eleven_turbo_v2_5: FLASH_TURBO,
+  eleven_turbo_v2: FLASH_TURBO,
+  eleven_multilingual_v2: MULTILINGUAL,
+  eleven_v3: MULTILINGUAL,
+});
+
+/** @returns {string|null} the pricing bucket for a provider id OR a bucket name */
+export function pricingBucketFor(model) {
+  if (model === FLASH_TURBO || model === MULTILINGUAL) return model;
+  return MODEL_PRICING_BUCKET[model] ?? null;
 }
 
 /**
@@ -247,11 +309,35 @@ export function createAdapter(opts = {}) {
  * @returns {{creditsLow: number, creditsHigh: number, usd: number}}
  */
 export function costOf(chars, pricing, opts = {}) {
-  const { model = "flash_turbo", api = true } = opts;
+  const { model = FLASH_TURBO, api = true } = opts;
+  const bucket = pricingBucketFor(model);
+  /* THROW rather than price an unknown model at zero. Two namespaces meet here --
+     provider model ids (`eleven_flash_v2_5`) and pricing buckets
+     (`flash_turbo`) -- and `pricing.json` is keyed by the latter. The obvious
+     call, `costOf(chars, PRICING, { model: DEFAULT_MODEL_ID })`, therefore used
+     to find no rate and silently report $0.00. A cost tool that answers "free"
+     when it does not recognise the model is worse than one that refuses. */
+  if (!bucket) {
+    throw new Error(
+      `costOf: unknown model ${JSON.stringify(model)}. Known provider ids: ` +
+      `${Object.keys(MODEL_PRICING_BUCKET).join(", ")}; known buckets: ` +
+      `${[...new Set(Object.values(MODEL_PRICING_BUCKET))].join(", ")}.`
+    );
+  }
   const cpc = pricing?.credit_per_character ?? {};
-  const discounted = api && model === "flash_turbo";
+  const discounted = api && bucket === FLASH_TURBO;
   const creditsLow = Math.round(chars * (discounted ? (cpc.api_flash_turbo_low ?? 0.5) : 1));
   const creditsHigh = Math.round(chars * 1);
-  const perK = pricing?.api_dollar_per_1k_chars?.[model] ?? 0;
-  return { creditsLow, creditsHigh, usd: (chars / 1000) * perK };
+  /* `usd` is an API rate, so it is only meaningful for an API generation.
+     `pricing.json` records UI billing as a flat 1 credit/character and the
+     per-1,000-credit dollar rate as NOT PUBLISHED, so there is no honest dollar
+     figure for `api: false` -- and returning the API rate for it, as this used
+     to, understates a UI generation on the discounted models by 2x. */
+  const perK = pricing?.api_dollar_per_1k_chars?.[bucket];
+  return {
+    bucket,
+    creditsLow,
+    creditsHigh,
+    usd: api && typeof perK === "number" ? (chars / 1000) * perK : null,
+  };
 }

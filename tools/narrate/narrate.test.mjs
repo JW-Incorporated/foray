@@ -24,7 +24,10 @@ import {
   charsForDurationSec, mp3Bytes, CHARS_PER_MIN_MEASURED,
 } from "./billable.mjs";
 import { cacheKey, assertKeyInputsComplete, NarrationCache, KEY_INPUTS } from "./cache.mjs";
-import { createAdapter, buildRequest, costOf, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT } from "./adapter.mjs";
+import {
+  createAdapter, buildRequest, costOf, pricingBucketFor, MODEL_PRICING_BUCKET,
+  FLASH_TURBO, MULTILINGUAL, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT,
+} from "./adapter.mjs";
 import { projectForay, tierFor, SPINE } from "./projection.mjs";
 import { reportScripts, reportProjection, PRICING } from "./narrate.mjs";
 
@@ -242,14 +245,19 @@ test("the dry run counts the characters of the REAL request body", () => {
   });
 });
 
-test("synthesize refuses without a key, and plan still works fully", () => {
+test("synthesize refuses without a key, and plan still works fully", async () => {
   /* #247's hard constraint made mechanical: no key, no spend.
      MUTATION THAT KILLS THIS: delete the `if (dryRun) throw` block in
      synthesize(). */
   const transport = capturingTransport();
   const adapter = createAdapter({ transport, voiceId: "v1" });
   assert.equal(adapter.dryRun, true);
-  assert.rejects(() => adapter.synthesize({ text: "hello" }), /no apiKey/);
+  /* AWAITED. Unawaited, this assertion passed the test green and only surfaced
+     the mutation as a file-level "asynchronous activity after the test ended" --
+     and suite-integrity.test.js names this test as one of the only things
+     standing between the repo and a paid API call, so it must fail as an
+     assertion rather than lean on the runner's unhandled-rejection detection. */
+  await assert.rejects(() => adapter.synthesize({ text: "hello" }), /no apiKey/);
   const planned = adapter.plan({ id: "b", text: "hello" });
   assert.equal(planned.chars, 5, "planning must be fully functional with no key");
   assert.equal(transport.sent.length, 0, "and nothing may be sent");
@@ -371,6 +379,7 @@ test("cost is a band, because the per-character credit rate is only bounded", ()
   assert.equal(c.creditsLow, 500, "the floor is the strongly-implied Flash discount");
   assert.ok(c.creditsLow < c.creditsHigh);
   assert.equal(Number(c.usd.toFixed(2)), 0.05, "$0.05 per 1K characters on Flash");
+  assert.equal(c.bucket, FLASH_TURBO, "and it says which bucket it priced");
 });
 
 test("UI generations get no discount, unlike API ones", () => {
@@ -494,7 +503,7 @@ test("the script report shows per-beat and per-Foray counts and flags empty scri
   const r = reportScripts({
     id: "grilling-history-2",
     beats: [{ id: "beat-7", text: "Fire came first." }, { id: "beat-8", text: "" }],
-  }, { voiceId: "v1", modelId: "m1", outputFormat: "f1" });
+  }, { voiceId: "v1", modelId: DEFAULT_MODEL_ID, outputFormat: "f1" });
   assert.match(r.text, /beat-7/);
   assert.match(r.text, /beat-8/);
   assert.match(r.text, /\[EMPTY SCRIPT\]/);
@@ -556,4 +565,171 @@ test("no API key, endpoint call or network reach exists anywhere in tools/narrat
     assert.ok(!/\bsk_[a-zA-Z0-9]{8}/.test(src), `${f} must not contain an API key`);
     assert.ok(!/process\.env\.(ELEVEN|XI_)/.test(code), `${f} must not read a key from the environment`);
   }
+});
+
+/* ---------- the seven findings from the review of PR #253 ---------- */
+
+test("a transport that reports HTTP failure records NOTHING, so a retry re-bills", async () => {
+  /* THE WORST BUG THIS MODULE COULD HAVE, and it was live. `transport` is
+     `fetch` in production and **fetch RESOLVES on 429 and 500** — it rejects only
+     on a network-level failure. So `await transport(...)` followed by
+     `cache.record(...)` wrote a cache entry for a generation that never happened,
+     and every later run read it as "already voiced" and skipped the beat: a Foray
+     shipping with a silent gap and no error anywhere.
+
+     Paying twice is recoverable. A permanently skipped beat is not.
+     MUTATION THAT KILLS THIS: in synthesize(), delete the `if (result?.ok ===
+     false || !statusOk || bytes == null)` early return. */
+  for (const bad of [
+    { ok: false, status: 429 },
+    { ok: false, status: 500 },
+    { ok: true, status: 503 },
+    { ok: true, status: 200 },            // 2xx but no bytes: nothing was produced
+    { ok: true, status: 200, bytes: 0 },
+  ]) {
+    const cache = new NarrationCache();
+    const adapter = createAdapter({ apiKey: "fake", transport: async () => bad, cache, voiceId: "v1" });
+    const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+    assert.ok(r.failed, `${JSON.stringify(bad)} must report failure`);
+    assert.equal(r.bytes, null);
+    assert.equal(Object.keys(cache.dump().entries).length, 0,
+      `${JSON.stringify(bad)} must not be cached`);
+    // And the retry is still billable, which is the property that matters.
+    assert.equal(adapter.plan({ id: "b", text: "a line of narration" }).billable, true);
+  }
+});
+
+test("a transport that returns real bytes IS recorded", async () => {
+  /* The other half — the failure guard must not reject success.
+     MUTATION THAT KILLS THIS: make the guard `if (true) return {...}`, or require
+     `result.ok === true` (the fixture below omits `ok` on purpose, since a
+     transport reporting only a 2xx status is legitimate). */
+  const cache = new NarrationCache();
+  const adapter = createAdapter({
+    apiKey: "fake", cache, voiceId: "v1",
+    transport: async () => ({ status: 200, bytes: 4096, asset: "beat-7.mp3" }),
+  });
+  const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+  assert.equal(r.failed, undefined);
+  assert.equal(r.bytes, 4096);
+  assert.equal(r.asset, "beat-7.mp3");
+  assert.equal(Object.keys(cache.dump().entries).length, 1);
+});
+
+test("costOf refuses an unknown model instead of pricing it at zero", () => {
+  /* Two namespaces meet in costOf: provider model ids (`eleven_flash_v2_5`) and
+     pricing buckets (`flash_turbo`). pricing.json is keyed by the latter, so the
+     natural call — costOf(chars, PRICING, { model: DEFAULT_MODEL_ID }) — found no
+     rate and silently answered $0.00. A cost tool that says "free" when it does
+     not recognise the model is worse than one that refuses.
+     MUTATION THAT KILLS THIS: replace the `if (!bucket) throw` with
+     `bucket = bucket ?? FLASH_TURBO`. */
+  assert.throws(() => costOf(1000, PRICING, { model: "eleven_wrong_v9" }), /unknown model/);
+  assert.throws(() => costOf(1000, PRICING, { model: "" }), /unknown model/);
+  // A provider id and its bucket must price identically.
+  assert.equal(costOf(1000, PRICING, { model: DEFAULT_MODEL_ID }).usd,
+               costOf(1000, PRICING, { model: FLASH_TURBO }).usd);
+  assert.ok(costOf(1000, PRICING, { model: DEFAULT_MODEL_ID }).usd > 0,
+    "the default model must have a real price, not zero");
+});
+
+test("the multilingual bucket costs twice the flash bucket, and gets no credit discount", () => {
+  /* pricing.json: $0.10/1K vs $0.05/1K, and the 0.5-credit floor is Flash-only.
+     MUTATION THAT KILLS THIS: make `discounted` ignore the bucket
+     (`const discounted = api;`). */
+  const flash = costOf(100000, PRICING, { model: FLASH_TURBO });
+  const multi = costOf(100000, PRICING, { model: MULTILINGUAL });
+  assert.equal(multi.usd, flash.usd * 2);
+  assert.equal(flash.creditsLow, 50000, "Flash gets the implied 0.5 floor");
+  assert.equal(multi.creditsLow, 100000, "multilingual does not");
+  assert.equal(multi.creditsHigh, 100000);
+});
+
+test("costOf reports no dollar figure for a UI generation, rather than the API one", () => {
+  /* pricing.json records UI billing as a flat 1 credit/character and the
+     per-1,000-credit dollar rate as NOT PUBLISHED, so there is no honest dollar
+     number for api:false — and returning the API rate understated a UI
+     generation on the discounted models by 2x.
+     MUTATION THAT KILLS THIS: drop the `api &&` from the `usd` expression. */
+  const ui = costOf(1000, PRICING, { api: false });
+  assert.equal(ui.usd, null, "no published rate means no number");
+  assert.equal(ui.creditsLow, 1000);
+  assert.equal(ui.creditsHigh, 1000);
+  assert.ok(typeof costOf(1000, PRICING, { api: true }).usd === "number");
+});
+
+test("every model id the adapter can send maps to a pricing bucket", () => {
+  /* The seam between the two namespaces, closed in both directions: the adapter's
+     own default must be priceable, and nothing in the map may point at a bucket
+     pricing.json does not quote.
+     MUTATION THAT KILLS THIS: change DEFAULT_MODEL_ID to a model absent from
+     MODEL_PRICING_BUCKET, or add a bucket name pricing.json lacks. */
+  assert.ok(pricingBucketFor(DEFAULT_MODEL_ID), "the default model must be priceable");
+  for (const [id, bucket] of Object.entries(MODEL_PRICING_BUCKET)) {
+    assert.ok([FLASH_TURBO, MULTILINGUAL].includes(bucket), `${id} -> unknown bucket ${bucket}`);
+    assert.equal(typeof PRICING.api_dollar_per_1k_chars[bucket], "number",
+      `pricing.json quotes no rate for ${bucket}`);
+  }
+});
+
+test("the CLI prices the model it was actually given", () => {
+  /* The tool's whole purpose is preventing a surprise bill, and it used to call
+     costOf with no opts — so it printed `--model eleven_multilingual_v2` directly
+     above a cost computed at half that model's real rate.
+     MUTATION THAT KILLS THIS: in reportScripts(), drop the `{ model: modelId }`
+     argument from the costOf call. */
+  const beats = [{ id: "b1", text: "x".repeat(100000) }];
+  const flash = reportScripts({ id: "f", beats }, { voiceId: "v1", modelId: "eleven_flash_v2_5", outputFormat: "f" });
+  const multi = reportScripts({ id: "f", beats }, { voiceId: "v1", modelId: "eleven_multilingual_v2", outputFormat: "f" });
+  assert.match(flash.text, /~\$5\.00/);
+  assert.match(multi.text, /~\$10\.00/);
+  assert.match(flash.text, /50,000-100,000 credits/);
+  assert.match(multi.text, /100,000-100,000 credits/);
+});
+
+test("the rollover tier line appears when no single-month tier suffices", () => {
+  /* That is exactly when rollover is the deciding factor, and the old guard
+     (`tr && t && ...`) suppressed it there because `t` is null in that case.
+     MUTATION THAT KILLS THIS: restore `if (tr && t && tr.id !== t.id)`. */
+  const r = reportProjection({ forays: 120, regenFactor: 3 });
+  assert.match(r.text, /cheapest sufficient tier in ONE month: none/);
+  assert.match(r.text, /with rollover \(3x quota\): +business/);
+});
+
+test("the cache key cannot be forged by embedding a field name in the text", () => {
+  /* The old encoding joined field names to values with newlines, so a value
+     containing a newline could impersonate a field boundary — and script text is
+     multi-line by nature. Length-prefixing makes the encoding injective.
+     MUTATION THAT KILLS THIS: in cacheKey(), change the field() body back to
+     joining name and value with newlines. */
+  const a = cacheKey({ text: "foo\nvoiceId\nbar", voiceId: "V", modelId: "m", outputFormat: "f" });
+  const b = cacheKey({ text: "foo", voiceId: "bar\nvoiceId\nV", modelId: "m", outputFormat: "f" });
+  assert.notEqual(a, b);
+  // The same trick across the other boundary.
+  assert.notEqual(
+    cacheKey({ text: "t", voiceId: "a\nmodelId\nb", modelId: "c", outputFormat: "f" }),
+    cacheKey({ text: "t", voiceId: "a", modelId: "b\nmodelId\nc", outputFormat: "f" }),
+  );
+});
+
+test("cache.plan is a pure query and keeps no hit counters", () => {
+  /* It used to keep hits/misses, and they were wrong: synthesize() re-runs
+     plan() internally, so one beat and one generation counted as two misses. A
+     cache-effectiveness number that double-counts is worse than none, and
+     planForay().totals.cachedBeats already reports it correctly.
+     MUTATION THAT KILLS THIS: reintroduce `this.hits`/`this.misses` and a
+     stats() method on NarrationCache. */
+  const cache = new NarrationCache();
+  assert.equal(typeof cache.stats, "undefined", "no misleading stats() surface");
+  assert.equal(cache.hits, undefined);
+  const s = { text: "one", voiceId: "v", modelId: "m", outputFormat: "f" };
+  assert.deepEqual(cache.plan(s), cache.plan(s), "repeated planning must be identical");
+
+  // The honest number, from a single pass.
+  const adapter = createAdapter({ cache, voiceId: "v1" });
+  const beats = [{ id: "a", text: "aaa" }, { id: "b", text: "bbb" }];
+  const key = cacheKey({ text: "aaa", voiceId: "v1", modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT });
+  cache.record(key, { chars: 3 });
+  assert.equal(adapter.planForay(beats).totals.cachedBeats, 1);
+  assert.equal(adapter.planForay(beats).totals.cachedBeats, 1, "and it must not drift on a second pass");
 });

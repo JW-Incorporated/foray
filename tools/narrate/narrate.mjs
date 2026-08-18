@@ -32,7 +32,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const PRICING = JSON.parse(fs.readFileSync(path.join(HERE, "pricing.json"), "utf8"));
 
 const mb = (bytes) => `${(bytes / 1e6).toFixed(1)} MB`;
-const usd = (n) => `$${n.toFixed(2)}`;
+const usd = (n) => (typeof n === "number" ? `$${n.toFixed(2)}` : "n/a");
 const mins = (sec) => `${(sec / 60).toFixed(1)} min`;
 const n = (x) => x.toLocaleString("en-US");
 
@@ -59,7 +59,12 @@ export function reportScripts(doc, { voiceId, modelId, outputFormat, cacheIndex 
       `${b.nonAsciiCount ? `  [${b.nonAsciiCount} non-ascii: ${b.nonAsciiSamples.join("")}]` : ""}`
     );
   }
-  const c = costOf(totals.billedChars, PRICING);
+  /* Priced against the model the caller actually asked for. This used to call
+     costOf with no opts, so it defaulted to the discounted flash bucket and
+     printed `--model eleven_multilingual_v2` directly above a cost computed at
+     half that model's real rate -- in the one tool whose entire purpose is to
+     stop a surprise bill. */
+  const c = costOf(totals.billedChars, PRICING, { model: modelId });
   lines.push("");
   lines.push(`${totals.beats} beats · ${n(totals.chars)} characters · ${mins(totals.estDurationSec)} estimated`);
   lines.push(`BILLABLE this run: ${n(totals.billedChars)} characters (${totals.cachedBeats} of ${totals.beats} beats served from cache)`);
@@ -98,7 +103,12 @@ export function reportProjection({ forays = 10, regenFactor = 3, kbps = 64 } = {
   const t = tierFor(many.cost.creditsHigh, PRICING);
   const tr = tierFor(many.cost.creditsHigh, PRICING, { useRollover: true });
   lines.push(`  cheapest sufficient tier in ONE month: ${t ? `${t.id} at ${usd(t.price_usd_month)}/mo (${n(t.credits_per_month)} credits)` : "none — needs Enterprise or spreading over months"}`);
-  if (tr && t && tr.id !== t.id) lines.push(`  with rollover (3x quota):              ${tr.id} at ${usd(tr.price_usd_month)}/mo`);
+  /* `!t` deliberately, not `t &&`: the rollover line is MOST useful exactly when
+     no single-month tier suffices, and the old guard suppressed it in that case
+     -- printing "none, needs Enterprise" while a rollover-funded tier covered it. */
+  if (tr && (!t || tr.id !== t.id)) {
+    lines.push(`  with rollover (3x quota):              ${tr.id} at ${usd(tr.price_usd_month)}/mo`);
+  }
   lines.push("");
 
   lines.push("SENSITIVITY — the chars-per-minute rate is the biggest single unknown");

@@ -484,10 +484,20 @@ Two ways a cache like this leaks money, both closed:
   it ships the wrong product. `assertKeyInputsComplete()` therefore **throws** if a
   caller passes any generation parameter this module does not know how to hash.
 
-**A dry run never writes cache entries.** A dry run that recorded them would make
-the next run believe the audio exists and skip it forever — a Foray shipping with
-no narration and no error. That is the most damaging bug available here and it has
-its own test.
+**A dry run never writes cache entries**, and **neither does a failed call.**
+Both are the same bug wearing different clothes: an entry written for a
+generation that did not happen makes every later run believe the audio exists and
+skip the beat, so the Foray ships with a silent gap and no error anywhere.
+
+The second half of that was live until the review of PR #253 caught it, and it is
+worth stating why it was easy to miss. `transport` is `fetch` in production, and
+**`fetch` resolves for 429 and 500** — it rejects only on a network-level
+failure. So the natural `await transport(...)` followed by `cache.record(...)`
+caches rate-limits and server errors as successes. Success is now asserted
+positively rather than inferred from the absence of a throw: a non-false `ok`, a
+2xx status where one is reported, and actual bytes. Anything else records nothing,
+so a retry re-bills — **which is the correct direction, because paying twice is
+recoverable and a permanently skipped beat is not.**
 
 The index is committed; the audio is not. It is text, diffable, key-sorted for a
 stable diff, and enough to prove what was generated from what.

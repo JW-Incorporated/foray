@@ -153,7 +153,7 @@ const FLOORS = {
      the characters of the REAL request body" — is what stops the cost estimate
      and the request payload drifting apart, which is the failure mode that turns
      a $6 projection into a bill nobody predicted. */
-  "tools/narrate/narrate.test.mjs": 34,
+  "tools/narrate/narrate.test.mjs": 44,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,

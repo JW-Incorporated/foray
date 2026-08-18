@@ -95,12 +95,26 @@ export function assertKeyInputsComplete(spec) {
 export function cacheKey(spec = {}) {
   assertKeyInputsComplete(spec);
   const h = createHash("sha256");
+  /* LENGTH-PREFIXED, not newline-delimited. A newline delimiter stops being
+     unambiguous the moment a value can CONTAIN that delimiter, and script text
+     always can: it is multi-line by nature. The previous encoding joined each
+     field name to its value with newlines, which meant a script whose body
+     happened to contain a line reading exactly "voiceId" could hash identically
+     to a different script carrying a crafted voice id. Neither is reachable with
+     a real ElevenLabs voice id, but the entire job of this function is that two
+     different requests cannot share a digest, and "unreachable in practice" is
+     not that guarantee.
+
+     Prefixing every value with its byte length makes the encoding injective: no
+     value can impersonate a field boundary, whatever it contains. */
+  const field = (name, value) => {
+    const v = String(value ?? "");
+    h.update(`${name}:${Buffer.byteLength(v, "utf8")}:${v}`);
+  };
   // The TEXT is hashed canonicalised, so a line-ending or trailing-space change
   // is a hit rather than a re-bill. See "Leak 1" in the header.
-  h.update(`text\n${billableText(spec.text)}\n`);
-  for (const field of ["voiceId", "modelId", "outputFormat"]) {
-    h.update(`${field}\n${String(spec[field] ?? "")}\n`);
-  }
+  field("text", billableText(spec.text));
+  for (const name of ["voiceId", "modelId", "outputFormat"]) field(name, spec[name]);
   return h.digest("hex");
 }
 
@@ -113,8 +127,6 @@ export class NarrationCache {
   /** @param {object} [index] a previously dumped index */
   constructor(index = {}) {
     this.entries = new Map(Object.entries(index?.entries ?? {}));
-    this.hits = 0;
-    this.misses = 0;
   }
 
   /** @returns {boolean} */
@@ -136,7 +148,12 @@ export class NarrationCache {
     const key = cacheKey(spec);
     const cached = this.has(key);
     const chars = countChars(spec.text);
-    if (cached) this.hits++; else this.misses++;
+    /* Deliberately PURE -- no hit/miss counters. It used to keep them and they
+       were wrong: `plan()` is a query callers legitimately run more than once for
+       the same beat (`synthesize()` re-runs it internally), so one beat and one
+       generation counted as two misses. A cache-effectiveness number that
+       double-counts is worse than none, and `planForay().totals.cachedBeats`
+       already reports it correctly from a single pass. */
     return {
       key,
       cached,
@@ -174,7 +191,4 @@ export class NarrationCache {
     for (const key of [...this.entries.keys()].sort()) entries[key] = this.entries.get(key);
     return { version: 1, entries };
   }
-
-  /** @returns {{hits: number, misses: number}} */
-  stats() { return { hits: this.hits, misses: this.misses }; }
 }
