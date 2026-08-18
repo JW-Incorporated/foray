@@ -1568,3 +1568,200 @@ a different plant genus entirely rather than being a kind of mezcal. Reject: wor
 and shot folklore, and terroir claims with no agronomy.
 
 **Share.** 2.0 % (~3.0 min).
+
+#### 45. Brandy is distilled wine, and it exists because it was cheaper to ship wine with the water taken out
+
+**Claim.** Brandy is simply Act II's wine run through Act I's still, and the reason
+it became an industry is logistics: Dutch traders in the 16th and 17th centuries
+found that concentrating wine made it cheaper to ship and less likely to spoil — the
+word itself comes from their term for burnt wine — and the two great French
+categories then diverged on still design, with Cognac using two passes through a
+pot still, often on the yeast lees, and Armagnac using a small continuous column in
+a single pass, which is why Armagnac is the more rustic of the two by construction
+rather than by intention.
+
+**Why it belongs.** It is the fruit branch of the fan and the beat where the
+listener sees Acts II and IV connect directly, which is structurally important: it
+proves the acts are stages of one process rather than separate topics. The shipping
+origin is also history doing §2c's work perfectly — brandy is a preservation and
+freight technology, exactly as smoke was in the barbecue spine, and the wine it was
+made from was deliberately thin and acidic because that is what distils well.
+
+**Evidence that counts.** A cognac or armagnac producer, cellar master or spirits
+writer on the wine and the two still designs: why a low-alcohol, high-acid,
+neutral-flavoured base wine is the right feedstock, distillation on the lees and
+what it adds, the two-pass charentais still versus the single-pass armagnaçais
+column, the *brouillis* and the heart cut, oak species and the difference between
+new and old wood in this family, and the crus and their soils as a real
+compositional variable. Strong signal: the Dutch freight explanation given as the
+origin, and pisco mentioned as the South American branch where the rules forbid
+both dilution and wood, which is a clean process contrast. Reject: luxury-brand
+storytelling and age-designation glossaries with no mechanism.
+
+**Share.** 1.8 % (~2.7 min).
+
+#### 46. The fruit distillates are the family where the raw material fights back, and pectin is the reason
+
+**Claim.** Distilling fruit other than grapes — cherries, plums, pears, apples,
+and the pressed skins and pips left after winemaking — produces the pomace and
+stone-fruit spirits of most of Europe, and they are a technically distinct problem
+rather than a variation: fruit pectin is a source of methanol, so beat 13's cuts
+matter more here than anywhere else and are legally regulated to specific limits;
+and because the point is to capture the fruit's own aroma, most of these spirits are
+deliberately not aged in wood at all, with Calvados as the significant exception.
+
+**Why it belongs.** It is where beat 13 stops being a caution and becomes a
+production constraint with a number attached, and it covers a very large slice of
+the world's actual drinking — grappa, marc, slivovitz, rakia, țuică, pálinka,
+kirsch, poire — that a famous-spirits tour would skip entirely. It also completes
+the fruit branch, so that the key's answer for "what if the sugar came from a fruit
+that is not a grape" is a full one.
+
+**Evidence that counts.** A fruit distiller or spirits writer on the specific
+problems: pectin and where the methanol comes from, the regulated limits per litre
+of pure alcohol for stone-fruit spirits, why fermenting whole fruit with stones is a
+decision, the difficulty of getting enough sugar from a fruit that has little, why
+pomace is distilled with steam rather than direct heat, and the deliberate choice to
+bottle unaged in glass. Strong signal: Calvados distinguished by its two permitted
+methods and its ageing requirement, so that the exception is explained rather than
+listed, and *feni*'s Goan cashew-apple base named as the outlier that shows the
+technique travels. Reject: regional drinking colour, and any tape that treats these
+as folk curiosities rather than as a technically demanding category.
+
+**Share.** 1.5 % (~2.25 min).
+
+#### 47. Baijiu is the world's best-selling spirit and the most different process in this Foray, because the mash is never a liquid
+
+**Claim.** Baijiu is distilled from sorghum and other grains that are fermented as
+a *solid* — mixed with a crushed *qu* starter of the kind beat 33 described, packed
+into earth or stone pits or jars for weeks or months, then steam-distilled while
+still a moist solid mass, with the residue returned to the pit for repeated cycles
+that in the sauce-aroma style run to several fermentations and distillations across
+about a year — which makes it the only major spirit in the world with no wash, no
+wort and no liquid fermentation at all.
+
+**Why it belongs.** By volume this is the largest spirit category on earth, and a
+Foray built on completeness that reduced it to a mention would fail its own
+premise. But the stronger argument is process: solid-state fermentation and steam
+distillation of a solid are genuinely outside the model Act I built, which makes
+this the beat that tests the key's limits honestly rather than pretending it has
+none. It also collects the debt beat 33 opened.
+
+**Evidence that counts.** A Chinese drinks specialist, food scientist or distiller
+on the solid-state process: how *daqu* is made and what community lives in it, the
+pit or jar as a microbial habitat whose age is part of the product, the grain-and-husk
+bed and how steam is passed through it, the repeated fermentation and distillation
+cycles, and the aroma classes — sauce, strong, light and rice — described by process
+rather than only by taste. Strong signal: the pit's microbiota treated as
+inherited capital, and volume figures given so the scale registers. Reject: novelty
+tasting reactions, and any tape that treats baijiu as one undifferentiated drink.
+
+**Share.** 1.8 % (~2.7 min).
+
+#### 48. Soju and shochu are not the same thing, and modern soju is a post-war industrial substitution
+
+**Claim.** Japanese *shochu* is a single-distilled spirit made from koji-converted
+sweet potato, barley or rice, deliberately kept at low strength so the feedstock
+shows through, with Okinawan *awamori* as its black-koji long-grain-rice relative;
+Korean *soju* was historically the same kind of distilled rice spirit, but the
+government banned distilling from rice during the post-war grain shortages, and the
+category was rebuilt around neutral spirit from imported tapioca and sweet potato
+diluted with water and sweeteners — so the two words name a traditional craft
+category and a modern industrial one that happen to be cousins.
+
+**Why it belongs.** It is the completeness beat for East Asian distillation and the
+clearest case in the Foray of §2c's rule paying off: a piece of legal and economic
+history that explains, precisely, why a drink is made the way it is now. It also
+gives the listener the tool to read a soju bottle, which is a real and testable
+piece of education, and it closes the koji branch by carrying it from beat 8 through
+beats 32 and 33 to its distilled end.
+
+**Evidence that counts.** A Korean or Japanese drinks specialist, distiller or
+writer on the two categories and the break: koji types and what black, white and
+yellow koji each contribute, single distillation and why *honkaku* shochu is
+bottled at a low strength, the feedstocks and their character, the rice-distilling
+ban and its dates, and the dilution-type product that replaced it with its additives
+named. Strong signal: the traditional distilled soju revival described as a distinct
+product, so the listener can tell the two apart in a shop. Reject: drinking-culture
+material, and any tape that uses the two words interchangeably.
+
+**Share.** 1.3 % (~1.95 min).
+
+#### 49. Aquavit and the northern flavoured spirits are gin's method applied to a different botanical, and the naming rules say so
+
+**Claim.** Scandinavian *akvavit* is made exactly as gin is — a neutral or lightly
+charactered base spirit redistilled or macerated with botanicals — with the legal
+requirement being that caraway or dill dominate rather than juniper, and the same
+structure covers the flavoured spirits of Poland, Russia and the Baltics, from
+bison-grass vodka to honey and pepper infusions; and one Norwegian branch adds a
+maturation twist by ageing in used sherry casks aboard ships, which is a real if
+theatrical application of beat 14's heat and motion.
+
+**Why it belongs.** It is a completeness beat that costs little and pays a
+structural dividend: it shows that gin is not a one-off but an instance of a general
+category — flavoured spirit defined by a mandated botanical — which is the
+generalisation the listener needs before Act V's liqueurs and bitters. Cut it and
+gin looks unique when it is actually a template.
+
+**Evidence that counts.** An aquavit or flavoured-spirit producer, or a spirits
+writer, on the method and the rules: the base spirit and whether it carries
+character, the botanicals and the legal dominance requirement, redistillation versus
+maceration for these specific plants, cask ageing where it is used and what it
+contributes, and the Eastern European infusion traditions treated as the same
+operation. Strong signal: the explicit parallel drawn to gin, since that is the
+beat's structural job. Reject: national drinking-custom colour, and toast-and-song
+material.
+
+**Share.** 1.1 % (~1.65 min).
+
+#### 50. Arrack is a whole tropical distilling tradition hiding behind a confusing word
+
+**Claim.** Sri Lankan *arrack* is distilled from fermented coconut-palm sap —
+beat 24's palm wine, concentrated, which is the neatest chain from Act II into Act
+IV in the whole Foray — and matured in local hardwood; Indonesian and Indian
+versions are made from cane, rice or palm in various combinations, and the historic
+Batavia arrack that European punch was built on used rice with red yeast rice as a
+starter; while the same word in the eastern Mediterranean names an entirely
+unrelated aniseed spirit that belongs with beat 59, which is exactly the sort of
+false friend a taxonomy is for.
+
+**Why it belongs.** It is the beat that closes the sap branch — a family that
+otherwise ends at Act II unable to travel, since distilling is precisely what lets a
+palm drink be shipped — and it is a completeness stop the founder's "all of them"
+argues for directly. The false-friend point also earns its place by demonstrating
+what the key protects against: two drinks with one name and nothing in common.
+
+**Evidence that counts.** A producer, drinks historian or spirits writer on the
+tropical palm and rice distillates: how toddy is collected and how quickly it must
+be distilled, pot versus column practice, the local woods used for maturation, the
+role of red yeast rice as a starter in the Batavia style, and the 18th-century punch
+trade that made the drink globally important before it was forgotten. Strong signal:
+the distinction from aniseed arak stated outright. Reject: colonial-trade romance
+with no process, and cocktail-revival framing.
+
+**Share.** 1.1 % (~1.65 min).
+
+#### 51. Almost anything fermentable has been distilled, and the margins of the taxonomy are where the key proves itself
+
+**Claim.** Beyond the major feedstocks the world has distilled fermented mare's
+milk into Mongolian *arkhi*, whey into Alpine and Nordic spirits, birch and maple
+sap, sugar beet, cactus fruit, and the sap-based *destilados de pulque* — and the
+useful point is not the novelty but that every one of them is fully predictable
+from the four questions, which is what a working taxonomy is supposed to do.
+
+**Why it belongs.** It is the honest closing beat of Act IV and the last of the
+completeness beats, and it does something the classification key at beat 16 could
+only promise: it demonstrates the key on cases nobody has memorised. It is
+deliberately the smallest beat in the act, because its content is a method rather
+than a drink, and it is the right place to say plainly that the list of the world's
+alcohols is open rather than closed.
+
+**Evidence that counts.** A distiller or drinks writer on any unusual feedstock,
+treated as a process problem rather than as a stunt: what has to be done to make it
+fermentable, what strength the wash reaches, and what the still can and cannot
+retrieve. *Arkhi* is the strongest single candidate because it completes beat 25 and
+because the pastoral logic is the same. Strong signal: a producer explaining why the
+unusual feedstock is worth the trouble, or explaining that it is not. Reject:
+weird-booze listicles, and any tape whose only content is that the drink exists.
+
+**Share.** 1.0 % (~1.5 min).
