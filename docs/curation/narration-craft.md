@@ -1084,3 +1084,382 @@ Which is why the gate is written as text tests run before generation, and why R2
 in the form it does. **The only reliable evidence that a Carry is not filler is that it
 could not have been written for any other beat.** Everything else — fluency, relevance,
 correct length, pleasant delivery — a padded beat has too.
+
+---
+
+## 7. Worked examples
+
+Real beats, real segment ids, real timestamps, from `grilling-history-coverage.md`. The
+scripts are **illustrative drafts written to demonstrate the rules**, not approved copy:
+each carries at least one `[slot]` that is a generation gate (§5f), and none has been
+checked against the audio, which §3i requires before any of them could be voiced.
+
+Word and character counts are exact. Seconds are at the §2a planning rate.
+
+### 7a. Bridging strong tape — barbecue beats 14 → 15
+
+Chosen because it is the hardest real seam in the corpus that has strong tape on both
+sides. Argentina to Jamaica: two shows, two voices, two rooms, two hemispheres, and
+both are fan stops inside Act III, so neither depends on the other. It also contains a
+same-episode seam and a required correction, so it exercises four of the eight seam
+types in one stretch.
+
+**What the tape is.**
+
+| | segment | window | length |
+|---|---|---|---|
+| 1 | `bbqrn-argentina-open-fire#700` | 699.72 → 848.26 | 149 s |
+| 2 | `bbqrn-argentina-open-fire#1205` | 1204.72 → 1332.44 | 128 s |
+| 3 | `moreish-jerk-jamaica#266` | 266.01 → 503.94 | 238 s |
+| 4 | `moreish-jerk-jamaica#555` | 554.64 → 638.62 | 84 s |
+
+**Three facts about that table decide the whole assembly, and two are easy to miss.**
+
+- **`#700` plays first, though the coverage report lists `#1205` as "Chosen" and `#700`
+  as "Second".** Those labels are a quality ranking, not a play order.
+  `segment-length-rules.md` §6c makes same-episode chronological order an integrity rule,
+  not a preference. So the report's instruction that the missing antecedent goes "ahead
+  of `#1205`" resolves, in the assembly, to *ahead of `#700`*.
+- **The gap between `#700` and `#1205` is 356.5 s — five minutes fifty-six seconds.**
+  Past 180 s, so §6a keeps them separate; past 5 minutes, so §6b **requires narration**
+  rather than silence, "because across a large gap the listener will otherwise build a
+  false model of continuity."
+- **The gap between `#266` and `#555` is 50.7 s**, which lands in §6a's *should merge*
+  band. The coverage report keeps them separate. See the note at the end of this
+  example.
+
+**The script.**
+
+> **Item A1 — Frame, into `#700`. 27 words, 156 characters, ~10.8 s.**
+>
+> *"The pampas made beef cheaper than almost anywhere on earth, and an export trade
+> kept it that way. Scarcity is not the constraint here. [speaker], on [show]."*
+
+Why it is built that way. It carries the antecedent the coverage report says is "nowhere
+in the tape" — pampas abundance and the export economy — which is R1 licence 5, and then
+attributes, which is licence 2. It is **10.8 s, over the 8 s spec target**, and it
+invokes §2b's exception explicitly: the extra words are the required attribution. It
+states the beat's *precondition* and not its claim — the claim is that the craft moved
+into fire management, and the tape makes it (§3c). Two `[slot]`s, because the coverage
+report describes the guest and the show without naming either, and the in-anchor's
+*"Al, how do you"* is a hint, not a name.
+
+**What is not in it, and this is the instructive part.** Beat 14's claim also says the
+asado "formalised the person doing it into a social office, the asador," and the
+coverage report flags that as missing from the tape and "a real loss." **It is not in
+this script, because there is no source for it in reach.** Under R3 a narrator may not
+assert it on its own credit, and under §3f it cannot be smuggled in as a correction. So
+the beat ships without the asador-as-office claim and the coverage report's flag stands
+as a sourcing action. That is the gate working: the missing material stayed missing
+rather than becoming plausible prose.
+
+> **Item A2 — Hinge, `#700` → `#1205`, same episode. 18 words, 98 characters, ~7.2 s.**
+>
+> *"Six minutes later, the same conversation, and the question is how you know when the
+> fire is ready."*
+
+Seam type S3. It **states the elision** as §6b requires, in §6b's own idiom. Then it
+poses the question the tape answers — the hand over the grill, the two-second count,
+"you are actually engaged in the cooking process" — and states none of it (§3c). At
+7.2 s it is inside the 8 s target with no exception needed, because a same-episode Hinge
+needs no attribution: the voice has already been introduced. **This is why S3 seams are
+the cheapest narration in the product**, and it is a reason to prefer assemblies that
+have some.
+
+> **Item A3 — Frame with a forward framing, `#1205` → `#266`. 28 words, 187
+> characters, ~11.2 s.**
+>
+> *"The same question about fire, answered in the Caribbean. [speaker], who researches
+> Jamaican foodstuffs, on The Moreish Podcast, giving the tradition's own account of
+> where jerk came from."*
+
+Seam type S1, and the seam that wanted three things: an axis, an attribution, and beat
+15's required framing of the tape's low-smoke account as "the tradition's account". Per
+§3j the first remedy is compression, and compression worked — three jobs in 28 words.
+
+**One axis, chosen deliberately (§3e).** The seam crosses five thousand miles, three
+centuries and two languages. It names none of them. It names the *fan* — "the same
+question about fire" — because that is the axis that does editorial work: both traditions
+are independent answers to one physical problem, which is the whole reason Act III is a
+fan and not a tour. Naming the geography would have been true and would have taught the
+listener nothing.
+
+**And note what it does not do.** It does not say the Maroons freed themselves, or that
+salt was scarce and wood ash substituted, or that pimento wood is the constant. Those
+are the beat's claim and the tape makes all three.
+
+> **Item A4 — Correction, immediately after `#555`. 27 words, 152 characters, ~10.8 s.**
+>
+> *"One thing the name does not show. Jerk reaches English from ch'arki, a dried-meat
+> word from the Andes, by way of Spanish. A separate road from barbacoa."*
+
+The coverage report's warning is that `#555` "routes the Taíno claim through Spanish
+*barbacoa*" and that "used unframed, `#555` will imply the lineage beat 15 exists to
+reject."
+
+Four rules visible at once. **Backward, because it is a fact** (§3f) — pre-empting it
+would have made the tape sound like a trap. **Bounding, not contradicting**: the
+speaker's actual argument is the syncretism and the honest admission that there is no
+direct evidence, and that argument survives untouched; only the road the word took is
+separate. **Not the speaker**: no version of "she has that wrong" appears.
+**Cited in the script, not on air**, per §3f's refinement: an etymology is a
+lexicographic fact rather than a rival scholar's position, and a ten-second correction
+cannot afford an on-air citation. The script records the source; the air does not.
+
+**The stretch, totalled.**
+
+| | |
+|---|---|
+| tape | 599 s |
+| narration | 4 items, **100 words, 593 characters, ~40 s** |
+| narration share of the stretch | **6.3 %** |
+
+**That is R-beat working, and it is worth pausing on**: the hardest seam in the corpus,
+carrying an antecedent, an elision statement, a fan axis, two attributions and a
+correction, still comes in at 6 % narration, inside the 90/10 target with room. **Covered
+beats are not where the ratio problem lives.** §4b's arithmetic said so and this is the
+demonstration.
+
+**Two loose ends recorded rather than resolved.**
+
+- **The merge question.** `#266` and `#555` are 50.7 s apart, in §6a's *should merge*
+  band, kept separate by the coverage report. Merging removes one Hinge — about 250
+  characters (§3k) — and it also changes where A4 can go, because a merged segment ends
+  on `#555`'s out-anchor and the correction still lands immediately after. The counter is
+  that the merged segment is 372.6 s, which is inside the 480 s `exchange` maximum and
+  past the 360 s `explanation` one, so the segment's role decides it. **An assembly
+  question, flagged with its narration cost attached.**
+- **The exit.** Beat 15 is the fan's engineered exit and hands to beat 16, which is
+  empty. So the next thing after A4 is an S8 seam into Act IV, and because beat 16 is a
+  Carry, §2e says the act's Marker **merges into the head of that Carry item** rather
+  than being its own item. That is the S7-plus-S6 case, and it is why the Marker budget
+  allows 20 s: at an act boundary it is usually paying for the first sentences of a
+  narration item rather than for a transition.
+
+### 7b. Carrying an empty beat — barbecue beat 20
+
+The most important example in this document, because beat 20 is the worst case the
+product has: **an empty beat, on a chain, in the most dangerous act, carrying part of
+the Foray's central argument, with two English sources already spent on it and nothing
+to show.** The spine: "Cut this and the strongest version of the Foray's central
+argument is unavailable." The coverage report: "Chain hole, and it weakens the Foray's
+central argument."
+
+It is also the beat where the temptation to write fluent filler is strongest, which is
+why this section shows a failing script as well as a passing one.
+
+**What the coverage report licenses and forbids.** This is the input a Carry author works
+from, and beat 20's entry is unusually explicit:
+
+- The argument "lives in Twitty and in Miller's own book," and the spine names "Twitty
+  and Miller" as "the archetype of the register."
+- The Goucher episode was transcribed for this beat and rejected — "zero occurrences of
+  barbecue, barbacoa, jerk, Maroon, smoke, fire, grill, pit, charcoal, wood, butcher,
+  allspice, pimento or vinegar." Its one relevant passage "contains no fire, no butchery,
+  no seasoning lineage, and it is about the Caribbean rather than the American South."
+  **So Goucher may not be cited for this beat's claim**, however good the episode is.
+- The Grill Coach touches the inheritance in one clause — "European cooking and African
+  cooking and smoking" — inside beat 18's cut, "which is a mention, not the beat."
+- The beat's reject line, which now applies to the script as well as to tape: "generic
+  statements that African cooking influenced Southern food, with no technique and no
+  mechanism of transfer."
+
+**Where it sits.** Beat 20 is immediately before beat 21, whose segment is
+`grill-coach-adrian-miller#1792`, played as `GC-1`. **So the Carry hands directly to
+Miller**, which turns out to matter.
+
+**The passing script — Carry, 189 words, 1,101 characters, ~75.6 s.**
+
+> *"Three inheritances meet in American barbecue, and one of them has been the hardest
+> to trace.*
+>
+> *The indigenous pit and the raised grate are the apparatus. European livestock
+> supplied the animal. The third is the cooks.*
+>
+> *Michael Twitty and Adrian Miller argue the same thing about them, in The Cooking Gene
+> and in Black Smoke. The people forced to do this work did not arrive as labour to be
+> pointed at somebody else's technique. West and Central Africa had live-fire cookery of
+> its own, whole-animal butchery, and a seasoning practice built on pepper and acid, all
+> of it long before the Atlantic trade.*
+>
+> *How that gets traced is the hard part, and it is worth saying what the argument is
+> actually about. There are almost no documents. The evidence is comparative practice,
+> later testimony and archaeology, and the disagreement is over how much weight that
+> combination carries. Both men are explicit about it.*
+>
+> *No recorded conversation we could find makes this argument at length. So what you
+> have just heard is a summary of theirs, and Miller himself, on The Grill Coach, makes
+> the case that follows from it."*
+
+**Why it passes, test by test.**
+
+- **R1.** Paragraph one is the beat's frame; two, three and four are the claim; five is
+  U4 plus an S5 Frame into `GC-1`. No unlicensed sentence, and nothing about barbecue in
+  general.
+- **R2, the substitution test.** Change the proper nouns and it goes nowhere. *The
+  Cooking Gene*, *Black Smoke*, "comparative practice, later testimony and archaeology",
+  "how much weight that combination carries" and the three-inheritance structure are all
+  specific to this beat's claim and to its named reject criterion. There is no other beat
+  in the spine it fits.
+- **R3.** Two named sources, both spoken. Two named books. The evidentiary argument
+  attributed to the people who make it. No hedge without a subject.
+- **R4.** It does not state beat 21's claim — beat 21 is about the labour system and
+  about authorship, and nothing here trespasses on it. Checked, because a Carry that
+  hands to tape is a Frame in its last sentence and inherits the spoiler rule.
+- **R5.** No implied conversation. Twitty and Miller are named as agreeing because they
+  do agree in print, and the script says so as a fact about their books rather than as an
+  artefact of the edit.
+- **R6.** 75.6 s: inside the 45–110 s Carry band, well under the soft max. Twelve
+  sentences, mean 15.8 words, longest 34 — **which is one violation**, and the fix is to
+  split the West-and-Central-Africa sentence. Recorded rather than hidden, because a
+  worked example that quietly passes every test it was written to pass is not a
+  demonstration.
+
+**Three things this script does that a script author should copy.**
+
+1. **U4 out loud.** *"No recorded conversation we could find makes this argument at
+  length."* This is the sentence the whole §5e ladder exists to make sayable, and it is
+  the difference between a narration beat and a fake segment. It also costs 12 words.
+2. **It names the literature, which is something the tape cannot do.** A Carry that says
+  *The Cooking Gene* and *Black Smoke* gives the listener two things to go and read. **A
+  narration beat is not purely a loss.**
+3. **It carries the beat with the literature of the voice who speaks next.** Naming
+  Miller in the Carry costs nothing extra and turns the whole 76 seconds into a Frame for
+  `GC-1`, whose re-attribution then costs three words instead of twelve (§3d). **Where
+  the chain allows it, carry an empty beat on the literature of the next voice.** That is
+  the cheapest and most coherent structure available for an empty beat, and it fell out of
+  the real assembly rather than being designed.
+
+**The failing script — 119 words, 705 characters, ~47.6 s.** Fluent, on topic, correct
+length, and it is the defect this whole document exists to catch.
+
+> *"Barbecue as we know it did not appear from nowhere. Its roots run deep, and they run
+> across the Atlantic.*
+>
+> *For centuries, cooks in West Africa had worked with fire. They understood smoke, they
+> understood time, and they understood how to make the most of an animal. Those skills
+> did not disappear when people were taken from their homes. They travelled with them.*
+>
+> *It is often said that American barbecue is a melting pot, and in a sense that is
+> exactly right. Indigenous technique, European animals and African knowledge came
+> together in the American South, and what emerged was something remarkable, a cuisine
+> that none of the three could have produced alone.*
+>
+> *That inheritance is a story worth remembering."*
+
+**Read it once before reading the verdict.** It is on topic. It is about beat 20 and
+nothing else. It is the right length, in the right register, with no errors of fact in
+it. If it were voiced and dropped into the Foray at 47 seconds, nothing about it would
+sound wrong.
+
+**How it fails.**
+
+| test | verdict |
+|---|---|
+| **R1** | Fails. *"did not appear from nowhere"*, *"Its roots run deep"*, *"That inheritance is a story worth remembering"* have no licence — about 30 of 119 words, past the quarter threshold. **So it is rejected, not trimmed.** |
+| **R2** | **Fails outright, and this is the diagnostic.** Swap "West Africa" for "the Ottoman world" and "the American South" for "the Levant" and it is beat 9. Swap in Taíno and Jamaica and it is beat 15. Swap in the pampas and it is beat 14. **A script that fits four beats was written for none of them.** |
+| **R3** | Fails. Not one named source. *"It is often said"* is on §5e's banned list and is doing the work of an attribution. The claims about smoke, time and whole-animal use are asserted on the narrator's credit. |
+| **R4** | Fails on the hand-off. Nothing prepares `GC-1`, so the Foray's most important cut arrives unframed. |
+| **R5** | Passes. Worth noting: the integrity rules are the ones filler tends to pass. |
+| **R6** | Fails. *"remarkable"* is a banned adjective of significance; *"It is often said"* is a banned hedge. |
+
+**And the two findings that matter more than the checklist.**
+
+- **The beat's own reject line for tape rejects this script verbatim.** Beat 20 says
+  reject "generic statements that African cooking influenced Southern food, with no
+  technique and no mechanism of transfer." That is a precise description of the failing
+  script. **The tape gate and the script gate are the same gate**, which is what #247
+  asked for and what this example demonstrates rather than asserts.
+- **It imports a defect that already got tape excluded.** *"A melting pot, and in a
+  sense that is exactly right"* is the harmony move, and the coverage report rejects
+  Stuff You Should Know's *"kind of transcends race and class"* on exactly that ground —
+  "the harmony version beat 23 exists to reject." A fluent narrator will reach for it
+  unprompted, because it is what generic prose about this subject does. **The narrator
+  can reintroduce, for free, the very material the sourcing gate spent a report
+  excluding.**
+
+Note finally that the failing script is **cheaper** — 705 characters against 1,101. A
+cost model built on characters will always prefer the padded script. That is a reason the
+review gate cannot live downstream of the cost model.
+
+### 7c. A Carry that cannot be sourced and must not be dropped — alcohol beat 16
+
+Short, and labelled clearly: **the alcohol spine has no coverage report yet**, so
+everything here follows the spine's own prediction rather than a measured verdict. It is
+included because it is the cleanest example of Carry-by-design (§2d) and of the Marker
+at a fan boundary, and because it is the beat the spine says the Foray exists for.
+
+**What the spine says.** Beat 16 is the classification key. "Evidence that counts:
+almost certainly narration, and that is the right outcome." §5 ranks it first among
+beats likely to need narration: "Nobody says this in one breath because it is the
+conclusion of an argument rather than a topic. It is the most important beat in the Foray
+and almost certainly the least sourceable." Share 1.6 %, about **2.4 minutes**.
+
+**Four consequences, all of them different from beat 20's.**
+
+- **It may never be dropped.** A Carry-by-default can be deferred to more sourcing or,
+  if it is a fan stop, dropped. This one cannot: it is a chain link and it is the beat the
+  Foray is for. §4c's allocation rule reserves the Carry budget for exactly this.
+- **144 s is a legitimate Carry**, above the 45–110 s target and inside the 150 s soft
+  max, and the spine's share is the authority for it. The soft max still applies: the
+  script must state what the extra minute buys. Here the answer is in the beat's own
+  claim — "the proof is running an unfamiliar one through the key from scratch."
+- **It is the one place "you" is licensed** (§5a), because the beat's claim is that the
+  *listener* can now place a drink they have never heard of, and a key is used by
+  somebody.
+- **It passes R2 automatically, and that is not luck.** The beat's claim requires a
+  worked example — an unfamiliar drink run through the four questions to a prediction.
+  **A worked example cannot be relocated to another beat.** So the beat that is hardest
+  to source is among the easiest to protect from filler, because its own claim forces the
+  specificity R2 tests for. The generalisation is worth having: **a Carry whose claim
+  demands a worked example is a safe Carry, and where a beat can be written that way it
+  should be.**
+
+Its attribution runs through R3's synthesis exception: the key is a conclusion from the
+Foray's own preceding fifteen beats, so it attributes to the voices already heard.
+
+**The Marker out of it — 48 words, 268 characters, ~19.2 s.**
+
+> *"That is the key. Four questions, and every drink from here answers them in some
+> order.*
+>
+> *What follows is not a sequence. The families ahead do not descend from one another,
+> and you can miss one without losing your place. First branch: the sugars that were
+> already sugar."*
+
+The spine's instruction is that "narration entering beat 17 should say plainly that
+everything from here is the key applied, and that the families do not descend from each
+other. Then a missing family costs the listener nothing." The Marker says all three
+things a fan announcement owes: **that the stretch is parallel**, **that a gap is
+survivable**, and **what the ordering principle is** — first branch of the key.
+
+**One contrast with the barbecue equivalent, because it changes the copy.** Barbecue's
+Act III Marker must also promise that *the American thread resumes afterwards*, because
+that fan is an interruption inside a larger argument. Alcohol's beat 17 Marker must not
+promise a resumption, because there is nothing to resume — the fan **is** the rest of the
+Foray. A Marker that borrowed barbecue's phrasing would tell the listener to hold a
+thread that never comes back, which is a worse error than saying nothing.
+
+At 19.2 s this Marker is over the 12 s transition ceiling and is therefore authored as a
+**narration item**, not a transition (§2b) — and since beat 16 is itself a Carry ending
+right there, §2e merges it into the tail of that item rather than making it a second item
+in a row.
+
+### 7d. What the seven scripts say about the planning constants
+
+A small honesty check, since §2a's constants are convention and arithmetic rather than
+measurement, and seven scripts is the first evidence this project has.
+
+| | |
+|---|---|
+| total | 456 words, 2,667 characters |
+| measured characters per word | **5.85** (range 5.44–6.68) |
+
+So the **6.0 chars/word planning constant is conservative by about 2.5 %**, which is the
+right direction for a cost estimate to be wrong in. The high outlier is item A3 at 6.68,
+and the reason is instructive: attribution is long words. Scripts dense in names and show
+titles cost more per word than scripts dense in mechanism.
+
+**Nothing here measures words per minute**, and nothing can until audio exists. When it
+does, re-derive every second-figure in this document from its word-figure and leave the
+word-figures alone (§2a).
