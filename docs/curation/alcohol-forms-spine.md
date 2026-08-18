@@ -1289,3 +1289,282 @@ it, with honest numbers on cost and volume. Reject: craft-versus-macro advocacy 
 either direction, and brand history.
 
 **Share.** 1.3 % (~1.95 min).
+
+---
+
+### Act IV — Concentration: the spirits (chain link, then a fan by feedstock, 25.8 %)
+
+The third question, applied to everything the listener has already met. Beat 36 is
+a **chain** link and must come first, because it establishes what distillation was
+originally for and how recent it is; after that the act is a **fan ordered by
+feedstock** — grain, then cane, then fruit, then agave, then the rest — precisely
+so that every spirit arrives as "the thing you already met, concentrated." The
+whisky beats 37 to 40 are a chain inside that fan. §2b's warning applies here more
+than anywhere: do not reorder this act into a tour of famous brown spirits.
+
+This is the largest act, and it should be: it is where the founder's "all of them"
+does the most work, because the spirits are where the taxonomy is widest and where
+the popular understanding is thinnest.
+
+#### 36. Distillation is a medieval European application of an ancient apparatus, and spirits are much younger than drinking
+
+**Claim.** The equipment for distilling was known in antiquity and refined by
+alchemists in the Arabic-speaking world — the words *alembic* and *alcohol* both
+come from that transmission, the second by way of a word that originally meant a
+cosmetic powder — but the specific act of distilling wine to make a *drink* is
+first securely documented in medieval Italy and the medical schools around Salerno,
+spreading north as a medicine called water of life; so while fermentation is
+thousands of years old, most of the world's spirits are a few hundred, and every
+attribution to a single named inventor should be treated as the tradition's own
+account rather than as fact.
+
+**Why it belongs.** It is the chain link into the entire second half of the Foray,
+and it does three jobs at once: it explains that concentration was a separate
+invention rather than an obvious extension, it dates it, and it establishes why
+spirits carried medical language for centuries — which is the buried origin of the
+bitters and liqueurs of Act V. Cut it and Act IV opens with a machine and no reason
+for it, and beats 57 and 58 lose their premise.
+
+**Evidence that counts.** A historian of science, medicine or drink on the
+transmission and the first drinking use: early Greek and Alexandrian apparatus, the
+Arabic alchemical refinement and the etymologies, the fractional-distillation
+descriptions from 13th-century Italy, *aqua vitae* as a medicine and the
+monastic and apothecary channels that spread it, and the timeline by which spirits
+became a beverage rather than a preparation. Strong signal: a speaker who marks the
+contested attributions as contested — including the genuinely open question of
+independent early distillation in China and South Asia — rather than picking a
+founder. Reject: "the Arabs invented alcohol" as a slogan, single-inventor stories
+asserted, and brand heritage claims.
+
+**Share.** 2.0 % (~3.0 min).
+
+#### 37. Malt whisky is unhopped beer in a pot still, and every house decision is about how much of the wash survives
+
+**Claim.** Malt whisky begins as beat 26's process stopped before the hops — malted
+barley, mashed, fermented with a distiller's yeast to about 8 % — and is then twice
+distilled in copper pot stills, where the still's shape and the angle of its vapour
+pipe control how much liquid falls back to be re-distilled, so a tall still with a
+rising pipe makes a lighter spirit and a squat one makes a heavier; while peat, when
+it is used, is a *kilning fuel* whose phenols land on the malt at beat 7's drying
+stage, which makes smoke a malting decision rather than a distilling one.
+
+**Why it belongs.** It is the first payoff of beats 11, 12 and 14 together, and the
+best single demonstration that spirit character is designed rather than inherited.
+The peat point is worth the runtime on its own because it relocates the most famous
+flavour in whisky to a stage most listeners assume it does not come from, which is
+exactly the kind of correction that proves the key is working.
+
+**Evidence that counts.** A distiller or distillery manager on reflux and cut
+points: still shape, the lyne arm, copper's chemical role rather than its
+photogenic one, the wash still and spirit still doing different jobs, the cut points
+and how the middle fraction is chosen, and fermentation length and what a long
+ferment contributes. Strong signal: peat placed at the kiln with the phenol
+chemistry named and a phenol measurement given, plus an explicit account of what
+the distiller is trying to *exclude*. Reject: distillery tours, regional
+generalisation about Highland or Islay character with no mechanism, and copper
+mysticism.
+
+**Share.** 2.0 % (~3.0 min).
+
+#### 38. Grain whisky and blending are what made whisky an industry, and a legal ruling settled whether they count
+
+**Claim.** The column still let distillers make cheap, light spirit from unmalted
+cereals, and blending that with pot-still malt produced a consistent, affordable
+whisky that could be shipped and advertised at scale — which set off a genuine
+industry fight over whether the column product was whisky at all, resolved in
+Britain by a Royal Commission in 1909 that ruled it was; so the category the world
+drinks most of exists because of a machine and a legal definition, in that order.
+
+**Why it belongs.** It is beat 12's consequence made concrete in the family where
+it mattered most, and it is a history beat that passes §2c's test exactly: the
+ruling *is* why the process is legal and therefore why the process exists at
+industrial scale. It also prepares beat 61, where the same pattern — a statute
+settling what a production method may be called — recurs across four countries.
+
+**Evidence that counts.** A whisky historian or blender on the industrial shift and
+the dispute: what grain whisky is made from and why it is lighter, the blender's
+actual job as compositional rather than dilutive, the marketing and shipping
+advantages of consistency, the trade litigation of the 1900s, and the commission's
+finding. Strong signal: the ruling's reasoning stated rather than only its outcome,
+and blending defended on process grounds by someone who does it. Reject:
+single-malt-versus-blend snobbery in either direction, and brand founder stories.
+
+**Share.** 1.7 % (~2.55 min).
+
+#### 39. American whiskey's legal definition is its recipe, and the new charred barrel is the reason bourbon tastes the way it does
+
+**Claim.** Bourbon is defined by production rules rather than by geography — at
+least 51 % maize in the grain bill, distilled to no more than 160 proof, entered
+into the barrel at no more than 125, matured in a *new charred* oak container, with
+nothing added but water — so the flavour most people think of as "bourbon" is
+principally beat 14's extraction and char-subtraction running at full strength on a
+first-fill cask; and the American mashing tradition adds a distinctive step of its
+own in the sour mash, where spent stillage from the previous run is added back to
+lower the pH and suppress bacteria.
+
+**Why it belongs.** It is the cleanest case in the Foray of law as production
+specification, which is beat 61's whole thesis previewed inside a family, and it is
+where a listener who has understood beat 14 can now *derive* a flavour profile
+rather than be told it. It also lets the Foray retire the folk etymology of sour
+mash by giving the actual mechanism.
+
+**Evidence that counts.** An American distiller, whiskey historian or spirits
+writer on the standards and the process: the grain bill and what maize, rye and
+wheat each contribute, the entry proof and why lower entry gives a different
+extraction, the char levels and what each does, why new barrels are mandatory and
+where the used ones go afterwards, sour mash explained as pH control, and the
+Tennessee variant's charcoal filtering before the barrel. Strong signal: the
+regulation quoted or paraphrased accurately, with "straight" and bottled-in-bond
+distinguished, and the causal link from new-cask extraction to the flavour made
+explicit. Reject: distillery-family legend, bourbon-versus-rye tribalism, and any
+tape asserting bourbon must come from Kentucky.
+
+**Share.** 1.8 % (~2.7 min).
+
+#### 40. Whisky is now made everywhere, and climate is a production variable that beats tradition
+
+**Claim.** Ireland, Japan, India, Taiwan and dozens of other countries now make
+whisky, and the most instructive thing about the spread is not style borrowing but
+physics: evaporative loss from a cask runs at a couple of per cent a year in a cool
+damp Scottish warehouse and can exceed ten per cent a year in the tropics, so a
+tropical whisky matures several times faster and can never be old, which means age
+statements are not comparable between climates — and the legal complication that
+much Indian "whisky" is distilled from molasses, and therefore cannot be sold as
+whisky in Europe, is the same taxonomy question the 1909 commission answered
+differently.
+
+**Why it belongs.** It is the beat that converts beat 14's evaporative loss from a
+charming detail into a hard constraint, and it prevents the Foray from presenting
+Scotland as the definition and everywhere else as an imitation, which would be both
+parochial and wrong. The molasses point also usefully re-opens question one inside
+Act IV: what a spirit is made *from* is a live legal and process issue, not
+settled.
+
+**Evidence that counts.** A distiller or writer outside the traditional producing
+countries on climate and law: measured evaporative loss figures compared across
+regions, warehouse humidity and whether the strength climbs or falls, maturation
+speed and the point at which a hot-climate cask over-extracts, Irish pot-still
+practice and triple distillation treated as a house choice rather than a national
+rule, and the molasses-base question. Strong signal: hard numbers on angel's share
+in two climates. Reject: national-style listicles, and awards-and-medals framing.
+
+**Share.** 1.4 % (~2.1 min).
+
+#### 41. Vodka is the category defined by subtraction, and the feedstock matters far less than the marketing says
+
+**Claim.** Vodka is what you get by running a column still hard enough to approach
+the azeotrope from beat 11 and then reducing the result with water: the legal
+definitions in both the EU and the US are framed around the *absence* of
+distinguishing character, which means the base material — rye, wheat, potato,
+molasses, whey, grapes — is largely rectified out by design, and the differences
+that survive are small enough that most claimed feedstock character is either at
+the edge of detection or a deliberate decision to distil less thoroughly.
+
+**Why it belongs.** It is the extreme case of question three, it makes beat 11's
+azeotrope pay off immediately, and it is the most useful single debunk available in
+the whole subject: the world's largest spirit category by value is defined by
+having no character, and that is a production fact with a legal text behind it. It
+also sets up beat 42, because gin is what happens when someone puts flavour back
+in.
+
+**Evidence that counts.** A distiller, chemist or spirits writer on rectification
+and neutrality: how many plates it takes and what is removed, the legal wording in
+either jurisdiction and its consequences, what filtration through charcoal actually
+takes out and what it demonstrably does not, and an honest account of where residual
+feedstock character can and cannot be detected — including blind-tasting evidence
+where it exists. Strong signal: a producer explaining a deliberate decision to
+under-rectify in order to retain something, which is the only route to genuine
+feedstock character and clarifies the whole category by contrast. Reject: filtration
+count marketing, luxury-brand narrative, and "smoothness" claims with no mechanism.
+
+**Share.** 1.6 % (~2.4 min).
+
+#### 42. Gin is not a distillate of anything in particular — it is a flavouring operation, and juniper is the only rule
+
+**Claim.** Gin begins with neutral spirit that someone else may well have made, and
+consists of putting botanicals into it by one of three methods — steeping and then
+redistilling, suspending the botanicals in the vapour path so only the vapour
+touches them, or simply mixing in extracts without any redistillation — with the
+single legal requirement being that juniper predominates; and its ancestor,
+genever, is a different drink altogether, built on a malt-grain distillate rather
+than on a neutral base, which is why it tastes closer to a light whisky.
+
+**Why it belongs.** It is the beat that proves question four can be the *whole* of
+a category's identity, which is the bridge into Act V, and it corrects one of the
+most common misfilings in the subject: gin is not a grain spirit in the sense that
+whisky is. The genever contrast is what makes that stick, and it gives the family a
+real lineage instead of a founding anecdote.
+
+**Evidence that counts.** A gin distiller or spirits writer on the three methods
+and what each can achieve: maceration time and its effect, vapour infusion and why
+it suits delicate botanicals, the legal categories and what London Dry actually
+forbids, the working botanical set and which compounds each contributes, and
+genever's malt-wine base described as a different production route. Strong signal:
+the honest point that most gin producers buy their base spirit, and a producer
+explaining what they would gain by making it themselves. Also strong: the 18th-century
+London gin panic handled as a licensing, taxation and grain-surplus story, which is
+what actually shaped the category, rather than as moral spectacle. Reject: botanical
+listicles, and craft-gin brand stories.
+
+**Share.** 1.7 % (~2.55 min).
+
+#### 43. Rum is the only major spirit made from an industrial by-product, and it has no global definition, which is why it is the most confusing category
+
+**Claim.** Most rum is distilled not from cane juice but from molasses, the residue
+left after sugar crystallisation — a waste stream that had to be disposed of, which
+is the entire economic reason rum exists — and because no international standard
+governs it, "rum" spans a Cuban-style light column spirit, a Jamaican pot-still
+spirit whose enormous ester content comes from deliberately long wild fermentations
+with acidic dunder recycled from previous runs, and cane-juice spirits made under
+their own separate rules in Martinique and Brazil; so rum is the family where the
+listener most needs the key, because the label will not tell them.
+
+**Why it belongs.** It is the strongest available case that question one's
+feedstock, question two's organism and question three's still each independently
+move the outcome — three variables, all wide open in one category. The dunder and
+muck-pit process is also the clearest industrial parallel to beat 30's wild
+fermentation, which makes the two acts rhyme rather than repeat. And a Foray that
+covers rum without the sugar economy behind it would be dodging the one thing that
+explains its geography.
+
+**Evidence that counts.** A rum distiller, blender or drinks historian on the
+feedstock and the fermentation: what molasses is and why it was worthless, the
+difference in the finished spirit between molasses and fresh cane juice, dunder and
+muck and the ester chemistry they produce with an ester figure attached, pot versus
+column and the blends of both, and the absence of a category standard together with
+its consequences — undeclared sweetening and colouring, and age claims that mean
+different things in different countries. Strong signal: cachaça distinguished
+properly as a cane-juice spirit under its own Brazilian legal definition and
+distilled to a lower strength, rather than described as Brazilian rum. Reject:
+tiki-and-pirate colour, and brand heritage.
+
+**Share.** 2.0 % (~3.0 min).
+
+#### 44. Agave spirits begin in an oven because agave stores the wrong kind of sugar, and how you cook it is the actual difference between tequila and mezcal
+
+**Claim.** An agave stores years of energy as fructan rather than starch, which
+neither malting nor koji can address, so production begins by cooking the harvested
+heart for hours or days to hydrolyse it with heat alone — and that cooking step is
+where the two famous categories diverge, because tequila's industrial steam
+autoclaves add no flavour while mezcal's wood-fired earth pits deposit smoke
+phenols, which means the smokiness most people treat as mezcal's essence is a
+consequence of the conversion method, not of the plant or the still.
+
+**Why it belongs.** It is the payoff of beat 9's third conversion route and one of
+the two best "the process explains the flavour" moments in the Foray, alongside
+peat at beat 37. It also lets the Foray be accurate about a family drowning in
+mythology: the difference is an oven, the appellations are legal instruments, and
+several of the neighbouring drinks are not even made from agave.
+
+**Evidence that counts.** A tequila or mezcal producer, agronomist or specialist
+writer on the plant and the cooking: how many years to maturity and what that does
+to supply, the piña and its fructan content, autoclave versus pit roast and the
+compounds each produces, crushing by stone tahona or roller mill, open-air
+fermentation with ambient yeast, and the legal requirement that tequila be at least
+51 % of one agave species with the 100 % category labelled separately. Strong
+signal: the smoke correctly attributed to the pit, the geographic appellations
+described as legal rather than natural boundaries, and *sotol* named as coming from
+a different plant genus entirely rather than being a kind of mezcal. Reject: worm
+and shot folklore, and terroir claims with no agronomy.
+
+**Share.** 2.0 % (~3.0 min).
