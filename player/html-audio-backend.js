@@ -91,7 +91,53 @@ const READY_ENOUGH = 3; // HAVE_FUTURE_DATA
    nothing fires and the item free-plays; come back to before it and the next
    crossing stops as usual. See setOutPoint().
 */
-const OUT_POINT_ARM_LEAD_SEC = 0.5;
+/**
+ * How much WALL CLOCK before the boundary the fine stage takes over.
+ *
+ * ── WHY IT IS 2.0 s AND NOT 0.5 s (raised 2026-08-17, with playback speed) ──
+ *
+ * It has to exceed the widest gap the COARSE stage can leave, because the
+ * handover only happens on a tick and a boundary the coarse stage never gets
+ * within the lead of is stopped BY the coarse stage — one tick late.
+ *
+ * `timeupdate` is nominally 250 ms, measures a 252 ms median in a hidden page,
+ * and **the widest interval this repo has actually recorded is 1,825 ms** (see
+ * the section header, and `PREFETCH_LEAD_SEC`, which is sized off the same
+ * number). At a 0.5 s lead a run that delivered a 1.8 s gap armed nothing at all
+ * and the stop landed on the late tick.
+ *
+ * **THAT IS THE ONE PLACE RATE MADE THE BOUNDARY WORSE, and it is why this
+ * number moved with the speed control rather than before it.** The fine timer's
+ * content window is already flat in rate by arithmetic — it is armed for
+ * `(end - now) / rate` of wall clock, so `armed x rate` is constant, which the
+ * suite pins with no clock in it. The coarse stage has no such property: its
+ * window is one tick of WALL clock, which is `rate` times as much CONTENT. So a
+ * 1,825 ms gap costs 1.8 s of overshoot at 1x and **3.7 s at 2x** — most of a
+ * sentence of the next show, on the path this repo prices at a median 936.5 s of
+ * the wrong episode when it goes wrong.
+ *
+ * Raising the lead past the worst recorded gap means the fine stage is armed from
+ * whichever tick lands inside it, at any rate, so the overshoot is bounded by
+ * TIMER latency (single-digit to tens of ms) instead of EVENT latency — and
+ * `overshoot x rate` stops being the thing that grows. 2.0 s is 1,825 ms plus
+ * enough not to be exactly on the boundary of the observation.
+ *
+ * ── WHAT A LONGER LEAD COSTS, WHICH IS ALMOST NOTHING ──────────────────────
+ *
+ * The original 0.5 s was reasoned as "timeupdate is free and already firing, and
+ * a fine timer armed minutes out would just be rescheduled hundreds of times",
+ * which is correct and does not argue for 0.5 over 2.0: at 4 Hz this is ~8
+ * reschedules per segment instead of ~2, against a segment median of 103 s. Each
+ * one is a `clearTimeout` and a `setTimeout`. It buys, in exchange, one thing
+ * that matters at every rate: the timer is armed from `playing` and from the
+ * first tick inside the window, rather than from whichever tick happens to fall
+ * in the last half second.
+ *
+ * It cannot cause an early stop at any length — the wake re-reads the playhead
+ * and only stops on a genuine crossing — and it cannot spin, because a wake with
+ * no progress stands the stage down.
+ */
+const OUT_POINT_ARM_LEAD_SEC = 2.0;
 /** Browsers clamp nested timeouts to ~4 ms; asking for less just burns wakeups. */
 const OUT_POINT_MIN_TIMER_MS = 4;
 
@@ -981,7 +1027,7 @@ export class HtmlAudioBackend {
     // is now the player: neither of these survives the swap on its own. Both are
     // guarded — Safari refuses some playback rates outright.
     try { this.el.volume = this._volume; } catch (_) { /* fine */ }
-    try { this.el.playbackRate = this._pendingRate; } catch (_) { /* play() re-applies it */ }
+    try { this.el.playbackRate = this._pendingRate; } catch (_) { /* refused; the rate stays pending */ }
     this._emit(
       `load.handover ${item.id} -> ${Math.round(startOffset)}s ` +
       `(prefetched: no wait at this boundary)`
@@ -1450,10 +1496,18 @@ export class HtmlAudioBackend {
 
   play() {
     if (this._released) return;
-    // Rate has to be re-applied after a load: assigning src resets
-    // playbackRate to 1 in most browsers, so the manager's restoreRate effect
-    // (which fires before startPlayback) would otherwise be undone by the load.
-    this.el.playbackRate = this._pendingRate;
+    /* Rate has to be re-applied after a load: assigning src resets
+       playbackRate to 1 in most browsers, so the manager's restoreRate effect
+       (which fires before startPlayback) would otherwise be undone by the load.
+
+       GUARDED, and this was the last unguarded element write in the file. Safari
+       refuses some playback rates outright, and `setRate`/`_promoteWarm` both wrap
+       their own assignment with a catch-comment saying "play() re-applies it" — so
+       the two guarded sites were deferring recovery to this line, and a throw HERE
+       is the one that costs the hour: `startPlayback` is `return backend.play()`,
+       which lands in the manager's effect loop -> `_loadItem`'s catch -> `E.error`
+       -> idle + pause. A refused speed must never stop a Foray. */
+    try { this.el.playbackRate = this._pendingRate; } catch (_) { /* the element refused it; the rate stays pending */ }
     const el = this.el;
     const p = el.play();
     if (p && typeof p.catch === "function") {
@@ -1494,10 +1548,51 @@ export class HtmlAudioBackend {
     this._reArmFromPlayhead();
   }
 
+  /**
+   * Set the playback rate. The manager owns WHICH rate (see its §12); this owns
+   * making it stick to whichever element is currently the player.
+   *
+   * `_pendingRate` is held on the BACKEND, not read off the element, for two
+   * reasons that are both load-bearing: assigning `src` resets `playbackRate` to
+   * 1 in most engines (so `play()` re-applies it after every load), and a
+   * handover swaps the element underneath us (so `_promoteWarm` re-applies it
+   * too). An element is the wrong place to keep this.
+   */
   setRate(rate) {
     const r = typeof rate === "number" && rate > 0 ? rate : 1.0;
     this._pendingRate = r;
-    if (!this._released) this.el.playbackRate = r;
+    if (this._released) return;
+    /* GUARDED, like every other element write in this file — `play()` included,
+       which was the one exception until this change. Safari refuses some
+       playback rates outright, and an unguarded throw here lands in the manager's
+       effect loop -> `_loadItem`'s catch -> `E.error` -> idle + pause. A refused
+       rate would stop the Foray, which is a far worse outcome than a rate that
+       did not take. */
+    try { this.el.playbackRate = r; } catch (_) { /* refused; `rate` below reports the truth */ }
+    /* RE-DERIVE THE BOUNDARY NOW, not when `ratechange` arrives.
+       The fine timer was armed for `(end - now) / oldRate` of wall clock, so
+       speeding up moves the boundary CLOSER in wall time and leaves a timer armed
+       too late — at 1x -> 2x with 1.5 s of content left, a 1,500 ms timer for a
+       boundary now 750 ms away, i.e. 1.5 s of content overshot. The element does
+       fire `ratechange` and `_onRateChange` reschedules on it, but that is a
+       QUEUED DOM TASK, and a hidden page throttles DOM timers and tasks ~21x
+       (measured, mp1-background-audio.md §4.1) — which is exactly the state a
+       listener changing speed with the screen locked is in. Doing it here makes
+       the correction land on the same tick as the change; the later `ratechange`
+       repeats it harmlessly, the same shape `seek()` uses for `seeked`. */
+    this._scheduleFineWatch();
+  }
+
+  /** The rate actually in force on the element, for anything that must not lie
+      about it — `navigator.mediaSession`'s `setPositionState`, whose consumer
+      extrapolates the playhead forward as `position + rate x wall`. Reads the
+      ELEMENT rather than `_pendingRate` on purpose: a rate the engine refused is
+      a rate the lock screen must not report, and a scrubber that disagrees with
+      playback is worse than none. Falls back to what we asked for only when the
+      element has no usable answer. */
+  get rate() {
+    const r = this.el?.playbackRate;
+    return typeof r === "number" && Number.isFinite(r) && r > 0 ? r : this._pendingRate;
   }
 
   /** 0..1. Ducking for hold-to-talk uses this rather than a Web Audio gain

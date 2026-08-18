@@ -35,6 +35,7 @@ import {
 } from "./foray-resolve.js";
 import { ForayProgressStore, resumePoint, makeProgress, progressKey } from "./foray-progress.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
+import { nextRate, rateLabel, rateAriaLabel } from "./playback-rate.js";
 import { createDurableStore } from "./durable-store.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -726,6 +727,8 @@ class StubDom {
       "intro-close", "pl-form", "pl-input", "pl-note", "pl-remove", "banner-done",
       "drawer", "drawer-overlay", "drawer-playlists", "family-toggle", "player-toggle",
       "menu-btn", "refresh-btn",
+      // Playback speed (#242).
+      "fy-rate",
     ]) this.byId.set(id, new StubEl(this, { id }));
 
     this.byId.get("fy-strip").children = this.segs;
@@ -771,7 +774,8 @@ const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 /** Records every call app.js makes into the player, and resolves the running
     order with the REAL resolver against the REAL data files. */
-function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
+function fakeBridge(resolved, { resume = null, startThrows = null, rate = 1 } = {}) {
+  let liveRate = rate;
   const calls = [];
   let onChange = null;
   /** A transport call that throws while the Foray is genuinely live — the other
@@ -813,6 +817,20 @@ function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
     forayDriftIsClean: (point) => !point || point.drift === "exact" || point.drift === "unverified",
     forayResumeList: () => (resume ? [{ id: resolved.id, title: resolved.title, percent: 32, label: "42 min left", finished: false }] : []),
     clearForayResume: record("clearForayResume"),
+
+    /* Playback speed (#242), backed by a real value and the REAL ladder functions
+       rather than by a stub returning a fixed string. What is under test is that
+       the page shows what the PLAYER says: a stub label would pass just as well
+       with the page computing its own, which is the second opinion about copy this
+       bridge exists to prevent. */
+    playbackRate: () => liveRate,
+    cycleRate: () => {
+      calls.push({ name: "cycleRate", args: [] });
+      liveRate = nextRate(liveRate);
+      return liveRate;
+    },
+    rateLabel: (r) => rateLabel(r),
+    rateAriaLabel: (r) => rateAriaLabel(r),
     // A real credit, so the block is actually emitted and bindSourceLinks has
     // something to bind — an empty list made that binder untested by accident.
     forayCredits: () => ({ credits: [credit], summary: "1 episode from 1 show" }),
@@ -856,11 +874,16 @@ function fakeBridge(resolved, { resume = null, startThrows = null } = {}) {
     point, and is what the inert build did. */
 async function mountForayPage({
   resume = null, durable = false, seed = {}, durableRows = {}, failLocalWrites = false,
-  startThrows = null,
+  startThrows = null, rate = 1, resolved: resolvedOverride = null,
 } = {}) {
-  const resolved = realResolve();
+  /* `resolvedOverride` exists for one case: a Foray with nothing playable, which
+     `renderForay` handles by disabling the transport and returning early. Mounting
+     that through this harness rather than rebuilding the vm context beside it keeps
+     one copy of the page's wiring — a second copy would be a second thing to keep
+     in step with app.js. */
+  const resolved = resolvedOverride ?? realResolve();
   const dom = new StubDom(resolved);
-  const bridge = fakeBridge(resolved, { resume, startThrows });
+  const bridge = fakeBridge(resolved, { resume, startThrows, rate });
   const store = new Map(Object.entries(seed));
   let failLocal = failLocalWrites;
 
@@ -1825,4 +1848,297 @@ test("dropping a segment from Foray #1 degrades the row rather than seeking wron
   assert.equal(point.drift, "dropped");
   assert.equal(point.index, -1);
   assert.ok(point.elapsedSec <= acc, "a resume point can never be past the live end");
+});
+
+/* ---------- playback speed, across the seams of a SHIPPED Foray ----------
+
+   `player/queue-manager.test.js` owns the mechanism with fixtures. This owns the
+   claim the founder actually made — "I set 1.5x and it stays 1.5x for the whole
+   thing" — against the real committed running order, because the mechanism and
+   the shipped data are two different things and only one of them is what a
+   listener meets.
+
+   `grilling-history-2` rather than Foray #1, deliberately. It is the ON-PLOT short
+   version that #226 shipped (Foray #1 is labelled superseded), it is 8 segments
+   over 7 seams, and **4 of those seams cross to a different episode** — which is
+   the only kind that reassigns `src` and therefore the only kind where an engine
+   resets `playbackRate` to 1. A test that only played one segment, or only
+   same-source seams, would pass with the bug fully present. */
+
+const SHORT_ID = "grilling-history-2";
+
+function shortResolve() {
+  const foray = findForay(FORAYS, SHORT_ID, { unlocked: [SHORT_ID] });
+  assert.ok(foray, `${SHORT_ID} must exist in data/forays.json`);
+  return resolveForay(foray, { segments: indexSegments(SEGMENTS), sources: indexSources(SOURCES) });
+}
+
+/** How many of this running order's seams change episode — the seams that cost a
+    `src` assignment and therefore a `playbackRate` reset. Counted from the data
+    rather than hard-coded, so a re-sourced Foray cannot leave this suite quietly
+    asserting a property of a shape it no longer has. */
+function crossEpisodeSeams(playable) {
+  let n = 0;
+  for (let i = 1; i < playable.length; i++) if (playable[i].audio_url !== playable[i - 1].audio_url) n++;
+  return n;
+}
+
+test("grilling-history-2 still has the cross-episode seams these speed tests need", () => {
+  // The premise, asserted, so the two tests below cannot go vacuously green if the
+  // Foray is ever re-sourced onto a single episode.
+  const r = shortResolve();
+  assert.equal(r.playable.length, 8);
+  assert.ok(
+    crossEpisodeSeams(r.playable) >= 3,
+    `only ${crossEpisodeSeams(r.playable)} cross-episode seams — the reset this guards cannot happen`
+  );
+});
+
+test("1.5x set before play holds through all 7 seams of grilling-history-2", async () => {
+  /* THE TEST THE BRIEF ASKED FOR: at a seam, not just on first play.
+
+     MUTATION THAT KILLS IT: `restoreRate` back to `setRate(item?.rate ?? 1.0)`.
+     The first load then emits `rate:1` and the assertion below names the segment
+     it happened on. */
+  const r = shortResolve();
+  const { m, backend } = make();
+  m.setRate(1.5);
+  await startForay(m, r);
+
+  for (let i = 0; i < r.playable.length - 1; i++) {
+    assert.equal(m.currentIndex, i, `expected to be on segment ${i + 1}`);
+    await backend.reachOutPoint();
+  }
+  assert.equal(m.currentIndex, r.playable.length - 1, "and we reached the last segment");
+
+  const rates = backend.calls.filter((c) => c.startsWith("rate:"));
+  assert.deepStrictEqual(
+    [...new Set(rates)], ["rate:1.5"],
+    `the element was told a speed other than 1.5x somewhere in the hour: ${rates.join(" ")}`
+  );
+  // One per load plus the initial set: the count matters as well as the values,
+  // because "never told anything else" is also true of "never told anything".
+  assert.equal(rates.length, r.playable.length + 1);
+  assert.equal(m.rate, 1.5);
+});
+
+test("a speed chosen mid-Foray survives every seam after it, at the top of the ladder", async () => {
+  /* The mid-listen case, which is how the control is actually used: a listener
+     three segments in decides this one is slow. Before this change the choice
+     survived exactly one segment and then reverted, with nothing on screen to say
+     so — the failure mode that is worst precisely because it is silent. */
+  const r = shortResolve();
+  const { m, backend } = make();
+  await startForay(m, r);
+  await backend.reachOutPoint();
+  await backend.reachOutPoint();
+  assert.equal(m.currentIndex, 2);
+
+  m.setRate(2);
+  const mark = backend.calls.length;
+  while (m.currentIndex < r.playable.length - 1) await backend.reachOutPoint();
+
+  const after = backend.calls.slice(mark).filter((c) => c.startsWith("rate:"));
+  assert.deepStrictEqual(
+    [...new Set(after)], ["rate:2"],
+    `the speed reverted after the change: ${after.join(" ")}`
+  );
+  assert.equal(after.length, r.playable.length - 3, "one restore per remaining load");
+});
+
+test("the seam beat stays 2.0 s of WALL clock at 2x — it does not scale with speed", async () => {
+  /* THE DECISION, PINNED. `seam-gap.js`'s 2.0 s is an editorial pause between two
+     voices, taken from the audiobook mid-chapter section-break convention
+     (2-3.5 s). Three reasons it is wall clock and does not divide by rate:
+
+       1. THERE IS NO CONTENT IN IT. The beat is not audio — nothing is appended,
+          padded or re-encoded (product principle 3); it is the silence between the
+          out-point pausing the element and `startPlayback` running. "Two seconds
+          of content at 2x" is not a quantity that exists.
+       2. THE CONVENTION IS PERCEPTUAL. What tells a listener they have moved is a
+          duration of silence in their own world. Scaling it would make the beat
+          1.0 s at 2x, under the published floor the number came from, for a
+          setting the listener changed for an unrelated reason.
+       3. IT IS ALSO THE WINDOW THAT HIDES THE LOAD. The manager spends the beat
+          and the next segment's load in parallel, so the silence is
+          `max(gap, load)` and the load takes WALL clock. Dividing the beat by rate
+          would shrink the cover exactly when seams arrive twice as often — the
+          #224 direction, where a seam load that misses its deadline drops the
+          segment.
+
+     MUTATION THAT KILLS THIS: divide the deadline by the rate in `_armSeamGap`
+     (`nowMs() + sec * 1000 / this._rate`). The remaining beat becomes 1,000 ms. */
+  const r = shortResolve();
+  const scheduler = manualScheduler();
+  const { m, backend } = make({ scheduler });
+  m.setRate(2);
+  await startForay(m, r);
+
+  const ended = backend.reachOutPoint();
+  await new Promise((res) => setImmediate(res));
+  assert.equal(m.inSeamGap, true, "a segment-to-segment seam gets a beat");
+  assert.equal(
+    m.seamGapRemainingMs, SEAM_GAP_SEC * 1000,
+    "the beat owes a full 2.0 s of wall clock at 2x, exactly as it does at 1x"
+  );
+
+  // Not yet: at 1.0 s the beat still has a second to run, whatever the speed.
+  await scheduler.advance(1000);
+  assert.equal(m.inSeamGap, true, "half the beat is not the whole beat");
+  await scheduler.advance(1000);
+  await ended;
+  assert.equal(m.inSeamGap, false);
+  assert.equal(m.currentIndex, 1, "and only then does the next segment start");
+});
+
+/* ---------- the Foray page's speed button (#242) ----------
+
+   The mini-player's sheet already had a speed button. The Foray PAGE — the
+   surface a listener is actually looking at for the hour — had none, so the
+   founder's control was two taps and a sheet away from the only screen it
+   matters on. These test the page half: that the button is there, that it is
+   labelled by the PLAYER rather than by the page, that it does not start
+   playback, and that a change made elsewhere reaches it. */
+
+test("the Foray page carries a speed button, labelled from the player", async () => {
+  const { dom, bridge } = await mountForayPage({ rate: 1.5 });
+  const btn = dom.el("fy-rate");
+  assert.equal(btn.textContent, "1.5×", "the stored speed, on the page, before anything is played");
+  assert.equal(btn.listeners("click"), 1, "and it is actually bound");
+  assert.match(
+    btn.getAttribute("aria-label") ?? "", /1\.5×/,
+    "aria-label REPLACES a button's text, so the value has to be inside it"
+  );
+  assert.ok(
+    !bridge.calls.some((c) => c.name === "playForay"),
+    "and rendering the page must not have started anything"
+  );
+});
+
+test("the speed button says its value to a screen reader AT NORMAL SPEED too", async () => {
+  /* The case a memo swallowed. The MARKUP ships `1×` as the button text and a bare
+     `aria-label="Playback speed"`, so at the default speed the visible label already
+     matches on the first paint — and the early return in `paintRateButton` skipped
+     the `aria-label` with it. A screen-reader user was then told what the control
+     does and never what it is set to, for every listener who had not changed the
+     speed, which is most of them.
+
+     THE MARKUP'S STARTING STATE IS SET BY HAND HERE, and that is the whole reason
+     this test is written the way it is. `StubEl` constructs with `textContent = ""`
+     rather than parsing the page's HTML, so a fresh mount does not reproduce the
+     match that triggers the memo — the first draft of this test asserted the right
+     thing and passed with the bug fully present, because the fake was kinder than
+     the browser. `watchForay` hands the page's callback over at bind time, so the
+     repaint below needs nothing to be playing.
+
+     MUTATION THAT KILLS THIS: drop `&& btn.getAttribute("aria-label") === aria`
+     from the memo in `paintRateButton`. */
+  const { dom, bridge } = await mountForayPage();          // rate 1, the default
+  const btn = dom.el("fy-rate");
+  assert.equal(btn.textContent, "1×", "the page labels it from the player on bind");
+
+  btn.textContent = "1×";                                  // as index.html ships it
+  btn.setAttribute("aria-label", "Playback speed");         // likewise: no value in it
+  bridge.lastOnChange()({
+    forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false,
+    elapsedSec: 5, totalSec: 3673, error: null, rate: 1,
+  });
+
+  assert.match(
+    btn.getAttribute("aria-label") ?? "", /1×/,
+    "aria-label REPLACES the text, so a bare 'Playback speed' tells a screen reader nothing"
+  );
+});
+
+test("tapping the speed button cycles through the player and relabels", async () => {
+  /* MUTATION THAT KILLS THIS: have the binder call `player.playbackRate()` instead
+     of `player.cycleRate()`. The label stays at 1× and `cycleRate` never appears in
+     the call log. */
+  const { dom, bridge } = await mountForayPage();
+  const btn = dom.el("fy-rate");
+  assert.equal(btn.textContent, "1×");
+
+  await btn.click();
+  assert.equal(btn.textContent, "1.25×", "the next stop on the ladder");
+  await btn.click();
+  await btn.click();
+  assert.equal(btn.textContent, "1.75×");
+
+  assert.equal(bridge.calls.filter((c) => c.name === "cycleRate").length, 3);
+  assert.match(btn.getAttribute("aria-label") ?? "", /1\.75×/, "the accessible name moves with the label");
+});
+
+test("changing the speed does NOT start playback", async () => {
+  /* Every other control on that row means "start it" before anything is loaded —
+     `#fy-next` and `#fy-prev` both fall through to `startOrResume()`, because a
+     next that begins at segment 2 would silently drop the opening. The speed button
+     must NOT: it is a preference, it is meaningful with nothing playing, and
+     starting an hour of audio because someone set 1.5x first would be the worst
+     surprise on this page. */
+  const { dom, bridge } = await mountForayPage();
+  await dom.el("fy-rate").click();
+  assert.deepStrictEqual(
+    bridge.calls.filter((c) => c.name === "playForay"), [],
+    "a speed change is not a play"
+  );
+  assert.equal(dom.el("fy-play").textContent, "▶ Play", "and the main button still says so");
+});
+
+test("the speed button survives a Foray with nothing playable", async () => {
+  /* The bail-out that disables `#fy-play`/`#fy-next`/`#fy-prev` returns early, so
+     the speed binder has to sit ABOVE it: the speed is global and settable for
+     whatever the listener plays next, and a dead button on a page they are already
+     looking at is the kind of small breakage nobody reports.
+
+     MUTATION THAT KILLS THIS: move the `#fy-rate` block below the
+     `if (!r.playable.length)` return. `listeners("click")` drops to 0. */
+  const base = realResolve();
+  const empty = {
+    ...base,
+    playable: [],
+    entries: base.entries.map((e) => ({ ...e, playable: false, reason: "no audio" })),
+    unplayable: base.entries.map((e) => ({ ...e, playable: false, reason: "no audio" })),
+  };
+  const { dom } = await mountForayPage({ resolved: empty, rate: 2 });
+
+  assert.equal(dom.el("fy-play").disabled, true, "the premise: this Foray cannot play");
+  assert.equal(dom.el("fy-rate").disabled, false, "but the speed is not this Foray's property");
+  assert.equal(dom.el("fy-rate").listeners("click"), 1);
+  assert.equal(dom.el("fy-rate").textContent, "2×");
+});
+
+test("a speed changed in the mini-player's sheet reaches the page's button", async () => {
+  /* There is ONE speed and TWO controls. `client.js`'s `applyRate` notifies the
+     Foray page, so the snapshot carries the value and `paintForay` relabels — a
+     stale label on either control is the app disagreeing with itself about a number
+     the listener just set.
+
+     MUTATION THAT KILLS THIS: delete the `paintRateButton` call in `paintForay`.
+     The label stays at whatever the page was bound with. */
+  const { dom, bridge } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  assert.equal(typeof onChange, "function");
+
+  onChange({
+    forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false,
+    elapsedSec: 240, totalSec: 3673, error: null, rate: 1.75,
+  });
+  assert.equal(dom.el("fy-rate").textContent, "1.75×");
+  assert.match(dom.el("fy-rate").getAttribute("aria-label") ?? "", /1\.75×/);
+});
+
+test("a snapshot from an OLDER player module leaves the label alone rather than blanking it", async () => {
+  /* app.js and player/client.js are cached and refreshed independently by the
+     service worker, so this page is regularly paired with a module of a different
+     vintage — the same skew `renderForay` and `FY_AUTOPLAY_HINT` are written
+     around. A module with no `rate` on its snapshot must not produce
+     "undefined×"; the value lives in `cp_rate`, not in the tick. */
+  const { dom, bridge } = await mountForayPage({ rate: 1.5 });
+  await dom.el("fy-play").click();
+  bridge.lastOnChange()({
+    forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false,
+    elapsedSec: 240, totalSec: 3673, error: null,   // no `rate` at all
+  });
+  assert.equal(dom.el("fy-rate").textContent, "1.5×");
 });

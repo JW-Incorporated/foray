@@ -1316,6 +1316,13 @@ async function renderForay(id) {
           <button type="button" class="fy-btn" id="fy-prev" aria-label="Previous segment">‹‹</button>
           <button type="button" class="fy-btn fy-main" id="fy-play" aria-label="Play">▶ Play</button>
           <button type="button" class="fy-btn" id="fy-next" aria-label="Next segment">››</button>
+          <!-- Playback speed (#242). On the transport row rather than in a settings
+               screen, because this is the surface a listener is looking at when
+               they decide a segment is slow — and its current value is the label,
+               so it is legible without opening anything. The label and the
+               accessible name both come from the player bridge, so this button and
+               the mini-player's cannot word the same speed two ways. -->
+          <button type="button" class="fy-btn fy-rate" id="fy-rate" aria-label="Playback speed">1×</button>
         </div>
         <!-- A start that failed says so HERE, and a screen reader hears it
              without moving focus off the button that was just pressed. -->
@@ -1532,6 +1539,35 @@ function bindForayTransport(r, player, resume = null) {
     await start(0);
   });
 
+  /* Playback speed (#242). Bound BEFORE the "nothing playable" bail-out below and
+     labelled from the stored value, because neither depends on this Foray: the
+     speed is global (one `cp_rate` for the app — a speed is a fact about the
+     listener, not about the audio), it is settable before anything has started, and
+     a Foray with no playable segments still leaves a listener who may want to set
+     it for the next one. `paintForay` relabels it on every tick from the snapshot,
+     so a change made in the mini-player's sheet shows up here too **while a Foray
+     is live** — `notifyForay` has nothing to notify when the player is on a single
+     episode, so in that one case this button keeps its label until the page is
+     rendered again. Stated rather than fixed: the value itself is always right
+     (it lives in `cp_rate`, which both controls read), the stale thing is a label
+     on a page whose Foray is not the thing playing, and a rate-only broadcast
+     channel is more machinery than that is worth. */
+  const rateBtn = $("#fy-rate");
+  /* BOTH methods checked, not just one. app.js and the module refresh
+     independently, and a bridge with `playbackRate` but no `cycleRate` would bind a
+     handler that throws into `guardForayTap` on every tap — a control that reports
+     "that didn't take" forever. They ship together, so this is belt and braces, and
+     it costs one `typeof`. */
+  if (rateBtn && typeof player.playbackRate === "function" && typeof player.cycleRate === "function") {
+    paintRateButton(player, player.playbackRate());
+    rateBtn.addEventListener("click", () => guardForayTap(() => {
+      // Synchronous, and no `playerHasForay` branch: unlike every other control on
+      // this row, changing the speed is meaningful with nothing loaded and must not
+      // start playback as a side effect.
+      paintRateButton(player, player.cycleRate());
+    }));
+  }
+
   // Nothing playable is not a disabled-looking button that still fires: say it
   // with the control's own state, so the page and the behaviour agree.
   if (!r.playable.length) {
@@ -1610,6 +1646,33 @@ function bindForayTransport(r, player, resume = null) {
     already loaded must resume it, not rebuild the queue from segment 1. */
 function playerHasForay(r) {
   return Boolean(state.forayPlaying === r.id);
+}
+
+/** The speed button's visible label AND its accessible name, both from the
+    bridge (#242). `aria-label` on a button REPLACES its text, so a screen reader
+    is told only what this sets — which is why the value has to be in it. Written
+    in one place rather than at each of the three call sites so a relabel cannot
+    update one and forget the other. */
+function paintRateButton(player, rate) {
+  const btn = $("#fy-rate");
+  /* BOTH label functions, for the same module-skew reason the binder checks both
+     of its own. The bind-time call is NOT inside `guardForayTap`, so a module
+     vintage carrying `rateLabel` but not `rateAriaLabel` would throw during
+     `renderForay` — a blank page, from a missing accessible name. */
+  if (!btn || typeof player?.rateLabel !== "function" || typeof player?.rateAriaLabel !== "function") return;
+  const label = player.rateLabel(rate);
+  const aria = player.rateAriaLabel(rate);
+  /* The memo checks BOTH, and the second half is not symmetry — it is a bug this
+     had. `paintForay` runs at 4 Hz for a value that changes once an hour, so the
+     early return is worth having; but the markup ships `1×` as the button's text,
+     so on the ordinary first bind at normal speed the label already MATCHED and the
+     `aria-label` was never written. The button then kept the markup's bare
+     "Playback speed", and a screen-reader user was told what the control does and
+     never what it is set to — for every listener who had not changed the speed,
+     which is most of them. */
+  if (btn.textContent === label && btn.getAttribute("aria-label") === aria) return;
+  btn.textContent = label;
+  btn.setAttribute("aria-label", aria);
 }
 
 /** The only thing that changes 4x a second. Deliberately not a re-render: the
@@ -1693,6 +1756,26 @@ function paintForay(s) {
   // The beat, for CSS: the strip holds still at a boundary for 2.0 s and this
   // is how a stylesheet can say so without the page inventing new copy.
   $("#fy-strip")?.classList.toggle("is-seam", Boolean(s.gap));
+
+  /* The speed, relabelled from the snapshot (#242), so a change made in the
+     mini-player's Now Playing sheet reaches this button too — there is one speed
+     and two controls, and a stale label on either is the app disagreeing with
+     itself about a value the listener just set.
+
+     GUARDED, and the guard is the whole of it. app.js and the ES module are cached
+     and refreshed independently by the service worker (see the note in
+     `renderForay`), so this page is regularly paired with a module of a different
+     vintage; an older one sends no `rate`, and `FORAY_IDLE` carries none either for
+     the same reason it carries no id. Painting anyway would put "1×" on the button
+     — `rateLabel` normalises `undefined` to normal speed — and silently contradict
+     a listener who is at 1.5x. Skipping leaves the label it was bound with, which
+     is still right, because the value lives in `cp_rate` rather than in the tick.
+
+     A first draft also fell back to `window.ForayPlayer?.playbackRate?.()` here.
+     That was dead code and a mutation test proved it: an older module has no
+     `playbackRate` either, so the fallback is `undefined` in the one case it was
+     written for, and removing it changed no test. */
+  if (s.rate != null) paintRateButton(window.ForayPlayer, s.rate);
 
   // The player's own words are telemetry, not copy. Say the one thing a
   // listener can act on, and keep the detail in the console.

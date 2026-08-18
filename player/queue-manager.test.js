@@ -639,6 +639,220 @@ test("narration between segments plays as an ordinary TTS item at 1.0x", async (
   assert.ok(!backend.calls.some((c) => c.startsWith("outPoint:")), "narration has no out-point");
 });
 
+/* ---------- the listener's speed (§12) ----------
+
+   Every test here would have passed before this feature existed, for the wrong
+   reason: `restoreRate` emitted `setRate(1.0)` unconditionally, and `1.0` is
+   also the right answer when nobody has changed the speed. So each one below
+   sets a NON-1 rate, which is the only way to tell "restored the listener's
+   choice" apart from "reset to normal".
+
+   THE MUTATION THAT KILLS THIS WHOLE SECTION is one line: put `restoreRate`
+   back to `this.backend.setRate(item?.rate ?? 1.0)`. Six of these go red, and
+   `seg`/`ep`/`fseg` all carry a vestigial `rate: 1.0`, so demoting it to
+   `item?.rate ?? this._rate` reddens them too. */
+
+test("a speed set before play applies to the very first segment, not 1x", async () => {
+  // The stored-rate path: `client.js` calls `setRate` once at boot from `cp_rate`,
+  // before anything is loaded. If the first `itemLoaded` overrides it, a listener
+  // who chose 1.5x last week starts every session at 1x.
+  const { m, backend } = make();
+  m.setRate(1.5);
+  await m.playForay(foray([fseg()]), { resolveItem });
+  assert.deepStrictEqual(backend.calls, [
+    "rate:1.5",            // setRate, applied immediately
+    "load:foray-1#0@100",
+    "rate:1.5",            // restoreRate on itemLoaded — the listener's, not 1.0
+    "outPoint:210",
+    "play",
+  ]);
+});
+
+test("the speed survives a cross-episode seam, which is where it used to be lost", async () => {
+  /* THE TRAP THIS FEATURE IS ABOUT. `playbackRate` resets to 1 when a media
+     element loads a new source, and a Foray changes source at a seam — so the
+     naive version works until the first seam and then silently drops to 1x
+     mid-listen. Here the reset was OURS and arrived even earlier than the
+     engine's.
+
+     Three different episodes, so all three loads are real cross-episode loads. */
+  const { m, backend } = make();
+  m.loadQueue(THREE.map((s) => ({ ...s })));
+  m.setRate(1.75);
+  await m.play(0);
+  await m.skipToNext();
+  await m.skipToNext();
+
+  const rates = backend.calls.filter((c) => c.startsWith("rate:"));
+  assert.deepStrictEqual(
+    rates, ["rate:1.75", "rate:1.75", "rate:1.75", "rate:1.75"],
+    "one for the set and one per load — and never a 1 among them"
+  );
+  assert.equal(m.rate, 1.75);
+});
+
+test("a speed changed mid-Foray holds for every segment after it", async () => {
+  // The other half: not "the stored value applies" but "a change while listening
+  // is not undone by the next boundary". Before this, a tap survived exactly one
+  // segment — a median 103 s — and then reverted with nothing on screen to say so.
+  const { m, backend } = make();
+  m.loadQueue(THREE.map((s) => ({ ...s })));
+  await m.play(0);
+  assert.ok(backend.calls.includes("rate:1"), "starts at normal speed");
+
+  m.setRate(2);
+  await m.skipToNext();
+  await m.skipToNext();
+
+  const after = backend.calls.slice(backend.calls.indexOf("rate:2"));
+  assert.deepStrictEqual(
+    after.filter((c) => c.startsWith("rate:")), ["rate:2", "rate:2", "rate:2"],
+    "the change, then one restore per remaining load"
+  );
+});
+
+/** A Foray whose middle item is a narration bridge, which is the only shape that
+    reaches the reducer's `transitioning` state. A narration item at index 0 is
+    loaded as an ordinary item instead (`play(0)` -> `loadingItem` -> `playing`),
+    so it exercises `resetRateForTTS` but not the bridge path — the first draft of
+    these two tests used that shape and asserted against the wrong one. */
+const BRIDGED = () => foray([
+  fseg(),
+  { type: "narration", id: "nar-1", asset: "narration/fire-1.mp3" },
+  fseg({ start_sec: 400, end_sec: 500 }),
+]);
+
+test("narration still plays at 1.0x, and the listener's speed comes back after it", async () => {
+  /* Corner case #18, which the new ownership must not weaken: a bridge is one
+     line of our own narration at a level and a pace we chose, and playing it at
+     2x is not a feature. `resetRateForTTS` is deliberately the literal 1.0 rather
+     than a consultation of `this._rate`. */
+  const { m, backend } = make();
+  m.setRate(2);
+  await m.playForay(BRIDGED(), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT);   // segment 1 ends, the bridge starts
+  assert.equal(m.state.type, "transitioning", "the bridge is what is audible");
+  await m._handleBackendItemEnded();               // the line finishes
+
+  assert.deepStrictEqual(
+    backend.calls.filter((c) => c.startsWith("rate:")),
+    ["rate:2", "rate:2", "rate:1", "rate:2", "rate:2"],
+    "set, first segment, the bridge forced to normal, then the listener's speed back — twice, " +
+    "because `itemEnded` in `transitioning` restores it before the load and `itemLoaded` again after"
+  );
+  assert.ok(
+    backend.calls.indexOf("rate:1") < backend.calls.indexOf("load:nar-1@0"),
+    "and forced BEFORE the narration is audible, not after"
+  );
+});
+
+test("a tap during narration is deferred, not lost, and lands when the line ends", async () => {
+  /* The one case the ownership adds. Without the guard, corner case #18 would
+     hold for every path except a listener touching the control at the wrong
+     moment — which is exactly when a guarantee stops being one. Deferred, not
+     ignored: the value is theirs from the next segment on.
+
+     MUTATION THAT KILLS THIS: delete the `_narrationIsAudible()` branch in
+     `setRate`. `rate:1.5` then reaches the element mid-line and the middle
+     assertion fails. */
+  const { m, backend, log } = make();
+  await m.playForay(BRIDGED(), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT);
+  assert.equal(m.state.type, "transitioning", "the bridge is what is audible");
+
+  const before = backend.calls.length;
+  assert.equal(m.setRate(1.5), 1.5, "the value is accepted and remembered");
+  assert.deepStrictEqual(
+    backend.calls.slice(before), [],
+    "but nothing reaches the element while our own narration is sounding"
+  );
+  assert.ok(log.some((t) => /rate\.deferred=1\.5/.test(t)), "and it says so");
+  assert.equal(m.rate, 1.5, "the control's label is already theirs, even though the audio is not");
+
+  await m._handleBackendItemEnded();
+  assert.ok(backend.calls.includes("rate:1.5"), "the deferred speed lands on the segment after the line");
+});
+
+test("setRate snaps a junk or off-ladder value instead of handing it to the element", () => {
+  /* `playbackRate = 0` pauses an element with no `pause` event, a negative one
+     throws in some engines, and `NaN` throws in all of them — and this method is
+     reachable from a console and from a hand-edited `cp_rate`. The ladder is the
+     allowlist; `playback-rate.js` owns the snapping. */
+  const { m, backend } = make();
+  for (const bad of [0, -1, NaN, Infinity, null, undefined, "1.5", {}]) {
+    assert.equal(m.setRate(bad), 1, `${String(bad)} must fall back to normal speed`);
+  }
+  assert.equal(m.setRate(1.6), 1.5, "and an off-ladder number snaps to the nearest stop");
+  assert.equal(m.setRate(9), 2, "while one past the top clamps rather than resetting to 1x");
+  assert.ok(
+    backend.calls.every((c) => !c.startsWith("rate:") || /^rate:(1|1\.5|2)$/.test(c)),
+    `the element only ever saw ladder values: ${backend.calls}`
+  );
+});
+
+test("a snapped value SAYS so, so a stale stored rate is discoverable", async () => {
+  /* `normalizeRate` is deliberately forgiving, and forgiving plus silent is how a
+     whole cohort quietly listens at the wrong speed after a ladder change. The
+     telemetry line is the difference between "nobody changed the speed" and "every
+     stored value stopped being recognised". Product principle 2.
+
+     MUTATION THAT KILLS THIS: delete the `isRate` guard in `setRate`. No line is
+     emitted and the first two assertions fail; note the third, which is what stops
+     the fix being "emit always". */
+  const { m, log } = make();
+  m.setRate(1.6);
+  assert.ok(log.some((t) => /rate\.snapped requested=1\.6 applied=1\.5/.test(t)), `got ${log}`);
+  m.setRate("2");
+  assert.ok(log.some((t) => /rate\.snapped requested="2" applied=1/.test(t)), "a numeric STRING is a real bug upstream");
+
+  const before = log.length;
+  m.setRate(1.75);
+  assert.equal(
+    log.filter((t) => /rate\.snapped/.test(t)).length,
+    log.slice(0, before).filter((t) => /rate\.snapped/.test(t)).length,
+    "a value already ON the ladder is not a snap and must not say it was"
+  );
+});
+
+test("changing speed does NOT cut a running seam beat", async () => {
+  /* Every transport method cuts the beat, because the beat marks an edit the
+     listener did not ask for and touching the transport means they have named a
+     destination. Changing speed names no destination — it is a preference about
+     how the rest of the hour sounds — so routing `setRate` through `_transport`
+     would swallow the authored 2.0 s for a tap that was not about going
+     anywhere, and start the next segment early.
+
+     MUTATION THAT KILLS THIS: wrap `setRate`'s body in
+     `this._transport("rate", ...)`. The beat is cut and both assertions fail. */
+  const scheduler = manualScheduler();
+  const { m, backend } = make({ scheduler });
+  m.loadQueue(THREE.map((s) => ({ ...s })));
+  await m.play(0);
+
+  const ended = m._handleBackendItemEnded(END_OUT_POINT);
+  await tick();
+  assert.equal(m.inSeamGap, true, "the beat is running");
+
+  m.setRate(1.25);
+  assert.equal(m.inSeamGap, true, "and a speed change must leave it running");
+  assert.equal(m.seamGapRemainingMs, 2000, "with its full remainder still owed");
+
+  await scheduler.advance(2000);
+  await ended;
+  assert.equal(m.currentIndex, 1, "the beat was spent, then the next segment started");
+  assert.ok(backend.calls.includes("rate:1.25"), "at the speed the listener chose mid-beat");
+});
+
+test("the rate getter reports the CHOSEN speed, which is what a label is painted from", () => {
+  // Never the element's live `playbackRate`: a load assigns `src` and resets it to
+  // 1 for the moment before `restoreRate` runs, so a label painted from the
+  // element would flicker to "1×" at every seam.
+  const { m } = make();
+  assert.equal(m.rate, 1, "normal speed until someone says otherwise");
+  m.setRate(1.25);
+  assert.equal(m.rate, 1.25);
+});
+
 /* ---------- the ADR-0007 ladder, at load ---------- */
 
 test("a DAI segment plays when the copy in hand matches the reference duration", async () => {

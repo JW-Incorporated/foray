@@ -657,6 +657,23 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
 .fy-btn:hover { border-color: var(--accent); }
 .fy-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 .fy-btn.fy-main:disabled { background: var(--surface-2); border-color: var(--line); color: var(--text-dim); }
+/* Playback speed (#242). A .fy-btn like its neighbours — this is the existing
+   idiom for this row and the control needs no visual language of its own; the
+   whole point is that it reads as one more transport button.
+
+   Two deliberate differences. It keeps the 48 px touch height (this is still a
+   car product — see the note on .fp-play) but drops the 60 px minimum, because
+   "2×" in a 60 px box next to a 128 px primary reads as an equal peer of Play,
+   which it is not. And it is tabular-nums so the row does not shift by a pixel as
+   the label steps 1× -> 1.25× -> 1.5×; without it the button and everything
+   beside it jitter on every tap. */
+.fy-btn.fy-rate {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+.fy-btn.fy-rate:hover { color: var(--text); }
 
 /* the running order */
 .fy-slot { margin: 18px 0 0; }

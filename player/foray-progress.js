@@ -336,6 +336,23 @@ export function percentDone(elapsedSec, totalSec) {
  * "32 min left" — the mockup's own phrasing for a partially-played Foray
  * (`ForayCard`'s amber label), and the only progress copy it shows.
  *
+ * MEDIA MINUTES, NOT WALL MINUTES, and that is a decision rather than an omission
+ * (recorded 2026-08-17 with the speed control, #242). At 2x this says "42 min
+ * left" for 21 minutes of the listener's time. Left as media time on purpose:
+ *
+ *   - It describes the CONTENT remaining in the Foray, which is a stable property
+ *     of the stored row. The speed is a property of a session that has not
+ *     happened yet, and the listener may well change it again.
+ *   - Dividing by the current rate would make the home rail's label move when a
+ *     listener changed speed somewhere unrelated, and would make the same Foray
+ *     read differently for two people who are equally far through it.
+ *   - Everything else stored here is media time for the same reason: `elapsed_sec`
+ *     and `into_sec` are content seconds, which is what lets a resume land on the
+ *     same audio whatever speed either session used.
+ *
+ * Revisit only with a founder: "how much is left" adjusted for speed is a real
+ * choice some apps make, and it is a product call, not a rounding one.
+ *
  * Whole minutes, because the mockup rounds too and because a Foray's runtime is
  * a sum of measurements of other people's audio; "31 min 42 s left" claims a
  * precision the segment boundaries do not have. Under a minute it says so

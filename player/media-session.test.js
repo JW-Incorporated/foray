@@ -1230,6 +1230,43 @@ test("the seam-beat state reaches the bridge from the manager, not from a guess"
   assert.match(CLIENT_CODE, /inSeamGap:\s*manager\?\.inSeamGap === true/);
 });
 
+test("the rate client.js reports is the ELEMENT's, not the speed the listener chose", () => {
+  /* Playback speed (#242), pinned where it can actually be broken — and it was NOT
+     pinned anywhere until a pre-push review mutated both call sites to
+     `manager?.rate` and watched all 796 player tests stay green. The backend's own
+     suite pins that `get rate()` reads the element; nothing pinned that this file
+     USES it.
+
+     WHY IT MATTERS, in one sentence: the OS extrapolates the playhead forward as
+     `position + rate x wall` between our reports, so reporting a rate the element
+     is not running at makes the lock-screen scrubber drift away from the audio for
+     as long as the difference lasts — and a scrubber that disagrees with playback
+     is worse than none. `manager.rate` is the speed the listener ASKED for, which
+     is the right thing to paint a button from and the wrong thing to hand an OS:
+     Safari refuses some rates outright, and a refused one must not be claimed.
+
+     Both branches, because a Foray and a single episode report separately and
+     fixing one would leave the other lying. */
+  const block = /if \(foray\) \{[\s\S]*?media\.update\(mediaSessionView\(\{[\s\S]*?\}\)\);/.exec(CLIENT_CODE);
+  assert.ok(block, "syncMediaSession must have a foray branch");
+  assert.match(block[0], /playbackRate: backend\?\.rate/, "the Foray branch must report the element's rate");
+  const after = CLIENT_CODE.slice(block.index + block[0].length);
+  assert.match(after, /playbackRate: backend\?\.rate/, "and so must the single-episode branch");
+  // The chosen rate must not reach the OS from either branch.
+  assert.doesNotMatch(CLIENT_CODE, /playbackRate:\s*manager/);
+});
+
+test("the backend really does read the element for `rate` — the other half of #242's honesty", () => {
+  /* The test above pins WHICH getter `client.js` calls; this pins what that getter
+     answers with. Split because each is one edit from its opposite and neither
+     implies the other: `client.js` could call `backend.rate` while `backend.rate`
+     returned `_pendingRate`, and the lock screen would be exactly as wrong. */
+  const src = codeOnly(readText("player/html-audio-backend.js"));
+  const getter = /get rate\(\) \{[\s\S]*?\n {2}\}/.exec(src);
+  assert.ok(getter, "html-audio-backend.js must define get rate()");
+  assert.match(getter[0], /this\.el\?\.playbackRate/, "it must read the element");
+});
+
 test("the finished state reaches the bridge too, so a done Foray clears the slot", () => {
   // Scoped to syncMediaSession: `forayStateSnapshot` reads the same state for the
   // page, and counting the file over would pass on that one alone.
