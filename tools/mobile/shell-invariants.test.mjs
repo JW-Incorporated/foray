@@ -1,6 +1,6 @@
 /* The native shell's invariants (issue #36, MP2).
  *
- * Five things this repo would silently break, and what each costs:
+ * Six things this repo would silently break, and what each costs:
  *
  *   1. THE ROOT STAYS DEPENDENCY-FREE WITH NO BUILD STEP. That property is what
  *      lets the keyless Action deploy the static site from `main`'s root. A
@@ -19,6 +19,15 @@
  *      wrong episode (`docs/research/mp1-background-audio.md` §3).
  *   5. THE CSP MUST COVER THE APP'S OWN BUNDLE. The iOS shell's origin is
  *      `capacitor://localhost`, which matches neither `https:` nor `data:`.
+ *   6. ANDROID'S HAND-WRITTEN NATIVE CODE MUST BE COMMITTED, AND THE GENERATED
+ *      PLATFORM MUST NOT BE. Android needs native code — no `navigator.mediaSession`
+ *      at any price, and a `mediaPlayback` foreground service for backgrounded
+ *      playback — and #37 left it nowhere to live. It now lives in
+ *      `mobile/plugins/foray-audio/`. The failure mode is quiet in both directions:
+ *      an over-broad ignore rule drops the .java files from the repo while the
+ *      machine that built the APK still has them, and a plugin name that disagrees
+ *      with the Java's annotation means the service is simply never started.
+ *      Section 6, and docs/android-native-code.md.
  *
  * ONE EXCEPTION TO THAT, since #37, and it is stated here so the header does not
  * over-promise: `KeepRunning`'s SECOND mechanism — parsing the generated Cordova
@@ -70,6 +79,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { MAX_BYTES, MIN_DERIVED_DATA_FILES } from "./prepare-webdir.mjs";
+import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -128,17 +138,15 @@ test("no lockfile or node_modules at the repo root", () => {
   }
 });
 
-test("the Capacitor project keeps its dependencies inside mobile/", () => {
-  const deps = Object.keys(capPkg().dependencies || {});
-  assert.ok(deps.length > 0, "mobile/package.json should declare the Capacitor deps");
-  for (const d of deps) {
-    assert.ok(
-      d.startsWith("@capacitor/"),
-      `Unexpected dependency ${d} in mobile/. Anything beyond Capacitor itself deserves ` +
-        `a line in docs/mobile-shell.md saying why the shell needs it.`
-    );
-  }
-});
+/* THE "only @capacitor/* dependencies" TEST USED TO LIVE HERE, and it has moved to
+   section 6 rather than been deleted — see "mobile/'s only non-Capacitor dependency
+   is our own plugin". It fired for real when `foray-audio` was added, which is what
+   it was for; its failure message asked for a line in the docs saying why, and it
+   got one. What it protects (no third-party JavaScript in the shell) is intact and
+   is now checked more precisely: a non-Capacitor entry must be a `file:` path
+   resolving inside `mobile/`, and every `@capacitor/*` entry must still be a
+   registry range. Left as a pointer because a reader looking for this rule will look
+   here first. */
 
 function capPkg() {
   return readJson(path.join(MOBILE, "package.json"));
@@ -650,4 +658,239 @@ test("every locally-referenced asset in index.html is same-origin loadable", () 
       `${ref} is a local asset governed by ${dir}, which does not allow 'self'.`
     );
   }
+});
+/* ────────── 6. the native code has a home, and it is not the generated one ──── */
+
+/* SIXTH INVARIANT, added with the foreground service (#27's Android half, on #37):
+ * ANDROID'S HAND-WRITTEN NATIVE CODE IS COMMITTED AND THE GENERATED PLATFORM IS
+ * NOT. `navigator.mediaSession` is switched off in Android WebView at the engine
+ * level (docs/research/mp1-background-audio.md §5.4) and a backgrounded Foray needs
+ * a `mediaPlayback` foreground service (§5.3), so Android needs native code —
+ * which #37 correctly left nowhere to live when it stopped committing
+ * `mobile/android/`. It now lives in `mobile/plugins/foray-audio/`, and these tests
+ * are what keep the two halves of that decision from drifting into each other.
+ * docs/android-native-code.md is the reasoning. */
+
+const PLUGIN_DIR = path.join(MOBILE, "plugins", "foray-audio");
+const PLUGIN_REL = "mobile/plugins/foray-audio";
+
+const git = (args) => spawnSync("git", args, { cwd: ROOT, encoding: "utf8" });
+
+test("mobile/.gitignore ignores the GENERATED platform and not our own android/ directory", () => {
+  /* THE TRAP THIS TEST EXISTS TO REMEMBER, and it was live for the length of one
+     commit. `mobile/.gitignore` said `android/` with no leading slash, and an
+     unanchored gitignore pattern matches a directory of that name AT ANY DEPTH — so
+     it silently ignored `plugins/foray-audio/android/`, and `git add mobile/plugins`
+     staged the package.json and the web half while dropping every .java file, the
+     build.gradle and the manifest without a word.
+
+     Asserted through `git check-ignore` rather than by grepping the file for a
+     leading slash, for the same reason the tracked-files test above gives: a rule's
+     spelling is not the invariant, its EFFECT is, and `check-ignore` is the code path
+     `git add` itself uses. `--no-index` so the answer is about the rules and not
+     about what happens to be tracked right now. */
+  const cases = [
+    ["mobile/android/local.properties", true, "the generated Android platform must stay ignored"],
+    ["mobile/ios/App/Podfile", true, "the generated iOS platform must stay ignored"],
+    ["mobile/www/index.html", true, "the generated webDir must stay ignored"],
+    [PLUGIN_REL + "/android/build.gradle", false, "our own plugin's Gradle module must be committable"],
+    [
+      PLUGIN_REL + "/android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java",
+      false,
+      "the foreground service's plugin class must be committable",
+    ],
+    [PLUGIN_REL + "/android/src/main/AndroidManifest.xml", false, "the service declaration must be committable"],
+  ];
+  for (const [rel, shouldBeIgnored, why] of cases) {
+    const res = git(["check-ignore", "-q", "--no-index", rel]);
+    assert.ok(
+      res.status === 0 || res.status === 1,
+      "git check-ignore could not answer for " +
+        rel +
+        " (" +
+        (res.error?.message ?? res.stderr?.trim() ?? "exit " + res.status) +
+        ")"
+    );
+    assert.equal(res.status === 0, shouldBeIgnored, rel + ": " + why);
+  }
+});
+
+test("every file the Android plugin needs is TRACKED by git", () => {
+  /* The other half of the same hazard, asserted on the INDEX. Without this, a
+     re-broadened ignore rule takes the native code out of the repo while the machine
+     that generated the platform still has the files on disk — so the build passes
+     there and fails for everyone else, which is the worst place to find out. */
+  const needed = [
+    "package.json",
+    "android/build.gradle",
+    "android/src/main/AndroidManifest.xml",
+    "android/src/main/res/values/strings.xml",
+    "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java",
+    "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java",
+    "web/foray-audio-shell.js",
+  ];
+  const res = git(["ls-files", "--", PLUGIN_REL]);
+  assert.equal(res.status, 0, "could not read the git index; this invariant is about what is COMMITTED");
+  const tracked = new Set(res.stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
+  for (const rel of needed) {
+    assert.ok(
+      tracked.has(PLUGIN_REL + "/" + rel),
+      PLUGIN_REL + "/" + rel + " is not tracked by git. A fresh clone cannot build the Android shell."
+    );
+  }
+  /* And the repo really does have native sources now, which is the state #37 left it
+     unable to reach: `git ls-files` used to contain zero .java and zero .kt files. */
+  const natives = [...tracked].filter((f) => /\.(java|kt)$/.test(f));
+  assert.ok(natives.length >= 2, "expected the plugin's Java to be tracked, found " + natives.length);
+});
+
+test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path inside mobile/", () => {
+  /* This test used to require every dependency to start with `@capacitor/`, and its
+     failure message asked for "a line in docs/mobile-shell.md saying why the shell
+     needs it". That is what happened, and it is worth saying why the relaxation is
+     not a climb-down: Capacitor's CLI discovers plugins by reading this dependency
+     list (`@capacitor/cli`'s `getDependencies`), so a local plugin has to be declared
+     here or `cap sync` never wires it into the generated project.
+
+     RELAXED NARROWLY. The rule that matters is not "only Capacitor" — it is that the
+     shell pulls in NO third-party JavaScript. So a non-Capacitor entry is allowed
+     only as a `file:` specifier resolving inside `mobile/`, which is this repo's own
+     code by construction. A registry range, a git URL, a tarball, or a `file:` path
+     pointing out of the tree all still fail. */
+  const deps = Object.entries(capPkg().dependencies || {});
+  assert.ok(deps.length > 0, "mobile/package.json should declare the Capacitor deps");
+  const local = [];
+  for (const [name, spec] of deps) {
+    if (name.startsWith("@capacitor/")) {
+      assert.match(spec, /^[\^~]?\d/, name + " should come from the registry, got " + spec);
+      continue;
+    }
+    assert.ok(
+      spec.startsWith("file:"),
+      "Unexpected dependency " +
+        name +
+        "@" +
+        spec +
+        " in mobile/. The shell takes no third-party JavaScript; anything that is not a " +
+        "@capacitor/* package must be a file: path to code in this repo, and deserves a line " +
+        "in docs/mobile-shell.md saying why."
+    );
+    const target = path.resolve(MOBILE, spec.slice("file:".length));
+    const rel = path.relative(MOBILE, target);
+    assert.ok(
+      rel && !rel.startsWith("..") && !path.isAbsolute(rel),
+      name + " resolves to " + target + ", which is outside mobile/."
+    );
+    assert.ok(
+      fs.existsSync(path.join(target, "package.json")),
+      name + " points at " + target + ", which has no package.json"
+    );
+    local.push({ name, target });
+  }
+  /* Pinned at exactly one, because "how many local plugins does the shell have" is a
+     decision and today's answer is one. A second is fine — say so here, in the PR
+     that adds it. */
+  assert.equal(local.length, 1, "expected exactly one local plugin, found: " + (local.map((l) => l.name).join(", ") || "none"));
+  assert.equal(local[0].name, "foray-audio");
+});
+
+test("the plugin name the web half calls is the name the Java registers", () => {
+  /* IF THESE DISAGREE, NOTHING FAILS. The bridge answers "ForayAudio does not have a
+     method called start" on a WebView console nobody is reading, the foreground
+     service is never started, and the app plays perfectly until the screen locks.
+     No other check in the repo would notice. */
+  const java = fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
+    "utf8"
+  );
+  const annotated = /@CapacitorPlugin\s*\(\s*name\s*=\s*"([^"]+)"/.exec(java);
+  assert.ok(annotated, "ForayAudioPlugin.java has no @CapacitorPlugin(name = ...) annotation");
+  assert.equal(annotated[1], PLUGIN_NAME, "the Java's plugin name and the web half's PLUGIN_NAME disagree");
+
+  /* And every method the web half calls must exist as a @PluginMethod, DERIVED from
+     the Java rather than from a list written down here, so renaming one in either
+     place fails.
+
+     The `call`/`callAndRecord` names are the shell's two internal wrappers around
+     `nativePromise`, and coupling to them is deliberate: this test is about names
+     CROSSING THE BRIDGE, so it has to know where they cross. Rename a wrapper and
+     `called` comes back too small, which the size assertion below turns into a
+     failure rather than a silent pass. */
+  const declared = new Set(
+    [...java.matchAll(/@PluginMethod\s+public\s+void\s+(\w+)\s*\(\s*PluginCall/g)].map((m) => m[1])
+  );
+  const shellSrc = fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-audio-shell.js"), "utf8");
+  const called = new Set([...shellSrc.matchAll(/\bcall(?:AndRecord)?\(\s*"(\w+)"/g)].map((m) => m[1]));
+  assert.ok(called.size >= 2, "expected the shell to call at least start and stop, found " + [...called].join(", "));
+  for (const method of called) {
+    assert.ok(declared.has(method), "the shell calls ForayAudio." + method + "(), which is not a @PluginMethod");
+  }
+});
+
+test("the service is declared as a mediaPlayback foreground service, with its permissions", () => {
+  /* MP1 §5.3: `mediaPlayback` is the type with no runtime prerequisites and — unlike
+     dataSync and mediaProcessing — NO RUNTIME TIMEOUT, which is the property a
+     45-to-90-minute Foray needs. From Android 14 the type is mandatory, and so is
+     the matching FOREGROUND_SERVICE_* permission: without it `startForeground`
+     throws and the service dies at runtime with the build green. */
+  const manifest = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/AndroidManifest.xml"), "utf8");
+  const service = /<service\b[\s\S]*?\/>/.exec(manifest);
+  assert.ok(service, "the plugin's manifest declares no <service>");
+  assert.match(service[0], /android:foregroundServiceType="mediaPlayback"/);
+  assert.match(service[0], /android:exported="false"/, "the service must not be exported");
+  assert.match(
+    service[0],
+    /android:stopWithTask="true"/,
+    "a swiped-away app must not leave a foreground service running"
+  );
+  for (const perm of [
+    "android.permission.FOREGROUND_SERVICE",
+    "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+  ]) {
+    assert.ok(manifest.includes(perm), "the plugin's manifest does not request " + perm);
+  }
+  /* The declared class must be a class that exists. A manifest naming a missing
+     Service compiles, installs, and throws ClassNotFoundException on the first play. */
+  const named = /android:name="([^"]+)"/.exec(service[0]);
+  assert.ok(named, "the <service> has no android:name");
+  const javaPath = path.join(PLUGIN_DIR, "android/src/main/java", named[1].split(".").join("/") + ".java");
+  assert.ok(
+    fs.existsSync(javaPath),
+    "the manifest declares " + named[1] + ", but " + path.relative(ROOT, javaPath) + " does not exist"
+  );
+});
+
+test("the plugin declares an Android platform and no iOS one", () => {
+  /* Not an omission. MP1 §7.3: WebKit sets the AVAudioSession category itself for an
+     audible <audio> element, so iOS's whole background-audio requirement is the
+     UIBackgroundModes key that tools/mobile/inject-background-audio.mjs writes.
+     Native iOS code here would have nothing to do, and declaring an `ios` src that
+     does not exist makes `cap sync` fail on a Mac. */
+  const pkg = readJson(path.join(PLUGIN_DIR, "package.json"));
+  assert.equal(pkg.capacitor?.android?.src, "android");
+  assert.equal(pkg.capacitor?.ios, undefined, "the plugin claims an iOS platform it does not have");
+  assert.ok(fs.existsSync(path.join(PLUGIN_DIR, "android", "build.gradle")));
+  assert.equal(pkg.private, true, "this plugin is not published; keep it private");
+});
+
+test("the plugin adds no third-party Gradle dependency of its own", () => {
+  /* Both of its dependencies are already in every generated Capacitor project, so the
+     native half of the shell costs no new Maven artefact. Media3 is the right answer
+     for #27's metadata and transport controls and is deliberately absent until
+     something calls it — see the build.gradle's header. */
+  const gradle = fs.readFileSync(path.join(PLUGIN_DIR, "android", "build.gradle"), "utf8");
+  const coords = [
+    ...gradle.matchAll(/^\s*(?:implementation|api|compileOnly|runtimeOnly)\s+["']([^"']+)["']/gm),
+  ].map((m) => m[1]);
+  const allowed = [/^androidx\.appcompat:appcompat:/];
+  for (const c of coords) {
+    assert.ok(
+      allowed.some((re) => re.test(c)),
+      "the plugin declares " + c + ". Name it and say why in the build.gradle header before adding it."
+    );
+  }
+  assert.ok(
+    /implementation project\(':capacitor-android'\)/.test(gradle),
+    "the plugin must depend on capacitor-android"
+  );
 });
