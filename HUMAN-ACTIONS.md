@@ -1170,6 +1170,51 @@ artifact.
 
 ---
 
+### 21. After the next drive, copy the playback diagnostics out of the drawer
+
+**Tag:** unblocks #224, #239 and every seam constant we are currently guessing at · **Time:** ~30 seconds after a drive · **Owner:** Wyatt (the only listener with a car)
+
+**Why this exists, and it is short.** Two reports came out of your car in one
+evening and neither carried a number, so each one restarted the diagnosis — #224
+has been escalated, downgraded on one clean test, and re-escalated on a failure.
+Five changes have shipped into the seam and transport area (#227, #235, #239,
+#260, #266) with no field measurement between them, and #239's 20-second
+hidden-load deadline was derived from a simulator loading a **local bundled
+file**. Your car says that does not bound a cold cross-episode fetch on cellular.
+So the player now writes down what it measures, and #264 is the mechanism. **This
+item is the only way that record reaches anyone.**
+
+**Steps.**
+
+1. Before the drive, open the app's menu (☰) → **Playback diagnostics** → **Clear
+   the record**. Optional, and it only makes the drive under test easier to find —
+   the buffer holds about three Forays and drops the oldest first, so nothing is
+   lost if you skip it.
+2. Drive. Play a Foray with the screen off, as usual. Nothing else to do.
+3. Afterwards, same menu → **Playback diagnostics** → **Copy**, and paste it into
+   the issue or a message. It is plain text and about one line per event.
+
+**What is in it, so you know what you are pasting.** Per seam: how long the gap
+actually was, whether it was a cross-episode load or a seek inside one file, the
+load deadline in force, and the last stage it reached if it never completed. Plus
+out-point overshoot, external stops with the state the player landed in, resume
+decisions including the ones that refused to write, and every
+background/foreground transition with its duration. **It never leaves the device
+on its own** — there is no consent gate on the existing event pipeline, so this
+record deliberately does not ride it (`docs/legal/privacy-policy.md` §1,
+`cp_diag`). Copying it is you choosing to send it. It contains no audio, no URLs
+and no account id.
+
+**Worked if:** one pasted record from a real drive. **The single most valuable
+line in it is a seam that says `NEVER STARTED`** — that is #224, with the stage it
+reached and the deadline it was measured against, which is the difference between
+"the beat's timer never fired" and "the load never settled". Two different bugs,
+two different fixes, and nothing here can tell them apart without this.
+
+**Status:** OPEN
+
+---
+
 <!-- BEGIN generated:waiting-on-you -->
 
 ### Waiting on a founder (auto-maintained)
