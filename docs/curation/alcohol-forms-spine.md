@@ -47,14 +47,14 @@ exists to prevent.
 "All the forms of alcohol" is a shopping list. Here is the argument that turns it
 into a Foray.
 
-> **Every alcoholic drink on earth is the same molecule, made the same way, by
-> the same organism: yeast eating sugar. The thousands of drinks are not
-> thousands of inventions — they are the answers to four questions asked in
-> order, and the whole taxonomy is a decision tree, not a catalogue. Where did
-> the sugar come from, and did it have to be unlocked first? What converted it, and
-> how far was the yeast allowed to go? Was the result concentrated? And what was
-> added or done to it while it waited? Learn to ask those four in that order and you can place a
-> drink you have never heard of, which is what "educates me" actually asks for.**
+> **Every alcoholic drink on earth is the same molecule, made the same way, by the
+> same organism: yeast eating sugar. The thousands of drinks are not thousands of
+> inventions — they are the answers to four questions asked in order, and the whole
+> taxonomy is a decision tree, not a catalogue. Where did the sugar come from, and
+> did it have to be unlocked first? What converted it, and how far was the yeast
+> allowed to go? Was the result concentrated? And what was added or done to it while
+> it waited? Learn to ask those four in that order and you can place a drink you have
+> never heard of, which is what "educates me" actually asks for.**
 
 The four questions, stated once here because the entire document is their
 expansion:
@@ -290,8 +290,8 @@ ethanol, and the reason is metabolic rather than cultural: the same enzyme that
 breaks ethanol down turns methanol into formaldehyde and then formic acid, which
 acidifies the blood and destroys the optic nerve, while the other alcohols carry
 hazards of their own, so ethanol is the one our biochemistry happens to tolerate at
-recreational doses — and every drink in this Foray is essentially the same ethanol and water,
-differing in a fraction of a percent of everything else.
+recreational doses — and every drink in this Foray is essentially the same ethanol
+and water, differing in a fraction of a percent of everything else.
 
 **Why it belongs.** It is the beat that makes the whole spine's promise credible:
 if the active ingredient is identical everywhere, then the entire subject *is*
@@ -328,16 +328,16 @@ for the rest of the Foray: sugar in, alcohol out, at a known ratio, which is why
 grape ripeness sets wine strength and why a brewer measures gravity. Cut it and
 Act I has no foundation and beat 5's ceiling has nothing to be a ceiling on.
 
-**Evidence that counts.** A brewer, winemaker, biochemist or fermentation
-scientist working through the pathway out loud: glycolysis, pyruvate,
-decarboxylation to acetaldehyde, reduction to ethanol, and the CO2 accounting.
-Strong signal: someone who corrects the common simplification that fermentation
-only happens without oxygen — a well-fed yeast ferments in air as well, and needs a
-little oxygen early to build the sterols and unsaturated fatty acids its membranes
-are made of, so "anaerobic" is a convenience rather than a rule. Also strong: gravity or Brix or Plato used as a
-working instrument, with the conversion to expected ABV done aloud. Reject:
-"yeast turns sugar into alcohol" with no mechanism and no numbers — that is a
-label, not this beat.
+**Evidence that counts.** A brewer, winemaker, biochemist or fermentation scientist
+working through the pathway out loud: glycolysis, pyruvate, decarboxylation to
+acetaldehyde, reduction to ethanol, and the CO2 accounting. Strong signal: someone
+who corrects the common simplification that fermentation only happens without oxygen
+— a well-fed yeast ferments in air as well, and needs a little oxygen early to build
+the sterols and unsaturated fatty acids its membranes are made of, so "anaerobic" is
+a convenience rather than a rule. Also strong: gravity or Brix or Plato used as a
+working instrument, with the conversion to expected ABV done aloud. Reject: "yeast
+turns sugar into alcohol" with no mechanism and no numbers — that is a label, not
+this beat.
 
 **Share.** 2.0 % (~3.0 min).
 
@@ -378,12 +378,12 @@ that fermentation is a living process in the 1860s and 1870s, Hansen isolating a
 single lager strain at Carlsberg in 1883 — production changed from something that
 happened to something that could be repeated.
 
-**Why it belongs.** It answers the question a listener will otherwise carry
-through the whole Foray: if it is all the same reaction, why does it taste
-different? Because the organism is a variable, and because before 1883 it was an
-uncontrolled one. It is also the first of Act I's two genuine history-is-mechanism
-beats — the ancestor of every consistent industrial drink is a pure culture — and it sets up beat 10, beat 28 and beat 30, which is the branch of
-brewing that deliberately gives the control back.
+**Why it belongs.** It answers the question a listener will otherwise carry through
+the whole Foray: if it is all the same reaction, why does it taste different? Because
+the organism is a variable, and because before 1883 it was an uncontrolled one. It is
+also the first of Act I's two genuine history-is-mechanism beats — the ancestor of
+every consistent industrial drink is a pure culture — and it sets up beat 10, beat 28
+and beat 30, which is the branch of brewing that deliberately gives the control back.
 
 **Evidence that counts.** A yeast scientist, brewer or historian of science on
 domestication and pure culture: what selection did to the organism, why wild
@@ -2533,8 +2533,11 @@ named inside a beat rather than given one.
   which needs a different part of it. As its own beat it is a job description rather
   than a claim.
 - **A beat on the low-alcohol ferments** — kombucha, kvass, tepache, tejuino, and the
-  fermented drinks where ethanol is a by-product rather than the product. Dropped, with *kvass* named at beat 31, whose design it shares — a low-alcohol soured grain ferment drunk fresh. This is the weakest of the drops and a reviewer could restore it as a short stop after beat 31 without damaging anything; I left it out
-  because "forms of alcohol" reasonably means drinks made *for* their alcohol.
+  fermented drinks where ethanol is a by-product rather than the product. Dropped,
+  with *kvass* named at beat 31, whose design it shares — a low-alcohol soured grain
+  ferment drunk fresh. This is the weakest of the drops and a reviewer could restore
+  it as a short stop after beat 31 without damaging anything; I left it out because
+  "forms of alcohol" reasonably means drinks made *for* their alcohol.
 - **A beat on illicit distilling** — moonshine, poitín, samogon, and the recurring
   mass methanol poisonings. Dropped as a beat and sourced *into* beat 13, where the
   risk chemistry belongs, and beat 62, where the tax motive belongs. As its own beat
@@ -2640,15 +2643,21 @@ champagne beat and no Islay beat.
 - **Whether Act I really deserves a quarter of the runtime.** It does here, and the
   argument is §1: the founder asked to be educated, and Act I is the education while
   the rest is its application. The counter-argument is honest and a founder may
-  prefer it — forty minutes of chemistry before the first drink — 26.6 % of the 150-minute reference, not twenty-six minutes — is a real risk of losing a listener early. If that judgement is reversed, the right move is to
-  **interleave**, not to cut: put beats 1 to 6 and 10 first, then wine, then beats 7 to 9 before beer, then beats 11 to 15 before the spirits, with beat 16 left where it is. That preserves every claim and every dependency while shortening the wait for a drink to about twelve minutes. I rejected it because
-  it destroys beat 16 — the key cannot be assembled from parts the listener met
-  hours apart — and beat 16 is the beat the Foray is for. This is an editorial
-  decision and it should be made on that argument, not because Act I sourced badly.
+  prefer it. Act I is 26.6 % of the reference runtime, which is forty minutes of
+  chemistry before the first drink, and that is a real risk of losing a listener
+  early. If that judgement is reversed, the right move is to **interleave**, not to
+  cut: put beats 1 to 6 and 10 first, then wine, then beats 7 to 9 before beer, then
+  beats 11 to 15 before the spirits, with beat 16 left where it is. That preserves
+  every claim and every dependency while shortening the wait for a drink to about
+  twelve minutes. I rejected it because it destroys beat 16 — the key cannot be
+  assembled from parts the listener met hours apart — and beat 16 is the beat the
+  Foray is for. This is an editorial decision and it should be made on that argument,
+  not because Act I sourced badly.
 - **Whether history should have been its own act.** It should not, and §2c gives the
   rule and the reason. Reversible, but reversing it re-opens the exact failure mode
   #226 documents, so it needs a founder decision rather than an agent's.
-- **Whether the low-alcohol ferments get a stop.** §6a records the drop as the weakest one in the document.
+- **Whether the low-alcohol ferments get a stop.** §6a records the drop as the
+  weakest one in the document.
 - **Whether beats 49 and 51 survive a second reviewer.** They are the two beats
   whose why-it-belongs is thinnest — 49 was challenged outright and rewritten, 51 is
   a method demonstrated rather than a family. If runtime ever has to come from
