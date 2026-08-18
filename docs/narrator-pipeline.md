@@ -484,10 +484,47 @@ Two ways a cache like this leaks money, both closed:
   it ships the wrong product. `assertKeyInputsComplete()` therefore **throws** if a
   caller passes any generation parameter this module does not know how to hash.
 
-**A dry run never writes cache entries.** A dry run that recorded them would make
-the next run believe the audio exists and skip it forever — a Foray shipping with
-no narration and no error. That is the most damaging bug available here and it has
-its own test.
+**A dry run never writes cache entries**, and **neither does a failed call.**
+Both are the same bug wearing different clothes: an entry written for a
+generation that did not happen makes every later run believe the audio exists and
+skip the beat, so the Foray ships with a silent gap and no error anywhere.
+
+The second half of that was live until the review of PR #253 caught it, and it
+took **two** attempts to fix, which is worth recording because the first attempt
+read as correct.
+
+`transport` **wraps** `fetch` in production — it is not `fetch` itself — and
+**`fetch` resolves for 429 and 500**, rejecting only on a network-level failure.
+So the natural `await transport(...)` followed by `cache.record(...)` caches
+rate-limits and server errors as successes.
+
+The first fix accepted any result whose `ok` was not literally `false` and whose
+`status` was absent or 2xx. That sounds like a check and is not one: the most
+natural wrapper anyone would write —
+
+```js
+const r = await fetch(...); const b = await r.arrayBuffer();
+return { bytes: b.byteLength };          // forgets ok and status
+```
+
+affirms nothing, denies nothing, and sailed straight through, caching a 429's
+JSON error body as voiced audio. **Absence of contrary evidence is not a positive
+assertion.**
+
+So the rule is now genuinely positive. A generation is recorded only if the
+result **affirms** success — `ok === true`, or a numeric 2xx `status` — with no
+contradicting signal, and returns real audio bytes. An `ok` that is present but
+not strictly `true` contradicts; so does a status that is non-2xx, or present but
+unreadable. Bytes are counted from a number, `byteLength` or `size`, so a
+`Buffer`, `Uint8Array`, `ArrayBuffer`, `DataView` or `Blob` all work — but not a
+bare `.length`, which would let a forwarded error string or a `content-length`
+header masquerade as audio.
+
+Anything else records nothing, so a retry re-bills — **which is the correct
+direction, because paying twice is recoverable and a permanently skipped beat is
+not.** The corollary for whoever writes the real transport: it must read the
+response body and forward `ok`/`status`. Handing `fetch` itself to the adapter
+yields a bare `Response`, whose body has never been read, and is rejected.
 
 The index is committed; the audio is not. It is text, diffable, key-sorted for a
 stable diff, and enough to prove what was generated from what.
