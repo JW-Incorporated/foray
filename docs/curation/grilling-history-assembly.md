@@ -77,7 +77,7 @@ warned was the worst available outcome.
 
 ## 2. The running order
 
-Eight segments, in spine order. `beat` is recorded on every item in
+Ten segments, in spine order. `beat` is recorded on every item in
 `data/forays.json`, so the beat mapping is data rather than prose, and
 `tools/foray/check-forays.test.mjs` compares this table against that file row for
 row — position, label, duration and role — so the two cannot drift apart.
@@ -90,11 +90,20 @@ row — position, label, duration and role — so the two cannot drift apart.
 | 4 | 5:17 | ARG-1 | 148.54 s | explanation |
 | 5 | 7:46 | ARG-2 | 100.94 s | explanation |
 | 6 | 9:27 | JERK-1 | 237.93 s | exchange |
-| 7 | 13:25 | MOSS-1 | 151.30 s | explanation |
-| 8 | 15:56 | MOSS-2 | 97.86 s | explanation |
+| 7 | 13:25 | GC-1 | 171.20 s | exchange |
+| 8 | 16:16 | GC-2 | 90.18 s | explanation |
+| 9 | 17:46 | MOSS-1 | 151.30 s | explanation |
+| 10 | 20:18 | MOSS-2 | 97.86 s | explanation |
 
-**Runtime 1,054.55 s — 17.58 min, ending at 17:34. Mean 131.8 s, inside the
-75–180 s target band. Seven seams, four of them cross-episode.**
+**Runtime 1,315.93 s — 21.93 min, ending at 21:55. Mean 131.6 s, inside the
+75–180 s target band. Nine seams, five of them cross-episode.**
+
+`GC-1` and `GC-2` were added on 2026-08-17, when `The Grill Coach — Adrian Miller
+and The History of BBQ` was transcribed. They are the first strong tape Act IV has
+had, and they carry beats 21 and 22 — two of the four beats the spine calls the
+honest weight of the authorship argument. `grilling-history-coverage.md` §5b
+records what else that episode yielded and why M4's concentration cap stopped
+this Foray playing more of it.
 
 Which beat each row advances, and which act it belongs to:
 
@@ -106,6 +115,8 @@ Which beat each row advances, and which act it belongs to:
 | `ARG-1` | **14** — asado | III | `bbqrn-argentina-open-fire#700` | strong |
 | `ARG-2` | **14** | III | `bbqrn-argentina-open-fire#1005` | strong |
 | `JERK-1` | **15** — jerk as Maroon synthesis | III | `moreish-jerk-jamaica#266` | strong |
+| `GC-1` | **21** — slavery as the labour system | IV | `grill-coach-adrian-miller#1792` | strong |
+| `GC-2` | **22** — the archive keeps the work | IV | `grill-coach-adrian-miller#2668` | strong |
 | `MOSS-1` | **23** — the civic barbecue | IV | `bbqc-moss-school#2572` | thin |
 | `MOSS-2` | **37** — the revival, dated | V | `bbqc-moss-school#2779` | thin |
 

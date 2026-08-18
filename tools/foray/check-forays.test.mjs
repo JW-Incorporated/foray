@@ -182,6 +182,13 @@ test("the pool segments held back from their Foray are not in any running order"
     "tbf-328-tringas#2299", // CALM-2
     "ftb-89-sbir-grants#2467", // GR-4
     "yc-how-fundraising-works#1230", // YC-4
+    /* The four Miller cuts M4's 25 % concentration cap would not let
+     * grilling-history-2 play — grilling-history-coverage.md §5b. Each advances a
+     * beat and each is authored; the cap is what held them, not the tape. */
+    "grill-coach-adrian-miller#1346", // beat 38, the media audit
+    "grill-coach-adrian-miller#1609", // beat 18, the indigenous template
+    "grill-coach-adrian-miller#1964", // beat 24, skill as capital
+    "grill-coach-adrian-miller#2167", // beat 38, the aesthetic shift
   ];
   for (const id of held) {
     assert.ok(files.segments.segments.some((s) => s.id === id), `${id} should be in the pool`);
@@ -218,7 +225,7 @@ test("every label resolves to exactly one segment by (episode, duration)", () =>
  * true of #1 and false of #2 for one commit. */
 const RUNNING_ORDER_DOCS = [
   { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order", rows: 32 },
-  { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", rows: 8 },
+  { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", rows: 10 },
   { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", rows: 22 },
 ];
 
@@ -488,8 +495,8 @@ test("L2/L3 hold for every played segment, per §4's role table", () => {
     }
   }
   // A loop that silently iterates nothing is the failure this guards against.
-  // 32 (#1) + 8 (grilling-history-2, #226) + 22 (capital-types-1).
-  assert.equal(checked, 62, "every played segment of every Foray must be checked");
+  // 32 (#1) + 10 (grilling-history-2, #226) + 22 (capital-types-1).
+  assert.equal(checked, 64, "every played segment of every Foray must be checked");
 });
 
 test("no segment played by Foray #1 passes L4's 240 s soft maximum", () => {
@@ -710,6 +717,8 @@ test("source ids are exactly the item_ids the curation docs name", () => {
     [
       // grilling-history-assembly.md §2a — minted for grilling-history-2 (#226)
       "satay-okay-e01-satay-myth",
+      // grilling-history-coverage.md §5 — Act IV's authorship tape (#226)
+      "grill-coach-adrian-miller",
       // grilling-foray.md §1
       "bbqc-moss-school",
       "bbqc-traeger-history",
