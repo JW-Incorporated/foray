@@ -490,6 +490,12 @@ export class HtmlAudioBackend {
       : () => (typeof document !== "undefined" && document.hidden === true);
     this.onItemEnded = null;
     this.onError = null;
+    /** The element stopped and nobody here asked it to (#263). Not an error and
+        not an end: a route disappearing, a call arriving, headphones out. The
+        backend cannot tell whether that contradicts anything — it does not know
+        what state the player is meant to be in — so it reports and the manager
+        decides. See `_notePause`. */
+    this.onUnexplainedPause = null;
     /** Called once per armed boundary, PREFETCH_LEAD_SEC of wall clock before
         it, so whoever owns the queue can say what to warm. The backend has the
         playhead; it does not know what comes next, and it must not learn. */
@@ -1133,6 +1139,24 @@ export class HtmlAudioBackend {
        away a buffer the very next `load()` was about to promote, making that
        seam slow too. `ended` is positional and is already true here. */
     if (this.el.ended) return;
+
+    /* TELL SOMEBODY (#263). Everything below this point is about standing
+       warming down; nothing above it ever reached the surface, which is why the
+       founder's transport went on saying "playing" after his car took the audio
+       route away. The observation was here all along and had no wire attached.
+
+       Reported rather than acted on: this class does not know whether the player
+       is meant to be audible right now, and the manager does. The callback is
+       also NOT the only path — a page that was suspended never got this event at
+       all — so `queue-manager.js` re-reads `paused` for itself either way and
+       this is one of two triggers for the same idempotent reconcile. */
+    this._emit("audio.pausedUnexpectedly — nobody asked for this pause");
+    if (this.onUnexplainedPause) {
+      // A surface must never break the player: the stand-down below is the
+      // thing this method actually owns and it has to run regardless.
+      try { this.onUnexplainedPause(); } catch (_) { /* reported, not fatal */ }
+    }
+
     /* AND ONLY WHILE A WARM LOAD IS ACTUALLY IN FLIGHT. The hypothesis this
        detector exists for is "a second element LOADING media took the session",
        so the causal window is the load, not the whole 12 s the buffer then sits
