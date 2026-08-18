@@ -125,10 +125,11 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `tools/mobile/foray-audio-shell.test.mjs` (new), `docs/mobile-shell.md`,
   `docs/android-shell-build.md`, this file. **Nothing under `player/`** — #224 and
   PR #241 are live there — and nothing in `.github/`.
-- **Both APKs still build**, no version pin needed: debug **4,990,799 B**, unsigned
-  release **3,887,277 B**; 11 m 40 s and 18 m 33 s from cold, plus a 3 m 42 s
-  incremental rebuild after the review fixes. `lintVitalRelease` passed, including
-  `:foray-audio:lintVitalAnalyzeRelease`. Same toolchain as #37 (Gradle 8.14.3, AGP
+- **Both APKs still build**, no version pin needed: debug **5,025,787 B**, unsigned
+  release **3,889,209 B**, measured after the rebase onto post-#241 `main`. 11 m 40 s
+  and 18 m 33 s from cold, then two incremental rebuilds (3 m 42 s, 4 m 40 s).
+  `lintVitalRelease` passed, including `:foray-audio:lintVitalAnalyzeRelease`. The
+  growth against #37 is mostly `webDir` (2.63 → 2.73 MB), not the plugin. Same toolchain as #37 (Gradle 8.14.3, AGP
   8.13.0, JDK 21.0.12+8, minSdk 24, compile/target 36).
 - **STILL NEVER EXECUTED, and read this before quoting the above.** No emulator, no
   device. The web half's state machine has 49 Node tests against fakes and 19 caught

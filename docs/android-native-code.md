@@ -38,7 +38,7 @@ MP1 §1 keep the same table for the same reason.
 | A local Capacitor plugin at `mobile/plugins/foray-audio/` is discovered and wired into the generated project | **Executed.** `cap add android` reports `Found 5 Capacitor plugins for android: foray-audio@0.1.0`, and the generated Gradle files name it. §3.1 |
 | Both APKs still build, with sizes and wall clock | **Executed on this machine.** §4 |
 | The `<service>` and both `FOREGROUND_SERVICE*` permissions reach the app's merged manifest | **Executed** — read out of `app/build/intermediates/merged_manifest/…/AndroidManifest.xml` after `assembleDebug`. §4.2 |
-| The web half's state machine — start on first play, stop after a settle window, survive a seam, self-correct a refused play | **Executed, against fakes.** 49 tests in Node (45 static + 4 generated), 19 mutations, 19 caught. §5.3. **No WebView ran.** |
+| The web half's state machine — start on first play, stop after a settle window, survive a seam, self-correct a refused play | **Executed, against fakes.** 49 tests in Node (45 `test()` declarations, two of them looped into six runs), 19 mutations, 19 caught. §5.3. **No WebView ran.** |
 | The foreground service actually starts, or holds process importance, or keeps audio alive | **NEITHER MEASURED NOR INFERRED — UNVERIFIED.** Nothing has run this code on an emulator or a device. §6 |
 | A `mediaPlayback` FGS prevents freezing | **INFERRED**, and the inference is MP1 §5.3's, not upgraded here |
 | Our CSP does not block the injected Capacitor bridge | **INFERRED** by `docs/android-shell-build.md` §2, unchanged. This change does not depend on it: the script it adds is an ordinary same-origin `<script src>` placed **after** the CSP meta, so `script-src 'self'` is genuinely what allows it |
@@ -148,6 +148,25 @@ is this repo's own code by construction, and every `@capacitor/*` entry must sti
 be a registry range. A `lodash`, a git URL, a tarball and a `file:` path pointing
 out of the tree all still fail, and each of those is a mutation the suite catches.
 
+**What it does to the lockfile, checked because a machine-absolute path in a committed
+lockfile would make the build non-reproducible** — the exact objection #37 raised when
+it committed `mobile/package-lock.json`. `npm` records:
+
+```json
+"node_modules/foray-audio": { "resolved": "plugins/foray-audio", "link": true },
+"plugins/foray-audio":     { "version": "0.1.0", "license": "UNLICENSED" }
+```
+
+A relative path inside the repo and a link. No registry, no tarball, no integrity hash
+to go stale, and nothing about this machine.
+
+**And `npm ci` was run against it**, not just `npm install` — because `ci` is what a CI
+job would use and it fails outright on a lockfile that disagrees with `package.json`. It
+installs, the `node_modules/foray-audio` link is recreated, and `npx cap ls` from that
+clean tree still reports `Found 5 Capacitor plugins for android: foray-audio@0.1.0`. So
+the discovery chain in §2 does not depend on the incremental state of the machine that
+built it.
+
 ### 3.3 The web half, and why it patches a prototype
 
 `player/html-audio-backend.js` builds its element with `new Audio()`. A **detached**
@@ -211,15 +230,21 @@ set.
 
 | | Result | APK | vs #37 | Wall clock |
 |---|---|---|---|---|
-| `./gradlew assembleDebug` | **BUILD SUCCESSFUL** | `app-debug.apk`, **4,990,799 bytes** | +58,314 B | 11 m 40 s from cold, 243 tasks all executed |
-| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **3,887,277 bytes** | +35,004 B | 18 m 33 s, 316 of 323 executed |
+| `./gradlew assembleDebug` | **BUILD SUCCESSFUL** | `app-debug.apk`, **5,025,787 bytes** | +93,302 B | 11 m 40 s from cold, 243 tasks all executed |
+| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **3,889,209 bytes** | +36,936 B | 18 m 33 s, 316 of 323 executed |
 
-Stated precisely, because the numbers come from two runs and saying otherwise would be
-the kind of quiet rounding this document's §1 exists to prevent: both configurations
-were built **from cold** at the wall clocks above, and both were **rebuilt
-incrementally after §5.4's review fixes changed the Java** — 3 m 42 s for the pair, 89
-of 559 tasks executed, `BUILD SUCCESSFUL`, `:app:lintVitalRelease` again included. The
-byte counts are from the final artefacts.
+**Three builds, and saying so precisely because the alternative is the quiet rounding
+§1 exists to prevent.** Both configurations were built **from cold** at the wall clocks
+above; both were rebuilt after §5.4's review fixes changed the Java (3 m 42 s for the
+pair); and both were rebuilt again after this branch was **rebased onto a `main` that
+had gained #241** (4 m 40 s, `:app:lintVitalRelease` included every time). The byte
+counts are from that last pair — the tree this actually lands as.
+
+**So the "vs #37" column is no longer attributable to this change alone, and should not
+be quoted as if it were.** The `webDir` grew from #37's **2.63 MB** to **2.73 MB** over
+the same period, and only ~16 KB of that is `foray-audio-shell.js`; the rest is
+`discover.json` and #241. The plugin's own contribution is its dex and its five merged
+strings.
 
 `assembleRelease` runs `lintVitalRelease`, the lint pass that can fail a release
 build on its own, and it passed — **including `:foray-audio:lintVitalAnalyzeRelease`,
