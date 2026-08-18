@@ -1,13 +1,13 @@
 # Narration craft — how a Foray's narrator is written
 
 The editorial half of the narrator charter (#247). This document answers five
-questions a script author has to have answered before writing a line: how deep to
-go, what a segue is, how much of a Foray may be narrator, what the words should be
-like, and **how a script gets rejected.**
+questions a script author has to have answered before writing a line: how deep to go,
+what a segue is, how much of a Foray may be narrator, what the words should be like,
+and **how a script gets rejected.**
 
-A parallel document owns *voice* — timbre, warmth, whether there are several
-voices, what a 2026 TTS engine can actually deliver. This one owns *words*. Where
-the two touch, this document defers.
+A parallel document owns *voice* — timbre, warmth, whether there are several voices,
+what a 2026 TTS engine can actually deliver. This one owns *words*. Where the two
+touch, this document defers.
 
 **Status:** proposed. Nothing here has been voiced; no API was called to write it.
 Every second-figure below is derived from a word count, and the word count is the
@@ -39,8 +39,8 @@ that document names the file.
 | Narration item (Patch, Carry) | **not** a transition; the 8 s budget and the payback rule do not apply | our ruling (§2b) |
 | Carry soft max | **150 s** → `needs_review`, must state what the extra minute does | invention |
 | Carry hard max | **180 s.** The narrator is never the longest item in the Foray | invention |
-| Consecutive Carry items | at most **2**, and adjacent empty beats in one chain **merge into one item** | invention (§2e) |
-| Narration anti-uniformity | no 3 consecutive narration items within ±20 % of each other | inherited from `segment-length-rules.md` §2d |
+| Consecutive narration items | at most **2**, and adjacent empty beats in one chain **merge into one item** | invention (§2e) |
+| Narration anti-uniformity | no 3 consecutive narration items within ±20 % of each other | inference (§8b) |
 | Tape-to-narration **inside a covered beat** | **≥ 90/10**, ceiling 85/15 | resolves the open question in `segment-length-rules.md` §2b |
 | Whole-Foray narration share | **target ≤ 25 %, ceiling 35 %** | invention, derived in §4 |
 | The essay line | **> 40 % is an essay with clips.** Not a Foray | invention |
@@ -54,12 +54,12 @@ that document names the file.
 - **The complete 40-beat barbecue Foray, written honestly on today's coverage, is
   about 44 % narrator.** It is therefore not shippable as a Foray, and the number
   says so before anyone writes a word (§4b).
-- **A Carry item must name a source out loud.** The narrator has no on-air
-  authority of its own, so an unattributed Carry is the product asserting on its
-  own credit, which it has not earned (§5f).
-- **The rejection test that actually catches fluent filler is the substitution
-  test** (§6, R2): if the script would fit another beat of the same spine with only
-  the proper nouns changed, it is filler, and it is rejected rather than trimmed.
+- **A Carry item must name a source out loud.** The narrator has no on-air authority
+  of its own, so an unattributed Carry is the product asserting on its own credit,
+  which it has not earned (§5f).
+- **The rejection test that actually catches fluent filler is the substitution test**
+  (§6, R2): if the script would fit another beat of the same spine with only the
+  proper nouns changed, it is filler, and it is rejected rather than trimmed.
 - **A beat can be empty *and* unwritable.** That is a third verdict the coverage
   vocabulary does not currently have, and it is the honest answer for some beats
   (§6d).
@@ -79,8 +79,8 @@ That question was asked about *covered* beats, and this document answers it
 tape-forward, unchanged: **where there is tape, the tape carries the beat and the
 narration stays out of its way.** §4a holds the line at 90/10 inside a covered beat.
 
-But the coverage numbers have since made a second question urgent, and it is not
-the same one. The barbecue spine scored **11 strong / 9 thin / 20 empty** across 40
+But the coverage numbers have since made a second question urgent, and it is not the
+same one. The barbecue spine scored **11 strong / 9 thin / 20 empty** across 40
 beats. The alcohol spine has 63 beats and predicts itself narration-heavier still,
 with Act I — sixteen chained beats, the most important act in the document — the
 thinnest. So on half the beats of a Foray there is no tape to be forward of. The
@@ -88,12 +88,11 @@ narrator is not connective tissue there. It is the content.
 
 **That is a fact about coverage. It is not a licence.** The temptation it creates is
 exactly the one #226 exists to stop, relocated: a spine with twenty holes and a
-fluent narrator will produce twenty passages of plausible prose, and prose is
-cheaper to manufacture than tape is to find. The Welsh bakestone segment was
-off-plot tape that got admitted because it existed. A padded Carry is off-plot prose
-that gets admitted because it can be written. **The second is worse, because tape
-that does not fit its beat sounds wrong and prose that does not fit its beat sounds
-fine.**
+fluent narrator will produce twenty passages of plausible prose, and prose is cheaper
+to manufacture than tape is to find. The Welsh bakestone segment was off-plot tape
+that got admitted because it existed. A padded Carry is off-plot prose that gets
+admitted because it can be written. **The second is worse, because tape that does not
+fit its beat sounds wrong and prose that does not fit its beat sounds fine.**
 
 ### 1b. The admissibility rule
 
@@ -121,24 +120,24 @@ smoothing a seam that did not need smoothing.
 
 ### 1c. Three things the narrator is not
 
-- **Not a host.** No greeting, no sign-off, no "welcome back", no name of its own,
-  no relationship with the listener. The narrator is the only recurring voice in a
-  work otherwise made of strangers, and every ounce of personality it develops is
-  an implicit claim to be the authority in the room, which it is not — the
-  authorities are on the tape.
+- **Not a host.** No greeting, no sign-off, no "welcome back", no name of its own, no
+  relationship with the listener. The narrator is the only recurring voice in a work
+  otherwise made of strangers, and every ounce of personality it develops is an
+  implicit claim to be the authority in the room, which it is not — the authorities
+  are on the tape.
 - **Not a summariser.** If narration says what the tape is about to say, the tape
   becomes illustration and the listener stops auditioning it (§3c).
-- **Not a smoother.** Some seams should be audible. `player/seam-gap.js` spends a
-  2.0 s beat at an unbridged seam *deliberately*, and its own comment says
-  shortening it "was never the fix". Narration that exists only to make a seam
-  disappear has replaced a good marker with a worse one.
+- **Not a smoother.** Some seams should be audible. `player/seam-gap.js` spends a 2.0
+  s beat at an unbridged seam *deliberately*, and its own comment says shortening it
+  "was never the fix". Narration that exists only to make a seam disappear has
+  replaced a good marker with a worse one.
 
 ---
 
 ## 2. The six modes
 
-Named because a script author has to know which one they are writing, and because
-the mode is what fixes the budget, the rejection test and the placement rule. Six is
+Named because a script author has to know which one they are writing, and because the
+mode is what fixes the budget, the rejection test and the placement rule. Six is
 deliberately small enough to hold in the head.
 
 ### 2a. The planning constants, and which figure to trust
@@ -149,14 +148,14 @@ Everything below is authored in **words** and reported in **seconds** and
 - **170 words per minute**, taken from `segment-length-rules.md` §2a rather than
   chosen here. That document does the work of establishing it: it derives ~170 wpm
   from the TREC 2020 podcast corpus, checks it against the 164–196 wpm conversational
-  range Yuan, Liberman and Cieri measured, and **explicitly rejects the familiar
-  "150 wpm" as folklore traced to a single non-peer-reviewed page**. It also says the
+  range Yuan, Liberman and Cieri measured, and **explicitly rejects the familiar "150
+  wpm" as folklore traced to a single non-peer-reviewed page**. It also says the
   honest thing about its own number — "this document uses 170 wpm and treats it as an
   estimate, not a constant."
 - **6.0 characters per word**, spaces and punctuation included. Arithmetic on English
-  word length, not a measurement of our scripts. §7d measures our seven draft scripts
-  at **5.83**, so 6.0 is conservative by about 3 %, which is the right direction for a
-  cost estimate to be wrong in.
+  word length, not a measurement of our scripts. §7d measures our eight draft scripts
+  at **5.83**, so 6.0 is conservative by about 3 %, which is the right direction for
+  a cost estimate to be wrong in.
 
 Together: **17 characters per second of narration audio, and 1,020 characters per
 minute.** Those are the numbers a cost model wants.
@@ -165,8 +164,8 @@ minute.** Those are the numbers a cost model wants.
 a measurement of **conversational podcast speech** — two people talking. A narrated
 read is a different act, and audiobook and documentary practice reads deliberately
 slower than conversation. **We have no source for how much slower**, so this document
-does not apply a discount and does not invent one. If the real narrator rate turns out
-to be nearer 150 wpm, every second-figure here is about 12 % optimistic and every
+does not apply a discount and does not invent one. If the real narrator rate turns
+out to be nearer 150 wpm, every second-figure here is about 12 % optimistic and every
 character figure is unchanged — which is why the word budgets are the primitive.
 
 **The word count is the authored figure and the one to trust.** Seconds are a
@@ -188,8 +187,8 @@ the next segment's length through the payback rule,
 
 Both are right about transitions and both break on a Carry. A 90-second narration
 item that *is* a beat is not machinery to be amortised; it is content. Run the
-payback rule on it and it demands a 368-second segment after it, which is absurd,
-and the absurdity is the tell that the rule is out of scope rather than wrong.
+payback rule on it and it demands a 368-second segment after it, which is absurd, and
+the absurdity is the tell that the rule is out of scope rather than wrong.
 
 **The ruling this document makes, and it needs recording as a spec divergence in the
 same way `segment-length-rules.md` §6b recorded the 0.5 s / 2.0 s one:**
@@ -197,7 +196,7 @@ same way `segment-length-rules.md` §6b recorded the 0.5 s / 2.0 s one:**
 | | transition item | narration item |
 |---|---|---|
 | modes | Hinge, Frame, Marker, Correction | Patch, Carry |
-| duration | 3–12 s | 20–180 s |
+| duration | 3–12 s | over 12 s, to 180 s |
 | the spec's ≤ 8 s | applies, as a target | does not apply |
 | the payback rule | applies | does not apply |
 | `bridged: true` at the seam | yes — it is the bridge | it is an item, and the seams either side of it are their own question (§3h) |
@@ -205,10 +204,10 @@ same way `segment-length-rules.md` §6b recorded the 0.5 s / 2.0 s one:**
 
 **On the 8 s target specifically: it is not achievable together with the attribution
 rule the curation docs already impose.** `segment-length-rules.md` §6c requires that
-"every cross-episode bridge names its source — who is speaking, and what it is
-from." Naming a source properly costs 8–12 words on its own — *"Adrian Miller, a
-historian of Black foodways, on The Grill Coach"* is eleven words, about four
-seconds — before the bridge has done any editorial work at all. So:
+"every cross-episode bridge names its source — who is speaking, and what it is from."
+Naming a source properly costs 8–12 words on its own — *"Adrian Miller, a historian
+of Black foodways, on The Grill Coach"* is eleven words, about four seconds — before
+the bridge has done any editorial work at all. So:
 
 > **Transition ceiling.** 8 s is the target. **12 s is permitted only when the extra
 > words are a required attribution or a required correction**, and the script records
@@ -226,51 +225,48 @@ introduce a new claim, may not correct, may not announce structure. If it wants 
 any of those, it is a different mode and §3j says to split it.
 
 **Frame — introduces tape that carries the beat. 4–10 s, 11–28 words, 70–170
-characters.**
-A Frame is a Hinge with an attribution obligation and a positioning job: it puts the
-listener where they need to stand to hear a claim land. It states the *question* the
-tape answers and never the answer (§3c). Every cross-episode Frame names its source.
+characters.** A Frame is a Hinge with an attribution obligation and a positioning
+job: it puts the listener where they need to stand to hear a claim land. It states
+the *question* the tape answers and never the answer (§3c). Every cross-episode Frame
+names its source.
 
 **Marker — announces structure. 8–20 s, 23–57 words, 135–340 characters.**
 Both spines demand this mode by name and neither had a word for it. The barbecue
 spine: "Act III is a fan and must be announced as one… narration entering beat 8
 should say plainly that the next stretch is a tour of traditions that do not descend
-from each other, and that the American thread resumes afterwards." Beat 33 is a
-"step out of the sequence and back". The alcohol spine: "each family boundary must be
+from each other, and that the American thread resumes afterwards." Beat 33 is a "step
+out of the sequence and back". The alcohol spine: "each family boundary must be
 announced as one," which it needs more often because it has more fans, and beat 17's
-entry has to say "plainly that everything from here is the key applied."
-A Marker over 12 s is authored as a narration item, not a transition — at an act
-boundary it can afford to be its own item, and usually should be.
+entry has to say "plainly that everything from here is the key applied." A Marker
+over 12 s is authored as a narration item, not a transition — at an act boundary it
+can afford to be its own item, and usually should be.
 
 **Correction — bounds, attributes or contradicts adjacent tape. 6–12 s, 17–34 words,
-100–205 characters.**
-The mode the coverage report keeps asking for without naming. Barbecue beat 15 needs
-two: the tape routes the Taíno claim through Spanish *barbacoa* where the spine holds
-"jerk" arrives from Quechua *ch'arki*, and "used unframed, `#555` will imply the
-lineage beat 15 exists to reject"; and the tape's low-smoke account "must be framed as
-the tradition's account". Beat 22's tape pushes back on the spine's own claim. This is
-the highest-risk narration in the product, so it has the tightest rules (§3f).
-If a correction needs more than 12 s, it is a Patch.
+100–205 characters.** The mode the coverage report keeps asking for without naming.
+Barbecue beat 15 needs two: the tape routes the Taíno claim through Spanish
+*barbacoa* where the spine holds "jerk" arrives from Quechua *ch'arki*, and "used
+unframed, `#555` will imply the lineage beat 15 exists to reject"; and the tape's
+low-smoke account "must be framed as the tradition's account". Beat 22's tape pushes
+back on the spine's own claim. This is the highest-risk narration in the product, so
+it has the tightest rules (§3f). If a correction needs more than 12 s, it is a Patch.
 
 **Patch — supplies the part of a beat its tape misses. 20–45 s, 57–128 words, 340–765
-characters.**
-The thin-beat mode. `grilling-history-coverage.md` §1 is explicit that "thin" is a
-narration verdict — "a thin beat is a **narration beat** that happens to have a
-partial supporting cut available… Every thin verdict below states what is missing so
-that the narration can supply it." A Patch is written against that "what is missing"
-sentence and against nothing else. It is the mode most likely to sprawl, because the
-beat is genuinely half-open and the author can feel the gap.
+characters.** The thin-beat mode. `grilling-history-coverage.md` §1 is explicit that
+"thin" is a narration verdict — "a thin beat is a **narration beat** that happens to
+have a partial supporting cut available… Every thin verdict below states what is
+missing so that the narration can supply it." A Patch is written against that "what
+is missing" sentence and against nothing else. It is the mode most likely to sprawl,
+because the beat is genuinely half-open and the author can feel the gap.
 
 **Carry — is the beat. 45–110 s target, 128–310 words, 765–1,870 characters. Soft max
-150 s (425 words). Hard max 180 s (510 words).**
-Twenty of forty barbecue beats and probably thirty of sixty-three alcohol beats. The
-mode that is most of the product and all of the risk.
-The hard max is a principle first and a number second: **the narrator is never the
-longest item in the Foray.** 180 s is the top of the tape target band
-(`segment-length-rules.md` §5a, 75–180 s), so the ceiling says the narrator may have
-as much room as the best available tape and not one second more. The soft max at
-150 s trips `needs_review` and the script must state what the extra minute buys —
-the same shape as the 240 s soft max on segments.
+150 s (425 words). Hard max 180 s (510 words).** Twenty of forty barbecue beats and
+probably thirty of sixty-three alcohol beats. The mode that is most of the product
+and all of the risk. The hard max is a principle first and a number second: **the
+narrator is never the longest item in the Foray.** 180 s is the top of the tape
+target band (`segment-length-rules.md` §5a, 75–180 s), so the ceiling says the
+narrator may have as much room as the best available tape and not one second more.
+The soft max at 150 s trips `needs_review` and the script must state what the extra
+minute buys — the same shape as the 240 s soft max on segments.
 
 ### 2d. Two provenances of Carry, and they are not equally fixable
 
@@ -279,9 +275,9 @@ divide, and the difference decides whether sourcing can ever help.
 
 - **Carry-by-default.** The beat wanted tape and none exists. Barbecue beat 20 (the
   West African inheritance) is the clearest case: two English sources have now been
-  spent on it without result. More sourcing could still close it — the coverage report
-  names the remaining shots — so the Carry is provisional and the script should be
-  written to be *replaceable* by tape.
+  spent on it without result. More sourcing could still close it — the coverage
+  report names the remaining shots — so the Carry is provisional and the script
+  should be written to be *replaceable* by tape.
 - **Carry-by-design.** The beat's claim is a conclusion nobody states in one breath,
   so no tape can exist. Alcohol beat 16, the classification key: "almost certainly
   narration, and that is the right outcome"; the spine calls it "the most important
@@ -291,11 +287,11 @@ divide, and the difference decides whether sourcing can ever help.
 
 **The rejection posture differs.** A Carry-by-default that cannot be written honestly
 may be dropped or deferred to more sourcing. **A Carry-by-design may never be
-dropped**, because it is the beat the Foray exists to deliver — and it also may not be
-padded, which is why it gets the largest word budget in the document and the strictest
-version of R2.
+dropped**, because it is the beat the Foray exists to deliver — and it also may not
+be padded, which is why it gets the largest word budget in the document and the
+strictest version of R2.
 
-### 2e. Consecutive Carry items, and the narration merge rule
+### 2e. Consecutive narration items, and the narration merge rule
 
 Sixteen chained beats in alcohol Act I, predicted the thinnest act in the coverage
 report, is a live risk of four unbroken minutes of TTS. That is not a narrated Foray;
@@ -308,11 +304,12 @@ it is a lecture with occasional guests.
 
 The reasoning is borrowed wholesale from `segment-length-rules.md` §6a, which merges
 same-episode segments because, in that document's words, "the listener's ears say
-'this is one continuous recording' while the content jumps." Two adjacent narration items are the same defect in its purest form:
-same voice, same room, same loudness, ~0.5 s of padding between them, and nothing for
-the listener to attribute the boundary to. There is no voice change to justify the
-edit, so the edit reads as a glitch. One item that moves through both claims is
-strictly better, and it is cheaper — one item's worth of framing instead of two.
+'this is one continuous recording' while the content jumps." Two adjacent narration
+items are the same defect in its purest form: same voice, same room, same loudness,
+~0.5 s of padding between them, and nothing for the listener to attribute the
+boundary to. There is no voice change to justify the edit, so the edit reads as a
+glitch. One item that moves through both claims is strictly better, and it is cheaper
+— one item's worth of framing instead of two.
 
 > **Consecutive cap.** At most **2** narration items in a row after merging, and the
 > second must be shorter than the first. A third means the Foray has run out of tape
@@ -321,9 +318,9 @@ strictly better, and it is cheaper — one item's worth of framing instead of tw
 
 > **Anti-uniformity.** No three consecutive narration items within ±20 % of each
 > other, mirroring `segment-length-rules.md`'s D5. Uniformity is a defect there on
-> measured grounds (§2d, film shot-length evidence) and the argument transfers
-> directly: a Foray where every Hinge is 7 s develops a metronome, and a metronome is
-> the sound of machinery.
+> measured grounds (`segment-length-rules.md` §2d, film shot-length evidence) and the
+> argument transfers directly: a Foray where every Hinge is 7 s develops a metronome,
+> and a metronome is the sound of machinery.
 
 ---
 
@@ -365,20 +362,25 @@ thought or sentence.*
 MacAdam also flags the two cautions that matter most to us. On teases: "Teases can
 confuse your listener if the tape isn't catchy enough or the voice sounds similar to
 other voices in your story." And on the unbridged butt cut, which she treats as a
-legitimate technique: "If the voice or idea isn't distinct enough, you'll just confuse
-your listeners."
+legitimate technique: "If the voice or idea isn't distinct enough, you'll just
+confuse your listeners."
 
 **Karen Everett's documentary-narration tips** supply the complementary rule, and
 hers is the one that survives translation from picture to tape best. Her sixth tip is
 *"Say Cow? See Cow"* — "avoid saying in narration exactly what we're seeing on
 screen." Her others that transfer: be conversational and read aloud; short sentences;
-active voice; introduce names with a descriptive title first, "so listeners don't miss
-them"; ask *need to know?* of every detail; avoid jargon or define it.
+active voice; introduce a name with a descriptive title first, so a listener does not
+miss it; ask *need to know?* of every detail; avoid jargon or define it.
+
+**One care note on the Everett citations.** Her tips are cited above by their published
+titles, and the wording of the tips other than *"Say Cow? See Cow"* and its gloss
+*"avoid saying in narration exactly what we're seeing on screen"* is **paraphrase, not
+quotation** — which is why only those two appear inside quotation marks.
 
 **Mike Ladd, on the radio feature**, supplies the texture rule: "Contrasting textures
 bring both variety and clarity," and it is "far more important to hear *how* someone
-says what they say" than to read the transcript. `segment-length-rules.md` §6d already
-took the assembly consequence of that.
+says what they say" than to read the transcript. `segment-length-rules.md` §6d
+already took the assembly consequence of that.
 
 **RTDNA's editing guidance** supplies the constraint: "Don't add sounds that you
 obtained at another scene or from another time or place if adding the sounds might
@@ -389,12 +391,12 @@ below are integrity rules rather than craft ones.
 
 **Ira Glass's storytelling talks** are widely circulated as the source of the
 *anecdote and reflection* pairing — a sequence of actions, then "somebody's gotta say,
-here's why the hell you're listening to the story" — and the *raise a question, answer
-it* engine. Flagged as **secondary**: the accessible texts are third-party transcripts
-and summaries of talks, not a primary publication, and this document does not rest any
-rule on it. It is recorded because it is the best available account of why a Frame that
-poses a question works better than one that states a conclusion, and §3c's rule is
-independently supported by Everett.
+here's why the hell you're listening to the story" — and the *raise a question,
+answer it* engine. Flagged as **secondary**: the accessible texts are third-party
+transcripts and summaries of talks, not a primary publication, and this document does
+not rest any rule on it. It is recorded because it is the best available account of
+why a Frame that poses a question works better than one that states a conclusion, and
+§3c's rule is independently supported by Everett.
 
 ### 3b. The eight seams a Foray actually has
 
@@ -418,8 +420,8 @@ obligations.
 > **A Frame states the question the tape answers. It never states the answer.**
 
 This is the rule that decides whether a Foray is a work made of authorities or a
-narrated essay with illustrations, and it is the one a fluent script author will break
-first, because stating the claim is the easiest way to make a seam feel smooth.
+narrated essay with illustrations, and it is the one a fluent script author will
+break first, because stating the claim is the easiest way to make a seam feel smooth.
 
 Two established supports, from different traditions, pointing the same way: Everett's
 *"avoid saying in narration exactly what we're seeing on screen"*, and MacAdam's
@@ -446,36 +448,37 @@ narration was doing its job. Run this on every Frame.
 `segment-length-rules.md` §6c already requires that every cross-episode bridge names
 its source. Three additions:
 
-- **Attribute on the way in, not on the way out.** Everett's *Title First* —
-  "introduce names with descriptive titles so listeners don't miss them" — and
-  MacAdam's caution about teases both cut this way. Attribution after the fact makes a
-  listener re-audition what they just heard, and a listener who is doing that has
-  stopped hearing what is playing now. MacAdam's *tease + back ID* is a real technique
-  and it is the exception: usable **once or twice in a Foray**, only where the tape's
-  first line is arresting on its own, and never where the previous voice sounded
-  similar.
+- **Attribute on the way in, not on the way out.** Everett's *Title First* — put the
+  descriptive title before the name so a listener does not miss it — and MacAdam's
+  caution about teases both cut this way. Attribution after the fact makes a listener
+  re-audition what they just heard, and a listener who is doing that has stopped
+  hearing what is playing now. MacAdam's *tease + back ID* is a real technique and it
+  is the exception: usable **once or twice in a Foray**, only where the tape's first
+  line is arresting on its own, and never where the previous voice sounded similar.
 - **Name the show once per source per Foray.** Thereafter *"the same conversation"*,
-  *"later in the same interview"*, or the speaker's surname alone. Full re-attribution
-  on every return costs 8–12 words each time, and by §4d that is real money.
+  *"later in the same interview"*, or the speaker's surname alone. Full
+  re-attribution on every return costs 8–12 words each time, and by §4d that is real
+  money.
 - **A Carry names the literature.** See §5f — this is the rule that separates an
   honest narration beat from an assertion by an anonymous voice.
 
 ### 3e. Cross the distance once, and name only the axis that matters
 
-Our seams cross place, time, discipline, register and room at once. The instinct is to
-locate the listener fully. It is wrong.
+Our seams cross place, time, discipline, register and room at once. The instinct is
+to locate the listener fully. It is wrong.
 
 > **One axis per seam.** A Frame that crosses a large discontinuity names *one* — the
 > one the beat needs — in a single clause.
 
 Argentina to Jamaica, barbecue beats 14 → 15, crosses about five thousand miles, two
 languages, three centuries and two entirely different arguments. The seam should name
-the one that does editorial work, which here is neither the geography nor the date: it
-is that both are answers to the same question about fire, which is what makes the fan
-a fan. **Inference**, and the reasoning is `segment-length-rules.md` §2a's measured
-finding that the orienting response to a voice change does not habituate: the listener
-is already spending attention on the new voice, so a Frame that hands them three labels
-to file will get one filed and two dropped, and the author does not choose which.
+the one that does editorial work, which here is neither the geography nor the date:
+it is that both are answers to the same question about fire, which is what makes the
+fan a fan. **Inference**, and the reasoning is `segment-length-rules.md` §2a's
+measured finding that the orienting response to a voice change does not habituate:
+the listener is already spending attention on the new voice, so a Frame that hands
+them three labels to file will get one filed and two dropped, and the author does not
+choose which.
 
 ### 3f. Corrections — correct forward for framing, backward for facts
 
@@ -488,8 +491,8 @@ Framing changes how the listener *hears* what is coming, so it is useless afterw
 barbecue beat 15's requirement that the tape's low-smoke account "be framed as the
 tradition's account" only works if it precedes it, because by the time the segment
 ends the listener has already filed the claim as fact. A factual correction is the
-reverse — pre-empting it spends the listener's attention on an error they have not yet
-made, and it makes the tape sound like a trap. Beat 15's *ch'arki* / *barbacoa*
+reverse — pre-empting it spends the listener's attention on an error they have not
+yet made, and it makes the tape sound like a trap. Beat 15's *ch'arki* / *barbacoa*
 correction belongs immediately after `#555`, not before it.
 
 Four rules on the mode:
@@ -506,9 +509,9 @@ Four rules on the mode:
   would cost more than the correction. A narrator that contradicts a named historian
   on its own unsourced authority is the worst sentence the product can emit.
 - **Bound rather than contradict where that is honest.** If the speaker's argument
-  survives the correction, say what the correction is *about* rather than that they were
-  wrong. §7a does this with beat 15's etymology: the syncretism argument stands, and it
-  is only the route of the word that is separate.
+  survives the correction, say what the correction is *about* rather than that they
+  were wrong. §7a does this with beat 15's etymology: the syncretism argument stands,
+  and it is only the route of the word that is separate.
 - **Never use a correction to bend tape toward a beat.** If the correction is doing
   the work of making off-beat tape fit, the tape is off-beat and the answer is
   rejection. This is the bakestone failure wearing a citation.
@@ -518,69 +521,75 @@ Four rules on the mode:
 These are not style. They are the RTDNA constraint made specific, and they are hard
 rejects (§6, R5).
 
-- **Never let grammar cross a cross-episode seam.** MacAdam's *Begin a thought and let
-  the tape complete it* and *Complete the thought or sentence* are excellent
+- **Never let grammar cross a cross-episode seam.** MacAdam's *Begin a thought and
+  let the tape complete it* and *Complete the thought or sentence* are excellent
   techniques and they are **forbidden across S1 and S2**. A grammatical hand-off
-  asserts that the two utterances are one thought, and when the speakers were recorded
-  years apart and have never heard of each other, that assertion is false. Use them
-  freely within one voice (S3) or inside a single beat's own tape.
+  asserts that the two utterances are one thought, and when the speakers were
+  recorded years apart and have never heard of each other, that assertion is false.
+  Use them freely within one voice (S3) or inside a single beat's own tape.
 - **Never let a Hinge imply a reply.** "But not everyone agrees", "*[speaker B]* sees
   it differently", "*[speaker A]* would push back on that" — each of these
-  manufactures a conversation. The publishable form attributes the disagreement to the
-  field rather than to the pairing: *"How much weight that evidence bears is
+  manufactures a conversation. The publishable form attributes the disagreement to
+  the field rather than to the pairing: *"How much weight that evidence bears is
   contested."* Then the beat, not the edit, carries the disagreement.
 
 ### 3h. Silence, loudness and the bridged seam
 
 `player/seam-gap.js` returns **0** when `bridged` is true — "Narration is a better
 marker than silence and it carries the 0.5 s padding of its own spec. Silence on top
-of it is dead air, not a beat." So at every bridged seam, the only thing separating two
-strangers is ~0.5 s of pad and the narrator's voice. Three consequences for the words.
+of it is dead air, not a beat." So at every bridged seam, the only thing separating
+two strangers is ~0.5 s of pad and the narrator's voice. Three consequences for the
+words.
 
 - **The narration has to *be* the marker.** It must be audibly a different act from
   the first syllable, which in copy terms means: never open a Hinge with a sentence
   that could plausibly be the previous speaker still talking. No mid-thought
-  connectives — "and so", "which is why", "but the thing is". Open on a noun phrase or
-  a short declarative.
+  connectives — "and so", "which is why", "but the thing is". Open on a noun phrase
+  or a short declarative.
 - **Narration has a sacrificial head too, and it is about 1 s.**
-  `segment-length-rules.md` §2a establishes on measured grounds that a segment's first
-  ~4 s carries nothing load-bearing, because the listener is re-orienting to a new
-  voice and room. The narrator's voice recurs and is loudness-normalised, so the cost
-  is smaller — but that document's finding is specifically that the cost **does not
-  habituate**, so it is not zero. **Rule: no narration item opens on a load-bearing proper noun,
-  number or date.** Two or three words of orientation first. *"Two thousand miles
-  south, the same problem…"* before the name.
+  `segment-length-rules.md` §2a establishes on measured grounds that a segment's
+  first ~4 s carries nothing load-bearing, because the listener is re-orienting to a
+  new voice and room. The narrator's voice recurs and is loudness-normalised, so the
+  cost is smaller — but that document's finding is specifically that the cost **does
+  not habituate**, so it is not zero. **Rule: no narration item of any class opens on
+  a load-bearing proper noun, number or date.** Two or three words of orientation
+  first. *"Two thousand miles south, the same problem…"* before the name. **This rule
+  and the 12 s transition ceiling compete**, and §7a records a case where they cannot
+  both be satisfied; when they collide, the cargo is too heavy for a transition and
+  belongs in a Patch (§3j, remedy 4).
 - **The Hinge is the ear's calibration point.** AES TD1004.1.15-10 warns of loudness
   jumps "of up to 7 LU" when externally-produced material is inserted into a program,
   and every cross-episode seam is exactly that insertion. A loudness-normalised
   narrator between two differently-mastered shows is the listener's reference level.
-  So: **no dramatic pauses, no whispered asides, no trailing off.** The narrator is the
-  most level-consistent thing in the Foray, on purpose. This is a copy rule as much as
-  a mastering one, because trailing-off prose produces trailing-off audio.
+  So: **no dramatic pauses, no whispered asides, no trailing off.** The narrator is
+  the most level-consistent thing in the Foray, on purpose. This is a copy rule as
+  much as a mastering one, because trailing-off prose produces trailing-off audio.
 
 **One recommendation for the pipeline, not built here.** At an act boundary a listener
-benefits from *both* a beat of silence and a Marker — the silence says "that section is
-over", the Marker says what the next one is. `seamGapSec({ bridged: true })` currently
-returns 0, so that combination cannot be authored. An optional `pre_gap_sec` on a
-narration item would allow it, and act boundaries are the only place it is needed.
-Recorded as a request to whoever owns the pipeline document, not as a change.
+benefits from *both* a beat of silence and a Marker — the silence says "that section
+is over", the Marker says what the next one is. `seamGapSec({ bridged: true })`
+currently returns 0, so that combination cannot be authored. An optional
+`pre_gap_sec` on a narration item would allow it, and act boundaries are the only
+place it is needed. Recorded as a request to whoever owns the pipeline document, not
+as a change.
 
 ### 3i. Never bridge into tape you have not heard
 
 `grilling-history-coverage.md` says it three times, in three different places. On
 `bbqc-moss-school`: the wording is "lightly cleaned for punctuation and obvious
 recognition errors" and is "indicative, not verbatim." On The Grill Coach: "anyone
-writing narration against it should listen at the timestamp given." On Stuff You Should
-Know, whose transcript is "machine-generated and undiarized": the quotations are
-"lightly cleaned and indicative."*
+writing narration against it should listen at the timestamp given." On Stuff You
+Should Know, whose transcript is "machine-generated and undiarized": the quotations
+are "lightly cleaned and indicative."
 
 > **A Frame or Hinge that quotes, echoes or completes the tape's own wording requires
 > that the audio has been heard, and the script records that it was.**
 
-MacAdam's *Echo* — "the reporter repeats a word or phrase from the tape, and builds on
-it" — is one of the best out-of-tape techniques available and it is the one that fails
-catastrophically on ASR text, because it puts a word in the narrator's mouth that the
-speaker may never have said. Everything else can be written from a transcript. Echo,
+MacAdam's *Echo* — "the reporter repeats a word or phrase from the tape, and builds
+on it" — is one of the best out-of-tape techniques available and it is the one that
+fails catastrophically on ASR text, because it puts a word in the narrator's mouth
+that the speaker may never have said. Everything else can be written from a
+transcript. Echo,
 *Complete the thought*, and any direct quotation cannot.
 
 ### 3j. One seam, one job
@@ -599,15 +608,15 @@ available:**
 2. **Move a job to the other side of the tape.** A factual correction goes after
    (§3f); an antecedent goes before. Two jobs on opposite sides of a segment are two
    items that are not adjacent.
-3. **Move a job to a different seam.** A fan announcement belongs at the boundary, not
-   at the seam after it.
+3. **Move a job to a different seam.** A fan announcement belongs at the boundary,
+   not at the seam after it.
 4. **Promote to a narration item.** If the cargo is genuinely 20 s or more, it is a
    Patch, and a Patch is allowed to be a Patch.
 
 **What is never the remedy: two transition items back to back.** That is the S6 defect
-in miniature — same voice, ~0.5 s of padding, nothing for the listener to attribute the
-boundary to — and §2e's merge argument applies to it in full force. Split means "two
-items with tape between them", never "two items in a row".
+in miniature — same voice, ~0.5 s of padding, nothing for the listener to attribute
+the boundary to — and §2e's merge argument applies to it in full force. Split means
+"two items with tape between them", never "two items in a row".
 
 ### 3k. Every seam you do not make is a hinge you do not write
 
@@ -616,10 +625,11 @@ The cheapest narration is the narration that is not needed, and this gives
 
 A cut's cost used to be counted in seconds of bridge and in the payback arithmetic.
 Now it also has a character price: **a Hinge is 50–135 characters and a Frame with
-attribution is 70–170.** So a merge that removes one seam removes **50 to 170 characters**
-of billable narration and, more valuably, one opportunity to write something wrong. The
-character saving alone is small — §7a's real case saves 73 — so this is an argument about
-risk and coherence with a modest cost attached, not a cost argument.
+attribution is 70–170.** So a merge that removes one seam removes **50 to 170
+characters** of billable narration and, more valuably, one opportunity to write
+something wrong. The character saving alone is small — §7a's real case saves 73 — so
+this is an argument about risk and coherence with a modest cost attached, not a cost
+argument.
 
 Worked in §7a: barbecue beat 15's two segments have an elided gap of 50.7 s, which
 lands in `segment-length-rules.md` §6a's **"should merge"** band, and the coverage
@@ -644,11 +654,11 @@ crisis. Answered separately, two of the three are easy.
 | **R-essay** | the line past which it is a different product | — | **40 %** | whether to ship at all |
 
 **R-beat is 90/10 and this document does not move it.** Where tape exists it carries
-the beat, and the machinery around it is a Frame in and a Hinge out — 110–270
+the beat, and the machinery around it is a Frame in and a Hinge out — 120–305
 characters against a 110-second segment. That is the inversion of radio's published
-~50/50 copy-to-tape baseline, and the inversion is the product. Nothing in the coverage
-numbers argues against it, because the coverage numbers are about beats that have no
-tape at all.
+~50/50 copy-to-tape baseline, and the inversion is the product. Nothing in the
+coverage numbers argues against it, because the coverage numbers are about beats that
+have no tape at all.
 
 **R-foray is the new number and it is the one that binds.** It is not a statement
 about style. It is a statement about how much of a spine a Foray is allowed to
@@ -675,17 +685,29 @@ not contain.
 
 Three caveats, because the figure is only as honest as they are.
 
-- **Figure C is a ceiling, not a plan**, and the report says so: it "assumes the founder
-  admits both the SYSK register and the thin tier, and neither should be assumed."
-  Everything below therefore describes the most tape this Foray could ever have, which
-  is the right base for a ratio ceiling and the wrong base for a schedule.
+- **Figure C is a ceiling, not a plan**, and the report says so: it "assumes the
+  founder admits both the SYSK register and the thin tier, and neither should be
+  assumed." Everything below therefore describes the most tape this Foray could ever
+  have, which is the right base for a ratio ceiling and the wrong base for a
+  schedule.
 - **The report's projected-runtime tables predate the 2026-08-17 revision**, which is
   why the Grill Coach row has to be added by hand. It is not in figure C.
 - **The 20 covered beats are not 20 distinct pieces of tape.** Thin beat 2's only
-  candidate sits inside `moreish#266` and thin beat 6's inside `bbqrn#700` — both already
-  counted in beats 15 and 14 — and `moss#2779` serves beats 27 and 37. So the covered
-  beats share tape, and the total above counts each segment once, which is correct for a
-  runtime and worth stating so nobody adds them twice.
+  candidate sits inside `moreish#266` and thin beat 6's inside `bbqrn#700` — both
+  already counted in beats 15 and 14 — and `moss#2779` serves beats 27 and 37. So the
+  covered beats share tape, and the total above counts each segment once, which is
+  correct for a runtime and worth stating so nobody adds them twice.
+- **And the fourth caveat, which the first three do not cover: this base is not
+  assemblable as one Foray.** Six Grill Coach segments at 684.4 s of a 2,737 s
+  runtime is **25.0 %** — fractionally over M4, the ≤ 25 % single-episode
+  concentration cap in `segment-length-rules.md` §6c. The coverage report's §5b works
+  the same arithmetic against the real Foray and finds M4 permits **"two segments and
+  351.5 s"** of the six, calling it "now the binding problem." So the honest reading
+  of the table above is *the most tape these beats could ever supply*, not the most
+  any single Foray can play. **Note the direction that pushes.** Less playable tape
+  means a smaller Carry budget and a higher narration share, so every figure below is
+  optimistic and the 44 % finding is a floor rather than a ceiling. It survives, more
+  comfortably than it should.
 
 **Machinery for the 20 covered beats.** 25 segments, so 24 seams at an average 7 s
 Hinge or Frame = 168 s. Five Markers at 15 s = 75 s. Four Corrections at 10 s = 40 s.
@@ -721,11 +743,11 @@ Three things follow, and the third is the useful one.
 
 - Eleven of the twenty empty beats can be carried at the ceiling. Not twenty.
 - **Which eleven is decided by structure, not by which are easiest to write** (§4c).
-- **The number of empty beats a Foray can carry is a function of how much tape it has,
-  not of how many holes its spine has.** This is the sentence a script author should
-  hold on to. Sourcing one more strong episode buys about 180 s of tape, which buys
-  about 97 s of narration at the ceiling, which buys **one more carried beat**. Tape
-  and narration are not substitutes competing for runtime; tape is what *funds*
+- **The number of empty beats a Foray can carry is a function of how much tape it
+  has, not of how many holes its spine has.** This is the sentence a script author
+  should hold on to. Sourcing one more strong episode buys about 180 s of tape, which
+  buys about 97 s of narration at the ceiling, which buys **one more carried beat**.
+  Tape and narration are not substitutes competing for runtime; tape is what *funds*
   narration.
 
 ### 4c. Enforcement — over-ceiling is fixed by cutting beats, not words
@@ -736,11 +758,12 @@ This is the rule that keeps the ratio from becoming a licence to compress.
 > dropped, in this order: fan stops first, then thin-beat Patches whose missing
 > material is not load-bearing, then nothing. Chain links are never dropped.**
 
-The precedent is exact and it is already written down twice. `grilling-history-coverage.md`:
-"A beat that comes back empty stays empty." The alcohol spine, §5: "An over-supplied
-beat has no claim on runtime that an under-supplied beat lost. Time freed by an empty
-beat 9 does not transfer to beat 37; it becomes narration on beat 9, or it becomes a
-shorter Foray, **and a shorter Foray is a legitimate outcome.**"
+The precedent is exact and it is already written down twice.
+`grilling-history-coverage.md`: "A beat that comes back empty stays empty." The
+alcohol spine, §5: "An over-supplied beat has no claim on runtime that an
+under-supplied beat lost. Time freed by an empty beat 9 does not transfer to beat 37;
+it becomes narration on beat 9, or it becomes a shorter Foray, **and a shorter Foray
+is a legitimate outcome.**"
 
 Both spines hand over the drop order directly, and it is the same order in both:
 
@@ -761,13 +784,13 @@ and the small family stops in Acts II through V are the safest."**
 
 Note what this rule forbids, since it is the tempting move: **it forbids shortening
 Act I's Carry items so that more fan stops fit.** The alcohol spine pre-empts the
-mirror-image error in the same paragraph — "above all do not compensate by lengthening
-a neighbour" — and the reasoning generalises. A derivation with a rushed step in place
-of a missing one is still broken.
+mirror-image error in the same paragraph — "above all do not compensate by
+lengthening a neighbour" — and the reasoning generalises. A derivation with a rushed
+step in place of a missing one is still broken.
 
 ### 4d. The cost handle
 
-For the cost model, three per-beat constants and one formula. At 15 characters per
+For the cost model, three per-beat constants and one formula. At 17 characters per
 second (§2a):
 
 | beat verdict | narration | words | characters |
@@ -791,8 +814,8 @@ Foray narration characters ≈ 290·(strong) + 680·(thin) + 1360·(carried)
 **Alcohol**, projected — and flagged as **projection**, because no coverage report
 exists yet. Taking the spine's own prediction that it will be narration-heavier with
 Act I thinnest, and scaling barbecue's proportions across 63 beats gives roughly 15
-strong / 18 thin / 30 empty. Barbecue's 20 covered beats hold 2,737 s, which is
-137 s per covered beat; 33 alcohol covered beats at that rate is **≈ 4,500 s of tape**,
+strong / 18 thin / 30 empty. Barbecue's 20 covered beats hold 2,737 s, which is 137 s
+per covered beat; 33 alcohol covered beats at that rate is **≈ 4,500 s of tape**,
 against machinery of ~1,059 s (39 seams, 10 Markers for the extra fan boundaries, 6
 Corrections, 18 Patches):
 
@@ -807,12 +830,12 @@ figure of each pair being a ceiling that should not be treated as a plan.
 
 **And the alcohol row carries a warning the barbecue row does not.** Thirteen of its
 thirty empty beats are unfundable even at the ceiling, and by §4c's chain-first
-allocation the Carry budget goes to Act I first — sixteen chained beats, predicted the
-thinnest act in the document. **If Act I comes back mostly empty, the whole Carry budget
-is spent inside Act I and every fan stop in Acts II to V is paid for by being dropped.**
-That is the correct outcome under the allocation rule and it is a much shorter Foray
-than sixty-three beats. The alcohol spine's §4c already anticipates a short version;
-this is the arithmetic that would force it.
+allocation the Carry budget goes to Act I first — sixteen chained beats, predicted
+the thinnest act in the document. **If Act I comes back mostly empty, the whole Carry
+budget is spent inside Act I and every fan stop in Acts II to V is paid for by being
+dropped.** That is the correct outcome under the allocation rule and it is a much
+shorter Foray than sixty-three beats. The alcohol spine's §4c already anticipates a
+short version; this is the arithmetic that would force it.
 
 **Re-generation factor: budget 1.5×, and treat anything above 2.0× as a process bug
 rather than a cost.** The rejection test in §6 is designed to run on text, before
@@ -821,8 +844,8 @@ rejected script costs nothing. A high re-generation factor means the review gate
 being run *after* generation. That is fixable for free.
 
 **One number this document does not give.** Per-Foray cost in currency, and the count
-of Forays. Those belong to the parallel cost work, and the input it needs from here is
-the character range above plus the sentence that the ceiling row is not a plan.
+of Forays. Those belong to the parallel cost work, and the input it needs from here
+is the character range above plus the sentence that the ceiling row is not a plan.
 
 ---
 
@@ -841,15 +864,16 @@ tense, register, sentence, number, uncertainty, attribution.
   in a work made of strangers, so every claim it makes on the listener's attention is
   a claim it takes from a source.
 - **"We" only where it means humanity**, and only where the beat already does. The
-  barbecue spine's Act I is about "the animal doing it", and *"we"* meaning our species
-  is correct there. **"We" never means the makers of the Foray.** No "we found", no "we
-  could not find a source for this" — see §5e for the publishable form of that
-  sentence.
-- **"You" is permitted for exactly one job: handing the listener a tool.** The alcohol
-  spine's beat 16 is written to a second person by design — "the listener can now place
-  a drink they have never heard of", and the beat's proof is "running an unfamiliar one
-  through the key from scratch." A key is used by somebody, and telling them so in the
-  second person is the whole point. Outside that job, "you" is presumption.
+  barbecue spine's Act I is about "the animal doing it", and *"we"* meaning our
+  species is correct there. **"We" never means the makers of the Foray.** No "we
+  found", no "we could not find a source for this" — see §5e for the publishable form
+  of that sentence.
+- **"You" is permitted for exactly one job: handing the listener a tool.** The
+  alcohol spine's beat 16 is written to a second person by design — "the listener can
+  now place a drink they have never heard of", and the beat's proof is "running an
+  unfamiliar one through the key from scratch." A key is used by somebody, and
+  telling them so in the second person is the whole point. Outside that job, "you" is
+  presumption.
 
 ### 5b. Tense
 
@@ -858,45 +882,46 @@ tense, register, sentence, number, uncertainty, attribution.
 
 This looks like a style preference and it is load-bearing, because of a structural
 decision both spines made. The alcohol spine, §2c: "History is not an act. It is
-admitted beat by beat, and only where it explains a production fact." So mechanism and
-history are interleaved *inside single beats*, and the listener has no chapter heading
-telling them which they are hearing. **In audio, tense is the only cue available.**
-Collapse it into a dramatic historical present — "it is 1801, and a Frenchman is
-building a column" — and the listener loses the one signal that separates "this is how
-the thing works" from "this is how it came to work that way." That distinction is the
-whole difference between the Foray the founder asked for and a story about drinks.
+admitted beat by beat, and only where it explains a production fact." So mechanism
+and history are interleaved *inside single beats*, and the listener has no chapter
+heading telling them which they are hearing. **In audio, tense is the only cue
+available.** Collapse it into a dramatic historical present — "it is 1801, and a
+Frenchman is building a column" — and the listener loses the one signal that
+separates "this is how the thing works" from "this is how it came to work that way."
+That distinction is the whole difference between the Foray the founder asked for and
+a story about drinks.
 
 The same applies to barbecue's two-clause through-line: technique is present tense
-("collagen converts to gelatin"), labour and history are past ("the work was performed
-by enslaved people"). Where a beat asserts a live continuity, say so in a clause rather
-than by borrowing the wrong tense.
+("collagen converts to gelatin"), labour and history are past ("the work was
+performed by enslaved people"). Where a beat asserts a live continuity, say so in a
+clause rather than by borrowing the wrong tense.
 
 ### 5c. Register
 
-Sentence case. No exclamation marks. Beyond that, a list of bans, each with the reason
-it earns one:
+Sentence case. No exclamation marks. Beyond that, a list of bans, each with the
+reason it earns one:
 
-- **No adjectives of significance.** Remarkable, fascinating, surprising, extraordinary,
-  striking. The beat's claim should be interesting; asserting that it is interesting is
-  the most reliable tell of a script written to fill a length rather than to make a
-  point. Treat every instance as a §6 R2 signal.
-- **No "imagine", no "picture this", no second-hand awe.** The narrator did not see it
-  either.
+- **No adjectives of significance.** Remarkable, fascinating, surprising,
+  extraordinary, striking. The beat's claim should be interesting; asserting that it
+  is interesting is the most reliable tell of a script written to fill a length
+  rather than to make a point. Treat every instance as a §6 R2 signal.
+- **No "imagine", no "picture this", no second-hand awe.** The narrator did not see
+  it either.
 - **No suspense constructions.** "Little did they know", "but there was a problem",
   "what happened next changed everything." A Foray is an argument, and its unit of
   interest is a claim being established, not a reveal being withheld.
-- **No rhetorical questions**, with one exception: MacAdam's *Question → Answer*, where
-  the narrator asks and **the tape answers immediately**. A question the narrator then
-  answers itself is a padding pattern.
+- **No rhetorical questions**, with one exception: MacAdam's *Question → Answer*,
+  where the narrator asks and **the tape answers immediately**. A question the
+  narrator then answers itself is a padding pattern.
 - **No throat-clearing openers.** "It turns out", "as it happens", "interestingly",
-  "of course", "now". Cost: three to six characters per instance, dozens of instances
-  per Foray, and zero information.
+  "of course", "now". Cost: three to thirteen characters per instance, dozens of
+  instances per Foray, and zero information.
 - **Contractions are correct.** Everett's first tip is "use colloquial language and
   contractions; read aloud to ensure it's speakable," and a TTS engine reads a
   contraction more naturally than the expansion.
 - **Jargon is defined at first use or replaced.** Everett's ninth. In a process Foray
-  this is constant work: the alcohol spine's Act I has sixteen beats of mechanism, and
-  a term used before it is defined costs the listener the rest of the derivation.
+  this is constant work: the alcohol spine's Act I has sixteen beats of mechanism,
+  and a term used before it is defined costs the listener the rest of the derivation.
 
 ### 5d. Sentences and numbers
 
@@ -913,8 +938,8 @@ it earns one:
 
 ### 5e. Uncertainty — four calibrated forms, and the rule that governs them
 
-The narrator must use **the weakest form the evidence supports**, and the fourth form is
-allowed.
+The narrator must use **the weakest form the evidence supports**, and the fourth form
+is allowed.
 
 | | form | pattern | when |
 |---|---|---|---|
@@ -926,12 +951,12 @@ allowed.
 **U4 is permitted, and it is better than filling.** This is not a concession; it is the
 standard the spines already hold *tape* to. The barbecue spine on beat 1: "Tape that
 *names the disagreement* is better tape than tape that asserts the tidy version, because
-the disagreement is what makes this history rather than a fun fact." On beat 15, the second
-of the two segments taken, `#555`, "says out loud that **there is no direct evidence**
-for the transmission. The spine explicitly prizes a speaker who says so over one who
-asserts it." On beat 20:
-"A speaker who is explicit about how much weight that evidence bears is worth more than
-one who asserts a direct line."
+the disagreement is what makes this history rather than a fun fact." On beat 20: "A
+speaker who is explicit about how much weight that evidence bears is worth more than
+one who asserts a direct line." And the coverage report, applying that standard to
+beat 15's second segment, `#555`: it "says out loud that **there is no direct
+evidence** for the transmission. The spine explicitly prizes a speaker who says so
+over one who asserts it."
 
 > **The narrator's uncertainty vocabulary must be at least as good as the best tape's.**
 > If a segment earns its place partly by saying "there is no direct evidence", a
@@ -940,23 +965,23 @@ one who asserts a direct line."
 
 **Banned outright — the unattributed hedges.** "Some say", "it is believed", "many
 historians believe", "legend has it", "it is often said", "experts think", "some
-argue". Each has the grammatical shape of U2 or U3 with the attribution deleted, which
-means it manufactures authority out of nothing while sounding careful. **This is the
-fluency failure in a single phrase**, and it is the highest-yield thing to grep a script
-for.
+argue". Each has the grammatical shape of U2 or U3 with the attribution deleted,
+which means it manufactures authority out of nothing while sounding careful. **This
+is the fluency failure in a single phrase**, and it is the highest-yield thing to
+grep a script for.
 
 Note the asymmetry with the internal documents. Both spines write in the first person
-and say so plainly — "not a claim that such tape exists — I cannot know that" — and the
-coverage report does the same about its own predictions. That is correct for a working
-document with a named author. The narrator has no author and no first person, so its version of the same
-honesty is U4 in the third person.
+and say so plainly — "not a claim that such tape exists — I cannot know that" — and
+the coverage report does the same about its own predictions. That is correct for a
+working document with a named author. The narrator has no author and no first person,
+so its version of the same honesty is U4 in the third person.
 
 ### 5f. Attribution, and the rule that makes a Carry honest
 
 **Pattern:** name, then standing, then show — *"Candice Goucher, an archaeologist who
-works on African and Caribbean transmission, on The Moreish Podcast."* Everett's *Title
-First*: the descriptive title comes before the listener has to do anything with the
-name. Show named once per source per Foray (§3d).
+works on African and Caribbean transmission, on The Moreish Podcast."* Everett's
+*Title First*: the descriptive title comes before the listener has to do anything
+with the name. Show named once per source per Foray (§3d).
 
 **And then the rule this document most wants remembered:**
 
@@ -964,24 +989,25 @@ name. Show named once per source per Foray (§3d).
 
 The reasoning is not politeness and it is not citation hygiene. **The narrator has no
 on-air authority of its own.** Every other voice in a Foray arrives with a show, a
-guest credit and a reason to be believed. A Carry item arrives with none of that, so an
-unattributed Carry is the product asserting on its own credit — credit it has not
-earned and has no mechanism for earning. It is also, exactly, what a padded beat sounds
-like, which is why this rule and §6's R3 are the same rule seen from two sides.
+guest credit and a reason to be believed. A Carry item arrives with none of that, so
+an unattributed Carry is the product asserting on its own credit — credit it has not
+earned and has no mechanism for earning. It is also, exactly, what a padded beat
+sounds like, which is why this rule and §6's R3 are the same rule seen from two
+sides.
 
-For beats where no tape exists, the source named is the **literature**, and the coverage
-report usually says which: on barbecue beat 20, "the argument lives in Twitty and in
-Miller's own book"; the spine says "Twitty and Miller are the archetype of the
-register." So the Carry says so. **A Carry that names a book is doing something a
-podcast segment cannot do**, which is worth noticing — it is the one respect in which
-a narration beat is better than the tape it replaces, and it is the reason a Carry is a
-legitimate artefact rather than a patch over an absence.
+For beats where no tape exists, the source named is the **literature**, and the
+coverage report usually says which: on barbecue beat 20, "the argument lives in
+Twitty and in Miller's own book"; the spine says "Twitty and Miller are the archetype
+of the register." So the Carry says so. **A Carry that names a book is doing
+something a podcast segment cannot do**, which is worth noticing — it is the one
+respect in which a narration beat is better than the tape it replaces, and it is the
+reason a Carry is a legitimate artefact rather than a patch over an absence.
 
 **Attribution slots are a hard generation gate.** A script with an unfilled speaker
-name — `[speaker: confirm from audio]` — must fail the dry run and must not be voiced.
-§7a's script carries such a slot, because the coverage report names the Argentina guest
-but not the show he is on, and names the jerk researcher not at all. Inventing either is
-the single worst thing this pipeline could do.
+name — `[speaker: confirm from audio]` — must fail the dry run and must not be
+voiced. §7a's script carries such a slot, because the coverage report names the
+Argentina guest but not the show he is on, and names the jerk researcher not at all.
+Inventing either is the single worst thing this pipeline could do.
 
 ---
 
@@ -992,8 +1018,9 @@ because #226's rule applies to a script exactly as it applies to a cut: **a narr
 script must be rejectable for being off-beat.**
 
 The parallel is deliberate and it should be maintained in the tooling. Tape is scored
-against a claim by a stage-2 pass that is allowed to return "empty". A script is scored
-against the same claim by the tests below and they are allowed to return "unwritable".
+against a claim by a stage-2 pass that is allowed to return "empty". A script is
+scored against the same claim by the tests below and they are allowed to return
+"unwritable".
 
 ### 6a. The six tests
 
@@ -1004,101 +1031,102 @@ cheap ones and catch the most.
 Read the beat's claim sentence. Then read the script one sentence at a time. Every
 sentence must have exactly one of six licences, and the script records which:
 
-1. it asserts or supports **this beat's claim**;
-2. it is a **required attribution** (§5f);
-3. it is **required structural signposting** — a Marker's job (§3b, S7);
-4. it is a **required correction** of adjacent tape (§3f);
-5. it supplies an **antecedent the tape assumes** and the coverage report names as
+1. it asserts or supports **this beat's claim**; 2. it is a **required attribution**
+(§5f); 3. it is **required structural signposting** — a Marker's job (§3b, S7); 4. it
+is a **required correction** of adjacent tape (§3f); 5. it supplies an **antecedent
+the tape assumes** and the coverage report names as
    missing;
 6. it is the **sacrificial head** — two or three words of orientation (§3h).
 
 A sentence with no licence is cut. **If more than about a quarter of the item's words
 have no licence, the item is rejected rather than trimmed**, because a script that
-needed that much filler was written to a length instead of to a claim, and trimming it
-leaves the same script shorter.
+needed that much filler was written to a length instead of to a claim, and trimming
+it leaves the same script shorter.
 
 **R2 — the substitution test. This is the one that catches fluent filler.**
 
 > **Take the script. Change only the proper nouns. Could it now sit under a different
 > beat of the same spine? If yes, reject.**
 
-This is the test the product actually needs, because the failure mode is not prose that
-is wrong — it is prose that is *plausible*, and plausible prose is exactly prose that
-would fit anywhere. A script bound to a specific claim cannot be relocated: its
+This is the test the product actually needs, because the failure mode is not prose
+that is wrong — it is prose that is *plausible*, and plausible prose is exactly prose
+that would fit anywhere. A script bound to a specific claim cannot be relocated: its
 sentences depend on that claim's mechanism, its numbers, its named evidence and its
 place in the chain. A script that is really a well-turned paragraph about barbecue in
 general will relocate cleanly, and the relocation is the proof.
 
 The failing form is easy to recognise once named. It moves from the general to the
 general; it states that something mattered, was important, shaped what came after; it
-attributes to nobody; and it contains no number, no mechanism and no name that the beat
-could not do without. §7b shows one and runs the test on it.
+attributes to nobody; and it contains no number, no mechanism and no name that the
+beat could not do without. §7b shows one and runs the test on it.
 
-Two cheap proxies for R2 that a checker could apply, both signals rather than verdicts:
-zero named sources in a Carry (that is R3 anyway), and zero of the beat's own evidence
-vocabulary — the "evidence that counts" paragraph of every spine beat is a ready-made
-keyword set, and a Carry that contains none of it is very likely relocatable.
+Two cheap proxies for R2 that a checker could apply, both signals rather than
+verdicts: zero named sources in a Carry (that is R3 anyway), and zero of the beat's
+own evidence vocabulary — the "evidence that counts" paragraph of every spine beat is
+a ready-made keyword set, and a Carry that contains none of it is very likely
+relocatable.
 
 **R3 — the evidence test.**
 **Every factual assertion in any mode** is attributable to a named source **recorded in
 the script** — a Frame that supplies an antecedent is asserting it on the narrator's
-credit too, so the recorded-source half of this test is not confined to the long modes.
+credit too, so the recorded-source half of this test is not confined to the long
+modes.
 **On-air naming** is what is confined to Patch and Carry, where at least one source is
 spoken (§5f). No source means the sentence is a banned hedge (§5e) or is cut. An
 unfilled attribution slot is a generation-blocking failure, not a warning.
 
 **One exception, and it is narrow: the synthesis Carry.** A beat whose claim is a
 conclusion drawn from the Foray's own preceding beats — alcohol beat 16, the
-classification key; both spines' codas — attributes **to the Foray's own prior tape**,
-and says so: *"everything in that key came from the people you have just heard."* That
-is real attribution, it is checkable against the assembly, and it is available only to
-a beat that is genuinely a synthesis. It is not available to a Carry-by-default that
-would like to skip R3.
+classification key; both spines' codas — attributes **to the Foray's own prior
+tape**, and says so: *"everything in that key came from the people you have just
+heard."* That is real attribution, it is checkable against the assembly, and it is
+available only to a beat that is genuinely a synthesis. It is not available to a
+Carry-by-default that would like to skip R3.
 
 **R4 — the spoiler and redundancy test.**
 For Frame and Hinge: does the script state the claim the adjacent tape makes? Reject
-(§3c). Then run the deletion check: remove the narration and play the tape. If nothing
-is lost, the narration is redundant and is cut; if the tape becomes unintelligible or
-unattributed, the narration is doing its job.
+(§3c). Then run the deletion check: remove the narration and play the tape. If
+nothing is lost, the narration is redundant and is cut; if the tape becomes
+unintelligible or unattributed, the narration is doing its job.
 
 **R5 — the juxtaposition test (integrity, hard reject).**
 Does the script imply agreement, disagreement, sequence or reply between speakers
-recorded years apart in different rooms? Does grammar run across a cross-episode seam?
-Does a Hinge attribute a position to a speaker in order to set up the next one? Any of
-these is a hard reject on RTDNA grounds, not a style note (§3g).
+recorded years apart in different rooms? Does grammar run across a cross-episode
+seam? Does a Hinge attribute a position to a speaker in order to set up the next one?
+Any of these is a hard reject on RTDNA grounds, not a style note (§3g).
 
 **R6 — the budget test (mechanical, checkable).**
 Mode band respected. Transition items ≤ 8 s, or ≤ 12 s with the reason recorded.
-Carry ≤ 150 s without `needs_review`, ≤ 180 s absolutely. Adjacent empty beats merged.
-At most two consecutive narration items. No three consecutive narration items within
-±20 %. Foray R-foray share within ceiling. Sentence mean and maximum. Numbers per item.
-Banned-phrase list clean.
+Carry ≤ 150 s without `needs_review`, ≤ 180 s absolutely. Adjacent empty beats
+merged. At most two consecutive narration items. No three consecutive narration items
+within ±20 %. Foray R-foray share within ceiling. Sentence mean and maximum. Numbers
+per item. Banned-phrase list clean.
 
 ### 6b. What R1 and R2 look like together
 
 R1 catches a script that wandered. R2 catches a script that never went anywhere. They
 are different defects and a padded beat usually passes R1 — every sentence is *about*
-the beat — while failing R2 completely, because being about a subject is precisely what
-generic prose does. **R2 is the test to run first on a Carry.** R1 is the test to run
-first on a Patch, because a Patch's failure mode is scope creep into material the tape
-already covers.
+the beat — while failing R2 completely, because being about a subject is precisely
+what generic prose does. **R2 is the test to run first on a Carry.** R1 is the test
+to run first on a Patch, because a Patch's failure mode is scope creep into material
+the tape already covers.
 
 ### 6c. Who rejects, and what happens to a rejected script
 
-The discipline is `grilling-history-coverage.md`'s: **label, never exclude.** A rejected
-script stays in the repo with its rejection reason recorded against the beat, exactly as
-rejected segments stay in `data/segments.json` with theirs. Three reasons: the next
-author needs to know what was tried; a rejection is evidence about the beat, not only
-about the script; and a script rejected under R2 for a beat that later gains tape may be
-recoverable as a Patch.
+The discipline is `grilling-history-coverage.md`'s: **label, never exclude.** A
+rejected script stays in the repo with its rejection reason recorded against the
+beat, exactly as rejected segments stay in `data/segments.json` with theirs. Three
+reasons: the next author needs to know what was tried; a rejection is evidence about
+the beat, not only about the script; and a script rejected under R2 for a beat that
+later gains tape may be recoverable as a Patch.
 
-Recorded as a request to the pipeline document: **a rejection reason is a required field,
-and a rejected script is not deleted.**
+Recorded as a request to the pipeline document: **a rejection reason is a required
+field, and a rejected script is not deleted.**
 
 ### 6d. Unwritable — the third verdict, and the escalation
 
-Here is the case the coverage vocabulary cannot currently express. A beat is empty. An
-author sits down to Carry it. The script cannot pass R2 and R3 — there is nothing
+Here is the case the coverage vocabulary cannot currently express. A beat is empty.
+An author sits down to Carry it. The script cannot pass R2 and R3 — there is nothing
 beat-specific and sourced to say, because the material genuinely is not in reach of
 anybody writing from what we have.
 
@@ -1110,8 +1138,8 @@ among the options.** The escalation, in order:
    permission.
 2. **A chain link: do not ship the act.** Keep sourcing. The barbecue coverage report
    already models this — it names the remaining shots for beat 20 and says that if
-   neither lands, "beat 20 is a narration beat permanently and should be written as one
-   rather than left open."
+   neither lands, "beat 20 is a narration beat permanently and should be written as
+   one rather than left open."
 3. **The claim is the problem: recommend a spine amendment.** Two are already pending
    (beats 22 and 27). A beat whose claim cannot be written *or* sourced may be a beat
    whose claim is wrong, and that is a finding worth recording rather than a script
@@ -1121,33 +1149,33 @@ among the options.** The escalation, in order:
 > empty. **A beat that comes back unwritable stays unwritten.**
 
 **Recommendation to the coverage-report vocabulary:** carry `writable` / `unwritable` as
-a second axis on empty beats, and record it at the same time as the empty verdict rather
-than discovering it at script time. Stage 2 already knows enough to predict it — an
-empty beat whose literature the report can name (beat 20: Twitty, Miller) is writable; an
-empty beat where the report cannot say what would be said is not. This document does not
-edit the coverage report; it recommends the addition.
+a second axis on empty beats, and record it at the same time as the empty verdict
+rather than discovering it at script time. Stage 2 already knows enough to predict it
+— an empty beat whose literature the report can name (beat 20: Twitty, Miller) is
+writable; an empty beat where the report cannot say what would be said is not. This
+document does not edit the coverage report; it recommends the addition.
 
 ### 6e. The thing that makes narration harder to police than tape, said plainly
 
 Bad tape announces itself. The Welsh bakestone segment was audibly about Welsh
 bakestones, and anyone listening to the Foray heard a subject change. **Bad narration
-does not announce itself.** It is in the house voice, at the house level, in the right
-place, at the right length, on topic, grammatical, and it can be produced without limit.
-Every quality signal a listener has access to says it belongs.
+does not announce itself.** It is in the house voice, at the house level, in the
+right place, at the right length, on topic, grammatical, and it can be produced
+without limit. Every quality signal a listener has access to says it belongs.
 
-Which is why the gate is written as text tests run before generation, and why R2 exists
-in the form it does. **The only reliable evidence that a Carry is not filler is that it
-could not have been written for any other beat.** Everything else — fluency, relevance,
-correct length, pleasant delivery — a padded beat has too.
+Which is why the gate is written as text tests run before generation, and why R2
+exists in the form it does. **The only reliable evidence that a Carry is not filler
+is that it could not have been written for any other beat.** Everything else —
+fluency, relevance, correct length, pleasant delivery — a padded beat has too.
 
 ---
 
 ## 7. Worked examples
 
-Real beats, real segment ids, real timestamps, from `grilling-history-coverage.md`. The
-scripts are **illustrative drafts written to demonstrate the rules**, not approved copy.
-None has been checked against the audio, which §3i requires before any could be voiced,
-and §7a's carry `[slot]`s that are generation gates (§5f).
+Real beats, real segment ids, real timestamps, from `grilling-history-coverage.md`.
+The scripts are **illustrative drafts written to demonstrate the rules**, not
+approved copy. None has been checked against the audio, which §3i requires before any
+could be voiced, and §7a's items carry `[slot]`s that are generation gates (§5f).
 
 Word and character counts are exact. Seconds are at the §2a planning rate.
 
@@ -1155,8 +1183,8 @@ Word and character counts are exact. Seconds are at the §2a planning rate.
 
 Chosen because it is the hardest real seam in the corpus that has strong tape on both
 sides. Argentina to Jamaica: two shows, two voices, two rooms, two hemispheres, and
-both are fan stops inside Act III, so neither depends on the other. It also contains a
-same-episode seam and a required correction, so it exercises four of the eight seam
+both are fan stops inside Act III, so neither depends on the other. It also contains
+a same-episode seam and a required correction, so it exercises four of the eight seam
 types in one stretch.
 
 **What the tape is.**
@@ -1170,22 +1198,21 @@ types in one stretch.
 
 **Four facts about that table decide the whole assembly, and three are easy to miss.**
 
-- **`#700` plays first, though the coverage report lists `#1205` as "Chosen" and `#700`
-  as "Second".** Those labels are a quality ranking, not a play order.
-  `segment-length-rules.md` §6c makes same-episode chronological order an integrity rule,
-  not a preference. So the report's instruction that the missing antecedent goes "ahead
-  of `#1205`" resolves, in the assembly, to *ahead of `#700`*.
+- **`#700` plays first, though the coverage report lists `#1205` as "Chosen" and
+  `#700` as "Second".** Those labels are a quality ranking, not a play order.
+  `segment-length-rules.md` §6c makes same-episode chronological order an integrity
+  rule, not a preference. So the report's instruction that the missing antecedent
+  goes "ahead of `#1205`" resolves, in the assembly, to *ahead of `#700`*.
 - **The gap between `#700` and `#1205` is 356.5 s — five minutes fifty-six seconds.**
-  Past 180 s, so `segment-length-rules.md` §6a keeps them separate; past 5 minutes, so its §6b
-  **requires narration**
-  rather than silence, "because across a large gap the listener will otherwise build a
-  false model of continuity."
-- **The gap between `#266` and `#555` is 50.7 s**, which lands in `segment-length-rules.md`
-  §6a's *should merge* band. The coverage report keeps them separate. See the note at the
-  end of this example.
-- **So the stretch has five seams, not four**, and the fifth is the one an author forgets:
-  `#266` → `#555` inside one episode. Every seam gets an item. Counting them off the
-  segment table rather than off the beat list is the way not to miss one.
+  Past 180 s, so `segment-length-rules.md` §6a keeps them separate; past 5 minutes,
+  so its §6b **requires narration** rather than silence, "because across a large gap
+  the listener will otherwise build a false model of continuity."
+- **The gap between `#266` and `#555` is 50.7 s**, which lands in
+  `segment-length-rules.md` §6a's *should merge* band. The coverage report keeps them
+  separate. See the note at the end of this example.
+- **So the stretch has five seams, not four**, and the fifth is the one an author
+  forgets: `#266` → `#555` inside one episode. Every seam gets an item. Counting them
+  off the segment table rather than off the beat list is the way not to miss one.
 
 **The script.**
 
@@ -1195,44 +1222,53 @@ types in one stretch.
 > kept it that way. Scarcity is not the constraint here. Al Frugoni, an Argentine
 > asador, on [show]."*
 
-Why it is built that way. It carries the antecedent the coverage report says is "nowhere
-in the tape" — pampas abundance and the export economy — which is R1 licence 5, and then
-attributes, which is licence 2. It is **10.9 s, over the 8 s spec target**, and it
-invokes §2b's exception explicitly: the extra words are the required attribution. It
-states the beat's *precondition* and not its claim — the claim is that the craft moved
-into fire management, and the tape makes it (§3c).
+Why it is built that way. It carries the antecedent the coverage report says is
+"nowhere in the tape" — pampas abundance and the export economy — which is R1 licence
+5, and then attributes, which is licence 2. It is **10.9 s, over the 8 s spec
+target**, and it invokes §2b's exception explicitly: the extra words are the required
+attribution. It states the beat's *precondition* and not its claim — the claim is
+that the craft moved into fire management, and the tape makes it (§3c).
 
 **One `[slot]`, and finding out which one took a check.** The coverage report names the
-guest — "Al Frugoni, an Argentine asador" — in beat 5's entry, on the same episode, so
-the name does not need a slot and the in-anchor's *"Al, how do you"* is corroboration
-rather than the only evidence. The **show** is never named in prose; only the `item_id`
-`bbqrn-argentina-open-fire` appears, and expanding an id into a title is exactly the kind
-of confident guess §5f forbids. **The general lesson: an attribution slot is filled from
-the report, not from the segment id, and the two halves of an attribution can have
-different provenance.**
+guest — "Al Frugoni, an Argentine asador" — in beat 5's entry, on the same episode,
+so the name does not need a slot and the in-anchor's *"Al, how do you"* is
+corroboration rather than the only evidence. The **show** is never named in prose; only
+the `item_id` `bbqrn-argentina-open-fire` appears, and expanding an id into a title is
+exactly the kind of confident guess §5f forbids. **The general lesson: an attribution slot is filled
+from the report, not from the segment id, and the two halves of an attribution can
+have different provenance.**
+
+**And it breaks a rule, which is recorded rather than repaired.** A1 opens on *"The
+pampas"* — a load-bearing place name in position two, where §3h asks for two or three
+words of orientation first. Fixing it costs about four words, which at 170 wpm takes
+the item to roughly 12.3 s and **over the transition ceiling**. So the two rules
+genuinely cannot both be satisfied here, and that is not a flaw in either: it is
+§3j's remedy 4 arriving late. **A Frame carrying an antecedent, an attribution and a
+sacrificial head is not a transition — the antecedent should have been a Patch**,
+which has 20 s to play with and room for an orientation phrase. Left as drafted so
+the collision is visible, and recorded as the second thing this example teaches.
 
 **What is not in it, and this is the instructive part.** Beat 14's claim also says the
 asado "formalised the person doing it into a social office, the asador," and the
 coverage report flags that as missing from the tape and "a real loss." **It is not in
-this script, because there is no source for it in reach.** Under R3 a narrator may not
-assert it on its own credit, and under §3f it cannot be smuggled in as a correction. So
-the beat ships without the asador-as-office claim and the coverage report's flag stands
-as a sourcing action. That is the gate working: the missing material stayed missing
-rather than becoming plausible prose.
+this script, because there is no source for it in reach.** Under R3 a narrator may
+not assert it on its own credit, and under §3f it cannot be smuggled in as a
+correction. So the beat ships without the asador-as-office claim and the coverage
+report's flag stands as a sourcing action. That is the gate working: the missing
+material stayed missing rather than becoming plausible prose.
 
 > **Item A2 — Hinge, `#700` → `#1205`, same episode. 18 words, 98 characters, ~6.4 s.**
 >
 > *"Six minutes later, the same conversation, and the question is how you know when the
 > fire is ready."*
 
-Seam type S3. It **states the elision** as `segment-length-rules.md` §6b requires, in that
-document's own idiom. Then it
-poses the question the tape answers — the hand over the grill, the two-second count,
-"you are actually engaged in the cooking process" — and states none of it (§3c). At
-6.4 s it is inside the 8 s target with no exception needed, because a same-episode Hinge
-needs no attribution: the voice has already been introduced. **This is why S3 seams are
-the cheapest narration in the product**, and it is a reason to prefer assemblies that
-have some.
+Seam type S3. It **states the elision** as `segment-length-rules.md` §6b requires, in
+that document's own idiom. Then it poses the question the tape answers — the hand
+over the grill, the two-second count, "you are actually engaged in the cooking
+process" — and states none of it (§3c). At 6.4 s it is inside the 8 s target with no
+exception needed, because a same-episode Hinge needs no attribution: the voice has
+already been introduced. **This is why S3 seams are the cheapest narration in the
+product**, and it is a reason to prefer assemblies that have some.
 
 > **Item A3 — Frame with a forward framing, `#1205` → `#266`. 28 words, 187
 > characters, ~9.9 s.**
@@ -1241,16 +1277,17 @@ have some.
 > Jamaican foodstuffs, on The Moreish Podcast, giving the tradition's own account of
 > where jerk came from."*
 
-Seam type S1, and the seam that wanted three things: an axis, an attribution, and beat
-15's required framing of the tape's low-smoke account as "the tradition's account". Per
-§3j the first remedy is compression, and compression worked — three jobs in 28 words.
+Seam type S1, and the seam that wanted three things: an axis, an attribution, and
+beat 15's required framing of the tape's low-smoke account as "the tradition's
+account". Per §3j the first remedy is compression, and compression worked — three
+jobs in 28 words.
 
 **One axis, chosen deliberately (§3e).** The seam crosses five thousand miles, three
 centuries and two languages. It names none of them. It names the *fan* — "the same
-question about fire" — because that is the axis that does editorial work: both traditions
-are independent answers to one physical problem, which is the whole reason Act III is a
-fan and not a tour. Naming the geography would have been true and would have taught the
-listener nothing.
+question about fire" — because that is the axis that does editorial work: both
+traditions are independent answers to one physical problem, which is the whole reason
+Act III is a fan and not a tour. Naming the geography would have been true and would
+have taught the listener nothing.
 
 **And note what it does not do.** It does not say the Maroons freed themselves, or that
 salt was scarce and wood ash substituted, or that pimento wood is the constant. Those
@@ -1261,11 +1298,12 @@ are the beat's claim and the tape makes all three.
 > *"Same conversation, a minute on, and the question is who gets to claim it."*
 
 Seam type S3 again, and the seam the beat list does not show. The elision is 50.7 s, well
-under §6b's five-minute threshold, so silence would have been permissible — but this seam
-is inside a fan stop that has already had two attributions spent on it, and a 4.9 s Hinge
-is cheaper than making the listener work out why the same voice restarted. It is the
-shortest item in the example and the one that most repays being written rather than
-skipped: it turns `#555` from a continuation into the beat's second half, which is what
+under `segment-length-rules.md` §6b's five-minute threshold, so silence would have been
+permissible — but this seam is inside a fan stop that has already had two
+attributions spent on it, and a 4.9 s Hinge is cheaper than making the listener work
+out why the same voice restarted. It is the shortest item in the example and the one
+that most repays being written rather than skipped: it turns `#555` from a
+continuation into the beat's second half, which is what
 `#555` is for.
 
 > **Item A5 — Correction, immediately after `#555`. 27 words, 152 characters, ~9.5 s.**
@@ -1283,8 +1321,9 @@ speaker's actual argument is the syncretism and the honest admission that there 
 direct evidence, and that argument survives untouched; only the road the word took is
 separate. **Not the speaker**: no version of "she has that wrong" appears.
 **Cited in the script, not on air**, per §3f's refinement: an etymology is a
-lexicographic fact rather than a rival scholar's position, and a ten-second correction
-cannot afford an on-air citation. The script records the source; the air does not.
+lexicographic fact rather than a rival scholar's position, and a ten-second
+correction cannot afford an on-air citation. The script records the source; the air
+does not.
 
 **The stretch, totalled.**
 
@@ -1295,55 +1334,58 @@ cannot afford an on-air citation. The script records the source; the air does no
 | narration share of the stretch | **6.5 %** |
 
 **That is R-beat working, and it is worth pausing on**: the hardest stretch in the
-corpus, carrying an antecedent, two elision statements, a fan axis, two attributions and
-a correction across five seams, still comes in under 7 % narration — inside the 90/10
-target with room to spare. **Covered beats are not where the ratio problem lives.** §4b's
-arithmetic said so and this is the demonstration.
+corpus, carrying an antecedent, two elision statements, a fan axis, two attributions
+and a correction across five seams, still comes in under 7 % narration — inside the
+90/10 target with room to spare. **Covered beats are not where the ratio problem
+lives.** §4b's arithmetic said so and this is the demonstration.
 
 **Two loose ends recorded rather than resolved.**
 
-- **The merge question.** `#266` and `#555` are 50.7 s apart, in `segment-length-rules.md`
-  §6a's *should merge* band, kept separate by the coverage report. **Merging deletes item
-  A4** — 14 words, 73 characters — and leaves A5 exactly where it is, because a merged
-  segment still ends on `#555`'s out-anchor. The counter is that the merged segment is
-  372.6 s, which is inside the 480 s `exchange` maximum and past the 360 s `explanation`
-  one, so the segment's role decides it. **An assembly question, now flagged with its
-  narration cost attached**, and the cost is small enough that it should not be the
-  deciding argument — which is itself worth knowing.
+- **The merge question.** `#266` and `#555` are 50.7 s apart, in
+  `segment-length-rules.md` §6a's *should merge* band, kept separate by the coverage
+  report. **Merging deletes item A4** — 14 words, 73 characters — and leaves A5
+  exactly where it is, because a merged segment still ends on `#555`'s out-anchor.
+  The counter is that the merged segment is 372.6 s, which is inside the 480 s
+  `exchange` maximum and past the 360 s `explanation` one, so the segment's role
+  decides it. **An assembly question, now flagged with its narration cost attached**,
+  and the cost is small enough that it should not be the deciding argument — which is
+  itself worth knowing.
 - **The exit.** Beat 15 is the fan's engineered exit and hands to beat 16, which is
-  empty. So the next thing after A5 is an S8 seam into Act IV, and because beat 16 is a
-  Carry, §2e says the act's Marker **merges into the head of that Carry item** rather
-  than being its own item. That is the S7-plus-S6 case, and it is why the Marker budget
-  allows 20 s: at an act boundary it is usually paying for the first sentences of a
-  narration item rather than for a transition.
+  empty. So the next thing after A5 is an S8 seam into Act IV, and because beat 16 is
+  a Carry, §2e says the act's Marker **merges into the head of that Carry item**
+  rather than being its own item. That is the S7-plus-S6 case, and it is why the
+  Marker budget allows 20 s: at an act boundary it is usually paying for the first
+  sentences of a narration item rather than for a transition.
 
 ### 7b. Carrying an empty beat — barbecue beat 20
 
 The most important example in this document, because beat 20 is the worst case the
 product has: **an empty beat, on a chain, in the most dangerous act, carrying part of
-the Foray's central argument, with two English sources already spent on it and nothing
-to show.** The spine: "Cut it and the strongest version of the Foray's central
-argument is unavailable." The coverage report: "Chain hole, and it weakens the Foray's
-central argument."
+the Foray's central argument, with two English sources already spent on it and
+nothing to show.** The spine: "Cut it and the strongest version of the Foray's
+central argument is unavailable." The coverage report: "Chain hole, and it weakens
+the Foray's central argument."
 
-It is also the beat where the temptation to write fluent filler is strongest, which is
-why this section shows a failing script as well as a passing one.
+It is also the beat where the temptation to write fluent filler is strongest, which
+is why this section shows a failing script as well as a passing one.
 
 **What the coverage report licenses and forbids.** This is the input a Carry author works
 from, and beat 20's entry is unusually explicit:
 
-- The argument "lives in Twitty and in Miller's own book," and the spine names "Twitty
-  and Miller" as "the archetype of the register."
-- The Goucher episode was transcribed for this beat and rejected — "zero occurrences of
-  barbecue, barbacoa, jerk, Maroon, smoke, fire, grill, pit, charcoal, wood, butcher,
-  allspice, pimento or vinegar." Its one relevant passage "contains no fire, no butchery,
-  no seasoning lineage, and it is about the Caribbean rather than the American South."
-  **So Goucher may not be cited for this beat's claim**, however good the episode is.
-- The Grill Coach touches the inheritance in one clause — "European cooking and African
-  cooking and smoking" — inside beat 18's cut, "which is a mention, not the beat."
-- The beat's reject line, which now applies to the script as well as to tape: "generic
-  statements that African cooking influenced Southern food, with no technique and no
-  mechanism of transfer."
+- The argument "lives in Twitty and in Miller's own book," and the spine names
+  "Twitty and Miller" as "the archetype of the register."
+- The Goucher episode was transcribed for this beat and rejected — "zero occurrences
+  of barbecue, barbacoa, jerk, Maroon, smoke, fire, grill, pit, charcoal, wood,
+  butcher, allspice, pimento or vinegar." Its one relevant passage "contains no fire,
+  no butchery, no seasoning lineage, and it is about the Caribbean rather than the
+  American South." **So Goucher may not be cited for this beat's claim**, however
+  good the episode is.
+- The Grill Coach touches the inheritance in one clause — "European cooking and
+  African cooking and smoking" — inside beat 18's cut, "which is a mention, not the
+  beat."
+- The beat's reject line, which now applies to the script as well as to tape:
+  "generic statements that African cooking influenced Southern food, with no
+  technique and no mechanism of transfer."
 
 **Where it sits.** Beat 20 is immediately before beat 21, whose segment is
 `grill-coach-adrian-miller#1792`, played as `GC-1`. **So the Carry hands directly to
@@ -1374,43 +1416,50 @@ Miller**, which turns out to matter.
 
 **Why it passes, test by test.**
 
-- **R1.** Paragraph one is the beat's frame; two, three and four are the claim; five is
-  U4 plus an S5 Frame into `GC-1`. No unlicensed sentence, and nothing about barbecue in
-  general.
+- **R1.** Paragraph one is the beat's frame; two, three and four are the claim; five
+  is U4 plus an S5 Frame into `GC-1`. No unlicensed sentence, and nothing about
+  barbecue in general.
 - **R2, the substitution test.** Change the proper nouns and it goes nowhere. *The
-  Cooking Gene*, *Black Smoke*, "comparative practice, later testimony and archaeology",
-  "how much weight that combination carries" and the three-inheritance structure are all
-  specific to this beat's claim and to its named reject criterion. There is no other beat
-  in the spine it fits.
+  Cooking Gene*, *Black Smoke*, "comparative practice, later testimony and
+  archaeology", "how much weight that combination carries" and the three-inheritance
+  structure are all specific to this beat's claim and to its named reject criterion.
+  There is no other beat in the spine it fits.
 - **R3.** Two named sources, both spoken. Two named books. The evidentiary argument
   attributed to the people who make it. No hedge without a subject.
 - **R4.** It does not state beat 21's claim — beat 21 is about the labour system and
   about authorship, and nothing here trespasses on it. Checked, because a Carry that
   hands to tape is a Frame in its last sentence and inherits the spoiler rule.
-- **R5.** No implied conversation. Twitty and Miller are named as agreeing because they
-  do agree in print, and the script says so as a fact about their books rather than as an
-  artefact of the edit.
+- **R5.** No implied conversation. Twitty and Miller are named as agreeing because
+  they do agree in print, and the script says so as a fact about their books rather
+  than as an artefact of the edit.
 - **R6.** 66.7 s: inside the 45–110 s Carry band, well under the soft max. Thirteen
-  sentences, mean 14.5 words — inside §5d's 12–15 band — shortest 5 words, so the rhythm
-  rule is satisfied. **Longest is 29 words, which is one violation** of the 25-word
-  maximum: the West-and-Central-Africa sentence, and the fix is to break it after
-  "butchery". Recorded rather than quietly repaired, because a worked example that passes
-  every test it was written to pass is not a demonstration of anything.
+  sentences, mean 14.5 words — inside §5d's 12–15 band — shortest 5 words, so the
+  rhythm rule is satisfied. **Two violations, both recorded rather than quietly
+  repaired.** First, the longest sentence is 29 words against a 25-word maximum: the
+  West-and-Central-Africa sentence, and the fix is to break it after "butchery".
+  Second, it **opens on a load-bearing number** — *"Three inheritances"* — where §3h
+  asks for two or three words of orientation first; *"There are three inheritances in
+  American barbecue…"* fixes it for two words and no lost content. A worked example
+  that passes every test it was written to pass is not a demonstration of anything,
+  and this one was drafted before §3h's rule was tightened, which is exactly how the
+  rule earns its keep.
 
 **Three things this script does that a script author should copy.**
 
 1. **U4 out loud.** *"No recorded conversation we could find makes this argument at
-  length."* This is the sentence the whole §5e ladder exists to make sayable, and it is
-  the difference between a narration beat and a fake segment. It costs eleven words.
-2. **It names the literature, which is something the tape cannot do.** A Carry that says
+   length."* This is the sentence the whole §5e ladder exists to make sayable, and it
+   is the difference between a narration beat and a fake segment. It costs eleven
+   words.
+2. **It names the literature, which is something the tape cannot do.** A Carry that
+says
   *The Cooking Gene* and *Black Smoke* gives the listener two things to go and read. **A
   narration beat is not purely a loss.**
 3. **It carries the beat with the literature of the voice who speaks next.** Naming
-  Miller in the Carry costs nothing extra and turns the whole 76 seconds into a Frame for
-  `GC-1`, whose re-attribution then costs three words instead of twelve (§3d). **Where
-  the chain allows it, carry an empty beat on the literature of the next voice.** That is
-  the cheapest and most coherent structure available for an empty beat, and it fell out of
-  the real assembly rather than being designed.
+   Miller in the Carry costs nothing extra and turns the whole 67 seconds into a
+   Frame for `GC-1`, whose re-attribution then costs three words instead of twelve
+   (§3d). **Where the chain allows it, carry an empty beat on the literature of the
+   next voice.** That is the cheapest and most coherent structure available for an
+   empty beat, and it fell out of the real assembly rather than being designed.
 
 **The failing script — 119 words, 705 characters, ~42.0 s.** Fluent, on topic, roughly
 the right length, and it is the defect this whole document exists to catch.
@@ -1448,56 +1497,60 @@ voiced and dropped into the Foray at 42 seconds, nothing about it would sound wr
 
 - **The beat's own reject line for tape rejects this script verbatim.** Beat 20 says
   reject "generic statements that African cooking influenced Southern food, with no
-  technique and no mechanism of transfer." That is a precise description of the failing
-  script. **The tape gate and the script gate are the same gate**, which is what #247
-  asked for and what this example demonstrates rather than asserts.
+  technique and no mechanism of transfer." That is a precise description of the
+  failing script. **The tape gate and the script gate are the same gate**, which is
+  what #247 asked for and what this example demonstrates rather than asserts.
 - **It imports a defect that already got tape excluded.** *"A melting pot, and in a
   sense that is exactly right"* is the harmony move, and the coverage report rejects
-  Stuff You Should Know's *"kind of transcends race and class"* on exactly that ground —
-  "the harmony version beat 23 exists to reject." A fluent narrator will reach for it
-  unprompted, because it is what generic prose about this subject does. **The narrator
-  can reintroduce, for free, the very material the sourcing gate spent a report
-  excluding.**
+  Stuff You Should Know's *"kind of transcends race and class"* on exactly that
+  ground — "the harmony version beat 23 exists to reject." A fluent narrator will
+  reach for it unprompted, because it is what generic prose about this subject does.
+  **The narrator can reintroduce, for free, the very material the sourcing gate spent
+  a report excluding.**
 
 Note finally that the failing script is **cheaper** — 705 characters against 1,101. A
-cost model built on characters will always prefer the padded script. That is a reason the
-review gate cannot live downstream of the cost model.
+cost model built on characters will always prefer the padded script. That is a reason
+the review gate cannot live downstream of the cost model.
 
 ### 7c. A Carry that cannot be sourced and must not be dropped — alcohol beat 16
 
 Short, and labelled clearly: **the alcohol spine has no coverage report yet**, so
-everything here follows the spine's own prediction rather than a measured verdict. It is
-included because it is the cleanest example of Carry-by-design (§2d) and of the Marker
-at a fan boundary, and because it is the beat the spine says the Foray exists for.
+everything here follows the spine's own prediction rather than a measured verdict. It
+is included because it is the cleanest example of Carry-by-design (§2d) and of the
+Marker at a fan boundary, and because it is the beat the spine says the Foray exists
+for.
 
 **What the spine says.** Beat 16 is the classification key. "Evidence that counts:
 almost certainly narration, and that is the right outcome." §5 ranks it first among
 beats likely to need narration: "Nobody says this in one breath because it is the
-conclusion of an argument rather than a topic. It is the most important beat in the Foray
-and almost certainly the least sourceable." Share 1.6 %, about **2.4 minutes**.
+conclusion of an argument rather than a topic. It is the most important beat in the
+Foray and almost certainly the least sourceable." Share 1.6 %, about **2.4 minutes**.
 
 **Four consequences, all of them different from beat 20's.**
 
-- **It may never be dropped.** A Carry-by-default can be deferred to more sourcing or,
-  if it is a fan stop, dropped. This one cannot: it is a chain link and it is the beat the
-  Foray is for. §4c's allocation rule reserves the Carry budget for exactly this.
-- **144 s is a legitimate Carry**, above the 45–110 s target and inside the 150 s soft
-  max, and the spine's share is the authority for it. The soft max still applies: the
-  script must state what the extra minute buys. Here the answer is in the beat's own
-  claim — "the proof is running an unfamiliar one through the key from scratch."
-- **It is the one place "you" is licensed** (§5a), because the beat's claim is that the
-  *listener* can now place a drink they have never heard of, and a key is used by
+- **It may never be dropped.** A Carry-by-default can be deferred to more sourcing
+  or, if it is a fan stop, dropped. This one cannot: it is a chain link and it is the
+  beat the Foray is for. §4c's allocation rule reserves the Carry budget for exactly
+  this.
+- **144 s is a legitimate Carry**, above the 45–110 s target and inside the 150 s
+  soft max, and the spine's share is the authority for it. The soft max still
+  applies: the script must state what the extra minute buys. Here the answer is in
+  the beat's own claim — "the proof is running an unfamiliar one through the key from
+  scratch."
+- **It is the one place "you" is licensed** (§5a), because the beat's claim is that
+  the *listener* can now place a drink they have never heard of, and a key is used by
   somebody.
 - **It passes R2 automatically, and that is not luck.** The beat's claim requires a
-  worked example — an unfamiliar drink run through the four questions to a prediction.
-  **A worked example cannot be relocated to another beat.** So the beat that is hardest
-  to source is among the easiest to protect from filler, because its own claim forces the
-  specificity R2 tests for. The generalisation is worth having: **a Carry whose claim
-  demands a worked example is a safe Carry, and where a beat can be written that way it
-  should be.**
+  worked example — an unfamiliar drink run through the four questions to a
+  prediction. **A worked example cannot be relocated to another beat.** So the beat
+  that is hardest to source is among the easiest to protect from filler, because its
+  own claim forces the specificity R2 tests for. The generalisation is worth having:
+  **a Carry whose claim demands a worked example is a safe Carry, and where a beat
+  can be written that way it should be.**
 
-Its attribution runs through R3's synthesis exception: the key is a conclusion from the
-Foray's own preceding fifteen beats, so it attributes to the voices already heard.
+Its attribution runs through R3's synthesis exception: the key is a conclusion from
+the Foray's own preceding fifteen beats, so it attributes to the voices already
+heard.
 
 **The Marker out of it — 48 words, 268 characters, ~16.9 s.**
 
@@ -1509,52 +1562,54 @@ Foray's own preceding fifteen beats, so it attributes to the voices already hear
 > already sugar."*
 
 The spine's instruction is that "narration entering beat 17 should say plainly that
-everything from here is the key applied, and that the families do not descend from each
-other. Then a missing family costs the listener nothing." The Marker says all three
-things a fan announcement owes: **that the stretch is parallel**, **that a gap is
-survivable**, and **what the ordering principle is** — first branch of the key.
+everything from here is the key applied, and that the families do not descend from
+each other. Then a missing family costs the listener nothing." The Marker says all
+three things a fan announcement owes: **that the stretch is parallel**, **that a gap
+is survivable**, and **what the ordering principle is** — first branch of the key.
 
 **One contrast with the barbecue equivalent, because it changes the copy.** Barbecue's
-Act III Marker must also promise that *the American thread resumes afterwards*, because
-that fan is an interruption inside a larger argument. Alcohol's beat 17 Marker must not
-promise a resumption, because there is nothing to resume — the fan **is** the rest of the
-Foray. A Marker that borrowed barbecue's phrasing would tell the listener to hold a
-thread that never comes back, which is a worse error than saying nothing.
+Act III Marker must also promise that *the American thread resumes afterwards*,
+because that fan is an interruption inside a larger argument. Alcohol's beat 17
+Marker must not promise a resumption, because there is nothing to resume — the fan
+**is** the rest of the Foray. A Marker that borrowed barbecue's phrasing would tell
+the listener to hold a thread that never comes back, which is a worse error than
+saying nothing.
 
-At 16.9 s this Marker is over the 12 s transition ceiling and is therefore authored as a
+At 16.9 s this Marker is over the 12 s transition ceiling and is therefore authored
+as a
 **narration item**, not a transition (§2b) — and since beat 16 is itself a Carry ending
-right there, §2e merges it into the tail of that item rather than making it a second item
-in a row.
+right there, §2e merges it into the tail of that item rather than making it a second
+item in a row.
 
 ### 7d. What the eight scripts say about the planning constants
 
 A small honesty check, since §2a's constants are an inherited estimate and arithmetic
-rather than a measurement of narration, and eight draft scripts is the first evidence this
-project has.
+rather than a measurement of narration, and eight draft scripts is the first evidence
+this project has.
 
 | | |
 |---|---|
 | total | **474 words, 2,762 characters** across eight scripts |
 | measured characters per word | **5.83** (range 5.21–6.68) |
 
-So the **6.0 chars/word planning constant is conservative by about 3 %**, which is the
-right direction for a cost estimate to be wrong in. The high outlier is item A3 at 6.68,
-and the reason is instructive: attribution is long words. Scripts dense in names and show
-titles cost more per word than scripts dense in mechanism, so a Foray with many sources
-costs more per word than one with few.
+So the **6.0 chars/word planning constant is conservative by about 3 %**, which is
+the right direction for a cost estimate to be wrong in. The high outlier is item A3
+at 6.68, and the reason is instructive: attribution is long words. Scripts dense in
+names and show titles cost more per word than scripts dense in mechanism, so a Foray
+with many sources costs more per word than one with few.
 
 **Nothing here measures words per minute**, and nothing can until audio exists — which is
 why §2a's caveat about a narrated read being slower than 170 wpm conversation stands
-unresolved. When audio exists, re-derive every second-figure in this document from its
-word-figure and leave the word-figures alone.
+unresolved. When audio exists, re-derive every second-figure in this document from
+its word-figure and leave the word-figures alone.
 
 ---
 
 ## 8. Established craft, inference, and our invention
 
 Kept as a table because two agents had to retract claims this week for blurring this
-line, and because a script author needs to know which rules have eighty years of radio
-behind them and which have one afternoon of reasoning.
+line, and because a script author needs to know which rules have eighty years of
+radio behind them and which have one afternoon of reasoning.
 
 ### 8a. Established craft — cited, and someone else's
 
@@ -1581,9 +1636,10 @@ Everett and MacAdam.
 **What we looked for and did not get, recorded so nobody cites it from memory.** The
 rule commonly attributed to NPR house style — that a lead-in must not paraphrase the
 soundbite it introduces — is very likely in Jonathan Kern's *Sound Reporting*, and we
-could not obtain the text. **It is therefore not cited anywhere above.** MacAdam's page
-carries the equivalent point in publicly verifiable form and is cited instead. If
-someone has the book, §3c gains a second primary source; until then it does not have one.
+could not obtain the text. **It is therefore not cited anywhere above.** MacAdam's
+page carries the equivalent point in publicly verifiable form and is cited instead.
+If someone has the book, §3c gains a second primary source; until then it does not
+have one.
 
 ### 8b. Inference — reasoned from something established, but not stated by any source
 
@@ -1614,7 +1670,7 @@ someone has the book, §3c gains a second primary source; until then it does not
 | **One seam, one job**, and compression before splitting (§3j) | |
 | **Three ratios** — R-beat 90/10, R-foray 25/35, R-essay 40 — and the finding that the full barbecue spine is 44 % narrator | |
 | **Enforcement by cutting beats, not words**, and **chain-first allocation** of the Carry budget (§4c) | the drop order comes from both spines; the enforcement rule is ours |
-| The **Carry-budget formula** and the 250 / 600 / 1,200-character per-beat constants (§4d) | |
+| The **Carry-budget formula** and the 290 / 680 / 1,360-character per-beat constants (§4d) | |
 | **U1–U4** and the requirement to use the weakest form the evidence supports (§5e) | the standard is the spines' standard for tape; applying it to the narrator is ours |
 | The **banned-hedge and banned-adjective lists** | |
 | **Every Carry names a source out loud**, and the **synthesis-Carry exception** (§5f, R3) | |
@@ -1630,17 +1686,19 @@ someone has the book, §3c gains a second primary source; until then it does not
 **Not decided here, deliberately.**
 
 - **Voice.** Timbre, warmth, authority, breath, whether several voices map to topic
-  domains, and what a 2026 TTS engine can deliver. The parallel research document owns
-  all of it. Note one place the two collide: §5a bans the first person and §1c bans a
-  host persona, which constrains how much personality a voice choice can express. If the
-  voice work concludes that several voices are worth their cost, §3d's attribution rules
-  do not change — a second narrator voice is still a narrator, not a second authority.
+  domains, and what a 2026 TTS engine can deliver. The parallel research document
+  owns all of it. Note one place the two collide: §5a bans the first person and §1c
+  bans a host persona, which constrains how much personality a voice choice can
+  express. If the voice work concludes that several voices are worth their cost,
+  §3d's attribution rules do not change — a second narrator voice is still a
+  narrator, not a second authority.
 - **Script format, storage, generation, caching, idempotence.** The pipeline document
   owns them. The fields these rules imply, offered as input rather than as a schema:
-  `beat_id`, `mode`, a per-sentence `licence` from R1's list of six, `sources[]` with a
-  flag for which are named on air, unfilled `[slot]`s as a generation-blocking condition,
-  a `heard_audio` boolean required wherever §3i applies, a `rejection_reason` that is
-  never deleted, and an optional `pre_gap_sec` for act boundaries.
+  `beat_id`, `mode`, a per-sentence `licence` from R1's list of six, `sources[]` with
+  a flag for which are named on air, unfilled `[slot]`s as a generation-blocking
+  condition, a `heard_audio` boolean required wherever §3i applies, a
+  `rejection_reason` that is never deleted, and an optional `pre_gap_sec` for act
+  boundaries.
 - **Cost in currency, and how many Forays.** §4d gives the character ranges and the
   formula; the money is the cost work's.
 
@@ -1648,15 +1706,15 @@ someone has the book, §3c gains a second primary source; until then it does not
 
 1. **The 8 s / 12 s transition ceiling** (§2b). This is a divergence from
    `04_VOICE_AUDIO_SPEC.md` of the same kind as the 0.5 s / 2.0 s one that
-   `segment-length-rules.md` §10 escalated "since it touches the player." The narration
-   item / transition item distinction touches progress accounting too.
+   `segment-length-rules.md` §10 escalated "since it touches the player." The
+   narration item / transition item distinction touches progress accounting too.
 2. **R-foray's ceiling at 35 %, and the consequence that the complete barbecue spine is
    not shippable as one Foray.** §4b is arithmetic, but 25 / 35 / 40 are judgement, and
    they decide how many Forays exist and what they cost.
 3. **The SYSK register question that `grilling-history-coverage.md` §2b already put to
    the founder, now with a narration price on it.** Ruling that register out returns
    beats 7, 19 and 30 to empty, which converts three thin beats into three carried ones:
-   **about +1,800 characters of narration**, minus the tape those cuts would have
+   **about +2,040 characters of narration**, minus the tape those cuts would have
    supplied, which also shrinks the Carry budget the ratio allows. So the ruling costs
    narration twice. That is a reason to make it explicitly, not a reason to decide it
    either way.
@@ -1664,14 +1722,14 @@ someone has the book, §3c gains a second primary source; until then it does not
 **Asks of the coverage report, recorded not made.** This document edits no spine and no
 coverage report.
 
-- **Add `writable` / `unwritable` as a second axis on empty beats** (§6d). Stage 2 can
-  predict it: an empty beat whose literature the report can name is writable; one where
-  the report cannot say what would be said is not.
+- **Add `writable` / `unwritable` as a second axis on empty beats** (§6d). Stage 2
+  can predict it: an empty beat whose literature the report can name is writable; one
+  where the report cannot say what would be said is not.
 - **A small correction to record.** Beat 14's entry says the missing antecedent goes
-  "ahead of `#1205`". In the assembly it goes ahead of **`#700`**, because `segment-length-rules.md` §6c makes
-  chronological order mandatory and `#700` is the earlier window. The report's
-  "Chosen"/"Second" labels are a quality ranking, not a play order, and it is worth a
-  sentence saying so where a script author will see it.
+  "ahead of `#1205`". In the assembly it goes ahead of **`#700`**, because
+  `segment-length-rules.md` §6c makes chronological order mandatory and `#700` is the
+  earlier window. The report's "Chosen"/"Second" labels are a quality ranking, not a
+  play order, and it is worth a sentence saying so where a script author will see it.
 - **The `#266` / `#555` merge question** (§7a), now with a narration cost attached.
 
 **No spine amendment is proposed.** Both spines were read looking for one, and neither
@@ -1693,14 +1751,17 @@ anything here.
 - Karen Everett, "Ten Tips for Writing Documentary Narration," New Doc Editing —
   https://newdocediting.com/ten-tips-for-writing-documentary-narration/
 - RTDNA, "Video and audio editing" — https://www.rtdna.org/video-and-audio-editing
-- B-Side Radio, "Writing a Radio Script" — http://bsideradio.org/writing-a-radio-script/
+- B-Side Radio, "Writing a Radio Script" —
+  http://bsideradio.org/writing-a-radio-script/
 - Narrators Roadmap, "Standards for silence in the book" —
   https://www.narratorsroadmap.com/standards-for-silence-in-the-book/
 - AES TD1004.1.15-10, via `docs/research/corpus/digests.md` #12
-- Ira Glass on storytelling — **secondary**, third-party transcripts; no rule rests on it
+- Ira Glass on storytelling — **secondary**, third-party transcripts; no rule rests
+  on it
 
 **Internal, and load-bearing throughout:** `docs/curation/segment-length-rules.md`
-(§§2a, 2b, 2d, 2e, 2f, 2g, 3a, 5a, 5b, 6a, 6b, 6c, 6d), `docs/curation/grilling-history-spine.md`,
+(§§2a, 2b, 2d, 2e, 2f, 2g, 3a, 5a, 5b, 6a, 6b, 6c, 6d),
+`docs/curation/grilling-history-spine.md`,
 `docs/curation/grilling-history-coverage.md`, `docs/curation/alcohol-forms-spine.md`,
 `docs/brief/04_VOICE_AUDIO_SPEC.md`, `player/seam-gap.js`, `docs/DECISIONS.md`
 (the narrator and English-only rulings, 2026-08-16), #226, #247.
