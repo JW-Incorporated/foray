@@ -2335,3 +2335,145 @@ recommendations rather than edits: see `grilling-beat-cut-plan.md` §6.
   urban and policy history and it is the most clearly identified missing citation in the
   report. The Patch also owes one fact the tape omits and §5 flags: **that Aleck's was
   Black-owned**, which is inferable from the King framing and is not on the tape.
+
+### 10f. Act V — eight beats, and the only unwritable empty beat in the spine
+
+| beat | verdict | structure | mode | provenance | writable | budget |
+|---|---|---|---|---|---|---|
+| **31** — refrigeration ends the necessity | empty | chain link, the act's hinge | Carry | by-default (open, closest to a win) | writable† | 1,360 |
+| **33** — gendered fire, inconsistent credit | empty | **cross-cutting** | Carry | **by-design** (comparative synthesis) | **unwritable** | — |
+| **34** — gas split the word | empty | chain link | Carry | by-default (open) | writable† (bounded) | 1,360 |
+| **35** — identity moved to the jar | empty | chain link | Carry | by-default (open) | writable† | 1,360 |
+| **36** — competition standardised the flavour | empty | chain link | Carry | by-default (open, identified) | writable† | 1,360 |
+| **37** — poverty food to luxury | thin | chain link | Patch | — | writable† | 780 |
+| **39** — automation as a real challenge | empty | chain link | Carry | by-default (open) | writable† (bounded) | 1,360 |
+| **40** — coda: the invariants | empty | coda | Carry at the **45 s floor** | **by-design** | **writable**, no new source | **765** |
+
+**Beat 33 is the one empty beat in the spine that cannot be written, and the reason is
+structural rather than a shortage.**
+
+Its claim has two halves and both fail R3 in different ways. The comparative half — the
+prestigious fire role coded male across unconnected traditions — is a synthesis, so R3's
+exception is the only route, and the exception requires the premises be the Foray's own
+prior tape. **Two of its four named legs are themselves empty beats**: the braai master is
+beat 13 and the competition and restaurant pitmaster are beats 36 and 37. The asador
+survives on beat 14's tape and the suburban father on beat 32's, so at best the comparison
+has two legs, and a claim that something "generalises across a striking range of unconnected
+traditions" cannot be attributed to two of them without the narrator supplying the range
+itself. The specific half is worse: **women in Black barbecue businesses running pits,
+kitchens and books largely without being called pitmasters** is the beat's payload and a
+specific empirical historical claim, and §6 says in terms that neither comparative tape on
+the division of credit nor single-tradition tape examining credit rather than reporting
+custom exists in this pool. Nothing in the corpus names a source for it. Guessing at one is
+exactly what `narration-craft.md` §5f calls the single worst thing this pipeline could do,
+and the risk is acute here because plausible-sounding attribution is easy to produce for a
+claim this widely discussed.
+
+**So R2 and R3 fail together, which is §6d's definition.** The escalation is short: the
+spine marks beat 33 as "a step out of the sequence and back", the same way it marks Act
+III's fan, which puts it in the cheapest tier of §6d's ladder — a stop whose absence is
+invisible once the structure is announced, rather than a link whose absence is a hole. **The
+recommendation is therefore route 1: drop it from this assembly, and do not write it.** A
+narrower amended beat confined to the two legs the Foray actually plays — the asador as a
+social office against the postwar grill's advertising — would be writable and would be a
+different and smaller beat, so it belongs in §8 as a recommendation rather than in a script.
+That is `grilling-beat-cut-plan.md` §6.
+
+**Beat 40 is the cheapest narration in the Foray, and it is the one beat where being empty
+is an advantage.** It is a synthesis of the Foray's own preceding beats, so R3's exception
+applies squarely and the attribution is *"everything in that came from the people you have
+just heard"* — real attribution, checkable against the assembly, and available to nothing
+else in Act V. §6 records it as empty by design and the spine says keep it short: "this is a
+landing, not a summary." So it is budgeted at the 45 s Carry floor, **765 characters rather
+than §4d's 1,360**, and that is the one place in this work list where the per-beat constant
+is generous rather than optimistic. Note the dependency, because it is real: the coda's four
+invariants are long time, smoke, more meat than a household can eat, and a crowd — and the
+synthesis exception only covers what was actually played, so a heavily cut Foray shortens
+what the coda may claim to have shown.
+
+**What R3 would have to name, for the rest.**
+
+- **Beat 31.** The chronology is public record — the ice trade, mechanical refrigeration,
+  refrigerated rail, the household fridge across roughly a century from the mid-1800s — and
+  the beat's actual claim is narrower and is the dagger: **that smoked and preserved foods
+  survived as tastes after their function was gone.** §6 calls this "the closest thing to a
+  free win in the report" and names Gastropod's "The Birth of Cool" as PADDABLE on two
+  measured probes and blocked only on ASR, so this is the empty beat most likely to stop
+  needing a Carry at all. Until it does, the Carry is the act's hinge and the Foray's
+  central irony is explained nowhere else.
+- **Beat 34.** Bounded, and the bound is the interesting part. The gas takeover's dates and
+  share figures are public market record and are named nowhere here. But **the beat's causal
+  claim — that the definitional dispute is downstream of an appliance — is the spine's own
+  inference**, and a narrator asserting our own outline's causal reasoning on its own credit
+  is precisely the failure R3 exists to catch. What rescues it is that beat 4's tape states
+  the *consequence* from direct observation: Moss, on `bbqc-moss-school`, that in Britain
+  "if you're seeing Barbecue, they're talking grilling." That is prior in-Foray tape for the
+  vocabulary split, so the Carry may state the split on Moss and the causation at U3 — the
+  weakest form the evidence supports, which is §5e's rule — rather than asserting the
+  mechanism flat. Written that way it passes; written as the spine states it, it does not.
+- **Beat 35.** The bottled-sauce supermarket category, a named brand sold into a large food
+  company, and the chain-restaurant era are all public commercial record, and the beat's
+  argument that packaging selects for the packageable is the kind of claim a business
+  journalist states out loud. No source is named here. R2 is safe because the claim is
+  mechanical rather than atmospheric: smoke and time cannot be packaged and sauce can.
+- **Beat 36.** The founding of the sanctioning bodies, the mechanics of the box and the
+  scoring criteria, and the one-bite artefact named as an artefact. §6 identifies the right
+  speaker on the right subject — `The BBQ Central Show`'s "Robert Moss Talks Southern BBQ
+  Competition Beginnings" — and records that the feed publishes transcripts on 12 of 1,858
+  episodes and this is not one of them. So the dagger has a name attached and no text behind
+  it, which makes this the second-most closeable Act V hole after beat 31.
+- **Beat 37.** The Patch owes the inversion itself: barbecue criticism emerging as a beat,
+  national awards, the queue as the story, and brisket's price history read against what the
+  cut cost when the tradition adopted it. The price history is public record. Two
+  dependencies worth carrying into stage 4: the baseline the inversion is measured against
+  lives in beat 26, which is empty, so if beat 26 is cut this Patch establishes its own
+  baseline and grows; and `#2779` is also beat 27's contradicted passage, so a script author
+  reading it will meet the mustard dispute and should leave it alone here.
+- **Beat 39.** Bounded, and it is the one beat that asks for something a narrator may not
+  give. The spine wants "someone taking a position on automation with reasoning", and the
+  narrator has no position and no authority to hold one — `narration-craft.md` §1c and §5a
+  between them forbid it. What the narrator may do is **pose the question and name the
+  contest at U3**, which is exactly what the beat's claim actually is: whether a
+  machine-tended fire still counts is a substantive question, asked while the opposite
+  instinct booms. The premise it rests on — that the vigil is where the meaning was — is
+  established by the Foray's own beat 21 tape on labour-intensity, so the synthesis
+  exception carries half of it. The dagger is one named practitioner or region for the
+  live-fire movement, without which the beat's second clause is an assertion about the
+  present made by nobody.
+
+### 10g. The work list totalled, and the cross-check that says the model holds
+
+**All twenty-nine beats, written as classified above:**
+
+| | beats | each | characters |
+|---|---|---|---|
+| Carries at the §4d constant | 17 — 3, 8, 10, 11, 12, 13, 16, 17, 20, 25, 26, 28, 31, 34, 35, 36, 39 | 1,360 | **23,120** |
+| Carries on thin beats whose tape went elsewhere | 2 — 2, 27 | 1,360 | **2,720** |
+| Beat 29, at the soft max | 1 | ~2,550 | **2,550** |
+| Beat 40, at the Carry floor | 1 | 765 | **765** |
+| Patches | 6 — 6, 7, 9, 19, 30, 37 | 780 | **4,680** |
+| Unwritable, not written | 2 — 23, 33 | 0 | **0** |
+| **Total as costed, 27 beats** | | | **≈ 33,835** |
+
+**Two notes on that table, because both affect the figure.** Beat 27 is costed in the
+second row so that the price of writing it is visible, and it is unwritable, so the honest
+total excludes it: **the 26 writable beats come to ≈ 32,475 characters.** And beat 6 is
+costed as a Patch, which assumes `#700` is assigned to it rather than to beat 14; assigned
+the other way it is a Carry and the total rises by 580.
+
+Adding the eleven strong beats at §4d's 240 gives **≈ 35,115 characters for a 40-beat
+Foray minus its three unwritable beats.**
+
+**The cross-check.** `narration-craft.md` §4d puts the all-twenty-carried barbecue Foray at
+**~36,860 characters**. This work list, built beat by beat from this report's contents
+rather than from a per-beat average, comes to **35,115** for a slightly smaller set — three
+beats not written, one beat cheaper than the constant, one beat dearer, two thin beats
+repriced upward. **The two figures agree to within 4.7 %, and the discrepancies are all
+identified**, which is what a reconciled cost model looks like. The direction is worth
+noting: the repricings pushed *up* and the unwritable verdicts pushed *down*, and they
+happen to roughly cancel. Do not read that cancellation as a general rule.
+
+**One figure that is not in the table, because it is the point.** Sixteen of these
+twenty-nine beats cannot be voiced until somebody obtains a citation for them. The
+character totals above are what the writing costs. **The daggers are what the writing
+waits on**, and no character budget measures them.
