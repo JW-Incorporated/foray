@@ -540,3 +540,123 @@ each shortlisted voice; the winner is the one needing the fewest dictionary
 entries, not the one with the nicest timbre. The fixture belongs in the dry-run
 adapter's test corpus (`tools/narrate/**`); the term list is in the appendix below
 so that whoever builds it does not have to re-derive it.
+
+---
+
+## 6. Provider — and the benchmark the corpus was supposed to have
+
+§ 1 established that the corpus's TTS quality benchmark captured nothing. A
+substitute exists and is fetchable, so the quality question can be answered with
+somebody's numbers rather than somebody's adjectives.
+
+### 6.1 The leaderboard, and what it does not measure
+
+**Documented**, from Artificial Analysis' Speech Arena leaderboard
+(`https://artificialanalysis.ai/text-to-speech/leaderboard/provider-voice`), whose
+stated method is an "Elo rating system derived from user votes in blind comparisons
+in the Speech Arena", where listeners "listen to pairs of speech samples generated
+from the same text and choose which sounds more natural". 95 rows.
+
+| rank | model | creator | Elo | 95 % CI | samples | released | listed API price |
+|---|---|---|---|---|---|---|---|
+| 1 | Sonic 3.6 | Cartesia | 1,283 | ±17 | 1,579 | — | — |
+| 2 | Qwen-Audio-3.0-TTS-Plus | Alibaba | 1,240 | ±14 | 2,058 | — | — |
+| 3 | Simba 3.2 | Speechify | 1,240 | ±14 | 2,048 | — | — |
+| 4 | Luna TTS | VUI Labs | 1,219 | ±14 | 2,159 | — | — |
+| 5 | Gemini 3.1 Flash TTS | Google | 1,211 | ±12 | 3,425 | — | — |
+| **11** | **Eleven v3** | **ElevenLabs** | **1,179** | **±11** | **4,365** | **Feb 2026** | **$100 / 1M chars** |
+| 31 | Turbo v2.5 | ElevenLabs | 1,104 | ±10 | 7,320 | Jul 2024 | $50 / 1M |
+| 32 | Multilingual v2 | ElevenLabs | 1,104 | ±10 | 7,768 | Aug 2023 | $100 / 1M |
+| 38 | Flash v2.5 | ElevenLabs | 1,084 | ±11 | 5,967 | Dec 2024 | $50 / 1M |
+| 95 | Polly Standard | Amazon | 817 | — | — | — | — |
+
+**So the dossier's "best naturalness and prosody" is not merely unsupported, it is
+refuted.** ElevenLabs' best model ranks eleventh, 104 Elo behind the leader, and
+its long-form-recommended `multilingual_v2` ranks thirty-second. Amazon Polly
+Standard is dead last of 95, which retires the dossier's "cheapest scalable option
+for bridges" idea on quality grounds rather than price.
+
+**Documented, and it is the caveat that keeps this table in proportion.** Both
+public arenas measure short-form naturalness preference on arbitrary prompts. TTS
+Arena's own methodology documentation states "Prompts are English-only for now,
+capped at 1,000 characters", ranks with "a Bradley–Terry model", sorts by the lower
+confidence bound so models "can't shoot to the top off a handful of lucky wins",
+requires "100 votes to appear on the board", and counts only "clean votes on
+first-use Random prompts".
+
+**Judgement.** Those are careful benchmarks of the wrong thing. Nobody is
+measuring pronunciation accuracy on rare loanwords, consistency across a
+three-hour work, or whether stress landed on the right word — the three failures
+§ 5 ranks first, second and third. A 104-Elo gap on "which of these two clips
+sounds more natural" is real evidence that ElevenLabs is not the front-runner it
+was assumed to be, and weak evidence about how it will read the alcohol spine.
+
+### 6.2 The alternative the evidence actually points at
+
+Fairness requires naming it, because the arena's top-ranked provider is not a toy.
+
+**Documented**, Cartesia: custom pronunciations accept "An IPA pronunciation or a
+'sounds-like' guidance" — so both `<<ˈ|b|ɑ|ˈ|j|u>>` and respellings like
+`chop-uh-TOO-liss` — authored via API "or through our playground", attached to any
+TTS request by `pronunciation_dict_id`, with matching "case-sensitive, with one
+exception: a lowercase entry also matches its sentence-start capitalized form". The
+documented `speed` range is [0.6, 1.5] and `volume` [0.5, 2.0]; `locale` supports
+regional variants such as `en-GB`. No per-request character limit is documented.
+Pricing is credit-based: Pro $5/month for 100K credits, documented as
+approximately "~133" minutes.
+
+**Judgement, three ways it is genuinely better for our problem.** The respelling
+option means a curator can fix `binchōtan` without learning IPA, which matters when
+81 terms need authoring and the people who know how they are pronounced are not
+phoneticians. The wider speed range gives more room for § 3.1's deliberately slow
+read. And no documented model restriction on the dictionary means no silent
+fallback of the kind ElevenLabs documents for `multilingual_v2`.
+
+**Judgement, and why it does not win.** Cartesia documents no reliability figure
+for its dictionary, and an absent caveat is not a better caveat — ElevenLabs at
+least tells you 80–90 %. Its long-form posture is undocumented where ElevenLabs
+explicitly markets v3 for "long-form narration". Voice longevity is not addressed
+either way, which after § 3.2 should now read as an unanswered question rather
+than a non-issue. And the founder is supplying an ElevenLabs key, which is not an
+argument about audio but is a real constraint on what gets built this month.
+
+### 6.3 Switching cost, stated honestly
+
+The useful question is not "what would we rewrite" but "what could we not get
+back".
+
+**Judgement.** Almost everything is portable and one thing is not.
+
+| asset | portable? | why |
+|---|---|---|
+| beat-bound scripts | yes | ours, plain text, no vendor in them |
+| the pronunciation lexicon | yes, **if authored in IPA** | IPA is a standard both vendors accept; ElevenLabs' `.PLS` is a W3C format, and CMU Arpabet is the ElevenLabs-flavoured choice — so IPA is the portable one and Arpabet is the lock-in one, even though ElevenLabs recommends Arpabet for v2 models |
+| loudness normalisation, hosting, caching, player integration | yes | provider-independent, and already the pipeline doc's |
+| tuned `stability` / `style` / `speed` values | no | not comparable between vendors; re-tune from scratch |
+| **the narrator's voice itself** | **no** | **no provider can reproduce another's voice** |
+
+That last row is the entire switching cost and it is not denominated in dollars.
+Changing provider changes who the narrator *is*. Every Foray already narrated then
+either gets re-voiced or the catalogue acquires a second narrator — which § 4 just
+spent a section arguing against. **So the cost of switching provider is linear in
+the size of the narrated back catalogue, and today that catalogue is empty.** The
+switching cost is at its lifetime minimum right now and rises monotonically from
+here. Two consequences:
+
+- **The acceptance test in § 5.7 must run before the first Foray is narrated**, not
+  after. It is the cheapest it will ever be to change our mind, and § 6.1 says
+  there is a live reason to consider it.
+- **Nondeterminism means rendered audio is a cache, not a master.** ElevenLabs
+  documents "The models are nondeterministic. For consistency, use the optional
+  seed parameter, though subtle differences may still occur." So a repaired beat
+  cannot be patched at sentence granularity and spliced into existing audio — the
+  whole item is re-rendered. The durable assets are the script and the lexicon; the
+  audio is derived. Design storage that way and a provider change is a re-render
+  rather than a rebuild.
+
+**Documented, on the English-only instruction.** This choice does not paint us
+into a corner: `eleven_v3` supports 70+ languages and native IPA "across 70+
+languages". The alternative phoneme-capable model, `eleven_flash_v2`, is documented
+English-only — so of the two models whose pronunciation control actually works,
+picking v3 is also the one that leaves a non-English Foray possible. Noted in
+passing, not scoped.
