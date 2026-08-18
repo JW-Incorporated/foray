@@ -61,7 +61,7 @@ const FLOORS = {
                                     the cap and its eviction DIRECTION, the
                                     durable-on-write property, the parse table,
                                     and the rule that no telemetry TEXT is ever
-                                    stored. 28 mutations killed, each named in
+                                    stored. 29 mutations killed, each named in
                                     the test that kills it.
        `diagnostic-record.test.js`  the wiring, through the real client, the real
                                     manager and the real backend over a real seam.
@@ -78,7 +78,7 @@ const FLOORS = {
      Zero slack, like media-session and data-deletion below and for the same
      reason: what these guard is a set of decisions each one edit from its
      opposite. Raise them when the suites grow. */
-  "player/diagnostic-log.test.js": 30,
+  "player/diagnostic-log.test.js": 31,
   "player/diagnostic-record.test.js": 14,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in

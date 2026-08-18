@@ -656,7 +656,7 @@ test("the surface's text is reachable through the bridge app.js actually uses", 
   assert.match(text, /Local only\. Nothing here is sent anywhere\./);
   assert.match(text, /entries \d+ of 200 \(oldest dropped first\)/);
   assert.match(text, /seams 1: 1 measured/);
-  assert.ok(win, "the same window the module was booted against");
+  assert.strictEqual(globalThis.window, win, "the bridge is on the page's own window object");
 
   globalThis.window.forayDiagnosticClear();
   assert.match(globalThis.window.forayDiagnosticReport(), /Nothing recorded yet/);

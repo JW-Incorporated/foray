@@ -673,10 +673,21 @@ function lineFor(e) {
       const gap = e.observedGapMs == null
         ? (e.endOfQueue ? "end of queue" : "NEVER STARTED")
         : `gap ${ms(e.observedGapMs)}`;
+      /* THE TRAIL, and only on a seam that never started, where it is the whole
+         answer. `lastStage` alone is not enough: a stop or a reconcile can land
+         inside an open seam and become the last thing that happened, so a stalled
+         load reads `last=reconcile.externalStop` — which is neither "the beat's
+         timer never fired" nor "the load never settled". The tail of the stage trail
+         says which, on the one line a founder reads. A completed seam does not need
+         it: `gap` and `last=playing` are the answer, and the full trail is in the
+         JSON for anyone who wants it. */
+      const trail = e.observedGapMs == null && e.endOfQueue !== true
+        ? `  trail=${(e.stages ?? []).slice(-5).map((st) => st.stage).join(" > ") || "—"}`
+        : "";
       return `${head} ${e.fromId ?? "?"} -> ${e.toId ?? "?"}  ${gap}` +
         `  asked ${ms(e.askedGapMs)}  deadline ${ms(e.deadlineMs)} (${e.deadlineFor ?? "?"})` +
         `  ${kind}  last=${e.lastStage}  hidden=${e.hiddenAtBoundary ? "y" : "n"}` +
-        `->${e.hiddenAtStart == null ? "?" : e.hiddenAtStart ? "y" : "n"}`;
+        `->${e.hiddenAtStart == null ? "?" : e.hiddenAtStart ? "y" : "n"}${trail}`;
     }
     case "outPoint":
       return `${head} overshoot ${e.overshootSec == null ? "—" : `${e.overshootSec.toFixed(3)}s`}` +
@@ -723,8 +734,12 @@ export function formatDiagnosticReport(record) {
   const head = [
     `Foray playback diagnostics — v${r.v ?? "?"}`,
     `Local only. Nothing here is sent anywhere.`,
+    /* `recorded`, NOT "saves". `seq` counts entries ever recorded, and `save()`
+       also runs on stages that add no entry — labelling it "saves" would invite a
+       reader to divide it by the elapsed wall clock and call the answer a write
+       cadence, which it is not. */
     `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)` +
-      `  dropped ${r.dropped ?? 0}  saves ${r.seq ?? 0}  writeErrors ${r.saveErrors ?? 0}`,
+      `  dropped ${r.dropped ?? 0}  recorded ${r.seq ?? 0}  writeErrors ${r.saveErrors ?? 0}`,
     `seams ${seams.length}: ${measured.length} measured, ${open.length} never started` +
       `  median ${ms(mid)}  worst ${ms(worst)}`,
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,

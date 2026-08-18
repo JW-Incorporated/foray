@@ -435,7 +435,39 @@ test("a seam that never starts stays OPEN, with the stage it reached, and is on 
     ["outPoint.reached", "seam.gap.armed", "load.deadline", "stalled"],
     "the full trail, in order"
   );
-  assert.match(formatDiagnosticReport(parse(store)), /NEVER STARTED/);
+  const text = formatDiagnosticReport(parse(store));
+  assert.match(text, /NEVER STARTED/);
+  /* THE TRAIL ON THE ONE LINE A FOUNDER READS, and it is not decoration.
+     `lastStage` alone is defeated by anything landing inside an open seam: a
+     reconcile after a stalled load makes the line read
+     `last=reconcile.externalStop`, which is neither of the two diagnoses this row
+     exists to separate.
+     MUTATION: drop the `trail=` clause from `lineFor`. The stage trail is then only
+     in the JSON, the phone-readable line says nothing about how far the load got,
+     and this fails. */
+  assert.match(text, /trail=.*load\.deadline > stalled/);
+});
+
+test("a stop landing inside an open seam does not hide how far the load got", () => {
+  /* THE EXACT SHAPE OF THE FOUNDER'S CAR: the load stalls, the page is hidden, the
+     route dies, and on becoming visible the reconcile fires — INSIDE the seam that
+     never completed. Before the trail, that seam's one-line summary named the
+     reconcile and nothing about the load.
+     MUTATION: same as above. This fails. */
+  const { diag, log, clock: c } = mk();
+  diag.note(REAL.outPoint);
+  diag.note(REAL.armed);
+  diag.note(REAL.deadlineFresh);
+  c.tick(6000);
+  diag.mediaEvent("waiting");
+  c.tick(8000);
+  diag.mediaEvent("stalled");
+  c.tick(21_000);
+  diag.note(REAL.externalStop);
+  const seam = log.entries.find((e) => e.type === "seam");
+  assert.equal(seam.lastStage, "reconcile.externalStop", "the reconcile IS the last thing that happened");
+  const line = formatDiagnosticReport(log.read()).split("\n").find((l) => / seam /.test(l));
+  assert.match(line, /waiting > stalled/, "and the line still says the load never settled");
 });
 
 test("the end of the queue is not a stall", () => {
