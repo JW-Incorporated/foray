@@ -162,3 +162,48 @@ spine's difficulty is proper nouns at one per 25.5 words, the alcohol spine's is
 technical vocabulary and Latin — which is the first real argument anyone has
 offered for topic-specific voices. § 4 takes that argument seriously and then
 rejects it.
+
+---
+
+## 3. Voice characteristics, one at a time
+
+### 3.1 Pace — the one characteristic the corpus already priced
+
+**Measured, from documented vendor figures.** Both pricing pages in the corpus
+publish a character-to-duration conversion, which makes them accidental evidence
+about default speaking rate.
+
+ElevenLabs (source 40) lists included minutes against included credits at every
+tier: ~10 min / 10k, ~30 / 30k, ~121 / 121k, ~600 / 600k, ~1,800 / 1.8M, ~6,000 /
+6M. That is exactly **1,000 credits per minute at every tier**, and at the
+multilingual rate of one credit per character, 1,000 characters per minute.
+Amazon Polly (source 38) works the other way, converting 1,000,000 characters to
+"~23 hours, 8 min" — 1,388 minutes, or **720 characters per minute**.
+
+At the 5.97 characters per word measured on our own claim text in § 2:
+
+| source | characters/min | implied words/min |
+|---|---|---|
+| ElevenLabs included-minutes table | 1,000 | 168 |
+| Amazon Polly pricing example | 720 | 121 |
+
+**Judgement.** Neither number is a measurement of a voice; both are billing-page
+conveniences, and they disagree by 39 %. What they are good for is bounding the
+question. Two useful things fall out.
+
+The first is a planning constant. Because ElevenLabs bills per character and not
+per minute, the conversion only matters when turning a runtime target into a
+character budget — and for that purpose their own 1,000 characters per minute is
+both the vendor's figure and the conservative one, so anyone costing narration
+should use it and will not be surprised. That belongs to
+`docs/narrator-pipeline.md`; it is stated here only because this is where the
+number was derived.
+
+The second is a warning. A default in the neighbourhood of 168 words per minute
+is at or past the fast end of long-form narration practice, and our copy is the
+worst possible copy to read fast: § 2 measures a proper noun every 37 words and a
+term the listener has never heard every second beat. Information density and
+speaking rate trade against each other, so **speaking rate has to be an explicit
+setting, not an accepted default** — and it has to be a setting we can prove is
+being applied, because it is the one voice parameter whose absence is invisible in
+a script review and obvious in the ear.
