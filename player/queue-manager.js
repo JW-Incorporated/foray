@@ -1115,6 +1115,20 @@ export class PlayerQueueManager {
     if (bIdx >= 0) this.currentIndex = bIdx;
     try {
       await this.backend.load(bridge, { startOffset: 0 });
+      /* THE BRIDGE IS WHAT THE ELEMENT IS HOLDING, so it has to say so (#263).
+         `_loadItem` sets this on its own success path and this method is the
+         other way audio gets loaded — the omission was invisible while
+         `_loadedId` only fed `resumingInPlace`, because a bridge always starts
+         at 0 and never resumes in place.
+
+         `playheadItemId` made it visible: a surface asking "which item is the
+         playhead about" got the PREVIOUS segment for the bridge's whole length,
+         so `client.js`'s `forayPlayhead` read null and the Foray clock froze —
+         up to 180 s of a transport display that does not move, which is the
+         exact defect `foray-resolve.js` records having already fixed one level
+         down. Set after the load resolves, like `_loadItem`, so it is never
+         true of audio the element does not yet have. */
+      this._loadedId = bridge.id;
       this.backend.play();
     } catch (err) {
       this._emit(`transitionTTS.loadFailed: ${err?.message ?? err}`);

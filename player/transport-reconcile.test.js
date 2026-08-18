@@ -520,6 +520,63 @@ test("playheadItemId names the item the element is holding, not the one we inten
   m.dispose();
 });
 
+test("A NARRATION BRIDGE IS ALSO SOMETHING THE ELEMENT IS HOLDING", async () => {
+  /* Caught in review, not by the field: `playheadItemId` gave the PREVIOUS
+     segment for a bridge's whole length, because `_playTransitionBridge` loaded
+     and played the bridge without ever setting `_loadedId`. Harmless while that
+     field only fed `resumingInPlace` — a bridge always starts at 0 and never
+     resumes in place — and a regression the moment a surface started asking the
+     getter which item the playhead is about: `client.js`'s `forayPlayhead`
+     returned null for up to 180 s, freezing the Foray clock and writing no
+     progress row. `foray-resolve.js` records fixing that same freeze one level
+     down, so this change would have reintroduced its symptom.
+
+     Kill this by deleting `this._loadedId = bridge.id;` from
+     `_playTransitionBridge`. */
+  const foray = {
+    id: "f263b", kind: "deep-dive", title: "Bridged", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: [
+      { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
+      { type: "narration", id: "nar-1", asset: "https://cdn.test/nar-1.mp3", duration_sec: 40 },
+      { type: "segment", slot: "one", label: "L2", role: "explanation", segment_id: "sb" },
+    ],
+  };
+  const segments = indexSegments({
+    segments: [
+      { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+      { id: "sb", item_id: "ep-b", start_sec: 500, end_sec: 600, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+    ],
+  });
+  const sources = indexSources({
+    sources: [
+      { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+      { id: "ep-b", show: "Show B", title: "Ep B", audio_url: "https://cdn.test/b.mp3", duration_sec: 3600, dai_suspected: false },
+    ],
+  });
+  const resolved = resolveForay(foray, { segments, sources });
+  const bridge = resolved.playable[1];
+  assert.equal(bridge.kind, "tts", "the fixture must actually produce a bridge");
+
+  const { m, backend } = playerWith(resolved.playable);
+  await m.play(0);
+  assert.equal(m.playheadItemId, resolved.playable[0].id);
+
+  // The first segment reaches its out-point, so the bridge becomes the audio.
+  backend.onItemEnded("outPoint");
+  await settle();
+  assert.equal(m.state.type, "transitioning", "the bridge phase is what is under test");
+  assert.ok(
+    backend.calls.includes(`load:${bridge.id}@0`),
+    `the bridge was loaded, calls=${JSON.stringify(backend.calls)}`
+  );
+  assert.equal(
+    m.playheadItemId, bridge.id,
+    "the element is holding the bridge, so the playhead is about the bridge"
+  );
+  m.dispose();
+});
+
 /* ==================================================================== */
 /* part 3 — end to end, through the real player/client.js                */
 /* ==================================================================== */
