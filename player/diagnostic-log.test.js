@@ -177,6 +177,35 @@ test("a previous session's entries are kept, not cleared on load", () => {
   assert.equal(reopened.entries[0].fromId, "sa");
 });
 
+test("storage is read on the FIRST WRITE, not at construction, so hydration lands first", () => {
+  /* THE ONE ORDERING THAT CAN LOSE A RECORD. `client.js` builds this at module
+     evaluation, before `DurableStore.hydrate()` has pulled the IndexedDB tier up
+     into memory — and the case where the two tiers disagree is the case that
+     matters: Safari clears script-writable storage after about seven days, so
+     localStorage is empty and the durable tier holds the whole record. A log that
+     read `[]` at construction would overwrite that durable copy with a fresh short
+     ring on its very next write.
+
+     The `store.map.set` below IS hydration: the durable tier's copy arriving in the
+     store after this object exists.
+
+     MUTATION: call `this._load()` from the constructor. The earlier drive is gone,
+     the surviving entry count is 1 and the sequence restarts — all three fail. An
+     earlier draft of `client.js` had exactly this bug by calling `diag.boot()` at
+     module scope; `storageReady.then(() => diag.boot())` is the other half of the
+     fix and `player/diagnostic-record.test.js` covers that end. */
+  const store = fakeStore();
+  const log = new DiagnosticLog({ storage: store, now: clock().now });
+  store.map.set(DIAG_KEY, JSON.stringify({
+    v: 1, cap: 200, seq: 9, dropped: 2,
+    entries: [{ seq: 8, wall: 1, type: "seam" }, { seq: 9, wall: 2, type: "outPoint" }],
+  }));
+  log.record("boot", {});
+  assert.strictEqual(log.entries.length, 3, "the earlier drive survived hydration");
+  assert.strictEqual(log.entries[2].seq, 10, "and the sequence continued from it");
+  assert.strictEqual(log.dropped, 2, "including what it had already lost");
+});
+
 test("a corrupt record starts clean and SAYS it could not be read", () => {
   /* An empty log must never be ambiguous between "nothing happened" and "the blob
      was unreadable".

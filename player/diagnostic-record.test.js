@@ -31,6 +31,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import { __resetInstanceForTests } from "./queue-manager.js";
 import { indexSegments, indexSources, resolveForay } from "./foray-resolve.js";
@@ -302,6 +303,35 @@ test("the record is written by simply playing — no console, no devtools", asyn
   assert.ok(rows("boot").length === 1, "the page's own start is in there");
   assert.ok(record().entries.length > 1, "and so is what playing did");
   restore();
+});
+
+test("the first write waits for storage to hydrate", () => {
+  /* THE ORDERING THAT CAN LOSE A RECORD, from the client's end. The ring is read
+     lazily on its first write, so the first write must land AFTER `hydrate()` has
+     pulled the durable tier up — otherwise a page whose localStorage Safari has
+     cleared (about seven days without a visit) would overwrite the only surviving
+     copy with an empty ring. `player/diagnostic-log.test.js` covers the laziness
+     itself; this covers the half only `client.js` can get wrong.
+
+     A SOURCE ASSERTION, and deliberately, because the behaviour is unobservable
+     from here: this store has no IndexedDB tier under `node --test`, so `hydrate()`
+     settles in the same microtask as the `await import`, and there is no window for
+     a test to look into. The same technique `player/foray-playback.test.js` uses on
+     this file, and `tools/mobile/probe/install-probe.test.mjs` on listener order.
+
+     MUTATION: replace the `storageReady.then(...)` with a bare `diag.boot()` at
+     module scope — which is what an earlier draft of this change actually did. Both
+     assertions fail. */
+  const src = fs.readFileSync(new URL("./client.js", import.meta.url), "utf8");
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  assert.match(
+    code, /storageReady\s*\.then\(\s*\(\)\s*=>\s*diag\.boot\(\)\s*\)/,
+    "the boot row must be deferred until storageReady resolves"
+  );
+  assert.ok(
+    !/^\s*diag\.boot\(\);/m.test(code),
+    "and must not also be written at module scope, which is the bug this replaced"
+  );
 });
 
 test("a real cross-episode seam records observedGapMs, the deadline and both ids", async (t) => {

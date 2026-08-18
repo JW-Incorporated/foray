@@ -52,10 +52,6 @@ const ROOT = path.join(__dirname, "..");
 
 /* suite -> minimum number of top-level test() declarations. */
 const FLOORS = {
-  /* The durable store (#40). Both of these guard against silent DATA LOSS
-     rather than a wrong answer on screen, which makes them the two suites in
-     `player/` whose deletion would be hardest to notice: everything keeps
-     rendering, and a listener's place quietly stops surviving the week. */
   /* The field record (#264). Three suites, floored separately BECAUSE they cover
      different things and any one of them can be deleted without the others
      noticing — which is precisely the shape #266's mutation round found, where a
@@ -65,23 +61,29 @@ const FLOORS = {
                                     the cap and its eviction DIRECTION, the
                                     durable-on-write property, the parse table,
                                     and the rule that no telemetry TEXT is ever
-                                    stored. 27 mutations killed; each is named in
+                                    stored. 28 mutations killed, each named in
                                     the test that kills it.
        `diagnostic-record.test.js`  the wiring, through the real client, the real
                                     manager and the real backend over a real seam.
-                                    This is the only thing in the repo that would
+                                    The only thing in the repo that would
                                     notice a telemetry FORMAT change silently
-                                    emptying the record.
+                                    emptying the record. 17 mutations killed.
        `diagnostics-surface.test.js` the drawer item and the sheet: reachable on a
                                     phone, copyable, and — asserted, not assumed —
                                     making no network request and never entering
-                                    the ungated `cp_events` pipeline.
+                                    the ungated `cp_events` pipeline. 18 mutations
+                                    killed, one of which is why that suite boots the
+                                    real `init()`.
 
      Zero slack, like media-session and data-deletion below and for the same
      reason: what these guard is a set of decisions each one edit from its
      opposite. Raise them when the suites grow. */
-  "player/diagnostic-log.test.js": 29,
-  "player/diagnostic-record.test.js": 13,
+  "player/diagnostic-log.test.js": 30,
+  "player/diagnostic-record.test.js": 14,
+  /* The durable store (#40). Both of these guard against silent DATA LOSS
+     rather than a wrong answer on screen, which makes them the two suites in
+     `player/` whose deletion would be hardest to notice: everything keeps
+     rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
   "player/foray-playback.test.js": 83,

@@ -100,7 +100,7 @@ import {
   DRIFT_EXACT, DRIFT_UNVERIFIED, DRIFT_UNANCHORED,
 } from "./foray-progress.js";
 import {
-  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, DIAG_CAP,
+  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport,
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
 import { createDurableStore } from "./durable-store.js";
@@ -195,7 +195,14 @@ const diag = new PlayerDiagnostics({
   log: diagLog,
   isHidden: () => typeof document !== "undefined" && document.hidden === true,
 });
-diag.boot();
+/* AFTER HYDRATION, and this ordering is load-bearing rather than tidy. The ring is
+   read lazily on its first write, and the first write must not happen before
+   `hydrate()` has pulled the IndexedDB tier up: localStorage is the tier Safari
+   clears after about seven days, so the case where the two disagree is the case
+   where the durable copy is the only copy — and a `boot` row written first would
+   have overwritten it with an empty ring. `storageReady` never rejects (every tier
+   failure is caught into `health()`), but it is attached anyway. */
+storageReady.then(() => diag.boot()).catch(() => {});
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
 }
@@ -207,8 +214,6 @@ window.forayDiagnosticReport = () => formatDiagnosticReport(diagLog.read());
 /** Empty it. The founder's loop is clear, drive, copy — three earlier drives in
     the buffer make the drive under test hard to find. */
 window.forayDiagnosticClear = () => { diagLog.clear(); return true; };
-/** The stated cap, so the surface's own copy cannot drift from the mechanism. */
-window.forayDiagnosticCap = DIAG_CAP;
 
 /* ---------- DOM ---------- */
 

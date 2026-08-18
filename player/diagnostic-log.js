@@ -146,11 +146,18 @@ export class DiagnosticLog {
   /**
    * Read what is already on disk, once.
    *
-   * LAZY, DELIBERATELY. `client.js` builds this at module evaluation, before
-   * `storage.hydrate()` has pulled the IndexedDB tier up into memory — reading
-   * then would see the localStorage copy only. Nothing records until the first
-   * seam, which is many seconds after hydration, so laziness costs nothing and
-   * buys the durable copy.
+   * LAZY, DELIBERATELY, AND THIS IS THE ONE ORDERING THAT CAN LOSE A RECORD.
+   * `client.js` builds this at module evaluation, before `storage.hydrate()` has
+   * pulled the IndexedDB tier up into memory. Reading then sees the localStorage
+   * copy ONLY — and the case where the two differ is precisely the case that
+   * matters: Safari clears script-writable storage after about seven days without
+   * a visit, so localStorage is empty and the durable tier holds the record. A log
+   * that had already read `[]` would then overwrite that durable copy with a fresh
+   * short ring on its very next write.
+   *
+   * So nothing reads here until something is recorded, and `client.js` defers even
+   * the `boot` row until `storageReady` resolves. (An earlier draft called
+   * `diag.boot()` at module scope and had exactly the bug above.)
    *
    * A previous session's entries are KEPT. The founder listens in a car and opens
    * the app later; a log that cleared itself on load would be empty exactly when
@@ -355,18 +362,22 @@ export class PlayerDiagnostics {
     this._stop = null;
     /** When the current visibility state began, for the DURATION half of a
         visibility transition — a hidden window is only correlatable with a stall
-        if its length is known. */
-    this._visSince = null;
+        if its length is known.
+        STAMPED IN THE CONSTRUCTOR, not in `boot()`: the boot ROW waits for
+        hydration (see `_load`), and a listener who backgrounds the page inside that
+        window would otherwise get a transition with no duration on it. Recording
+        nothing yet costs nothing — this is a clock, not a write. */
+    this._visSince = now();
   }
 
   _isHidden() {
     try { return this._hidden() === true; } catch (_) { return false; }
   }
 
-  /** Called once, from the page's boot, so the record has a start it can measure
-      the first visibility window against. */
+  /** Called once, after storage has hydrated, so the record says when the page
+      loaded and in what visibility state. The clock this is measured against was
+      already started in the constructor — see `_visSince`. */
   boot() {
-    this._visSince = this._now();
     return this.log.record("boot", { hidden: this._isHidden() });
   }
 
