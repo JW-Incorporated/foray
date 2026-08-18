@@ -287,12 +287,22 @@ const STAGE_NAME_MAX = 48;
 /**
  * The stage name a message contributes, or null.
  *
- * Split on whitespace AND colon, so `foray.segment.skipped.atLoad seg-x: no
- * audio_url` contributes `foray.segment.skipped.atLoad` and not one word of the
- * reason.
+ * Split on whitespace, COLON and EQUALS, and all three separators are
+ * load-bearing against real emitters:
+ *
+ *   whitespace  `prefetch.ready sb at 500s — …`     -> `prefetch.ready`
+ *   colon       `player.error: media error 4`        -> `player.error`
+ *   equals      `rate.set=1.5 (was 1)`               -> `rate.set`
+ *
+ * Without the colon, `player.error:` carries a trailing punctuation mark, fails
+ * the character check below and the stage is DROPPED — so the most important line
+ * in the stream would contribute nothing. Without the equals, the same happens to
+ * `queue.built.SINGLE_ITEM.n=2`, `restore.index=…` and `play.ignored.noItemAt=0`.
+ * Cutting at the separator keeps the name and drops the value, which is the rule:
+ * a stage name is a vocabulary word, never data.
  */
 export function stageOf(message) {
-  const head = String(message ?? "").trim().split(/[\s:]/, 1)[0] ?? "";
+  const head = String(message ?? "").trim().split(/[\s:=]/, 1)[0] ?? "";
   if (!head || head.length > STAGE_NAME_MAX) return null;
   if (!/^[A-Za-z][A-Za-z0-9.]*$/.test(head)) return null;
   const root = head.split(".", 1)[0];
