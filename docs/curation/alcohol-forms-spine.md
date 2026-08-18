@@ -1336,13 +1336,16 @@ and brand history.
 
 ### Act IV — Concentration: the spirits (chain link, then a fan by feedstock, 25.8 %)
 
-The third question, applied to everything the listener has already met. Beat 36 is
-a **chain** link and must come first, because it establishes what distillation was
+The third question, applied to everything the listener has already met. Beat 36 is a
+**chain** link and must come first, because it establishes what distillation was
 originally for and how recent it is; after that the act is a **fan ordered by
-feedstock** — grain, then cane, then fruit, then agave, then the rest — precisely
-so that every spirit arrives as "the thing you already met, concentrated." The
-whisky beats 37 to 40 are a chain inside that fan. §2b's warning applies here more
-than anywhere: do not reorder this act into a tour of famous brown spirits.
+feedstock**, precisely so that every spirit arrives as "the thing you already met,
+concentrated." The order is grain (37 to 40), then the two categories the column
+still brought into being and which have no characteristic feedstock at all (41, 42),
+then cane (43), agave (44) and fruit (45, 46), then the East Asian grain spirits that
+had to wait for beats 32 and 33 (47, 48), then botanical, palm and the margins (49 to
+51). The whisky beats 37 to 40 are a chain inside that fan. §2b's warning applies
+here more than anywhere: do not reorder this act into a tour of famous brown spirits.
 
 This is the largest act, and it should be: it is where the founder's "all of them"
 does the most work, because the spirits are where the taxonomy is widest and where
@@ -1425,24 +1428,26 @@ settling what a production method may be called — recurs across four countries
 
 **Evidence that counts.** A whisky historian or blender on the industrial shift and
 the dispute: what grain whisky is made from and why it is lighter, the blender's
-actual job as compositional rather than dilutive, the marketing and shipping
-advantages of consistency, the trade litigation of the 1900s, and the commission's
-finding. Strong signal: the ruling's reasoning stated rather than only its outcome,
-and blending defended on process grounds by someone who does it. Reject:
-single-malt-versus-blend snobbery in either direction, and brand founder stories.
+actual job as compositional rather than dilutive, consistency as a production
+achievement and what it made possible in shipping and in trade, the trade litigation
+of the 1900s, and the commission's finding. Strong signal: the ruling's reasoning
+stated rather than only its outcome, and blending defended on process grounds by
+someone who does it. Reject: single-malt-versus-blend snobbery in either direction,
+and brand founder stories.
 
 **Share.** 1.7 % (~2.55 min).
 
 #### 39. American whiskey's legal definition is its recipe, and the new charred barrel is the reason bourbon tastes the way it does
 
-**Claim.** Bourbon is defined by production rules rather than by geography — at
-least 51 % maize in the grain bill, distilled to no more than 160 proof, entered
-into the barrel at no more than 125, matured in a *new charred* oak container, with
-nothing added but water — so the flavour most people think of as "bourbon" is
-principally beat 14's extraction and char-subtraction running at full strength on a
-first-fill cask; and the American mashing tradition adds a distinctive step of its
-own in the sour mash, where spent stillage from the previous run is added back to
-lower the pH and suppress bacteria.
+**Claim.** Bourbon is defined by production rules rather than by a place-name
+appellation — it must be made in the United States, but not in Kentucky, and beyond
+that it is at least 51 % maize in the grain bill, distilled to no more than 160
+proof, entered into the barrel at no more than 125, matured in a *new charred* oak
+container, with nothing added but water — so the flavour most people think of as
+"bourbon" is principally beat 14's extraction and char-subtraction running at full
+strength on a first-fill cask; and the American mashing tradition adds a distinctive
+step of its own in the sour mash, where spent stillage from the previous run is added
+back to lower the pH and suppress bacteria.
 
 **Why it belongs.** It is the cleanest case in the Foray of law as production
 specification, which is beat 61's whole thesis previewed inside a family, and it is
@@ -1504,10 +1509,9 @@ the edge of detection or a deliberate decision to distil less thoroughly.
 
 **Why it belongs.** It is the extreme case of question three, it makes beat 11's
 azeotrope pay off immediately, and it is the most useful single debunk available in
-the whole subject: the world's largest spirit category by value is defined by
+the whole subject: the largest international white-spirit category is defined by
 having no character, and that is a production fact with a legal text behind it. It
-also sets up beat 42, because gin is what happens when someone puts flavour back
-in.
+also sets up beat 42, because gin is what happens when someone puts flavour back in.
 
 **Evidence that counts.** A distiller, chemist or spirits writer on rectification
 and neutrality: how many plates it takes and what is removed, the legal wording in
@@ -1531,11 +1535,11 @@ single legal requirement being that juniper predominates; and its ancestor,
 genever, is a different drink altogether, built on a malt-grain distillate rather
 than on a neutral base, which is why it tastes closer to a light whisky.
 
-**Why it belongs.** It is the beat that proves question four can be the *whole* of
-a category's identity, which is the bridge into Act V, and it corrects one of the
-most common misfilings in the subject: gin is not a grain spirit in the sense that
-whisky is. The genever contrast is what makes that stick, and it gives the family a
-real lineage instead of a founding anecdote.
+**Why it belongs.** It is the beat that proves question four can be the *whole* of a
+category's identity, and it corrects one of the most common misfilings in the
+subject: gin is not a grain spirit in the sense that whisky is. The genever contrast
+is what makes that stick, and it gives the family a real lineage instead of a
+founding anecdote.
 
 **Evidence that counts.** A gin distiller or spirits writer on the three methods
 and what each can achieve: maceration time and its effect, vapour infusion and why
@@ -1550,16 +1554,17 @@ listicles, and craft-gin brand stories.
 
 **Share.** 1.7 % (~2.55 min).
 
-#### 43. Rum is the only major spirit made from an industrial by-product, and it has no global definition, which is why it is the most confusing category
+#### 43. Rum is the major spirit built on an industrial by-product, and it has no global definition, which is why it is the most confusing category
 
 **Claim.** Most rum is distilled not from cane juice but from molasses, the residue
 left after sugar crystallisation — a waste stream that had to be disposed of, which
-is the entire economic reason rum exists — and because no international standard
-governs it, "rum" spans a Cuban-style light column spirit, a Jamaican pot-still
-spirit whose enormous ester content comes from deliberately long wild fermentations
-with acidic dunder recycled from previous runs, and cane-juice spirits made under
-their own separate rules in Martinique and Brazil; so rum is the family where the
-listener most needs the key, because the label will not tell them.
+is the economic reason rum exists at all and which it shares only with beat 46's
+pomace spirits — and because no international standard governs it, "rum" spans a
+Cuban-style light column spirit, a Jamaican pot-still spirit whose enormous ester
+content comes from deliberately long wild fermentations with acidic dunder recycled
+from previous runs, and cane-juice spirits made under their own separate rules in
+Martinique and Brazil; so rum is the family where the listener most needs the key,
+because the label will not tell them.
 
 **Why it belongs.** It is the strongest available case that question one's
 feedstock, question two's organism and question three's still each independently
@@ -1571,14 +1576,14 @@ explains its geography.
 
 **Evidence that counts.** A rum distiller, blender or drinks historian on the
 feedstock and the fermentation: what molasses is and why it was worthless, the
-difference in the finished spirit between molasses and fresh cane juice, dunder and
-muck and the ester chemistry they produce with an ester figure attached, pot versus
-column and the blends of both, and the absence of a category standard together with
-its consequences — undeclared sweetening and colouring, and age claims that mean
-different things in different countries. Strong signal: cachaça distinguished
-properly as a cane-juice spirit under its own Brazilian legal definition and
-distilled to a lower strength, rather than described as Brazilian rum. Reject:
-tiki-and-pirate colour, and brand heritage.
+difference in the finished spirit between molasses and the fresh cane juice of *rhum
+agricole*, dunder and muck and the ester chemistry they produce with an ester figure
+attached, pot versus column and the blends of both, and the absence of a category
+standard together with its consequences — undeclared sweetening and colouring, and
+age claims that mean different things in different countries. Strong signal: cachaça
+distinguished properly as a cane-juice spirit under its own Brazilian legal
+definition and distilled to a lower strength, rather than described as Brazilian rum.
+Reject: tiki-and-pirate colour, and brand heritage.
 
 **Share.** 2.0 % (~3.0 min).
 
@@ -1588,26 +1593,27 @@ tiki-and-pirate colour, and brand heritage.
 neither malting nor koji can address, so production begins by cooking the harvested
 heart for hours or days to hydrolyse it with heat alone — and that cooking step is
 where the two famous categories diverge, because tequila's industrial steam
-autoclaves add no flavour while mezcal's wood-fired earth pits deposit smoke
-phenols, which means the smokiness most people treat as mezcal's essence is a
+autoclaves caramelise but add no smoke while mezcal's wood-fired earth pits deposit
+smoke phenols, which means the smokiness most people treat as mezcal's essence is a
 consequence of the conversion method, not of the plant or the still.
 
 **Why it belongs.** It is the payoff of beat 9's third conversion route and one of
-the two best "the process explains the flavour" moments in the Foray, alongside
-peat at beat 37. It also lets the Foray be accurate about a family drowning in
-mythology: the difference is an oven, the appellations are legal instruments, and
-several of the neighbouring drinks are not even made from agave.
+the two best "the process explains the flavour" moments in the Foray, alongside peat
+at beat 37. It also lets the Foray be accurate about a family drowning in mythology:
+the difference is an oven, the appellations are legal instruments, and one of the
+neighbouring drinks is not made from agave at all.
 
 **Evidence that counts.** A tequila or mezcal producer, agronomist or specialist
-writer on the plant and the cooking: how many years to maturity and what that does
-to supply, the piña and its fructan content, autoclave versus pit roast and the
+writer on the plant and the cooking: how many years to maturity and what that does to
+supply, the piña and its fructan content, autoclave versus pit roast and the
 compounds each produces, crushing by stone tahona or roller mill, open-air
 fermentation with ambient yeast, and the legal requirement that tequila be at least
-51 % of one agave species with the 100 % category labelled separately. Strong
-signal: the smoke correctly attributed to the pit, the geographic appellations
-described as legal rather than natural boundaries, and *sotol* named as coming from
-a different plant genus entirely rather than being a kind of mezcal. Reject: worm
-and shot folklore, and terroir claims with no agronomy.
+51 % of one agave species with the 100 % category labelled separately. Strong signal:
+the smoke correctly attributed to the pit, the geographic appellations described as
+legal rather than natural boundaries, and the neighbours placed correctly: *raicilla*
+and *bacanora* are agave spirits under their own appellations, while *sotol* comes
+from a different plant genus entirely and is not a kind of mezcal at all. Reject:
+worm and shot folklore, and terroir claims with no agronomy.
 
 **Share.** 2.0 % (~3.0 min).
 
@@ -1631,13 +1637,13 @@ made from was deliberately thin and acidic because that is what distils well.
 
 **Evidence that counts.** A cognac or armagnac producer, cellar master or spirits
 writer on the wine and the two still designs: why a low-alcohol, high-acid,
-neutral-flavoured base wine is the right feedstock, distillation on the lees and
-what it adds, the two-pass charentais still versus the single-pass armagnaçais
-column, the *brouillis* and the heart cut, oak species and the difference between
-new and old wood in this family, and the crus and their soils as a real
-compositional variable. Strong signal: the Dutch freight explanation given as the
-origin, and pisco mentioned as the South American branch where the rules forbid
-both dilution and wood, which is a clean process contrast. Reject: luxury-brand
+neutral-flavoured base wine is the right feedstock, distillation on the lees and what
+it adds, the two-pass charentais still versus the single-pass armagnaçais column, the
+*brouillis* and the heart cut, oak species and the difference between new and old
+wood in this family, and the crus and their soils as a real compositional variable.
+Strong signal: the Dutch freight explanation given as the origin, and Peruvian pisco
+mentioned as the branch whose rules forbid both dilution and wood, which is a clean
+process contrast, and which Chilean pisco does not share. Reject: luxury-brand
 storytelling and age-designation glossaries with no mechanism.
 
 **Share.** 1.8 % (~2.7 min).
@@ -1739,11 +1745,16 @@ bison-grass vodka to honey and pepper infusions; and one Norwegian branch adds a
 maturation twist by ageing in used sherry casks aboard ships, which is a real if
 theatrical application of beat 14's heat and motion.
 
-**Why it belongs.** It is a completeness beat that costs little and pays a
-structural dividend: it shows that gin is not a one-off but an instance of a general
-category — flavoured spirit defined by a mandated botanical — which is the
-generalisation the listener needs before Act V's liqueurs and bitters. Cut it and
-gin looks unique when it is actually a template.
+**Why it belongs.** Two reasons, and the first is not structural. Flavoured and
+infused spirits are one of the largest commercial categories on earth and the
+listener has met exactly one of them, gin, whose juniper mandate looks like a quirk
+until a second legally mandated botanical sits beside it; this beat is where
+flavoured vodka, the largest slice of that category by volume, is accounted for at
+all. The second reason is that it generalises gin into a template — flavoured spirit
+defined by a mandated botanical — which is the generalisation the listener needs
+before Act V's liqueurs and bitters. A reviewer challenged this beat as the weakest
+in the document on the grounds that beats 42 and 57 already do the generalising; the
+answer is that neither of them covers the drinks, and §8 records the challenge.
 
 **Evidence that counts.** An aquavit or flavoured-spirit producer, or a spirits
 writer, on the method and the rules: the base spirit and whether it carries
@@ -1758,14 +1769,14 @@ material.
 
 #### 50. Arrack is a whole tropical distilling tradition hiding behind a confusing word
 
-**Claim.** Sri Lankan *arrack* is distilled from fermented coconut-palm sap —
-beat 24's palm wine, concentrated, which is the neatest chain from Act II into Act
-IV in the whole Foray — and matured in local hardwood; Indonesian and Indian
-versions are made from cane, rice or palm in various combinations, and the historic
-Batavia arrack that European punch was built on used rice with red yeast rice as a
-starter; while the same word in the eastern Mediterranean names an entirely
-unrelated aniseed spirit that belongs with beat 59, which is exactly the sort of
-false friend a taxonomy is for.
+**Claim.** Sri Lankan *arrack* is distilled from fermented coconut-palm sap — beat
+24's palm wine, concentrated, which is the neatest chain from Act II into Act IV in
+the whole Foray — and matured in local hardwood; Indonesian and Indian versions are
+made from cane, rice or palm in various combinations, and the historic Batavia arrack
+that European punch was built on was a cane distillate fermented with cakes of red
+rice as its starter; while the same word in the eastern Mediterranean names an
+entirely unrelated aniseed spirit that belongs with beat 59, which is exactly the
+sort of false friend a taxonomy is for.
 
 **Why it belongs.** It is the beat that closes the sap branch — a family that
 otherwise ends at Act II unable to travel, since distilling is precisely what lets a
@@ -1774,12 +1785,12 @@ argues for directly. The false-friend point also earns its place by demonstratin
 what the key protects against: two drinks with one name and nothing in common.
 
 **Evidence that counts.** A producer, drinks historian or spirits writer on the
-tropical palm and rice distillates: how toddy is collected and how quickly it must
-be distilled, pot versus column practice, the local woods used for maturation, the
-role of red yeast rice as a starter in the Batavia style, and the 18th-century punch
-trade that made the drink globally important before it was forgotten. Strong signal:
-the distinction from aniseed arak stated outright. Reject: colonial-trade romance
-with no process, and cocktail-revival framing.
+tropical palm and rice distillates: how toddy is collected and how quickly it must be
+distilled, pot versus column practice, the local woods used for maturation, the role
+of red-rice cakes as the starter over a cane base in the Batavia style, and the
+18th-century punch trade that made the drink globally important before it was
+forgotten. Strong signal: the distinction from aniseed arak stated outright. Reject:
+colonial-trade romance with no process, and cocktail-revival framing.
 
 **Share.** 1.1 % (~1.65 min).
 
@@ -1824,20 +1835,20 @@ them. Beats 57 to 60 are a **fan**.
 
 #### 52. Fortification is a valve on fermentation, and when you open it decides whether the wine is sweet or dry
 
-**Claim.** Adding grape spirit to a fermenting wine raises the alcohol past the
-ceiling from beat 5 and kills the yeast on contact, which means the timing of the
-addition is the only variable that matters: add it while sugar remains and the wine
-stays sweet, wait until the yeast has finished and it is dry — and that single fact
-generates the entire fortified category, with port on one side, sherry on the other,
-and the sweet fortified muscats of southern France and Spain sitting alongside port
-on the same logic.
+**Claim.** Adding grape spirit to a fermenting wine lifts it past the ceiling from
+beat 5 and so inhibits the yeast into stopping within hours, which means the timing
+of the addition is the only variable that matters: add it while sugar remains and the
+wine stays sweet, wait until the yeast has finished and it is dry — and that single
+fact generates the entire fortified category, with port on one side, sherry on the
+other, and Marsala, Commandaria and the sweet fortified muscats of southern France
+and Spain distributed across the two according to the same rule.
 
 **Why it belongs.** It is the most economical explanatory beat in the whole Foray:
 one mechanism, four famous drinks, and a listener who now understands why port is
-sweet and dry sherry is not without having memorised anything. It is also the third
-of the three routes past the ceiling that beat 5 promised and never demonstrated, so
-without it beat 5 is incomplete. Cut it and Act V has no chain link and the
-fortified wines become four house styles.
+sweet and dry sherry is not without having memorised anything. It is also the last of
+beat 5's routes past the ceiling to be demonstrated, so without it beat 5 is left
+holding an enumeration the Foray never completes. Cut it and Act V has no chain link
+and the fortified wines become four house styles.
 
 **Evidence that counts.** A producer, cellar master or wine scientist on the
 mechanism and the timing: the strength of the added spirit and how much is used, why
@@ -1922,10 +1933,13 @@ century-old one is routinely sound.
 
 **Why it belongs.** It is the fourth variable in question four — not wood, not
 oxygen, not an organism, but temperature — and its inclusion is what makes the
-Foray's account of maturation complete rather than oak-shaped. The indestructibility
-is also a genuinely satisfying payoff, and it lets the Foray connect back to the
-shipping logic of beat 45: the ocean is a production input in this family twice
-over.
+Foray's account of maturation complete rather than oak-shaped. It also finishes the
+chain beats 52 to 54 began, because madeira is fortified at both times depending on
+the style, sweeter wines during the ferment and drier ones after, which makes it the
+second demonstration of beat 52's rule and the one that shows the rule is a dial
+rather than a fork. The indestructibility is also a genuinely satisfying payoff, and
+it lets the Foray connect back to the shipping logic of beat 45: the ocean is a
+production input in this family twice over.
 
 **Evidence that counts.** A madeira producer or wine scientist on heat as a
 process: the two methods and the temperatures and durations involved, the chemistry
@@ -1940,13 +1954,13 @@ and vintage-collectors material.
 
 #### 56. Vermouth is the bridge between wine and liqueur, and it is three additions stacked on one base
 
-**Claim.** Vermouth is a wine — a large majority of the volume by law — that has
-been fortified with spirit, flavoured with botanicals in which a species of
-*Artemisia* must feature, and usually sweetened, which makes it the point in the
-taxonomy where the wine categories and the flavoured-spirit categories meet; and
-the related aromatised wines built on cinchona bark, gentian or resin are the same
-construction with a different bittering agent, which is the last thing the listener
-needs before liqueurs and bitters make sense.
+**Claim.** Vermouth is a wine — a large majority of the volume by law — that has been
+fortified with spirit, flavoured with botanicals in which a species of *Artemisia*
+must feature, and usually sweetened, which makes it the point in the taxonomy where
+the wine categories and the flavoured-spirit categories meet; and the related
+aromatised wines built on cinchona bark or gentian — the quinquinas and americanos —
+are the same construction with a different bittering agent, which is the last thing
+the listener needs before liqueurs and bitters make sense.
 
 **Why it belongs.** It is the structural hinge of Act V, and it is where the Foray
 demonstrates that the additions *stack* — a base, a fortification, a botanical
@@ -1959,8 +1973,8 @@ the base wine and why a neutral one is chosen, the legal wine proportion and the
 *Artemisia* requirement, how the botanicals are introduced and whether by maceration
 or by distilled extract, the sugar levels that separate the sweet and dry styles, and
 caramel's role as colour rather than flavour. Strong signal: the stacking made
-explicit, and the quinine-based and gentian-based aromatised wines placed as
-siblings. Reject: cocktail-history framing, and brand narrative.
+explicit, and the quinine-based and gentian-based aromatised wines placed as siblings
+rather than as oddities. Reject: cocktail-history framing, and brand narrative.
 
 **Share.** 1.3 % (~1.95 min).
 
@@ -1970,9 +1984,10 @@ siblings. Reject: cocktail-history framing, and brand narrative.
 than by any ingredient or method, so what actually distinguishes one from another is
 the extraction technique: cold maceration for delicate fruit and fresh material,
 percolation for barks and roots, redistillation for volatile aromatics, and modern
-purchased essences at the industrial end — and the famous monastic liqueurs are
-notable not for secrecy but for being complex multi-stage combinations of several of
-those methods on a large botanical set.
+purchased essences at the industrial end — and the famous monastic liqueurs —
+Chartreuse and Bénédictine above all — are notable not for secrecy but for being
+complex multi-stage combinations of several of those methods on a large botanical
+set.
 
 **Why it belongs.** It generalises beat 42's three gin methods into the full set of
 extraction techniques, which is the last piece of process apparatus the Foray needs,
@@ -1995,12 +2010,13 @@ brand founding legends.
 
 #### 58. Bitters and amari are the same operation aimed at bitterness, and their medical origin is not a marketing story
 
-**Claim.** Amari and aromatic bitters are liqueurs built around genuinely bitter
-plant compounds — gentian root, cinchona bark, wormwood, citrus peel, and dozens of
-regional additions — and their pharmacy origin is literal rather than decorative:
-several were formulated as tonics and antimalarials, the quinine in tonic water is
-the same bark, and the modern aperitivo and digestivo split preserves a
-pre-pharmaceutical theory of digestion in the shape of the product range.
+**Claim.** Amari and aromatic bitters — Campari, Fernet, Aperol, Angostura and dozens
+of regional formulations — are liqueurs built around genuinely bitter plant compounds
+such as gentian root, cinchona bark, wormwood and citrus peel, and their pharmacy
+origin is literal rather than decorative: several were formulated as tonics and
+antimalarials, the quinine in tonic water is the same bark, and the modern aperitivo
+and digestivo split preserves a pre-pharmaceutical theory of digestion in the shape
+of the product range.
 
 **Why it belongs.** It is where beat 36's medicine framing finally pays off, which
 is the longest-range structural payment in the spine, and it is the completeness beat
@@ -2117,7 +2133,7 @@ boosterism, and label-reading guides with no account of the underlying rule.
 
 **Share.** 1.8 % (~2.7 min).
 
-#### 62. Almost every spirit in the world sits at 40 % because of a tax instrument, not because of taste
+#### 62. Almost every spirit in the world sits at 40 % because of a legal minimum and the revenue apparatus behind it, not because of taste
 
 **Claim.** Alcoholic strength is measured as a percentage by volume nearly
 everywhere now, but the older systems were tax instruments: the British proof spirit
@@ -2134,15 +2150,16 @@ tax collector shaped what is in the bottle. It also closes a loop opened in beat
 because the reason a spirit is reduced with water at all is that maturation left it
 above the strength anyone wanted to sell.
 
-**Evidence that counts.** A historian of measurement, a distiller or a spirits
-writer on hydrometry and duty: what proof originally referred to and how it was
-tested before instruments, the hydrometers commissioned for revenue purposes and the
+**Evidence that counts.** A historian of measurement, a distiller or a spirits writer
+on hydrometry and duty: what proof originally referred to and how it was tested
+before instruments, the hydrometers commissioned for revenue purposes and the
 strengths they were calibrated against, the American doubling convention, minimum
 bottling strengths in law, and reduction with water as a production step with its own
-consequences for stability and haze. Strong signal: the gunpowder-test etymology
-handled as the traditional account rather than asserted, since the story is older
-than the evidence for it. Reject: proof-versus-ABV conversion trivia with no
-institutional history.
+consequences for stability and haze. Strong signal: the gunpowder test described as
+the genuinely attested 17th-century practice it was, while its status as the origin
+of the modern legal term is marked as the traditional account rather than asserted,
+because that second claim is repeated far more confidently than the evidence
+supports. Reject: proof-versus-ABV conversion trivia with no institutional history.
 
 **Share.** 1.5 % (~2.25 min).
 
@@ -2163,11 +2180,12 @@ left out — §6b's excluded subjects and §6c's mentions — because a taxonomy
 admits its edges is more trustworthy than one that implies it covered the world.
 Keep it short: this is a landing, not a summary.
 
-**Evidence that counts.** Almost certainly narration, and that is correct — a coda
-in someone else's words is usually worse. If tape is used, the only kind that serves
-is a speaker articulating the shared mechanism across families rather than within
-one, ideally while conceding that the catalogue of the world's ferments is
-incomplete. Reject: anything that reads as a recap of the preceding beats.
+**Evidence that counts.** Almost certainly narration, and that is correct — a coda in
+someone else's words is usually worse. If tape is used, the only kind that serves is
+a speaker articulating the shared mechanism across families rather than within one,
+ideally while conceding that the catalogue of the world's ferments is incomplete.
+Reject: anything that only recites the preceding beats, which is what distinguishes a
+landing from a summary.
 
 **Share.** 1.3 % (~1.95 min).
 
