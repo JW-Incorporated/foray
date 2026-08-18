@@ -2128,3 +2128,177 @@ one, ideally while conceding that the catalogue of the world's ferments is
 incomplete. Reject: anything that reads as a recap of the preceding beats.
 
 **Share.** 1.3 % (~1.95 min).
+
+---
+
+## 4. Pacing, and what the share numbers imply for sourcing
+
+| # | beat | act | share | ~min @150 |
+|---|---|---|---|---|
+| 1 | many alcohols, one we drink | I | 1.6 % | 2.40 |
+| 2 | fermentation as yeast metabolism | I | 2.0 % | 3.00 |
+| 3 | the other product is a gas | I | 1.3 % | 1.95 |
+| 4 | yeast as a domesticated organism | I | 1.5 % | 2.25 |
+| 5 | **the ABV ceiling** | I | 1.7 % | 2.55 |
+| 6 | **free sugar versus locked starch** | I | 2.0 % | 3.00 |
+| 7 | malting | I | 2.0 % | 3.00 |
+| 8 | koji and the mould route | I | 1.6 % | 2.40 |
+| 9 | saliva, heat, bought enzymes | I | 1.3 % | 1.95 |
+| 10 | the flavour is in the by-products | I | 1.6 % | 2.40 |
+| 11 | distillation concentrates, and stops | I | 1.8 % | 2.70 |
+| 12 | **pot versus column** | I | 2.0 % | 3.00 |
+| 13 | cuts, methanol, and the folklore | I | 1.4 % | 2.10 |
+| 14 | **maturation is four processes** | I | 2.0 % | 3.00 |
+| 15 | refusing to mature, and other vessels | I | 1.2 % | 1.80 |
+| 16 | **the classification key** | I | 1.6 % | 2.40 |
+| 17 | the grape as the ideal fermentable | II | 1.8 % | 2.70 |
+| 18 | red and white is skin contact | II | 1.8 % | 2.70 |
+| 19 | the decisions after the ferment | II | 1.5 % | 2.25 |
+| 20 | sparkling wine as contained pressure | II | 1.8 % | 2.70 |
+| 21 | phylloxera and the grafted vineyard | II | 1.2 % | 1.80 |
+| 22 | cider, perry and the fruit wines | II | 1.6 % | 2.40 |
+| 23 | mead and the nitrogen problem | II | 1.4 % | 2.10 |
+| 24 | sap drinks that cannot be shipped | II | 1.4 % | 2.10 |
+| 25 | the milk alcohols | II | 1.0 % | 1.50 |
+| 26 | **beer, the sequence in order** | III | 2.0 % | 3.00 |
+| 27 | hops: preservative then flavour | III | 1.7 % | 2.55 |
+| 28 | **ale, lager and refrigeration** | III | 2.0 % | 3.00 |
+| 29 | the style map is a water map | III | 1.6 % | 2.40 |
+| 30 | wild and mixed fermentation | III | 1.5 % | 2.25 |
+| 31 | the sorghum and millet beers | III | 1.3 % | 1.95 |
+| 32 | **sake** | III | 2.0 % | 3.00 |
+| 33 | the koji family beyond sake | III | 1.4 % | 2.10 |
+| 34 | chewed, sprouted and tuber brews | III | 1.3 % | 1.95 |
+| 35 | the industrial adjunct lager | III | 1.3 % | 1.95 |
+| 36 | **where distillation came from** | IV | 2.0 % | 3.00 |
+| 37 | **malt whisky, and peat at the kiln** | IV | 2.0 % | 3.00 |
+| 38 | grain whisky, blending, the ruling | IV | 1.7 % | 2.55 |
+| 39 | American whiskey as a legal recipe | IV | 1.8 % | 2.70 |
+| 40 | world whisky and climate | IV | 1.4 % | 2.10 |
+| 41 | vodka, defined by subtraction | IV | 1.6 % | 2.40 |
+| 42 | gin as a flavouring operation | IV | 1.7 % | 2.55 |
+| 43 | **rum, the by-product spirit** | IV | 2.0 % | 3.00 |
+| 44 | **agave, and the oven that decides** | IV | 2.0 % | 3.00 |
+| 45 | brandy, and shipping wine dry | IV | 1.8 % | 2.70 |
+| 46 | the fruit distillates and pectin | IV | 1.5 % | 2.25 |
+| 47 | baijiu, the mash that is a solid | IV | 1.8 % | 2.70 |
+| 48 | soju, shochu and the rice ban | IV | 1.3 % | 1.95 |
+| 49 | aquavit and the northern infusions | IV | 1.1 % | 1.65 |
+| 50 | arrack and the palm-sap spirits | IV | 1.1 % | 1.65 |
+| 51 | the margins of the taxonomy | IV | 1.0 % | 1.50 |
+| 52 | **fortification is a valve** | V | 1.7 % | 2.55 |
+| 53 | port: early spirit, a race, two ages | V | 1.4 % | 2.10 |
+| 54 | **sherry: the flor and the solera** | V | 1.8 % | 2.70 |
+| 55 | madeira: heat as maturation | V | 1.2 % | 1.80 |
+| 56 | vermouth as stacked additions | V | 1.3 % | 1.95 |
+| 57 | liqueurs and how flavour is captured | V | 1.6 % | 2.40 |
+| 58 | bitters, amari, and real medicine | V | 1.5 % | 2.25 |
+| 59 | the anise family and a wrong ban | V | 1.5 % | 2.25 |
+| 60 | the additive frontier, both ways | V | 1.4 % | 2.10 |
+| 61 | **category law is production law** | VI | 1.8 % | 2.70 |
+| 62 | proof, the hydrometer and 40 % | VI | 1.5 % | 2.25 |
+| 63 | coda: four questions, open list | VI | 1.3 % | 1.95 |
+| | | | **100 %** | **150** |
+
+Act totals: I 26.6 %, II 13.5 %, III 16.1 %, IV 25.8 %, V 13.4 %, VI 4.6 %.
+
+### 4a. Why 63 beats, derived rather than chosen
+
+The barbecue spine chose 40 beats for a 150-minute reference. This subject wants
+more breadth and less depth per item, and the length rules put a hard bracket
+around how much more. The arithmetic, all against `segment-length-rules.md`:
+
+1. **The cut budget sets the ceiling.** Above 120 minutes, D1 permits at most 5
+   segment starts per rolling 600 s, which is one start per 120 s. A 150-minute
+   Foray is 9,000 s, so it permits **at most about 75 segments**.
+2. **One strong segment per beat is the discipline, not an economy.** #226 and the
+   barbecue spine's §4a both land there: hunting for a second and third segment on
+   a beat is what generates fill pressure, which is the mechanism that produced the
+   bakestones. So the segment ceiling is also a **beat ceiling of about 75**.
+3. **The segment floor sets a minimum share, and therefore a beat ceiling from the
+   other direction.** Each beat has to be able to hold one segment inside D-target's
+   75–180 s band, and D3 requires the whole-Foray mean to be ≥ 90 s. A share below
+   1.0 % buys less than 90 s and cannot carry a beat at the mean, so **1.0 % is the
+   floor** — which is why beats 25 and 51 sit exactly there and nothing sits below.
+4. **The two constraints meet in the headroom.** *n* beats at the 1.0 % floor commit
+   *n* per cent of the runtime before any beat has been weighted at all. At 63 beats
+   that is 63 %, leaving **37 % of headroom** to give the beats that carry the
+   argument two or three times the floor. At 70 beats the headroom is 30 %; at 75 it
+   is 25 %, and every beat converges on the floor, which is D5's defect written into
+   the plan rather than committed at assembly.
+5. **63 also leaves exactly the right number of spare segment starts.** 75 − 63 =
+   **12**, and there are exactly **12 beats at the top share of 2.0 %** — beats 2, 6,
+   7, 12, 14, 26, 28, 32, 36, 37, 43 and 44. Those twelve are the ones whose 3.0 min
+   allowance splits naturally into two segments. Every other beat gets one.
+
+So the shape is **63 beats and 63 to 70 segments**, and 75 is a ceiling to stay
+away from rather than a target: at 75 segments the Foray sits exactly on the cut
+budget with no slack anywhere, and any assembly adjustment breaks it.
+
+Four consequences for stage 2 and stage 4, and the third is new relative to the
+barbecue spine.
+
+- **A beat is covered by one strong segment.** Stop when the beat's claim is
+  advanced. On the twelve beats above, a second segment is welcome if it advances a
+  *different part* of the same claim — not if it says the same thing again.
+- **If every beat came back with strong tape the Foray would be at its ceiling.**
+  The spine is deliberately sized so that some holes are structurally fine. Holes
+  are not merely tolerable, they are budgeted.
+- **The share table on its own fails D5, and this is the spine's most concrete
+  instruction to assembly.** The shares span 1.0 % to 2.0 %, which is 90 s to 180 s
+  — the target band and nothing outside it — and the resulting interquartile range
+  of implied segment durations is about **36 s, below D5's 45 s floor**. If assembly
+  aims each segment at its beat's share, the Foray fails the one anti-uniformity
+  rule with measured evidence behind it. The fix is not a different share table: it
+  is that **a share is a per-beat runtime allowance, never a per-segment target.**
+  Assembly must deliberately break share fidelity segment by segment — a 55 s
+  segment on one beat paid for by a 200 s segment on the next, and the twelve
+  two-segment beats split unevenly rather than in half — and it must do so with the
+  burst rule in hand, since two short segments in a row followed by a long recovery
+  segment is the preferred shape rather than a tolerated one.
+- **Act I's uniformity is the specific risk.** Sixteen consecutive beats between
+  1.2 % and 2.0 % is where three-in-a-row similarity is most likely to occur, and it
+  is also the act most likely to be narration-heavy. Assembly should treat Act I as
+  the place to work hardest at varied lengths, not as the place to settle into a
+  rhythm.
+
+### 4b. Tier assignment for the density modes (#174)
+
+Not decided here, and #174 owns the field, but the barbecue spine's default costs
+nothing and applies unchanged: **a beat's first and strongest segment is `spine`;
+any additional segment on the same beat is `supporting`.** That makes the dense
+mode fall out automatically as one segment per beat in spine order. Nothing in this
+document authorises a `colour` tier — if a segment is colour, it is not advancing a
+beat.
+
+One subject-specific note. Because Act I is a strict chain, its beats are all
+`spine` by construction and none of them can be dropped by a density filter. If
+#174's short mode needs to shed runtime, it must come out of the family fans, which
+§4c makes explicit.
+
+### 4c. If the founder wants the short version, it answers a different request
+
+Per §5d of the length rules, the short mode is fewer beats and never shortened
+segments. The arithmetic for a 45-minute cut is tighter than it looks, and D3 binds
+before the cut budget does: at ≤ 45 min, D1 allows 8 starts per 600 s, which would
+permit 36 segments in 2,700 s, but the whole-Foray mean of ≥ 90 s caps it at **30**.
+And §5d predicts the dense mode wants the *longest*, most self-contained segments
+with the most narration between them, so the realistic figure is **20 to 25 beats**
+at 110 to 140 s each.
+
+A 25-beat proposal, chosen to keep the derivation intact rather than to keep the
+famous drinks: **2, 5, 6, 7, 8, 11, 12, 14, 16** — nine of Act I, enough to carry all
+four questions — then **17, 18** for wine, **26, 28** for beer, **32** for sake,
+**36, 37, 41, 42, 43, 44, 45** for the spirits, **52, 54** for the fortified wines,
+**57** for liqueurs and **61** for the law. Beat 63's coda arrives as narration,
+which costs no segment.
+
+**Note what that costs, because it is not a proportional loss.** The short version
+keeps the education and discards the completeness: gone are sparkling wine, cider,
+mead, every sap and milk drink, every beer outside the European lineage, the whole
+koji family beyond sake, baijiu, soju, arrack, the fruit distillates, the margins,
+the anise family and the amari. Since "all of them" is the founder's own emphasis
+and the reason Acts II to V are shaped as they are, **the short version is a
+substantively different product and should be commissioned as one — not used as the
+fallback if sourcing goes badly.** The correct response to bad sourcing is narration
+on the empty beats, or a shorter Foray with the beat count intact.
