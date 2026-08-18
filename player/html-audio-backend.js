@@ -1680,11 +1680,18 @@ export class HtmlAudioBackend {
    * surface reconciles against on the way back (`client.js`'s
    * `visibilitychange`, `queue-manager.js`'s `reconcileWithBackend`).
    *
-   * `=== true`, not truthiness, and that is the load-bearing part: an element
-   * that does not model `paused` at all must read as NOT paused, so a caller
-   * that acts on this can only ever be driven by a definite yes. The reconcile
-   * it feeds moves the surface towards paused, and the cost of guessing wrong
-   * is a Foray stopped for no reason.
+   * THE DIRECTION OF THE DEFAULT is the load-bearing part: an element that does
+   * not model `paused` must read as NOT paused, so a caller that acts on this can
+   * only ever be driven by a definite yes. The reconcile it feeds moves the
+   * surface towards paused, and the cost of guessing wrong is a Foray stopped for
+   * no reason.
+   *
+   * `=== true` rather than truthiness is the narrower claim, and worth being
+   * honest about: for a missing property the two agree (`!!undefined` is false
+   * too), so the suite pins the default's direction and not the operator. The
+   * operator only matters for a truthy NON-boolean, which no real media element
+   * produces — it is here so that a fake or a future backend cannot widen the
+   * definition of "paused" by accident.
    */
   get paused() { return this.el?.paused === true; }
 

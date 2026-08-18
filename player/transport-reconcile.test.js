@@ -465,7 +465,13 @@ test("A LOAD IN FLIGHT IS NOT AN EXTERNAL STOP: a seam must survive being reconc
      fire: bringing the app back to the foreground mid-seam is a listener
      checking what is playing.
 
-     Kill it by widening the state guard (`=== "idle"`, or dropping it). */
+     Killed by removing the `_applying` guard, NOT by widening the state guard.
+     Corrected after a mutation round: `=== "idle"` leaves this green, because a
+     seam load runs inside `_handle`'s effect loop and `_applying` answers first.
+     Two guards cover this case and only one of them is load-bearing here — said
+     plainly rather than left as a kill instruction that does not kill, because a
+     wrong one is worse than none. The state guard's own coverage is
+     "reconciling twice corrects once". */
   const { m, backend } = playerWith(two);
   await m.play(0);
   backend.currentTime = 61;
@@ -776,10 +782,24 @@ test("and the press resumes — the reconcile did not start anything itself", as
 });
 
 test("a finished Foray does not come back looking mid-listen", async (t) => {
-  /* The reconcile's `ended` guard, end to end. A file that ran out is paused —
-     and `pause` fires BEFORE `ended` — so anything reading only `paused` calls a
-     finished Foray an interruption and hands the listener back a transport that
-     offers to resume something that is over. */
+  /* WHAT THIS ACTUALLY PINS, corrected after a mutation round: the unconditional
+     `render()` in `reconcileOnReturn`. Delete that line and this test fails;
+     delete the reconcile's `ended` guard and it stays GREEN.
+
+     The comment here used to claim it was "the `ended` guard, end to end" and
+     that was wrong, in the specific way this repo keeps getting caught by. By
+     the time `visibilitychange` fires, `runOut()` has already driven the machine
+     to `ended`, so `state.type !== "playing"` declines first and the `ended`
+     guard is never consulted. The guard's real coverage is the part-2 test "a
+     finished file is not an external stop", which reaches `paused && ended`
+     while the state still says `playing` — the shape a suspended page produces
+     when it is killed between the `pause` and the `ended`.
+
+     What is still worth asserting, and is the founder-visible half: the last
+     thing a finished Foray does is pause an ALREADY-PAUSED element, which fires
+     nothing, so no media event is left to repaint the transport. Without the
+     unconditional repaint the surface keeps offering to pause something that is
+     over. */
   const { client, doc, audio, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 1 });   // the last segment
   await settle();
@@ -901,6 +921,59 @@ test("THE STORE IS NEVER HANDED A POSITION NOBODY READ", async (t) => {
   assert.deepEqual(
     bad, [],
     `every position offered to the store must be one the player actually read, got ${JSON.stringify(seen)}`
+  );
+  restore();
+});
+
+test("THE POSITION THE ROUTE DIED AT IS WRITTEN, past the save throttle", async (t) => {
+  /* The other half of "one press does what the listener meant": being right
+     about WHERE, not just about whether it is playing. The founder confirmed the
+     position was correct in his report, and this keeps it correct now that a
+     reconcile is what ends the interruption.
+   *
+   * `force: true` is the load-bearing part, and the throttle is what makes it
+   * observable. `SAVE_EVERY_SEC = 5` is compared on the CLOCK VALUE, so a row
+   * written at 150 refuses another until 155 — and a route that dies at 152
+   * leaves the listener's real position inside that dead band forever, because
+   * the clock stops moving the moment the audio does. There is no later tick to
+   * carry it.
+   *
+   * Kill this by dropping `{ force: true }` from `persistForayProgress` in
+   * `reconcileOnReturn`: the row stays at 150 and the listener loses the two
+   * seconds — and, with a longer interruption, up to five. */
+  const { client, doc, audio, storage, restore } = await bootClient(t);
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+
+  audio.currentTime = 150;             // segment sa is [100, 200] of episode A
+  audio.fire("timeupdate");
+  await settle();
+  assert.ok(
+    Math.abs(JSON.parse(storage.getItem(progressKey("f263"))).into_sec - 50) < 1,
+    "a row exists at 50 s into the segment"
+  );
+
+  // Two more seconds, which the throttle refuses — correctly, on its own terms.
+  audio.currentTime = 152;
+  audio.fire("timeupdate");
+  await settle();
+  assert.ok(
+    Math.abs(JSON.parse(storage.getItem(progressKey("f263"))).into_sec - 50) < 1,
+    "still 50: inside the throttle's dead band, which is the setup for this test"
+  );
+
+  // The car is switched off. No event, and the clock will never move again.
+  audio.routeLostUnseen();
+  doc.hidden = false;
+  doc.fire("visibilitychange");
+  await settle();
+  await settle();
+
+  const row = JSON.parse(storage.getItem(progressKey("f263")));
+  assert.equal(row.segment_id, "sa", "still the segment the listener was inside");
+  assert.ok(
+    Math.abs(row.into_sec - 52) < 1,
+    `the row must hold the position the route died at, got into_sec=${row.into_sec}`
   );
   restore();
 });
