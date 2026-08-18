@@ -1309,11 +1309,12 @@ Miller**, which turns out to matter.
 - **R5.** No implied conversation. Twitty and Miller are named as agreeing because they
   do agree in print, and the script says so as a fact about their books rather than as an
   artefact of the edit.
-- **R6.** 75.6 s: inside the 45–110 s Carry band, well under the soft max. Twelve
-  sentences, mean 15.8 words, longest 34 — **which is one violation**, and the fix is to
-  split the West-and-Central-Africa sentence. Recorded rather than hidden, because a
-  worked example that quietly passes every test it was written to pass is not a
-  demonstration.
+- **R6.** 75.6 s: inside the 45–110 s Carry band, well under the soft max. Thirteen
+  sentences, mean 14.5 words — inside §5d's 12–15 band — shortest 5 words, so the rhythm
+  rule is satisfied. **Longest is 29 words, which is one violation** of the 25-word
+  maximum: the West-and-Central-Africa sentence, and the fix is to break it after
+  "butchery". Recorded rather than quietly repaired, because a worked example that passes
+  every test it was written to pass is not a demonstration of anything.
 
 **Three things this script does that a script author should copy.**
 
@@ -1463,3 +1464,160 @@ titles cost more per word than scripts dense in mechanism.
 **Nothing here measures words per minute**, and nothing can until audio exists. When it
 does, re-derive every second-figure in this document from its word-figure and leave the
 word-figures alone (§2a).
+
+---
+
+## 8. Established craft, inference, and our invention
+
+Kept as a table because two agents had to retract claims this week for blurring this
+line, and because a script author needs to know which rules have eighty years of radio
+behind them and which have one afternoon of reasoning.
+
+### 8a. Established craft — cited, and someone else's
+
+| | rule | source |
+|---|---|---|
+| The admissibility test for any line of script | "Only add script if it enhances what the audience hears for itself, adds depth, clears up confusion, condenses time and helps the production flow" | Ladd, Transom, 2022 |
+| Twelve named techniques for getting into and out of tape; the *tease*, *Question → Answer*, *Signpost*, *Set-up → explanation*, *Echo*, *Complete the thought* | verbatim taxonomy, with the caution that "Person X, who has XX job, says Y about Thing Z" is "OK… but it's boring" | MacAdam, NPR Training, 2015 |
+| Don't narrate what the audience already perceives | *"Say Cow? See Cow"* | Everett |
+| Short sentences, active voice, contractions, title-before-name, *need to know?*, no long participial openers, define jargon | tips 1–3, 5, 7–9 | Everett |
+| Contrasting textures bring variety and clarity; hear *how* someone says it | | Ladd |
+| Rearranging sounds in time or place can mislead, and is the same category of fault as inventing them | | RTDNA |
+| Inserting externally-produced material can jump loudness by up to 7 LU | AES TD1004.1.15-10 | via `digests.md` #12 |
+| A radio feature's published baseline is ~50 % copy / 50 % tape | the ratio Foray inverts | B-Side Radio, via `segment-length-rules.md` §2b |
+| The orienting response to a voice change **does not habituate** in a distracted listener | the measured finding all the rate rules rest on | `segment-length-rules.md` §2a |
+| Uniformity of length is itself a defect | film shot-length evidence | `segment-length-rules.md` §2d |
+| 2–3.5 s of silence marks a section break | audiobook convention | Narrators Roadmap, via §2e |
+
+**Secondary, and no rule rests on it.** Ira Glass's *anecdote and reflection* pairing
+and the raise-a-question engine. The accessible texts are third-party transcripts and
+summaries of talks rather than a primary publication, so it is recorded as the best
+available explanation of why §3c's rule works and not as its authority. §3c stands on
+Everett and MacAdam.
+
+**What we looked for and did not get, recorded so nobody cites it from memory.** The
+rule commonly attributed to NPR house style — that a lead-in must not paraphrase the
+soundbite it introduces — is very likely in Jonathan Kern's *Sound Reporting*, and we
+could not obtain the text. **It is therefore not cited anywhere above.** MacAdam's page
+carries the equivalent point in publicly verifiable form and is cited instead. If
+someone has the book, §3c gains a second primary source; until then it does not have one.
+
+### 8b. Inference — reasoned from something established, but not stated by any source
+
+| | inference | what it is reasoned from |
+|---|---|---|
+| Narration has a **~1 s sacrificial head**, and it is not zero | §2a's evidenced 4 s finding for tape, discounted for a familiar loudness-normalised voice, but not to zero because §2a's specific finding is non-habituation |
+| **One axis per seam** (§3e) | §2a: the listener is already spending attention on the voice change, so extra labels are dropped and the author does not choose which |
+| **Attribute on the way in**, and the tease is the rare exception | Everett's *Title First* plus MacAdam's caution that teases confuse when voices are similar |
+| Narration items need **anti-uniformity** too | §2d's texture finding, transferred from segments to items |
+| **Tense is the only cue** separating mechanism from history in audio | both spines' decision to interleave history inside process beats rather than gathering it into an act |
+| Planning constants: **150 wpm** (convention), **6.0 chars/word** (arithmetic) | neither is a measurement of our output; §7d is the first evidence and it says 5.85 |
+| The alcohol coverage projection of **15 strong / 18 thin / 30 empty** | barbecue's measured proportions plus the alcohol spine's own prediction that it runs thinner; **replace it with the real report the moment one exists** |
+
+### 8c. Our invention — this product, this document, no external authority
+
+| | invention |
+|---|---|
+| **The six modes** — Hinge, Frame, Marker, Correction, Patch, Carry — and their word budgets | the vocabulary a script author picks from |
+| **Transition items vs narration items** (§2b), and the ruling that the ≤ 8 s spec budget and the payback rule apply to the first and not the second | the structural finding of this document |
+| The **12 s exception** for a required attribution or correction, and the demonstration that 8 s is unachievable alongside §6c's attribution rule | a real spec conflict, resolved |
+| **Carry hard max 180 s**: the narrator is never the longest item in the Foray | |
+| The **narration merge rule** and the two-consecutive cap (§2e) | §6a's same-episode argument applied to adjacent empty beats |
+| The **eight-seam taxonomy** S1–S8 (§3b) | |
+| The **spoiler rule** as a general seam rule (§3c) | the principle is Everett's and the spec's; the seam-level formulation and the tape-becomes-confirmation reasoning are ours |
+| **Correct forward for framing, backward for facts** (§3f) | |
+| **Grammar may not cross a cross-episode seam**, which forbids two of MacAdam's twelve techniques in our two most common seams | RTDNA is the authority for the harm; the specific prohibition is ours |
+| **Never imply a reply** (§3g) | |
+| **One seam, one job**, and compression before splitting (§3j) | |
+| **Three ratios** — R-beat 90/10, R-foray 25/35, R-essay 40 — and the finding that the full barbecue spine is 43 % narrator | |
+| **Enforcement by cutting beats, not words**, and **chain-first allocation** of the Carry budget (§4c) | the drop order comes from both spines; the enforcement rule is ours |
+| The **Carry-budget formula** and the 250 / 600 / 1,200-character per-beat constants (§4d) | |
+| **U1–U4** and the requirement to use the weakest form the evidence supports (§5e) | the standard is the spines' standard for tape; applying it to the narrator is ours |
+| The **banned-hedge and banned-adjective lists** | |
+| **Every Carry names a source out loud**, and the **synthesis-Carry exception** (§5f, R3) | |
+| The **six-test rejection gate**, and **R2 the substitution test** in particular | |
+| **Unwritable** as a third verdict, and the escalation ladder (§6d) | |
+| **Carry-by-default vs Carry-by-design** (§2d) | |
+| **Carry an empty beat on the literature of the next voice** where the chain allows it (§7b) | fell out of the real assembly |
+
+---
+
+## 9. What this document does not decide, and what it asks of others
+
+**Not decided here, deliberately.**
+
+- **Voice.** Timbre, warmth, authority, breath, whether several voices map to topic
+  domains, and what a 2026 TTS engine can deliver. The parallel research document owns
+  all of it. Note one place the two collide: §5a bans the first person and §1c bans a
+  host persona, which constrains how much personality a voice choice can express. If the
+  voice work concludes that several voices are worth their cost, §3d's attribution rules
+  do not change — a second narrator voice is still a narrator, not a second authority.
+- **Script format, storage, generation, caching, idempotence.** The pipeline document
+  owns them. The fields these rules imply, offered as input rather than as a schema:
+  `beat_id`, `mode`, a per-sentence `licence` from R1's list of six, `sources[]` with a
+  flag for which are named on air, unfilled `[slot]`s as a generation-blocking condition,
+  a `heard_audio` boolean required wherever §3i applies, a `rejection_reason` that is
+  never deleted, and an optional `pre_gap_sec` for act boundaries.
+- **Cost in currency, and how many Forays.** §4d gives the character ranges and the
+  formula; the money is the cost work's.
+
+**Three things that need a founder line, all of them small.**
+
+1. **The 8 s / 12 s transition ceiling** (§2b). This is a divergence from
+   `04_VOICE_AUDIO_SPEC.md` of the same kind as the 0.5 s / 2.0 s one that
+   `segment-length-rules.md` §10 escalated "since it touches the player." The narration
+   item / transition item distinction touches progress accounting too.
+2. **R-foray's ceiling at 35 %, and the consequence that the complete barbecue spine is
+   not shippable as one Foray.** §4b is arithmetic, but 25 / 35 / 40 are judgement, and
+   they decide how many Forays exist and what they cost.
+3. **The SYSK register question that `grilling-history-coverage.md` §2b already put to
+   the founder, now with a narration price on it.** Ruling that register out returns
+   beats 7, 19 and 30 to empty, which converts three thin beats into three carried ones:
+   **about +1,800 characters of narration**, minus the tape those cuts would have
+   supplied, which also shrinks the Carry budget the ratio allows. So the ruling costs
+   narration twice. That is a reason to make it explicitly, not a reason to decide it
+   either way.
+
+**Asks of the coverage report, recorded not made.** This document edits no spine and no
+coverage report.
+
+- **Add `writable` / `unwritable` as a second axis on empty beats** (§6d). Stage 2 can
+  predict it: an empty beat whose literature the report can name is writable; one where
+  the report cannot say what would be said is not.
+- **A small correction to record.** Beat 14's entry says the missing antecedent goes
+  "ahead of `#1205`". In the assembly it goes ahead of **`#700`**, because §6c makes
+  chronological order mandatory and `#700` is the earlier window. The report's
+  "Chosen"/"Second" labels are a quality ranking, not a play order, and it is worth a
+  sentence saying so where a script author will see it.
+- **The `#266` / `#555` merge question** (§7a), now with a narration cost attached.
+
+**No spine amendment is proposed.** Both spines were read looking for one, and neither
+needs it for narration's sake — on the contrary, **the Marker requirements in the two
+spines' §2 sections are the most useful editorial instructions in the corpus for this
+work**, and §3b's seam taxonomy is largely a formalisation of what they already
+instruct. The two amendments already pending (beats 22 and 27) are unaffected by
+anything here.
+
+---
+
+## 10. Sources
+
+- Mike Ladd, "The Art of the Radio Feature," Transom, 2022 —
+  https://transom.org/2022/the-art-of-the-radio-feature/
+- Alison MacAdam, "Writing through sound: A toolbox for getting into and out of your
+  tape," NPR Training, 2015 —
+  https://www.npr.org/sections/npr-training/2025/05/29/g-s1-66787/writing-through-sound-a-toolbox-for-getting-into-and-out-of-your-tape
+- Karen Everett, "Ten Tips for Writing Documentary Narration," New Doc Editing —
+  https://newdocediting.com/ten-tips-for-writing-documentary-narration/
+- RTDNA, "Video and audio editing" — https://www.rtdna.org/video-and-audio-editing
+- B-Side Radio, "Writing a Radio Script" — http://bsideradio.org/writing-a-radio-script/
+- Narrators Roadmap, "Standards for silence in the book" —
+  https://www.narratorsroadmap.com/standards-for-silence-in-the-book/
+- AES TD1004.1.15-10, via `docs/research/corpus/digests.md` #12
+- Ira Glass on storytelling — **secondary**, third-party transcripts; no rule rests on it
+
+**Internal, and load-bearing throughout:** `docs/curation/segment-length-rules.md`
+(§§2a, 2b, 2d, 2e, 2f, 2g, 3a, 5a, 5b, 6a, 6b, 6c, 6d), `docs/curation/grilling-history-spine.md`,
+`docs/curation/grilling-history-coverage.md`, `docs/curation/alcohol-forms-spine.md`,
+`docs/brief/04_VOICE_AUDIO_SPEC.md`, `player/seam-gap.js`, `docs/DECISIONS.md`
+(the narrator and English-only rulings, 2026-08-16), #226, #247.
