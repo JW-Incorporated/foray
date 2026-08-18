@@ -558,10 +558,34 @@ const collisionCases = [
   { query: "rome", bannedId: "huberman-lab--science-of-attraction-compatibility-and-romance-dr-paul-east", note: "roman should not match inside romance" },
   { query: "an nba team", bannedId: "railway-mania--richard-peacock", note: "team should not match inside steam" },
 ];
+/* ASSERTED ON RAW `results`, NOT ONLY ON `picks`, and that was found by
+   mutation rather than by reading (#218). Removing the prefix guard from
+   search-engine.js -- deleting the exact mechanism these three cases exist to
+   protect -- left ALL THREE of them GREEN. The reason is specific and worth
+   recording: the `diffusion` collision does come straight back, re-entering
+   retrieval at raw index 13 with sum 6.00 against a relative strong bar of
+   5.50, so it is genuinely a strong match again; it just lands outside the
+   10-item truncation that `picks` applies. An assertion that reads only `picks`
+   cannot see a collision that ranks 11th, which is most of them.
+   `results` is the honest surface for this claim: gated on the primary token and
+   `sum > minScore`, sorted, UNTRUNCATED, and computed before classifyResults
+   derives any relative bar -- the same argument the "nba" retrieval check above
+   makes for reading it. With the guard intact all three banned ids are absent
+   from `results` entirely, so this costs nothing today.
+   HONEST ABOUT THE OTHER TWO: they stay vacuous under that mutation, and
+   promoting them to `results` does not change it. The romance item never reaches
+   `results` because `roman` arrives as a low-weight expansion whose title-only
+   hit does not clear minScore, and "an nba team" is AND-gated as a proper-noun
+   query so it returns nothing at all. Both are kept out by SCORING, not by the
+   matcher, so neither can witness the guard. The direct witnesses live in
+   test/search-matcher.test.js, where breaking the guard kills five tests
+   including all three collisions by name, in milliseconds. */
 for (const c of collisionCases) {
-  const { picks } = search(c.query);
-  check(`"${c.query}" excludes ${c.bannedId} (${c.note})`, !picks.some((p) => p.i.id === c.bannedId),
+  const { picks, results } = search(c.query);
+  check(`"${c.query}" excludes ${c.bannedId} from picks (${c.note})`, !picks.some((p) => p.i.id === c.bannedId),
     `still present in picks`);
+  check(`"${c.query}" never even retrieves ${c.bannedId} (${c.note})`, !results.some((r) => r.i.id === c.bannedId),
+    `absent from picks but PRESENT in the raw result set -- the collision is back and is only hidden by the 10-pick truncation`);
 }
 
 /* ---------- 7. proper-noun matching (fix B) ---------- */
