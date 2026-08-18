@@ -56,6 +56,32 @@ const FLOORS = {
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
+  /* The field record (#264). Three suites, floored separately BECAUSE they cover
+     different things and any one of them can be deleted without the others
+     noticing — which is precisely the shape #266's mutation round found, where a
+     central mechanism survived in two suites before the third caught it.
+
+       `diagnostic-log.test.js`     the mechanism: the ring, the sequence number,
+                                    the cap and its eviction DIRECTION, the
+                                    durable-on-write property, the parse table,
+                                    and the rule that no telemetry TEXT is ever
+                                    stored. 27 mutations killed; each is named in
+                                    the test that kills it.
+       `diagnostic-record.test.js`  the wiring, through the real client, the real
+                                    manager and the real backend over a real seam.
+                                    This is the only thing in the repo that would
+                                    notice a telemetry FORMAT change silently
+                                    emptying the record.
+       `diagnostics-surface.test.js` the drawer item and the sheet: reachable on a
+                                    phone, copyable, and — asserted, not assumed —
+                                    making no network request and never entering
+                                    the ungated `cp_events` pipeline.
+
+     Zero slack, like media-session and data-deletion below and for the same
+     reason: what these guard is a set of decisions each one edit from its
+     opposite. Raise them when the suites grow. */
+  "player/diagnostic-log.test.js": 29,
+  "player/diagnostic-record.test.js": 13,
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
   "player/foray-playback.test.js": 83,
@@ -105,6 +131,9 @@ const FLOORS = {
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
   "test/data-deletion.test.js": 51,
+  /** The field record's surface (#264) — see the note beside the two `player/`
+      halves above. */
+  "test/diagnostics-surface.test.js": 17,
   /* The standing gate on topic ids in `data/*.json`. Floored because the metric
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a

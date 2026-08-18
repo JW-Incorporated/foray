@@ -275,6 +275,9 @@ test("a telemetry line's TEXT never reaches the record — only numbers, ids and
      here" change. Every one of these fails. */
   const { diag, store } = mk();
   const secrets = [
+    // A boundary first, so the deadline line has a seam to annotate — only a
+    // boundary opens one. See `RE.deadline`.
+    REAL.outPoint,
     "audio.error code=4 src=https://cdn.example/ep.mp3?token=SECRET",
     "play.rejected NotAllowedError: user gesture required for https://cdn.example/x",
     "foray.warning: listener typed SECRET into the box",

@@ -1014,7 +1014,21 @@ function ensureBooted() {
     },
   });
 
-  backend = new HtmlAudioBackend();
+  /* THE BACKEND GETS THE SINK TOO (#264), and its absence was the whole reason
+     the field record could not answer #224.
+
+     Every number that bounds a seam is emitted at the ELEMENT layer, not the
+     manager's: `outPoint.reached … overshoot=`, `load.deadline Nms (hidden|visible)
+     for X`, `load.sameSource`, `audio.error code=`, `play.rejected`. This
+     constructor took no `telemetry` at all, so all of it went nowhere — the iOS CI
+     probe reads exactly these strings and this page discarded them. A record built
+     on the manager's stream alone knows a seam happened and not how long its load
+     took or whether it was a cold cross-origin fetch, which is precisely the
+     question #239's 20 s deadline was tuned against a bundled local file to answer.
+
+     `onTelemetry` is hoisted (a function declaration below), so referencing it here
+     is safe and keeps the sink defined once. */
+  backend = new HtmlAudioBackend({ telemetry: onTelemetry });
   manager = new PlayerQueueManager({
     backend,
     positionStore: positions,
@@ -1032,15 +1046,27 @@ function ensureBooted() {
        reaches it at all, so the beat is invisible and the main button still
        means "start". This is the only repaint during a beat, at both edges. */
     onSeamGapChange: () => render(),
-    telemetry: (m) => {
+    telemetry: onTelemetry,
+  });
+
+  /* The one sink, for BOTH the manager and the backend (#264). Extracted from the
+     manager's option so it can be handed to the element layer as well — see
+     `HtmlAudioBackend` above.
+
+     THE CONSOLE HALF IS UNCHANGED, and deliberately so: it drives `foray.error`,
+     which is a listener-facing surface, and that is a different job from measuring
+     the seam. The one behavioural consequence of the second caller is that a media
+     error and a refused `play()` now also reach `console.warn`, which is an
+     improvement on reaching nothing — and neither matches the narrower
+     `foray.error` test below, so the Foray page's standing-error rule is untouched
+     (#225's argument still holds exactly as written). */
+  function onTelemetry(m) {
       /* FIRST, AND BEFORE THE FILTER (#264). Everything diagnostic used to be
          dropped by the regex below — `outPoint.reached … overshoot=0.003s`,
          `seam.gap.armed`, `load.deadline`, `prefetch.window` — because none of
          those words is "error", "rejected" or "skipped". The record takes the
          whole stream and keeps only numbers it matched and stage names from a
-         fixed vocabulary; the message text itself is never stored. The console
-         filter below is UNCHANGED: it drives `foray.error`, which is a listener
-         surface, and is a different job from measuring the seam. */
+         fixed vocabulary; the message text itself is never stored. */
       diag.note(m);
       if (!/error|rejected|skipped/i.test(m)) return;
       console.warn("[player]", m);
@@ -1061,8 +1087,7 @@ function ensureBooted() {
         foray.error = m;
         notifyForay();
       }
-    },
-  });
+  }
 
   /* The lock screen / car / headphone surface (#27). `createMediaSession`
      returns an inert bridge where `navigator.mediaSession` is absent — desktop

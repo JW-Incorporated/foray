@@ -402,6 +402,10 @@ export class PlayerDiagnostics {
 
     hit = RE.seamArmed.exec(m);
     if (hit) {
+      /* AN OPENER. The out-point normally opens the seam a beat later, but a file
+         that runs OUT before its authored `end_sec` emits no `outPoint.reached` at
+         all, and the element's `ended` listener registered by `client.js` fires
+         AFTER the backend's own — so the arming line reaches this record first. */
       const seam = this._openSeam("seamArmed");
       seam.askedGapMs = Math.round(num(hit[1]) * 1000);
       seam.fromId = hit[2];
@@ -416,8 +420,14 @@ export class PlayerDiagnostics {
     if (hit && this._seam) { this._seam.cutBy = hit[1]; handled = true; }
 
     hit = RE.deadline.exec(m);
-    if (hit) {
-      const seam = this._openSeam("deadline");
+    if (hit && this._seam) {
+      /* ANNOTATES, NEVER OPENS, and this is not a detail. Every load emits a
+         deadline — including the FIRST one, which is a listener pressing play and
+         not a seam at all. An opener here manufactured a phantom seam per Foray
+         with `fromId: null`, measured the press-to-audio latency into it, and
+         inflated every count in the report's summary. A seam is a BOUNDARY between
+         two items; only a boundary may open one. */
+      const seam = this._seam;
       seam.deadlineMs = num(hit[1]);
       seam.deadlineFor = hit[2];
       /* THE CROSS-EPISODE ANSWER, and it is derived rather than assumed. A fresh
@@ -436,8 +446,9 @@ export class PlayerDiagnostics {
     }
 
     hit = RE.sameSource.exec(m);
-    if (hit) {
-      const seam = this._openSeam("sameSource");
+    if (hit && this._seam) {
+      // Annotates, never opens — see `RE.deadline` above.
+      const seam = this._seam;
       seam.crossEpisode = false;
       seam.toId = hit[1];
       seam.toStartSec = num(hit[2]);
