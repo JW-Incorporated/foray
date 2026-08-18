@@ -35,7 +35,7 @@ that document names the file.
 | | value | kind |
 |---|---|---|
 | Planning rate | **170 wpm, 6.0 chars/word → 17 characters per second** | inherited estimate + arithmetic (§2a) |
-| Transition item ceiling | **8 s**, or **12 s** when the extra words are a required attribution or correction | divergence from `04_VOICE_AUDIO_SPEC.md` (§2b) |
+| Transition item ceiling | **8 s**, or **12 s** when the extra words are a required attribution, correction or structural signpost | divergence from `04_VOICE_AUDIO_SPEC.md` (§2b) |
 | Narration item (Patch, Carry, long Marker) | **not** a transition; the 8 s budget and the payback rule do not apply | our ruling (§2b) |
 | Carry soft max | **150 s** → `needs_review`, must state what the extra minute does | invention |
 | Carry hard max | **180 s.** The narrator is never the longest item in the Foray | invention |
@@ -147,9 +147,10 @@ Everything below is authored in **words** and reported in **seconds** and
 
 - **170 words per minute**, taken from `segment-length-rules.md` §2a rather than
   chosen here. That document does the work of establishing it: it derives ~170 wpm
-  from the TREC 2020 podcast corpus, checks it against the 164–196 wpm conversational
-  range Yuan, Liberman and Cieri measured, and **explicitly rejects the familiar "150
-  wpm" as folklore traced to a single non-peer-reviewed page**. It also says the
+  from the TREC 2020 podcast corpus, checks it against Yuan, Liberman and Cieri's corpus
+  measurements — 196 wpm gross, 164 wpm turn-wise, 111–291 wpm across conversations —
+  and **explicitly rejects the familiar "150 wpm" as folklore traced to a single
+  non-peer-reviewed page**. It also says the
   honest thing about its own number — "this document uses 170 wpm and treats it as an
   estimate, not a constant."
 - **6.0 characters per word**, spaces and punctuation included. Arithmetic on English
@@ -210,8 +211,9 @@ of Black foodways, on The Grill Coach"* is eleven words, about four seconds — 
 the bridge has done any editorial work at all. So:
 
 > **Transition ceiling.** 8 s is the target. **12 s is permitted only when the extra
-> words are a required attribution or a required correction**, and the script records
-> which. Anything longer is not a transition: type it as a narration item.
+> words are a required attribution, a required correction, or a Marker's required
+> structural signposting**, and the script records which. Anything longer is not a
+> transition: type it as a narration item.
 
 That is a real conflict resolved, not papered over. It touches the player's
 accounting, so it wants a founder line the same way the 2.0 s divergence did.
@@ -293,9 +295,9 @@ strictest version of R2.
 
 ### 2e. Consecutive narration items, and the narration merge rule
 
-Sixteen chained beats in alcohol Act I, predicted the thinnest act in the coverage
-report, is a live risk of four unbroken minutes of TTS. That is not a narrated Foray;
-it is a lecture with occasional guests.
+Sixteen chained beats in alcohol Act I — the act its own spine predicts will come
+back thinnest — is a live risk of four unbroken minutes of TTS. That is not a
+narrated Foray; it is a lecture with occasional guests.
 
 > **Merge rule for narration.** Two or more adjacent empty beats in the same chain
 > are authored as **one** Carry item, not one per beat, unless the merged item would
@@ -694,8 +696,9 @@ Four caveats, because the figure is only as honest as they are.
   why the Grill Coach row has to be added by hand. It is not in figure C.
 - **The 20 covered beats are not 20 distinct pieces of tape.** Thin beat 2's only
   candidate sits inside `moreish#266` and thin beat 6's inside `bbqrn#700` — both
-  already counted in beats 15 and 14 — and `moss#2779` serves beats 27 and 37. So the
-  covered beats share tape, and the total above counts each segment once, which is
+  already counted in beats 15 and 14 — and `moss#2779` is a candidate for both beat 27
+  and beat 37, which the report resolves by assigning it to 37 only, "so that one
+  segment is not double-booked". So the covered beats share tape, and the total above counts each segment once, which is
   correct for a runtime and worth stating so nobody adds them twice.
 - **And the fourth caveat, which the first three do not cover: this base is not
   assemblable as one Foray.** Six Grill Coach segments at 684.4 s of a 2,737 s
@@ -773,9 +776,9 @@ Both spines hand over the drop order directly, and it is the same order in both:
 |---|---|---|
 | a fan stop — "a missing stop on a tour is invisible" | a missing step inside a family — "the process narrated up to a gap and then resumed past it" | a chain link — "a missing link in a chain is a hole" |
 
-The alcohol spine's three-grade table (its §2a) is the sharper version, and its verdict
-is the allocation rule: **"Act I is the most dangerous place in the spine for a hole
-and the small family stops in Acts II through V are the safest."**
+The alcohol spine's three-grade table (its §2a) is the sharper version, and its
+verdict is the allocation rule: **"Act I is the most dangerous place in the spine for
+a hole and the small family stops in Acts II through V are the safest."**
 
 > **Allocation rule.** Spend the Carry budget **chain-first**. Reserve it for chain
 > links before any fan stop gets a second of it, and pay for the reservation by
@@ -806,12 +809,13 @@ Foray narration characters ≈ 240·(strong) + 780·(thin) + 1360·(carried)
 ```
 
 **These are derived from §4b rather than guessed, and the derivation is worth showing
-because an unreconciled cost model is how two documents come to disagree about money.**
-§4b's 571 s of machinery for 20 covered beats splits into 288 s of Patches, which belong
-to the nine thin beats at 32 s each, and 283 s of seams, Markers and Corrections, which
-are shared across all twenty — 14.15 s per beat. So a strong beat is ~14 s and a thin beat
-is ~14 + 32 = ~46 s. Check it back: 240 × 11 + 780 × 9 = 9,660 characters against §4b's
-571 s × 17 = 9,707. **Within 0.5 %**, which is as close as a rounded per-beat model gets.
+because an unreconciled cost model is how two documents come to disagree about
+money.** §4b's 571 s of machinery for 20 covered beats splits into 288 s of Patches,
+which belong to the nine thin beats at 32 s each, and 283 s of seams, Markers and
+Corrections, which are shared across all twenty — 14.15 s per beat. So a strong beat
+is ~14 s and a thin beat is ~14 + 32 = ~46 s. Check it back: 240 × 11 + 780 × 9 =
+9,660 characters against §4b's 571 s × 17 = 9,707. **Within 0.5 %**, which is as
+close as a rounded per-beat model gets.
 
 **Barbecue**, 11 strong / 9 thin, at the two ratio bounds:
 
@@ -836,10 +840,11 @@ Corrections, 18 Patches):
 
 So the planning figures a cost model should use are **15k–25k characters of narration
 for a barbecue-scale Foray and 24k–41k for an alcohol-scale one**, with the upper
-figure of each pair being a ceiling that should not be treated as a plan. Cross-checked
-the other way — narration seconds × 17 — the same four bounds come out at 15,504 /
-25,058 and 25,500 / 41,191, so the per-beat model and the ratio arithmetic agree to
-within 3 %.
+figure of each pair being a ceiling that should not be treated as a plan.
+Cross-checked the other way — narration seconds × 17 — the same four bounds come out
+at 15,504 / 25,058 and 25,500 / 41,191, so the per-beat model and the ratio
+arithmetic agree to within 5 %, the widest gap being the alcohol target row, where
+rounding 5.5 carryable beats down to 5 costs 4 %.
 
 **And the alcohol row carries a warning the barbecue row does not.** Thirteen of its
 thirty empty beats are unfundable even at the ceiling, and by §4c's chain-first
@@ -1047,11 +1052,10 @@ cheap ones and catch the most.
 Read the beat's claim sentence. Then read the script one sentence at a time. Every
 sentence must have exactly one of six licences, and the script records which:
 
-1. it asserts or supports **this beat's claim**;
-2. it is a **required attribution** (§5f);
-3. it is **required structural signposting** — a Marker's job (§3b, S7);
-4. it is a **required correction** of adjacent tape (§3f);
-5. it supplies an **antecedent the tape assumes** and the coverage report names as
+1. it asserts or supports **this beat's claim**; 2. it is a **required attribution**
+(§5f); 3. it is **required structural signposting** — a Marker's job (§3b, S7); 4. it
+is a **required correction** of adjacent tape (§3f); 5. it supplies an **antecedent
+the tape assumes** and the coverage report names as
    missing;
 6. it is the **sacrificial head** — two or three words of orientation (§3h).
 
@@ -1201,9 +1205,11 @@ Word and character counts are exact. Seconds are at the §2a planning rate.
 Chosen because it is the hardest real seam in the corpus that has strong tape on both
 sides. Argentina to Jamaica: two shows, two voices, two rooms, two hemispheres, and
 both are fan stops inside Act III, so neither depends on the other. Beat 13 (braai)
-precedes it and is unsourceable, so a Carry hands into the stretch and a Carry follows
-beat 15 as well. Between those two the stretch runs **S5 → S3 → S1 → S3 → S8**, four of
-the eight seam types, and each item below names its own.
+precedes it and is unsourceable, so a Carry hands into the stretch and a Carry
+follows beat 15 as well. Between those two the stretch runs **S5 → S3 → S1 → S3 →
+S8**, four of the eight seam types. A1 is the S5 — a narration item handing to tape —
+and A5 sits before the S8; the three seams in between are labelled on the items
+themselves.
 
 **What the tape is.**
 
@@ -1250,11 +1256,11 @@ that the craft moved into fire management, and the tape makes it (§3c).
 **One `[slot]`, and finding out which one took a check.** The coverage report names the
 guest — "Al Frugoni, an Argentine asador" — in beat 5's entry, on the same episode,
 so the name does not need a slot and the in-anchor's *"Al, how do you"* is
-corroboration rather than the only evidence. The **show** is never named in prose; only
-the `item_id` `bbqrn-argentina-open-fire` appears, and expanding an id into a title is
-exactly the kind of confident guess §5f forbids. **The general lesson: an attribution
-slot is filled from the report, not from the segment id, and the two halves of an
-attribution can have different provenance.**
+corroboration rather than the only evidence. The **show** is never named in prose;
+only the `item_id` `bbqrn-argentina-open-fire` appears, and expanding an id into a
+title is exactly the kind of confident guess §5f forbids. **The general lesson: an
+attribution slot is filled from the report, not from the segment id, and the two
+halves of an attribution can have different provenance.**
 
 **And it breaks a rule, which is recorded rather than repaired.** A1 opens on *"The
 pampas"* — a load-bearing place name in position two, where §3h asks for two or three
@@ -1315,9 +1321,9 @@ are the beat's claim and the tape makes all three.
 >
 > *"Same conversation, a minute on, and the question is who gets to claim it."*
 
-Seam type S3 again, and the seam the beat list does not show. The elision is 50.7 s, well
-under `segment-length-rules.md` §6b's five-minute threshold, so silence would have been
-permissible — but this seam is inside a fan stop that has already had two
+Seam type S3 again, and the seam the beat list does not show. The elision is 50.7 s,
+well under `segment-length-rules.md` §6b's five-minute threshold, so silence would
+have been permissible — but this seam is inside a fan stop that has already had two
 attributions spent on it, and a 4.9 s Hinge is cheaper than making the listener work
 out why the same voice restarted. It is the shortest item in the example and the one
 that most repays being written rather than skipped: it turns `#555` from a
@@ -1464,11 +1470,13 @@ Miller**, which turns out to matter.
 
 **Three things this script does that a script author should copy.**
 
-1. **U4 out loud.** *"No recorded conversation reaches this argument at length."* This
+1. **U4 out loud.** *"No recorded conversation reaches this argument at length."*
+This
    is the sentence the whole §5e ladder exists to make sayable, and it is the difference
    between a narration beat and a fake segment. It costs eight words, and §5a is why it
    has no "we" in it.
-2. **It names the literature, which is something the tape cannot do.** A Carry that says
+2. **It names the literature, which is something the tape cannot do.** A Carry that
+says
    *The Cooking Gene* and *Black Smoke* gives the listener two things to go and read.
    **A narration beat is not purely a loss.**
 3. **It carries the beat with the literature of the voice who speaks next.** Naming
@@ -1525,7 +1533,7 @@ voiced and dropped into the Foray at 42 seconds, nothing about it would sound wr
   **The narrator can reintroduce, for free, the very material the sourcing gate spent
   a report excluding.**
 
-Note finally that the failing script is **cheaper** — 705 characters against 1,101. A
+Note finally that the failing script is **cheaper** — 705 characters against 1,069. A
 cost model built on characters will always prefer the padded script. That is a reason
 the review gate cannot live downstream of the cost model.
 
@@ -1539,9 +1547,10 @@ for.
 
 **What the spine says.** Beat 16 is the classification key. "Evidence that counts:
 almost certainly narration, and that is the right outcome." The spine's §5 ranks it
-first among beats likely to need narration: "Nobody says this in one breath because it is the
-conclusion of an argument rather than a topic. It is the most important beat in the
-Foray and almost certainly the least sourceable." Share 1.6 %, about **2.4 minutes**.
+first among beats likely to need narration: "Nobody says this in one breath because
+it is the conclusion of an argument rather than a topic. It is the most important
+beat in the Foray and almost certainly the least sourceable." Share 1.6 %, about
+**2.4 minutes**.
 
 **Four consequences, all of them different from beat 20's.**
 
@@ -1725,10 +1734,12 @@ have one.
    `04_VOICE_AUDIO_SPEC.md` of the same kind as the 0.5 s / 2.0 s one that
    `segment-length-rules.md` §10 escalated "since it touches the player." The
    narration item / transition item distinction touches progress accounting too.
-2. **R-foray's ceiling at 35 %, and the consequence that the complete barbecue spine is
+2. **R-foray's ceiling at 35 %, and the consequence that the complete barbecue spine
+is
    not shippable as one Foray.** §4b is arithmetic, but 25 / 35 / 40 are judgement, and
    they decide how many Forays exist and what they cost.
-3. **The SYSK register question that `grilling-history-coverage.md` §2b already put to
+3. **The SYSK register question that `grilling-history-coverage.md` §2b already put
+to
    the founder, now with a narration price on it.** Ruling that register out returns
    beats 7, 19 and 30 to empty, which converts three thin beats into three carried ones:
    **about +1,740 characters of narration**, minus the tape those cuts would have
