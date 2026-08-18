@@ -7,6 +7,87 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### playback speed — 0.75x-2x, and it survives a seam (2026-08-17, one PR, no follow-up)
+
+- **What:** `feature/playback-speed`. Founder request: "add play speed options,
+  for example 1.5x — copy what speeds are commonly used on other podcast apps."
+  Six stops, `0.75 / 1 / 1.25 / 1.5 / 1.75 / 2`, persisted globally in `cp_rate`,
+  on a cycle button on BOTH the mini-player sheet (which already had one) and the
+  Foray page transport (which did not).
+- **Shared files:** `player/playback-rate.js` (new, + suite),
+  `player/queue-manager.js`, `player/html-audio-backend.js`,
+  `player/client.js`, `player/media-session.js` (comment only), `app.js`,
+  `styles.css`, `test/suite-integrity.test.js`, this file. **Nothing else** — no
+  `data/`, no `sw.js`, no `mobile/`, no `ios/`, no `.github/`.
+- **THE CONTROL ALREADY EXISTED AND WAS BROKEN BY DESIGN, which is the finding.**
+  `client.js` shipped a `cp_rate` button with `RATES = [1, 1.25, 1.5, 1.75, 2]`.
+  It could not work: `queue-manager.js`'s `restoreRate` effect read
+  `item?.rate ?? 1.0`, no queue item this repo builds carries a `rate`, and the
+  reducer emits `restoreRate` on **every** `itemLoaded` for a non-TTS item. So a
+  stored 1.5x was thrown away by the first `play()` and a mid-listen change
+  survived exactly one segment — a median 103 s — then reverted silently. **The
+  reset everyone worries about here is the engine's `playbackRate = 1` on `src`
+  assignment; ours arrived earlier and was worse.** The backend already survived
+  the engine's (`_pendingRate`, re-applied in `play()`).
+- **The per-item override is GONE rather than demoted.** `item.rate` is the port of
+  the Swift's `item.showRate` (PlayerQueueManager.swift:335) — a per-show speed,
+  which Apple really has. Nothing in the JS populates it, and the test helpers
+  (`ep`, `seg`, `fseg`) all set a meaningless `rate: 1.0` that `??` cannot tell
+  from a deliberate override, so left in it silently beat the listener for every
+  item any future test built with them. A per-show speed needs its own key, its
+  own control and its own precedence decision; #28 owns retiring the Swift copy.
+- **`OUT_POINT_ARM_LEAD_SEC` moved 0.5 s -> 2.0 s, and rate is why.** The fine
+  timer's content window is already flat in rate by arithmetic (`(end - now) /
+  rate`, pinned with no clock). The **coarse** stage has no such property: its
+  window is one tick of WALL clock, i.e. `rate` times as much CONTENT. Measured on
+  a driven clock at the widest tick this repo has recorded (**1,825 ms**), with the
+  old lead: **1x = 1,198 ms** of overshoot, **2x = 2,476 ms**. With the new lead
+  the fine stage is armed at every ladder stop and it is **1x = 11 ms, 2x = 22 ms**
+  — bounded by timer latency instead of event latency. At a healthy 250 ms tick
+  both leads give 11/22 ms, so this only ever mattered on the tail, which is where
+  CI and locked phones live.
+- **Real-clock overshoot is NOT the instrument, and saying so is the point.** Four
+  runs of the pre-existing real-clock sweeps gave a 1x worst of 183/197/354 ms and
+  a 2x worst of 80/147/710/944 ms — an order of magnitude of spread in both
+  columns, with one 2x sample landing exactly on what a bare tick check cost in
+  the same run. A drafted four-phase 2x sweep was **removed** rather than added: it
+  would have doubled this file's real-clock boundary runs on the one suite that has
+  already reddened CI at random for a day, to measure something a driven clock
+  answers exactly. The file's own rule — assert an ordering on a real clock, never
+  a duration — is what that follows.
+- **Three decisions, stated so they are not re-litigated by accident:**
+  1. **The 2.0 s seam beat stays WALL clock and does not scale.** There is no
+     content in it (it is not audio — principle 3), the audiobook section-break
+     convention it comes from is perceptual, and it is also the window that hides
+     the next segment's load — which takes wall clock. Dividing it by rate would
+     shrink the cover exactly when seams arrive twice as often (#224). Pinned in
+     `player/foray-playback.test.js`.
+  2. **Stored progress is MEDIA time**, and already was: `forayElapsed` sums
+     authored segment durations plus `backend.currentTime`, so a resume lands on
+     the same audio whatever speed either session used. `ForayProgressStore`
+     throttles on the clock VALUE (5 s of media) rather than on wall time, so the
+     write cadence is rate-invariant too. The manager's 15 s position timer is wall
+     clock and stays so — it skips bounded items entirely, so it does nothing at
+     all during a Foray.
+  3. **Global, one `cp_rate`.** A speed is a fact about the listener, and a Foray
+     is an hour from nine shows, so "per Foray" would mean "per arbitrary bundle of
+     nine publishers". Apple's per-show speed is an override on a global default;
+     Spotify's failure to persist is its most-complained-about behaviour.
+- **`mediaSession` is honest about it.** `setPositionState` now reports
+  `backend.rate` — the ELEMENT's rate, not the chosen one — because the OS
+  extrapolates as `position + rate x wall` and a rate Safari refused would drift
+  the lock-screen scrubber away from the audio. `media-session.js` §4's documented
+  beat-drift bound was restated: it is `SEAM_GAP_SEC x rate`, so 4.0 s at 2x rather
+  than the flat 2.0 s the comment claimed. `mediaSession` is absent in Android
+  WebView at the engine level, so this pays off on web and iOS only.
+- **2x is the top, and that is a Foray-specific answer.** Half the apps checked go
+  to 3x or 3.5x. Rate does not slow any one seam load, but it multiplies how many a
+  listener meets per wall minute, and a hidden-page load measures 5.1-11.1 s
+  against a 20 s deadline — crossing which drops the segment (#224). 2x doubles
+  that exposure for a speed people use; 3x trebles it for a speed few do.
+  `playback-rate.test.js` asserts `MAX_RATE === 2` so shipping 3x requires
+  deliberately editing a test.
+
 ### hidden-page load deadline — a seam stops dropping the segment (2026-08-17, one PR, no follow-up)
 
 - **What:** `fix/hidden-load-deadline`. `LOAD_SETTLE_TIMEOUT_MS` was one number for
