@@ -430,6 +430,54 @@ test("forayElapsed reads a playhead inside a post-bridge segment on the Foray cl
   assert.equal(forayElapsed(r.playable, 2, 330), 170);
 });
 
+test("the Foray clock advances DURING a bridge, not only after it", () => {
+  /* A segment's playhead is an offset into somebody else's episode, so the
+     in-point is subtracted. A bridge has no in-point — it is a whole file of our
+     own that always starts at zero — so its playhead already IS the offset.
+     Reading the missing `start_sec` as "no progress" froze the clock at the
+     bridge's start for the bridge's whole length: up to 180 s of a transport
+     display that does not move, and any progress row written during a bridge
+     storing the wrong second.
+
+     Mutation: go back to `if (isNum(playheadSec) && isNum(item.start_sec))`, and
+     all three of these collapse to 100. */
+  const r = bridged();
+  assert.equal(forayElapsed(r.playable, 1, 0), 100, "the bridge begins where s1 ended");
+  assert.equal(forayElapsed(r.playable, 1, 20), 120);
+  // Clamped at the bridge's own length, so a playhead past its end cannot spill
+  // into the next segment's share of the clock.
+  assert.equal(forayElapsed(r.playable, 1, 99), 140);
+});
+
+test("a bridge inherits the slot it plays inside, rather than falling out of the running order", () => {
+  /* `groupBySlot` groups on `slot` and a narration record carries none, so every
+     bridge collected into a trailing untitled section. That was invisible while
+     bridges were reported unplayable; now that they play, it would render them
+     out of authored order.
+
+     Mutation: drop `slot: raw.slot ?? lastSlot` from `hydrateForayItems` — a
+     second group appears and the bridge leaves the slot it belongs to. */
+  const r = bridged();
+  assert.deepEqual(r.slots.map((s) => [s.id, s.entries.length]), [["one", 3]]);
+  assert.equal(r.entries[1].slot, "one");
+  // An authored slot still wins over the inherited one.
+  const explicit = resolved({ items: [item("s1"), bridge("nar-1", { slot: "two" }), item("s2")] });
+  assert.equal(explicit.entries[1].slot, "two");
+});
+
+test("tapeSec is somebody else's audio; totalSec is the Foray", () => {
+  /* Attribution is owed against tape, not against runtime — `forayCredits` sums
+     per-show seconds and the narrator has no publisher. Exposed so that callers
+     stop re-deriving it, which is how the two clocks got conflated.
+     Mutation: `tapeSec: forayRuntimeSec(report.items)` and the two collapse. */
+  const r = bridged();
+  assert.equal(r.tapeSec, 160);
+  assert.equal(r.totalSec, 200);
+  // With no narration they are the same number, which is why nothing shipped noticed.
+  const plain = resolved();
+  assert.equal(plain.tapeSec, plain.totalSec);
+});
+
 test("a bridge with no duration and no script is still not free", () => {
   /* The player must keep playing whatever shipped; `check-forays.mjs` is what
      refuses to ship this. So the requirement here is only that the number is

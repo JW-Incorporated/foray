@@ -89,6 +89,15 @@ const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
     exactly, and because the rate is stated per character. */
 export const NARRATION_CHARS_PER_SEC = 17;
 
+/** An estimate is rounded to the millisecond. `50 / 17` is 2.9411764705882355
+    and a duration derived from a character count has no business claiming
+    femtoseconds — but the reason is not tidiness. These values are summed into
+    the cumulative clock D1 compares against a 600.000 s window, and a start
+    landing at 599.9999999999999 instead of 600 changes a verdict. Rounding here
+    also makes the number reproducible and diffable, which a projection that
+    lands in a report should be. */
+const toMs = (sec) => Math.round(sec * 1000) / 1000;
+
 /** What a narration item with neither a duration nor a script is worth.
 
     NOT ZERO. Zero is the bug: it makes an item that a listener sits through for
@@ -127,7 +136,7 @@ export function narrationDuration(item) {
   }
   const script = typeof item?.script === "string" ? item.script.trim() : "";
   if (script.length > 0) {
-    return { sec: script.length / NARRATION_CHARS_PER_SEC, source: DURATION_ESTIMATED };
+    return { sec: toMs(script.length / NARRATION_CHARS_PER_SEC), source: DURATION_ESTIMATED };
   }
   return { sec: NARRATION_FALLBACK_SEC, source: DURATION_FALLBACK };
 }

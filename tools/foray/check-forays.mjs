@@ -60,7 +60,6 @@ import {
   narrationDuration,
   NARRATION_CHARS_PER_SEC,
   DURATION_MEASURED,
-  DURATION_ESTIMATED,
 } from "../../player/foray-queue.js";
 
 const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
@@ -101,11 +100,19 @@ export const L4_SOFT_MAX_SEC = 240;
 export const NARRATION_SOFT_MAX_SEC = 150;
 export const NARRATION_HARD_MAX_SEC = 180;
 
-/* The shortest legal narration item: narration-craft §0's Hinge floor, 3 s /
- * 50 characters. A "script" below it is not a short bridge, it is a placeholder
- * — and a placeholder that estimates to a fraction of a second reintroduces the
- * bug this check exists to close, just with a smaller number than zero. */
-export const NARRATION_MIN_SEC = 3;
+/* The shortest legal narration item, from narration-craft §0's Hinge row. A
+ * "script" below it is not a short bridge, it is a placeholder — and a
+ * placeholder that estimates to a fraction of a second reintroduces the bug this
+ * check exists to close, just with a smaller number than zero.
+ *
+ * DERIVED FROM THE CHARACTER FIGURE, NOT THE SECONDS FIGURE, because the row's
+ * own two numbers disagree: it says "3-8 s, 50-135 characters", and 50
+ * characters at that document's own 17 chars/s is 2.94 s, not 3. Hard-coding 3
+ * rejected a 50-character Hinge — the documented minimum. narration-craft's
+ * preamble settles which to trust: "the word budgets are the primitive". Rounded
+ * the same way an estimate is, so the boundary is exact in both directions. */
+export const NARRATION_MIN_CHARS = 50;
+export const NARRATION_MIN_SEC = Math.round((NARRATION_MIN_CHARS / NARRATION_CHARS_PER_SEC) * 1000) / 1000;
 
 /* D-tier constants. */
 export const D3_MEAN_FLOOR_SEC = 90;
@@ -202,6 +209,9 @@ export function maxStartsInWindow(starts, windowSec = D1_WINDOW_SEC) {
 /* ------------------------------------------------------------------ check */
 
 const isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+/** Same predicate `player/foray-queue.js` uses to decide an asset is present, so
+    the two cannot disagree about whether an item will play. */
+const nonEmptyString = (s) => typeof s === "string" && s.trim().length > 0;
 
 /**
  * Check one loaded set of files.
@@ -321,6 +331,7 @@ export function checkForays(files) {
     const narrations = [];
     const seenLabels = new Set();
     const seenSegmentIds = new Set();
+    const seenNarrationIds = new Set();
     let itemsOk = true;
     for (const [i, item] of foray.items.entries()) {
       const at = `items[${i}]`;
@@ -339,16 +350,28 @@ export function checkForays(files) {
        * narration-craft's 17 chars/s); "neither" is what is rejected here. */
       if (item.type === "narration") {
         if (typeof item.id !== "string" || !item.id) E(`${at}: a narration item needs an id`);
-        const name = typeof item.id === "string" && item.id ? `narration "${item.id}"` : at;
+        /* `name` already carries `at` when there is no id, so prefixing it again
+         * printed `items[1]: items[1] has neither…`. */
+        const named = typeof item.id === "string" && item.id;
+        const name = named ? `narration "${item.id}"` : at;
+        const where = named ? `${at}: ${name}` : at;
+        /* Ids are checked for uniqueness rather than trusted, exactly as
+         * segment ids and labels are above. `buildForayQueue` silently rewrites
+         * a collision to `${forayId}#${index}` with a warning nobody reads —
+         * which is a safe failure and a confusing one. */
+        if (named) {
+          if (seenNarrationIds.has(item.id)) E(`${at}: narration id "${item.id}" appears twice in one Foray`);
+          seenNarrationIds.add(item.id);
+        }
         if (item.duration_sec !== undefined && !(typeof item.duration_sec === "number" && item.duration_sec > 0 && Number.isFinite(item.duration_sec))) {
-          E(`${at}: ${name} has a \`duration_sec\` of ${JSON.stringify(item.duration_sec)} — it must be a positive finite number of seconds, or absent`);
+          E(`${where} has a \`duration_sec\` of ${JSON.stringify(item.duration_sec)} — it must be a positive finite number of seconds, or absent`);
           itemsOk = false;
           continue;
         }
         const hasScript = typeof item.script === "string" && item.script.trim().length > 0;
         if (item.duration_sec === undefined && !hasScript) {
           E(
-            `${at}: ${name} has neither a \`duration_sec\` nor a \`script\`, so nothing can say how ` +
+            `${where} has neither a \`duration_sec\` nor a \`script\`, so nothing can say how ` +
               `long it is. It would run for real seconds and be counted as zero in \`runtime_sec\`, ` +
               `in D1's window and in a listener's resume. Give it the script, or let ` +
               `tools/narrate/ stamp \`duration_sec\` from the audio it generated.`
@@ -356,20 +379,60 @@ export function checkForays(files) {
           itemsOk = false;
           continue;
         }
+        if (item.slot !== undefined && slotIds.length && !slotIds.includes(item.slot)) {
+          E(`${where} declares slot "${item.slot}", which is not in \`slots\``);
+        }
         const dur = narrationDuration(item);
         if (dur.sec < NARRATION_MIN_SEC) {
           E(
-            `${at}: ${name} is ${dur.sec.toFixed(1)} s (${dur.source}), under the ${NARRATION_MIN_SEC} s Hinge ` +
-              `floor in narration-craft.md §0 — a script this short is a placeholder, not a bridge`
+            `${where} is ${dur.sec.toFixed(1)} s (${dur.source}), under the ` +
+              `${NARRATION_MIN_CHARS}-character / ${NARRATION_MIN_SEC.toFixed(1)} s Hinge floor in ` +
+              `narration-craft.md §0 — a script this short is a placeholder, not a bridge`
           );
         }
         if (dur.sec > NARRATION_HARD_MAX_SEC) {
           E(
-            `${at}: ${name} is ${dur.sec.toFixed(1)} s (${dur.source}), over the ${NARRATION_HARD_MAX_SEC} s Carry ` +
+            `${where} is ${dur.sec.toFixed(1)} s (${dur.source}), over the ${NARRATION_HARD_MAX_SEC} s Carry ` +
               `hard max in narration-craft.md §0 — "the narrator is never the longest item in the Foray"`
           );
-        } else if (dur.sec > NARRATION_SOFT_MAX_SEC) {
+          /* Dropped from the clock as well as reported, like the sibling
+           * rejections above. Left in, a `duration_sec: 1e6` bridge drags
+           * `runtime` up, flips the D1 band, and buries the one real error under
+           * a spurious `runtime_sec` drift and a D1 failure that is an artefact
+           * of the first mistake. */
+          itemsOk = false;
+          continue;
+        }
+        if (dur.sec > NARRATION_SOFT_MAX_SEC) {
           W(`${name} is ${dur.sec.toFixed(1)} s (${dur.source}), past narration-craft.md §0's ${NARRATION_SOFT_MAX_SEC} s Carry soft max — it should state what the extra minute does`);
+        }
+        /* ---- WHETHER IT WILL ACTUALLY PLAY, which decides whether it counts
+         *
+         * `buildForayQueue` DROPS a narration item with no `audio_url`/`asset`
+         * ("narration has no asset") so a missing line cannot stall a Foray. So
+         * an unvoiced bridge contributes nothing to the player's `totalSec` — and
+         * if it were counted here, the two gates would demand different
+         * `runtime_sec` values and one of them would always be red. That is not
+         * hypothetical: `player/foray-playback.test.js` asserts `totalSec` agrees
+         * with the committed `runtime_sec` to within a second.
+         *
+         * `runtime_sec` must describe what a listener hears, so the checker
+         * follows the player: an unvoiced bridge is excluded from the clock and
+         * WARNED about, not rejected. Rejecting it would forbid the ordinary
+         * authoring state — narration-craft.md is explicit that the word budgets
+         * are the primitive, so a script exists long before audio does — and the
+         * item still has to be well-formed to get this far.
+         *
+         * Note what this does NOT weaken: the rejection above is about an item
+         * that PLAYS and costs nothing. One that plays nothing and costs nothing
+         * is consistent. */
+        if (!nonEmptyString(item.audio_url) && !nonEmptyString(item.asset)) {
+          W(
+            `${name} has no \`audio_url\`/\`asset\`, so the player drops it and it is excluded from ` +
+              `\`runtime_sec\` and D1's clock (${dur.sec.toFixed(1)} s, ${dur.source}). ` +
+              `Restate \`runtime_sec\` when the audio lands.`
+          );
+          continue;
         }
         narrations.push({ at, id: item.id ?? null, sec: dur.sec, source: dur.source });
         timeline.push({ kind: "narration", duration: dur.sec });
@@ -426,7 +489,9 @@ export function checkForays(files) {
      * loud rather than inferred from a missing line. */
     if (played.length === 0) { E("no resolvable segment items"); continue; }
     if (!itemsOk) {
-      W(`${foray.items.length - played.length} item(s) did not resolve; every rule below is judged on the ${played.length} that did, so these verdicts are partial`);
+      /* `played` is tape only, so subtracting it from the whole item list
+       * counted every perfectly good narration item as a failure. */
+      W(`${foray.items.length - played.length - narrations.length} item(s) did not resolve; every rule below is judged on the ${played.length} that did, so these verdicts are partial`);
     }
 
     /* ---- derived: TWO clocks, and keeping them apart is the whole fix

@@ -217,7 +217,12 @@ test("the credited clips add up to the whole running order, and the credited tim
   const r = realResolve();
   const credits = forayCredits(r);
   assert.equal(credits.reduce((n, c) => n + c.clips, 0), r.playable.length);
-  assert.ok(Math.abs(credits.reduce((t, c) => t + c.seconds, 0) - r.totalSec) < 1);
+  /* Against `tapeSec`, NOT `totalSec`. Attribution is owed for somebody else's
+     audio, and a narration bridge has no publisher to credit — so on a narrated
+     Foray these credits sum to the tape and `totalSec` is larger by all the
+     narration. The two numbers are equal on today's data, which is exactly why
+     asserting the wrong one would look right until the first bridge shipped. */
+  assert.ok(Math.abs(credits.reduce((t, c) => t + c.seconds, 0) - r.tapeSec) < 1);
 });
 
 test("every credit links somewhere real, and the one show in the pool gets its own page", () => {

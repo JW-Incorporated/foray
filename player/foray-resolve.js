@@ -134,6 +134,8 @@ export function hydrateForayItems(foray, { segments, sources } = {}) {
   const srcIndex = asMap(sources);
   const items = [];
   const dropped = [];
+  /** The slot the running order is currently inside, so a bridge can inherit it. */
+  let lastSlot = null;
 
   const source = Array.isArray(foray?.items) ? foray.items : [];
   source.forEach((raw, position) => {
@@ -153,9 +155,20 @@ export function hydrateForayItems(foray, { segments, sources } = {}) {
       items.push({
         ...raw, ord: items.length, position,
         duration_sec: dur.sec, duration_source: dur.source,
+        /* A bridge with no authored slot inherits the one it is playing inside.
+           `groupBySlot` groups on `slot`, so a null one collected every bridge
+           into a trailing untitled section — harmless while bridges were
+           reported unplayable, and a running order that shows them out of
+           authored order now that they are not. The preceding item's slot rather
+           than the following one's because the slot check in
+           `tools/foray/check-forays.mjs` runs on tape only, so this can never
+           make a slot look interleaved. A bridge that OPENS a Foray has nothing
+           to inherit and must carry its own `slot`. */
+        slot: raw.slot ?? lastSlot,
       });
       return;
     }
+    lastSlot = raw.slot ?? lastSlot;
 
     const seg = segIndex.get(raw.segment_id);
     if (!seg) {
@@ -239,6 +252,8 @@ function spanOf(seg) {
  *   authoredSec: number,           runtime of what was authored
  *                                  Both are the LISTENER'S clock and both count
  *                                  narration. They are not the sum of the tape.
+ *   tapeSec: number,               seconds of somebody else's audio — what
+ *                                  attribution is owed against, not a runtime
  *   shows: string[],
  *   unplayable: object[],          every item that will not play, with a reason
  *   warnings: string[],
@@ -303,6 +318,13 @@ export function resolveForay(foray, opts = {}) {
     slots: groupBySlot(foray, entries),
     totalSec: forayRuntimeSec(report.items),
     authoredSec: entries.reduce((t, e) => t + (isNum(e.duration_sec) ? e.duration_sec : 0), 0),
+    /* Seconds of somebody ELSE'S audio, which is a different question from how
+       long the Foray is and has a different consumer: attribution. `forayCredits`
+       sums per-show seconds, so on a narrated Foray its total is this number and
+       not `totalSec` — the narrator has no publisher to credit. Exposed rather
+       than left to each caller to re-derive, which is how the tape clock and the
+       listener's clock got conflated in the first place. */
+    tapeSec: forayRuntimeSec(report.items.filter((i) => i?.kind !== "tts")),
     shows: [...new Set(entries.map((e) => e.show).filter(nonEmpty))],
     unplayable,
     warnings: report.warnings,
@@ -436,9 +458,18 @@ export function forayElapsed(items, index, playheadSec = null) {
   const i = Math.min(index, list.length - 1);
   const starts = segmentStarts(list);
   const item = list[i];
+  /* A segment's playhead is an offset into somebody else's episode, so the
+     in-point has to be subtracted. A NARRATION item has no in-point: it is a
+     whole file of our own and "a bridge always starts at zero, never resumes
+     mid-sentence" (docs/narrator-pipeline.md §1), so its playhead already IS the
+     offset. Reading the missing `start_sec` as "no progress" instead froze the
+     Foray clock for the bridge's whole length — up to 180 s of a transport
+     display that does not move, and any progress row written during a bridge
+     stored the bridge's start. */
+  const base = isNum(item?.start_sec) ? item.start_sec : 0;
   let into = 0;
-  if (isNum(playheadSec) && isNum(item?.start_sec)) {
-    into = Math.min(Math.max(0, playheadSec - item.start_sec), lengthOf(item));
+  if (isNum(playheadSec)) {
+    into = Math.min(Math.max(0, playheadSec - base), lengthOf(item));
   }
   return starts[i] + into;
 }

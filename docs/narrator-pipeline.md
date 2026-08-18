@@ -110,7 +110,7 @@ same discipline `copyRules` is shared under.
 | source | `duration_source` | where it comes from |
 |---|---|---|
 | `duration_sec` on the item | `measured` | **this pipeline stamps it at generation time** from the file it produced. Includes the baked padding, because it is a property of the file |
-| the `script` | `estimated` | `docs/curation/narration-craft.md` §0's planning rate, **17 chars/s** — the constant that document derives all six mode budgets from, so the estimate agrees with the budget the script was written to |
+| the `script` | `estimated` | `docs/curation/narration-craft.md` §0's planning rate, **17 chars/s** — the constant that document derives all six mode budgets from, so the estimate agrees with the budget the script was written to. Rounded to the millisecond, because these values are summed into the clock D1 compares against a 600.000 s window |
 | neither | `fallback` | **8 s**, the transition ceiling. Never 0: that was the bug |
 
 **"Absent" now has a defined behaviour and it is not zero.** A missing duration
@@ -123,14 +123,42 @@ passed CI; it exists so a hand-edited or half-deployed document degrades to a
 visible over-estimate rather than an invisible omission.
 
 **What the checker now rejects**, where it previously validated `id` and nothing
-else: a narration item with neither a `duration_sec` nor a `script`; a
-`duration_sec` that is not a positive finite number (`0`, `-12`, `"40"`, `NaN`);
-a length under narration-craft's **3 s Hinge floor**, which is what a
-placeholder script looks like; and one over its **180 s Carry hard max** ("the
-narrator is never the longest item in the Foray"). Past the **150 s soft max** it
-warns, and it warns whenever part of D1's clock is *estimated* rather than
-measured — a D1 verdict resting on a character count is only as good as the
-speaking rate §6 says nobody has measured yet.
+else:
+
+- a narration item with **neither a `duration_sec` nor a `script`** — the
+  headline: nothing can say how long it is, so it played for real seconds and
+  cost zero
+- a `duration_sec` that is **not a positive finite number** (`0`, `-12`, `"40"`,
+  `NaN`) — `"40"` is what a hand-edited JSON file produces, and string arithmetic
+  makes a runtime a concatenation rather than a sum
+- a length under narration-craft's **50-character / 2.94 s Hinge floor**, which
+  is what a placeholder script looks like. Derived from the *character* figure,
+  because the row's own two numbers disagree — 50 chars at 17 chars/s is 2.94 s,
+  not the 3 s the row also states — and narration-craft's preamble settles it:
+  "the word budgets are the primitive"
+- one over the **180 s Carry hard max** ("the narrator is never the longest item
+  in the Foray"), which is also dropped from the clock rather than left to flip
+  the D1 band and bury the real error under artefacts of it
+- a **duplicate narration id**, which `buildForayQueue` otherwise silently
+  rewrites to `${forayId}#${index}` — a safe failure and a baffling one
+- a **`slot` the Foray does not declare**
+
+Past the **150 s soft max** it warns, and it warns whenever part of D1's clock is
+*estimated* rather than measured — a D1 verdict resting on a character count is
+only as good as the speaking rate §6 says nobody has measured yet.
+
+**One thing it deliberately does NOT reject: an unvoiced bridge.** A narration
+item with no `audio_url`/`asset` is **excluded from the clock and warned about**,
+because `buildForayQueue` *drops* it so a missing line cannot stall a Foray —
+and if the checker counted what the player will not play, the two gates would
+demand different `runtime_sec` values and one of them would be permanently red.
+`player/foray-playback.test.js` asserts `totalSec` matches the committed
+`runtime_sec` to within a second, so this is not hypothetical. Rejecting it would
+also forbid the ordinary pre-audio state. Note what this does not weaken: the
+rejection above is about an item that *plays* and costs nothing; one that plays
+nothing and costs nothing is consistent. A test asserts the two gates agree on a
+bridged Foray in all three cases (voiced-and-stamped, voiced-and-scripted,
+unvoiced).
 
 **Is a bridge a D1 segment start? No — and the clock is still the listener's.**
 `segment-length-rules.md` §5c caps "the number of **segment starts**" in "any
@@ -166,19 +194,50 @@ by the listener's clock would let a Foray buy its way under the 25 % cap by
 adding narrator, without rebalancing the sourcing by one second.
 
 **Where it propagated.** `itemRuntimeSec()` is now the only definition of "how
-long is this item", and `forayRuntimeSec`, `segmentStarts`, `segmentAtElapsed`,
-`forayElapsed` and `progressSegments` all route through it — four private copies
+long is this item". `forayRuntimeSec`, `segmentStarts`, `segmentAtElapsed`,
+`forayElapsed` and `progressSegments` call it directly; `app.js`'s `segLenOf`
+reaches it through `ForayPlayer.itemLen` on the bridge, since `app.js` is a
+classic browser script and cannot import from `player/`. **Five** private copies
 of one subtraction is how narration came to be worth 0 s in every one of them at
-once. A bridge gets a `progressSegments` row with a real `durationSec` and a
-**null id**: it has to have the row, or every segment after it claims a
-Foray-clock start earlier than the listener reaches, and it must not have an id,
-or a stored row could anchor a resume to a line that never resumes mid-sentence.
+once.
 
-**One adjacent defect found and fixed.** `foray-resolve.js` recovered an item's
-authored position by parsing `${forayId}#${n}` out of its queue id. A narration
-item keeps its *authored* id (`nar-7`), so the parse returned null and **every
-bridge was reported `playable: false` with reason "not queued"** — a running
-order would have shown all of them as dropped. Queue items now carry `ord`.
+A bridge gets a `progressSegments` row with a real `durationSec` and a **null
+id**: it has to have the row, or every segment after it claims a Foray-clock
+start earlier than the listener reaches, and it must not have an id, or a stored
+row could anchor a resume to a line that never resumes mid-sentence.
+
+`resolveForay` also gained **`tapeSec`** — seconds of somebody else's audio,
+which is a different question from how long the Foray is and has a different
+consumer. `forayCredits` sums per-show seconds and the narrator has no publisher
+to credit, so attribution is owed against `tapeSec` and not `totalSec`. It is
+exposed rather than left to each caller to re-derive, which is how the two clocks
+got conflated in the first place.
+
+**Three adjacent defects found in review and fixed.**
+
+1. `foray-resolve.js` recovered an item's authored position by parsing
+   `${forayId}#${n}` out of its queue id. A narration item keeps its *authored*
+   id (`nar-7`), so the parse returned null and the bridge was reported
+   `playable: false` with reason "not queued" — a running order would have shown
+   it as dropped. (Not *every* bridge: one whose id was blank or duplicated got
+   the positional id and parsed fine.) Queue items now carry `ord`.
+2. **`app.js`'s `segLenOf` measured a bridge as 0 s** while `stripElapsedAt`
+   mapped a click onto `totalSec`, which now includes it. On a 100 s + 40 s + 60 s
+   Foray the strip's bars summed to 161 units against a 200 s clock, and a click
+   on the left edge of the third bar resolved to 125.5 s — 14.5 s before that
+   segment begins. The bar's width, its fill and the click's destination now come
+   from one number again.
+3. **`forayElapsed` froze the Foray clock for a bridge's whole length.** It
+   subtracted `start_sec` to convert a playhead into an offset, and a narration
+   item has no in-point — it is a whole file of our own that always starts at
+   zero — so a missing `start_sec` read as "no progress". Up to 180 s of a
+   transport display that does not move, and any progress row written during a
+   bridge storing the bridge's start.
+
+Also, a bridge now **inherits the slot it plays inside** when it does not declare
+one. `groupBySlot` groups on `slot`, so a null one collected every bridge into a
+trailing untitled section — invisible while bridges were reported unplayable, and
+a running order out of authored order now that they are not.
 
 **Still not decided here**, and both are recommendations to the founder rather
 than changes:

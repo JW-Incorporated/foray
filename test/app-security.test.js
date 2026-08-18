@@ -287,6 +287,56 @@ test("the shim prefers window.forayStorage, which is what makes cp_ state durabl
   assert.deepStrictEqual(app.lsGet("cp_interests", null), { a: 3 });
 });
 
+/* ---------- segLenOf: the Foray strip's only unit of measurement ----------
+
+   Not a security invariant, and here anyway, because this is the only harness in
+   the repo that can reach an app.js internal. `segLenOf` sizes each bar of the
+   Foray strip and is the denominator of the fill inside the current bar, while
+   `stripElapsedAt` maps a click onto `r.totalSec` — the player's clock. So a
+   length this measures differently from `player/foray-queue.js`'s
+   `itemRuntimeSec` puts a click somewhere the bar it landed on does not cover. */
+
+test("segLenOf prefers the player's own itemRuntimeSec over its local copy", async () => {
+  const { itemRuntimeSec } = await import("../player/foray-queue.js");
+  const item = { kind: "tts", duration_sec: 40 };
+  try {
+    app.window.ForayPlayer = { itemLen: () => 12345 };
+    assert.strictEqual(app.segLenOf(item), 12345, "the bridge is authoritative when present");
+  } finally {
+    delete app.window.ForayPlayer;
+  }
+  // And with no bridge published, the fallback must give the SAME answer the
+  // player would — a fallback that disagrees is the drift, not the safety net.
+  for (const probe of [
+    { kind: "tts", duration_sec: 40 },
+    { start_sec: 10, end_sec: 130 },
+    { start_sec: 10, end_sec: 200, authored_end_sec: 130 },
+    { start_sec: 10, end_sec: 130, duration_sec: 999 },
+    {},
+  ]) {
+    assert.strictEqual(app.segLenOf(probe), itemRuntimeSec(probe), JSON.stringify(probe));
+  }
+});
+
+test("segLenOf measures a narration bridge, so a strip click cannot land off its own bar", () => {
+  /* THE DEFECT THIS CLOSES. `segLenOf` had no `duration_sec` branch, so a bridge
+     measured 0 s and sized to the 1px floor while occupying real seconds of the
+     clock a click is mapped onto. On s1(100 s) + bridge(40 s) + s2(60 s) the bars
+     summed to 161 units against a 200 s Foray, and a click on the left edge of
+     s2's bar resolved to 125.5 s — 14.5 s before s2 begins.
+
+     Mutation: delete the `duration_sec` return in `segLenOf`'s fallback. The
+     first assertion drops to 0 and the widths stop summing to the runtime. */
+  const playable = [
+    { kind: "episode", start_sec: 0, end_sec: 100 },
+    { kind: "tts", duration_sec: 40 },
+    { kind: "episode", start_sec: 300, end_sec: 360 },
+  ];
+  assert.strictEqual(app.segLenOf(playable[1]), 40);
+  const units = playable.reduce((t, i) => t + app.segLenOf(i), 0);
+  assert.strictEqual(units, 200, "the bars must sum to the clock a click is mapped onto");
+});
+
 /* ---------- smoke ----------
    Not a substitute for real render coverage; see the header. This only proves
    the escaping primitives compose the way the render path assumes. */

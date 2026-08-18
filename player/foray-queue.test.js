@@ -381,4 +381,29 @@ test("itemRuntimeSec reads bounds before duration_sec, so a pad never becomes co
   for (const junk of [null, undefined, {}, { start_sec: 10 }, { start_sec: 10, end_sec: 10 }]) {
     assert.equal(itemRuntimeSec(junk), 0, JSON.stringify(junk));
   }
+  /* Reversed bounds fall THROUGH to `duration_sec` rather than returning a
+     negative length. Unreachable via `buildForayQueue`, which drops
+     `end_sec <= start_sec`, and unreachable via a hydrated entry, whose
+     `duration_sec` comes from `spanOf` and is 0 on exactly these bounds — but
+     pinned, because the old `forayRuntimeSec` required only `isNum(end)` and
+     would have returned -5 here. A negative contribution to a runtime is never
+     the answer; falling through to a stated duration at least is one. */
+  assert.equal(itemRuntimeSec({ start_sec: 10, end_sec: 5, duration_sec: 999 }), 999);
+  assert.equal(itemRuntimeSec({ start_sec: 10, end_sec: 5 }), 0);
+});
+
+test("an estimated duration is rounded to the millisecond", () => {
+  /* 50 / 17 is 2.9411764705882355. These values are summed into the cumulative
+     clock D1 compares against a 600.000 s window, and a start landing at
+     599.9999999999999 rather than 600 changes a verdict — so the estimate is not
+     allowed to carry precision it does not have.
+
+     Mutation: drop `toMs` from the estimate branch. The first assertion fails,
+     and `tools/foray/check-forays.mjs`'s 50-character Hinge boundary — which is
+     rounded the same way so the two agree — becomes a float coin toss. */
+  assert.equal(narrationDuration({ script: "x".repeat(50) }).sec, 2.941);
+  assert.equal(narrationDuration({ script: "x".repeat(340) }).sec, 20);
+  // A MEASURED duration is passed through untouched: it is a fact about a file,
+  // not a projection, and rounding somebody's measurement is not ours to do.
+  assert.equal(narrationDuration({ duration_sec: 2.9411764705882355 }).sec, 2.9411764705882355);
 });

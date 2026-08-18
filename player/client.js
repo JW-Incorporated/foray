@@ -69,6 +69,7 @@ import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PositionStore } from "./position-store.js";
 import { SINGLE_ITEM } from "./queue-strategy.js";
 import { seekPrecision, formatTimestamp, EXACT, OWN } from "./seek-policy.js";
+import { itemRuntimeSec } from "./foray-queue.js";
 import {
   resolveForay, indexSegments, indexSources, findForay, listableForays,
   forayElapsed, segmentAtElapsed, fmtClock, fmtSpan, progressSegments,
@@ -1020,6 +1021,16 @@ const ForayPlayer = {
       app.js would be a scrubber whose bar and whose destination disagree. */
   segmentAt(playable, elapsedSec) {
     return segmentAtElapsed(playable, elapsedSec);
+  },
+
+  /** How long one queue item is, on the Foray clock — re-exported for the same
+      reason `segmentAt` is. `app.js` sizes the strip's bars with it and maps a
+      click onto `totalSec`, so a length it measures differently from this puts
+      the click in the wrong place by the difference. A narration bridge is the
+      case that made this matter: it has no bounds to subtract, so any private
+      copy of the subtraction measures it as 0 s. */
+  itemLen(item) {
+    return itemRuntimeSec(item);
   },
 
   /**
