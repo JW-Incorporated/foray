@@ -317,20 +317,14 @@ function forayPlayhead() {
 }
 
 /** Where we are, in the Foray's own seconds — a number, always, because a clock
-    has to paint something. A readable playhead is remembered as we go, so a
-    segment whose position stops being readable keeps showing where the listener
-    actually got to rather than snapping back; with nothing remembered for this
-    segment the honest answer is still its start. Only `forayPlayhead` may be
-    used to decide what to WRITE DOWN. */
+    has to paint something, and with no readable playhead the honest answer for a
+    display is the segment's start. NOT for deciding what to write down: a
+    display that rounds down for one frame costs nothing, and a stored row that
+    rounds down costs the listener the part of the hour they had reached. Use
+    `forayPlayhead` for that, and only that. */
 function forayPosition() {
   if (!foray || foray.index < 0) return 0;
-  const live = forayPlayhead();
-  if (live != null) {
-    foray.knownElapsedSec = live;
-    return live;
-  }
-  if (foray.knownElapsedSec != null) return foray.knownElapsedSec;
-  return forayElapsed(foray.resolved.playable, foray.index, null);
+  return forayPlayhead() ?? forayElapsed(foray.resolved.playable, foray.index, null);
 }
 
 /**
@@ -345,11 +339,6 @@ function forayPosition() {
  */
 function setForayIndex(index, { pending = true } = {}) {
   if (!foray) return;
-  /* Dropped with the segment it belonged to. `knownElapsedSec` is the last
-     position we could actually READ, and it is only ever a sane fallback for the
-     segment it was read from — carried across a move it would paint the previous
-     segment's clock against the new one's row. */
-  if (index !== foray.index) foray.knownElapsedSec = null;
   foray.index = index;
   foray.pendingFrom = pending ? (manager?.currentIndex ?? -1) : null;
   const item = foray.resolved.playable[index];
@@ -889,13 +878,19 @@ function bind() {
   const reconcileOnReturn = async () => {
     if (!manager) return;
     const corrected = await manager.reconcileWithBackend("visible");
-    if (!corrected) return;
+    /* REPAINTED WHETHER OR NOT ANYTHING WAS CORRECTED, and that is not belt and
+       braces. Every repaint in this file is driven by a media event, and the last
+       thing that happens at the end of a Foray is `pausePlayback` against an
+       element that is ALREADY paused — which fires nothing. So the surface can be
+       holding a frame from before the state moved with no event left to come and
+       fix it. A repaint costs one pass over a handful of nodes and starts no
+       audio; a stale transport costs a press. */
     render();
-    /* The playhead the route died at, which the reconcile's own `savePosition`
-       has just written for the episode row. A Foray keeps its position in its
-       own store and on its own clock, so it needs saying separately — and by now
-       `forayPlayhead()` can be read, because the element still holds this
-       segment's audio at the moment it stopped. */
+    if (!corrected) return;
+    /* The playhead the route died at. The reconcile's own `savePosition` covered
+       the episode row; a Foray keeps its position in its own store and on its own
+       clock, so it needs saying separately — and it can be said, because the
+       element still holds this segment's audio at the moment it stopped. */
     persistForayProgress({ force: true });
   };
 
@@ -1159,12 +1154,7 @@ const ForayPlayer = {
        passes `startElapsedSec`, and a running-order row, which passes
        `startIndex`) come through here, so both are covered by one line. */
     backend.notePlayGesture();
-    foray = {
-      resolved, index: -1, pendingFrom: null, onChange, error: null,
-      /* The last Foray-clock position we could read off the element for
-         `index`, or null. See `forayPlayhead`. */
-      knownElapsedSec: null,
-    };
+    foray = { resolved, index: -1, pendingFrom: null, onChange, error: null };
     setSkipButtonMode(true);
     // Once per Foray, not once per tick: this walks the whole discover pool.
     artworkByShow = artworkUrlsByShow(discoverDoc);
