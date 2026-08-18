@@ -726,3 +726,269 @@ unfamiliar drink is the strongest possible tape for this beat and the least like
 to exist. Reject: category listicles, which are the thing this beat replaces.
 
 **Share.** 1.6 % (~2.4 min).
+
+---
+
+### Act II — Sugar that was already sweet (fan of families, 13.5 %)
+
+The first branch of the key. These are the drinks that need no conversion step,
+which is why they are the oldest, the most geographically scattered and, in
+several cases, the ones the world barely knows about because they cannot be
+shipped. Wine gets five beats and is a chain inside the fan — the production
+sequence in order — because it is the family where the listener will most easily
+follow a full process end to end, and because every fortified wine in Act V
+assumes it. Everything after wine is a single-stop family.
+
+**Narration must announce the family boundaries here.** See §2a: the stops do not
+descend from each other and a missing one is cheap, but only if the listener has
+been told that.
+
+#### 17. The grape is the best fermentable on earth, and wine is mostly the consequence of that
+
+**Claim.** A ripe wine grape arrives with everything a fermentation needs already
+in roughly the right proportions — about 20 to 25 % sugar by weight, enough acidity
+to protect the must from spoilage, colour and tannin in the skins, and wild yeast
+on the skin itself — so wine is the one major drink that can very nearly make
+itself, and the grape's sugar level at harvest, not the winemaker, sets the
+finished alcohol.
+
+**Why it belongs.** It is the cleanest possible demonstration of beat 6's
+free-sugar branch and beat 2's arithmetic working in the real world: ripeness in,
+alcohol out, which is why warm-climate wine is stronger than cool-climate wine and
+why average strengths have moved measurably as the climate has. Cut it and wine
+becomes a sequence of steps rather than an argument about a raw material, and the
+listener loses the most useful available cross-check on the key.
+
+**Evidence that counts.** A winemaker or viticulturist connecting the vineyard to
+the number: sugar accumulation and ripeness, acid falling as sugar rises and why
+that tension is the whole harvest decision, potential alcohol calculated from must
+weight in Brix, Baumé or Oechsle, and chaptalisation and acidification as the
+interventions that exist because the raw material does not always cooperate.
+Strong signal: an explicit statement that the winemaker's main control over final
+strength is the picking date, plus an honest separation of the parts of terroir
+that are measurable production variables — water stress, drainage, diurnal range —
+from the parts that are a marketing claim. Reject: vineyard lyricism with no
+numbers, and wine-region geography with no process.
+
+**Share.** 1.8 % (~2.7 min).
+
+#### 18. Red and white is a contact decision, not a grape-colour one
+
+**Claim.** Almost all grape pulp is pale, so the colour, tannin and structure of
+red wine come from fermenting the juice *in contact with the skins* rather than
+from the variety alone — press the fruit first and a red grape gives a white wine,
+which is what much champagne is — and the whole spectrum from blanc de noirs
+through rosé and skin-contact white to full red is one continuous variable: how
+long the liquid and the solids spend together, and how warm.
+
+**Why it belongs.** It is the best example in the Foray of a production decision
+whose consequence the listener can see in the glass, and it dismantles a
+near-universal misconception in one move. It also arms them for beat 53, where
+port's extraction has to be finished in about two days before the spirit arrives,
+which is only comprehensible once maceration is understood as a clock.
+
+**Evidence that counts.** A winemaker on maceration as a process: cap management,
+punchdown and pumpover, why colour and tannin extract on different timescales, cold
+soak, carbonic maceration as the case where fermentation begins inside the intact
+berry, and skin-contact whites as the same operation on white grapes. Strong
+signal: the blanc de noirs point made explicitly, and rosé's two genuinely
+different routes — a brief maceration versus bleeding liquid off a red fermentation
+— distinguished rather than merged. Reject: colour and style description with no
+reference to contact time.
+
+**Share.** 1.8 % (~2.7 min).
+
+#### 19. Most of what a winemaker decides happens after the yeast has finished
+
+**Claim.** Alcoholic fermentation is a fortnight of a multi-year process, and the
+decisions that separate two wines made from the same fruit come afterwards:
+whether to allow a *bacterial* second conversion of sharp malic acid into softer
+lactic acid, whether to leave the wine on its dead yeast and stir it, whether to
+use oak or steel or clay, how much sulphur dioxide to deploy against oxidation and
+spoilage, how to clarify, and what to blend with what.
+
+**Why it belongs.** It stops the Foray implying that fermentation is the whole of
+production, which would be a real distortion and would undercut question four.
+Malolactic conversion in particular earns the listener's time because it is the one
+step in wine performed by bacteria rather than yeast, and because it is the
+mechanism behind a flavour — buttery Chardonnay — that most listeners have an
+opinion about and no explanation for.
+
+**Evidence that counts.** A winemaker or oenologist on post-fermentation choices
+mechanistically: malolactic conversion, the organism responsible, the diacetyl it
+produces and how it is encouraged or blocked; lees contact and autolysis; sulphur
+dioxide's actual job and the difference between free and bound; fining and
+filtration and what each removes; blending as a deliberate compositional act
+rather than a compromise. Strong signal: a producer explaining a decision they take
+*against* the default, and why. Reject: natural-wine advocacy with no mechanism,
+and tasting notes.
+
+**Share.** 1.5 % (~2.25 min).
+
+#### 20. Sparkling wine is a second fermentation held prisoner, and the famous rituals are plumbing for getting the yeast back out
+
+**Claim.** The traditional method takes a finished dry wine, adds sugar and yeast,
+seals it in a bottle strong enough to hold five or six atmospheres and lets a
+second fermentation run where the CO2 cannot escape — which solves the fizz problem
+and creates a new one, a bottle full of dead yeast, so riddling, freezing the neck,
+disgorging and topping up with the dosage all exist to remove sediment without
+losing pressure; and the industrial tank method and the older single-fermentation
+method are both ways of avoiding that problem rather than solving it.
+
+**Why it belongs.** It is beat 3's mechanism made concrete, it is the most
+elaborate production sequence in the Foray and therefore genuinely satisfying to
+walk through, and it is where the Foray can retire a myth and put a better story in
+its place: the enabling history here is glass strength, cork supply and exploding
+cellars, not a monk's revelation. Cut it and beat 3 has no payoff and Act V loses
+its nearest structural relative.
+
+**Evidence that counts.** A sparkling winemaker or wine scientist on the sequence
+and the pressure: the tirage addition, the atmospheres reached, years on lees and
+the bready autolytic character that comes from them, riddling by hand or by
+gyropalette, disgorgement, dosage as the final sweetness dial, and how the tank and
+ancestral methods differ in what they can deliver. Strong signal: the enabling
+technologies named as stronger coal-fired English glass and reliable cork, with the
+monk credited as the tradition's own account rather than as fact, plus the breakage
+rates of the pre-modern cellar. Reject: champagne heritage marketing, and the monk
+story asserted.
+
+**Share.** 1.8 % (~2.7 min).
+
+#### 21. Nearly every wine vine on earth is now two plants grafted together, because of an insect
+
+**Claim.** A North American root aphid introduced to Europe in the 1860s destroyed
+most of the continent's vineyards within about thirty years, and the solution
+adopted — grafting European fruiting varieties onto resistant American rootstock —
+means the global vineyard is now a hybrid construction, which makes this a
+production fact rather than an anecdote: rootstock choice is a live viticultural
+decision about vigour, drought tolerance and soil, and the few surviving ungrafted
+regions are commercially significant precisely because they are exceptions.
+
+**Why it belongs.** This is the touch of history doing exactly the work §2c
+requires — it passes the "and that is why the process looks like this" test
+cleanly — and it seasons the wine chain with a real catastrophe instead of a
+founding legend. It also sets up two later beats: the wine shortage's push of
+drinkers and capital toward spirits, which beat 59 needs, and the varietal
+composition of cognac and madeira, which beat 45 needs.
+
+**Evidence that counts.** A wine historian, viticulturist or plant scientist on the
+epidemic and the fix: the insect's life cycle and why American roots survive it,
+the failed alternatives including flooding and chemical treatment, the
+hybrid-versus-graft argument Europe had at the time and how it was settled, and
+rootstock selection as a decision made today. Strong signal: downstream
+consequences named — varieties abandoned, acreage never replanted, and what people
+drank instead during the shortage. Reject: phylloxera as a one-line factoid inside
+a region profile.
+
+**Share.** 1.2 % (~1.8 min).
+
+#### 22. Cider is the same operation on a fruit that resists it, and the good techniques are all workarounds for scarcity
+
+**Claim.** Apples ferment as readily as grapes but bring roughly half the sugar,
+much less nitrogen for the yeast, and — in true cider varieties as against eating
+apples — a tannin structure that has to be managed rather than avoided, so
+traditional cider making is a set of compensations for a poorer raw material:
+blending sharp, bittersweet and bittersharp fruit, and in the French tradition
+*keeving*, a deliberate nutrient-stripping trick that starves the ferment into
+stopping while sugar remains; and the same operation applied to pears, plums or
+berries produces the whole neglected class of perry and fruit wines.
+
+**Why it belongs.** It proves the free-sugar branch is a *family* rather than a
+synonym for wine, and it is where the Foray covers perry and country fruit wines
+without spending a stop on each. Keeving is also one of the most ingenious process
+facts in the subject and it demonstrates beat 5 in reverse: making the yeast stop
+early is as much a technique as pushing it further.
+
+**Evidence that counts.** A cider or perry maker on the raw material and the
+compensations: why cider apples are inedible and what their tannin does, the
+classification of varieties by sugar, acid and tannin, natural strength before any
+intervention, and keeving explained mechanically — pectin, added calcium, the brown
+cap that rises, nutrient removal and the arrested ferment — as against simply
+back-sweetening or sterile filtering. Strong signal: perry treated as genuinely
+different because of unfermentable sorbitol, and an honest account of concentrate-based
+industrial cider as a separate product. Reject: orchard heritage colour, and cider
+style guides.
+
+**Share.** 1.6 % (~2.4 min).
+
+#### 23. Mead is the hardest simple drink to make, because honey lacks the one thing yeast needs
+
+**Claim.** Honey will not ferment as it sits, because its sugar concentration
+leaves too little available water for any organism to work in, so mead begins by
+*adding* water — and then the maker has to add nitrogen too, since honey has almost
+none, and a starved ferment produces exactly the fusel harshness that gave mead its
+long reputation for being rough; which makes the modern revival an application of
+nutrient management rather than the rediscovery of a recipe.
+
+**Why it belongs.** It is a genuine outlier that teaches something no other beat
+does: the binding constraint on a fermentation can be a missing nutrient rather
+than a missing sugar, which retroactively explains beat 10's link between stress
+and off-flavours. It is also the natural home for the world's other honey drinks,
+which is how §6c handles Ethiopian *tej* without spending a stop on it.
+
+**Evidence that counts.** A mead maker, fermentation scientist or food historian on
+the nitrogen problem: water activity and why undiluted honey is microbiologically
+stable, yeast-assimilable nitrogen and staggered nutrient additions, why
+traditional meads were often harsh and slow to finish, and how the same technique
+yields a clean modern one. Strong signal: honey's own variability treated as a
+production variable, the historical strength range acknowledged from strong sack
+meads down to weak everyday ferments, and *tej* named as the same operation with a
+bittering herb in place of hops. Reject: mead-hall romance, and mead as a
+Renaissance-fair prop.
+
+**Share.** 1.4 % (~2.1 min).
+
+#### 24. Some drinks ferment themselves within hours and cannot be shipped, which is why the world has barely heard of them
+
+**Claim.** Where a plant offers sugar already in liquid form — the tapped sap of
+palms, the *aguamiel* of a mature agave, birch and maple in the north —
+fermentation begins with no human intervention at all and reaches drinkable
+strength within a day, which is how palm wine and pulque became some of the most
+consumed alcohol on earth; and because these drinks keep fermenting, sour fast and
+do not survive transport, they are structurally invisible to the global drinks
+trade rather than obscure.
+
+**Why it belongs.** It is the fan stop that most directly serves the founder's "all
+of them", and it makes a point nothing else in the spine makes: the world's alcohol
+map is partly a map of what can be *shipped*, which is a production and
+preservation fact rather than a cultural one. It also holds a real chemical
+surprise — pulque's ferment is driven substantially by bacteria rather than by yeast
+alone, which is why it is viscous — and that keeps question two honest.
+
+**Evidence that counts.** An anthropologist, food historian or producer on
+sap-tapped drinks: how a palm is tapped and what the yield and strength are, the
+few-hour timeline, why the drink cannot be stored and what that does to how it is
+sold and drunk, the agave's years-long approach to flowering and what tapping
+interrupts, and pulque's bacterial component named specifically. Strong signal: the
+economics stated plainly — that these rank among the most-drunk alcoholic drinks in
+several countries and appear in no global category table. Reject: travel-show
+novelty tape, and any treatment that files these as curiosities rather than as a
+production class.
+
+**Share.** 1.4 % (~2.1 min).
+
+#### 25. There is a whole class of alcohol made from milk, and it needed a different yeast
+
+**Claim.** The sugar in milk is lactose, which ordinary brewing and wine yeasts
+cannot ferment at all, so the Central Asian pastoral drinks — *kumis* from mare's
+milk, Mongolian *airag* — depend on a mixed culture in which lactose-fermenting
+yeasts work alongside lactic acid bacteria, producing a sour, lightly alcoholic
+drink of roughly one to three per cent that is a dairy product and an alcoholic one
+at the same time.
+
+**Why it belongs.** It is the completeness beat that proves the key's first
+question is genuinely general: sugar is sugar, but not every sugar is available to
+every organism, and that qualification is real chemistry rather than a footnote. It
+is also the only place in the Foray where the feedstock is an animal, and it makes
+beat 51's distilled version intelligible rather than arbitrary.
+
+**Evidence that counts.** A food scientist, anthropologist or dairy specialist on
+lactose fermentation: which organisms can use lactose and why most cannot, the
+co-fermentation with lactic bacteria and the acidity that results, the strength
+reached, the skin-bag or wooden-vessel process and the constant agitation it needs,
+and the pastoral logic of converting a perishable surplus into something storable
+and microbiologically safer. Strong signal: an explicit distinction from kefir and
+the other low-alcohol dairy ferments. Reject: steppe colour with no process, and
+any tape whose only content is that the drink is unusual.
+
+**Share.** 1.0 % (~1.5 min).
