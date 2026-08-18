@@ -278,7 +278,7 @@ function passesFilters(item, filters) {
    #218 asks for, and `grill`/`grilling` needs it. It is a vocabulary problem: an
    ambiguous bare stem in a single-sense concept. #218 names the substitution
    ("matcher changes and vocabulary changes can substitute for each other here")
-   and it is filed separately rather than bundled, because dropping `train` from
+   and it is filed as #248 rather than bundled, because dropping `train` from
    the concept would stop the natural singular from triggering it at all, which
    is the very defect #218 exists to fix.
 

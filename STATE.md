@@ -46,7 +46,7 @@ docs/. Completed workstreams move to their plan doc's retro section.
   structurally cannot see. It is behavioural — tagDF drives expansion pruning, and
   13 terms bucket differently than the shared matcher would give them (`ship` 155
   -> dropped vs 6 -> full weight, on a count made of `relationships`/`championship`
-  substring hits). Filed, not bundled: changing it moves rankings.
+  substring hits). **Filed as #249**, not bundled: changing it moves rankings.
 - **THE HEADLINE IN #218 IS NOT WHAT A LISTENER EXPERIENCED, and that is the
   finding.** `search("grill")` already returned 8 correct picks on `main`: the
   `bbq` concept hand-authors BOTH `grill` and `grilling`, so expansion rescued the
