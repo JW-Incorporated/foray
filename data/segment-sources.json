@@ -312,6 +312,20 @@
       "transcript_url": "https://share.transistor.fm/s/c54b3c3e/transcription.vtt",
       "transcript_type": "text/vtt",
       "audio_verified_on": "2026-08-16"
+    },
+    {
+      "id": "grill-coach-adrian-miller",
+      "show": "The Grill Coach",
+      "title": "Adrian Miller and The History of BBQ",
+      "feed_url": "https://rss.buzzsprout.com/1069612.rss",
+      "episode_guid": "Buzzsprout-12168318",
+      "audio_url": "https://www.buzzsprout.com/1069612/episodes/12168318-adrian-miller-and-the-history-of-bbq.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 39775895,
+      "duration_sec": 3306,
+      "dai_suspected": false,
+      "ad_free_ratio": 1,
+      "audio_verified_on": "2026-08-17"
     }
   ]
 }
