@@ -141,8 +141,23 @@ const FLOORS = {
      app.js not registering a service worker in the shell, and the repo's ios/
      scaffold surviving. Nothing else in the repo checks any of those, so
      deleting this suite would silently un-guard all four. */
-  "tools/mobile/prepare-webdir.test.mjs": 17,
-  "tools/mobile/shell-invariants.test.mjs": 27,
+  "tools/mobile/prepare-webdir.test.mjs": 27,
+  "tools/mobile/shell-invariants.test.mjs": 35,
+  /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
+     for the reason `media-session.test.js` above gives: what this suite guards is
+     mostly a set of single-line edits away from their opposites, on a surface nobody
+     sees in a browser tab. Two in particular have no other check anywhere —
+     `activeCount`'s prune, without which an autoplay-refused play() leaves the
+     foreground service running for the whole session, and the settle window's two
+     bounds, which sit between #239's 20 s hidden load deadline and Blink's 30 s
+     `kRecentAudioDelay` with 5 s of room in total.
+
+     THE STATIC COUNT IS 53 AND THE RUN COUNT IS 57, and the gap is not a discrepancy:
+     two of those 53 `test()` declarations sit inside `for` loops over the exported
+     RELEASE_EVENTS and ACQUIRE_EVENTS lists, so they expand into six runs. The floor is
+     the static count, because a regex over source is what this file measures. Raise it
+     when the suite grows. */
+  "tools/mobile/foray-audio-shell.test.mjs": 53,
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them

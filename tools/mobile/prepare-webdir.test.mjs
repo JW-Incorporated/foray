@@ -28,6 +28,8 @@ import { fileURLToPath } from "node:url";
 import {
   REPO_ROOT, DEFAULT_OUT, MAX_BYTES, SHELL_FILES, EXCLUDED_FROM_BUNDLE,
   MIN_DERIVED_DATA_FILES, runtimeDataFiles, playerFiles, buildPlan, prepare,
+  SHELL_ONLY_FILES, shellOnlyPlan, shellScriptTags, injectShellScripts,
+  assertShellScriptsPresent, WebDirError,
 } from "./prepare-webdir.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -229,6 +231,19 @@ function makeFakeRepo({ appSrc = null, extraFetches = [], bigDataBytes = 0 } = {
   };
   write("app.js", src);
   for (const f of SHELL_FILES) if (f !== "app.js") write(f, `/* ${f} */`);
+  /* index.html needs a REAL head, because `prepare` injects the shell-only script
+     tags before `</head>` and refuses to guess when the anchor is missing. Written
+     with the CSP meta in it so the ordering assertion — tags after the policy, not
+     before it — has something to be about. */
+  write(
+    "index.html",
+    '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n' +
+      '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'self\'">\n' +
+      "<title>Foray</title>\n</head>\n<body>\n<script src=\"app.js\"></script>\n</body>\n</html>\n"
+  );
+  /* The shell-only sources live outside the site's own tree, so they are not
+     covered by the SHELL_FILES loop above. */
+  for (const f of SHELL_ONLY_FILES) write(f.src, "/* the shell's foreground-service bridge */\n");
   write("sw.js", 'const CACHE = "foray-v4";');
   write("player/client.js", 'import { x } from "./queue-manager.js";');
   write("player/queue-manager.js", "export const x = 1;");
@@ -243,3 +258,156 @@ function makeFakeRepo({ appSrc = null, extraFetches = [], bigDataBytes = 0 } = {
   for (const f of extraFetches) fs.rmSync(path.join(root, f), { force: true });
   return root;
 }
+
+/* ───────── the shell-only script, which is the one thing that is not a copy ──── */
+
+test("the shell's foreground-service bridge really is on disk where the plan says", () => {
+  /* REAL REPO. A missing source is a hard error rather than a skip, and this is the
+     test that says the path in SHELL_ONLY_FILES is not a typo today. Rename the
+     plugin's web/ directory and the bundle would otherwise lose its only link to
+     the native foreground service while staying under the size cap, building,
+     installing and playing. */
+  const files = shellOnlyPlan(ROOT);
+  assert.ok(files.length >= 1, "there is no shell-only file at all any more");
+  for (const f of files) {
+    assert.ok(fs.existsSync(path.join(ROOT, f.src)), `${f.src} is missing`);
+    assert.ok(!f.dest.includes("/"), `${f.dest} should sit at the bundle root`);
+  }
+});
+
+test("a missing shell-only source is a hard error, not a smaller bundle", () => {
+  const fake = makeFakeRepo();
+  for (const f of SHELL_ONLY_FILES) fs.rmSync(path.join(fake, f.src), { force: true });
+  assert.throws(
+    () => prepare({ root: fake, out: path.join("mobile", "www") }),
+    (e) => /shell-only files are missing/.test(e.message) && /background audio/.test(e.message)
+  );
+});
+
+test("the script tag is derived from the file list, so the two cannot drift", () => {
+  /* Writing the filename twice is how a rename lands the file in the bundle and
+     leaves the tag pointing at the old name — a 404 in the app and nothing else. */
+  const tags = shellScriptTags([{ src: "a/b/c.js", dest: "c.js", module: true }]);
+  assert.deepEqual(tags, ['<script type="module" src="c.js"></script>']);
+  const classic = shellScriptTags([{ src: "a/b/c.js", dest: "c.js" }]);
+  assert.deepEqual(classic, ['<script src="c.js"></script>']);
+  for (const tag of shellScriptTags()) {
+    const dest = /src="([^"]+)"/.exec(tag)[1];
+    assert.ok(
+      SHELL_ONLY_FILES.some((f) => f.dest === dest),
+      `${tag} points at ${dest}, which is not in SHELL_ONLY_FILES`
+    );
+  }
+});
+
+test("the tags go inside the head, after the CSP meta rather than before it", () => {
+  const html =
+    '<!doctype html>\n<head>\n<meta charset="utf-8">\n' +
+    '<meta http-equiv="Content-Security-Policy" content="script-src \'self\'">\n' +
+    "</head>\n<body></body>\n";
+  const out = injectShellScripts(html);
+  assert.equal(out.changed, true);
+  const tag = shellScriptTags()[0];
+  const at = out.html.indexOf(tag);
+  assert.ok(at > out.html.indexOf("Content-Security-Policy"), "the tag landed ahead of the policy that allows it");
+  assert.ok(at < out.html.indexOf("</head>"), "the tag landed outside the head");
+  assert.ok(at < out.html.indexOf("<body>"));
+});
+
+test("injection is idempotent, because cap sync and CI both re-run it", () => {
+  const html = "<head>\n</head>\n<body></body>";
+  const once = injectShellScripts(html);
+  const twice = injectShellScripts(once.html);
+  assert.equal(twice.changed, false);
+  assert.equal(twice.html, once.html);
+  const tag = shellScriptTags()[0];
+  assert.equal(twice.html.split(tag).length - 1, 1, "the tag was added twice");
+});
+
+test("an index.html with no </head> is refused rather than guessed at", () => {
+  assert.throws(() => injectShellScripts("<html><body>no head</body></html>"), WebDirError);
+  assert.throws(() => injectShellScripts(""), WebDirError);
+  assert.throws(
+    () => injectShellScripts("<head></head><!-- </head> --><body></body>"),
+    (e) => e instanceof WebDirError && /more than once/.test(e.message)
+  );
+});
+
+test("assertShellScriptsPresent is a real guard and not decoration", () => {
+  /* The anti-fails-green check, tested directly for the reason
+     inject-background-audio.mjs's assertModePresent gives: an adversarial pass
+     replaced that one's inline version with `if (false)` and the suite stayed
+     green. Every failure mode in injectShellScripts degrades to "returned the
+     input unchanged and reported success" without this. */
+  const good = injectShellScripts("<head>\n</head><body></body>").html;
+  assert.equal(assertShellScriptsPresent(good), true);
+  assert.throws(() => assertShellScriptsPresent("<head></head><body></body>"), WebDirError);
+  /* Present, but AFTER the head — CSP-governed markup order is the whole reason the
+     position matters, so a tag in the body must fail too. */
+  const tag = shellScriptTags()[0];
+  assert.throws(
+    () => assertShellScriptsPresent(`<head></head><body>${tag}</body>`),
+    (e) => e instanceof WebDirError && /after <\/head>/.test(e.message)
+  );
+});
+
+test("prepare copies the shell-only file and leaves the tag in the written index.html", () => {
+  const fake = makeFakeRepo();
+  const r = prepare({ root: fake, out: path.join("mobile", "www") });
+  const outDir = path.join(fake, "mobile", "www");
+  for (const f of SHELL_ONLY_FILES) {
+    assert.ok(fs.existsSync(path.join(outDir, f.dest)), `${f.dest} is not in the bundle`);
+    assert.ok(r.files.some((x) => x.rel === f.dest), `${f.dest} is not in the reported file list`);
+  }
+  /* Read off DISK, not out of the returned value: a write that did not land is the
+     case an in-memory assertion cannot see. */
+  const written = fs.readFileSync(path.join(outDir, "index.html"), "utf8");
+  assert.equal(assertShellScriptsPresent(written), true);
+
+  /* THE REPORTED SIZE MUST INCLUDE THE INJECTION, and the first version of this
+     assertion could not tell. It compared `r.total` against the sum of `r.files`
+     bytes — but `prepare()` DEFINES `total` as exactly that sum, so it held no matter
+     when the measurement happened, which is the "passes with the mechanism deleted"
+     shape this repo keeps paying for. The real guarantee is that sizes are taken AFTER
+     the write, so it is checked against the source file and against the disk. */
+  const sourceBytes = fs.statSync(path.join(fake, "index.html")).size;
+  const reported = r.files.find((f) => f.rel === "index.html");
+  assert.ok(reported, "index.html is not in the reported file list");
+  assert.equal(
+    reported.bytes,
+    fs.statSync(path.join(outDir, "index.html")).size,
+    "the reported size of index.html is not the size on disk"
+  );
+  assert.ok(
+    reported.bytes > sourceBytes,
+    `index.html was reported as ${reported.bytes} B, not more than the ${sourceBytes} B source — ` +
+      `the size was measured before the script tags were injected.`
+  );
+  const expectedGrowth = shellScriptTags().reduce((n, t) => n + t.length + 1, 0);
+  assert.equal(
+    reported.bytes - sourceBytes,
+    expectedGrowth,
+    "the bundled index.html grew by something other than the injected tags"
+  );
+});
+
+test("the SITE's index.html is not modified — the injection is to the copy only", () => {
+  /* The bundle's index.html differs from the root's by one line, and the direction
+     that must never happen is the other one. A shell-only script tag in the file
+     GitHub Pages serves would 404 for every real visitor. */
+  const fake = makeFakeRepo();
+  const before = fs.readFileSync(path.join(fake, "index.html"), "utf8");
+  prepare({ root: fake, out: path.join("mobile", "www") });
+  assert.equal(fs.readFileSync(path.join(fake, "index.html"), "utf8"), before);
+});
+
+test("REAL REPO: the site's index.html carries no shell-only tag", () => {
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  for (const f of SHELL_ONLY_FILES) {
+    assert.ok(
+      !html.includes(f.dest),
+      `index.html references ${f.dest}, which only exists inside the native bundle — ` +
+        `the website would 404 on it.`
+    );
+  }
+});

@@ -1,0 +1,19 @@
+{
+  "name": "foray-audio",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Foray's own Capacitor plugin: the mediaPlayback foreground service the Android shell needs to keep backgrounded <audio> alive. NOT published, NOT a third-party dependency — it is this repo's hand-written native code, kept in its own directory so it survives `cap add android` regenerating mobile/android/ and so a reviewer can read the whole of it. See docs/android-native-code.md for why this directory exists rather than a committed mobile/android/.",
+  "//no-ios": "Deliberately Android-only. docs/research/mp1-background-audio.md §7.3: on iOS WebKit sets the AVAudioSession category itself for an audible <audio> element, so the entire iOS requirement is the UIBackgroundModes key — which tools/mobile/inject-background-audio.mjs already writes. Adding an ios/ src here would be native code with nothing to do.",
+  "//no-js-entry": "No main/module/types on purpose. The web half of this plugin is web/foray-audio-shell.js, which the app loads as an ordinary same-origin <script type=module> placed by tools/mobile/prepare-webdir.mjs. There is no bundler in this repo (the root is dependency-free with no build step), so the shell talks to native through window.Capacitor.nativePromise() rather than through an imported @capacitor/core proxy.",
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "files": [
+    "android/src/main/",
+    "android/build.gradle",
+    "web/"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "//": "Marks this directory as ESM for Node, so tools/mobile/foray-audio-shell.test.mjs can import foray-audio-shell.js directly. Exactly the job player/package.json does for the player. NOT copied into the bundle — module-ness in a browser comes from <script type=\"module\">, and prepare-webdir.mjs copies the one .js file and nothing else.",
+  "name": "foray-audio-web",
+  "private": true,
+  "type": "module"
+}

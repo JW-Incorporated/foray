@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Library resources merge into the generated app, so every name here is prefixed
+  `foray_` to make a collision with Capacitor's own strings impossible.
+
+  The notification text says "Playback active" and NOT an episode title, because
+  the shell has no episode metadata on the native side yet. Getting it there is
+  #27's Android half: `navigator.mediaSession` is switched off in Android WebView
+  (docs/research/mp1-background-audio.md §5.4), so metadata has to cross the bridge
+  explicitly. A placeholder that is honest beats a placeholder that looks like a
+  feature.
+-->
+<resources>
+    <string name="foray_playback_service_description">Keeps a Foray playing while the app is in the background.</string>
+    <string name="foray_playback_channel_name">Playback</string>
+    <string name="foray_playback_channel_description">Shown while a Foray is playing, so Android keeps the app running in the background.</string>
+    <string name="foray_playback_notification_title">Foray</string>
+    <string name="foray_playback_notification_text">Playback active</string>
+</resources>

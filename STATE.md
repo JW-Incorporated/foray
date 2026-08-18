@@ -109,6 +109,66 @@ docs/. Completed workstreams move to their plan doc's retro section.
   that exposure for a speed people use; 3x trebles it for a speed few do.
   `playback-rate.test.js` asserts `MAX_RATE === 2` so shipping 3x requires
   deliberately editing a test.
+### Android native code has a home, and a foreground service in it (2026-08-17, one PR)
+
+- **What:** `feat/android-native-fgs`. `git ls-files` had **zero** `.java` and zero
+  `.kt` files and `mobile/android/` is gitignored, so there was nowhere for the
+  native code Android needs — and it needs some: **no `navigator.mediaSession` at
+  any price** (MP1 §5.4, engine-level) and a **`mediaPlayback` foreground service**
+  for backgrounded playback (§5.3). Resolved with a committed local Capacitor plugin
+  at `mobile/plugins/foray-audio/`, wired in by Capacitor's own plugin discovery, so
+  it survives `cap add android` regenerating the platform with nothing to re-run.
+  Full reasoning and what was rejected: **`docs/android-native-code.md`**.
+- **Shared files:** `mobile/.gitignore`, `mobile/package.json` + lockfile,
+  `mobile/plugins/**` (new), `tools/mobile/prepare-webdir.mjs` (+ test),
+  `tools/mobile/shell-invariants.test.mjs`,
+  `tools/mobile/foray-audio-shell.test.mjs` (new), `docs/mobile-shell.md`,
+  `docs/android-shell-build.md`, this file. **Nothing under `player/`** — #224 and
+  PR #241 are live there — and nothing in `.github/`.
+- **Both APKs still build**, no version pin needed: debug **5,025,787 B**, unsigned
+  release **3,890,405 B**, measured after the rebase onto post-#241 `main`. 11 m 40 s
+  and 18 m 33 s from cold, then two incremental rebuilds (3 m 42 s, 4 m 40 s).
+  `lintVitalRelease` passed, including `:foray-audio:lintVitalAnalyzeRelease`. The
+  growth against #37 is mostly `webDir` (2.63 → 2.73 MB), not the plugin. Same toolchain as #37 (Gradle 8.14.3, AGP
+  8.13.0, JDK 21.0.12+8, minSdk 24, compile/target 36).
+- **STILL NEVER EXECUTED, and read this before quoting the above.** No emulator, no
+  device. The web half's state machine has 57 Node tests against fakes and 23 caught
+  mutations; the manifest merge and both APK payloads were read out of build output.
+  Whether the service *starts*, holds process importance, or keeps audio alive is
+  **unverified** — as is Android 15's audio-focus rule, which cuts both ways
+  (`docs/android-native-code.md` §6.2).
+- **A REVIEW PASS FOUND FOUR DEFECTS THE FAKES COULD NOT**, and the worst one defeated
+  the design's central safety property: `start()` reported the service's state from a
+  read that races its own `onStartCommand`, so it was false on every first start, so
+  the shell's short-circuit never fired and EVERY play() re-issued a start — including
+  the one across a hidden seam, which is the background foreground-service start the
+  settle window exists to avoid. Fixed; `state()`/`refresh()` is now the only truthful
+  reading. The other three: a fatal media `error` never released the element (the
+  service leaked for the session), the visibility net cancelled settle windows that
+  were still counting, and `uninstall()` deleted later patches of `play`.
+  `docs/android-native-code.md` §5.4.
+- **A SECOND review pass found five more**, including the same re-issue loop reached by
+  another route: the bridge-call in-flight marker was keyed on the method NAME, so
+  across a start/stop/start interleave an earlier call cleared a later one's marker and
+  let a redundant background start through. Also: a failed `stopService` reported the
+  service as down, `uninstall()` stranded the foreground service, and two of my own
+  tests were vacuous in the same way — asserting the dispatch list while a call was
+  still in flight, where the queued duplicate is invisible. §5.6. **The lesson, stated
+  because it is the transferable part: a fake written from the same mental model as the
+  code cannot falsify that model, and an async fake lies specifically about ordering.**
+- **DO NOT READ THIS AS A SEAM FIX.** Hidden-page throttling is on the media-load
+  task chain and keyed to **visibility**, not audibility, so an FGS does not shorten
+  a seam and neither do local files. The seam entries below are unaffected.
+- **A live trap for anyone touching `mobile/.gitignore`:** its platform rules are now
+  `/android/` and `/ios/`. Unanchored (`android/`) they match at **any depth** and
+  silently ignore `mobile/plugins/foray-audio/android/` — that dropped four native
+  files from a `git add` with no warning, and the build still passed on the machine
+  that had them on disk. `shell-invariants.test.mjs` now asserts this through
+  `git check-ignore`.
+- **The toolchain lives in `%TEMP%`:** JDK 21 and the Android SDK are at
+  `%LOCALAPPDATA%\Temp\mp1-android\{jdk21,sdk}`, with no JDK in `Program Files`,
+  nothing on `PATH` and no `JAVA_HOME`. A Windows temp cleanup deletes the ability to
+  build this app.
 
 ### hidden-page load deadline — a seam stops dropping the segment (2026-08-17, one PR, no follow-up)
 
