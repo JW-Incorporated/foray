@@ -15,6 +15,11 @@ import {
   listableForays, findForay, hydrateForayItems, resolveForay, groupBySlot,
   segmentStarts, segmentAtElapsed, forayElapsed, fmtClock, fmtSpan, progressSegments,
 } from "./foray-resolve.js";
+/* The resume half of #40. Imported here rather than tested in
+   foray-progress.test.js because `progressSegments` is the adapter between the
+   two modules, and a narration bridge is exactly the case where the adapter's
+   arithmetic is the thing under test. */
+import { makeProgress, resumePoint, DRIFT_EXACT } from "./foray-progress.js";
 
 /* ---------- fixtures ---------- */
 
@@ -31,6 +36,13 @@ const src = (id, extra = {}) => ({
 
 const item = (segment_id, extra = {}) => ({
   type: "segment", slot: "one", label: "L1", role: "explanation", segment_id, ...extra,
+});
+
+/** A narration bridge, in the shape `data/forays.json` would carry one. It
+    needs an asset or the builder drops it, and a duration or the clock cannot
+    see it (`narrationDuration`). */
+const bridge = (id, extra = {}) => ({
+  type: "narration", id, asset: `https://cdn.test/${id}.mp3`, duration_sec: 40, ...extra,
 });
 
 function fixture({ items, slots, status = "draft", segments, sources } = {}) {
@@ -342,6 +354,173 @@ test("progressSegments reports null rather than inventing an id it does not have
   const r = resolved();
   const noEntries = progressSegments({ playable: r.playable, entries: [] });
   assert.deepEqual(noEntries.map((d) => d.id), [null, null]);
+});
+
+/* ---------- narration occupies the Foray clock ----------
+
+   The fixture below is `s1` (100 s), a 40 s bridge, then `s2` (60 s): 200 s of
+   playback of which 40 s is our own narrator. Everything in this block used to
+   read that Foray as 160 s long, which put every segment after the bridge 40 s
+   earlier on the clock than the listener reaches it. */
+
+const bridged = () => resolved({ items: [item("s1"), bridge("nar-1"), item("s2")] });
+
+test("a bridge is a queue item, and the Foray is as long as the listener's ear says", () => {
+  /* Mutation: delete the `duration_sec` branch of `itemRuntimeSec` in
+     foray-queue.js and both numbers fall to 160 — which is what shipped. */
+  const r = bridged();
+  assert.equal(r.playable.length, 3);
+  assert.equal(r.playable[1].kind, "tts");
+  assert.equal(r.totalSec, 200);
+  assert.equal(r.authoredSec, 200);
+});
+
+test("a bridge with an authored id is reported as playing, not as a lost item", () => {
+  /* The entries<->queue join used to recover an item's authored position by
+     parsing `${forayId}#${n}` out of its queue id. A narration item keeps its
+     AUTHORED id, so the parse returned null and the bridge was reported
+     `playable: false` with reason "not queued" — a running order would have
+     shown every bridge as dropped.
+
+     Mutation: change `ord: index` to `ord: null` in the narration branch of
+     `buildForayQueue`, or key `queueByOrd` off the id again. */
+  const r = bridged();
+  const entry = r.entries.find((e) => e.type === "narration");
+  assert.equal(entry.playable, true);
+  assert.equal(entry.queueIndex, 1);
+  assert.equal(entry.queueId, "nar-1");
+  assert.deepEqual(r.unplayable, [], "nothing was lost");
+});
+
+test("a bridge shifts the Foray-clock start of every segment after it", () => {
+  // Mutation: as above — the starts collapse to [0, 100, 100] and `s2` claims a
+  // start 40 s before the listener gets there.
+  const r = bridged();
+  assert.deepEqual(segmentStarts(r.playable), [0, 100, 140]);
+});
+
+test("segmentAtElapsed can land on a bridge, and lands after it correctly", () => {
+  /* Mutation: as above. With the bridge worth 0 s, 120 s into this Foray
+     resolves to `s2` at +20 s — 20 seconds of tape the listener has not heard —
+     instead of to the narrator, mid-line. */
+  const r = bridged();
+  assert.deepEqual(segmentAtElapsed(r.playable, 120), { index: 1, into: 20, start: 100 });
+  assert.deepEqual(segmentAtElapsed(r.playable, 150), { index: 2, into: 10, start: 140 });
+  // Clamped at the end against the LISTENER'S total, not the tape's.
+  assert.equal(segmentAtElapsed(r.playable, 200).index, 2);
+});
+
+test("progressSegments gives a bridge a row: a real duration, and no id to anchor to", () => {
+  /* Both halves matter and they fail differently. Dropping the row (mutation:
+     filter `kind === "tts"` out of `progressSegments`) puts every later row at
+     the wrong `startSec`. Inventing an id for it (mutation: `?? item.id`) lets a
+     stored row anchor a resume to a bridge, which never resumes mid-sentence. */
+  const desc = progressSegments(bridged());
+  assert.deepEqual(desc, [
+    { id: "s1", startSec: 0, durationSec: 100 },
+    { id: null, startSec: 100, durationSec: 40 },
+    { id: "s2", startSec: 140, durationSec: 60 },
+  ]);
+});
+
+test("forayElapsed reads a playhead inside a post-bridge segment on the Foray clock", () => {
+  // `s2` runs 300-360 s of its episode. Mutation: as above — this returns 130,
+  // and the listener is told they are 40 s less far through than they are.
+  const r = bridged();
+  assert.equal(forayElapsed(r.playable, 2, 330), 170);
+});
+
+test("the Foray clock advances DURING a bridge, not only after it", () => {
+  /* A segment's playhead is an offset into somebody else's episode, so the
+     in-point is subtracted. A bridge has no in-point — it is a whole file of our
+     own that always starts at zero — so its playhead already IS the offset.
+     Reading the missing `start_sec` as "no progress" froze the clock at the
+     bridge's start for the bridge's whole length: up to 180 s of a transport
+     display that does not move, and any progress row written during a bridge
+     storing the wrong second.
+
+     Mutation: go back to `if (isNum(playheadSec) && isNum(item.start_sec))`, and
+     all three of these collapse to 100. */
+  const r = bridged();
+  assert.equal(forayElapsed(r.playable, 1, 0), 100, "the bridge begins where s1 ended");
+  assert.equal(forayElapsed(r.playable, 1, 20), 120);
+  // Clamped at the bridge's own length, so a playhead past its end cannot spill
+  // into the next segment's share of the clock.
+  assert.equal(forayElapsed(r.playable, 1, 99), 140);
+});
+
+test("a bridge inherits the slot it plays inside, rather than falling out of the running order", () => {
+  /* `groupBySlot` groups on `slot` and a narration record carries none, so every
+     bridge collected into a trailing untitled section. That was invisible while
+     bridges were reported unplayable; now that they play, it would render them
+     out of authored order.
+
+     Mutation: drop `slot: raw.slot ?? lastSlot` from `hydrateForayItems` — a
+     second group appears and the bridge leaves the slot it belongs to. */
+  const r = bridged();
+  assert.deepEqual(r.slots.map((s) => [s.id, s.entries.length]), [["one", 3]]);
+  assert.equal(r.entries[1].slot, "one");
+  // An authored slot still wins over the inherited one.
+  const explicit = resolved({ items: [item("s1"), bridge("nar-1", { slot: "two" }), item("s2")] });
+  assert.equal(explicit.entries[1].slot, "two");
+});
+
+test("tapeSec is somebody else's audio; totalSec is the Foray", () => {
+  /* Attribution is owed against tape, not against runtime — `forayCredits` sums
+     per-show seconds and the narrator has no publisher. Exposed so that callers
+     stop re-deriving it, which is how the two clocks got conflated.
+     Mutation: `tapeSec: forayRuntimeSec(report.items)` and the two collapse. */
+  const r = bridged();
+  assert.equal(r.tapeSec, 160);
+  assert.equal(r.totalSec, 200);
+  // With no narration they are the same number, which is why nothing shipped noticed.
+  const plain = resolved();
+  assert.equal(plain.tapeSec, plain.totalSec);
+});
+
+test("a bridge with no duration and no script is still not free", () => {
+  /* The player must keep playing whatever shipped; `check-forays.mjs` is what
+     refuses to ship this. So the requirement here is only that the number is
+     not zero and that the provenance says it is a guess.
+     Mutation: return 0 from `narrationDuration`'s last branch. */
+  const r = resolved({ items: [item("s1"), { type: "narration", id: "nar-1", asset: "https://cdn.test/n.mp3" }] });
+  const entry = r.entries.find((e) => e.type === "narration");
+  assert.ok(entry.duration_sec > 0);
+  assert.equal(entry.duration_source, "fallback");
+  assert.equal(r.totalSec, 100 + entry.duration_sec);
+});
+
+test("an estimated bridge keeps its provenance through both resolution passes", () => {
+  /* `hydrateForayItems` resolves the length and `buildForayQueue` sees the
+     result, so a naive second pass would relabel the estimate as measured.
+     Mutation: in `narrationDuration`, return `DURATION_MEASURED` unconditionally
+     when `duration_sec` is present. */
+  const script = "x".repeat(170);   // 10.0 s at 17 chars/s
+  const r = resolved({ items: [item("s1"), { type: "narration", id: "nar-1", asset: "https://cdn.test/n.mp3", script }] });
+  assert.equal(r.playable[1].duration_sec, 10);
+  assert.equal(r.playable[1].duration_source, "estimated");
+  assert.equal(r.entries[1].duration_source, "estimated");
+});
+
+test("a resume anchored after a bridge re-derives to the post-bridge clock", () => {
+  /* The end-to-end reason this defect mattered: `resumePoint` reasons in elapsed
+     seconds against the live running order, and the live running order is
+     `progressSegments`. A listener 30 s into `s2` is 170 s into this Foray, and
+     with the bridge worth 0 s the stored row would come back at 130 — the same
+     30 s into `s2`, but reported and painted 40 s early, and re-derived as
+     `moved` on an order that never moved.
+
+     Mutation: delete the `duration_sec` branch of `itemRuntimeSec`. */
+  const r = bridged();
+  const segments = progressSegments(r);
+  const row = makeProgress({
+    forayId: "f1", elapsedSec: 170, totalSec: r.totalSec, index: 2,
+    segmentId: "s2", intoSec: 30,
+  });
+  const point = resumePoint(row, { totalSec: r.totalSec, maxIndex: r.playable.length - 1, segments });
+  assert.equal(point.elapsedSec, 170);
+  assert.equal(point.index, 2);
+  assert.equal(point.drift, DRIFT_EXACT, "the order did not move; only the clock was ever wrong");
 });
 
 /* ---------- display ---------- */

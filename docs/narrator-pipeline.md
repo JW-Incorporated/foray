@@ -71,12 +71,11 @@ Better than expected, and the gaps are not where the charter guessed.
    checker.** Given #226's rule that a script must be rejectable for being
    off-beat exactly as tape is, this is the gap that matters most, and it is in a
    file this work did not touch.
-3. **Narration contributes 0 s to runtime accounting**, and `check-forays`
-   already warns about it: *"D1 is computed on the tape timeline; narration items
-   contribute 0 s, so the budget is measured against a shorter clock than the
-   listener's."* A 40-beat Foray with 23 minutes of narration would report a
-   runtime ~23 minutes short of what a listener experiences. The narration record
-   needs a duration field before any narrated Foray's runtime means anything.
+3. ~~**Narration contributes 0 s to runtime accounting**~~ — **CLOSED, see §1.1.**
+   It did, and `check-forays` warned about it: *"D1 is computed on the tape
+   timeline; narration items contribute 0 s, so the budget is measured against a
+   shorter clock than the listener's."* A 40-beat Foray with 23 minutes of
+   narration reported a runtime ~23 minutes short of what a listener experiences.
 4. **The ~0.5 s TTS padding is implemented nowhere.** `04_VOICE_AUDIO_SPEC.md`
    line 12 asks for it and `player/seam-gap.js` says it is *"baked around a TTS
    item"* — i.e. it belongs to the **asset**, not the player's clock. Nothing in
@@ -99,15 +98,196 @@ Better than expected, and the gaps are not where the charter guessed.
    *replacing* it. But it means **45 s has no spec behind it** and is the
    founder's assumption under test.
 
+## 1.1 A narration item's duration is now first-class
+
+Item 3 above, closed. The rule lives in **one** function —
+`narrationDuration()` in `player/foray-queue.js` — and
+`tools/foray/check-forays.mjs` imports it rather than keeping a second copy, the
+same discipline `copyRules` is shared under.
+
+**Three sources, in precedence, and the answer always says which:**
+
+| source | `duration_source` | where it comes from |
+|---|---|---|
+| `duration_sec` on the item | `measured` | **this pipeline stamps it at generation time** from the file it produced. Includes the baked padding, because it is a property of the file |
+| the `script` | `estimated` | `docs/curation/narration-craft.md` §0's planning rate, **17 chars/s** — the constant that document derives all six mode budgets from, so the estimate agrees with the budget the script was written to. Rounded to the millisecond, because these values are summed into the clock D1 compares against a 600.000 s window |
+| neither | `fallback` | **8 s**, the transition ceiling. Never 0: that was the bug |
+
+**"Absent" now has a defined behaviour and it is not zero.** A missing duration
+used to be free, silently, everywhere. It is now the 8 s ceiling on a bridge —
+long rather than short on purpose, because an over-counted bridge lands a resume
+slightly early and re-hearing four seconds of a narrator is recoverable where
+skipping past tape is not — and the builder warns. `check-forays.mjs` **rejects**
+the item outright, so the fallback should never be reached by anything that
+passed CI; it exists so a hand-edited or half-deployed document degrades to a
+visible over-estimate rather than an invisible omission.
+
+**What the checker now rejects**, where it previously validated `id` and nothing
+else:
+
+- a narration item with **neither a `duration_sec` nor a `script`** — the
+  headline: nothing can say how long it is, so it played for real seconds and
+  cost zero
+- a `duration_sec` that is **not a positive finite number** (`0`, `-12`, `"40"`,
+  `NaN`) — `"40"` is what a hand-edited JSON file produces, and string arithmetic
+  makes a runtime a concatenation rather than a sum
+- a **script** under narration-craft's **50-character Hinge floor**, which is what
+  a placeholder looks like. Checked in characters, not seconds, and only where a
+  script exists: the floor detects a stub, and a *measured* 2.5 s recording of a
+  legal 50-character Hinge is a fact about a file rather than a placeholder. Real
+  TTS of 50 characters lands anywhere in roughly 2.5-3.5 s, so a seconds floor
+  would have become a routine false positive the moment `tools/narrate/` started
+  stamping durations. narration-craft settles which unit is authoritative: "the
+  word budgets are the primitive"
+- an asset that is **not `https:`**, or that carries a **token** — the same two
+  lexical checks every `segment-sources` audio_url gets, now that this field is
+  load-bearing
+- one over the **180 s Carry hard max** ("the narrator is never the longest item
+  in the Foray"), which is also dropped from the clock rather than left to flip
+  the D1 band and bury the real error under artefacts of it
+- a **duplicate narration id**, which `buildForayQueue` otherwise silently
+  rewrites to `${forayId}#${index}` — a safe failure and a baffling one
+- a **`slot` the Foray does not declare**, and a bridge that **opens** a Foray
+  with no slot at all: it has no preceding item to inherit one from, so it renders
+  at the bottom of the running order instead of the top
+
+Past the **150 s soft max** it warns, and it warns whenever part of D1's clock is
+*estimated* rather than measured — a D1 verdict resting on a character count is
+only as good as the speaking rate §6 says nobody has measured yet.
+
+**One thing it deliberately does NOT reject: an unvoiced bridge.** A narration
+item with no usable `audio_url`/`asset` is **excluded from the clock and warned
+about** (and counted as `narration_unvoiced` in the report, so nothing pretends it
+does not exist), because `buildForayQueue` *drops* it so a missing line cannot
+stall a Foray — and if the checker counted what the player will not play, the two
+gates would demand different `runtime_sec` values and one of them would be
+permanently red. `player/foray-playback.test.js` asserts `totalSec` matches the
+committed `runtime_sec` to within a second, so this is not hypothetical.
+Rejecting it outright would also forbid the ordinary pre-audio state. Note what
+this does not weaken: the rejection above is about an item that *plays* and costs
+nothing; one that plays nothing and costs nothing is consistent.
+
+**"Usable" is `audio_url ?? asset`, copied from the player verbatim rather than
+paraphrased, and this is the subtlety that survived one review.** `??` falls
+through only on `null`/`undefined`, so a present-but-useless `audio_url` — `""`,
+`"   "`, `0`, `false` — *shadows* a perfectly good `asset` and the player drops
+the item. The first version of this check asked "is either one non-empty", saw the
+good `asset`, and counted seconds the player would never play: the same gate
+divergence, on a narrower trigger. A test now asserts the two gates agree on nine
+combinations, including all four shadowing cases.
+
+**Is a bridge a D1 segment start? No — and the clock is still the listener's.**
+`segment-length-rules.md` §5c caps "the number of **segment starts**" in "any
+rolling 600-second window of Foray **playback**". Those are two different words
+and the fix turns on both:
+
+- *Not a start.* A narration item is not a segment; every companion rule in the
+  same box is about tape. The rule's mechanism is §2a's non-habituating
+  re-orientation cost — an unfamiliar voice, room and level, unannounced — and a
+  bridge is the opposite of unannounced: §6b makes narration the *marker* of the
+  move, and `player/seam-gap.js` already spends **0 s** of silence at a bridged
+  seam for exactly that reason. Counting the bridge would charge D1 twice for one
+  move. It is also the same voice at the same level every time, in every Foray.
+  And narration is *already* budgeted, separately and more tightly, by
+  narration-craft §0's ≤ 25 % share, 2-in-a-row cap and own anti-uniformity rule;
+  a D1 start would be a second budget on the same quantity.
+- *But it occupies the clock.* §5c says "playback", so a bridge's duration
+  advances the window and sets the budget band.
+
+Net effect, stated plainly because it cuts both ways: within a band D1 gets
+**easier** to pass, since the same starts spread over a longer clock; at a band
+edge it gets **harder**, since 44 minutes of tape plus 8 of narrator is a
+52-minute Foray and drops from N=8 to N=6. Both are §5c's own text. **If the
+founders want a bridge to cost a cut, it is one line** — push the clock for a
+narration item too — and the test that proves the current ruling names that
+mutation.
+
+**Two clocks, kept apart.** `runtime_sec` is the listener's (tape + narration)
+and is what the data file must state; the per-segment rules — D2, D3's mean,
+D5's spread, L2/L3/L4, M3, and **M4's denominator** — all stay on the tape sum,
+because they are rules about tape. M4 especially: dividing an episode's seconds
+by the listener's clock would let a Foray buy its way under the 25 % cap by
+adding narrator, without rebalancing the sourcing by one second.
+
+**Where it propagated.** `itemRuntimeSec()` is now the only definition of "how
+long is this item". `forayRuntimeSec`, `segmentStarts`, `segmentAtElapsed`,
+`forayElapsed` and `progressSegments` call it directly; `app.js`'s `segLenOf`
+reaches it through `ForayPlayer.itemLen` on the bridge, since `app.js` is a
+classic browser script and cannot import from `player/`. There were **three**
+private copies of that subtraction — `forayRuntimeSec`'s inline reduce,
+`foray-resolve.js`'s `lengthOf`, and `app.js`'s `segLenOf` — and narration was
+worth 0 s in all three. Which is the point: copies of a rule do not fail
+independently, they fail identically and then get fixed one at a time.
+
+A bridge gets a `progressSegments` row with a real `durationSec` and a **null
+id**: it has to have the row, or every segment after it claims a Foray-clock
+start earlier than the listener reaches, and it must not have an id, or a stored
+row could anchor a resume to a line that never resumes mid-sentence.
+
+`resolveForay` also gained **`tapeSec`** — seconds of somebody else's audio,
+which is a different question from how long the Foray is and has a different
+consumer. `forayCredits` sums per-show seconds and the narrator has no publisher
+to credit, so attribution is owed against `tapeSec` and not `totalSec`. It is
+exposed rather than left to each caller to re-derive, which is how the two clocks
+got conflated in the first place.
+
+**Three adjacent defects found in review and fixed.**
+
+1. `foray-resolve.js` recovered an item's authored position by parsing
+   `${forayId}#${n}` out of its queue id. A narration item keeps its *authored*
+   id (`nar-7`), so the parse returned null and the bridge was reported
+   `playable: false` with reason "not queued" — a running order would have shown
+   it as dropped. (Not *every* bridge: one whose id was blank or duplicated got
+   the positional id and parsed fine.) Queue items now carry `ord`.
+2. **`app.js`'s `segLenOf` measured a bridge as 0 s** while `stripElapsedAt`
+   mapped a click onto `totalSec`, which now includes it. On a 100 s + 40 s + 60 s
+   Foray the strip's bars summed to 161 units against a 200 s clock, and a click
+   on the left edge of the third bar resolved to 125.5 s — 14.5 s before that
+   segment begins. The bar's width, its fill and the click's destination now come
+   from one number again.
+3. **`forayElapsed` froze the Foray clock for a bridge's whole length.** It
+   subtracted `start_sec` to convert a playhead into an offset, and a narration
+   item has no in-point — it is a whole file of our own that always starts at
+   zero — so a missing `start_sec` read as "no progress". Up to 180 s of a
+   transport display that does not move, and any progress row written during a
+   bridge storing the bridge's start.
+
+Also, a bridge now **inherits the slot it plays inside** when it does not declare
+one. `groupBySlot` groups on `slot`, so a null one collected every bridge into a
+trailing untitled section — invisible while bridges were reported unplayable, and
+a running order out of authored order now that they are not.
+
+**Still not decided here**, and both are recommendations to the founder rather
+than changes:
+
+- **0.5 s padding vs the 2.0 s seam beat** (`HUMAN-ACTIONS.md` #3). The runtime
+  work needed no number: the beat is wall clock the manager spends and has never
+  been part of authored runtime, and the padding is baked into the asset, so a
+  *measured* duration carries it for free while an *estimated* one deliberately
+  does not guess it. `player/seam-gap.js`'s existing 2.0 s is untouched.
+  **Recommendation: keep both, as #3 already argues** — they do different jobs,
+  and a measured `duration_sec` makes the question invisible to the clock.
+- **The ≤ 8 s transition budget vs 12 s where an attribution is required.**
+  narration-craft §0 and §2b have **already ruled** for the 12 s exception, on the
+  argument that naming a source properly costs 8-12 words before the bridge says
+  anything; `04_VOICE_AUDIO_SPEC.md` still says 8 s flat. That reasoning is not
+  re-litigated here. What is genuinely open is that **nothing enforces either
+  number** — the checker gates only the 180 s hard max, because a per-mode
+  transition budget needs a `mode` field the schema does not have.
+  **Recommendation: write the exception into the brief so it stops contradicting
+  the ruling, and treat "is the exception worth a `mode` field" as the real
+  question.** Rejecting a script for being off-mode is #226's rule and needs that
+  field; it is the next piece of the review gate, not part of this change.
+
 ### Recommendations for `player/`, which this work deliberately did not touch
 
 #224 is open there and the seam behaviour is under active measurement, so these
 are recommendations rather than changes.
 
-- Give the narration record a **`duration_sec`**, written by this pipeline at
-  generation time, and feed it into runtime accounting and `progressSegments`.
-  This is the single highest-value player-adjacent change and it unblocks item 3
-  above.
+- ~~Give the narration record a **`duration_sec`**~~ — **done, §1.1.** What is
+  left on this pipeline's side is the *stamping*: `tools/narrate/` must write
+  `duration_sec` from the audio it generated, or every narrated Foray ships with
+  an `estimated` clock and the checker says so on every run.
 - Decide whether the **0.5 s padding** is baked into the asset (this pipeline) or
   spent by the manager. Baking it is cheaper and matches `seam-gap.js`'s comment;
   it also means the padding survives into a downloaded file for free.

@@ -1358,20 +1358,31 @@ function sizeForayStrip(r) {
   });
 }
 
-/* A queue item's authored length. `r.playable` is the PLAYER queue, not the
-   running-order entries, so it carries bounds rather than a `duration_sec` —
-   and its end is `authored_end_sec` where an ADR-0008 ad pad extended the stop,
-   because the pad is tolerance, not content. This is the same length
-   `player/foray-resolve.js` measures the Foray's clock in, which is what keeps
-   the bar's width, the bar's fill and a click's destination in agreement. */
+/* A queue item's authored length, which has to be THE SAME length
+   `player/foray-resolve.js` measures the Foray's clock in — that agreement is
+   what keeps the bar's width, the bar's fill and a click's destination pointing
+   at the same second. `stripElapsedAt` below maps a click onto `r.totalSec`, so
+   any item this measures differently from `itemRuntimeSec` puts a click in the
+   wrong place by the difference.
+
+   It therefore asks the player, which owns the rule. `app.js` is a classic
+   browser script and cannot `import` from `player/`, so the bridge carries it;
+   the local arithmetic below is a fallback for the case where the player module
+   has not booted, and it mirrors `itemRuntimeSec` branch for branch —
+   INCLUDING the `duration_sec` fallthrough a narration item relies on, because
+   a bridge measured as 0 s here would size to a 1px bar while occupying real
+   seconds of the clock the click is mapped onto. */
 function segLenOf(item) {
+  const player = typeof window !== "undefined" ? window.ForayPlayer : null;
+  if (typeof player?.itemLen === "function") return player.itemLen(item);
   // `isNum`, not `??`: `??` passes NaN straight through, so an
   // `authored_end_sec: NaN` would measure 0 here and its real length in
   // foray-resolve.js — the exact drift this shared helper exists to prevent.
   const num = (n) => typeof n === "number" && Number.isFinite(n);
   const end = num(item?.authored_end_sec) ? item.authored_end_sec : item?.end_sec;
   const start = item?.start_sec;
-  return num(start) && num(end) && end > start ? end - start : 0;
+  if (num(start) && num(end) && end > start) return end - start;
+  return num(item?.duration_sec) && item.duration_sec > 0 ? item.duration_sec : 0;
 }
 
 /* Where in the WHOLE Foray a click on the strip landed, in seconds, or null

@@ -60,8 +60,8 @@ const FLOORS = {
   "player/idb-tier.test.js": 23,
   "player/foray-playback.test.js": 83,
   "player/foray-progress.test.js": 58,
-  "player/foray-queue.test.js": 29,
-  "player/foray-resolve.test.js": 42,
+  "player/foray-queue.test.js": 37,
+  "player/foray-resolve.test.js": 54,
   "player/foray-sources.test.js": 24,
   "player/html-audio-backend.test.js": 108,
   /* The lock screen and the car (#27). Floored high on purpose: four product
@@ -89,7 +89,7 @@ const FLOORS = {
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
-  "test/app-security.test.js": 20,
+  "test/app-security.test.js": 22,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a
@@ -143,7 +143,7 @@ const FLOORS = {
      follow-up rather than in that PR, which is the mistake this floor exists to
      catch: it left one test of slack, and slack is what lets the new gate be
      deleted later with CI green. Zero slack here, deliberately, as at the top. */
-  "tools/foray/check-forays.test.mjs": 82,
+  "tools/foray/check-forays.test.mjs": 106,
   /* The narration pipeline's dry run (#247). Zero slack. Two of its tests are
      the only things standing between this repo and a paid API call: one asserts
      `synthesize()` refuses without a key, and one greps every `.mjs` in

@@ -7,8 +7,18 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildForayQueue, forayRuntimeSec, SEGMENT, NARRATION } from "./foray-queue.js";
+import {
+  buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration,
+  NARRATION_CHARS_PER_SEC, NARRATION_FALLBACK_SEC,
+  DURATION_MEASURED, DURATION_ESTIMATED, DURATION_FALLBACK,
+  SEGMENT, NARRATION,
+} from "./foray-queue.js";
 import { AD_PAD_CEILING_SEC } from "./seek-policy.js";
+
+/** 85 characters, which is 5.0 s at narration-craft.md §0's 17 chars/s — a
+    Hinge, the commonest and shortest real narration item. Exact so that a test
+    reading it as a duration is reading an arithmetic fact, not a rounding. */
+const SCRIPT_5S = "x".repeat(5 * NARRATION_CHARS_PER_SEC);
 
 const CATALOGUE = {
   "static-ep": {
@@ -255,13 +265,16 @@ test("a duplicate authored id is replaced, not allowed to shadow another item", 
   // Every lookup in the manager takes the first match, so a duplicate makes one
   // entry unreachable and plays the other twice.
   const { items, warnings } = build([
-    { type: NARRATION, id: "nar-1", asset: "a.mp3" },
-    { type: NARRATION, id: "nar-1", asset: "b.mp3" },
+    { type: NARRATION, id: "nar-1", asset: "a.mp3", script: SCRIPT_5S },
+    { type: NARRATION, id: "nar-1", asset: "b.mp3", script: SCRIPT_5S },
     seg(),
   ]);
   assert.equal(new Set(items.map((i) => i.id)).size, 3);
   assert.equal(items[1].id, "foray-1#1");
-  assert.match(warnings[0], /duplicate item id nar-1/);
+  /* Joined rather than indexed: this assertion is about the duplicate, and
+     pinning it to `warnings[0]` made it fail the day the builder gained an
+     unrelated warning to emit first. */
+  assert.match(warnings.join("\n"), /duplicate item id nar-1/);
 });
 
 test("runtime counts authored content, never the pad", () => {
@@ -269,4 +282,128 @@ test("runtime counts authored content, never the pad", () => {
   assert.equal(forayRuntimeSec(items), 110 + 90);
   assert.equal(forayRuntimeSec([]), 0);
   assert.equal(forayRuntimeSec(undefined), 0);
+});
+
+/* ---------- how long a narration item is ----------
+
+   A narration item is not a slice of anything, so its length cannot be a
+   subtraction and has to be carried. Until it was, it was zero: a Foray with
+   narration reported a runtime short by all of it, and D1, `progressSegments`
+   and every resume arithmetic downstream inherited the shortfall. These tests
+   are about the three sources of the number and about the one answer that is
+   never acceptable. */
+
+test("a measured duration_sec beats an estimate from the script", () => {
+  // Mutation that kills this: swap the `duration_sec` and `script` branches in
+  // `narrationDuration` — a voiced line would then be timed from its text.
+  const d = narrationDuration({ duration_sec: 41.5, script: SCRIPT_5S });
+  assert.equal(d.sec, 41.5);
+  assert.equal(d.source, DURATION_MEASURED);
+});
+
+test("with no duration, the script is timed at narration-craft's 17 chars/s", () => {
+  // Mutation: `NARRATION_CHARS_PER_SEC = 16`, or return the fallback here.
+  assert.equal(NARRATION_CHARS_PER_SEC, 17, "narration-craft.md §0's planning rate");
+  const d = narrationDuration({ script: SCRIPT_5S });
+  assert.equal(d.sec, 5);
+  assert.equal(d.source, DURATION_ESTIMATED);
+  // Whitespace is not a script. A record whose script is blank is the same
+  // record as one with no script at all.
+  assert.equal(narrationDuration({ script: "   \n " }).source, DURATION_FALLBACK);
+});
+
+test("a narration item with neither a duration nor a script is never worth 0 s", () => {
+  /* THIS IS THE BUG, stated as an assertion. Mutation that kills it:
+     `return { sec: 0, source: DURATION_FALLBACK }` — which is exactly the
+     behaviour that shipped, and which no other test in this file could see. */
+  const d = narrationDuration({ id: "nar-1" });
+  assert.ok(d.sec > 0, "a listener sits through it, so it costs something");
+  assert.equal(d.sec, NARRATION_FALLBACK_SEC);
+  assert.equal(d.source, DURATION_FALLBACK);
+  // And the same for the shapes a hand-edited document actually produces.
+  for (const bad of [{}, { duration_sec: 0 }, { duration_sec: -4 }, { duration_sec: "8" }, { duration_sec: NaN }]) {
+    assert.equal(narrationDuration(bad).sec, NARRATION_FALLBACK_SEC, JSON.stringify(bad));
+  }
+});
+
+test("resolving twice cannot promote an estimate to a measurement", () => {
+  /* The resolver runs in two places — `hydrateForayItems` and
+     `buildForayQueue` — and the second sees the first's output. Mutation:
+     delete the `nonEmpty(item.duration_source)` branch, so the second pass sees
+     a `duration_sec` that is present and calls it measured. A projection would
+     then launder itself into a fact by being passed along. */
+  const once = narrationDuration({ script: SCRIPT_5S });
+  const twice = narrationDuration({ script: SCRIPT_5S, duration_sec: once.sec, duration_source: once.source });
+  assert.deepStrictEqual(twice, once);
+  assert.equal(twice.source, DURATION_ESTIMATED);
+});
+
+test("the builder stamps the duration on the queue item, with its provenance", () => {
+  // Mutation: drop `duration_sec` from the pushed narration item — the queue
+  // would play a line the clock cannot see.
+  const { items, warnings } = build([
+    { type: NARRATION, id: "n-measured", asset: "a.mp3", duration_sec: 12 },
+    { type: NARRATION, id: "n-scripted", asset: "b.mp3", script: SCRIPT_5S },
+    { type: NARRATION, id: "n-bare", asset: "c.mp3" },
+  ]);
+  assert.deepStrictEqual(items.map((i) => i.duration_sec), [12, 5, NARRATION_FALLBACK_SEC]);
+  assert.deepStrictEqual(
+    items.map((i) => i.duration_source),
+    [DURATION_MEASURED, DURATION_ESTIMATED, DURATION_FALLBACK]
+  );
+  // The guessed one says so. A silent guess is how the runtime got wrong.
+  assert.match(warnings.join("\n"), /neither a duration_sec nor a script/);
+});
+
+test("forayRuntimeSec is the listener's clock, so narration is in it", () => {
+  /* Mutation: delete the `duration_sec` branch of `itemRuntimeSec` and this
+     drops back to 200 — the original defect, in one line. */
+  const { items } = build([
+    seg({ start_sec: 0, end_sec: 110 }),
+    { type: NARRATION, id: "nar-1", asset: "a.mp3", duration_sec: 40 },
+    seg({ start_sec: 200, end_sec: 290 }),
+  ]);
+  assert.equal(items.length, 3);
+  assert.equal(forayRuntimeSec(items), 110 + 40 + 90);
+  assert.notEqual(forayRuntimeSec(items), 110 + 90, "the bridge is not free");
+});
+
+test("itemRuntimeSec reads bounds before duration_sec, so a pad never becomes content", () => {
+  /* A hydrated segment entry carries BOTH its bounds and a `duration_sec`
+     display field, so the order of these two branches decides which one wins.
+     Mutation: put the `duration_sec` branch first — a padded segment would then
+     be measured by whichever of the two the join happened to write, and
+     ADR-0008's "the pad is tolerance, not content" would stop holding. */
+  assert.equal(itemRuntimeSec({ start_sec: 10, end_sec: 130, duration_sec: 999 }), 120);
+  assert.equal(itemRuntimeSec({ start_sec: 10, end_sec: 200, authored_end_sec: 130 }), 120);
+  assert.equal(itemRuntimeSec({ kind: "tts", duration_sec: 8 }), 8);
+  // Nothing coherent to measure is 0, not NaN — this feeds a bar width.
+  for (const junk of [null, undefined, {}, { start_sec: 10 }, { start_sec: 10, end_sec: 10 }]) {
+    assert.equal(itemRuntimeSec(junk), 0, JSON.stringify(junk));
+  }
+  /* Reversed bounds fall THROUGH to `duration_sec` rather than returning a
+     negative length. Unreachable via `buildForayQueue`, which drops
+     `end_sec <= start_sec`, and unreachable via a hydrated entry, whose
+     `duration_sec` comes from `spanOf` and is 0 on exactly these bounds — but
+     pinned, because the old `forayRuntimeSec` required only `isNum(end)` and
+     would have returned -5 here. A negative contribution to a runtime is never
+     the answer; falling through to a stated duration at least is one. */
+  assert.equal(itemRuntimeSec({ start_sec: 10, end_sec: 5, duration_sec: 999 }), 999);
+  assert.equal(itemRuntimeSec({ start_sec: 10, end_sec: 5 }), 0);
+});
+
+test("an estimated duration is rounded to the millisecond", () => {
+  /* 50 / 17 is 2.9411764705882355. These values are summed into the cumulative
+     clock D1 compares against a 600.000 s window, and a start landing at
+     599.9999999999999 rather than 600 changes a verdict — so the estimate is not
+     allowed to carry precision it does not have.
+
+     Mutation: drop `toMs` from the estimate branch. The first assertion fails,
+     and `tools/foray/check-forays.mjs`'s 50-character Hinge boundary — which is
+     rounded the same way so the two agree — becomes a float coin toss. */
+  assert.equal(narrationDuration({ script: "x".repeat(50) }).sec, 2.941);
+  assert.equal(narrationDuration({ script: "x".repeat(340) }).sec, 20);
+  // A MEASURED duration is passed through untouched: it is a fact about a file,
+  // not a projection, and rounding somebody's measurement is not ours to do.
+  assert.equal(narrationDuration({ duration_sec: 2.9411764705882355 }).sec, 2.9411764705882355);
 });
