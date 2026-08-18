@@ -2193,3 +2193,145 @@ which is a strange artefact and would breach the 180 s hard max at 320 s besides
 **Recorded as an ask on `narration-craft.md` §2e: say whether the merge rule reaches a fan,
 and if it does, say what happens when the merged item exceeds the hard max in a structure
 whose stops are supposed to be announced separately.** Neither reading rescues the run.
+
+### 10e. Act IV — eleven beats, and where both unwritable thin verdicts fall
+
+Beats 18, 21, 22 and 24 are strong and are not in this table. **Beats 21 and 22 carry the
+spine's load-bearing pair and they now have tape, so no narration decision in this
+document touches them** beyond their share of the seams.
+
+| beat | verdict | structure | mode | provenance | writable | budget |
+|---|---|---|---|---|---|---|
+| **16** — the word named a frame | empty | chain link, the act's first | Carry | by-default (open) | **writable**, no new source | 1,360 |
+| **17** — barbacoa as living practice | empty | chain link | Carry | **by-ruling** | writable† (bounded) | 1,360 |
+| **19** — pork won the South | thin | chain link | Patch | — | writable† | 780 |
+| **20** — the West African inheritance | empty | chain link, load-bearing | Carry | by-default (nearly closed) | **writable**, demonstrated | 1,360 |
+| **23** — the political barbecue and its hierarchy | thin | chain link | Patch | — | **unwritable** | — |
+| **25** — the map as Black migration | empty | chain link | Carry | by-default (open) | writable† | 1,360 |
+| **26** — Texas is four traditions | empty | **fan stop inside the chain** | Carry | by-default (open) | writable† | 1,360 |
+| **27** — the Carolinas and contested custody | thin | **fan stop inside the chain** | Carry — its `#2779` is assigned to beat 37 | — | **unwritable** | — |
+| **28** — Kansas City and Memphis | empty | **fan stop inside the chain** | Carry | by-default (open) | writable† | 1,360 |
+| **29** — the regional map is economic | empty | chain link, the fan's closer | Carry at the **soft max** | by-design (synthesis) | writable, expanded scope | **~2,550** |
+| **30** — policy produced the invisibility | thin | chain link | Patch | — | writable† | 780 |
+
+**The three beats worth reading in full, because they are the ones the whole axis was
+added for.**
+
+**Beat 16 is the strongest writable case in the report, and it is writable for a reason
+worth generalising.** Its claim is built entirely on datable record — the early-16th-century
+chronicles, the 1620s English usage as a structure, the cooking sense around 1661, and the
+"barbe à queue" story named and dismissed — and record of that kind is checkable rather
+than asserted, so R3 is satisfied without any scholar being enrolled as an authority. On
+top of that, §5's own note is that the beat "can now be written knowing that the Foray's
+own Miller segment says the compatible thing about thirty seconds after Act IV's narration
+hands over", which is in-Foray corroboration arriving immediately after the Carry. **The
+generalisation: a beat whose claim is an attestation is a cheap Carry, because a date is
+its own source.** That is the mirror image of §7b's finding that a Carry naming a book does
+something tape cannot.
+
+**Beat 20 is writable and it has already been demonstrated.** `narration-craft.md` §7b
+drafts a 182-word Carry for it and runs all six tests, passing R1 through R5 with two R6
+violations recorded rather than repaired. The literature is named by both the spine and
+this report — Twitty's *The Cooking Gene*, Miller's *Black Smoke* — and §7b's third lesson
+applies here specifically: the Carry hands directly to `GC-1`, so **carrying the beat on
+the literature of the voice who speaks next** costs nothing and turns the whole item into
+a Frame for beat 21. Nothing in this work list needs to be written for beat 20 that has not
+been written. **Its provenance stays by-default, but §9 is right that it should be treated
+as nearly closed rather than open**, and if the two remaining shots do not land it is a
+narration beat permanently — which, given the above, is not a bad outcome.
+
+**Beat 29 is writable at a larger scope than its claim, and this is where the budget model
+breaks.** Its own claim is a synthesis, and R3's synthesis exception attributes "to the
+Foray's own prior tape" — which works here only because two prior beats state the
+availability rule on tape rather than in narration: beat 5's Frugoni cut on what a fuel
+does, and beat 5's second cut plus beat 19's on availability determining what was used.
+**But the exception is contingent.** Both of those supporting cuts are SYSK, so a founder
+who rules that register out removes the prior tape the synthesis attributes to, and beat 29
+falls back on a dagger. Separately, §5 instructs it to "carry the region material on its
+own", so with 26 and 28 empty and 27 cut it is doing four beats' work: **that is a Carry at
+or near the 150 s soft max, about 2,550 characters, and §2c requires such an item to state
+what the extra minute buys.** Here the answer is legible — it buys the four lineages the
+beats that would have carried them cannot.
+
+**The two unwritable thin beats, and why unwritable is the right verdict rather than a
+harsh one.**
+
+**Beat 23 — the Patch cannot be written, and this report already said what follows.** The
+beat's reason to belong is the second half of its claim: that one of the few regularly
+biracial public spaces in a segregated society reproduced the hierarchy inside it, with
+Black people cooking and serving and being fed separately or last. That is a specific
+empirical claim about the documented record, and **nothing in this corpus sources it.**
+`#2572` contains none of it; SYSK's two passages on the racial arrangement are each
+bracketed by a harmony statement, twice, which §4 records in detail; Miller's tape reaches
+the enslaver's status obliquely and the turn-of-century press asymmetry at 2036–2046 s, and
+neither is the seating. So R3 has nothing to name, and a Patch that supplied the seating on
+the narrator's own credit would be the worst sentence `narration-craft.md` §3f describes,
+in the one place the spine says a harmony version must not ship. **The consequence is
+already written in §4 and it is not a new recommendation: `#2572` "is admissible only
+underneath narration that supplies the seating, and if stage 4 cannot write that, the
+segment should be dropped rather than softened."** Stage 4 cannot write it. So the honest
+outcome is that beat 23 loses its tape as well as its Patch, which costs the assembly the
+151 s of `#2572` — **the report's own "strongest single piece of American tape in the
+pool"** — and §8's second finding is the place that loss should be argued, because a beat
+for the 19th-century westward diffusion would carry `#2572` squarely rather than thinly.
+
+**Beat 27 — unwritable for a different reason, and its tape was never available anyway.**
+Two things are true at once. Its `#2779` is assigned to beat 37 "so that one segment is not
+double-booked", so beat 27 has no tape in an assembly and its mode is Carry rather than
+Patch. And the beat's reason to belong is the contested-custody half — the spine's own
+words are that it "is where beat 22's erasure becomes concrete and current", because the
+leading whole-hog practitioners of the last generation include Black families whose work
+was uncredited until very recently. **That is a claim about named living families and the
+corpus names none of them.** The synthesis exception does not help: beat 38's tape is the
+right material and it plays *later*, and R3's exception reaches only the Foray's own
+**prior** tape. The technique half — whole hog over its own coals, the vinegar-and-pepper
+dressing, shovelling coals, the pig-picking — is writable, and a Carry restricted to it
+would be a Carry with the beat's reason to belong removed. **A second amendment
+recommendation therefore joins the mustard one already pending in §8**, and both are
+recommendations rather than edits: see `grilling-beat-cut-plan.md` §6.
+
+**What R3 would have to name, for the rest.**
+
+- **Beat 17.** The fork itself — an enclosed buried branch that Mexico kept against the
+  raised-grate branch the Southeast took up — is the spine's own structure, and beat 18's
+  tape shows the raised grate arriving on top of an existing pit, which corroborates the
+  raised-grate half from inside the Foray. The pit and leaf wrap, steam rather than smoke,
+  the Yucatecan and highland variants, the consommé and the Sunday pattern are all
+  determinate. **The bound is the continuity claim from pre-contact practice**, which §4
+  and §5 both call the hard part: it must run at U3 with the axis of the argument named,
+  and its disputants are named nowhere here. The three Spanish sources and the *Tacos al
+  Pastor* episode are barred as tape and raise the same citation question as beat 11.
+- **Beat 19.** The corn-and-hog complex, seasonal slaughter before refrigeration,
+  per-capita consumption, and the explicit contrast with cattle. One thing this Patch must
+  do that no other must: **bound its own tape's authority rather than inherit it.** §5
+  records that the pork-primacy argument on the SYSK cut is attributed on tape to a 2009
+  *Esquire* article, "My Pig Beats Your Cow" — a magazine polemic about what counts as
+  barbecue, not an agricultural history. Under §3f that is a Correction's job, placed after
+  the tape, and it is cheaper than letting the Patch borrow the polemic's standing.
+- **Beat 25.** The Migration's routes, what changed on arrival in cuts, equipment and
+  storefront format, and named forms that exist only in the destination. Beat 24's Miller
+  cut corroborates the mobility half from inside the Foray — the formerly enslaved "put on
+  trains, stage coaches and boats all across the country" — but the destination-only forms
+  are the beat's payload and the corpus names none, so the dagger is a named scholar of the
+  Migration and barbecue together.
+- **Beat 26.** Fully specified by the spine and among the most R2-safe rows here: four
+  lineages named individually, the back-counter service of Mexican and Black customers at
+  the meat markets, post oak, sauce's absence as an artefact rather than a doctrine, and
+  brisket's rise dated against the supply-side change of feedlots, boxed beef and
+  refrigerated trucking. No source is named for any of it. Note the direction this pushes
+  beat 37: the inversion beat 37 measures is measured *against* this beat's supply story,
+  so a cut beat 26 leaves beat 37's Patch to establish its own baseline.
+- **Beat 28.** The freight-to-signature chain is stated in the spine tightly enough to be
+  a single sentence — a stockyard city where every kind of meat came through cheaply, a
+  river and cotton entrepôt — which is exactly why the spine calls these the two cities
+  where beat 29's argument can be proved. **The named founding proprietors are the dagger**,
+  and they matter more here than a citation usually does: they are beat 24's economics
+  arriving in the 20th century, and a Carry that describes the freight and omits the people
+  reproduces the erasure beat 22 is about.
+- **Beat 30.** Lending and insurance discrimination, the inability to capitalise or
+  bequeath a business, the succession problem that follows from not owning property, and
+  the clearances as a pattern across cities rather than one Atlanta case. §9 is explicit
+  that this is narration now and that no barbecue podcast will supply it, so the dagger is
+  urban and policy history and it is the most clearly identified missing citation in the
+  report. The Patch also owes one fact the tape omits and §5 flags: **that Aleck's was
+  Black-owned**, which is inferable from the King framing and is not on the tape.
