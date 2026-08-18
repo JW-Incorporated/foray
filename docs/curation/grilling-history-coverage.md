@@ -1611,6 +1611,13 @@ No action.
 beats — four in Act IV and one in Act V — and every one of them is on the authorship
 chain the spine says is the editorial test of the whole document.
 
+**A second axis on those counts, added 2026-08-18 — see §10.** The twenty empty and nine
+thin verdicts are unchanged, and each now also carries a depth mode, a `writable` /
+`unwritable` verdict against `narration-craft.md`'s six-test gate, and a character budget.
+**Twenty-six of the twenty-nine are writable and three are not — 33, and thin beats 23 and
+27** — and **twenty-two of the twenty-six writable ones cannot be voiced until a citation is
+obtained**, which is the largest single queue of work in this report.
+
 Three caveats on those numbers, and they do not all push the same way.
 
 **The SYSK sensitivity is smaller than it was.** Three of the nine thin verdicts — 7,
@@ -1968,3 +1975,552 @@ these documents that `catalogue-broadening.md` §3 still frames it as unresolved
 its §0 summary still calls tandoor unsourceable, both of which ADR-0008 and
 `DECISIONS.md` have since overtaken. Reconciling those two paragraphs would stop the
 next agent making the same mistake this one did.
+
+---
+
+## 10. The narration work list — mode, writability and budget
+
+**Added 2026-08-18.** This section applies `narration-craft.md`'s vocabulary to the
+verdicts above, and it answers that document's §6d ask directly: **carry `writable` /
+`unwritable` as a second axis on empty beats, and record it at the same time as the
+empty verdict rather than discovering it at script time.**
+
+**Nothing below changes a coverage verdict.** Twenty beats are empty and nine are thin,
+exactly as §7 records. What is added is three fields per beat — the **depth mode** its
+narration would use, whether a script for it could pass the six-test rejection gate,
+and what that script costs — for all twenty empty beats and all nine thin ones.
+
+**Status:** proposed, and it is a work list rather than a script. No narration has been
+written, no voice has been chosen and no API was called. The companion document
+`grilling-beat-cut-plan.md` carries the consequence: which of these beats an assembly
+can afford to attempt.
+
+**A note on references, because the two documents number their sections alike and three
+numbers collide.** In this section a bare `§` points inside **this report** — so §5 is Act
+IV, §6 is Act V, §9 is the recommended actions — and every reference to the craft document
+names it. That matters most at §2a, §2c and §5a, which exist in both.
+
+### 10a. The three fields, and how each was decided
+
+**Mode** comes from `narration-craft.md` §2c — a thin beat takes a **Patch**, an empty
+beat takes a **Carry**. Two corrections to that mapping fall out of this report's own
+contents, and both cost money:
+
+- **Three thin beats have no tape of their own in an assembly, so their mode is Carry
+  and not Patch.** Beat 2's only candidate sits inside `moreish#266` and §3 keeps it on
+  beat 15; beat 27's `#2779` is assigned to beat 37 "so that one segment is not
+  double-booked". A Patch supplies the part of a beat its tape misses, and a beat whose only
+  candidate went to a neighbour has no tape for a Patch to supplement. **That is 780
+  characters becoming 1,360, and `narration-craft.md` §4d's per-beat cost model does not see
+  it** — its thin constant assumes a thin beat plays tape. **Beat 6 is a third case and it
+  is the assembly's to decide rather than the report's**: `#700` is beat 14's second cut, so
+  beat 6 is a Patch if an assembly assigns `#700` to it and a Carry if beat 14 keeps it. Beat
+  14 is strong on `#1205` alone either way, so the assignment is free, and the tables below
+  assume beat 6 takes it.
+- **Beat 29's Carry is not a standard one.** §5 tells it to "carry the region material
+  on its own", which is a larger job than stating the beat's own claim, and with 26 and
+  28 empty and 27 thin it is the only place that material can go.
+
+**Carry provenance.** `narration-craft.md` §2d splits Carry two ways — **by-default**,
+where sourcing could still close the beat, and **by-design**, where the claim is a
+conclusion nobody states in one breath so no tape can exist. **Four of this Foray's
+twenty empty beats fit neither**, and the reason is already in §2a above: they are empty
+because of a ruling, or because sourcing has been proven not to help. The four-way split
+the two documents imply together:
+
+| provenance | meaning | beats |
+|---|---|---|
+| **by-default (open)** | tape could exist and the avenue is open | 3, 8, 10, 16, 25, 26, 28, 31, 34, 35, 36, 39 |
+| **by-default (nearly closed)** | the avenue is open and all but exhausted, in §9's own words | 20 |
+| **by-default (exhausted)** | the negative is clean and sourcing has been proven not to help | 13 |
+| **by-ruling** | a source exists and a decision bars it — permanently, not pending | 11, 12, 17 |
+| **by-design** | the claim is a synthesis, so no tape can exist | 29, 33, 40 |
+
+The distinction is not cosmetic, because §2d's rejection posture turns on it: a
+by-default Carry may be deferred to more sourcing or dropped, and a by-design Carry may
+never be dropped. **A by-ruling Carry can be neither deferred nor treated as
+provisional**, which makes it the most permanent narration in the Foray and the kind
+most worth writing well. Recorded as an ask on `narration-craft.md` §2d, not an edit to
+it.
+
+**One rounding to reconcile while a reader is here**, because two figures downstream
+depend on it: §4's beat 6 entry gives its SYSK cut as **36 s** and §7's figure C rounds it to
+**37 s**. Nothing in this report turns on 1 second, but an assembly that sums figure C and an
+assembly that sums the beat entries will disagree by it, and by about 1.2 s in total across
+the report's rounded durations.
+
+**Budget** is `narration-craft.md` §4d's per-beat constant — **240 characters for a
+strong beat, 780 for a thin one, 1,360 for a carried one** — with the two corrections
+above applied where they bite, and with `narration-craft.md` §2c's mode band recorded so a
+script author
+can see which item is doing the spending.
+
+### 10b. The writability test actually applied, because §6d's shorthand does not survive contact
+
+§6d offers a heuristic: "an empty beat whose literature the report can name is writable;
+an empty beat where the report cannot say what would be said is not." **Applied
+literally that makes nineteen of twenty beats unwritable**, because this report names
+literature for exactly one of them — beat 20, Twitty and Miller. That is not what the
+rule means, and the sentence that says what it does mean is §6d's other one: the
+material "genuinely is not in reach of anybody writing from what we have."
+
+**From what we have** is the operative phrase and it is the test used below. A Carry or
+Patch is **`writable`** if R3 can be satisfied — every factual assertion attributable to
+a named source recorded in the script, and at least one source spoken on air — from one
+of three places, none of which requires invention:
+
+1. **Literature this report or the spine names.** Beat 20 is the only instance, and
+   `narration-craft.md` §7b has already drafted the script to prove it.
+2. **A datable public record the spine itself supplies** — an attestation, a date, a
+   patent, a named campaign. Beat 16's 1620s structure sense against its 1661 cooking
+   sense is the clearest case, and a Carry that names such a record is doing exactly the
+   thing §5f says a narration beat can do better than tape.
+3. **The Foray's own prior tape** — under R3's synthesis exception where the beat is
+   genuinely a conclusion, and as corroboration where it is not. Beat 16 is corroborated
+   by Miller's own etymology about thirty seconds into the beat 18 segment; beat 34's
+   vocabulary split is stated on tape by Moss inside beat 4.
+
+A beat is **`unwritable`** where none of the three reaches the beat's **reason to
+belong** — not merely its subject. That distinction is §5a of this report doing its job
+a second time: the same narrowness that stopped beats 16 and 30 moving on good tape is
+what makes beats 23, 27 and 33 unwritable while their subjects stay perfectly
+discussable.
+
+**The result, and its shape matters more than the count.**
+
+| | empty (20) | thin (9) |
+|---|---|---|
+| **writable** from what we have, no new citation | **4** — 16, 20, 29, 40 | 0 |
+| **writable†** — needs one source the corpus does not contain | **15** | **7** |
+| **unwritable** | **1** — 33 | **2** — 23, 27 |
+
+**Nineteen of the twenty empty beats are writable, and fifteen of those nineteen carry a
+dagger.** Seven of the nine thin beats carry one as well, so **the queue is twenty-two
+citations, not fifteen**: the empty beats are where the axis was needed and the thin beats
+are where half the work turns out to be.
+
+The dagger is not a hedge. It means what R3 says in §6a — "an unfilled attribution slot is
+a generation-blocking failure, not a warning" — and what §5f says about the same slot, that
+it "must fail the dry run and must not be voiced." So a dagger row is a citation to obtain
+before a script exists, not a caveat on a script that does. **The honest reading is that
+this Foray's narration problem is not primarily a writing problem. It is twenty-two
+citations.**
+
+**One conditional dagger, recorded because it moves.** Beat 29 is listed above without one,
+because R3's synthesis exception reaches it through the Foray's own prior tape. That prior
+tape is beat 5's second cut and beat 19's, and both are SYSK — so **a founder ruling against
+that register gives beat 29 a dagger and makes the count twenty-three.**
+
+### 10c. Acts I and II — four beats
+
+| beat | verdict | structure | mode | provenance | writable | budget |
+|---|---|---|---|---|---|---|
+| **2** — smoke as preservation | thin | chain link | **Carry**, not Patch — its candidate stays on beat 15 | by-default (open) | writable† | **1,360** |
+| **3** — the low-and-slow bargain | empty | chain link | Carry, 45–110 s | by-default (open) | writable† | 1,360 |
+| **6** — a whole animal needs a crowd | thin | chain link | Patch **if** `#700` is assigned here rather than to beat 14; Carry if not | by-default (open) | writable† | **780** / 1,360 |
+| **7** — feeding a crowd is authority | thin | chain link | Patch, placed **ahead** of the tape | — | writable† | 780 |
+
+**What R3 would have to name.**
+
+- **Beat 2.** The preservation mechanism is uncontested food science — water activity,
+  the surface pellicle, the antimicrobial and antioxidant action of phenols and organic
+  acids — and the spine supplies the worked examples plus the *boucan*-to-buccaneer
+  record, which is datable. **No food-science source is named anywhere in this corpus**,
+  so the on-air citation is the dagger. This beat and beat 3 are the two places where
+  the missing source is a textbook rather than a scholar, which is the cheapest kind of
+  dagger to clear.
+- **Beat 3.** The same shape, and the mechanism is dense enough that R2 is safe by
+  construction: collagen to gelatin, the two clocks, the evaporative stall, what
+  wrapping does about it, Maillard and the bark, why smoke deposits on a moist surface.
+  A script built from those cannot be relocated to another beat. `narration-craft.md`
+  §5e uses this beat's own claim as its U1 exemplar — *"Collagen converts to gelatin
+  above about 70 degrees."* — and the clause that licenses U1 is "**and a named
+  source supports it**", which is the half we do not have.
+- **Beat 6.** Pre-refrigeration meat economics, the fuel and labour arithmetic of a
+  whole carcass, and why the feast *is* the storage technology. The SYSK cut states the
+  economics and states them well, but at low authority and LOCATE-REQUIRED, so a Patch
+  that leans on it inherits both problems.
+- **Beat 7.** The missing half is everything before America — sacrifice and
+  distribution, hospitality obligation, patronage through meat — and the beat exists so
+  that the power clause arrives *before* Act IV. So this is the one Patch in the report
+  with a placement requirement as strict as its content requirement: written after the
+  tape it is useless, because the tape is 19th-century American electioneering and the
+  Patch is what stops that reading as the origin of the pattern rather than one instance
+  of it.
+
+### 10d. Act III — six beats, and the act where the consecutive cap breaks before the ratio does
+
+| beat | verdict | structure | mode | provenance | writable | budget |
+|---|---|---|---|---|---|---|
+| **8** — the steppe control case | empty | fan stop | Carry, 45–110 s | by-default (open, unresolved) | writable† | 1,360 |
+| **9** — the skewer family | thin | fan stop | Patch at the top of its band, or a Carry — see below | — | writable† | 780 |
+| **10** — the tandoor | empty | fan stop | Carry | by-default (open, identified) | writable† | 1,360 |
+| **11** — yakitori | empty | fan stop | Carry | **by-ruling** | writable† | 1,360 |
+| **12** — Korea's table | empty | fan stop | Carry | **by-ruling** | writable† | 1,360 |
+| **13** — the braai | empty | fan stop | Carry | **by-default (exhausted)** | writable† | 1,360 |
+
+**What R3 would have to name.**
+
+- **Beat 8.** The spine supplies khorkhog, boodog, hot-stone cooking, dung and scrub as
+  fuel, and the Taipei provenance of the restaurant format — that last one a datable
+  record and the beat's own on-the-record correction. R2 is safe. The dagger is one named
+  ethnographer of steppe pastoral cooking, and §7's note that beat 8 "sits closest to
+  plain unsourced" of the five Act III holes means the avenue is open rather than closed.
+- **Beat 9.** The Patch here is unusual and it should be typed carefully. It is not
+  supplementing a partial cut — the satay passage is a whole fan sub-tradition and the
+  Patch has to carry **the entire Ottoman and mangal root**: the mangal as equipment and
+  as an occasion, regional codification, charcoal management along a narrow fire, the
+  19th-century turn of the spit from horizontal to vertical and its 1970s German
+  reinvention. That is more than 765 characters of content, which is the top of
+  `narration-craft.md` §2c's Patch band, so **beat 9 is a Patch by mode and a Carry by
+  size**. §4d's 780 is recorded above for comparability, and the honest figure is nearer
+  1,360. The dagger is
+  unavoidable and it will not be cleared by sourcing: §4 records the mangal root as
+  having no source that passes the content gate, and neither ASR nor ad measurement
+  changes that.
+- **Beat 10.** The radiant-wall mechanism is determinate physics — an enclosing wall,
+  the fire at the bottom, the food suspended beside it, which is neither of beat 4's
+  families — and the spine supplies the 1930s Peshawar invention of tandoori chicken
+  *together with its live attribution dispute*, which is a U3 the narrator may state
+  honestly. The dagger is a named source for the mechanism, and the two ADR-0008
+  candidates are exactly the ones §4 warns "may well be the recipe-and-menu material the
+  beat says to reject", so the dagger may be cleared by literature sooner than by tape.
+- **Beat 11.** The most R2-safe Carry in Act III, because the beat's content is a
+  sequence of specific facts that fit nowhere else: prohibitions that bore on quadrupeds
+  while grilled wild birds continued, their Meiji-era lifting as the precondition for
+  chicken specifically, binchōtan running hot with little smoke, whole-bird thrift and
+  the named cuts, tare against salt. The Meiji record is datable. **The one source this
+  project has found for the mechanism — `火上料理人：The Meat Nerds` — is barred as tape by
+  the English-only ruling**, and the interesting question this raises is left open here:
+  whether a Carry may *cite* a non-English source it may not play. It is a founder-facing
+  question, it is small, and it recurs for beats 12 and 17.
+- **Beat 12.** Determinate from the spine: the diner as the cook, the heat in the middle
+  of the table, the older marinated court-cuisine lineage against the mid-century arrival
+  of table-top equipment, the recent and economically explained rise of pork belly, ssam,
+  and charcoal against gas in restaurants. The invented-tradition argument is the beat's
+  reason to belong and it is the part most at risk of being written as colour.
+- **Beat 13.** The one beat where this report has already written the work list itself:
+  §4 says narration must carry "braai as claimed national ritual and the Heritage Day
+  campaign, honestly contested, with shisa nyama and sosaties under the one word." The
+  campaign is a named public campaign, which is a citable record. The dagger is one named
+  source for the *contest*, and the beat cannot be written honestly without it — a Carry
+  that asserts the ritual and omits the argument about who "we" are ships the
+  tourism-grade version the beat exists to refuse, and it would do so in the house voice
+  at the house length, which §6e is about.
+
+**Two structural findings about this act that are not about writability at all.**
+
+**Beats 10, 11, 12 and 13 are four consecutive empty beats, and that breaks R6 before any
+ratio is computed.** `narration-craft.md` §2e caps consecutive narration items at **two**
+after merging, and says a third "means the Foray has run out of tape for a stretch long
+enough that the honest actions are the §4c ones: drop fan stops, or ship shorter." Four in
+a row is that condition twice over. **So Act III forces cuts on a rule that has nothing to
+do with the 25 % target**, and any plan that keeps all four is illegal on its face.
+
+**And §2e's merge rule may not apply here, which makes it worse rather than better.** The
+rule is written for "adjacent empty beats in the same **chain**", and Act III is a fan. The
+letter of the rule therefore leaves 10 through 13 as four separate items; the spirit of it —
+§2e's argument is about a listener hearing one continuous recording while the content jumps,
+which is true regardless of structure — would merge them into one item of four traditions,
+which is a strange artefact and would breach the 180 s hard max at 320 s besides.
+**Recorded as an ask on `narration-craft.md` §2e: say whether the merge rule reaches a fan,
+and if it does, say what happens when the merged item exceeds the hard max in a structure
+whose stops are supposed to be announced separately.** Neither reading rescues the run.
+
+### 10e. Act IV — eleven beats, and where both unwritable thin verdicts fall
+
+Beats 18, 21, 22 and 24 are strong and are not in this table. **Beats 21 and 22 carry the
+spine's load-bearing pair and they now have tape, so no narration decision in this
+document touches them** beyond their share of the seams.
+
+| beat | verdict | structure | mode | provenance | writable | budget |
+|---|---|---|---|---|---|---|
+| **16** — the word named a frame | empty | chain link, the act's first | Carry | by-default (open) | **writable**, no new source | 1,360 |
+| **17** — barbacoa as living practice | empty | chain link | Carry | **by-ruling** | writable† (bounded) | 1,360 |
+| **19** — pork won the South | thin | chain link | Patch | — | writable† | 780 |
+| **20** — the West African inheritance | empty | chain link, load-bearing | Carry | by-default (nearly closed) | **writable**, demonstrated | 1,360 |
+| **23** — the political barbecue and its hierarchy | thin | chain link | Patch | — | **unwritable** | — |
+| **25** — the map as Black migration | empty | chain link | Carry | by-default (open) | writable† | 1,360 |
+| **26** — Texas is four traditions | empty | **fan stop inside the chain** | Carry | by-default (open) | writable† | 1,360 |
+| **27** — the Carolinas and contested custody | thin | **fan stop inside the chain** | Carry — its `#2779` is assigned to beat 37 | — | **unwritable** | — |
+| **28** — Kansas City and Memphis | empty | **fan stop inside the chain** | Carry | by-default (open) | writable† | 1,360 |
+| **29** — the regional map is economic | empty | chain link, the fan's closer | Carry at the **soft max** | by-design (synthesis) | writable, expanded scope | **~2,550** |
+| **30** — policy produced the invisibility | thin | chain link | Patch | — | writable† | 780 |
+
+**The three beats worth reading in full, because they are the ones the whole axis was
+added for.**
+
+**Beat 16 is the strongest writable case in the report, and it is writable for a reason
+worth generalising.** Its claim is built entirely on datable record — the early-16th-century
+chronicles, the 1620s English usage as a structure, the cooking sense around 1661, and the
+"barbe à queue" story named and dismissed — and record of that kind is checkable rather
+than asserted, so R3 is satisfied without any scholar being enrolled as an authority. On
+top of that, §5's own note is that the beat "can now be written knowing that the Foray's
+own Miller segment says the compatible thing about thirty seconds after Act IV's narration
+hands over", which is in-Foray corroboration arriving immediately after the Carry. **The
+generalisation: a beat whose claim is an attestation is a cheap Carry, because a date is
+its own source.** That is the mirror image of §7b's finding that a Carry naming a book does
+something tape cannot.
+
+**Beat 20 is writable and it has already been demonstrated.** `narration-craft.md` §7b
+drafts a 182-word Carry for it and runs all six tests, passing R1 through R5 with two R6
+violations recorded rather than repaired. The literature is named by both the spine and
+this report — Twitty's *The Cooking Gene*, Miller's *Black Smoke* — and §7b's third lesson
+applies here specifically: the Carry hands directly to `GC-1`, so **carrying the beat on
+the literature of the voice who speaks next** costs nothing and turns the whole item into
+a Frame for beat 21. Nothing in this work list needs to be written for beat 20 that has not
+been written. **Its provenance stays by-default, but §9 is right that it should be treated
+as nearly closed rather than open**, and if the two remaining shots do not land it is a
+narration beat permanently — which, given the above, is not a bad outcome.
+
+**Beat 29 is writable at a larger scope than its claim, and this is where the budget model
+breaks.** Its own claim is a synthesis, and R3's synthesis exception attributes "to the
+Foray's own prior tape" — which works here only because two prior beats state the
+availability rule on tape rather than in narration: beat 5's Frugoni cut on what a fuel
+does, and beat 5's second cut plus beat 19's on availability determining what was used.
+**But the exception is contingent.** Both of those supporting cuts are SYSK, so a founder
+who rules that register out removes the prior tape the synthesis attributes to, and beat 29
+falls back on a dagger. Separately, §5 instructs it to "carry the region material on its
+own", so with 26 and 28 empty and 27 cut it is doing four beats' work: **that is a Carry at
+or near the 150 s soft max, about 2,550 characters, and `narration-craft.md` §2c requires
+such an item to state
+what the extra minute buys.** Here the answer is legible — it buys the four lineages the
+beats that would have carried them cannot.
+
+**The two unwritable thin beats, and why unwritable is the right verdict rather than a
+harsh one.**
+
+**Beat 23 — the Patch cannot be written, and this report already said what follows.** The
+beat's reason to belong is the second half of its claim: that one of the few regularly
+biracial public spaces in a segregated society reproduced the hierarchy inside it, with
+Black people cooking and serving and being fed separately or last. That is a specific
+empirical claim about the documented record, and **nothing in this corpus sources it.**
+`#2572` contains none of it; SYSK's two passages on the racial arrangement are each
+bracketed by a harmony statement, twice, which §5 records in detail; Miller's tape reaches
+the enslaver's status obliquely and the turn-of-century press asymmetry at 2036–2046 s, and
+neither is the seating. So R3 has nothing to name, and a Patch that supplied the seating on
+the narrator's own credit would be the worst sentence `narration-craft.md` §3f describes,
+in the one place the spine says a harmony version must not ship. **The consequence is
+already written in §5 and it is not a new recommendation: `#2572` "is admissible only
+underneath narration that supplies the seating, and if stage 4 cannot write that, the
+segment should be dropped rather than softened."** Stage 4 cannot write it. So the honest
+outcome is that beat 23 loses its tape as well as its Patch, which costs the assembly the
+151 s of `#2572` — **the report's own "strongest single piece of American tape in the
+pool"** — and §8's second finding is the place that loss should be argued, because a beat
+for the 19th-century westward diffusion would carry `#2572` squarely rather than thinly.
+
+**Beat 27 — unwritable for a different reason, and its tape was never available anyway.**
+Two things are true at once. Its `#2779` is assigned to beat 37 "so that one segment is not
+double-booked", so beat 27 has no tape in an assembly and its mode is Carry rather than
+Patch. And the beat's reason to belong is the contested-custody half — the spine's own
+words are that it "is where beat 22's erasure becomes concrete and current", because the
+leading whole-hog practitioners of the last generation include Black families whose work
+was uncredited until very recently. **That is a claim about named living families and the
+corpus names none of them.** The synthesis exception does not help: beat 38's tape is the
+right material and it plays *later*, and R3's exception reaches only the Foray's own
+**prior** tape. The technique half — whole hog over its own coals, the vinegar-and-pepper
+dressing, shovelling coals, the pig-picking — is writable, and a Carry restricted to it
+would be a Carry with the beat's reason to belong removed. **A second amendment
+recommendation therefore joins the mustard one already pending in §8**, and both are
+recommendations rather than edits: see `grilling-beat-cut-plan.md` §6.
+
+**What R3 would have to name, for the rest.**
+
+- **Beat 17.** The fork itself — an enclosed buried branch that Mexico kept against the
+  raised-grate branch the Southeast took up — is the spine's own structure, and beat 18's
+  tape shows the raised grate arriving on top of an existing pit, which corroborates the
+  raised-grate half from inside the Foray. The pit and leaf wrap, steam rather than smoke,
+  the Yucatecan and highland variants, the consommé and the Sunday pattern are all
+  determinate. **The bound is the continuity claim from pre-contact practice**, which §4
+  and §5 both call the hard part: it must run at U3 with the axis of the argument named,
+  and its disputants are named nowhere here. The three Spanish sources and the *Tacos al
+  Pastor* episode are barred as tape and raise the same citation question as beat 11.
+- **Beat 19.** The corn-and-hog complex, seasonal slaughter before refrigeration,
+  per-capita consumption, and the explicit contrast with cattle. One thing this Patch must
+  do that no other must: **bound its own tape's authority rather than inherit it.** §5
+  records that the pork-primacy argument on the SYSK cut is attributed on tape to a 2009
+  *Esquire* article, "My Pig Beats Your Cow" — a magazine polemic about what counts as
+  barbecue, not an agricultural history. Under §3f that is a Correction's job, placed after
+  the tape, and it is cheaper than letting the Patch borrow the polemic's standing.
+- **Beat 25.** The Migration's routes, what changed on arrival in cuts, equipment and
+  storefront format, and named forms that exist only in the destination. Beat 24's Miller
+  cut corroborates the mobility half from inside the Foray — the formerly enslaved "put on
+  trains, stage coaches and boats all across the country" — but the destination-only forms
+  are the beat's payload and the corpus names none, so the dagger is a named scholar of the
+  Migration and barbecue together.
+- **Beat 26.** Fully specified by the spine and among the most R2-safe rows here: four
+  lineages named individually, the back-counter service of Mexican and Black customers at
+  the meat markets, post oak, sauce's absence as an artefact rather than a doctrine, and
+  brisket's rise dated against the supply-side change of feedlots, boxed beef and
+  refrigerated trucking. No source is named for any of it. Note the direction this pushes
+  beat 37: the inversion beat 37 measures is measured *against* this beat's supply story,
+  so a cut beat 26 leaves beat 37's Patch to establish its own baseline.
+- **Beat 28.** The freight-to-signature chain is stated in the spine tightly enough to be
+  a single sentence — a stockyard city where every kind of meat came through cheaply, a
+  river and cotton entrepôt — which is exactly why the spine calls these the two cities
+  where beat 29's argument can be proved. **The named founding proprietors are the dagger**,
+  and they matter more here than a citation usually does: they are beat 24's economics
+  arriving in the 20th century, and a Carry that describes the freight and omits the people
+  reproduces the erasure beat 22 is about.
+- **Beat 30.** Lending and insurance discrimination, the inability to capitalise or
+  bequeath a business, the succession problem that follows from not owning property, and
+  the clearances as a pattern across cities rather than one Atlanta case. §9 is explicit
+  that this is narration now and that no barbecue podcast will supply it, so the dagger is
+  urban and policy history and it is the most clearly identified missing citation in the
+  report. The Patch also owes one fact the tape omits and §5 flags: **that Aleck's was
+  Black-owned**, which is inferable from the King framing and is not on the tape.
+
+### 10f. Act V — eight beats, and the only unwritable empty beat in the spine
+
+| beat | verdict | structure | mode | provenance | writable | budget |
+|---|---|---|---|---|---|---|
+| **31** — refrigeration ends the necessity | empty | chain link, the act's hinge | Carry | by-default (open, closest to a win) | writable† | 1,360 |
+| **33** — gendered fire, inconsistent credit | empty | **cross-cutting** | Carry | **by-design** (comparative synthesis) | **unwritable** | — |
+| **34** — gas split the word | empty | chain link | Carry | by-default (open) | writable† (bounded) | 1,360 |
+| **35** — identity moved to the jar | empty | chain link | Carry | by-default (open) | writable† | 1,360 |
+| **36** — competition standardised the flavour | empty | chain link | Carry | by-default (open, identified) | writable† | 1,360 |
+| **37** — poverty food to luxury | thin | chain link | Patch | — | writable† | 780 |
+| **39** — automation as a real challenge | empty | chain link | Carry | by-default (open) | writable† (bounded) | 1,360 |
+| **40** — coda: the invariants | empty | coda | Carry at the **45 s floor** | **by-design** | **writable**, no new source | **765** |
+
+**Beat 33 is the one empty beat in the spine that cannot be written, and the reason is
+structural rather than a shortage.**
+
+Its claim has two halves and both fail R3 in different ways. The comparative half — the
+prestigious fire role coded male across unconnected traditions — is a synthesis, so R3's
+exception is the only route, and the exception requires the premises be the Foray's own
+prior tape. **Two of its four named legs are unavailable, and for different reasons.** The braai
+master is beat 13, which is empty. The competition and restaurant pitmaster are beats 36 and
+37 — 36 is empty, and 37 is thin on `#2779`, which dates the craft revival and says nothing
+about who is called a pitmaster, so it does not reach this leg either. The asador survives on
+beat 14's tape and the suburban father on beat 32's, so at best the comparison has two legs,
+and a claim that something "generalises across a striking range of unconnected traditions"
+cannot be attributed to two of them without the narrator supplying the range itself.
+
+The specific half is worse: **women in Black barbecue businesses running pits, kitchens and
+books largely without being called pitmasters** is the beat's payload and a
+specific empirical historical claim, and §6 says in terms that neither comparative tape on
+the division of credit nor single-tradition tape examining credit rather than reporting
+custom exists in this pool. Nothing in the corpus names a source for it. Guessing at one is
+exactly what `narration-craft.md` §5f calls the single worst thing this pipeline could do,
+and the risk is acute here because plausible-sounding attribution is easy to produce for a
+claim this widely discussed.
+
+**So R2 and R3 fail together, which is §6d's definition.** The escalation needs care,
+because the spine argues against dropping this beat directly: "cut it and the Foray's
+authorship argument is available only in a racial register when the evidence shows it
+operating in a gendered one too, which makes the argument narrower than the thing it is
+describing." That is a real cost and it is not a fan stop's cost.
+
+**What decides it is that the beat cannot be written, not that it is cheap to lose.** The
+spine's own structural note is that beat 33 is Act V's "deliberate interruption",
+cross-cutting rather than a link, and that narration should "mark it as a step out of the
+sequence and back" — the same marking Act III's fan gets. A beat announced as a departure
+that then does not happen is closer to a missing fan stop than to a missing link, which puts
+it in the cheapest tier of §6d's ladder. **The
+recommendation is therefore route 1: drop it from this assembly, and do not write it.** A
+narrower amended beat confined to the two legs the Foray actually plays — the asador as a
+social office against the postwar grill's advertising — would be writable and would be a
+different and smaller beat, so it belongs in §8 as a recommendation rather than in a script.
+That is `grilling-beat-cut-plan.md` §6.
+
+**Beat 40 is the cheapest narration in the Foray, and it is the one beat where being empty
+is an advantage.** It is a synthesis of the Foray's own preceding beats, so R3's exception
+applies squarely and the attribution is *"everything in that came from the people you have
+just heard"* — real attribution, checkable against the assembly, and available to nothing
+else in Act V. §6 records it as empty by design and the spine says keep it short: "this is a
+landing, not a summary." So it is budgeted at the 45 s Carry floor, **765 characters rather
+than §4d's 1,360**, and that is the one place in this work list where the per-beat constant
+is generous rather than optimistic. Note the dependency, because it is real: the coda's four
+invariants are long time, smoke, more meat than a household can eat, and a crowd — and the
+synthesis exception only covers what was actually played, so a heavily cut Foray shortens
+what the coda may claim to have shown.
+
+**What R3 would have to name, for the rest.**
+
+- **Beat 31.** The chronology is public record — the ice trade, mechanical refrigeration,
+  refrigerated rail, the household fridge across roughly a century from the mid-1800s — and
+  the beat's actual claim is narrower and is the dagger: **that smoked and preserved foods
+  survived as tastes after their function was gone.** §6 calls this "the closest thing to a
+  free win in the report" and names Gastropod's "The Birth of Cool" as PADDABLE on two
+  measured probes and blocked only on ASR, so this is the empty beat most likely to stop
+  needing a Carry at all. Until it does, the Carry is the act's hinge and the Foray's
+  central irony is explained nowhere else.
+- **Beat 34.** Bounded, and the bound is the interesting part. The gas takeover's dates and
+  share figures are public market record and are named nowhere here. But **the beat's causal
+  claim — that the definitional dispute is downstream of an appliance — is the spine's own
+  inference**, and a narrator asserting our own outline's causal reasoning on its own credit
+  is precisely the failure R3 exists to catch. What rescues it is that beat 4's tape states
+  the *consequence* from direct observation: Moss, on `bbqc-moss-school`, that in Britain
+  "if you're seeing Barbecue, they're talking grilling." That is prior in-Foray tape for the
+  vocabulary split, so the Carry may state the split on Moss and the causation at U3 — the
+  weakest form the evidence supports, which is §5e's rule — rather than asserting the
+  mechanism flat. Written that way it passes; written as the spine states it, it does not.
+- **Beat 35.** The bottled-sauce supermarket category, a named brand sold into a large food
+  company, and the chain-restaurant era are all public commercial record, and the beat's
+  argument that packaging selects for the packageable is the kind of claim a business
+  journalist states out loud. No source is named here. R2 is safe because the claim is
+  mechanical rather than atmospheric: smoke and time cannot be packaged and sauce can.
+- **Beat 36.** The founding of the sanctioning bodies, the mechanics of the box and the
+  scoring criteria, and the one-bite artefact named as an artefact. §6 identifies the right
+  speaker on the right subject — `The BBQ Central Show`'s "Robert Moss Talks Southern BBQ
+  Competition Beginnings" — and records that the feed publishes transcripts on 12 of 1,858
+  episodes and this is not one of them. So the dagger has a name attached and no text behind
+  it, which makes this the second-most closeable Act V hole after beat 31.
+- **Beat 37.** The Patch owes the inversion itself: barbecue criticism emerging as a beat,
+  national awards, the queue as the story, and brisket's price history read against what the
+  cut cost when the tradition adopted it. The price history is public record. Two
+  dependencies worth carrying into stage 4: the baseline the inversion is measured against
+  lives in beat 26, which is empty, so if beat 26 is cut this Patch establishes its own
+  baseline and grows; and `#2779` is also beat 27's contradicted passage, so a script author
+  reading it will meet the mustard dispute and should leave it alone here.
+- **Beat 39.** Bounded, and it is the one beat that asks for something a narrator may not
+  give. The spine wants "someone taking a position on automation with reasoning", and the
+  narrator has no position and no authority to hold one — `narration-craft.md` §1c and its §5a
+  between them forbid it. What the narrator may do is **pose the question and name the
+  contest at U3**, which is exactly what the beat's claim actually is: whether a
+  machine-tended fire still counts is a substantive question, asked while the opposite
+  instinct booms. The premise it rests on — that the vigil is where the meaning was — is
+  established by the Foray's own beat 21 tape on labour-intensity, so the synthesis
+  exception carries half of it. The dagger is one named practitioner or region for the
+  live-fire movement, without which the beat's second clause is an assertion about the
+  present made by nobody.
+
+### 10g. The work list totalled, and the cross-check that says the model holds
+
+**All twenty-nine beats, written as classified above:**
+
+| | beats | each | characters |
+|---|---|---|---|
+| Carries at the §4d constant | 17 — 3, 8, 10, 11, 12, 13, 16, 17, 20, 25, 26, 28, 31, 34, 35, 36, 39 | 1,360 | **23,120** |
+| Carries on thin beats whose tape went elsewhere | 2 — 2, 27 | 1,360 | **2,720** |
+| Beat 29, at the soft max | 1 — 29 | ~2,550 | **2,550** |
+| Beat 40, at the Carry floor | 1 — 40 | 765 | **765** |
+| Patches | 6 — 6, 7, 9, 19, 30, 37 | 780 | **4,680** |
+| Unwritable, not written | 2 — 23, 33 | 0 | **0** |
+| **Total as costed, 27 beats** | | | **≈ 33,835** |
+
+**Two notes on that table, because both affect the figure.** Beat 27 is costed in the
+second row so that the price of writing it is visible, and it is unwritable, so the honest
+total excludes it: **the 26 writable beats come to ≈ 32,475 characters.** And beat 6 is
+costed as a Patch, which assumes `#700` is assigned to it rather than to beat 14; assigned
+the other way it is a Carry and the total rises by 580.
+
+Adding the eleven strong beats at §4d's 240 gives **≈ 35,115 characters for a 40-beat
+Foray minus its three unwritable beats.**
+
+**The cross-check.** `narration-craft.md` §4d puts the all-twenty-carried barbecue Foray at
+**~36,860 characters**. This work list, built beat by beat from this report's contents
+rather than from a per-beat average, comes to **35,115** for a slightly smaller set — three
+beats not written, one beat cheaper than the constant, one beat dearer, two thin beats
+repriced upward. **The two figures agree to within 4.7 %, and the discrepancies are all
+identified**, which is what a reconciled cost model looks like. The direction is worth
+noting: the repricings pushed *up* and the unwritable verdicts pushed *down*, and they
+happen to roughly cancel. Do not read that cancellation as a general rule.
+
+**One figure that is not in the table, because it is the point.** **Twenty-two** of these
+twenty-nine beats cannot be voiced until somebody obtains a citation for them — fifteen of
+the nineteen writable empty beats and seven of the nine thin ones, and twenty-three if the
+SYSK register is ruled out and beat 29 loses its synthesis attribution. The character totals
+above are what the writing costs. **The daggers are what the writing waits on**, and no
+character budget measures them.
