@@ -286,14 +286,44 @@ function passesFilters(item, filters) {
    vocabulary question, not a matcher one. */
 const LONG_INFLECTIONS = "(?:s|es|ing|ed)?";
 const SHORT_INFLECTIONS = "s?";
-const longTermPattern = (t) => new RegExp("(?<![a-z0-9])" + t + LONG_INFLECTIONS + "(?![a-z0-9])");
-const shortTermPattern = (t) => new RegExp("\\b" + t + SHORT_INFLECTIONS + "\\b");
+
+/* Compiled patterns are CACHED per term, which is a real cost here rather than
+   premature tuning. scoreMatch calls hitText five times per term per item over a
+   1,540-item pool, so a single battery run is millions of calls, and the terms
+   repeat on every one of them. It also repairs a regression this change would
+   otherwise have introduced: hitTag's short branch used to be a string compare
+   (`tag === t || tag.split("-").includes(t)`) and now needs a pattern, which
+   measured ~4us per call compiling one regex PER HYPHEN SEGMENT. Cached, both
+   branches are cheaper than what they replace.
+   Keyed by branch + term, since the same term compiles differently on each. The
+   size cap matters because query tokens come from a text box, so the key space is
+   attacker-controlled in a long-lived tab; the vocabulary itself is ~1,400 terms,
+   so the cap is never reached by legitimate use. Clearing wholesale is fine --
+   these are pure functions of the key and cost microseconds to rebuild. */
+const PATTERN_CACHE_MAX = 4000;
+const patternCache = new Map();
+function compiledPattern(key, build) {
+  let re = patternCache.get(key);
+  if (re === undefined) {
+    if (patternCache.size >= PATTERN_CACHE_MAX) patternCache.clear();
+    re = build();
+    patternCache.set(key, re);
+  }
+  return re;
+}
+const longTermPattern = (t) =>
+  compiledPattern("L " + t, () => new RegExp("(?<![a-z0-9])" + t + LONG_INFLECTIONS + "(?![a-z0-9])"));
+const shortTermPattern = (t) =>
+  compiledPattern("S " + t, () => new RegExp("\\b" + t + SHORT_INFLECTIONS + "\\b"));
+const shortTagPattern = (t) =>
+  compiledPattern("T " + t, () => new RegExp("^" + t + SHORT_INFLECTIONS + "$"));
 const hitText = (text, t) =>
   (t.length < 4 ? shortTermPattern(t) : longTermPattern(t)).test(text);
-const hitTag = (tag, t) =>
-  t.length < 4
-    ? tag.split("-").some(seg => new RegExp("^" + t + SHORT_INFLECTIONS + "$").test(seg))
-    : longTermPattern(t).test(tag);
+const hitTag = (tag, t) => {
+  if (t.length >= 4) return longTermPattern(t).test(tag);
+  const re = shortTagPattern(t);
+  return tag.split("-").some(seg => re.test(seg));
+};
 
 function scoreMatch(item, interp, itemTags) {
   const title = item.title.toLowerCase();
