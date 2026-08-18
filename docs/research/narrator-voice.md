@@ -660,3 +660,181 @@ languages". The alternative phoneme-capable model, `eleven_flash_v2`, is documen
 English-only — so of the two models whose pronunciation control actually works,
 picking v3 is also the one that leaves a non-English Foray possible. Noted in
 passing, not scoped.
+
+---
+
+## 7. Recommendation
+
+**One voice. Catalogue-wide. `eleven_v3`, pinned by voice ID, conditional on the
+81-term fixture.**
+
+Not one voice per topic, not one per act, not one per register. The narrator is the
+only continuous voice in a work made of strangers, and § 4.2 shows the perceptual
+cost of changing it is measured, does not habituate, and lands on the single
+sentence a narration item most needs to land. Tonal fit is a benefit nobody has
+measured; continuity is a cost somebody has.
+
+### The three characteristics to specify
+
+1. **Rate: explicitly slower than default, and never the default.** Set `speed`
+   around 0.85 within the documented 0.7–1.2 range, targeting roughly 145–155 wpm
+   against the ~170 wpm the repo estimates for the surrounding tape. The narrator
+   should be audibly less hurried than the people it introduces. This is the one
+   characteristic that is a settable number rather than a property of the voice,
+   so it is the one there is no excuse for getting wrong.
+
+2. **Affect: low expressive range, deliberately — v3's "Natural", never
+   "Creative".** Creative mode is documented "prone to hallucinations", and a
+   hallucinating narrator in a factual educational work is exactly the #226 defect
+   the spines exist to prevent: plausible, fluent, off-beat. Robust is documented
+   "less responsive to directional prompts", which walks into § 5.3's uniformity
+   tell. Natural — "balanced and neutral" — is the setting that trades the least of
+   either. **The narrator does not need to be moved by the material. It needs to be
+   right about it.**
+
+3. **Persona: middle-aged, mid-to-low pitch, plain rather than warm.** In Voice
+   Library filter terms: age "Middle Aged", use case "Narration" or "Educational".
+   A lecturer's plainness, not a host's charm and not a documentary voice-of-god.
+   The reason is structural rather than aesthetic — the narrator's job at a bridged
+   seam is to be recognisably *not* one of the guests, and every guest in a podcast
+   segment is being charming. Plainness is the contrast the format has left.
+
+**And the selection rule that overrides all three:** shortlist on the filters,
+then choose the voice that needs the **fewest pronunciation-dictionary entries** to
+pass the 81-term fixture — not the one that sounds nicest reading a demo sentence.
+§ 2 measured where this will break, and it is not timbre.
+
+### What must be true operationally
+
+- The voice must be documented as usable **in perpetuity**, and recorded in the
+  repo **by voice ID**. ElevenLabs' Default voices "will expire on December 31,
+  2026", so a default voice guarantees a forced re-voicing of the back catalogue
+  inside four months.
+- The pronunciation lexicon is authored in **IPA**, not CMU Arpabet, because IPA is
+  the notation both candidate vendors accept.
+- Rendered audio is treated as a **cache** and the script plus lexicon as the
+  masters, because the models are documented nondeterministic and a beat cannot be
+  patched at sentence granularity.
+
+### The single highest-risk assumption
+
+**That a narration beat fits in one request.**
+
+The whole model choice rests on it. § 5.4 argues v3 is usable despite "Request
+stitching is not available for the `eleven_v3` model", and the argument is that our
+mean claim is 489 characters, so one beat is one request, so there are no chunk
+joins to hear. If that holds, v3's biggest documented long-form weakness is
+irrelevant to us and we get the eleventh-ranked model with working phoneme tags.
+
+If it does not hold, the recommendation changes. **And it is not my assumption to
+validate** — narration length per beat is being decided right now in
+`docs/curation/narration-craft.md`, by someone else, and an empty beat carrying a
+36.5 %-of-runtime act may well want narration many times the length of the claim it
+serves. The threshold is sharp and checkable: **if narration for a single beat can
+exceed roughly 5,000 characters, v3 must chunk with no stitching available**, and
+the choice moves to `eleven_flash_v2` (phoneme tags, 30,000-character cap, but
+documented English-only) or to Cartesia (no documented cap, no documented model
+restriction). Nobody should discover this after a Foray is narrated.
+
+### What else would change this recommendation
+
+- The 81-term fixture failing badly on every shortlisted ElevenLabs voice while
+  Cartesia passes. § 6.1 makes this a live possibility, not a courtesy hedge.
+- The `.PLS` dictionary turning out to have an undocumented rule limit below 81, or
+  the "languages other than English" clause silently disabling entries for the
+  loanwords, which is most of the list.
+- A decision that Forays should carry non-English narration, which would make the
+  `flash_v2` fallback unavailable and force the question back open.
+
+---
+
+## 8. What this document could not establish
+
+Stated plainly, because a gap presented as a finding is the failure mode this
+document was asked to avoid.
+
+- **No evidence was obtained on pitch, breathiness, accent, perceived age or
+  gender and their effect on perceived authority, warmth or credibility.** The
+  session's web-search budget was exhausted before that literature could be
+  reached. Characteristic 3 above is therefore **judgement resting on a structural
+  argument** — the narrator must contrast with charming guests — and not on the
+  psychoacoustic or social-perception literature it should rest on. It is the
+  weakest of the three recommendations and should be the first thing a follow-up
+  strengthens or overturns.
+- **No audiobook-industry pace standard was verified.** § 3.1's rate argument runs
+  entirely off vendor pricing arithmetic and this repo's own 170 wpm estimate. The
+  ACX and Audio Publishers Association guidance was not read.
+- **No listening-effort literature for modern neural TTS was consulted**, so the
+  claim that synthetic long-form costs a listener more than human long-form is
+  neither made nor refuted here.
+- **Nothing was heard.** Every quality statement is somebody else's vote or
+  somebody else's marketing.
+- **Free-tier attribution requirements are unresolved** — the ElevenLabs
+  help-centre article that would settle whether AI-generation disclosure or
+  attribution is required returns 403 to automated fetches. It needs a human with
+  a browser. It does not affect the voice choice; it may affect the product.
+
+### The corpus additions this implies
+
+Three URLs earned their place and are not yet in
+`docs/research/foray-research-dossier.md` § 6. They are recorded here rather than
+added to the manifest because ingesting them requires running the scraper and
+regenerating the committed index, which is a separate change:
+
+- `https://artificialanalysis.ai/text-to-speech/leaderboard/provider-voice` — the
+  fetchable substitute for the failed source 37, with 95 ranked models.
+- `https://docs.ttsarena.org/ranking` — TTS Arena's methodology, which source 37
+  was supposed to supply and could not.
+- `https://elevenlabs.io/pricing/api` — the API price line, without which source
+  40 leads a reader to over-state cost by 1.65–1.8×.
+
+Also worth a correction pass in the dossier: § 6's "best naturalness and prosody"
+(refuted, § 6.1), "cheapest scalable option for bridges" for Polly (last of 95),
+and § 4's stage-4 plan to "generate bridges with a mid-tier TTS ... and A/B against
+ElevenLabs", which § 5.1 makes unworkable — mid-tier models are exactly the ones
+that skip phoneme tags silently.
+
+---
+
+## Appendix — the pronunciation acceptance lexicon
+
+81 terms, hand-audited from a dump of every distinct token in the claim text of
+both spines. 80 appear in claim text, 103 times, across 46 % of beats. This is the
+§ 5.7 fixture; each term needs a carrier sentence, and the whole set fits in one
+5,000-character request.
+
+**Fermentation and process vocabulary:** koji, nuruk, jora, keeving, malting-adjacent
+loanwords, azeotrope, fructan, fructans, acetaldehyde, diacetyl, anethole, vanillin,
+lactones, cinchona, gentian, quebracho.
+
+**Latin binomials and organism names:** *Saccharomyces*, *cerevisiae*,
+*pastorianus*, *eubayanus*, *Aspergillus*, *oryzae*, *Brettanomyces*, *Artemisia*.
+
+**Drinks, vessels and methods:** aguamiel, airag, akvavit, alembic, arak, arkhi,
+arrack, awamori, baijiu, burukutu, chicha, destilados, eisbock, genever, huangjiu,
+kumis, lambic, makgeolli, mezcal, ouzo, pastis, pito, pulque, qvevri, quinquinas,
+raki, sambuca, shochu, soju, tella, tinajas.
+
+**Fire and cooking terms:** barbacoa, asado, asador, braai, mangal, döner,
+binchōtan, ch'arki.
+
+**Proper nouns whose pronunciation is not guessable from spelling:** Taíno,
+Quechua, Juneteenth, Bérard, Cellier-Blumenthal, Aeneas, Coffey, Pilsen,
+Commandaria, Bénédictine, Fernet, Aperol, Angostura, Marsala, Batavia, Calvados,
+Armagnac, Meiji, Taipei.
+
+**The 22 diacritic-bearing tokens across both spines**, which are additionally at
+risk from any ASCII-normalising step in the pipeline: binchōtan, tōji, hāngī,
+Taíno, piña, cachaça, taquería, Provençal, Édouard, Bérard, Baumé, rosé, döner,
+entrepôt, consommé, armagnaçais, țuică, pálinka, żubrówka, poitín, Bénédictine, à.
+
+### Reproducing the measurements
+
+Every number in § 2 and § 5.2 comes from parsing the `**Claim.**` paragraph under
+each `#### N.` heading in the two spine documents, stripping markdown emphasis, and
+counting. No network, no vendor, no key. The proper-noun proxy is capitalised
+tokens in non-sentence-initial position minus the stop list named in § 2; the
+contrastive-construction count is the six patterns named in § 5.2; the risk lexicon
+is the hand-audited list above, matched case-insensitively on word boundaries. The
+characters-per-word figure of 5.97 includes spaces and is what converts every
+vendor characters-per-minute claim into words per minute.
