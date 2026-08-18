@@ -790,6 +790,30 @@ test("setRate snaps a junk or off-ladder value instead of handing it to the elem
   );
 });
 
+test("a snapped value SAYS so, so a stale stored rate is discoverable", async () => {
+  /* `normalizeRate` is deliberately forgiving, and forgiving plus silent is how a
+     whole cohort quietly listens at the wrong speed after a ladder change. The
+     telemetry line is the difference between "nobody changed the speed" and "every
+     stored value stopped being recognised". Product principle 2.
+
+     MUTATION THAT KILLS THIS: delete the `isRate` guard in `setRate`. No line is
+     emitted and the first two assertions fail; note the third, which is what stops
+     the fix being "emit always". */
+  const { m, log } = make();
+  m.setRate(1.6);
+  assert.ok(log.some((t) => /rate\.snapped requested=1\.6 applied=1\.5/.test(t)), `got ${log}`);
+  m.setRate("2");
+  assert.ok(log.some((t) => /rate\.snapped requested="2" applied=1/.test(t)), "a numeric STRING is a real bug upstream");
+
+  const before = log.length;
+  m.setRate(1.75);
+  assert.equal(
+    log.filter((t) => /rate\.snapped/.test(t)).length,
+    log.slice(0, before).filter((t) => /rate\.snapped/.test(t)).length,
+    "a value already ON the ladder is not a snap and must not say it was"
+  );
+});
+
 test("changing speed does NOT cut a running seam beat", async () => {
   /* Every transport method cuts the beat, because the beat marks an edit the
      listener did not ask for and touching the transport means they have named a

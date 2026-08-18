@@ -80,6 +80,28 @@ docs/. Completed workstreams move to their plan doc's retro section.
   beat-drift bound was restated: it is `SEAM_GAP_SEC x rate`, so 4.0 s at 2x rather
   than the flat 2.0 s the comment claimed. `mediaSession` is absent in Android
   WebView at the engine level, so this pays off on web and iOS only.
+- **Two things the pre-push review found, both now closed.** (a) `setPositionState`
+  reporting the element's rate was argued in three comments and pinned by NOTHING —
+  the reviewer reversed both call sites to `manager.rate` and all 796 player tests
+  stayed green. Two assertions in `media-session.test.js` now pin it, including the
+  one-branch case. (b) `play()`'s `playbackRate` write was the last unguarded element
+  write in the backend, and the two GUARDED sites both deferred recovery to it
+  ("play() re-applies it") — so a refused rate could still reach `_loadItem`'s catch
+  and stop the Foray. Guarded, and the comments no longer point at it.
+- **Two presentation numbers that are MEDIA time and stay that way**, recorded
+  rather than changed: `remainingLabel` ("42 min left" is 21 real minutes at 2x)
+  describes content remaining, which is a stable property of the stored row, where
+  the rate belongs to a session that has not happened yet. And `media-session.js`
+  §4's restated drift bound is 0.13% of a 51-minute bar, not the 0.11% a first
+  draft wrote — that figure used Foray #1's 61-minute runtime against the original
+  sentence's 51-minute denominator.
+- **The Swift is knowingly divergent and was NOT touched.**
+  `ios/App/Player/PlayerQueueManager.swift:335` still reads
+  `backend.rate = item.showRate`, i.e. it still has the bug. CLAUDE.md says the two
+  mirrored files change together, and this deliberately breaks that: `ios/` is
+  outside the auto-merge allowlist, so editing it would take this PR off the
+  auto-merge path and onto a human. §12 in `queue-manager.js` names the exact Swift
+  line so a porter working #28 cannot "restore" the per-item override by mistake.
 - **2x is the top, and that is a Foray-specific answer.** Half the apps checked go
   to 3x or 3.5x. Rate does not slow any one seam load, but it multiplies how many a
   listener meets per wall minute, and a hidden-page load measures 5.1-11.1 s

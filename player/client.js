@@ -549,6 +549,19 @@ function currentRate() {
   return manager ? manager.rate : readRate(storage);
 }
 
+/* A LATE-HYDRATING STORE MUST NOT LEAVE A STALE SPEED ON SCREEN.
+   `storage.getItem` serves memory, and memory is filled from localStorage
+   synchronously but from the durable tier only when `hydrate()` finishes. Normally
+   that has happened long before anything reads a rate — app.js awaits the same
+   memoised `hydrate()` before `state.ready`, so `renderForay` runs after it, and
+   `ensureBooted` runs later still, on a click. But app.js gives up on hydration
+   after 5 s and renders anyway, and in the case `durable-store.js` exists for —
+   localStorage evicted, IndexedDB intact — the value only arrives at the end. So
+   repaint once when it lands. Read through `currentRate()`, so a listener who
+   tapped inside that window keeps their choice rather than having the stored row
+   overrule it. */
+storageReady.then(() => { paintRate(); notifyForay(); }).catch(() => {});
+
 /**
  * Apply and persist a speed.
  *

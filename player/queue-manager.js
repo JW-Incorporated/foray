@@ -149,7 +149,7 @@ import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
 import { seekPrecision, FOREIGN, APPROXIMATE } from "./seek-policy.js";
 import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
-import { normalizeRate, DEFAULT_RATE } from "./playback-rate.js";
+import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 
 const POSITION_INTERVAL_MS = 15_000;
 
@@ -496,6 +496,14 @@ export class PlayerQueueManager {
    */
   setRate(rate) {
     const r = normalizeRate(rate);
+    /* SAY SO WHEN A VALUE WAS SNAPPED. `normalizeRate` is deliberately forgiving —
+       it has to be, because its inputs include a hand-edited `cp_rate` and a row
+       written by an older ladder — but forgiving and silent is how you find out
+       months later that everyone has been listening at 1x. Product principle 2:
+       observed, never declared. This is also the only caller `isRate` needs; it is
+       the question "did we have to change what you asked for?", which
+       `normalizeRate`'s return value cannot answer on its own. */
+    if (!isRate(rate)) this._emit(`rate.snapped requested=${JSON.stringify(rate)} applied=${r}`);
     const was = this._rate;
     this._rate = r;
     /* NARRATION IS NOT SPED UP, EVER (corner case #18). If a bridge is what is

@@ -1371,7 +1371,8 @@ test("a buffering stall at the boundary neither stops early nor spins", async ()
      Now it polls to a CONDITION, and the precondition is asserted separately with
      its own message, so a raced setup says "the setup raced" instead of implicating
      the backend. The fine watch has to be ARMED when the stall lands (that is the
-     whole point), and arming happens inside the last 0.5 s of wall clock, so the
+     whole point), and the fine watch arms as soon as the boundary is inside the 2.0 s
+  lead — here, from `setOutPoint` itself — so the
      window is inherently bounded — polling every 5 ms is the tightest detection
      available rather than a guess at a sleep length. */
   const { el, b, log, ends } = ticking();
@@ -1379,7 +1380,8 @@ test("a buffering stall at the boundary neither stops early nor spins", async ()
   b.setOutPoint(100.9);
   b.play();
 
-  // Into the arm lead (0.5 s of wall clock, so from 100.4) but short of 100.9.
+  // Inside the arm lead (2.0 s of wall clock, so armed from setOutPoint) but short
+  // of 100.9.
   const deadline = now() + END_BUDGET_MS;
   while (el.currentTime < 100.5 && now() < deadline) await sleep(5);
   assert.ok(

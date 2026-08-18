@@ -1545,7 +1545,13 @@ function bindForayTransport(r, player, resume = null) {
      listener, not about the audio), it is settable before anything has started, and
      a Foray with no playable segments still leaves a listener who may want to set
      it for the next one. `paintForay` relabels it on every tick from the snapshot,
-     so a change made in the mini-player's sheet shows up here too. */
+     so a change made in the mini-player's sheet shows up here too **while a Foray
+     is live** — `notifyForay` has nothing to notify when the player is on a single
+     episode, so in that one case this button keeps its label until the page is
+     rendered again. Stated rather than fixed: the value itself is always right
+     (it lives in `cp_rate`, which both controls read), the stale thing is a label
+     on a page whose Foray is not the thing playing, and a rate-only broadcast
+     channel is more machinery than that is worth. */
   const rateBtn = $("#fy-rate");
   /* BOTH methods checked, not just one. app.js and the module refresh
      independently, and a bridge with `playbackRate` but no `cycleRate` would bind a
@@ -1649,7 +1655,11 @@ function playerHasForay(r) {
     update one and forget the other. */
 function paintRateButton(player, rate) {
   const btn = $("#fy-rate");
-  if (!btn || typeof player?.rateLabel !== "function") return;
+  /* BOTH label functions, for the same module-skew reason the binder checks both
+     of its own. The bind-time call is NOT inside `guardForayTap`, so a module
+     vintage carrying `rateLabel` but not `rateAriaLabel` would throw during
+     `renderForay` — a blank page, from a missing accessible name. */
+  if (!btn || typeof player?.rateLabel !== "function" || typeof player?.rateAriaLabel !== "function") return;
   const label = player.rateLabel(rate);
   const aria = player.rateAriaLabel(rate);
   /* The memo checks BOTH, and the second half is not symmetry — it is a bug this

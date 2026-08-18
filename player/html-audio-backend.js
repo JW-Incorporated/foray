@@ -1027,7 +1027,7 @@ export class HtmlAudioBackend {
     // is now the player: neither of these survives the swap on its own. Both are
     // guarded — Safari refuses some playback rates outright.
     try { this.el.volume = this._volume; } catch (_) { /* fine */ }
-    try { this.el.playbackRate = this._pendingRate; } catch (_) { /* play() re-applies it */ }
+    try { this.el.playbackRate = this._pendingRate; } catch (_) { /* refused; the rate stays pending */ }
     this._emit(
       `load.handover ${item.id} -> ${Math.round(startOffset)}s ` +
       `(prefetched: no wait at this boundary)`
@@ -1496,10 +1496,18 @@ export class HtmlAudioBackend {
 
   play() {
     if (this._released) return;
-    // Rate has to be re-applied after a load: assigning src resets
-    // playbackRate to 1 in most browsers, so the manager's restoreRate effect
-    // (which fires before startPlayback) would otherwise be undone by the load.
-    this.el.playbackRate = this._pendingRate;
+    /* Rate has to be re-applied after a load: assigning src resets
+       playbackRate to 1 in most browsers, so the manager's restoreRate effect
+       (which fires before startPlayback) would otherwise be undone by the load.
+
+       GUARDED, and this was the last unguarded element write in the file. Safari
+       refuses some playback rates outright, and `setRate`/`_promoteWarm` both wrap
+       their own assignment with a catch-comment saying "play() re-applies it" — so
+       the two guarded sites were deferring recovery to this line, and a throw HERE
+       is the one that costs the hour: `startPlayback` is `return backend.play()`,
+       which lands in the manager's effect loop -> `_loadItem`'s catch -> `E.error`
+       -> idle + pause. A refused speed must never stop a Foray. */
+    try { this.el.playbackRate = this._pendingRate; } catch (_) { /* the element refused it; the rate stays pending */ }
     const el = this.el;
     const p = el.play();
     if (p && typeof p.catch === "function") {
@@ -1554,12 +1562,13 @@ export class HtmlAudioBackend {
     const r = typeof rate === "number" && rate > 0 ? rate : 1.0;
     this._pendingRate = r;
     if (this._released) return;
-    /* GUARDED, like every other element write in this file. Safari refuses some
+    /* GUARDED, like every other element write in this file — `play()` included,
+       which was the one exception until this change. Safari refuses some
        playback rates outright, and an unguarded throw here lands in the manager's
        effect loop -> `_loadItem`'s catch -> `E.error` -> idle + pause. A refused
        rate would stop the Foray, which is a far worse outcome than a rate that
        did not take. */
-    try { this.el.playbackRate = r; } catch (_) { /* play() re-applies it */ }
+    try { this.el.playbackRate = r; } catch (_) { /* refused; `rate` below reports the truth */ }
     /* RE-DERIVE THE BOUNDARY NOW, not when `ratechange` arrives.
        The fine timer was armed for `(end - now) / oldRate` of wall clock, so
        speeding up moves the boundary CLOSER in wall time and leaves a timer armed

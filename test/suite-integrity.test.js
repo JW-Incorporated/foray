@@ -74,7 +74,7 @@ const FLOORS = {
      actual, and the pre-push review proved what that bought: all four pins could
      be deleted and the floor stayed green — the exact failure this file exists to
      make loud. Raise it when the suite grows. */
-  "player/media-session.test.js": 129,
+  "player/media-session.test.js": 131,
   /* Playback speed (#242). Floored with ZERO SLACK, like media-session and
      data-deletion above and for the same reason: what this suite guards is a set of
      PRODUCT decisions, each one edit from its opposite and none of them visible in
@@ -85,7 +85,7 @@ const FLOORS = {
      stale stored value SNAPS onto the ladder rather than resetting to 1x. Raise it
      when the suite grows. */
   "player/playback-rate.test.js": 22,
-  "player/queue-manager.test.js": 98,
+  "player/queue-manager.test.js": 99,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,

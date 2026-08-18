@@ -126,7 +126,7 @@
    at the rate we reported — so a beat costs 2.0 s of apparent progress at 1x and
    4.0 s at 2x, which is the top of the ladder and therefore the bound.
 
-   Still the right trade, and the arithmetic barely moves: 4.0 s is 0.11% of a
+   Still the right trade, and the arithmetic barely moves: 4.0 s is 0.13% of a
    51-minute bar against 0.065%, it is bounded by the beat rather than growing, it
    self-corrects on the next tick, and it lands at the one moment the display is
    redrawing its title anyway. What matters is that the number is stated
