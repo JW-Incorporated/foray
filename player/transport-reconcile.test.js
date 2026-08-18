@@ -571,7 +571,7 @@ class MemoryStorage {
  * tests sharing one instance would share a booted player and a storage tier.
  */
 let bootSeq = 0;
-async function bootClient() {
+async function bootClient(t) {
   const audio = new Element();
   const storage = new MemoryStorage();
   const doc = {
@@ -625,6 +625,12 @@ async function bootClient() {
      `window` live from inside its handlers, so the stub has to stay installed
      for the whole test; each test calls `restore()` itself. */
   const client = (await import(`./client.js?reconcile=${++bootSeq}`)).default;
+  /* Registered as teardown rather than called at the end of each test body: a
+     test that FAILS mid-way would otherwise leave `globalThis.document` pointing
+     at a stub, and every test after it in this file would run against a booted
+     player it did not build. A leak like that turns one red test into a file of
+     meaningless results. */
+  t.after(restore);
   return { client, doc, win, audio, storage, restore };
 }
 
@@ -668,8 +674,8 @@ const transport = (doc) => {
   return { glyph: btn.textContent, label: btn.getAttribute("aria-label"), press: () => btn.click() };
 };
 
-test("THE FOUNDER'S PRESS: after a stop the page never saw, the transport says Play", async () => {
-  const { client, doc, audio, restore } = await bootClient();
+test("THE FOUNDER'S PRESS: after a stop the page never saw, the transport says Play", async (t) => {
+  const { client, doc, audio, restore } = await bootClient(t);
   const resolved = synthetic();
   await client.playForay(resolved, { startIndex: 0 });
   await settle();
@@ -687,14 +693,14 @@ test("THE FOUNDER'S PRESS: after a stop the page never saw, the transport says P
   doc.fire("visibilitychange");
   await settle();
 
-  const t = transport(doc);
-  assert.equal(t.label, "Play", "one press must resume, not correct a belief");
-  assert.equal(t.glyph, "▶");
+  const button = transport(doc);
+  assert.equal(button.label, "Play", "one press must resume, not correct a belief");
+  assert.equal(button.glyph, "▶");
   restore();
 });
 
-test("and the press resumes — the reconcile did not start anything itself", async () => {
-  const { client, doc, audio, restore } = await bootClient();
+test("and the press resumes — the reconcile did not start anything itself", async (t) => {
+  const { client, doc, audio, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
 
@@ -712,12 +718,12 @@ test("and the press resumes — the reconcile did not start anything itself", as
   restore();
 });
 
-test("a finished Foray does not come back looking mid-listen", async () => {
+test("a finished Foray does not come back looking mid-listen", async (t) => {
   /* The reconcile's `ended` guard, end to end. A file that ran out is paused —
      and `pause` fires BEFORE `ended` — so anything reading only `paused` calls a
      finished Foray an interruption and hands the listener back a transport that
      offers to resume something that is over. */
-  const { client, doc, audio, restore } = await bootClient();
+  const { client, doc, audio, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 1 });   // the last segment
   await settle();
   await settle();
@@ -738,7 +744,7 @@ test("a finished Foray does not come back looking mid-listen", async () => {
   restore();
 });
 
-test("A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN-POINT", async () => {
+test("A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN-POINT", async (t) => {
   /* Report 2, reproduced end to end. Segment A plays to its out-point and the
      cross-episode load of B fails — #224 owns WHY it fails; here it simply does.
      `_loadItem` has already moved `currentIndex` to B, and assigning `src` reset
@@ -750,7 +756,7 @@ test("A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN
 
      Kill this by making `persistForayProgress` read `forayPosition()` again
      instead of `forayPlayhead()`: the row becomes segment "sb" at 0 s in. */
-  const { client, doc, audio, storage, restore } = await bootClient();
+  const { client, doc, audio, storage, restore } = await bootClient(t);
   audio.loadPlan.set("https://cdn.test/b.mp3", "error");
 
   await client.playForay(synthetic(), { startIndex: 0 });
@@ -788,10 +794,10 @@ test("A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN
   restore();
 });
 
-test("a position that CAN be read is still written, so the refusal is not a mute", async () => {
+test("a position that CAN be read is still written, so the refusal is not a mute", async (t) => {
   /* The other half of the assertion above: a guard that simply stopped writing
      would pass that test and lose every resume point in the app. */
-  const { client, audio, storage, restore } = await bootClient();
+  const { client, audio, storage, restore } = await bootClient(t);
   await client.playForay(synthetic(), { startIndex: 0 });
   await settle();
   audio.currentTime = 150;
