@@ -206,9 +206,15 @@ test("every played segment past L4's soft maximum carries both escape-hatch fiel
      `long_reason` are not in the segment schema yet (§9 proposes them), so they
      live on the item.
 
-     `found` is counted and asserted non-zero for the reason every loop in this
-     file is: a Foray that stops playing anything over 240 s would make this pass
-     having checked nothing, and the point is a live example. */
+     NOT asserted non-zero, unlike every other loop in this file, and the
+     exception is deliberate (#236 review). L4's hatch is an exception a curator is
+     ALLOWED to stop taking: dropping the one over-long segment in the committed
+     data is an ordinary editorial edit, and requiring one to exist would make that
+     edit cost a test edit — the defect this issue exists to remove. The hatch
+     itself is not left unproven: three tests on the boundary fixture cover it
+     ("L4 FAILS on a segment over 240 s with no long_reason", "L4's escape hatch is
+     reachable", "L4's escape hatch needs BOTH fields"), and they own the data they
+     need. What this loop is for is the live case, whenever there is one. */
   let found = 0;
   for (const f of live.forays.forays) {
     for (const item of segmentItems(f)) {
@@ -221,7 +227,8 @@ test("every played segment past L4's soft maximum carries both escape-hatch fiel
       );
     }
   }
-  assert.ok(found > 0, "no committed Foray plays a segment past L4's soft maximum, so this proved nothing");
+  // Reported, not required: see above.
+  assert.ok(found >= 0);
 });
 
 test("M4's concentration cap holds on every Foray, recomputed here rather than read off the report", () => {
@@ -347,10 +354,19 @@ test("every label resolves to exactly one segment by (episode, duration)", () =>
  * has as many rows as the Foray has segments" an assertion rather than a pair of
  * numbers somebody kept in step by hand. */
 const RUNNING_ORDER_DOCS = [
-  { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order", tldr: true },
-  { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", tldr: false },
-  { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", tldr: true },
+  { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order", tldr: true, slotHeaders: true },
+  { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", tldr: false, slotHeaders: false },
+  { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", tldr: true, slotHeaders: true },
 ];
+
+/** `2:33` or `1:01:13` as seconds. The curation docs write every duration this
+    way, and #236 review found three places where the clock half of a cell was
+    parsed past and never compared. */
+function clockToSec(text) {
+  const parts = text.split(":").map(Number).reverse();
+  assert.ok(parts.length <= 3 && parts.every((v) => Number.isFinite(v)), `unparseable clock "${text}"`);
+  return parts.reduce((t, v, i) => t + v * [1, 60, 3600][i], 0);
+}
 
 test("every committed Foray has a running-order doc pinned above", () => {
   /* RUNNING_ORDER_DOCS drives a loop, and `test/suite-integrity.test.js` counts
@@ -367,7 +383,7 @@ test("every committed Foray has a running-order doc pinned above", () => {
   }
 });
 
-for (const { forayId, doc, endsBefore } of RUNNING_ORDER_DOCS) {
+for (const { forayId, doc, endsBefore, slotHeaders } of RUNNING_ORDER_DOCS) {
   test(`data/forays.json agrees with ${path.basename(doc)} §2, row for row`, () => {
     /* #182's third consequence is that the order "silently rots": change the data
        and the doc goes stale, or the reverse, with nothing to detect the drift.
@@ -381,20 +397,53 @@ for (const { forayId, doc, endsBefore } of RUNNING_ORDER_DOCS) {
     const md = fs.readFileSync(path.join(REPO_ROOT, doc), "utf8");
     const section = md.split("## 2. The running order")[1]?.split(endsBefore)[0];
     assert.ok(section, `could not find §2 in ${doc}`);
-    const rows = [...section.matchAll(/^\|\s*(\d+)\s*\|\s*[\d:]+\s*\|\s*([A-Z]+-\d+)\s*\|\s*([\d.]+) s\s*\|\s*(\w+)\s*\|/gm)];
+    /* The `at` column is CAPTURED now, not skipped. It was matched as `[\d:]+` and
+       thrown away, so every cumulative time in the table could be wrong and this
+       still passed — the same half-checked cell as §0's spelled-out runtime
+       (#236 review). */
+    const rows = [...section.matchAll(/^\|\s*(\d+)\s*\|\s*([\d:]+)\s*\|\s*([A-Z]+-\d+)\s*\|\s*([\d.]+) s\s*\|\s*(\w+)\s*\|/gm)];
 
     const items = segmentItems(forayBy(live, forayId));
     assert.ok(rows.length > 0, `§2's table in ${doc} no longer parses as numbered rows`);
     assert.equal(rows.length, items.length, `§2 has ${rows.length} rows and ${forayId} plays ${items.length} segments`);
 
-    for (const [i, [, n, label, dur, role]] of rows.entries()) {
+    let cumulative = 0;
+    for (const [i, [, n, at, label, dur, role]] of rows.entries()) {
       assert.equal(Number(n), i + 1, `§2's rows are not numbered 1..${rows.length} in order`);
       assert.equal(items[i].label, label, `position ${n}: data says ${items[i].label}, doc says ${label}`);
       assert.equal(items[i].role, role, `${label}: data says ${items[i].role}, doc says ${role}`);
+      const seconds = durationOf(live, items[i].segment_id);
       assert.ok(
-        Math.abs(durationOf(live, items[i].segment_id) - Number(dur)) <= 0.06,
-        `${label}: segment is ${durationOf(live, items[i].segment_id)} s, doc says ${dur} s`
+        Math.abs(seconds - Number(dur)) <= 0.06,
+        `${label}: segment is ${seconds} s, doc says ${dur} s`
       );
+      /* Cumulative TAPE, which is what the table says it is ("Times are cumulative
+         tape positions"). Rounded to the second in the doc, so a second of
+         tolerance — enough for the rounding and not enough to hide a reordering. */
+      assert.ok(
+        Math.abs(clockToSec(at) - cumulative) <= 1,
+        `${label}: doc puts it at ${at} (${clockToSec(at)} s) and the tape before it sums to ${cumulative.toFixed(1)} s`
+      );
+      cumulative += seconds;
+    }
+
+    /* The slot header rows — "**SLOT 2 — the pre-modern hearth** (12 segments,
+       21:10)". Both numbers are derivable and neither was checked. Declared per
+       doc and asserted in both directions, like §0's TL;DR. */
+    const headers = [...section.matchAll(/\*\*SLOT \d+ [^*]*\*\*\s*\((\d+) segments?, ([\d:]+)\)/g)];
+    assert.equal(headers.length > 0, slotHeaders, `${doc}: §2's slot header rows are ${headers.length ? "present but declared absent" : "declared present but missing"}`);
+    if (slotHeaders) {
+      const foray = forayBy(live, forayId);
+      assert.equal(headers.length, foray.slots.length, `§2 has ${headers.length} slot headers and ${forayId} declares ${foray.slots.length} slots`);
+      foray.slots.forEach((slot, s) => {
+        const inSlot = items.filter((i) => i.slot === slot.id);
+        const sec = inSlot.reduce((t, i) => t + durationOf(live, i.segment_id), 0);
+        assert.equal(Number(headers[s][1]), inSlot.length, `§2's header for "${slot.id}" says ${headers[s][1]} segments, the data has ${inSlot.length}`);
+        assert.ok(
+          Math.abs(clockToSec(headers[s][2]) - sec) <= 1.5,
+          `§2's header for "${slot.id}" says ${headers[s][2]} and the data sums to ${sec.toFixed(1)} s`
+        );
+      });
     }
   });
 }
@@ -449,6 +498,17 @@ test("each running-order doc's §0 summary numbers are the ones the checker comp
       );
       checked += 1;
     }
+    /* The HUMAN-READABLE half of the same cell — "3,673.0 s — 61 min 13 s". The
+       first version of this test stopped at the number, so the minutes could go
+       stale on their own, which is the rot it exists to stop (#236 review). */
+    const spelled = section.match(/\| Tape runtime \| \*\*[\d,.]+ s — (?:(\d+) h )?(\d+) min (\d+) s\*\* \|/);
+    assert.ok(spelled, `${doc} §0's Tape runtime cell no longer spells the clock out`);
+    const spelledSec = (Number(spelled[1] ?? 0) * 3600) + Number(spelled[2]) * 60 + Number(spelled[3]);
+    assert.ok(
+      Math.abs(spelledSec - r.tape_runtime_sec) <= 1,
+      `${doc} §0 spells the tape runtime as ${spelled[0].split("— ")[1]} and the checker computes ${r.tape_runtime_sec} s`
+    );
+    checked += 1;
   }
   assert.ok(checked > 0, "no doc summary was checked, so this proved nothing");
 });
@@ -595,9 +655,13 @@ test("the mean-deviation reading is the stricter one, and it only ever warns", (
      REPORTED so it is not quietly resolved in our favour.
 
      Was pinned as "3 grilling names and 2 capital names", which is curation.
-     Derived here, and stronger for it: the reading has to be strictly stricter
-     on at least one live Foray (or "warn-only" is proving nothing), never looser
-     on any, and every triple it finds has to reach the warnings. */
+
+     THE SEPARATION IS PROVEN ON THE FIXTURE, not on live curation (#236 review).
+     The first draft required some live Foray to have more mean-deviation triples
+     than pairwise ones, which is another existence requirement on curation — and
+     the fixture holds exactly that shape by construction (4 mean-deviation, 0
+     pairwise), which is what a fixture is for. The live data then only has to obey
+     the ORDERING (never looser) and have every triple reach the warnings. */
   const perForay = live.forays.forays.map((f) => {
     const durs = segmentItems(f).map((i) => durationOf(live, i.segment_id));
     return {
@@ -609,12 +673,20 @@ test("the mean-deviation reading is the stricter one, and it only ever warns", (
   for (const p of perForay) {
     assert.ok(p.meanDev >= p.pairwise, `${p.id}: mean-deviation found fewer triples than pairwise`);
   }
-  assert.ok(
-    perForay.some((p) => p.meanDev > p.pairwise),
-    "no live Foray separates the two readings, so nothing here proves the stricter one is warn-only"
-  );
+  const fixtureDurs = segmentItems(boundary(fixture)).map((i) => durationOf(fixture, i.segment_id));
+  const fixtureSplit = {
+    pairwise: d5Triples(fixtureDurs, { reading: "pairwise" }).length,
+    meanDev: d5Triples(fixtureDurs, { reading: "mean-deviation" }).length,
+  };
+  assert.deepEqual(fixtureSplit, { pairwise: 0, meanDev: 4 }, "the fixture is what separates the two readings");
+  /* Warn-only, said as narrowly as it is true: the mean-deviation triples reach
+     the warnings and NONE of them reaches the errors. Asserting the whole error
+     list is empty here blamed the stricter reading for any failure in the data,
+     which would point a curator with a genuine pairwise D5 FAIL at the wrong
+     rule; "the committed data passes with zero errors" is the test that owns
+     that message. */
   const { warnings, errors } = checkForays(live);
-  assert.deepEqual(errors, [], "the stricter reading must not be able to fail the build");
+  assert.deepEqual(errors.filter((e) => /mean-deviation/.test(e)), [], "the stricter reading must never fail the build");
   assert.equal(
     warnings.filter((w) => /mean-deviation/.test(w)).length,
     perForay.reduce((n, p) => n + p.meanDev, 0),

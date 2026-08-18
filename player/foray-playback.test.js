@@ -43,6 +43,16 @@
    segments", it reads `segmentEntries(r)`; where it needs "how many things play",
    it reads `r.playable.length`.
 
+   AND NOR IS AN INDEX A COUNT. A first draft of #236 derived every count and left
+   `r.playable[20]`, `dom.rows[20]`, `dom.segs[15]` and friends alone, which pinned
+   Foray #1 at 21 items or more — silently, and with a TypeError rather than an
+   assertion below that. Measured: trimmed to 20 items, five tests failed and
+   three of them crashed. That is the same defect as the `r.playable[29]` this
+   change already fixed, and it would have landed squarely on the follow-up this
+   work unblocks: retiring Foray #1 means pointing these suites at a 10-item
+   Foray. Positions now come from `positions(r)`, as fractions of the running
+   order with a stated minimum.
+
    The fake backend is the one from queue-manager.test.js, reduced to what a
    Foray needs. Nothing here touches the network: `audio_url` is asserted on,
    never fetched. */
@@ -101,6 +111,17 @@ function authoredSegments() {
     Foray has a bridge, which is exactly the assumption #236 is trying to stop
     this file from making silently. */
 const segmentEntries = (r) => r.entries.filter((e) => e.segment_id);
+
+/** Positions in the running order, as fractions rather than indices. Every
+    transport test below needs "somewhere in the middle" or "near the end", never
+    segment 20 in particular — and asking for segment 20 of a ten-segment Foray is
+    an undefined and a crash, not a failure (#236). The minimum is asserted rather
+    than assumed so a Foray too short to exercise a jump says so. */
+function positions(r) {
+  const n = r.playable.length;
+  assert.ok(n >= 4, `a Foray of ${n} item(s) is too short to exercise a jump, a resume and an end`);
+  return { first: 0, second: 1, middle: Math.floor(n / 2), penultimate: n - 2, last: n - 1 };
+}
 
 /** The premise the seam-beat assertions rest on: every transition in Foray #1 is
     unbridged, so every one of them gets the full 2.0 s. `seam-gap.js` spends 0 s
@@ -400,7 +421,21 @@ test("the beats cost about a minute of the Foray, and cost no audio at all", asy
   const seams = r.playable.length - 1;
   const costSec = seams * SEAM_GAP_SEC;
   assert.ok(seams > 0, "a Foray with no seams cannot say anything about what seams cost");
-  assert.ok(costSec / r.totalSec < 0.02, `the beats are ${(100 * costSec / r.totalSec).toFixed(1)}% of the runtime`);
+  /* Bounded by the RULE, not by Foray #1's segment lengths. The share is
+     approximately SEAM_GAP_SEC / mean segment duration, so a flat 2 % was a claim
+     that Foray #1's mean stays near 100 s — while segment-length-rules.md §5c's
+     D3 floor permits a mean of 90 s, at which the beats legally cost 2.2 %. The
+     old bound had 1.69 % against 2 % of margin, so a legal re-curation toward
+     shorter segments turned it red with no rule broken (#236 review).
+     D3_MEAN_FLOOR_SEC is written out rather than imported: tools/ importing
+     player/ is the direction this repo allows, not the reverse. */
+  const D3_MEAN_FLOOR_SEC = 90;
+  const worstLegalShare = SEAM_GAP_SEC / D3_MEAN_FLOOR_SEC;
+  assert.ok(
+    costSec / r.totalSec <= worstLegalShare,
+    `the beats are ${(100 * costSec / r.totalSec).toFixed(1)}% of the runtime, over the ` +
+      `${(100 * worstLegalShare).toFixed(1)}% a Foray at D3's 90 s mean floor would spend`
+  );
   // ...and nothing was appended to anybody's file to produce them: every load
   // is still the publisher's own enclosure URL (product principle 3).
   assert.ok(r.playable.every((i) => /^https:\/\//.test(i.audio_url)), "still the publishers' own files");
@@ -459,13 +494,14 @@ test("previous restarts the current segment at its in-point, not at 0:00 of the 
 
 test("clicking a row jumps straight to that segment", async () => {
   const r = realResolve();
+  const at = positions(r).middle;
   const { m, backend } = make();
   await startForay(m, r);
-  await m.play(20);
+  await m.play(at);
 
-  assert.equal(m.currentIndex, 20);
-  assert.ok(backend.calls.includes(`load:${r.playable[20].id}@${round(r.playable[20].start_sec)}`));
-  assert.equal(backend.outPoint, r.playable[20].end_sec);
+  assert.equal(m.currentIndex, at);
+  assert.ok(backend.calls.includes(`load:${r.playable[at].id}@${round(r.playable[at].start_sec)}`));
+  assert.equal(backend.outPoint, r.playable[at].end_sec);
   assert.equal(m.state.type, "playing");
 });
 
@@ -474,7 +510,7 @@ test("a jump while playing pauses the outgoing segment first (no two audible at 
   const { m, backend } = make();
   await startForay(m, r);
   backend.calls.length = 0;
-  await m.play(9);
+  await m.play(positions(r).middle);
   assert.equal(backend.calls[0], "pause", `expected a pause first, got ${backend.calls[0]}`);
 });
 
@@ -509,11 +545,17 @@ test("elapsed is Foray time, not a position inside somebody else's episode", asy
   backend.currentTime = r.playable[0].start_sec + 30;
   assert.equal(round(forayElapsed(r.playable, m.currentIndex, backend.currentTime)), 30);
 
-  await m.play(20);
-  backend.currentTime = r.playable[20].start_sec + 5;
-  const elapsed = forayElapsed(r.playable, 20, backend.currentTime);
-  assert.ok(elapsed > 1500 && elapsed < r.totalSec, `${elapsed} out of range`);
-  assert.equal(segmentAtElapsed(r.playable, elapsed).index, 20);
+  /* `elapsed > 1500` went with #236: 1,500 s was "well into Foray #1", which is a
+     fact about its length. The property is the ROUND TRIP — a position inside a
+     segment maps to a Foray offset and back to the same segment — and that holds
+     at any length. The bounds keep it honest: an offset outside the Foray would
+     satisfy the round trip trivially at the last segment. */
+  const at = positions(r).middle;
+  await m.play(at);
+  backend.currentTime = r.playable[at].start_sec + 5;
+  const elapsed = forayElapsed(r.playable, at, backend.currentTime);
+  assert.ok(elapsed > 0 && elapsed < r.totalSec, `${elapsed} out of range`);
+  assert.equal(segmentAtElapsed(r.playable, elapsed).index, at);
 });
 
 test("elapsed never exceeds the Foray's total, at any segment", async () => {
@@ -530,6 +572,13 @@ test("a missing source file costs its segments and nothing else", async () => {
   // has gone. The Foray must still play the rest and say what it lost.
   const sources = indexSources(SOURCES);
   const dropped = "moreish-jerk-jamaica";
+  /* Stated rather than assumed, like the same-episode premise below: the day
+     curation stops playing this episode, deleting its source costs nothing and
+     the compound assertion further down fails with no message at all (#236). */
+  assert.ok(
+    realResolve().playable.some((i) => i.source_item_id === dropped),
+    `Foray #1 no longer plays "${dropped}", so deleting its source proves nothing — point this test at an episode it does play`
+  );
   sources.delete(dropped);
   const r = resolveForay(realForay(), { segments: indexSegments(SEGMENTS), sources });
 
@@ -547,7 +596,16 @@ test("a missing source file costs its segments and nothing else", async () => {
 
 test("segments.json going missing entirely leaves an empty, non-crashing Foray", async () => {
   const r = resolveForay(realForay(), { segments: indexSegments(null), sources: indexSources(SOURCES) });
-  assert.equal(segmentEntries(r).filter((e) => e.playable).length, 0, "no segment can play with no segments file");
+  /* Against the QUEUE, filtered to tape. `segmentEntries(r)` cannot fail here —
+     hydration drops every item, so `r.entries` is empty and any filter over it is
+     empty whatever the code does (#236 review). `kind: "episode"` is what
+     `buildForayQueue` stamps on a segment, so this asks the real question: did
+     anything from an episode reach the queue. */
+  assert.deepEqual(
+    r.playable.filter((i) => i.kind === "episode"),
+    [],
+    "a segment reached the queue with no segments file to resolve it from"
+  );
   assert.deepEqual(
     r.unplayable.map((u) => u.label).sort(),
     authoredSegments().map((i) => i.label).sort(),
@@ -599,25 +657,26 @@ test("a position stored mid-Foray comes back to the same segment and the same se
   const { m, backend } = make();
   await startForay(m, r);
 
-  // Listen into segment 17, then "close the tab".
-  await m.play(17);
-  const playhead = r.playable[17].start_sec + 40;
+  // Listen into a segment in the middle, then "close the tab".
+  const from = positions(r).middle;
+  await m.play(from);
+  const playhead = r.playable[from].start_sec + 40;
   backend.currentTime = playhead;
-  const stored = forayElapsed(r.playable, 17, playhead);
+  const stored = forayElapsed(r.playable, from, playhead);
 
   const store = new ForayProgressStore({ storage: new FakeStorage() });
-  store.save({ forayId: r.id, title: r.title, elapsedSec: stored, totalSec: r.totalSec, index: 17 });
+  store.save({ forayId: r.id, title: r.title, elapsedSec: stored, totalSec: r.totalSec, index: from });
 
   // A fresh page load: nothing in memory, only the row in storage.
   const point = resumePoint(store.get(r.id), { totalSec: r.totalSec });
-  assert.ok(point, "20 minutes of listening must be offered back");
-  assert.equal(point.index, 17);
+  assert.ok(point, "a part-listened Foray must be offered back");
+  assert.equal(point.index, from);
 
   const fresh = make();
   await startForay(fresh.m, r);
   const at = await resumeAt(fresh.m, r, point.elapsedSec);
-  assert.equal(at.index, 17, "the resume point must resolve to the segment it was taken from");
-  assert.equal(fresh.m.currentIndex, 17);
+  assert.equal(at.index, from, "the resume point must resolve to the segment it was taken from");
+  assert.equal(fresh.m.currentIndex, from);
   assert.ok(Math.abs(fresh.backend.currentTime - playhead) < 0.001,
     `resumed at ${fresh.backend.currentTime}, left at ${playhead}`);
 });
@@ -631,10 +690,11 @@ test("resuming loads the segment at its in-point and only then seeks", async () 
   await startForay(m, r);
   backend.calls.length = 0;
 
-  const target = forayElapsed(r.playable, 12, r.playable[12].start_sec + 25);
+  const at = positions(r).middle;
+  const target = forayElapsed(r.playable, at, r.playable[at].start_sec + 25);
   await resumeAt(m, r, target);
 
-  const item = r.playable[12];
+  const item = r.playable[at];
   const loadAt = backend.calls.indexOf(`load:${item.id}@${round(item.start_sec)}`);
   const seekAt = backend.calls.findIndex((c) => c.startsWith("seek:"));
   assert.ok(loadAt >= 0, `no in-point load: ${backend.calls.join(" | ")}`);
@@ -1074,6 +1134,19 @@ async function mountForayPage({
   dom.setChips(vm.runInContext("FB_CHIPS", ctx));
 
   await ctx.renderForay(FORAY_ID);
+  /* The page tests below drive `onChange` with SYNTHETIC payloads that name
+     segment indices up to 9 and then read `dom.rows[...]` back, so the mounted
+     Foray needs at least ten rows. Asserted once here rather than crashing on an
+     undefined row in whichever of those tests runs first (#236 review). The
+     payloads stay hardcoded on purpose — they are this file's own inputs, not
+     facts about the document, and the point of each is "the row the callback
+     names is the row that lights up". */
+  if (!resolvedOverride) {
+    assert.ok(
+      dom.rows.length >= 10,
+      `the mounted Foray has ${dom.rows.length} row(s); the page tests below name indices up to 9`
+    );
+  }
   return {
     dom, bridge, ctx, resolved, store, forayStorage, durableTier,
     setFailLocal: (on) => { failLocal = on; },
@@ -1111,7 +1184,7 @@ test("mounting the Foray page binds the transport — the inert-page regression"
 });
 
 test("pressing play reaches the player, and the callback repaints the page", async () => {
-  const { dom, bridge } = await mountForayPage();
+  const { dom, bridge, resolved } = await mountForayPage();
   await dom.el("fy-play").click();
 
   const started = bridge.calls.filter((c) => c.name === "playForay");
@@ -1123,7 +1196,7 @@ test("pressing play reaches the player, and the callback repaints the page", asy
   // being most dead: the button label never changed on the inert build.
   const onChange = bridge.lastOnChange();
   assert.equal(typeof onChange, "function", "playForay was called without an onChange — nothing can repaint");
-  onChange({ forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false, elapsedSec: 240, totalSec: 3673, error: null });
+  onChange({ forayId: FORAY_ID, index: 3, playing: true, loading: false, ended: false, elapsedSec: 240, totalSec: resolved.totalSec, error: null });
 
   assert.equal(dom.el("fy-play").textContent, "❚❚ Pause");
   assert.equal(dom.el("fy-now").textContent, fmtClock(240));
@@ -1152,19 +1225,22 @@ test("pause comes back through the same callback and the label flips", async () 
 });
 
 test("next, previous, a row and the strip each reach the player", async () => {
-  const { dom, bridge } = await mountForayPage();
+  const { dom, bridge, resolved } = await mountForayPage();
   // Cold, every control means "start it" — a next that begins at segment 2
   // silently drops the opening.
   await dom.el("fy-next").click();
   assert.equal(bridge.calls.filter((c) => c.name === "playForay").length, 1);
 
   const onChange = bridge.lastOnChange();
-  onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: 5, totalSec: 3673, error: null });
+  onChange({ forayId: FORAY_ID, index: 0, playing: true, loading: false, ended: false, elapsedSec: 5, totalSec: resolved.totalSec, error: null });
 
+  const rowAt = Math.floor(dom.rows.length / 2);
+  const segAt = positions(resolved).second;
+  assert.ok(rowAt !== segAt, "the two jump targets must differ, or the assertion below cannot tell them apart");
   await dom.el("fy-next").click();
   await dom.el("fy-prev").click();
-  await dom.rows[20].click();
-  await dom.el("fy-strip").click(dom.segs[7]);
+  await dom.rows[rowAt].click();
+  await dom.el("fy-strip").click(dom.segs[segAt]);
 
   const names = bridge.calls.map((c) => c.name);
   assert.ok(names.includes("forayNext"), names.join(","));
@@ -1172,7 +1248,7 @@ test("next, previous, a row and the strip each reach the player", async () => {
   const jumps = bridge.calls.filter((c) => c.name === "forayJump").map((c) => c.args[0]);
   // A click with no coordinates — synthetic, or from assistive tech — cannot be
   // a position, so both the row and the strip fall back to the exact segment.
-  assert.deepEqual(jumps, [20, 7], "a row and a coordinate-less strip click both jump to their own segment");
+  assert.deepEqual(jumps, [rowAt, segAt], "a row and a coordinate-less strip click both jump to their own segment");
 });
 
 /* ---------- the strip is a scrubber (docs/ux/foray-mockup.jsx §Scrubber) ----
@@ -1211,7 +1287,10 @@ test("the 2px gaps between the bars are live scrubber, not dead zones", async ()
 
 test("scrubbing a Foray that has not started begins it AT that position, not at the top", async () => {
   const { dom, bridge, resolved } = await mountForayPage();
-  await dom.el("fy-strip").click(dom.segs[15], 240);  // 240 / 320 = 75%
+  /* WHICH cell is clicked is incidental — the handler reads the coordinate, and
+     240 of the stub strip's 320px is what makes it 75 %. Derived anyway, because
+     `dom.segs[15]` was undefined on any Foray under 16 segments. */
+  await dom.el("fy-strip").click(dom.segs[positions(resolved).middle], 240);  // 240 / 320 = 75%
 
   const started = bridge.calls.filter((c) => c.name === "playForay");
   assert.equal(started.length, 1, `expected one playForay, got ${bridge.calls.map((c) => c.name)}`);
@@ -1402,8 +1481,11 @@ test("the clock a failed start leaves behind is the place the button goes", asyn
 
   assert.equal(dom.el("fy-now").textContent, fmtClock(1180), "the cold clock is the stored point, not the segment that would not load");
   assert.equal(dom.el("fy-resume").hidden, false, "cold means the offer — and the Start over inside it — is back");
+  /* The stored point is index 9, so rows 0..8 are behind it. `rows.at(-1)` for the
+     unplayed side rather than `rows[20]`, which needed 21 rows (#236 review). */
+  assert.ok(dom.rows.length > 9, `a ${dom.rows.length}-row Foray cannot carry a resume at index 9`);
   assert.ok(dom.rows[8].classList.contains("is-played"), "the rows agree with the clock");
-  assert.ok(!dom.rows[20].classList.contains("is-played"));
+  assert.ok(!dom.rows.at(-1).classList.contains("is-played"));
 
   await dom.el("fy-play").click();
   const last = bridge.calls.filter((c) => c.name === "playForay").pop();
