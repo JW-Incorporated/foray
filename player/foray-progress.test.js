@@ -34,7 +34,11 @@ class FakeStorage {
   removeItem(k) { this.map.delete(k); }
 }
 
-const TOTAL = 3673;           // Foray #1's real runtime, 1:01:13
+/* This suite's own inputs, not pins on the committed data — nothing here reads
+   data/forays.json (#236). `TOTAL` is Foray #1's runtime because a realistic
+   number makes the percentages and "42 min left" labels below readable, and it
+   would be just as valid at 3600. Editing Foray #1 does not reach this file. */
+const TOTAL = 3673;
 const ID = "grilling-history-1";
 
 function record(over = {}) {

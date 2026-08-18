@@ -12,9 +12,18 @@
    Reading real data in a test has one real cost: an unrelated content change
    can turn it red. That is deliberate here and the assertions are written for
    it — they pin the CONTRACT (every authored segment resolves, the order is the
-   authored order, nothing plays past its out-point) rather than the specific 32
-   segments, with one exception that names the count, because "Foray #1 lost a
-   segment and nobody noticed" is exactly the regression worth a red build.
+   authored order, nothing plays past its out-point) rather than the specific
+   segments.
+
+   Issue #236 removed the last counts this file named. They were a second copy of
+   a fact the document already carries, so a curator could not change Foray #1
+   without editing this suite — backwards, for the product's core activity. Every
+   count below is now read off the resolved Foray, which also makes the
+   assertions stronger: "every authored segment resolves" was 32 literals ago a
+   claim about 32, and is now a claim about however many there are. The guard
+   against "Foray #1 lost a segment and nobody noticed" moved to
+   tools/foray/check-forays.test.mjs, which compares the running order against
+   the doc table a curator edits, row for row.
 
    The fake backend is the one from queue-manager.test.js, reduced to what a
    Foray needs. Nothing here touches the network: `audio_url` is asserted on,
@@ -58,6 +67,14 @@ function realResolve() {
     segments: indexSegments(SEGMENTS),
     sources: indexSources(SOURCES),
   });
+}
+
+/** The segment items Foray #1 authors, which is what "every authored segment
+    resolves" is a claim about. Read from the document rather than pinned, so a
+    curator can change the running order without editing this file (#236). A
+    narration bridge is not a segment and is deliberately not counted. */
+function authoredSegments() {
+  return realForay().items.filter((i) => i.type === "segment");
 }
 
 /* ---------- the fake ---------- */
@@ -113,7 +130,7 @@ class FakeStorage {
 }
 
 /* The seam beat's clock, driven by hand. Foray #1 is unbridged end to end, so
-   EVERY one of its 31 transitions now holds 2.0 s — and a suite that ran 32
+   EVERY one of its transitions holds 2.0 s — and a suite that ran an hour of
    real beats would sit here for a minute and be at the mercy of a busy box
    (#195). INSTANT arms, holds and releases the beat exactly as production does,
    in zero wall clock; `manualScheduler` is for the two tests that are about the
@@ -170,17 +187,22 @@ function startForay(m, resolved) {
 
 /* ---------- the shipped documents resolve ---------- */
 
-test("Foray #1 is in data/forays.json, is a draft, and has 32 ordered items", () => {
+test("Foray #1 is in data/forays.json, is a draft, and its items are #134's typed list", () => {
   const foray = realForay();
   assert.equal(foray.status, "draft", "if this is published, the UI's draft gate is moot — say so on purpose");
-  assert.equal(foray.items.length, 32);
-  assert.ok(foray.items.every((i) => i.type === "segment"));
+  assert.ok(foray.items.length > 0, "an empty Foray is not a Foray");
+  // #134 types two kinds of item. Neither the count nor "all of them are
+  // segments" is asserted: a bridge landing in Foray #1 is a curation decision,
+  // not a regression, and #260 made the player and the checker agree about one.
+  assert.ok(foray.items.every((i) => i.type === "segment" || i.type === "narration"));
 });
 
 test("every authored segment of Foray #1 resolves to real audio", () => {
   const r = realResolve();
   assert.deepEqual(r.unplayable, [], "a segment that cannot play is a shorter Foray — fix the data or the join");
-  assert.equal(r.playable.length, 32);
+  // Against the AUTHORED count, not a literal: "every authored segment resolves"
+  // is the contract, and reading the count off the document is what makes it one.
+  assert.equal(r.playable.length, authoredSegments().length);
   assert.ok(r.playable.every((i) => /^https:/.test(i.audio_url)), "every source must be https (the CSP is media-src https:)");
 });
 
@@ -189,13 +211,23 @@ test("the running order is the authored order, slot by slot", () => {
   const foray = realForay();
   assert.deepEqual(r.entries.map((e) => e.label), foray.items.map((i) => i.label));
   assert.deepEqual(r.slots.map((s) => s.id), foray.slots.map((s) => s.id));
-  assert.equal(r.slots.reduce((n, s) => n + s.entries.length, 0), 32);
+  // Every entry lands in exactly one slot: the sum over slots is the whole
+  // running order, so nothing is rendered twice and nothing is dropped.
+  assert.equal(r.slots.reduce((n, s) => n + s.entries.length, 0), r.entries.length);
 });
 
-test("the total runtime matches what the Foray document declares", () => {
+test("the total runtime matches what the Foray document declares, and the clock renders it", () => {
   const r = realResolve();
   assert.ok(Math.abs(r.totalSec - realForay().runtime_sec) < 1, `${r.totalSec} vs declared`);
-  assert.equal(fmtClock(r.totalSec), "1:01:13");
+  /* The clock string used to be pinned as "1:01:13", which is Foray #1's runtime
+     and not a property of `fmtClock` (#236). `fmtClock`'s formatting is unit-
+     tested against literals in foray-resolve.test.js, where the input is
+     synthetic; what is worth asserting HERE is that the string a surface renders
+     is the runtime it resolved — so it is parsed back and compared. */
+  const clock = fmtClock(r.totalSec);
+  assert.match(clock, /^\d+:[0-5]\d:[0-5]\d$/, clock);
+  const [h, m, s] = clock.split(":").map(Number);
+  assert.equal(h * 3600 + m * 60 + s, Math.floor(r.totalSec));
 });
 
 test("every why-line the UI will render is inside the copy budget", () => {
@@ -209,8 +241,13 @@ test("every why-line the UI will render is inside the copy budget", () => {
 });
 
 test("the segments come from more than one show — that is the point of a Foray", () => {
+  /* Two, not the four this asserted before #236: "more than one show" is the
+     property the test is named for and the one a Foray cannot be without. Four
+     was Foray #1's show count, and a three-show Foray is a curation decision
+     rather than a regression. The concentration cap that DOES have a number is
+     M4's, and tools/foray/check-forays.mjs gates it. */
   const r = realResolve();
-  assert.ok(r.shows.length >= 4, `only ${r.shows.length} shows`);
+  assert.ok(r.shows.length >= 2, `only ${r.shows.length} show(s)`);
   assert.ok(r.entries.every((e) => e.show), "every row needs a show name to render");
 });
 
@@ -231,48 +268,55 @@ test("pressing play loads segment 1 at its in-point and arms its out-point", asy
   assert.equal(m.state.type, "playing");
 });
 
-test("all 32 segments play through, in order, and the Foray then ends", async () => {
+test("every segment plays through, in order, and the Foray then ends", async () => {
   const r = realResolve();
   const { m, backend } = make();
   await startForay(m, r);
 
-  for (let i = 0; i < 32; i++) {
+  for (let i = 0; i < r.playable.length; i++) {
     assert.equal(m.currentIndex, i, `expected to be on segment ${i + 1}`);
     await backend.reachOutPoint();
   }
 
   assert.equal(m.state.type, "ended", "the queue must end, not loop or stall");
   assert.deepEqual(backend.loads(), r.playable.map((i) => i.id));
-  assert.equal(backend.calls.filter((c) => c === "play").length, 32);
+  assert.equal(backend.calls.filter((c) => c === "play").length, r.playable.length);
 });
 
 test("every segment is loaded at its own in-point, never at 0:00", async () => {
   const r = realResolve();
   const { m, backend } = make();
   await startForay(m, r);
-  for (let i = 0; i < 32; i++) await backend.reachOutPoint();
+  for (let i = 0; i < r.playable.length; i++) await backend.reachOutPoint();
 
   const offsets = backend.calls.filter((c) => c.startsWith("load:")).map((c) => Number(c.split("@")[1]));
   assert.deepEqual(offsets, r.playable.map((i) => round(i.start_sec)));
 });
 
-test("every one of Foray #1's 31 seams holds a beat, and neither end of it does", async () => {
+test("every one of Foray #1's seams holds a beat, and neither end of it does", async () => {
   /* This is the founder-facing claim, measured against the shipped document:
-     Foray #1 has no narration, so all 31 transitions are unbridged and every
-     one of them gets 2.0 s of silence. Pressing play does not, and the end of
-     the Foray does not. The clock is driven by hand — no sleeping, so this
-     costs nothing on a busy box. */
+     Foray #1 has no narration, so every transition is unbridged and every one of
+     them gets 2.0 s of silence. Pressing play does not, and the end of the Foray
+     does not. The clock is driven by hand — no sleeping, so this costs nothing on
+     a busy box.
+
+     The counts are the resolved Foray's, not literals (#236): `beats` is
+     counted from the MANAGER's behaviour and compared against the number of
+     transitions in the document, so the assertion is still "one beat per seam,
+     no beat at either end" — it just no longer needs Foray #1 to be 32 segments
+     long to say it. */
   const r = realResolve();
+  const n = r.playable.length;
   const scheduler = manualScheduler();
   const { m, backend } = make({ scheduler });
   await startForay(m, r);
   assert.equal(m.inSeamGap, false, "the first segment must be instant");
 
   let beats = 0;
-  for (let i = 0; i < 32; i++) {
+  for (let i = 0; i < n; i++) {
     const settled = backend.reachOutPoint();
     await new Promise((res) => setImmediate(res));
-    const last = i === 31;
+    const last = i === n - 1;
     assert.equal(m.inSeamGap, !last, `seam after segment ${i + 1}`);
     if (!last) {
       beats += 1;
@@ -284,22 +328,26 @@ test("every one of Foray #1's 31 seams holds a beat, and neither end of it does"
     await settled;
   }
 
-  assert.equal(beats, 31, "31 transitions, 31 beats");
+  assert.equal(beats, n - 1, `${n - 1} transitions, ${n - 1} beats`);
+  assert.ok(beats > 0, "a Foray of one segment would make every assertion above vacuous");
   assert.equal(m.state.type, "ended");
-  assert.equal(backend.calls.filter((c) => c === "play").length, 32, "the beats cost no segments");
+  assert.equal(backend.calls.filter((c) => c === "play").length, n, "the beats cost no segments");
   assert.equal(scheduler.live, 0, "no beat timer outlived the Foray");
 });
 
-test("the beats cost about a minute of a 61-minute Foray, and cost no audio at all", async () => {
+test("the beats cost about a minute of the Foray, and cost no audio at all", async () => {
   /* A number a founder can weigh, computed from the SHIPPED constant rather
      than from a copy of it — hard-coding 2.0 here made this assertion unable
      to fail if the beat were shortened, lengthened or removed, which is the
-     one thing it is here to notice. */
+     one thing it is here to notice.
+
+     `seams === 31` and `costSec === 62` went with #236: both were restatements
+     of Foray #1's length, and the assertion that carries the claim is the SHARE
+     of the runtime, which holds for any Foray. */
   const r = realResolve();
   const seams = r.playable.length - 1;
   const costSec = seams * SEAM_GAP_SEC;
-  assert.equal(seams, 31);
-  assert.equal(costSec, 62);
+  assert.ok(seams > 0, "a Foray with no seams cannot say anything about what seams cost");
   assert.ok(costSec / r.totalSec < 0.02, `the beats are ${(100 * costSec / r.totalSec).toFixed(1)}% of the runtime`);
   // ...and nothing was appended to anybody's file to produce them: every load
   // is still the publisher's own enclosure URL (product principle 3).
@@ -307,23 +355,25 @@ test("the beats cost about a minute of a 61-minute Foray, and cost no audio at a
 });
 
 test("consecutive segments of the SAME episode are two loads, not one", async () => {
-  // This Foray does it repeatedly (12 segments of one episode in one slot). If
-  // the two collapsed, the second would never play and the first would repeat.
+  // This Foray does it repeatedly. If the two collapsed, the second would never
+  // play and the first would repeat. The premise is asserted rather than assumed,
+  // so the day a Foray stops repeating an episode this says so instead of
+  // passing on nothing.
   const r = realResolve();
   const pairs = r.playable.filter((it, i) => i > 0 && r.playable[i - 1].source_item_id === it.source_item_id);
-  assert.ok(pairs.length > 0, "the fixture premise is gone — this Foray no longer repeats an episode");
+  assert.ok(pairs.length > 0, "the premise is gone — this Foray no longer repeats an episode");
 
   const { m, backend } = make();
   await startForay(m, r);
-  for (let i = 0; i < 32; i++) await backend.reachOutPoint();
-  assert.equal(new Set(backend.loads()).size, 32, "every queue item must be distinct");
+  for (let i = 0; i < r.playable.length; i++) await backend.reachOutPoint();
+  assert.equal(new Set(backend.loads()).size, r.playable.length, "every queue item must be distinct");
 });
 
 test("the out-point armed for each segment is that segment's own end", async () => {
   const r = realResolve();
   const { m, backend } = make();
   await startForay(m, r);
-  for (let i = 0; i < 32; i++) await backend.reachOutPoint();
+  for (let i = 0; i < r.playable.length; i++) await backend.reachOutPoint();
 
   const armed = backend.calls.filter((c) => c.startsWith("outPoint:")).map((c) => Number(c.slice(9)));
   assert.deepEqual(armed, r.playable.map((i) => round(i.end_sec)));
@@ -431,7 +481,7 @@ test("a missing source file costs its segments and nothing else", async () => {
   sources.delete(dropped);
   const r = resolveForay(realForay(), { segments: indexSegments(SEGMENTS), sources });
 
-  assert.ok(r.playable.length > 0 && r.playable.length < 32);
+  assert.ok(r.playable.length > 0 && r.playable.length < realResolve().playable.length);
   assert.ok(r.unplayable.length > 0);
   assert.ok(r.unplayable.every((u) => u.reason.includes(dropped)));
   assert.ok(r.totalSec < realForay().runtime_sec);
@@ -446,7 +496,7 @@ test("a missing source file costs its segments and nothing else", async () => {
 test("segments.json going missing entirely leaves an empty, non-crashing Foray", async () => {
   const r = resolveForay(realForay(), { segments: indexSegments(null), sources: indexSources(SOURCES) });
   assert.equal(r.playable.length, 0);
-  assert.equal(r.unplayable.length, 32);
+  assert.equal(r.unplayable.length, authoredSegments().length, "every authored segment must be reported lost");
 
   const { m } = make();
   const report = await startForay(m, r);
@@ -540,10 +590,17 @@ test("resuming keeps the rest of the Foray intact — it plays on to the end fro
   const r = realResolve();
   const { m, backend } = make();
   await startForay(m, r);
-  const at = await resumeAt(m, r, forayElapsed(r.playable, 29, r.playable[29].start_sec + 10));
-  assert.equal(at.index, 29);
+  /* Third from last, counted from the END rather than the hardcoded index 29
+     this used to use (#236): a Foray shorter than 30 segments made
+     `r.playable[29]` undefined and this test crash rather than fail. What the
+     test needs is "resume near the end, with some Foray left to play", which is
+     a position relative to the end. */
+  const near = r.playable.length - 3;
+  assert.ok(near > 0, "a Foray of three segments cannot be resumed near its end");
+  const at = await resumeAt(m, r, forayElapsed(r.playable, near, r.playable[near].start_sec + 10));
+  assert.equal(at.index, near);
 
-  for (let i = 29; i < r.playable.length; i++) await backend.reachOutPoint();
+  for (let i = near; i < r.playable.length; i++) await backend.reachOutPoint();
   assert.equal(m.state.type, "ended");
   assert.equal(m.currentIndex, r.playable.length - 1);
 });
@@ -551,7 +608,7 @@ test("resuming keeps the rest of the Foray intact — it plays on to the end fro
 test("a stored position in the closing segment is treated as finished, not resumed", async () => {
   const r = realResolve();
   const store = new ForayProgressStore({ storage: new FakeStorage() });
-  store.save({ forayId: r.id, elapsedSec: r.totalSec - 10, totalSec: r.totalSec, index: 31 });
+  store.save({ forayId: r.id, elapsedSec: r.totalSec - 10, totalSec: r.totalSec, index: r.playable.length - 1 });
   const point = resumePoint(store.get(r.id), { totalSec: r.totalSec });
   assert.equal(point.finished, true, "resuming 10 seconds before the end drops the listener into a goodbye");
 });
@@ -585,7 +642,9 @@ test("every second of the Foray maps back to the segment it came from", async ()
     assert.ok(Math.abs(back.into - into) < 0.001);
     checked++;
   }
-  assert.equal(checked, 32);
+  // A loop that silently iterates nothing is the failure this guards against.
+  assert.ok(checked > 0, "no segment was checked");
+  assert.equal(checked, r.playable.length, "every second of the Foray means every segment");
 });
 
 test("a backend with no out-point watch refuses the Foray instead of playing whole episodes", () => {
@@ -984,11 +1043,12 @@ test("mounting the Foray page binds the transport — the inert-page regression"
   // If renderForay throws anywhere, this rejects. If it completes but a binder
   // was skipped, the listener counts are zero. The shipped bug did the first,
   // which caused the second.
-  const { dom } = await mountForayPage();
+  const { dom, resolved } = await mountForayPage();
   for (const id of ["fy-play", "fy-next", "fy-prev", "fy-strip"]) {
     assert.ok(dom.el(id).listeners("click") > 0, `#${id} has no click handler — the page is inert`);
   }
-  assert.equal(dom.rows.length, 32, "every playable segment needs a row to click");
+  assert.ok(resolved.playable.length > 0, "nothing resolved, so the row count below proves nothing");
+  assert.equal(dom.rows.length, resolved.playable.length, "every playable segment needs a row to click");
   assert.ok(dom.rows.every((r) => r.listeners("click") > 0), "a running-order row is not clickable");
 });
 
@@ -1060,7 +1120,7 @@ test("next, previous, a row and the strip each reach the player", async () => {
 /* ---------- the strip is a scrubber (docs/ux/foray-mockup.jsx §Scrubber) ----
 
    It always LOOKED like one — a proportional bar of the whole hour — and
-   behaved like 32 jump targets. `foraySeek` existed, was tested, and nothing
+   behaved like one jump target per segment. `foraySeek` existed, was tested, and nothing
    on the page called it. The stub strip is 320px wide from x=0, so clientX is
    the percentage times 3.2. */
 
@@ -1077,7 +1137,7 @@ test("clicking a quarter of the way along the strip seeks to a quarter of the Fo
 });
 
 test("the 2px gaps between the bars are live scrubber, not dead zones", async () => {
-  // A fifth of the strip's width is the gaps between its 32 bars. Requiring a
+  // A fifth of the strip's width is the gaps between its bars. Requiring a
   // `[data-seg]` hit before reading the coordinate made every one of them do
   // nothing at all, while the control still looked like a continuous bar.
   const { dom, bridge, resolved } = await mountForayPage();
@@ -1104,8 +1164,9 @@ test("scrubbing a Foray that has not started begins it AT that position, not at 
 
 test("a scrub past either end of the strip clamps instead of leaving the Foray", async () => {
   const { dom, bridge, resolved } = await mountForayPage();
+  assert.ok(dom.segs.length > 1, "one strip cell cannot be scrubbed past either end");
   await dom.el("fy-strip").click(dom.segs[0], -50);
-  await dom.el("fy-strip").click(dom.segs[31], 9999);
+  await dom.el("fy-strip").click(dom.segs.at(-1), 9999);
   const at = bridge.calls.filter((c) => c.name === "playForay").map((c) => c.args[1].startElapsedSec);
   assert.equal(at.length, 2);
   assert.equal(at[0], 0);
@@ -1139,7 +1200,7 @@ test("the bar the listener is inside fills as it plays; the ones behind it are f
 
 test("the live bar keeps moving between segment changes — it is painted above the paint guard", async () => {
   // `paintForay` short-circuits when the segment index has not changed, which
-  // is what keeps 32 rows from churning at 4 Hz. Anything continuous has to be
+  // is what keeps every row from churning at 4 Hz. Anything continuous has to be
   // written before that return, and the fill is the first such thing.
   const { dom, bridge, resolved } = await mountForayPage();
   await dom.el("fy-play").click();
@@ -1578,8 +1639,8 @@ test("the markup app.js emits carries every hook the harness serves", async () =
   ]) {
     assert.ok(html.includes(hook), `the rendered page no longer contains ${hook}`);
   }
-  // Counts, not just presence: one strip cell instead of 32 leaves 31 segments
-  // unclickable and passes a presence check.
+  // Counts, not just presence: one strip cell for the whole Foray leaves every
+  // segment but one unclickable and passes a presence check.
   assert.equal((html.match(/data-fy="/g) ?? []).length, resolved.playable.length);
   assert.equal((html.match(/data-seg="/g) ?? []).length, resolved.playable.length);
   assert.equal((html.match(/data-thumb="/g) ?? []).length, resolved.entries.filter((e) => e.segment_id && e.topic).length * 2);

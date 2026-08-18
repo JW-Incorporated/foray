@@ -47,7 +47,13 @@ const ORIGIN = "https://jw-incorporated.github.io";
 const BASE = `${ORIGIN}/foray/`;
 
 /* The eight files app.js fetches are all under this prefix; one of them is
-   enough to prove the rule. */
+   enough to prove the rule.
+
+   The bodies paired with this key below are ARBITRARY — `{"forays":[...]}`
+   strings this suite writes itself, chosen to be readable in a failure message.
+   Nothing here reads the real document, and the ids inside them are not pins on
+   curation (#236): what is under test is which GENERATION of a body a page is
+   handed, never what the body says. */
 const FORAYS = "data/forays.json";
 
 /* ------------------------------------------------------------------ harness */
