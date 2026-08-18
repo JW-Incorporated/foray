@@ -226,12 +226,74 @@ function passesFilters(item, filters) {
    two are collisions this very comment names and that the battery separately
    asserts the ranker must not make. An oracle may not be more permissive than
    its subject, and the only way to guarantee that is to share the matcher rather
-   than to reimplement it. Do not inline these again. */
-const longTermPattern = (t) => new RegExp("(?<![a-z0-9])" + t + "s?(?![a-z0-9])");
+   than to reimplement it. Do not inline these again.
+
+   THE SUFFIX SIDE WIDENED, AND ONLY THE SUFFIX SIDE, 2026-08-17 (#218). An
+   optional "s" was too narrow to be honest about English: `grill` could not
+   match "grilling", so the battery's own bbq needle contributed nothing and
+   every coverage count taken through this matcher under-reported. The prefix
+   guard above is UNCHANGED and must stay that way -- the asymmetry the previous
+   paragraphs describe is real (all known collisions prepend letters), and it is
+   the only thing standing between this matcher and the "software"/"toward"-as-war
+   flood.
+
+   The allowance is a BOUNDED, NAMED set of inflections, not a stemmer, because a
+   stemmer's failure mode here is unbounded and unreviewable while a four-element
+   list can be justified element by element and measured. Over the whole query
+   vocabulary (1,364 concept terms) against every surface word in the pool, each
+   suffix admits only genuine inflections of the term -- zero coincidental
+   different-word matches:
+
+     s    kept as-is.
+     es   4 pairs (coach/coaches, crash/crashes, glass/glasses,
+          tornado/tornadoes) -- the plural of every term that ends in a sibilant,
+          which a bare "s" structurally cannot reach.
+     ing  19 pairs, and the reason #218 exists: grill/grilling. Also
+          engineer/engineering, murder/murdering, coach/coaching, film/filming.
+     ed   10 pairs (murder/murdered, crash/crashed, launch/launched, ...). The
+          weakest of the four by an order of magnitude: measured as (term, item)
+          matches over the whole vocabulary it is worth 18 against `ing`'s 258,
+          and its 10 pairs skew toward participles used as filler ("powered by")
+          rather than as subject matter. It is IN because it earns 4 real items
+          on the battery's own needles -- three "murdered" true-crime episodes
+          and one "crashed" bomber -- at a measured zero coincidental matches,
+          not because it pulls weight. It is the first thing to drop if a later
+          measurement finds it costing precision.
+
+   Deliberately OUT: y->ies (story/stories), e-dropping (bake/baking) and any
+   consonant doubling. Each needs to MUTATE the stem rather than append to it,
+   which is stemming; the honest fix for those is vocabulary, see below.
+
+   THE UNDER-4-CHAR BRANCH GETS "s" AND NOTHING MORE, and that asymmetry is
+   measured rather than assumed. Same scan, restricted to the 42 short terms the
+   vocabulary actually contains: "s" yields 14 pairs, all true plurals (war/wars
+   -- the second half of #218 -- plus art/arts, car/cars, lab/labs, llm/llms).
+   "es" yields exactly one pair and it is wrong: rag/rages, where `rag` is
+   retrieval-augmented generation. "ing" likewise yields exactly one, also wrong:
+   car/caring. "ed" yields none at all. A three-letter stem is a prefix of too
+   much English for anything but the plural to be safe, which is the same
+   reasoning that put the length-4 threshold here in the first place.
+
+   Note what this does NOT fix, so nobody re-files it: this widens what a TERM
+   matches in the text, never what a typed QUERY word maps to. Query "grilled"
+   still finds nothing, because `grilled` is not a term in any concept and
+   nothing stems it back to `grill`. And data/semantic-index.json is still full
+   of hand-authored inflection pairs (engineering/engineers/engineer,
+   trains/train, books/book, laugh/laughs) doing this matcher's job by hand --
+   which is why "grill" already returned 8 correct picks before this change,
+   through the `bbq` concept's separately authored `grilling` term. That
+   redundancy is now harmless rather than load-bearing; retiring it is a
+   vocabulary question, not a matcher one. */
+const LONG_INFLECTIONS = "(?:s|es|ing|ed)?";
+const SHORT_INFLECTIONS = "s?";
+const longTermPattern = (t) => new RegExp("(?<![a-z0-9])" + t + LONG_INFLECTIONS + "(?![a-z0-9])");
+const shortTermPattern = (t) => new RegExp("\\b" + t + SHORT_INFLECTIONS + "\\b");
 const hitText = (text, t) =>
-  t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : longTermPattern(t).test(text);
+  (t.length < 4 ? shortTermPattern(t) : longTermPattern(t)).test(text);
 const hitTag = (tag, t) =>
-  t.length < 4 ? (tag === t || tag.split("-").includes(t)) : longTermPattern(t).test(tag);
+  t.length < 4
+    ? tag.split("-").some(seg => new RegExp("^" + t + SHORT_INFLECTIONS + "$").test(seg))
+    : longTermPattern(t).test(tag);
 
 function scoreMatch(item, interp, itemTags) {
   const title = item.title.toLowerCase();
