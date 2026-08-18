@@ -236,12 +236,21 @@ been part of authored runtime, and the 0.5 s padding is baked into the asset —
 so a *measured* `duration_sec` carries it for free and an *estimated* one
 deliberately does not guess it. `SEAM_GAP_SEC` is untouched at 2.0 s.
 **This strengthens option one, "keep both, and say so"**: the two numbers are
-now demonstrably in different systems, not just arguably. One thing to decide
-alongside it while you have the brief open — narration-craft §2b's **≤ 8 s
-transition budget versus 12 s where an attribution is required**. Nothing
-enforces either; the recommendation is 12 s for the attribution case, because
-naming a source properly costs 8-12 words before the bridge says anything, so an
-8 s ceiling makes a *required* attribution the thing that gets cut.
+now demonstrably in different systems, not just arguably.
+
+One thing to settle alongside it while you have the brief open, and it is
+narrower than it looks. `04_VOICE_AUDIO_SPEC.md` budgets a transition at **≤ 8 s**;
+`docs/curation/narration-craft.md` §0 and §2b have **already ruled** for 8 s "or
+12 s when the extra words are a required attribution, correction or structural
+signpost", on the argument that naming a source properly costs 8-12 words before
+the bridge says anything, so an 8 s ceiling makes a *required* attribution the
+thing that gets cut. That reasoning looks right and is not being re-litigated
+here. What is open is only that **nothing enforces either number** — the checker
+gates narration-craft's 180 s hard max and nothing else, because a transition
+budget needs a `mode` field the schema does not have. So the decision is: write
+the 12 s exception into `04_VOICE_AUDIO_SPEC.md` so the brief stops contradicting
+the ruling, and say whether the exception is worth a `mode` field to make
+checkable.
 
 **Status:** OPEN
 

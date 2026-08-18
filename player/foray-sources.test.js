@@ -219,9 +219,14 @@ test("the credited clips add up to the whole running order, and the credited tim
   assert.equal(credits.reduce((n, c) => n + c.clips, 0), r.playable.length);
   /* Against `tapeSec`, NOT `totalSec`. Attribution is owed for somebody else's
      audio, and a narration bridge has no publisher to credit — so on a narrated
-     Foray these credits sum to the tape and `totalSec` is larger by all the
-     narration. The two numbers are equal on today's data, which is exactly why
-     asserting the wrong one would look right until the first bridge shipped. */
+     Foray these credits sum to the tape while `totalSec` is larger by all the
+     narration.
+
+     Honest about what this line does and does not prove: the committed data has
+     no narration, so `tapeSec === totalSec` here and swapping them back would not
+     turn this red. It is written this way so the invariant it states stays TRUE
+     when a bridge lands, rather than becoming a trap. `tapeSec` itself is proven
+     distinct in foray-resolve.test.js against a bridged fixture. */
   assert.ok(Math.abs(credits.reduce((t, c) => t + c.seconds, 0) - r.tapeSec) < 1);
 });
 

@@ -131,34 +131,50 @@ else:
 - a `duration_sec` that is **not a positive finite number** (`0`, `-12`, `"40"`,
   `NaN`) — `"40"` is what a hand-edited JSON file produces, and string arithmetic
   makes a runtime a concatenation rather than a sum
-- a length under narration-craft's **50-character / 2.94 s Hinge floor**, which
-  is what a placeholder script looks like. Derived from the *character* figure,
-  because the row's own two numbers disagree — 50 chars at 17 chars/s is 2.94 s,
-  not the 3 s the row also states — and narration-craft's preamble settles it:
-  "the word budgets are the primitive"
+- a **script** under narration-craft's **50-character Hinge floor**, which is what
+  a placeholder looks like. Checked in characters, not seconds, and only where a
+  script exists: the floor detects a stub, and a *measured* 2.5 s recording of a
+  legal 50-character Hinge is a fact about a file rather than a placeholder. Real
+  TTS of 50 characters lands anywhere in roughly 2.5-3.5 s, so a seconds floor
+  would have become a routine false positive the moment `tools/narrate/` started
+  stamping durations. narration-craft settles which unit is authoritative: "the
+  word budgets are the primitive"
+- an asset that is **not `https:`**, or that carries a **token** — the same two
+  lexical checks every `segment-sources` audio_url gets, now that this field is
+  load-bearing
 - one over the **180 s Carry hard max** ("the narrator is never the longest item
   in the Foray"), which is also dropped from the clock rather than left to flip
   the D1 band and bury the real error under artefacts of it
 - a **duplicate narration id**, which `buildForayQueue` otherwise silently
   rewrites to `${forayId}#${index}` — a safe failure and a baffling one
-- a **`slot` the Foray does not declare**
+- a **`slot` the Foray does not declare**, and a bridge that **opens** a Foray
+  with no slot at all: it has no preceding item to inherit one from, so it renders
+  at the bottom of the running order instead of the top
 
 Past the **150 s soft max** it warns, and it warns whenever part of D1's clock is
 *estimated* rather than measured — a D1 verdict resting on a character count is
 only as good as the speaking rate §6 says nobody has measured yet.
 
 **One thing it deliberately does NOT reject: an unvoiced bridge.** A narration
-item with no `audio_url`/`asset` is **excluded from the clock and warned about**,
-because `buildForayQueue` *drops* it so a missing line cannot stall a Foray —
-and if the checker counted what the player will not play, the two gates would
-demand different `runtime_sec` values and one of them would be permanently red.
-`player/foray-playback.test.js` asserts `totalSec` matches the committed
-`runtime_sec` to within a second, so this is not hypothetical. Rejecting it would
-also forbid the ordinary pre-audio state. Note what this does not weaken: the
-rejection above is about an item that *plays* and costs nothing; one that plays
-nothing and costs nothing is consistent. A test asserts the two gates agree on a
-bridged Foray in all three cases (voiced-and-stamped, voiced-and-scripted,
-unvoiced).
+item with no usable `audio_url`/`asset` is **excluded from the clock and warned
+about** (and counted as `narration_unvoiced` in the report, so nothing pretends it
+does not exist), because `buildForayQueue` *drops* it so a missing line cannot
+stall a Foray — and if the checker counted what the player will not play, the two
+gates would demand different `runtime_sec` values and one of them would be
+permanently red. `player/foray-playback.test.js` asserts `totalSec` matches the
+committed `runtime_sec` to within a second, so this is not hypothetical.
+Rejecting it outright would also forbid the ordinary pre-audio state. Note what
+this does not weaken: the rejection above is about an item that *plays* and costs
+nothing; one that plays nothing and costs nothing is consistent.
+
+**"Usable" is `audio_url ?? asset`, copied from the player verbatim rather than
+paraphrased, and this is the subtlety that survived one review.** `??` falls
+through only on `null`/`undefined`, so a present-but-useless `audio_url` — `""`,
+`"   "`, `0`, `false` — *shadows* a perfectly good `asset` and the player drops
+the item. The first version of this check asked "is either one non-empty", saw the
+good `asset`, and counted seconds the player would never play: the same gate
+divergence, on a narrower trigger. A test now asserts the two gates agree on nine
+combinations, including all four shadowing cases.
 
 **Is a bridge a D1 segment start? No — and the clock is still the listener's.**
 `segment-length-rules.md` §5c caps "the number of **segment starts**" in "any
@@ -197,9 +213,11 @@ adding narrator, without rebalancing the sourcing by one second.
 long is this item". `forayRuntimeSec`, `segmentStarts`, `segmentAtElapsed`,
 `forayElapsed` and `progressSegments` call it directly; `app.js`'s `segLenOf`
 reaches it through `ForayPlayer.itemLen` on the bridge, since `app.js` is a
-classic browser script and cannot import from `player/`. **Five** private copies
-of one subtraction is how narration came to be worth 0 s in every one of them at
-once.
+classic browser script and cannot import from `player/`. There were **three**
+private copies of that subtraction — `forayRuntimeSec`'s inline reduce,
+`foray-resolve.js`'s `lengthOf`, and `app.js`'s `segLenOf` — and narration was
+worth 0 s in all three. Which is the point: copies of a rule do not fail
+independently, they fail identically and then get fixed one at a time.
 
 A bridge gets a `progressSegments` row with a real `durationSec` and a **null
 id**: it has to have the row, or every segment after it claims a Foray-clock
@@ -249,12 +267,17 @@ than changes:
   does not guess it. `player/seam-gap.js`'s existing 2.0 s is untouched.
   **Recommendation: keep both, as #3 already argues** — they do different jobs,
   and a measured `duration_sec` makes the question invisible to the clock.
-- **The ≤ 8 s transition budget vs 12 s where an attribution is required**
-  (narration-craft §2b). The checker gates only the 180 s hard max, so neither
-  number is enforced and neither is contradicted. **Recommendation: adopt 12 s
-  for the attribution case** — naming a source properly is 8-12 words before the
-  bridge says anything, so an 8 s ceiling makes a *required* attribution the
-  thing that gets cut. That is a founder call, not a schema one.
+- **The ≤ 8 s transition budget vs 12 s where an attribution is required.**
+  narration-craft §0 and §2b have **already ruled** for the 12 s exception, on the
+  argument that naming a source properly costs 8-12 words before the bridge says
+  anything; `04_VOICE_AUDIO_SPEC.md` still says 8 s flat. That reasoning is not
+  re-litigated here. What is genuinely open is that **nothing enforces either
+  number** — the checker gates only the 180 s hard max, because a per-mode
+  transition budget needs a `mode` field the schema does not have.
+  **Recommendation: write the exception into the brief so it stops contradicting
+  the ruling, and treat "is the exception worth a `mode` field" as the real
+  question.** Rejecting a script for being off-mode is #226's rule and needs that
+  field; it is the next piece of the review gate, not part of this change.
 
 ### Recommendations for `player/`, which this work deliberately did not touch
 

@@ -961,7 +961,7 @@ test("a script too short to be a bridge is rejected as a placeholder", () => {
      original defect with a smaller number, which is harder to notice. */
   const f = clone();
   foray0(f).items.splice(1, 0, scripted(24));   // "Two million years later." is 24 characters
-  assert.match(errorsFor(f).join("\n"), /under the 50-character \/ 2\.9 s Hinge floor/);
+  assert.match(errorsFor(f).join("\n"), /24-character script, under narration-craft.md §0's 50-character Hinge floor/);
   /* The boundary is the CHARACTER figure, not the seconds figure, and the row's
      own two numbers disagree: 50 characters at narration-craft's own 17 chars/s
      is 2.94 s, so a hard-coded 3 rejected a 50-character Hinge — the documented
@@ -999,7 +999,7 @@ test("an unvoiced bridge is excluded from the clock and warned about, not counte
   foray0(f).items.splice(1, 0, { type: "narration", id: "nar-1", script: "x".repeat(340) });
   assert.deepEqual(errorsFor(f), [], "an authored, unvoiced script is not an error");
   const { warnings, report } = checkForays(f);
-  assert.match(warnings.join("\n"), /has no `audio_url`\/`asset`, so the player drops it/);
+  assert.match(warnings.join("\n"), /has no usable `audio_url`\/`asset`, so the player drops it/);
   assert.equal(report.forays[0].narration_sec, 0);
   assert.equal(report.forays[0].runtime_sec, 3673.03, "unchanged: nothing extra will play");
 });
@@ -1009,7 +1009,29 @@ test("the checker's runtime and the player's agree on a bridged Foray", async ()
      player rather than argued about. Mutation: count an unvoiced bridge in the
      checker, or stop counting a voiced one — either way these two diverge. */
   const { resolveForay, indexSegments, indexSources } = await import("../../player/foray-resolve.js");
-  for (const item of [bridge(), scripted(340), { type: "narration", id: "nar-1", script: "x".repeat(340) }]) {
+  const A = "https://cdn.example/nar-1.mp3";
+  const cases = [
+    bridge(),
+    scripted(340),
+    { type: "narration", id: "nar-1", script: "x".repeat(340) },
+    /* THE CASE THE FIRST VERSION OF THIS TEST MISSED, and the divergence it
+       missed. `buildForayQueue` resolves the asset as `audio_url ?? asset`, and
+       `??` falls through only on null/undefined — so a PRESENT BUT USELESS
+       `audio_url` shadows a good `asset` and the player drops the item. The
+       checker's first attempt asked "is either one non-empty", saw the good
+       `asset`, and counted seconds the player would never play.
+
+       Mutation: `const url = item.audio_url ?? item.asset` back to
+       `!nonEmptyString(item.audio_url) && !nonEmptyString(item.asset)` — the last
+       four rows below diverge by 40 s each. */
+    bridge({ audio_url: undefined, asset: A }),
+    bridge({ audio_url: null, asset: A }),
+    bridge({ audio_url: "", asset: A }),
+    bridge({ audio_url: "   ", asset: A }),
+    bridge({ audio_url: 0, asset: A }),
+    bridge({ audio_url: false, asset: A }),
+  ];
+  for (const item of cases) {
     const f = clone();
     forayBy(f, "grilling-history-1").items.splice(1, 0, item);
     const checker = checkForays(f).report.forays[0].runtime_sec;
@@ -1021,6 +1043,82 @@ test("the checker's runtime and the player's agree on a bridged Foray", async ()
       `checker ${checker} vs player ${r.totalSec} for ${JSON.stringify(item).slice(0, 60)}`
     );
   }
+});
+
+test("a narration asset must be https and must not be tokened", () => {
+  /* The same two lexical checks every `segment-sources` audio_url gets. This
+     field only became load-bearing in this change, and the failures are the
+     identical ones: an http:// media load blocked by the CSP, or a credential
+     committed to a data file. Mutation: drop either regex. */
+  const insecure = withBridges("grilling-history-1", [{ at: 1, item: bridge({ audio_url: "http://cdn.example/n.mp3" }) }]);
+  assert.match(errorsFor(insecure).join("\n"), /asset must be https/);
+  const tokened = withBridges("grilling-history-1", [{ at: 1, item: bridge({ audio_url: "https://cdn.example/n.mp3?token=abc" }) }]);
+  assert.match(errorsFor(tokened).join("\n"), /asset looks tokened/);
+  // Via `asset` too, not only `audio_url` — the player reads either.
+  const viaAsset = withBridges("grilling-history-1", [{ at: 1, item: bridge({ audio_url: undefined, asset: "http://cdn.example/n.mp3" }) }]);
+  assert.match(errorsFor(viaAsset).join("\n"), /asset must be https/);
+});
+
+test("the Hinge floor judges the SCRIPT, not the audio", () => {
+  /* A measured 2.5 s recording of a legal 50-character Hinge is a fact about a
+     file, not a placeholder — and real TTS of 50 characters lands anywhere in
+     roughly 2.5-3.5 s, so a seconds floor applied to `dur.sec` would have been a
+     routine false positive the moment `tools/narrate/` started stamping
+     durations. What the floor detects is a stub script.
+
+     Mutation: compare `dur.sec < NARRATION_MIN_SEC` again. The first assertion
+     fails, and the second stops failing for a stub script that happens to carry
+     a generous stamped duration. */
+  const shortAudio = withBridges("grilling-history-1", [
+    { at: 1, item: bridge({ duration_sec: 2.5, script: "x".repeat(50) }) },
+  ]);
+  assert.deepEqual(errorsFor(shortAudio), []);
+  const stub = clone();
+  foray0(stub).items.splice(1, 0, bridge({ duration_sec: 40, script: "TODO" }));
+  assert.match(errorsFor(stub).join("\n"), /4-character script, under narration-craft.md §0's 50-character Hinge floor/);
+});
+
+test("a bridge that OPENS a Foray must declare its own slot", () => {
+  /* It has no preceding item to inherit one from, so `groupBySlot` appends it to
+     a trailing untitled section — the Foray renders with its first item last.
+     Silent, which is why it is an error rather than a comment.
+     Mutation: drop the `played.length === 0` branch. */
+  const f = clone();
+  foray0(f).items.unshift(bridge({ duration_sec: 40 }));
+  assert.match(errorsFor(f).join("\n"), /opens the Foray, so it has no preceding item to inherit a `slot` from/);
+  // Declaring one is all it takes.
+  const declared = clone();
+  const target = forayBy(declared, "grilling-history-1");
+  target.items.unshift(bridge({ duration_sec: 40, slot: target.slots[0].id }));
+  target.runtime_sec = +(target.runtime_sec + 40).toFixed(2);
+  assert.deepEqual(errorsFor(declared), []);
+});
+
+test("an unvoiced bridge is neither counted as unresolved nor erased from the report", () => {
+  /* Two separate ways the report lied about the state the checker deliberately
+     permits. Mutations: drop `- unvoiced` from the tally, and drop
+     `narration_unvoiced` from the report. */
+  const f = clone();
+  const target = forayBy(f, "grilling-history-1");
+  target.items.splice(1, 0, { type: "narration", id: "nar-1", script: "x".repeat(340), slot: target.items[0].slot });
+  target.items.push({ type: "segment", slot: "arc-1", segment_id: "does-not-exist" });
+  const { warnings, report } = checkForays(f);
+  assert.match(warnings.join("\n"), /^foray "grilling-history-1": 1 item\(s\) did not resolve/m);
+  assert.equal(report.forays[0].narration_unvoiced, 1);
+  assert.equal(report.forays[0].narration_items, 0, "it will not play, so it is not in the clock");
+});
+
+test("a narration item with no id is dropped from the clock, like its sibling rejections", () => {
+  /* It carried on with `id: null`, so an item nothing can name was still counted
+     in `runtime_sec` — inconsistent with the three rejections beside it, and it
+     put a second, spurious `runtime_sec` error on top of the real one.
+     Mutation: remove the `continue` after the id error. */
+  const f = clone();
+  foray0(f).items.splice(1, 0, bridge({ id: undefined }));
+  const errors = errorsFor(f);
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.match(errors[0], /a narration item needs an id/);
+  assert.equal(checkForays(f).report.forays[0].runtime_sec, 3673.03);
 });
 
 test("a duplicate narration id is rejected rather than silently rewritten", () => {

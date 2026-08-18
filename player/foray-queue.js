@@ -145,11 +145,14 @@ export function narrationDuration(item) {
  * One queue item's contribution to the Foray clock, in seconds.
  *
  * THE ONLY definition of "how long is this item", and it is exported so it stays
- * that way. `forayRuntimeSec` below, and `segmentStarts` / `segmentAtElapsed` /
- * `forayElapsed` / `progressSegments` in `foray-resolve.js`, all route through
- * it — four private copies of this subtraction is how narration came to be worth
- * 0 s in every one of them at once, and how a fix could have landed in one and
- * not the others.
+ * that way. `forayRuntimeSec` below routes through it, as does `lengthOf` in
+ * `foray-resolve.js` — and therefore `segmentStarts`, `segmentAtElapsed`,
+ * `forayElapsed` and `progressSegments` — and so does `segLenOf` in `app.js`, via
+ * `ForayPlayer.itemLen`, since a classic browser script cannot import from here.
+ *
+ * There were THREE private copies of this subtraction and narration was worth
+ * 0 s in all of them, which is the point: three copies do not fail
+ * independently, they fail identically and get fixed one at a time.
  *
  * A segment's authored length wins over its padded one: the pad is tolerance,
  * not content (ADR-0008). A narration item has no bounds and falls through to

@@ -312,6 +312,10 @@ test("segLenOf prefers the player's own itemRuntimeSec over its local copy", asy
     { start_sec: 10, end_sec: 130 },
     { start_sec: 10, end_sec: 200, authored_end_sec: 130 },
     { start_sec: 10, end_sec: 130, duration_sec: 999 },
+    // The case `segLenOf`'s own `isNum` comment exists to justify: `??` would
+    // pass NaN through and measure 0 here while foray-resolve.js measured 190.
+    { start_sec: 10, end_sec: 200, authored_end_sec: NaN },
+    { start_sec: 10, end_sec: 5, duration_sec: 40 },
     {},
   ]) {
     assert.strictEqual(app.segLenOf(probe), itemRuntimeSec(probe), JSON.stringify(probe));

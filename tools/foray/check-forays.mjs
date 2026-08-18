@@ -329,6 +329,10 @@ export function checkForays(files) {
      * Foray PLAYBACK" and a bridge is playback. */
     const timeline = [];
     const narrations = [];
+    /** Authored bridges that have no audio yet, so the player drops them and they
+        are excluded from the clock. Counted so the "did not resolve" tally below
+        does not blame the ordinary pre-audio state for a failure. */
+    let unvoiced = 0;
     const seenLabels = new Set();
     const seenSegmentIds = new Set();
     const seenNarrationIds = new Set();
@@ -349,20 +353,25 @@ export function checkForays(files) {
        * `duration_sec` (measured) or the `script` (estimated at
        * narration-craft's 17 chars/s); "neither" is what is rejected here. */
       if (item.type === "narration") {
-        if (typeof item.id !== "string" || !item.id) E(`${at}: a narration item needs an id`);
         /* `name` already carries `at` when there is no id, so prefixing it again
          * printed `items[1]: items[1] has neither…`. */
         const named = typeof item.id === "string" && item.id;
         const name = named ? `narration "${item.id}"` : at;
         const where = named ? `${at}: ${name}` : at;
+        if (!named) {
+          /* Bailing out, like the three sibling rejections below, rather than
+           * carrying on with `id: null`. Nothing downstream can name this item in
+           * a message, and `progressSegments` cannot anchor a resume to it. */
+          E(`${at}: a narration item needs an id`);
+          itemsOk = false;
+          continue;
+        }
         /* Ids are checked for uniqueness rather than trusted, exactly as
          * segment ids and labels are above. `buildForayQueue` silently rewrites
          * a collision to `${forayId}#${index}` with a warning nobody reads —
          * which is a safe failure and a confusing one. */
-        if (named) {
-          if (seenNarrationIds.has(item.id)) E(`${at}: narration id "${item.id}" appears twice in one Foray`);
-          seenNarrationIds.add(item.id);
-        }
+        if (seenNarrationIds.has(item.id)) E(`${at}: narration id "${item.id}" appears twice in one Foray`);
+        seenNarrationIds.add(item.id);
         if (item.duration_sec !== undefined && !(typeof item.duration_sec === "number" && item.duration_sec > 0 && Number.isFinite(item.duration_sec))) {
           E(`${where} has a \`duration_sec\` of ${JSON.stringify(item.duration_sec)} — it must be a positive finite number of seconds, or absent`);
           itemsOk = false;
@@ -381,13 +390,31 @@ export function checkForays(files) {
         }
         if (item.slot !== undefined && slotIds.length && !slotIds.includes(item.slot)) {
           E(`${where} declares slot "${item.slot}", which is not in \`slots\``);
+        } else if (item.slot === undefined && slotIds.length && played.length === 0) {
+          /* `hydrateForayItems` gives a slotless bridge the slot of the item
+           * BEFORE it, which is what keeps it in the running order rather than in
+           * a trailing untitled section. A bridge that OPENS a Foray has nothing
+           * to inherit, so it has to carry its own — and the invariant is
+           * enforced here rather than left to a comment, because the failure is
+           * silent: the Foray renders, with its first item at the bottom. */
+          E(`${where} opens the Foray, so it has no preceding item to inherit a \`slot\` from and must declare one`);
         }
         const dur = narrationDuration(item);
-        if (dur.sec < NARRATION_MIN_SEC) {
+        /* THE FLOOR IS ON THE SCRIPT, NOT ON THE AUDIO, and that distinction is
+         * the whole point of it: what it detects is a PLACEHOLDER — "Two million
+         * years later." standing in for a bridge nobody has written. Applied to
+         * `dur.sec` it also rejected a MEASURED duration, and a real 50-character
+         * Hinge voices anywhere in roughly 2.5-3.5 s, so once `tools/narrate/`
+         * stamps durations that would have been a routine false positive on a
+         * legal item. narration-craft.md is explicit about which unit is the
+         * primitive: "the word budgets are the primitive". A measured duration
+         * with no script has no placeholder to detect and gets no floor — it is a
+         * measurement of a file, and the ceiling above is what bounds it. */
+        if (hasScript && item.script.trim().length < NARRATION_MIN_CHARS) {
           E(
-            `${where} is ${dur.sec.toFixed(1)} s (${dur.source}), under the ` +
-              `${NARRATION_MIN_CHARS}-character / ${NARRATION_MIN_SEC.toFixed(1)} s Hinge floor in ` +
-              `narration-craft.md §0 — a script this short is a placeholder, not a bridge`
+            `${where} has a ${item.script.trim().length}-character script, under narration-craft.md §0's ` +
+              `${NARRATION_MIN_CHARS}-character Hinge floor (${NARRATION_MIN_SEC.toFixed(3)} s at ` +
+              `${NARRATION_CHARS_PER_SEC} chars/s) — a script this short is a placeholder, not a bridge`
           );
         }
         if (dur.sec > NARRATION_HARD_MAX_SEC) {
@@ -426,13 +453,32 @@ export function checkForays(files) {
          * Note what this does NOT weaken: the rejection above is about an item
          * that PLAYS and costs nothing. One that plays nothing and costs nothing
          * is consistent. */
-        if (!nonEmptyString(item.audio_url) && !nonEmptyString(item.asset)) {
+        /* `audio_url ?? asset ?? null`, NOT "either one is non-empty". This is
+         * `buildForayQueue`'s expression copied verbatim, and the difference is
+         * not cosmetic: `??` falls through only on null and undefined, so a
+         * PRESENT BUT USELESS `audio_url` — `""`, `"   "`, `0`, `false` — shadows
+         * a perfectly good `asset` and the player drops the item. Restating the
+         * rule as two independent predicates saw the good `asset` and counted
+         * something the player will not play, which is the same gate divergence
+         * this block exists to prevent, on a narrower trigger. Mirror the player;
+         * do not paraphrase it. */
+        const url = item.audio_url ?? item.asset ?? null;
+        if (!nonEmptyString(url)) {
+          unvoiced += 1;
           W(
-            `${name} has no \`audio_url\`/\`asset\`, so the player drops it and it is excluded from ` +
-              `\`runtime_sec\` and D1's clock (${dur.sec.toFixed(1)} s, ${dur.source}). ` +
+            `${name} has no usable \`audio_url\`/\`asset\`, so the player drops it and it is excluded ` +
+              `from \`runtime_sec\` and D1's clock (${dur.sec.toFixed(1)} s, ${dur.source}). ` +
               `Restate \`runtime_sec\` when the audio lands.`
           );
           continue;
+        }
+        /* The same two lexical checks every `segment-sources` audio_url gets.
+         * This field only became load-bearing in this change, and an http:// or
+         * tokened narration URL is the identical failure — a media load blocked
+         * by the CSP, or a credential in a committed data file. */
+        if (!/^https:\/\//.test(url)) E(`${where} asset must be https, got ${JSON.stringify(url)}`);
+        if (/[?&](token|auth|api_?key|secret|password|session)=/i.test(url)) {
+          E(`${where} asset looks tokened (secret leak)`);
         }
         narrations.push({ at, id: item.id ?? null, sec: dur.sec, source: dur.source });
         timeline.push({ kind: "narration", duration: dur.sec });
@@ -490,8 +536,9 @@ export function checkForays(files) {
     if (played.length === 0) { E("no resolvable segment items"); continue; }
     if (!itemsOk) {
       /* `played` is tape only, so subtracting it from the whole item list
-       * counted every perfectly good narration item as a failure. */
-      W(`${foray.items.length - played.length - narrations.length} item(s) did not resolve; every rule below is judged on the ${played.length} that did, so these verdicts are partial`);
+       * counted every perfectly good narration item as a failure — including an
+       * unvoiced one, which is the state this file goes out of its way to bless. */
+      W(`${foray.items.length - played.length - narrations.length - unvoiced} item(s) did not resolve; every rule below is judged on the ${played.length} that did, so these verdicts are partial`);
     }
 
     /* ---- derived: TWO clocks, and keeping them apart is the whole fix
@@ -748,6 +795,11 @@ export function checkForays(files) {
       runtime_sec: +runtime.toFixed(2),
       tape_runtime_sec: +tapeRuntime.toFixed(2),
       narration_items: narrations.length,
+      /* Reported separately rather than folded into `narration_items`, which
+         counts what will PLAY. A report that said `narration_items: 0` for a
+         Foray with three authored-but-unvoiced bridges would be saying they do
+         not exist. */
+      narration_unvoiced: unvoiced,
       narration_sec: +narrationRuntime.toFixed(2),
       /* narration-craft.md §0's whole-Foray share. Reported, not gated: the
          target (25 %) and ceiling (35 %) are that document's own invention and
@@ -803,6 +855,7 @@ if (invokedDirectly) {
             ? `\n  ${f.narration_items} narration item(s), ${(f.narration_sec / 60).toFixed(1)} min ` +
               `(${(f.narration_share * 100).toFixed(1)} % of the Foray; ${(f.tape_runtime_sec / 60).toFixed(1)} min is tape)`
             : "") +
+          (f.narration_unvoiced ? `\n  ${f.narration_unvoiced} narration item(s) authored but not yet voiced — excluded from the clock` : "") +
           "\n" +
           `  D1 ${f.d1_max_starts_in_window}/${f.d1_budget} starts per ${D1_WINDOW_SEC} s   ` +
           `D5 ${f.d5_pairwise_violations} triples, IQR ${f.d5_iqr_sec} s`
