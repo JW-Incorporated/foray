@@ -157,6 +157,11 @@ export function createForayAudioShell(env) {
   let lastReason = "";
   let stopTimer = null;
   let visibilityHandler = null;
+  /** Serialises bridge calls, so a `stop` and the `start` behind it cannot land out
+   *  of order. See `callAndRecord`. */
+  let queue = Promise.resolve();
+  /** The method dispatched and not yet answered, or null. */
+  let inFlight = null;
 
   function call(method) {
     try {
@@ -167,23 +172,46 @@ export function createForayAudioShell(env) {
     }
   }
 
-  /** Both handlers are always supplied, so this can never raise an unhandled
-   *  rejection inside a media event handler. */
+  /**
+   * Ask native for one thing, in order, and record what it answered.
+   *
+   * SERIALISED THROUGH A PROMISE CHAIN, because a seam can put a `stop` and a
+   * `start` a few milliseconds apart and Capacitor dispatches plugin calls on a
+   * thread pool. Out of order, the `start` lands first and the `stop` switches the
+   * service off underneath live audio — a failure that looks exactly like the
+   * problem this plugin was added to fix. The chain costs one round-trip of latency
+   * on a call that happens a handful of times per Foray.
+   *
+   * `inFlight` dedupes an identical request that has not been answered yet: two
+   * `play()` calls before the first `start` resolves are one intention. It is
+   * cleared when the call SETTLES rather than when it is dispatched, which is what
+   * still lets a refused start be retried by the next `play()`.
+   *
+   * Both handlers are always supplied, so this can never raise an unhandled
+   * rejection inside a media event handler.
+   */
   function callAndRecord(method, onResult) {
-    call(method).then(
-      function (result) {
-        try {
-          onResult(result || {});
-        } catch (e) {
-          log("foray-audio: handling the " + method + " result failed", e);
+    if (inFlight === method) return;
+    inFlight = method;
+    queue = queue.then(function () {
+      return call(method).then(
+        function (result) {
+          try {
+            onResult(result || {});
+          } catch (e) {
+            log("foray-audio: handling the " + method + " result failed", e);
+          }
+        },
+        function (e) {
+          serviceRunning = false;
+          lastReason = String((e && e.message) || e);
+          log("foray-audio: " + method + " failed", e);
         }
-      },
-      function (e) {
-        serviceRunning = false;
-        lastReason = String((e && e.message) || e);
-        log("foray-audio: " + method + " failed", e);
-      }
-    );
+      );
+    });
+    queue = queue.then(function () {
+      if (inFlight === method) inFlight = null;
+    });
   }
 
   function ensureStarted() {
@@ -202,6 +230,18 @@ export function createForayAudioShell(env) {
 
   function requestStop() {
     if (!wanted) return;
+    /* `wanted` GOES FALSE AT DISPATCH, and that is what makes the window between
+       asking for a stop and native answering safe. A `play()` in that window reaches
+       `ensureStarted`, whose guard is `wanted && serviceRunning` — false on the first
+       term — so it queues a start rather than returning early.
+
+       An earlier version of this function ALSO set `serviceRunning = false` here,
+       with a comment calling it a bug fix. It was not: the mutation harness deleted
+       the line and all 39 tests stayed green, because `wanted` alone already decides
+       that guard. The line was removed rather than kept with a truer comment, since a
+       second flag mid-transition is a second thing to reason about for no behaviour.
+       Recorded because "I thought this was a defect and my own test proved it was
+       not" is worth more written down than quietly dropped. */
     wanted = false;
     callAndRecord("stop", function (result) {
       serviceRunning = !!result.running;

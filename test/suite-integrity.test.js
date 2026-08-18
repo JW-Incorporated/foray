@@ -150,11 +150,11 @@ const FLOORS = {
      `activeCount`'s prune, without which an autoplay-refused play() leaves the
      foreground service running for the whole session, and the settle window's two
      bounds, which sit between #239's 20 s hidden load deadline and Blink's 30 s
-     `kRecentAudioDelay` with 5 s of room in total. The static count is 31 and the run
-     count is 35, because six tests are generated from the exported RELEASE_EVENTS and
+     `kRecentAudioDelay` with 5 s of room in total. The static count is 35 and the run
+     count is 39, because six tests are generated from the exported RELEASE_EVENTS and
      ACQUIRE_EVENTS lists; the floor is the STATIC count because that is what this
      file measures. Raise it when the suite grows. */
-  "tools/mobile/foray-audio-shell.test.mjs": 31,
+  "tools/mobile/foray-audio-shell.test.mjs": 35,
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them

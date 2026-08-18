@@ -41,6 +41,17 @@
  *   - returning a fresh promise from the wrapper instead of the original's value —
  *     an equality assertion on the resolved value passed; an identity assertion on
  *     the returned object does not.
+ *   - deleting the `inFlight` dedupe in `callAndRecord`. The test for it checked the
+ *     dispatch list while the first `start` was still UNANSWERED, where a duplicate
+ *     sits in the queue undispatched and invisible. Draining the queue first is what
+ *     makes a second `start` observable.
+ *
+ * AND ONE MUTATION THAT SURVIVED BECAUSE THE CODE WAS WRONG, NOT THE TEST.
+ * `requestStop` also set `serviceRunning = false` at dispatch, under a comment
+ * calling it a bug fix. Deleting that line kept every test green — correctly, because
+ * `wanted` alone decides `ensureStarted`'s guard and it already goes false at
+ * dispatch. The line was removed rather than given a test, and the shell's comment
+ * records the false alarm. A surviving mutant is not always a missing test.
  */
 
 import test from "node:test";
@@ -229,7 +240,7 @@ test("on iOS and on the web the prototype is never touched and native is never c
   }
 });
 
-test("installing twice does not wrap play twice", () => {
+test("installing twice does not wrap play twice", async () => {
   const { shell, proto, capacitor } = setup();
   assert.equal(shell.install(), true);
   const patched = proto.play;
@@ -238,6 +249,7 @@ test("installing twice does not wrap play twice", () => {
   const el = makeElement(proto);
   el.play();
   assert.equal(el.playCalls, 1, "the real play ran more than once, so it was wrapped twice");
+  await flush();
   assert.deepEqual(methods(capacitor), ["start"]);
 });
 
@@ -253,13 +265,14 @@ test("uninstall restores the original play and drops the visibility listener", (
   assert.equal(shell.uninstall(), false, "uninstalling twice should be a no-op");
 });
 
-test("a shell with no document still installs, and treats visibility as unknown", () => {
+test("a shell with no document still installs, and treats visibility as unknown", async () => {
   /* Unknown must mean "hidden", because hidden is the branch that takes the slow,
      safe path. A shell that assumed visible would stop the service mid-seam. */
   const { shell, proto, clock, capacitor } = setup({ doc: null });
   assert.equal(shell.install(), true);
   const el = makeElement(proto);
   el.play();
+  await flush();
   el.paused = true;
   el.emit("pause");
   assert.equal(clock.ids().length, 1, "no settle window was armed with no document to ask");
@@ -681,4 +694,163 @@ test("the real default settle window is what an unconfigured shell uses", () => 
   const { shell } = setup({ settleMs: undefined });
   shell.install();
   assert.equal(shell.inspect().settleMs, STOP_SETTLE_MS);
+});
+
+/* ─────────── 7. the transition window, which is where this got it wrong ─────── */
+
+/** A bridge whose calls can be resolved by the test, one at a time, so a `stop` and
+ *  the `start` behind it can be held mid-flight on purpose. */
+function makeDeferredCapacitor({ platform = "android" } = {}) {
+  const calls = [];
+  const pending = [];
+  return {
+    calls,
+    pending,
+    getPlatform: () => platform,
+    nativePromise(name, method) {
+      calls.push({ name, method });
+      return new Promise((resolve) => {
+        pending.push({
+          method,
+          settle(answer) {
+            resolve(
+              answer ||
+                (method === "start"
+                  ? { started: true, running: true, reason: "" }
+                  : { stopped: true, running: false, reason: "" })
+            );
+          },
+        });
+      });
+    },
+    /** Answer the oldest unanswered call.
+     *
+     *  Flushes FIRST, because `callAndRecord` dispatches through a promise chain, so
+     *  a call asked for during a synchronous `play()` is only handed to the bridge a
+     *  microtask later. (On a device that delay is inside the same task as the user's
+     *  gesture, which is what matters for Android's foreground-start rule.) */
+    async settleNext(answer) {
+      await flush();
+      const next = pending.shift();
+      assert.ok(next, "settleNext with nothing in flight");
+      next.settle(answer);
+      await flush();
+      return next.method;
+    },
+  };
+}
+
+test("A PLAY WHILE A STOP IS IN FLIGHT STILL STARTS THE SERVICE", async () => {
+  /* THE BUG THIS SECTION EXISTS FOR, found by re-reading rather than by a failure.
+     `requestStop` used to leave `serviceRunning` true until native answered, so a
+     play() in that window hit ensureStarted's `wanted && serviceRunning` guard,
+     returned early, and never asked for a start — audio playing with the service
+     off, and nothing left to retry it until the next pause. The window is small and
+     entirely reachable: the settle timer fires, and the listener taps play. */
+  const capacitor = makeDeferredCapacitor();
+  const { shell, proto, clock } = setup({ capacitor });
+  shell.install();
+
+  const el = makeElement(proto);
+  el.play();
+  await capacitor.settleNext();
+  assert.equal(shell.inspect().serviceRunning, true);
+
+  el.paused = true;
+  el.emit("pause");
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"], "the stop was not dispatched");
+
+  /* The stop is dispatched and UNANSWERED. Play again. */
+  el.paused = false;
+  el.play();
+  await flush();
+
+  /* The intention is recorded straight away. With the old code this was the whole
+     bug: `serviceRunning` was still true, so `ensureStarted`'s `wanted &&
+     serviceRunning` guard returned early and no start was ever queued. */
+  assert.equal(shell.inspect().wanted, true, "the shell no longer wants the service");
+
+  /* The start is not DISPATCHED yet, because the queue holds it behind the
+     unanswered stop — that ordering is the other half of this fix and has its own
+     test. Answering the stop must release it. */
+  assert.deepEqual(methods(capacitor), ["start", "stop"]);
+  await capacitor.settleNext();
+  assert.deepEqual(
+    methods(capacitor),
+    ["start", "stop", "start"],
+    "a play during an in-flight stop never asked for the service back"
+  );
+  await capacitor.settleNext();
+  assert.equal(shell.inspect().serviceRunning, true, "audio is playing with the service off");
+});
+
+test("a stop and the start behind it reach native in that order", async () => {
+  /* Capacitor dispatches plugin calls on a thread pool, so two calls issued
+     milliseconds apart are not ordered by the bridge. Out of order the start lands
+     first and the stop switches the service off underneath live audio. The chain in
+     callAndRecord is what prevents it, and this is the test of the chain: the second
+     call must not be dispatched at all until the first has been answered. */
+  const capacitor = makeDeferredCapacitor();
+  const { shell, proto, clock } = setup({ capacitor });
+  shell.install();
+
+  const el = makeElement(proto);
+  el.play();
+  await capacitor.settleNext();
+
+  el.paused = true;
+  el.emit("pause");
+  clock.fireAll();
+  await flush();
+
+  el.paused = false;
+  el.play();
+  await flush();
+  assert.equal(capacitor.pending.length, 1, "both calls were in flight at once");
+  assert.equal(capacitor.pending[0].method, "stop", "the start overtook the stop");
+
+  await capacitor.settleNext();
+  assert.equal(capacitor.pending.length, 1);
+  assert.equal(capacitor.pending[0].method, "start");
+  await capacitor.settleNext();
+  assert.deepEqual(methods(capacitor), ["start", "stop", "start"]);
+  assert.equal(shell.inspect().serviceRunning, true);
+});
+
+test("two plays before the first start is answered ask native once", async () => {
+  /* THE ASSERTION HAS TO COME AFTER THE FIRST CALL SETTLES, and an earlier version of
+     this test did not — it checked the dispatch list while the first start was still
+     unanswered, where a duplicate would be sitting in the queue undispatched and
+     invisible. The mutation harness deleted the `inFlight` dedupe outright and this
+     test stayed green. Draining the queue is what makes a second start observable. */
+  const capacitor = makeDeferredCapacitor();
+  const { shell, proto } = setup({ capacitor });
+  shell.install();
+  makeElement(proto).play();
+  makeElement(proto).play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "an unanswered start was dispatched twice");
+  await capacitor.settleNext();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "a duplicate start was queued behind the first");
+  assert.equal(capacitor.pending.length, 0, "something is still in flight");
+  assert.equal(shell.inspect().serviceRunning, true);
+});
+
+test("a refused start is still retried after it settles, so the dedupe is not a latch", async () => {
+  /* The other side of `inFlight`: it is cleared when the call SETTLES, not when it is
+     dispatched. Clearing it at dispatch would dedupe nothing; never clearing it would
+     make a single refusal permanent for the session. */
+  const capacitor = makeDeferredCapacitor();
+  const { shell, proto } = setup({ capacitor });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await capacitor.settleNext({ started: false, running: false, reason: "ForegroundServiceStartNotAllowedException" });
+  assert.equal(shell.inspect().serviceRunning, false);
+  makeElement(proto).play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "start"]);
 });

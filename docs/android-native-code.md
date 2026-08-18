@@ -311,6 +311,29 @@ autoplay-blocked `play()` leaves `paused === true` and fires no event at all, so
 without the prune in `activeCount` the element sits in the active set for the rest of
 the session and the notification never goes away.
 
+**A third defect, found by re-reading rather than by a failing test.** Bridge calls
+were not serialised, and Capacitor dispatches plugin calls on a thread pool — so the
+`stop` at the end of a settle window and the `start` from a `play()` a few
+milliseconds later could land **out of order**, leaving the service switched off
+underneath live audio. That is the same symptom the plugin exists to prevent, arriving
+from our own code. They now go through a promise chain, with an `inFlight` guard so
+two `play()` calls before the first answer are one request.
+
+**And one thing that turned out not to be a defect at all, recorded because being
+wrong in public is cheaper than being wrong in private.** The same pass added
+`serviceRunning = false` at stop-dispatch time under a comment calling it a bug fix,
+on the reasoning that a `play()` in that window would hit `ensureStarted`'s `wanted &&
+serviceRunning` guard and return early. **The mutation harness deleted the line and
+all 39 tests stayed green — correctly**, because `wanted` already goes false at
+dispatch and it is the first term of that guard. The line was removed rather than kept
+with a truer comment. A surviving mutant is not always a missing test; sometimes it is
+a mechanism that was never doing anything.
+
+**Mutation results, in full: 13 mutations of the shell, 13 caught** — plus the one
+above, which was removed instead. The two that would matter most on a device are
+`activeCount`'s prune (17 tests fail) and the call-through ordering in the `play`
+wrapper (31 fail).
+
 ## 6. What is NOT done, and what is not known
 
 ### 6.1 Deliberately left for #27's Android half
