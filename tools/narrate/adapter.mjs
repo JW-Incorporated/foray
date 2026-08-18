@@ -91,11 +91,23 @@ export function buildRequest(spec = {}) {
  * @param {object} opts
  * @param {string|null} [opts.apiKey]  supply this and the adapter becomes real
  * @param {Function|null} [opts.transport]  `async (request) => {ok, status, bytes, asset}`.
- *   Must report failure via `ok: false` or a non-2xx `status`, and must return a
- *   positive `bytes` on success -- `synthesize` records nothing otherwise, because
- *   `fetch` resolves on 429/500 and a cached failure skips the beat forever. Injected
- *   in tests. In production this would be `fetch`; it is NOT defaulted to
- *   `fetch` here, so that a missing transport cannot silently reach the network.
+ *
+ *   **A THIN WRAPPER AROUND `fetch`, NOT `fetch` ITSELF.** A bare `Response` is
+ *   rejected on purpose: its body has not been read yet, so it cannot evidence
+ *   that any audio arrived. The wrapper must read the body and AFFIRM success —
+ *   forward `ok: true` or the numeric `status`, and return the audio as `bytes`
+ *   (a count, a `Buffer`, a `Uint8Array` or an `ArrayBuffer` all work). A result
+ *   that affirms nothing is treated as a failure and records nothing, because
+ *   `fetch` resolves on 429/500 and a cached failure skips the beat forever.
+ *   Roughly:
+ *
+ *       const r = await fetch(req.url, { method: req.method, headers: req.headers,
+ *                                       body: JSON.stringify(req.body) });
+ *       const buf = await r.arrayBuffer();
+ *       return { ok: r.ok, status: r.status, bytes: buf };
+ *
+ *   Injected in tests, and NOT defaulted to `fetch`, so that a missing transport
+ *   cannot silently reach the network.
  * @param {NarrationCache} [opts.cache]
  * @param {number} [opts.charsPerMin]
  * @param {string} [opts.voiceId]
@@ -233,24 +245,46 @@ export function createAdapter(opts = {}) {
        header calls "the most damaging bug this module could have", which was
        guarded for dry runs and open for failed real ones.
 
-       So success is asserted POSITIVELY rather than assumed from the absence of
-       a throw: an explicit non-false `ok`, a 2xx status when one is reported,
-       and actual bytes. Anything else returns a `failed` result and records
-       nothing, so a retry re-bills -- which is the correct direction: paying
-       twice is recoverable, a permanently skipped beat is not. */
-    const status = result?.status ?? null;
-    const statusOk = status == null || (status >= 200 && status < 300);
-    const bytes = typeof result?.bytes === "number" && result.bytes > 0 ? result.bytes : null;
-    if (result?.ok === false || !statusOk || bytes == null) {
+       So success is asserted POSITIVELY: the result must AFFIRM success, not
+       merely fail to deny it. The first draft of this fix got that wrong in a way
+       worth recording, because it read as correct — it accepted any result whose
+       `ok` was not literally `false` and whose `status` was absent or 2xx. The
+       most natural wrapper anyone would write,
+
+           const r = await fetch(...); const b = await r.arrayBuffer();
+           return { bytes: b.byteLength };
+
+       forgets to forward `ok`/`status`, reports no failure signal at all, and
+       therefore sailed through — caching a 429's JSON error body as voiced audio.
+       The original bug, undiminished, behind a guard that looked like it closed
+       it. "Absence of contrary evidence" is not a positive assertion.
+
+       So: at least one AFFIRMATIVE signal (`ok === true`, or a numeric 2xx
+       status), no contradicting one, and real bytes. A transport that reports
+       nothing is treated as a failure, which is the safe direction — it re-bills
+       rather than skipping the beat forever. */
+    const status = typeof result?.status === "number" ? result.status : null;
+    const statusAffirms = status !== null && status >= 200 && status < 300;
+    const okAffirms = result?.ok === true;
+    // `ok` present but not strictly true contradicts, which catches `ok: 0` and
+    // `ok: null` as well as `ok: false`.
+    const okContradicts = result?.ok !== undefined && result?.ok !== true;
+    const statusContradicts = status !== null && !statusAffirms;
+    const bytes = byteCountOf(result?.bytes);
+
+    if (okContradicts || statusContradicts || !(okAffirms || statusAffirms) || bytes == null) {
+      const denied = okContradicts || statusContradicts;
       return {
         ...p,
         bytes: null,
         asset: null,
         failed: {
           status,
-          reason: result?.ok === false || !statusOk
+          reason: denied
             ? `transport reported failure (status ${status ?? "unknown"})`
-            : "transport returned no audio bytes",
+            : bytes == null
+              ? "transport returned no audio bytes"
+              : "transport affirmed neither ok:true nor a 2xx status, so success cannot be assumed",
         },
       };
     }
@@ -264,6 +298,27 @@ export function createAdapter(opts = {}) {
   }
 
   return { plan, planForay, synthesize, dryRun, cache, config: { voiceId, modelId, outputFormat, charsPerMin } };
+}
+
+/**
+ * How many bytes of audio a transport actually returned, whatever shape it used
+ * to say so.
+ *
+ * A transport is somebody else's function and the natural things to hand back
+ * are all different: a plain count, a `Buffer`, a `Uint8Array`, an
+ * `ArrayBuffer`. Requiring a `number` looked strict and was in fact a
+ * correctness bug in the dangerous direction — a Buffer of real audio counted as
+ * "no bytes", so a genuine success was recorded as a failure and the beat
+ * **re-billed on every run, forever.**
+ *
+ * @param {unknown} b
+ * @returns {number|null} a positive byte count, or null if there is no audio
+ */
+export function byteCountOf(b) {
+  if (typeof b === "number") return Number.isFinite(b) && b > 0 ? b : null;
+  // Buffer/TypedArray expose byteLength; ArrayBuffer does too; a string has length.
+  const n = b?.byteLength ?? b?.length;
+  return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
 }
 
 /** The two pricing buckets `pricing.json` is keyed by. */
@@ -306,7 +361,9 @@ export function pricingBucketFor(model) {
  * @param {object} [opts]
  * @param {("flash_turbo"|"multilingual_v2_and_v3")} [opts.model]
  * @param {boolean} [opts.api]  API generations are discounted; UI is always 1:1
- * @returns {{creditsLow: number, creditsHigh: number, usd: number}}
+ * @returns {{bucket: string, creditsLow: number, creditsHigh: number, usd: number|null}}
+ *   `usd` is null for a UI generation, whose dollar rate pricing.json records as
+ *   not published.
  */
 export function costOf(chars, pricing, opts = {}) {
   const { model = FLASH_TURBO, api = true } = opts;

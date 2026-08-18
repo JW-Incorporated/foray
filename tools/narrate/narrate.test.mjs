@@ -25,7 +25,7 @@ import {
 } from "./billable.mjs";
 import { cacheKey, assertKeyInputsComplete, NarrationCache, KEY_INPUTS } from "./cache.mjs";
 import {
-  createAdapter, buildRequest, costOf, pricingBucketFor, MODEL_PRICING_BUCKET,
+  createAdapter, buildRequest, costOf, byteCountOf, pricingBucketFor, MODEL_PRICING_BUCKET,
   FLASH_TURBO, MULTILINGUAL, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT,
 } from "./adapter.mjs";
 import { projectForay, tierFor, SPINE } from "./projection.mjs";
@@ -34,12 +34,19 @@ import { reportScripts, reportProjection, PRICING } from "./narrate.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** A transport that records exactly what it was asked to send and returns fake
-    bytes. It cannot invent a payload — it only ever reports the real one. */
+    bytes. It cannot invent a payload — it only ever reports the real one.
+
+    It AFFIRMS success (`ok: true` and a 2xx `status`) because a real wrapper must:
+    `synthesize` treats a result that affirms nothing as a failure, since `fetch`
+    resolves on 429/500. The first draft returned bare `{bytes}`, which made this
+    fake more permissive than the contract it stands in for — the precise shape of
+    "the fake answered the way the real thing could not" that this repo has been
+    burned by before. Failure shapes are supplied per-test, not from here. */
 function capturingTransport() {
   const sent = [];
   const fn = async (request) => {
     sent.push(request);
-    return { bytes: 1234, asset: "fake.mp3" };
+    return { ok: true, status: 200, bytes: 1234, asset: "fake.mp3" };
   };
   fn.sent = sent;
   return fn;
@@ -732,4 +739,103 @@ test("cache.plan is a pure query and keeps no hit counters", () => {
   cache.record(key, { chars: 3 });
   assert.equal(adapter.planForay(beats).totals.cachedBeats, 1);
   assert.equal(adapter.planForay(beats).totals.cachedBeats, 1, "and it must not drift on a second pass");
+});
+
+/* ---------- second review round: the guard that only looked positive ---------- */
+
+test("a transport that affirms nothing is a failure, not a success", async () => {
+  /* THE FIRST FIX WAS NOT ACTUALLY POSITIVE. It accepted any result whose `ok`
+     was not literally `false` and whose `status` was absent or 2xx — so the most
+     natural wrapper anyone would write,
+
+         const r = await fetch(...); const b = await r.arrayBuffer();
+         return { bytes: b.byteLength };
+
+     which forgets to forward `ok`/`status`, sailed straight through and cached a
+     429's JSON error body as voiced audio. The original HIGH bug, undiminished,
+     behind a guard that read as though it closed it.
+     MUTATION THAT KILLS THIS: drop the `!(okAffirms || statusAffirms)` term from
+     the failure condition in synthesize(). */
+  for (const affirmsNothing of [
+    { bytes: 41234 },                       // the realistic forgetful wrapper
+    { bytes: 41234, asset: "a.mp3" },
+    { ok: 0, status: 200, bytes: 5 },       // falsy-but-not-false ok
+    { ok: null, status: 200, bytes: 5 },
+    { ok: "yes", status: 200, bytes: 5 },   // truthy but not `true`
+  ]) {
+    const cache = new NarrationCache();
+    const adapter = createAdapter({ apiKey: "fake", transport: async () => affirmsNothing, cache, voiceId: "v1" });
+    const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+    assert.ok(r.failed, `${JSON.stringify(affirmsNothing)} must not count as success`);
+    assert.equal(Object.keys(cache.dump().entries).length, 0,
+      `${JSON.stringify(affirmsNothing)} must not be cached`);
+  }
+});
+
+test("either affirmative signal alone is enough", async () => {
+  /* The guard must not become so strict that it rejects real successes — that
+     direction re-bills every run forever. `ok: true` OR a numeric 2xx suffices.
+     MUTATION THAT KILLS THIS: require both (`okAffirms && statusAffirms`). */
+  for (const good of [
+    { ok: true, bytes: 2048 },
+    { status: 200, bytes: 2048 },
+    { status: 201, bytes: 2048 },
+    { ok: true, status: 200, bytes: 2048 },
+  ]) {
+    const cache = new NarrationCache();
+    const adapter = createAdapter({ apiKey: "fake", transport: async () => good, cache, voiceId: "v1" });
+    const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+    assert.equal(r.failed, undefined, `${JSON.stringify(good)} must count as success`);
+    assert.equal(Object.keys(cache.dump().entries).length, 1);
+  }
+});
+
+test("audio bytes are counted whatever container the transport used", () => {
+  /* Requiring a `number` looked strict and was a correctness bug in the dangerous
+     direction: a Buffer of real audio counted as "no bytes", so a genuine success
+     was recorded as a failure and the beat RE-BILLED ON EVERY RUN, FOREVER.
+     MUTATION THAT KILLS THIS: make byteCountOf return
+     `typeof b === "number" && b > 0 ? b : null`. */
+  assert.equal(byteCountOf(4096), 4096);
+  assert.equal(byteCountOf(Buffer.from(new Uint8Array(999))), 999);
+  assert.equal(byteCountOf(new Uint8Array(700)), 700);
+  assert.equal(byteCountOf(new ArrayBuffer(512)), 512);
+  // And the genuinely empty cases stay null, or a 204 would look like audio.
+  for (const empty of [0, -1, null, undefined, NaN, new ArrayBuffer(0), Buffer.alloc(0), {}]) {
+    assert.equal(byteCountOf(empty), null, `${String(empty)} is not audio`);
+  }
+});
+
+test("a Buffer-carrying transport is recorded, end to end", async () => {
+  /* The bug above, at the level it actually bit.
+     MUTATION THAT KILLS THIS: same as byteCountOf above. */
+  const cache = new NarrationCache();
+  const adapter = createAdapter({
+    apiKey: "fake", cache, voiceId: "v1",
+    transport: async () => ({ ok: true, status: 200, bytes: Buffer.from(new Uint8Array(8192)) }),
+  });
+  const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+  assert.equal(r.failed, undefined);
+  assert.equal(r.bytes, 8192, "the byte count must be reported, not the container");
+  assert.equal(Object.keys(cache.dump().entries).length, 1);
+  // The retry is now free, which is the point of recording it at all.
+  assert.equal(adapter.plan({ id: "b", text: "a line of narration" }).billable, false);
+});
+
+test("an unknown model costs the cost line, not the whole report", () => {
+  /* costOf rightly refuses to price a model it does not recognise, but the
+     per-beat character table is model-independent and is the tool's primary
+     output. Throwing from the reporting path printed a stack trace and zero bytes
+     of report for a typo in `--model` — and real provider ids absent from the map
+     (`eleven_monolingual_v1`) hit it too.
+     MUTATION THAT KILLS THIS: remove the try/catch in reportScripts() so costOf's
+     throw propagates. */
+  const r = reportScripts(
+    { id: "f", beats: [{ id: "b1", text: "Fire came first." }] },
+    { voiceId: "v1", modelId: "eleven_monolingual_v1", outputFormat: "f" },
+  );
+  assert.match(r.text, /b1/, "the per-beat table must survive");
+  assert.match(r.text, /16 characters/, "and so must the counts");
+  assert.match(r.text, /COST UNAVAILABLE: .*unknown model/);
+  assert.equal(r.totals.chars, 16);
 });

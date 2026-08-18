@@ -64,11 +64,19 @@ export function reportScripts(doc, { voiceId, modelId, outputFormat, cacheIndex 
      printed `--model eleven_multilingual_v2` directly above a cost computed at
      half that model's real rate -- in the one tool whose entire purpose is to
      stop a surprise bill. */
-  const c = costOf(totals.billedChars, PRICING, { model: modelId });
+  /* An unknown model must cost the COST LINE, not the whole report. costOf
+     rightly refuses to price a model it does not recognise, but the per-beat
+     character table above is model-independent and is the tool's primary output —
+     throwing here printed a stack trace and zero bytes of report for a mere typo
+     in `--model`. */
+  let c = null, costError = null;
+  try { c = costOf(totals.billedChars, PRICING, { model: modelId }); }
+  catch (err) { costError = err.message; }
   lines.push("");
   lines.push(`${totals.beats} beats · ${n(totals.chars)} characters · ${mins(totals.estDurationSec)} estimated`);
   lines.push(`BILLABLE this run: ${n(totals.billedChars)} characters (${totals.cachedBeats} of ${totals.beats} beats served from cache)`);
-  lines.push(`  ${n(c.creditsLow)}-${n(c.creditsHigh)} credits · ~${usd(c.usd)} at the API rate`);
+  if (c) lines.push(`  ${n(c.creditsLow)}-${n(c.creditsHigh)} credits · ~${usd(c.usd)} at the API rate`);
+  else lines.push(`  COST UNAVAILABLE: ${costError}`);
   if (totals.emptyBeats) lines.push(`  ${totals.emptyBeats} beat(s) have EMPTY scripts and would generate nothing`);
   return { text: lines.join("\n"), totals, beats: planned };
 }
