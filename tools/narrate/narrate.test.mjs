@@ -1,0 +1,516 @@
+/* Tests for the dry-run narration pipeline (#247).
+ *
+ * EVERY test here names the ONE-LINE MUTATION THAT KILLS IT. That is a house
+ * rule with a specific history: a test in this repo once passed with the entire
+ * mechanism it covered deleted, because the fake answered the way the real
+ * thing could not. So the fakes below are built to be able to disagree with the
+ * code — most importantly `capturingTransport`, which records the request the
+ * adapter actually hands it, so the dry run's character count is checked
+ * against a real payload rather than against another estimate.
+ *
+ * Nothing here reaches the network. There is no API key anywhere in this file
+ * and `createAdapter` is never given one except to prove that `synthesize`
+ * refuses without one.
+ */
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import {
+  billableText, countChars, nonAsciiChars, estimateDurationSec,
+  charsForDurationSec, mp3Bytes, CHARS_PER_MIN_MEASURED,
+} from "./billable.mjs";
+import { cacheKey, assertKeyInputsComplete, NarrationCache, KEY_INPUTS } from "./cache.mjs";
+import { createAdapter, buildRequest, costOf, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT } from "./adapter.mjs";
+import { projectForay, tierFor, SPINE } from "./projection.mjs";
+import { reportScripts, reportProjection, PRICING } from "./narrate.mjs";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+/** A transport that records exactly what it was asked to send and returns fake
+    bytes. It cannot invent a payload — it only ever reports the real one. */
+function capturingTransport() {
+  const sent = [];
+  const fn = async (request) => {
+    sent.push(request);
+    return { bytes: 1234, asset: "fake.mp3" };
+  };
+  fn.sent = sent;
+  return fn;
+}
+
+const spec = (text, over = {}) => ({
+  text, voiceId: "v1", modelId: "m1", outputFormat: "mp3_44100_64", ...over,
+});
+
+/* ---------- billable text: the payload definition ---------- */
+
+test("CRLF is normalised away, so a Windows save is not a re-bill", () => {
+  /* The money case. `.gitattributes` records a real CRLF incident in this repo,
+     and a `\r` per line is billable and inaudible.
+     MUTATION THAT KILLS THIS: delete the `.replace(/\r\n?/g, "\n")` line in
+     billableText(). Then the CRLF form counts 2 more characters than the LF one
+     and the two hash differently. */
+  const lf = "one\ntwo\nthree";
+  const crlf = "one\r\ntwo\r\nthree";
+  assert.equal(billableText(crlf), lf);
+  assert.equal(countChars(crlf), countChars(lf));
+  assert.equal(cacheKey(spec(crlf)), cacheKey(spec(lf)), "a line-ending change must be a cache HIT");
+});
+
+test("trailing whitespace is stripped but internal pause structure is not touched", () => {
+  /* Two halves, deliberately in one test because they are the same decision:
+     strip what is inaudible, keep what a TTS engine reads as timing.
+     MUTATION THAT KILLS THIS: add `.replace(/\n{2,}/g, "\n")` to billableText()
+     (kills the second assertion), or delete the `/[ \t]+$/gm` replace (kills
+     the first). */
+  assert.equal(billableText("a   \nb\t\t\nc"), "a\nb\nc");
+  assert.equal(billableText("para one.\n\npara two."), "para one.\n\npara two.",
+    "a blank line between paragraphs is pause structure and must survive");
+});
+
+test("countChars counts spaces and punctuation, because the provider bills them", () => {
+  /* pricing.json records billing as per-character including spaces. A count
+     that measured words, or that trimmed internal spaces, would understate.
+     MUTATION THAT KILLS THIS: make countChars return
+     billableText(raw).split(/\s+/).length, or strip punctuation first. */
+  assert.equal(countChars("Hi there, friend."), 17);
+  assert.equal(countChars(""), 0);
+  assert.equal(countChars(null), 0);
+});
+
+test("non-ascii characters are surfaced rather than silently counted", () => {
+  /* The English-only ruling plus the UTF-16-vs-code-point caveat. Curly quotes
+     and em-dashes land here legitimately; the point is visibility.
+     MUTATION THAT KILLS THIS: make nonAsciiChars return {count: 0, samples: []}. */
+  const r = nonAsciiChars("a fire — an ember");
+  assert.equal(r.count, 1);
+  assert.deepEqual(r.samples, ["—"]);
+  assert.equal(nonAsciiChars("plain ascii").count, 0);
+});
+
+test("duration and character budgets are exact inverses of each other", () => {
+  /* Script authoring needs the chars-for-duration direction and the cost model
+     needs the duration-for-chars direction; if they disagree, a writer hits a
+     budget the estimator then prices differently.
+     MUTATION THAT KILLS THIS: change the 60 to 100 in either
+     estimateDurationSec or charsForDurationSec (not both). */
+  const chars = charsForDurationSec(45, 880);
+  assert.equal(chars, 660);
+  assert.equal(Math.round(estimateDurationSec(chars, 880)), 45);
+});
+
+test("mp3 bytes track bitrate linearly and a minute at 64 kbps is ~480 kB", () => {
+  /* The hosting arithmetic depends on this being right; docs/narrator-pipeline.md
+     quotes it.
+     MUTATION THAT KILLS THIS: change the `/ 8` to `/ 1` in mp3Bytes (bits vs
+     bytes), or drop the `* 1000`. */
+  assert.equal(mp3Bytes(60, 64), 480000);
+  assert.equal(mp3Bytes(60, 128), 960000);
+  assert.equal(mp3Bytes(60, 128), mp3Bytes(60, 64) * 2);
+  assert.equal(mp3Bytes(0, 64), 0);
+});
+
+/* ---------- the cache: the idempotence rule ---------- */
+
+test("the cache key changes for each of the four inputs and for nothing else", () => {
+  /* This IS the invalidation rule, asserted rather than described. A key that
+     missed one of these would serve the OLD narrator from cache forever — the
+     failure that costs nothing and ships the wrong product.
+     MUTATION THAT KILLS THIS: delete any one field from the loop in cacheKey()
+     (e.g. drop "voiceId"), and its assertion below fails. */
+  const base = spec("the same words");
+  const key = cacheKey(base);
+  assert.notEqual(key, cacheKey({ ...base, text: "the same words." }), "a script edit must invalidate");
+  assert.notEqual(key, cacheKey({ ...base, voiceId: "v2" }), "a voice change must invalidate");
+  assert.notEqual(key, cacheKey({ ...base, modelId: "m2" }), "a model change must invalidate");
+  assert.notEqual(key, cacheKey({ ...base, outputFormat: "mp3_44100_128" }), "a format change must invalidate");
+  // And stable across calls, or nothing is ever a hit.
+  assert.equal(key, cacheKey({ ...base }));
+});
+
+test("fields cannot collide by swapping values between them", () => {
+  /* A naive key that concatenated values would make voice "a"/model "b"
+     identical to voice "ab"/model "". The field names are in the hash to stop it.
+     MUTATION THAT KILLS THIS: in cacheKey(), change
+     h.update(`${field}\n${...}\n`) to h.update(String(spec[field] ?? "")). */
+  assert.notEqual(
+    cacheKey(spec("t", { voiceId: "a", modelId: "b" })),
+    cacheKey(spec("t", { voiceId: "ab", modelId: "" })),
+  );
+});
+
+test("an unknown generation parameter is a loud error, not a silently dropped key input", () => {
+  /* The expensive direction: an unhashed parameter that changes the audio means
+     a changed request serves a stale hit.
+     MUTATION THAT KILLS THIS: make assertKeyInputsComplete a no-op (`return;`). */
+  assert.throws(() => assertKeyInputsComplete({ text: "t", stability: 0.5 }), /stability/);
+  assert.throws(() => cacheKey(spec("t", { speakerBoost: true })), /speakerBoost/);
+  assert.doesNotThrow(() => assertKeyInputsComplete(spec("t")));
+  assert.deepEqual(KEY_INPUTS, ["text", "voiceId", "modelId", "outputFormat"]);
+});
+
+test("a re-run of an unchanged script bills zero characters", () => {
+  /* #247 item 12, the whole requirement, end to end.
+     MUTATION THAT KILLS THIS: in NarrationCache.plan(), return
+     `billedChars: chars` unconditionally instead of `cached ? 0 : chars`. */
+  const cache = new NarrationCache();
+  const s = spec("a line of narration");
+  const first = cache.plan(s);
+  assert.equal(first.cached, false);
+  assert.equal(first.billedChars, 19);
+
+  cache.record(first.key, { chars: first.chars });
+
+  const second = cache.plan(s);
+  assert.equal(second.cached, true);
+  assert.equal(second.billable, false);
+  assert.equal(second.billedChars, 0, "an unchanged script must never re-bill");
+  assert.equal(second.chars, 19, "but its character count is still reported");
+});
+
+test("an edited script re-bills, and only the edited one", () => {
+  /* The other half: caching must not make an edit free, or a corrected script
+     never gets re-voiced.
+     MUTATION THAT KILLS THIS: hash a constant in cacheKey() (e.g.
+     h.update("text\n") without the text) — then the edited script is a HIT. */
+  const cache = new NarrationCache();
+  const a = cache.plan(spec("beat one"));
+  const b = cache.plan(spec("beat two"));
+  cache.record(a.key, { chars: a.chars });
+  cache.record(b.key, { chars: b.chars });
+
+  assert.equal(cache.plan(spec("beat one")).billedChars, 0);
+  assert.equal(cache.plan(spec("beat one, revised")).billedChars, 17, "the edit must re-bill");
+  assert.equal(cache.plan(spec("beat two")).billedChars, 0, "its neighbour must not");
+});
+
+test("the dumped index round-trips and is key-sorted for a stable diff", () => {
+  /* The index is meant to be committed; an unstable key order would churn the
+     diff on every run and make review useless.
+     MUTATION THAT KILLS THIS: drop the `.sort()` in dump(). */
+  const cache = new NarrationCache();
+  for (const t of ["zzz", "aaa", "mmm"]) {
+    const p = cache.plan(spec(t));
+    cache.record(p.key, { chars: p.chars });
+  }
+  const dumped = cache.dump();
+  const keys = Object.keys(dumped.entries);
+  assert.deepEqual(keys, [...keys].sort());
+  const restored = new NarrationCache(dumped);
+  assert.equal(restored.plan(spec("aaa")).billedChars, 0, "a restored index must still be a hit");
+});
+
+/* ---------- the adapter: dry by construction ---------- */
+
+test("the dry run counts the characters of the REAL request body", () => {
+  /* THE ANTI-VACUITY TEST. The dry run is worthless unless it measures the
+     string that would actually be submitted, so this checks the reported count
+     against a payload captured from a transport rather than against a second
+     estimate. The transport is only reachable with a key, so this is the one
+     test that supplies a fake one — and it never leaves the process.
+     MUTATION THAT KILLS THIS: in adapter.plan(), replace
+     `const chars = request.body.text.length` with `countChars(beat.text) - 1`,
+     or make buildRequest() send `raw` instead of `billableText(text)`. */
+  const transport = capturingTransport();
+  const adapter = createAdapter({ apiKey: "fake-key-never-leaves-this-process", transport, voiceId: "v1" });
+
+  const script = "Two rooms, two microphones.\r\nOne story.   \n";
+  const planned = adapter.plan({ id: "b1", text: script });
+
+  return adapter.synthesize({ id: "b1", text: script }).then(() => {
+    assert.equal(transport.sent.length, 1, "exactly one request");
+    const sentText = transport.sent[0].body.text;
+    assert.equal(
+      sentText.length, planned.chars,
+      "the dry run's character count must equal the real payload's length"
+    );
+    assert.equal(sentText, "Two rooms, two microphones.\nOne story.",
+      "and the payload must be the canonical form, not the raw script");
+  });
+});
+
+test("synthesize refuses without a key, and plan still works fully", () => {
+  /* #247's hard constraint made mechanical: no key, no spend.
+     MUTATION THAT KILLS THIS: delete the `if (dryRun) throw` block in
+     synthesize(). */
+  const transport = capturingTransport();
+  const adapter = createAdapter({ transport, voiceId: "v1" });
+  assert.equal(adapter.dryRun, true);
+  assert.rejects(() => adapter.synthesize({ text: "hello" }), /no apiKey/);
+  const planned = adapter.plan({ id: "b", text: "hello" });
+  assert.equal(planned.chars, 5, "planning must be fully functional with no key");
+  assert.equal(transport.sent.length, 0, "and nothing may be sent");
+});
+
+test("the request carries the key only when there is one, and is otherwise identical", () => {
+  /* "Adding a key is the only change needed" — asserted by diffing the two
+     requests. If anything else differed, the dry run would be measuring a
+     different call than the real one makes.
+     MUTATION THAT KILLS THIS: in buildRequest(), change the body or the url
+     depending on apiKey — e.g. `text: apiKey ? billableText(text) : text`. */
+  const args = { text: "a  \r\nb", voiceId: "v1", modelId: "m1", outputFormat: "f1" };
+  const dry = buildRequest(args);
+  const real = buildRequest({ ...args, apiKey: "k" });
+  assert.equal(dry.headers["xi-api-key"], undefined);
+  assert.equal(real.headers["xi-api-key"], "k");
+  assert.deepEqual(dry.body, real.body, "the billable payload must not depend on having a key");
+  assert.equal(dry.url, real.url);
+  assert.equal(dry.body.text, "a\nb");
+});
+
+test("a dry run never writes cache entries", () => {
+  /* The most damaging bug this pipeline could have: a dry run that recorded
+     entries would make the next run believe the audio exists and skip it, so
+     the Foray would ship with no narration and no error.
+     MUTATION THAT KILLS THIS: add `cache.record(p.key, {})` to plan(). */
+  const cache = new NarrationCache();
+  const adapter = createAdapter({ cache, voiceId: "v1" });
+  adapter.planForay([{ id: "a", text: "one" }, { id: "b", text: "two" }]);
+  assert.equal(Object.keys(cache.dump().entries).length, 0);
+  assert.equal(cache.plan(spec("one", { voiceId: "v1", modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT })).billable, true);
+});
+
+test("synthesize skips a cached script and an empty one without calling the transport", () => {
+  /* Two ways to spend nothing, both worth pinning: an unchanged script and a
+     beat whose script has not been written.
+     MUTATION THAT KILLS THIS: delete the `if (!p.billable) return` line, or the
+     `if (p.empty) return` line, in synthesize(). */
+  const transport = capturingTransport();
+  const cache = new NarrationCache();
+  const adapter = createAdapter({ apiKey: "fake", transport, cache, voiceId: "v1" });
+  return adapter.synthesize({ id: "a", text: "real script" })
+    .then(() => adapter.synthesize({ id: "a", text: "real script" }))
+    .then((second) => {
+      assert.equal(second.skipped, "cached");
+      assert.equal(transport.sent.length, 1, "the second call must not reach the transport");
+      return adapter.synthesize({ id: "b", text: "" });
+    })
+    .then((empty) => {
+      assert.equal(empty.skipped, "empty");
+      assert.equal(transport.sent.length, 1, "an empty script must not reach the transport either");
+    });
+});
+
+test("a Foray's totals separate what it costs from what a re-run costs", () => {
+  /* The two numbers a founder needs side by side.
+     MUTATION THAT KILLS THIS: in planForay(), compute billedChars as
+     `planned.reduce((n, b) => n + b.chars, 0)`. */
+  const cache = new NarrationCache();
+  const adapter = createAdapter({ cache, voiceId: "v1" });
+  const beats = [{ id: "a", text: "aaaa" }, { id: "b", text: "bbbbbb" }];
+  const first = adapter.planForay(beats);
+  assert.equal(first.totals.chars, 10);
+  assert.equal(first.totals.billedChars, 10);
+
+  // Pretend the first beat got voiced.
+  const key = cacheKey(spec("aaaa", { voiceId: "v1", modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT }));
+  cache.record(key, { chars: 4 });
+
+  const second = adapter.planForay(beats);
+  assert.equal(second.totals.chars, 10, "the Foray still contains 10 characters of narration");
+  assert.equal(second.totals.billedChars, 6, "but only the unvoiced beat is billable");
+  assert.equal(second.totals.cachedBeats, 1);
+});
+
+/* ---------- cost and pricing ---------- */
+
+test("cost is a band, because the per-character credit rate is only bounded", () => {
+  /* pricing.json records that the discounted API rate is officially only
+     "between 0.5 and 1 credit per character". A single number here would be a
+     guess wearing a decimal point.
+     MUTATION THAT KILLS THIS: make costOf return creditsLow === creditsHigh. */
+  const c = costOf(1000, PRICING);
+  assert.equal(c.creditsHigh, 1000, "the ceiling is 1 credit per character");
+  assert.equal(c.creditsLow, 500, "the floor is the strongly-implied Flash discount");
+  assert.ok(c.creditsLow < c.creditsHigh);
+  assert.equal(Number(c.usd.toFixed(2)), 0.05, "$0.05 per 1K characters on Flash");
+});
+
+test("UI generations get no discount, unlike API ones", () => {
+  /* The trap in pricing.json: "For UI generations, 1 character costs 1 credit"
+     for EVERY model including Flash. A cost model that assumes Flash halves the
+     burn in the web app is wrong.
+     MUTATION THAT KILLS THIS: drop the `api &&` from the `discounted`
+     expression in costOf(). */
+  const ui = costOf(1000, PRICING, { api: false });
+  assert.equal(ui.creditsLow, 1000);
+  assert.equal(ui.creditsHigh, 1000);
+});
+
+test("the pricing snapshot records Creator at $22, not the $11 first-month promotion", () => {
+  /* The scraped page in data-local reads as $11/month and the #247 sketch
+     inherited that. It is a promotion. This test is the correction, pinned.
+     MUTATION THAT KILLS THIS: edit pricing.json's creator price to 11. */
+  const creator = PRICING.tiers.find((t) => t.id === "creator");
+  assert.equal(creator.price_usd_month, 22);
+  assert.match(creator.price_trap, /first-month promotion, not a standing price/);
+  // And the $6-11 band the sketch aimed at contains exactly one standing tier.
+  const inBand = PRICING.tiers.filter((t) => t.price_usd_month >= 5 && t.price_usd_month <= 11);
+  assert.deepEqual(inBand.map((t) => t.id), ["starter"]);
+});
+
+test("the free tier is excluded from tier selection because it has no commercial licence", () => {
+  /* Verified verbatim: "The free plan does not include a commercial license and
+     cannot be used for any commercial purpose." So the obvious "pilot it for
+     nothing" option does not exist, and tierFor must never return it.
+     MUTATION THAT KILLS THIS: drop the `.filter((t) => t.commercial_license)`
+     in tierFor(). Then 5,000 credits resolves to free. */
+  assert.equal(PRICING.tiers.find((t) => t.id === "free").commercial_license, false);
+  assert.equal(tierFor(5000, PRICING).id, "starter", "even a tiny burn must start at a paid tier");
+  assert.equal(tierFor(30000, PRICING).id, "starter");
+  assert.equal(tierFor(30001, PRICING).id, "creator");
+  assert.equal(tierFor(99e6, PRICING), null, "and an unservable burn is null, not the biggest tier");
+});
+
+test("rollover raises capacity to 3x quota, which changes the tier answer", () => {
+  /* Narration is bursty — a Foray is authored then voiced in one go — so the
+     3x rollover ceiling is load-bearing for a one-time corpus build.
+     MUTATION THAT KILLS THIS: make tierFor ignore opts.useRollover (always
+     mult = 1). Then the two assertions below return the same tier. */
+  assert.equal(tierFor(90000, PRICING).id, "creator");
+  assert.equal(tierFor(90000, PRICING, { useRollover: true }).id, "starter",
+    "30k x 3 covers 90k");
+  assert.equal(tierFor(90000, PRICING, { useRollover: true }).capacity, 90000);
+});
+
+/* ---------- the projection ---------- */
+
+test("the projection counts cross-episode bridges, which the #247 sketch omitted", () => {
+  /* Rule X1 ("cross-episode seam always carries narration", gate yes) is a
+     whole category of narration the sketch did not count.
+     MUTATION THAT KILLS THIS: in projectForay(), set bridgeItems = 0 (or drop
+     the `+ bridgeSec` from speechSec). Then the two projections below are equal. */
+  const withBridges = projectForay({ bridgeAbsorption: 0 }, PRICING);
+  const without = projectForay({ bridgeAbsorption: 1 }, PRICING);
+  assert.equal(withBridges.items.bridgeItems, SPINE.crossEpisodeSeams);
+  assert.equal(without.items.bridgeItems, 0);
+  assert.ok(withBridges.chars > without.chars, "bridges must cost characters");
+  assert.equal(withBridges.seconds.bridgeSec, SPINE.crossEpisodeSeams * 8);
+});
+
+test("regeneration multiplies characters but NOT stored bytes", () => {
+  /* Only the final take is kept, so a 3x regeneration factor triples the spend
+     and leaves the hosting figure alone. Conflating them would treble the
+     hosting estimate and push the recommendation the wrong way.
+     MUTATION THAT KILLS THIS: in projectForay(), change `bytes` to
+     `mp3Bytes(audioSec, kbps) * regen`. */
+  const one = projectForay({ regenFactor: 1 }, PRICING);
+  const three = projectForay({ regenFactor: 3 }, PRICING);
+  assert.equal(three.charsWithRegen, one.chars * 3);
+  assert.equal(three.bytes, one.bytes, "storage is of the final take only");
+});
+
+test("a higher chars-per-minute rate costs MORE, not less", () => {
+  /* The direction of the error in the sketch's 840. Characters are billed and
+     the budget is a DURATION, so a slow rate understates the character count.
+     Getting this backwards would make the sketch look conservative when it is
+     optimistic.
+     MUTATION THAT KILLS THIS: invert the ratio in estimateDurationSec, or in
+     projectForay compute chars as `(speechSec / 60) / charsPerMin`. */
+  const slow = projectForay({ charsPerMin: 840 }, PRICING);
+  const fast = projectForay({ charsPerMin: 1000 }, PRICING);
+  assert.ok(fast.chars > slow.chars, "the provider's own 1000 chars/min is the more expensive reading");
+  assert.equal(fast.chars, Math.round(slow.chars * (1000 / 840)));
+});
+
+test("the projection carries its caveats rather than presenting itself as measured", () => {
+  /* House rule: report unknowns as unknowns. The M6 undercount and the
+     absorption guess must travel with the number.
+     MUTATION THAT KILLS THIS: return `caveats: []` from projectForay(). */
+  const p = projectForay({}, PRICING);
+  assert.ok(p.caveats.length >= 3);
+  assert.ok(p.caveats.some((c) => /M6/.test(c)), "the known undercount must be stated");
+  assert.ok(p.caveats.some((c) => /guess/.test(c)));
+  const noUndercount = projectForay({ elisionBridges: 4 }, PRICING);
+  assert.ok(!noUndercount.caveats.some((c) => /M6/.test(c)), "and must drop once it is supplied");
+});
+
+test("ten fully narrated Forays at 3x regeneration cost under $50", () => {
+  /* The headline finding, pinned so a later edit cannot quietly turn a rounding
+     error into a real expense without a test going red. If this fails, the
+     recommendation in docs/narrator-pipeline.md needs rewriting rather than
+     the assertion needs relaxing.
+     MUTATION THAT KILLS THIS: change BUDGETS.emptyBeatSec from 45 to 450, or
+     api_dollar_per_1k_chars.flash_turbo from 0.05 to 0.5. */
+  const one = projectForay({ regenFactor: 3 }, PRICING);
+  const ten = costOf(one.charsWithRegen * 10, PRICING);
+  assert.ok(ten.usd < 50, `ten Forays at 3x came to $${ten.usd.toFixed(2)}`);
+  assert.ok(ten.usd > 5, "and it is not zero either — sanity check on the arithmetic");
+});
+
+/* ---------- the CLI's report ---------- */
+
+test("the script report shows per-beat and per-Foray counts and flags empty scripts", () => {
+  /* #247 item 11 asks for exact counts "per beat and per Foray".
+     MUTATION THAT KILLS THIS: drop the per-beat loop in reportScripts(), or the
+     `[EMPTY SCRIPT]` marker. */
+  const r = reportScripts({
+    id: "grilling-history-2",
+    beats: [{ id: "beat-7", text: "Fire came first." }, { id: "beat-8", text: "" }],
+  }, { voiceId: "v1", modelId: "m1", outputFormat: "f1" });
+  assert.match(r.text, /beat-7/);
+  assert.match(r.text, /beat-8/);
+  assert.match(r.text, /\[EMPTY SCRIPT\]/);
+  assert.match(r.text, /DRY RUN, nothing called/);
+  assert.equal(r.totals.chars, 16);
+  assert.equal(r.totals.emptyBeats, 1);
+});
+
+test("the projection report names the sketch's rate and the provider's beside each other", () => {
+  /* The sensitivity table is the deliverable that makes the spend decision
+     informed, and it is only useful if the reader can see which row is the
+     assumption under test.
+     MUTATION THAT KILLS THIS: delete the `<- the #247 sketch` annotation, or
+     drop 840 from the rates array in reportProjection(). */
+  const r = reportProjection({ forays: 10, regenFactor: 3 });
+  assert.match(r.text, /840.*<- the #247 sketch/);
+  assert.match(r.text, /1000.*provider's own implied rate/);
+  assert.match(r.text, /CAVEATS/);
+  /* The rates must be listed in ascending order, or the table misleads. Scoped
+     to the SENSITIVITY block: the BITRATE table below it also starts rows with a
+     3-digit number, and matching both is how the first draft of this assertion
+     failed on a correctly-sorted table. */
+  const block = r.text.split("SENSITIVITY")[1].split("BITRATE")[0];
+  const rows = [...block.matchAll(/^(\d{3,4}) +[\d,]+/gm)].map((m) => Number(m[1]));
+  assert.deepEqual(rows, [760, 840, 880, 940, 1000], "sensitivity rows must ascend and cover the band");
+});
+
+test("pricing.json is internally consistent and dated", () => {
+  /* It supersedes an undated scrape, so its own date and provenance are the
+     thing that makes it trustworthy later.
+     MUTATION THAT KILLS THIS: delete `verified_at` from pricing.json, or set a
+     tier's credits_per_month to a string. */
+  assert.match(PRICING.verified_at, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(PRICING.supersedes.why, /NO DATE/);
+  for (const t of PRICING.tiers) {
+    assert.equal(typeof t.price_usd_month, "number", `${t.id} price`);
+    assert.equal(typeof t.credits_per_month, "number", `${t.id} credits`);
+    assert.equal(typeof t.commercial_license, "boolean", `${t.id} licence`);
+  }
+  // Ascending price must mean ascending credits, or tierFor's first-match is wrong.
+  const paid = PRICING.tiers.filter((t) => t.commercial_license).sort((a, b) => a.price_usd_month - b.price_usd_month);
+  for (let i = 1; i < paid.length; i++) {
+    assert.ok(paid[i].credits_per_month > paid[i - 1].credits_per_month,
+      `${paid[i].id} must include more credits than ${paid[i - 1].id}`);
+  }
+});
+
+test("no API key, endpoint call or network reach exists anywhere in tools/narrate", () => {
+  /* #247's hard constraint, enforced against the source rather than trusted.
+     The adapter must never default `transport` to a global fetch, because that
+     turns a missing argument into a live paid call.
+     MUTATION THAT KILLS THIS: add `transport = fetch` as the default in
+     createAdapter(), or paste a real `sk_...` key into any file here. */
+  for (const f of fs.readdirSync(HERE).filter((f) => /\.mjs$/.test(f))) {
+    const src = fs.readFileSync(path.join(HERE, f), "utf8");
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    assert.ok(!/\bfetch\s*\(/.test(code), `${f} must not call fetch`);
+    assert.ok(!/transport\s*=\s*fetch/.test(code), `${f} must not default transport to fetch`);
+    assert.ok(!/\bsk_[a-zA-Z0-9]{8}/.test(src), `${f} must not contain an API key`);
+    assert.ok(!/process\.env\.(ELEVEN|XI_)/.test(code), `${f} must not read a key from the environment`);
+  }
+});

@@ -144,6 +144,16 @@ const FLOORS = {
      catch: it left one test of slack, and slack is what lets the new gate be
      deleted later with CI green. Zero slack here, deliberately, as at the top. */
   "tools/foray/check-forays.test.mjs": 82,
+  /* The narration pipeline's dry run (#247). Zero slack. Two of its tests are
+     the only things standing between this repo and a paid API call: one asserts
+     `synthesize()` refuses without a key, and one greps every `.mjs` in
+     `tools/narrate/` for a `fetch(`, a defaulted transport, an `sk_` literal or
+     a key read from the environment. Deleting them takes the spend guard with
+     them and nothing else in the repo replaces it. A third — "the dry run counts
+     the characters of the REAL request body" — is what stops the cost estimate
+     and the request payload drifting apart, which is the failure mode that turns
+     a $6 projection into a bill nobody predicted. */
+  "tools/narrate/narrate.test.mjs": 32,
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,
