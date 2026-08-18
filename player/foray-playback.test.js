@@ -1826,3 +1826,144 @@ test("dropping a segment from Foray #1 degrades the row rather than seeking wron
   assert.equal(point.index, -1);
   assert.ok(point.elapsedSec <= acc, "a resume point can never be past the live end");
 });
+
+/* ---------- playback speed, across the seams of a SHIPPED Foray ----------
+
+   `player/queue-manager.test.js` owns the mechanism with fixtures. This owns the
+   claim the founder actually made — "I set 1.5x and it stays 1.5x for the whole
+   thing" — against the real committed running order, because the mechanism and
+   the shipped data are two different things and only one of them is what a
+   listener meets.
+
+   `grilling-history-2` rather than Foray #1, deliberately. It is the ON-PLOT short
+   version that #226 shipped (Foray #1 is labelled superseded), it is 8 segments
+   over 7 seams, and **4 of those seams cross to a different episode** — which is
+   the only kind that reassigns `src` and therefore the only kind where an engine
+   resets `playbackRate` to 1. A test that only played one segment, or only
+   same-source seams, would pass with the bug fully present. */
+
+const SHORT_ID = "grilling-history-2";
+
+function shortResolve() {
+  const foray = findForay(FORAYS, SHORT_ID, { unlocked: [SHORT_ID] });
+  assert.ok(foray, `${SHORT_ID} must exist in data/forays.json`);
+  return resolveForay(foray, { segments: indexSegments(SEGMENTS), sources: indexSources(SOURCES) });
+}
+
+/** How many of this running order's seams change episode — the seams that cost a
+    `src` assignment and therefore a `playbackRate` reset. Counted from the data
+    rather than hard-coded, so a re-sourced Foray cannot leave this suite quietly
+    asserting a property of a shape it no longer has. */
+function crossEpisodeSeams(playable) {
+  let n = 0;
+  for (let i = 1; i < playable.length; i++) if (playable[i].audio_url !== playable[i - 1].audio_url) n++;
+  return n;
+}
+
+test("grilling-history-2 still has the cross-episode seams these speed tests need", () => {
+  // The premise, asserted, so the two tests below cannot go vacuously green if the
+  // Foray is ever re-sourced onto a single episode.
+  const r = shortResolve();
+  assert.equal(r.playable.length, 8);
+  assert.ok(
+    crossEpisodeSeams(r.playable) >= 3,
+    `only ${crossEpisodeSeams(r.playable)} cross-episode seams — the reset this guards cannot happen`
+  );
+});
+
+test("1.5x set before play holds through all 7 seams of grilling-history-2", async () => {
+  /* THE TEST THE BRIEF ASKED FOR: at a seam, not just on first play.
+
+     MUTATION THAT KILLS IT: `restoreRate` back to `setRate(item?.rate ?? 1.0)`.
+     The first load then emits `rate:1` and the assertion below names the segment
+     it happened on. */
+  const r = shortResolve();
+  const { m, backend } = make();
+  m.setRate(1.5);
+  await startForay(m, r);
+
+  for (let i = 0; i < r.playable.length - 1; i++) {
+    assert.equal(m.currentIndex, i, `expected to be on segment ${i + 1}`);
+    await backend.reachOutPoint();
+  }
+  assert.equal(m.currentIndex, r.playable.length - 1, "and we reached the last segment");
+
+  const rates = backend.calls.filter((c) => c.startsWith("rate:"));
+  assert.deepStrictEqual(
+    [...new Set(rates)], ["rate:1.5"],
+    `the element was told a speed other than 1.5x somewhere in the hour: ${rates.join(" ")}`
+  );
+  // One per load plus the initial set: the count matters as well as the values,
+  // because "never told anything else" is also true of "never told anything".
+  assert.equal(rates.length, r.playable.length + 1);
+  assert.equal(m.rate, 1.5);
+});
+
+test("a speed chosen mid-Foray survives every seam after it, at the top of the ladder", async () => {
+  /* The mid-listen case, which is how the control is actually used: a listener
+     three segments in decides this one is slow. Before this change the choice
+     survived exactly one segment and then reverted, with nothing on screen to say
+     so — the failure mode that is worst precisely because it is silent. */
+  const r = shortResolve();
+  const { m, backend } = make();
+  await startForay(m, r);
+  await backend.reachOutPoint();
+  await backend.reachOutPoint();
+  assert.equal(m.currentIndex, 2);
+
+  m.setRate(2);
+  const mark = backend.calls.length;
+  while (m.currentIndex < r.playable.length - 1) await backend.reachOutPoint();
+
+  const after = backend.calls.slice(mark).filter((c) => c.startsWith("rate:"));
+  assert.deepStrictEqual(
+    [...new Set(after)], ["rate:2"],
+    `the speed reverted after the change: ${after.join(" ")}`
+  );
+  assert.equal(after.length, r.playable.length - 3, "one restore per remaining load");
+});
+
+test("the seam beat stays 2.0 s of WALL clock at 2x — it does not scale with speed", async () => {
+  /* THE DECISION, PINNED. `seam-gap.js`'s 2.0 s is an editorial pause between two
+     voices, taken from the audiobook mid-chapter section-break convention
+     (2-3.5 s). Three reasons it is wall clock and does not divide by rate:
+
+       1. THERE IS NO CONTENT IN IT. The beat is not audio — nothing is appended,
+          padded or re-encoded (product principle 3); it is the silence between the
+          out-point pausing the element and `startPlayback` running. "Two seconds
+          of content at 2x" is not a quantity that exists.
+       2. THE CONVENTION IS PERCEPTUAL. What tells a listener they have moved is a
+          duration of silence in their own world. Scaling it would make the beat
+          1.0 s at 2x, under the published floor the number came from, for a
+          setting the listener changed for an unrelated reason.
+       3. IT IS ALSO THE WINDOW THAT HIDES THE LOAD. The manager spends the beat
+          and the next segment's load in parallel, so the silence is
+          `max(gap, load)` and the load takes WALL clock. Dividing the beat by rate
+          would shrink the cover exactly when seams arrive twice as often — the
+          #224 direction, where a seam load that misses its deadline drops the
+          segment.
+
+     MUTATION THAT KILLS THIS: divide the deadline by the rate in `_armSeamGap`
+     (`nowMs() + sec * 1000 / this._rate`). The remaining beat becomes 1,000 ms. */
+  const r = shortResolve();
+  const scheduler = manualScheduler();
+  const { m, backend } = make({ scheduler });
+  m.setRate(2);
+  await startForay(m, r);
+
+  const ended = backend.reachOutPoint();
+  await new Promise((res) => setImmediate(res));
+  assert.equal(m.inSeamGap, true, "a segment-to-segment seam gets a beat");
+  assert.equal(
+    m.seamGapRemainingMs, SEAM_GAP_SEC * 1000,
+    "the beat owes a full 2.0 s of wall clock at 2x, exactly as it does at 1x"
+  );
+
+  // Not yet: at 1.0 s the beat still has a second to run, whatever the speed.
+  await scheduler.advance(1000);
+  assert.equal(m.inSeamGap, true, "half the beat is not the whole beat");
+  await scheduler.advance(1000);
+  await ended;
+  assert.equal(m.inSeamGap, false);
+  assert.equal(m.currentIndex, 1, "and only then does the next segment start");
+});
