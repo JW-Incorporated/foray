@@ -2115,3 +2115,81 @@ citations.**
   tape it is useless, because the tape is 19th-century American electioneering and the
   Patch is what stops that reading as the origin of the pattern rather than one instance
   of it.
+
+### 10d. Act III — six beats, and the act where the consecutive cap breaks before the ratio does
+
+| beat | verdict | structure | mode | provenance | writable | budget |
+|---|---|---|---|---|---|---|
+| **8** — the steppe control case | empty | fan stop | Carry, 45–110 s | by-default (open, unresolved) | writable† | 1,360 |
+| **9** — the skewer family | thin | fan stop | Patch at the top of its band, or a Carry — see below | — | writable† | 780 |
+| **10** — the tandoor | empty | fan stop | Carry | by-default (open, identified) | writable† | 1,360 |
+| **11** — yakitori | empty | fan stop | Carry | **by-ruling** | writable† | 1,360 |
+| **12** — Korea's table | empty | fan stop | Carry | **by-ruling** | writable† | 1,360 |
+| **13** — the braai | empty | fan stop | Carry | **by-default (exhausted)** | writable† | 1,360 |
+
+**What R3 would have to name.**
+
+- **Beat 8.** The spine supplies khorkhog, boodog, hot-stone cooking, dung and scrub as
+  fuel, and the Taipei provenance of the restaurant format — that last one a datable
+  record and the beat's own on-the-record correction. R2 is safe. The dagger is one named
+  ethnographer of steppe pastoral cooking, and §7's note that beat 8 "sits closest to
+  plain unsourced" of the five Act III holes means the avenue is open rather than closed.
+- **Beat 9.** The Patch here is unusual and it should be typed carefully. It is not
+  supplementing a partial cut — the satay passage is a whole fan sub-tradition and the
+  Patch has to carry **the entire Ottoman and mangal root**: the mangal as equipment and
+  as an occasion, regional codification, charcoal management along a narrow fire, the
+  19th-century turn of the spit from horizontal to vertical and its 1970s German
+  reinvention. That is more than 765 characters of content, which is the top of §2c's
+  Patch band, so **beat 9 is a Patch by mode and a Carry by size**. §4d's 780 is recorded
+  above for comparability, and the honest figure is nearer 1,360. The dagger is
+  unavoidable and it will not be cleared by sourcing: §4 records the mangal root as
+  having no source that passes the content gate, and neither ASR nor ad measurement
+  changes that.
+- **Beat 10.** The radiant-wall mechanism is determinate physics — an enclosing wall,
+  the fire at the bottom, the food suspended beside it, which is neither of beat 4's
+  families — and the spine supplies the 1930s Peshawar invention of tandoori chicken
+  *together with its live attribution dispute*, which is a U3 the narrator may state
+  honestly. The dagger is a named source for the mechanism, and the two ADR-0008
+  candidates are exactly the ones §4 warns "may well be the recipe-and-menu material the
+  beat says to reject", so the dagger may be cleared by literature sooner than by tape.
+- **Beat 11.** The most R2-safe Carry in Act III, because the beat's content is a
+  sequence of specific facts that fit nowhere else: prohibitions that bore on quadrupeds
+  while grilled wild birds continued, their Meiji-era lifting as the precondition for
+  chicken specifically, binchōtan running hot with little smoke, whole-bird thrift and
+  the named cuts, tare against salt. The Meiji record is datable. **The one source this
+  project has found for the mechanism — `火上料理人：The Meat Nerds` — is barred as tape by
+  the English-only ruling**, and the interesting question this raises is left open here:
+  whether a Carry may *cite* a non-English source it may not play. It is a founder-facing
+  question, it is small, and it recurs for beats 12 and 17.
+- **Beat 12.** Determinate from the spine: the diner as the cook, the heat in the middle
+  of the table, the older marinated court-cuisine lineage against the mid-century arrival
+  of table-top equipment, the recent and economically explained rise of pork belly, ssam,
+  and charcoal against gas in restaurants. The invented-tradition argument is the beat's
+  reason to belong and it is the part most at risk of being written as colour.
+- **Beat 13.** The one beat where this report has already written the work list itself:
+  §4 says narration must carry "braai as claimed national ritual and the Heritage Day
+  campaign, honestly contested, with shisa nyama and sosaties under the one word." The
+  campaign is a named public campaign, which is a citable record. The dagger is one named
+  source for the *contest*, and the beat cannot be written honestly without it — a Carry
+  that asserts the ritual and omits the argument about who "we" are ships the
+  tourism-grade version the beat exists to refuse, and it would do so in the house voice
+  at the house length, which §6e is about.
+
+**Two structural findings about this act that are not about writability at all.**
+
+**Beats 10, 11, 12 and 13 are four consecutive empty beats, and that breaks R6 before any
+ratio is computed.** `narration-craft.md` §2e caps consecutive narration items at **two**
+after merging, and says a third "means the Foray has run out of tape for a stretch long
+enough that the honest actions are the §4c ones: drop fan stops, or ship shorter." Four in
+a row is that condition twice over. **So Act III forces cuts on a rule that has nothing to
+do with the 25 % target**, and any plan that keeps all four is illegal on its face.
+
+**And §2e's merge rule may not apply here, which makes it worse rather than better.** The
+rule is written for "adjacent empty beats in the same **chain**", and Act III is a fan. The
+letter of the rule therefore leaves 10 through 13 as four separate items; the spirit of it —
+§2e's argument is about a listener hearing one continuous recording while the content jumps,
+which is true regardless of structure — would merge them into one item of four traditions,
+which is a strange artefact and would breach the 180 s hard max at 320 s besides.
+**Recorded as an ask on `narration-craft.md` §2e: say whether the merge rule reaches a fan,
+and if it does, say what happens when the merged item exceeds the hard max in a structure
+whose stops are supposed to be announced separately.** Neither reading rescues the run.
