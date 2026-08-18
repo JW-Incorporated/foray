@@ -243,15 +243,27 @@ export class DiagnosticLog {
     }
   }
 
-  /** Empty it. The founder's "clear, drive, copy" loop — a buffer holding three
-      earlier drives makes the drive under test harder to find. `seq` is NOT
-      reset, so a cleared log is still distinguishable from a wrapped one. */
+  /**
+   * Empty it, and REMOVE THE KEY rather than write an empty record.
+   *
+   * Two callers, and the second one is why it removes. The first is the founder's
+   * "clear, drive, copy" loop — a buffer holding three earlier drives makes the
+   * drive under test hard to find. The second is `stopForDataDeletion()`: "Delete
+   * my data" purges the tiers, and a log that answered by writing `entries: []`
+   * back would put a `cp_` key on a device a listener had just asked to be
+   * emptied. Memory is cleared too, or the next `record()` would resurrect every
+   * entry the purge removed.
+   *
+   * `seq` is NOT reset, so a cleared log stays distinguishable from a wrapped
+   * one: `entries[0].seq > 1` with `dropped === 0` means "cleared".
+   */
   clear() {
     this._load();
     this._entries = [];
     this._dropped = 0;
     this.loadError = null;
-    this.save();
+    if (!this.storage) return;
+    try { this.storage.removeItem(this.key); } catch (_) { this.saveErrors += 1; }
   }
 }
 
