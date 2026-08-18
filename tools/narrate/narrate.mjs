@@ -144,7 +144,16 @@ function main(argv) {
     }).text);
     return 0;
   }
-  const file = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1]?.startsWith("--") !== true);
+  /* The first bare argument that is not a flag's value. Walked by INDEX rather
+     than found by value: `args.indexOf(a)` returns the FIRST occurrence, so a
+     value that repeats an earlier token (`--voice narrator --model narrator`)
+     made the previous-token test consult the wrong position. */
+  let file = null;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith("--")) { i++; continue; }
+    file = args[i];
+    break;
+  }
   if (!file) { console.error("no scripts file given"); return 1; }
   const doc = JSON.parse(fs.readFileSync(file, "utf8"));
   const cachePath = flag("--cache", null);
