@@ -305,3 +305,278 @@ strictly better, and it is cheaper — one item's worth of framing instead of tw
 > measured grounds (§2d, film shot-length evidence) and the argument transfers
 > directly: a Foray where every Hinge is 7 s develops a metronome, and a metronome is
 > the sound of machinery.
+
+---
+
+## 3. The segue
+
+Our seams are not radio's seams. A radio feature cuts from a reporter who was in the
+room to tape she recorded herself, that day, for this piece. A Foray cuts from one
+stranger to another stranger — different show, different mic chain, different room,
+different year, no knowledge of each other, no knowledge of us. Nobody has written
+that seam down because until recently nobody had to make one.
+
+The craft that transfers is nonetheless substantial, and it is worth being precise
+about what is borrowed and what is ours.
+
+### 3a. The established craft, and its exact shape
+
+**Alison MacAdam's NPR Training toolbox, "Writing through sound: A toolbox for
+getting into and out of your tape" (2015), is the closest thing to a published
+taxonomy of this move**, and it is worth a script author reading in full. It names
+twelve techniques, six in and six out. It also opens by naming the default and
+calling it out:
+
+> "The most common way we write into tape goes something like this: *Jane Doe,
+> professor of economics at Clemson University, says the policy is short-sighted.*
+> […] Basically, that's 'Person X, who has XX job, says Y about Thing Z.' This
+> approach is OK, and sometimes it's the best choice, but… it's boring. Especially if
+> it's the only way you introduce tape."
+
+Getting **into** tape: *Tease + back ID* (tape first, identify after); *the Hint*
+(inflection foreshadows); *Question → Answer* (the narrator asks, the tape answers);
+*Signpost* ("in order to understand X, we need to talk about Y", "which brings us
+to"); *Set-up → explanation* (general theme, then the specific voice); *Begin a
+thought and let the tape complete it.*
+
+Getting **out**: *"That is the sound of…"*; *React*; *Echo* (repeat a word from the
+tape and build on it); *Take the next step*; *Emphasise / repeat*; *Complete the
+thought or sentence.*
+
+MacAdam also flags the two cautions that matter most to us. On teases: "Teases can
+confuse your listener if the tape isn't catchy enough or the voice sounds similar to
+other voices in your story." And on the unbridged butt cut, which she treats as a
+legitimate technique: "If the voice or idea isn't distinct enough, you'll just confuse
+your listeners."
+
+**Karen Everett's documentary-narration tips** supply the complementary rule, and
+hers is the one that survives translation from picture to tape best. Her sixth tip is
+*"Say Cow? See Cow"* — "avoid saying in narration exactly what we're seeing on
+screen." Her others that transfer: be conversational and read aloud; short sentences;
+active voice; introduce names with a descriptive title first, "so listeners don't miss
+them"; ask *need to know?* of every detail; avoid jargon or define it.
+
+**Mike Ladd, on the radio feature**, supplies the texture rule: "Contrasting textures
+bring both variety and clarity," and it is "far more important to hear *how* someone
+says what they say" than to read the transcript. `segment-length-rules.md` §6d already
+took the assembly consequence of that.
+
+**RTDNA's editing guidance** supplies the constraint: "Don't add sounds that you
+obtained at another scene or from another time or place if adding the sounds might
+mislead the audience… it also encompasses rearranging sounds in time or place."
+`segment-length-rules.md` §2g already reads this as binding on us. **Foray is
+structurally the practice RTDNA is warning about**, which is why two of the rules
+below are integrity rules rather than craft ones.
+
+**Ira Glass's storytelling talks** are widely circulated as the source of the
+*anecdote and reflection* pairing — a sequence of actions, then "somebody's gotta say,
+here's why the hell you're listening to the story" — and the *raise a question, answer
+it* engine. Flagged as **secondary**: the accessible texts are third-party transcripts
+and summaries of talks, not a primary publication, and this document does not rest any
+rule on it. It is recorded because it is the best available account of why a Frame that
+poses a question works better than one that states a conclusion, and §3c's rule is
+independently supported by Everett.
+
+### 3b. The eight seams a Foray actually has
+
+Naming them is most of the work, because a script author's first question is which
+situation they are in, and the answer changes the mode, the length and the
+obligations.
+
+| | seam | mode | notes |
+|---|---|---|---|
+| **S1** | tape → tape, **cross-episode**, beat changes | Frame | the common case; attribution mandatory |
+| **S2** | tape → tape, **cross-episode**, same beat | Frame | two shows on one claim; the seam must not imply they were talking to each other (§3g) |
+| **S3** | tape → tape, **same episode, unmerged** | Hinge | must be marked; narration **required** where the elision exceeds 5 min (`segment-length-rules.md` §6b) |
+| **S4** | tape → **narration item** | Hinge, then the item | the exit line hands off; do not write a Frame *for the narrator* |
+| **S5** | **narration item** → tape | Frame, inside the item's last sentences | the strongest place in the Foray to use *Set-up → explanation* |
+| **S6** | narration → narration | **none — merge** (§2e) | if genuinely unmergeable, the second item opens by naming why it is a new item |
+| **S7** | **act or fan boundary** | Marker | states the structure, then hands to S1 or S5 |
+| **S8** | **engineered handoff** — a beat that belongs to two structures | Marker + Frame, split | barbecue beat 15 → 16 is the worked case; see §7a |
+
+### 3c. The spoiler rule — the single most important segue rule we have
+
+> **A Frame states the question the tape answers. It never states the answer.**
+
+This is the rule that decides whether a Foray is a work made of authorities or a
+narrated essay with illustrations, and it is the one a fluent script author will break
+first, because stating the claim is the easiest way to make a seam feel smooth.
+
+Two established supports, from different traditions, pointing the same way: Everett's
+*"avoid saying in narration exactly what we're seeing on screen"*, and MacAdam's
+verdict on "Person X, who has XX job, says Y about Thing Z" — "OK, and sometimes it's
+the best choice, but… it's boring."
+
+The Foray-specific reason is stronger than either, and it is about attention rather
+than about craft. **In a Foray the tape is the evidence for the beat's claim.** If
+narration states the claim first, the tape becomes confirmation of something the
+listener has already accepted, and a listener does not audition confirmation — they
+wait it out. Two minutes of the best tape in the pool becomes two minutes of nothing
+happening. The spoiler rule protects the thing the product is for.
+
+Note the spec already holds a narrow version of this: `04_VOICE_AUDIO_SPEC.md`, "No
+spoilers: narrative-format episodes get topic-shaped intros, not content summaries."
+The rule above is that principle generalised from an episode intro to every seam.
+
+**The mechanical check.** Delete the narration and play the tape. If nothing is lost,
+the narration was redundant. If the tape is now unintelligible or unattributed, the
+narration was doing its job. Run this on every Frame.
+
+### 3d. Attribution, and which side of the seam it goes on
+
+`segment-length-rules.md` §6c already requires that every cross-episode bridge names
+its source. Three additions:
+
+- **Attribute on the way in, not on the way out.** Everett's *Title First* —
+  "introduce names with descriptive titles so listeners don't miss them" — and
+  MacAdam's caution about teases both cut this way. Attribution after the fact makes a
+  listener re-audition what they just heard, and a listener who is doing that has
+  stopped hearing what is playing now. MacAdam's *tease + back ID* is a real technique
+  and it is the exception: usable **once or twice in a Foray**, only where the tape's
+  first line is arresting on its own, and never where the previous voice sounded
+  similar.
+- **Name the show once per source per Foray.** Thereafter *"the same conversation"*,
+  *"later in the same interview"*, or the speaker's surname alone. Full re-attribution
+  on every return costs 8–12 words each time, and by §4d that is real money.
+- **A Carry names the literature.** See §5f — this is the rule that separates an
+  honest narration beat from an assertion by an anonymous voice.
+
+### 3e. Cross the distance once, and name only the axis that matters
+
+Our seams cross place, time, discipline, register and room at once. The instinct is to
+locate the listener fully. It is wrong.
+
+> **One axis per seam.** A Frame that crosses a large discontinuity names *one* — the
+> one the beat needs — in a single clause.
+
+Argentina to Jamaica, barbecue beats 14 → 15, crosses about five thousand miles, two
+languages, three centuries and two entirely different arguments. The seam should name
+the one that does editorial work, which here is neither the geography nor the date: it
+is that both are answers to the same question about fire, which is what makes the fan
+a fan. **Inference**, and the reasoning is `segment-length-rules.md` §2a's measured
+finding that the orienting response to a voice change does not habituate: the listener
+is already spending attention on the new voice, so a Frame that hands them three labels
+to file will get one filed and two dropped, and the author does not choose which.
+
+### 3f. Corrections — correct forward for framing, backward for facts
+
+The riskiest narration we write, because it is the narrator disagreeing with the only
+people in the room who know anything.
+
+> **Framing goes before the tape. Factual corrections go immediately after it.**
+
+Framing changes how the listener *hears* what is coming, so it is useless afterwards:
+barbecue beat 15's requirement that the tape's low-smoke account "be framed as the
+tradition's account" only works if it precedes it, because by the time the segment
+ends the listener has already filed the claim as fact. A factual correction is the
+reverse — pre-empting it spends the listener's attention on an error they have not yet
+made, and it makes the tape sound like a trap. Beat 15's *ch'arki* / *barbacoa*
+correction belongs immediately after `#555`, not before it.
+
+Four rules on the mode:
+
+- **Adjacent, or not at all.** A correction that arrives a beat later has let a false
+  belief set. If the seam cannot hold it, the beat's assembly is wrong.
+- **Correct the claim, never the speaker.** "That lineage is disputed" and "she has
+  the etymology wrong" are the same fact and only one of them is publishable. The
+  speakers did not consent to being in our Foray and they are not here to answer.
+- **A correction cites.** It says where the other account comes from. A narrator that
+  contradicts a named historian on its own unsourced authority is the worst sentence
+  the product can emit.
+- **Never use a correction to bend tape toward a beat.** If the correction is doing
+  the work of making off-beat tape fit, the tape is off-beat and the answer is
+  rejection. This is the bakestone failure wearing a citation.
+
+### 3g. The two integrity rules
+
+These are not style. They are the RTDNA constraint made specific, and they are hard
+rejects (§6, R5).
+
+- **Never let grammar cross a cross-episode seam.** MacAdam's *Begin a thought and let
+  the tape complete it* and *Complete the thought or sentence* are excellent
+  techniques and they are **forbidden across S1 and S2**. A grammatical hand-off
+  asserts that the two utterances are one thought, and when the speakers were recorded
+  years apart and have never heard of each other, that assertion is false. Use them
+  freely within one voice (S3) or inside a single beat's own tape.
+- **Never let a Hinge imply a reply.** "But not everyone agrees", "*[speaker B]* sees
+  it differently", "*[speaker A]* would push back on that" — each of these
+  manufactures a conversation. The publishable form attributes the disagreement to the
+  field rather than to the pairing: *"How much weight that evidence bears is
+  contested."* Then the beat, not the edit, carries the disagreement.
+
+### 3h. Silence, loudness and the bridged seam
+
+`player/seam-gap.js` returns **0** when `bridged` is true — "Narration is a better
+marker than silence and it carries the 0.5 s padding of its own spec. Silence on top
+of it is dead air, not a beat." So at every bridged seam, the only thing separating two
+strangers is ~0.5 s of pad and the narrator's voice. Three consequences for the words.
+
+- **The narration has to *be* the marker.** It must be audibly a different act from
+  the first syllable, which in copy terms means: never open a Hinge with a sentence
+  that could plausibly be the previous speaker still talking. No mid-thought
+  connectives — "and so", "which is why", "but the thing is". Open on a noun phrase or
+  a short declarative.
+- **Narration has a sacrificial head too, and it is about 1 s.**
+  `segment-length-rules.md` §2a establishes on measured grounds that a segment's first
+  ~4 s carries nothing load-bearing, because the listener is re-orienting to a new
+  voice and room. The narrator's voice recurs and is loudness-normalised, so the cost
+  is smaller — but §2a's finding is specifically that this cost **does not habituate**,
+  so it is not zero. **Rule: no narration item opens on a load-bearing proper noun,
+  number or date.** Two or three words of orientation first. *"Two thousand miles
+  south, the same problem…"* before the name.
+- **The Hinge is the ear's calibration point.** AES TD1004.1.15-10 warns of loudness
+  jumps "of up to 7 LU" when externally-produced material is inserted into a program,
+  and every cross-episode seam is exactly that insertion. A loudness-normalised
+  narrator between two differently-mastered shows is the listener's reference level.
+  So: **no dramatic pauses, no whispered asides, no trailing off.** The narrator is the
+  most level-consistent thing in the Foray, on purpose. This is a copy rule as much as
+  a mastering one, because trailing-off prose produces trailing-off audio.
+
+**One recommendation for the pipeline, not built here.** At an act boundary a listener
+benefits from *both* a beat of silence and a Marker — the silence says "that section is
+over", the Marker says what the next one is. `seamGapSec({ bridged: true })` currently
+returns 0, so that combination cannot be authored. An optional `pre_gap_sec` on a
+narration item would allow it, and act boundaries are the only place it is needed.
+Recorded as a request to whoever owns the pipeline document, not as a change.
+
+### 3i. Never bridge into tape you have not heard
+
+`grilling-history-coverage.md` says it twice: quotations from `bbqc-moss-school` and
+from The Grill Coach are "lightly cleaned and indicative," and "anyone writing
+narration against it should listen to the audio at the timestamp given." The SYSK
+transcript is "machine-generated and undiarized."
+
+> **A Frame or Hinge that quotes, echoes or completes the tape's own wording requires
+> that the audio has been heard, and the script records that it was.**
+
+MacAdam's *Echo* — "the reporter repeats a word or phrase from the tape, and builds on
+it" — is one of the best out-of-tape techniques available and it is the one that fails
+catastrophically on ASR text, because it puts a word in the narrator's mouth that the
+speaker may never have said. Everything else can be written from a transcript. Echo,
+*Complete the thought*, and any direct quotation cannot.
+
+### 3j. One seam, one job
+
+> A single transition item may not simultaneously announce a fan, correct the tape and
+> supply a missing antecedent.
+
+Twelve seconds does not hold three jobs, and a listener will take the first one. When
+a seam needs more than one, split it: **Marker, then Frame** as two items, or write the
+antecedent as a Patch *before* the Frame so the attribution lands last and closest to
+the tape. §7a is a seam that needed three things and shows the split.
+
+### 3k. Every seam you do not make is a hinge you do not write
+
+The cheapest narration is the narration that is not needed, and this gives
+`segment-length-rules.md` §6a's merge rule a second argument it did not have.
+
+A cut's cost used to be counted in seconds of bridge and in the payback arithmetic.
+Now it also has a character price: **a Hinge is 50–120 characters and a Frame with
+attribution is 60–150.** So a merge that removes one seam removes about **250
+characters** of billable narration and one opportunity to write something wrong.
+
+Worked in §7a: barbecue beat 15's two segments have an elided gap of 50.7 s, which
+lands in `segment-length-rules.md` §6a's **"should merge"** band, and the coverage
+report keeps them separate. Merging removes a Hinge and simplifies where the
+*ch'arki* correction goes. That is a live assembly question rather than a ruling from
+this document, and it is raised here because the narration cost is a new input to it.
