@@ -283,7 +283,7 @@ is.
 
 | Episode | Table claimed | Verified over the fourteen |
 |---|---|---|
-| `more-than-jerk-chicken-jam` | jerk, **maroon, pit, fire** | maroon 10 — **`pit` does not occur at all**; the one `fire` is *"firearms"* in a list of trade goods; the one `wood` is *"Zaimaka, Land of Wood and Water"*; **`jerk` occurs zero times** in an episode titled *More Than Jerk Chicken* |
+| `more-than-jerk-chicken-jam` | jerk, **maroon, pit, fire** | maroon 10 — **`pit` does not occur at all**; the one `fire` is *"firearms"* in a list of trade goods; the one `wood` is *"Zaimaka Land of Wood and Water"* (the ASR's punctuation, unrepaired); **`jerk` occurs zero times** in an episode titled *More Than Jerk Chicken* |
 | `jamaica-the-connection-bet` | jerk, maroon | maroon 37, jerk 2, and **zero for the other twelve** — no fire, smoke, pit, grill, wood, charcoal, butcher or pimento anywhere in 8,010 words |
 | `heritage-food-stories` | fire, grill | 4 hits total: `barbecue` and `grill` are the **same 7.5-second aside**; the one `fire` is *"the fire for resistance"*, a metaphor; the one `wood` is *"Woodrow"* |
 | `origin-stories-episode-09` | fire, grill | accurate (fire 17), and the episode was already cut |
