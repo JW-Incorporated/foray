@@ -480,9 +480,16 @@ Four rules on the mode:
 - **Correct the claim, never the speaker.** "That lineage is disputed" and "she has
   the etymology wrong" are the same fact and only one of them is publishable. The
   speakers did not consent to being in our Foray and they are not here to answer.
-- **A correction cites.** It says where the other account comes from. A narrator that
-  contradicts a named historian on its own unsourced authority is the worst sentence
-  the product can emit.
+- **A correction cites — always in the script, on air when it contradicts a person.**
+  The script always records where the other account comes from. It is named *on air*
+  when the correction contradicts a named speaker's stated position, and not when it
+  corrects an incidental point of fact such as an etymology, where an on-air citation
+  would cost more than the correction. A narrator that contradicts a named historian
+  on its own unsourced authority is the worst sentence the product can emit.
+- **Bound rather than contradict where that is honest.** If the speaker's argument
+  survives the correction, say what the correction is *about* rather than that they were
+  wrong. §7a does this with beat 15's etymology: the syncretism argument stands, and it
+  is only the route of the word that is separate.
 - **Never use a correction to bend tape toward a beat.** If the correction is doing
   the work of making off-beat tape fit, the tape is off-beat and the answer is
   rejection. This is the bakestone failure wearing a citation.
@@ -560,10 +567,26 @@ speaker may never have said. Everything else can be written from a transcript. E
 > A single transition item may not simultaneously announce a fan, correct the tape and
 > supply a missing antecedent.
 
-Twelve seconds does not hold three jobs, and a listener will take the first one. When
-a seam needs more than one, split it: **Marker, then Frame** as two items, or write the
-antecedent as a Patch *before* the Frame so the attribution lands last and closest to
-the tape. §7a is a seam that needed three things and shows the split.
+Twelve seconds does not hold three jobs, and a listener will take the first one.
+
+**The remedies, in order, and the order matters because the first is nearly always
+available:**
+
+1. **Compress.** Three jobs fit in 25 well-chosen words more often than an author
+   expects. §7a's third item carries an axis, an attribution and a forward framing in
+   28 words.
+2. **Move a job to the other side of the tape.** A factual correction goes after
+   (§3f); an antecedent goes before. Two jobs on opposite sides of a segment are two
+   items that are not adjacent.
+3. **Move a job to a different seam.** A fan announcement belongs at the boundary, not
+   at the seam after it.
+4. **Promote to a narration item.** If the cargo is genuinely 20 s or more, it is a
+   Patch, and a Patch is allowed to be a Patch.
+
+**What is never the remedy: two transition items back to back.** That is the S6 defect
+in miniature — same voice, ~0.5 s of padding, nothing for the listener to attribute the
+boundary to — and §2e's merge argument applies to it in full force. Split means "two
+items with tape between them", never "two items in a row".
 
 ### 3k. Every seam you do not make is a hinge you do not write
 
@@ -962,10 +985,20 @@ vocabulary — the "evidence that counts" paragraph of every spine beat is a rea
 keyword set, and a Carry that contains none of it is very likely relocatable.
 
 **R3 — the evidence test.**
-Every factual assertion in a Patch or Carry is attributable to a named source recorded
-in the script, and at least one of those sources is named **on air** (§5f). No source
-means the sentence is a banned hedge (§5e) or is cut. An unfilled attribution slot is a
-generation-blocking failure, not a warning.
+**Every factual assertion in any mode** is attributable to a named source **recorded in
+the script** — a Frame that supplies an antecedent is asserting it on the narrator's
+credit too, so the recorded-source half of this test is not confined to the long modes.
+**On-air naming** is what is confined to Patch and Carry, where at least one source is
+spoken (§5f). No source means the sentence is a banned hedge (§5e) or is cut. An
+unfilled attribution slot is a generation-blocking failure, not a warning.
+
+**One exception, and it is narrow: the synthesis Carry.** A beat whose claim is a
+conclusion drawn from the Foray's own preceding beats — alcohol beat 16, the
+classification key; both spines' codas — attributes **to the Foray's own prior tape**,
+and says so: *"everything in that key came from the people you have just heard."* That
+is real attribution, it is checkable against the assembly, and it is available only to
+a beat that is genuinely a synthesis. It is not available to a Carry-by-default that
+would like to skip R3.
 
 **R4 — the spoiler and redundancy test.**
 For Frame and Hinge: does the script state the claim the adjacent tape makes? Reject
