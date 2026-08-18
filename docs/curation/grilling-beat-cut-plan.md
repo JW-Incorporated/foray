@@ -30,10 +30,11 @@ The full arithmetic is in §2 and §3. The short form:
   target requires cutting eight.** §4c of `narration-craft.md` forbids both: "chain links
   are never dropped."
 - So the rule cannot be satisfied on today's tape at 40 beats. **What can be satisfied is
-  the rule's own premise**, and §4b states it: "the number of beats a Foray can carry is a
-  function of how much tape it has, not of how many holes its spine has. Tape funds
-  narration." There are therefore exactly two honest routes — buy tape, or ship a smaller
-  Foray on purpose — and §4 recommends the second now and the first next.
+  the rule's own premise**, and §4b states it: "**the number of empty beats a Foray can carry
+  is a function of how much tape it has, not of how many holes its spine has**", and, a few
+  sentences later, "tape is what *funds* narration." There are therefore exactly two honest
+  routes — buy tape, or ship a smaller Foray on purpose — and §4 recommends the second now and
+  the first next.
 - The recommended ship-now assembly is **22 beats, 53.6 minutes, 24.8 % narrator**, which
   is inside the target with room. It cuts nine fan-class beats legally and **nine chain
   links in breach of §4c**, and §4 states that breach rather than hiding it.
@@ -184,7 +185,7 @@ The Carry budget at each bound, on the stage-one machinery of 524 s and the tape
 | bound | narration allowed | less machinery | **empty beats carryable** | of 12 needed |
 |---|---|---|---|---|
 | target 25 % | 912.5 s | 388.5 s | **4** | 8 short |
-| ceiling 35 % | 1,474.3 s | 950.3 s | **11** | **1 short** |
+| ceiling 35 % | 1,474.0 s | 950.0 s | **11** | **1 short** |
 
 Checked at the boundaries rather than trusted: at 4 Carries the share is 23.57 % and at 5 it
 is 25.24 %, so 4 is the target's true limit; at 11 it is 33.90 % and at 12 it is 35.15 %, so
@@ -207,8 +208,13 @@ Each new segment adds 180 s of tape and 7 s of seam:
 narration = 1,484 + 7n   ≤   (2,737.4 + 180n) / 3   →   n ≥ 10.8
 ```
 
-**Eleven new segments — about 33 minutes of tape, across at least four distinct episodes for
-M4 — and the result is a 105-minute Foray at 24.9 %.**
+**Eleven new segments — about 33 minutes of tape — and the result is a 105-minute Foray at
+24.9 %.** M4 is not the binding constraint on how they are distributed: at 36 segments and
+4,717.4 s of tape the cap permits 9 segments and about 1,180 s per episode — measuring against
+segment runtime, per §6b item 5 — so two new episodes at six and five segments would clear it
+on both measures. What binds is editorial rather than mechanical: no single episode is likely
+to serve five unrelated beats, which is the same finding §9 of the coverage report reached from
+the other direction when it named episode diversity as the new constraint.
 
 **Or buy tape that closes the holes**, which is the same money spent better. Each beat closed
 gains 180 s of tape *and* sheds 80 s of Carry:
@@ -291,6 +297,14 @@ the gate removes:
 - **Drop two SYSK cuts** to clear the 28 % count breach: beat 5's 45 s second cut, since beat
   5 is strong on `bbqrn#1437` alone, and beat 6's 36 s, since beat 6 takes `#700` instead.
 
+**That last move needs stating rather than assuming, because it moves a segment between two
+beats.** `#700` is listed by the coverage report as beat 14's *second* cut and as beat 6's only
+non-SYSK candidate, and its beat 6 entry warns that "admitting it here competes with Act III."
+This plan resolves the competition in beat 6's favour: **beat 14 keeps `#1205`, its Chosen cut,
+and stays strong on one segment**, which the report supports — `#1205` "is the beat's consequent
+stated by the person it is about." Beat 6 therefore has tape and takes a Patch rather than a
+Carry, which is worth 48 s. Coverage §10a records the same choice as the assembly's to make.
+
 | episode | segments | seconds | of segments | of runtime |
 |---|---|---|---|---|
 | `grill-coach-adrian-miller` | 5 | 593.8 | 23.8 % | 24.58 % |
@@ -304,6 +318,14 @@ the gate removes:
 
 **Every episode clears M4 on both measures**, the tightest being Grill Coach at 24.58 % of
 runtime. Mean segment length is 115.0 s, so D3's ≥ 90 s holds with margin.
+
+**One reconciliation, because the reader cannot otherwise get from §1 to here.** The four
+drops above come to 322.6 s, and 2,737.4 − 322.6 is 2,414.8, not 2,416.0. The 1.2 s
+difference is inherited rounding: the table above sums the coverage report's own per-segment
+durations, and those sum to 2,738.6 for the base where figure C's rounded total is 2,737.4.
+**Every figure in this section is computed from the per-segment sum**, which is the more
+precise of the two, and the discrepancy moves the runtime by a second and the share by
+nothing.
 
 ### 4b. The beats, and the arithmetic
 
@@ -322,7 +344,7 @@ is four Carries.** Spent chain-first, per §4c's allocation rule:
 |---|---|---|
 | **20** — the West African inheritance | the spine: "cut it and the strongest version of the Foray's central argument is unavailable" | 80 |
 | **16** — the word named a frame | Act IV's first link, and the first half of the authorship argument | 80 |
-| **3** — the low-and-slow bargain | Act I's pivot; the coverage report calls it "a chain hole, and a load-bearing one" | 80 |
+| **3** — the low-and-slow bargain | Act I's pivot; the coverage report calls it a "chain hole, and a load-bearing one" | 80 |
 | **31** — refrigeration | Act V's hinge, and the only beat that explains the Foray's central irony | 80 |
 | **40** — the coda | by-design and undroppable; at the 45 s Carry floor, per coverage §10f | 45 |
 
@@ -344,8 +366,10 @@ enough that the SYSK ruling decides it — see §5.**
 - **No two adjacent empty beats anywhere.** Beat 3 sits between strong beats 1 and 4; beat 16
   between strong 15 and 18; beat 20 between thin 19 and strong 21; beat 31 between thin 30 and
   strong 32; beat 40 after strong 38. So §2e's merge rule never fires and the two-item
-  consecutive cap is never approached — where the 40-beat spine breaks the cap outright at
-  10–13 and again at 33–36.
+  consecutive cap is never approached — where the 40-beat spine breaks the cap outright in
+  three places: 10–13, 33–36, and **25–29**, which is five consecutive beats with no playable
+  tape once beat 27's double-booking is accounted for, in the act the spine calls the most
+  dangerous place for a hole.
 - **Two placement constraints, recorded because they are load-bearing.** Beat 7's Patch must
   precede its tape, since the beat exists so the power clause arrives before Act IV; so beat
   6's Patch must also precede its own tape, or 6-then-7 is two narration items in a row with
@@ -353,8 +377,9 @@ enough that the SYSK ruling decides it — see §5.**
   anecdote, which is the right order anyway — the pattern, then the instance.
 - **Beats 21 and 22 survive with their strong tape, consecutively, in the same voice, in tape
   order**, which is what §5b of the coverage report chose them for.
-- **D1** at 53.6 min allows 5 starts per rolling 600 s; 21 segments average 3.9. The worst
-  window still needs checking at assembly time.
+- **D1** at 53.6 min sits in the 45-to-120-minute band of `segment-length-rules.md` §5c's cut
+  budget, which allows **6** segment starts per rolling 600 s; 21 segments average 3.9. The
+  worst window still needs checking at assembly time.
 
 ### 4d. What it costs, said plainly
 
@@ -371,6 +396,32 @@ is unwritable and its tape cannot ship without it. **The other eight are cut for
 is precisely the count §3 predicted, which is the one consolation available: the plan does not
 break the rule any harder than the arithmetic requires.
 
+**And one of the nine breaks a second, sharper instruction, which has to be said in its own
+paragraph rather than absorbed into a list.** Beat 29 is the only beat in the spine with an
+explicit protection written against exactly this situation:
+
+> "Explicitly: **do not cut this beat to save time.** If runtime is short, shorten 26–28 and
+> keep 29."
+
+The spine says it twice — §2 adds "do not cut beat 29; without it the three region beats are a
+listicle" — and the coverage report resolves it into an instruction of its own: with 26 and 28
+empty and 27 thin, "narrate 29 well and let it carry the region material on its own."
+**This plan cuts 26, 27, 28 and 29, which is the precise inverse of what it was told to do.**
+§2b even uses the coverage report's instruction to reprice beat 29 up to 150 s, two sections
+before §4d cuts it — and the repricing is the reason: a beat that has to absorb three cut
+neighbours costs nearly twice the standard Carry, so it is both the most protected beat in the
+spine and the most expensive one left after stage one.
+
+**That is not a defence, it is the mechanism of the failure.** The honest statement is that
+the plan cannot afford the one beat the spine forbids it to cut, and that §3a's remedy is the
+only thing that fixes it: five sourced segments buy back all nine chain links, beat 29 among
+them. **Of everything in §4d, this is the cut a founder should overturn first**, and the price
+of overturning it is exactly stateable: 150 s of narration, which on this tape base is
+**3.35 points of narrator share — a 23-beat Foray of 56.0 minutes at 28.16 %.** Over target,
+under ceiling. A reader who would rather keep beat 29 than keep the target should make that
+trade deliberately, and it is the only single-beat decision in this document that moves the
+verdict.
+
 What the listener loses, in the spine's own terms. **Act III keeps three stops of eight** — the
 skewer family, the asado and jerk — so the entire radiant and table-top family goes, along
 with the fan's control case and its one non-American case of fire bound to national identity.
@@ -378,12 +429,18 @@ The spine warned about that last one directly: cut beat 13 and "the American rec
 parochial." **Act IV loses its prologue's second half and its entire regional stretch**, so
 Texas, the Carolinas, Kansas City and Memphis — the four styles the founder named — are absent,
 and beat 29's argument about why the map has the shape it does goes with them. **Act V loses
-four of its ten beats**, including the gas appliance that closes beat 4's loop and the
+five of its ten beats**, including the gas appliance that closes beat 4's loop and the
 competition circuit that explains how modern barbecue tastes.
 
+Act by act, what the plan keeps: **Act I four of five, Act II both, Act III three of eight, Act
+IV eight of fifteen, Act V five of ten.** The two chains the spine cares most about survive at
+roughly half length each, and the fan survives as a demonstration of three cases rather than a
+tour of eight.
+
 **What survives is the through-line.** Fire and mechanism, the crowd and the power, three world
-answers, the word, the inheritance, the labour system, the archive, the enterprise, the policy,
-the manufactured backyard, the inversion, the unconcluded argument, and the coda. **The two
+answers, the word, the adopted apparatus, the animal, the inheritance, the labour system, the
+archive, the enterprise, the policy, refrigeration ending the necessity, the manufactured
+backyard, the inversion, the unconcluded argument, and the coda. **The two
 clauses of §1 of the spine both arrive, and the authorship argument arrives on tape rather than
 on our own credit.** That is the Foray worth shipping on today's coverage, and it is a
 different and smaller thing than the spine describes.
@@ -396,10 +453,16 @@ the tape turned out to be, and the comparison is instructive rather than critica
 
 **It does not clear the target, and it does not clear M4 either.** Five of its eighteen beats
 would be carried by Grill Coach segments — 21, 22, 24 and two on 38 — which is **31 % of its
-segments and 28 % of its runtime**, a double M4 breach larger than the base's. Satisfying M4
+segments and 28 % of its runtime**, a double M4 breach larger than the base's. Those two
+percentages count beat 24 as holding **two** segments, its Miller cut and its SYSK one, which
+the coverage report calls complementary rather than competing; on a 15-segment reading where
+beat 24 holds only Miller they are worse still, 33 % and 29 %. Satisfying M4
 costs it two of those five, so beat 24 falls back to SYSK and beat 38 loses its contest half,
 leaving **1,650 s of tape across 14 segments and 802 s of narration: 40.9 minutes at
-32.71 %** — under the ceiling, over the target. Two of its choices are now known to be wrong
+32.71 %** — under the ceiling, over the target. That narration is 13 seams at 7 s = 91, four
+Markers = 60, three Corrections = 30, three Patches at 32 s = 96 — beats 6, 37 and **24,
+which falls to thin once M4 takes its Miller cut** — and seven Carries, six at 80 s plus the
+coda at 45, = 525. Two of its choices are now known to be wrong
 on the evidence: **beat 27 is unwritable and has no tape of its own**, and **beat 2's only
 candidate is committed to beat 15**, so two of its eighteen beats are Carries where the short
 spine assumed content.
@@ -417,8 +480,9 @@ chosen after sourcing are different documents, and the second is the assembly's.
 1. **The SYSK register ruling** (coverage §2b, §9 item 9). The plan's margin is 0.19 points and
    five of its twenty-one segments are SYSK. Rule the register out and 491.3 s of tape leaves,
    beats 7, 19 and 30 return to empty and become Carries rather than Patches, and the plan
-   lands near **31 %** — under the ceiling, over the target — and needs re-assembling rather
-   than recomputing, because Grill Coach would then hold 5 of 16 segments and breach M4 again.
+   lands at about **31.8 %**, on 1,924.7 s of tape across 16 segments against 896 s of
+   narration — under the ceiling, over the target — and it needs re-assembling rather than
+   recomputing, because Grill Coach would then hold 5 of 16 segments and breach M4 again.
    **This is not a sensitivity, it is a dependency.** It also removes the prior tape beat 29's
    synthesis attribution would have relied on, per coverage §10e.
 2. **Five sourced segments aimed at empty chain links** (§3a). Buys back all nine chain links
@@ -439,12 +503,14 @@ chosen after sourcing are different documents, and the second is the assembly's.
 
 ### 6a. Spine amendments — recommended, not made
 
-Two are already pending in the coverage report's §8, on beats 22 and 27. A third is
-recommended here, and one of the two pending ones gains a second reason.
+Two are already pending: the beat 27 mustard recommendation in the coverage report's §8, and
+the beat 22 restatement in that report's §5 beat 22 entry. A third is recommended here, and
+one of the two pending ones gains a second reason.
 
 1. **Beat 33 — narrow it or accept it is out.** Coverage §10f finds it the one unwritable empty
-   beat in the spine: two of its four comparative legs are themselves empty beats, and its
-   payload claim about women in Black barbecue businesses is sourced nowhere in the corpus. A
+   beat in the spine: two of its four comparative legs are unavailable — beat 13 is empty and
+   beat 36 is empty, while beat 37 is thin on tape that does not reach the credit question — and
+   its payload claim about women in Black barbecue businesses is sourced nowhere in the corpus. A
    narrower beat confined to the two legs the Foray plays — the asador as a social office
    against the postwar grill's advertising — would be writable and would be a smaller beat.
    §6d's third route applies: "a beat whose claim cannot be written *or* sourced may be a beat
@@ -469,10 +535,11 @@ recommended here, and one of the two pending ones gains a second reason.
    with the avenue **exhausted** on a clean negative. The distinction is operational, because
    §2d's rejection posture turns on whether sourcing can help. Coverage §10a carries the table.
 2. **§4d's per-beat model does not see two real costs.** A thin beat whose only candidate is
-   committed to another beat has no tape, so it costs a Carry and not a Patch — that is beats 2,
-   6 and 27, and 780 characters becoming 1,360 three times over. And a Carry told to absorb its
-   neighbours' material is at the soft max, not the mid-band — that is beat 29 at about 2,550
-   characters.
+   committed to another beat has no tape, so it costs a Carry and not a Patch — that is beats 2
+   and 27 outright, and beat 6 whenever an assembly leaves `#700` with beat 14, so 780
+   characters become 1,360 twice over and a third time conditionally. And a Carry told to absorb
+   its neighbours' material is at the soft max, not the mid-band — that is beat 29 at about
+   2,550 characters.
 3. **§4b's M4 caveat is half a caveat.** It catches the Grill Coach runtime breach at 25.002 %
    and misses the larger SYSK one at 7 of 25 segments, 28.0 %. See §1a.
 4. **§2e's merge rule does not say whether it reaches a fan.** Act III's beats 10 to 13 are four
@@ -514,6 +581,7 @@ So the field belongs on the **assembly**, scoped to the Foray, and nowhere else:
   the gate" — and a pipeline that stores them in one field cannot tell a fan stop dropped for
   budget from a Carry that came back as filler.
 
-**And the reason must never be deleted**, per §6c's discipline of label, never exclude. The next
+**And the reason must never be deleted**, per `narration-craft.md` §6c's discipline of label,
+never exclude — which is this report's own phrase, quoted back at it. The next
 assembly needs to know that beat 13 was cut because Act III could not be funded and not because
 braai does not matter.
