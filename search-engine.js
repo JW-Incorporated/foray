@@ -312,11 +312,11 @@ function compiledPattern(key, build) {
   return re;
 }
 const longTermPattern = (t) =>
-  compiledPattern("L " + t, () => new RegExp("(?<![a-z0-9])" + t + LONG_INFLECTIONS + "(?![a-z0-9])"));
+  compiledPattern("long:" + t, () => new RegExp("(?<![a-z0-9])" + t + LONG_INFLECTIONS + "(?![a-z0-9])"));
 const shortTermPattern = (t) =>
-  compiledPattern("S " + t, () => new RegExp("\\b" + t + SHORT_INFLECTIONS + "\\b"));
+  compiledPattern("shortText:" + t, () => new RegExp("\\b" + t + SHORT_INFLECTIONS + "\\b"));
 const shortTagPattern = (t) =>
-  compiledPattern("T " + t, () => new RegExp("^" + t + SHORT_INFLECTIONS + "$"));
+  compiledPattern("shortTag:" + t, () => new RegExp("^" + t + SHORT_INFLECTIONS + "$"));
 const hitText = (text, t) =>
   (t.length < 4 ? shortTermPattern(t) : longTermPattern(t)).test(text);
 const hitTag = (tag, t) => {
