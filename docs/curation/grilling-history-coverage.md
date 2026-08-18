@@ -395,6 +395,21 @@ third strong candidate and is held as the **alternate**, not added. §5 of the s
 predicted beat 1 would be over-supplied and it is the only prediction of over-supply
 that held. Three segments on the opening beat is how a Foray starts bloating.
 
+**Re-read 2026-08-18, and the cap holds.** The episode was re-transcribed (§2d) and
+the tape between and around the three cuts is now readable. It contains more good beat
+1 material — Wrangham's chimp-diet experiment at Gombe and Jane Goodall's loincloth
+condition (300–450), and the fire-as-predator-defence argument for *Homo erectus*
+sleeping on the ground (647–678). Both are beat 1 colour on a beat that already has
+its claim and the contest over its claim, so **neither is cut**; the point of the cap
+is that good tape for a filled beat is not a reason to add to it. Two things in the
+episode are unusable on other grounds and are recorded so nobody re-derives them: the
+programme proper ends at 987 s and everything after 1,027 s is a **sponsor-funded
+"Being Human Bonus" segment** underwritten by the Leakey and Baumann Foundations
+(`ADR-0008`), and its subject is modern nutrition and the standard American diet,
+which is off-spine in any case. **Nothing here for beats 2, 3 or 6**: the episode has
+no preservation content, no collagen or tenderness mechanism, and no food-sharing
+economics.
+
 ### Beat 2 — smoke was preservation before it was flavour — **thin**
 
 **Only candidate:** the preservation passage inside
@@ -436,6 +451,16 @@ beat 19 in any case.
 once, the evaporative stall and what wrapping does about it, Maillard and the bark,
 why smoke deposits on a moist surface. §5 predicted this beat would be
 **over-supplied**. It is empty — see §7.
+
+**Still empty after the 2026-08-18 re-transcription, and now on a searched negative.**
+Both re-read episodes that could plausibly have carried the mechanism were checked for
+it directly. `bbqrn-argentina-open-fire` has **zero** occurrences of collagen,
+connective tissue, rendering, tenderness or breaking down across 6,459 words: Frugoni
+manages heat by hand-count and ember bed, which is beat 14's craft, and never says what
+the heat is doing to the meat. `origin-stories-cooking-human` has none of it either.
+The beat's own near-miss `#2018` is unchanged — durations without a mechanism. **This
+beat's problem is confirmed as subject-matter rather than availability**, like beat 20:
+the mechanism is food science, and the pool holds practitioners and historians.
 
 ### Beat 4 — two technologies, one word — **strong** (on a proposed new cut)
 
@@ -664,6 +689,19 @@ would, and under the English-only ruling they cannot be used.
 
 **Fan hole.** Costs the fan its clearest demonstration of beat 6 running in reverse.
 
+**Confirmed 2026-08-18, and the prediction above held exactly.** The episode was
+transcribed and read. Its whole Korean-grill content is **7.5 seconds** at 759.86 →
+767.32 — *"Korean barbecue has become a global social experience. The communal grill
+at the center of the table is a whole vibe"* — one line in a closing list of dishes
+that also names kimchi, bibimbap, japchae and Korean fried chicken. Below the 30 s
+floor, no history, no economics, no diner-as-cook mechanism, and squarely inside beat
+12's *"reject: menu explainer."* The episode is genuinely about the ban on Korean
+language and food under annexation and the demonising of kimchi, which is a real
+subject and a different one. **Beat 12 stays empty and stays a permanent narration
+beat**, and the paragraph above is now a confirmed prediction rather than an
+inference from an episode description — which is worth noting, because §2c records
+two earlier cases where a description did *not* survive contact with the transcript.
+
 ### Beat 13 — the braai asked to do political work — **empty** (fan)
 
 **Nothing, and the negative is unusually clean.** Zero episode-level hits for
@@ -704,10 +742,34 @@ the first gap. The second is a real loss and should be flagged to stage 4.
 parrilla's side firebox, and cooking only once the embers glow red) is the beat's
 coal-management evidence and is the substitute if `#1205` is dropped.
 
-**Under-cut, probably.** This is the episode where the missing ASR transcript costs
-most: 2,414 s of an English-speaking asador, of which eight cuts exist and none is
-the asador-as-office material the beat asks for. Re-transcribing it is the cheapest
-available improvement to Act III.
+**Not under-cut after all — answered 2026-08-18.** This section previously read
+*"under-cut, probably … re-transcribing it is the cheapest available improvement to
+Act III."* The episode was re-transcribed and read end to end (§2d), so the question
+is now settled rather than open: **the eight existing cuts took the beat-serving
+material and there is no ninth.** The 13 minutes between them are a listener mailbag
+about braising, Frugoni's biography and marriage, empanada fillings, and the
+chimichurri segment, which is largely a plug for his own dry-mix product. The
+asador-as-office material the beat asks for **is not in the tape**, so that gap is
+confirmed as narration's, not deferred.
+
+**One correction to what narration owes.** The note above says the abundance
+antecedent is *"nowhere in the tape"*. It is in the tape, once, and it is not
+cuttable: at **238.84 → 247.72** the host says *"It's a country of about 46 million
+people, and there are more cattle than there are people in the country. That is a
+huge cattle country."* That is 8.9 s, well under the 30 s floor, spoken by the host
+in show banter, and the only way to extend it to a legal length is to run into the
+guest's Instagram-and-website plug at 253.80. So it stays a narration job — but a
+narrator writing it can now corroborate the claim from the Foray's own source rather
+than asserting it, and it is the present-tense cattle ratio rather than the
+19th-century export economy the beat wants.
+
+**Ad reads, now visible for the first time (`ADR-0008`).** No earlier pass could see
+this episode's interstitials. It carries two host-read Holstein Manufacturing spots —
+**606.92 → 639.74** and **1,755.82 → 1,777.62**, the second announced outright as
+*"this segment is brought to you by Holstein Manufacturing"* — plus AlfredGoney.com
+plugs at 566–585 and 1,118–1,130. **All eight existing cuts sit clear of all four**,
+the closest being `#1796`, which opens 18 s after the second Holstein read ends. No
+existing anchor needs moving.
 
 ### Beat 15 — jerk as Maroon synthesis, and the seam — **strong**
 
@@ -742,6 +804,18 @@ problems, not reasons to reject the tape.
 
 **Seam intact.** Beat 15 is the fan's engineered exit into Act IV, and it is one of
 only two fan beats with strong tape. It hands to beat 16, which is empty — see §5.
+
+**The episode is now exhausted, confirmed 2026-08-18.** §2c could only read this
+episode's untimed publisher transcript, *"enough to confirm what the two existing cuts
+contain but not to time new ones."* It has since been transcribed with word timestamps
+(§2d) and read end to end. The two cuts took the beat: the 806 s outside them are a
+first-jerk-chicken anecdote, jerk competitions and a Westmoreland roadside stand,
+whether the author's own cast-iron-and-oven version counts as jerk, the appropriation
+argument about who may sell it, and a housekeeping outro. **No third cut is available
+and none is wanted** — beat 15 is at the two-segment maximum. A companion episode by
+the same researcher, `jamaica-the-connection-bet`, was also read and its jerk passage
+is a weaker duplicate of `#555`; see §2d. Beat 2's dependency on `#266` is therefore
+unchanged, and beat 2 stays thin.
 
 ---
 
