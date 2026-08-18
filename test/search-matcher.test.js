@@ -39,7 +39,13 @@ const { hitText, hitTag } = require(path.join(ROOT, "search-engine.js"));
 test("hitText: a term matches its own -ing form (the #218 defect)", () => {
   assert.equal(hitText("grilling with steven raichlen", "grill"), true);
   assert.equal(hitText("murdering her father", "murder"), true);
-  assert.equal(hitText("marketing", "market"), true);
+  /* This third example WAS `hitText("marketing", "market")`, and it was wrong --
+     see the sense-lock tests below. `engineer`/`engineering` replaces it because
+     it is the largest real win the `ing` allowance buys (188 pool items, against
+     `marketing`'s 10 that all turned out off-sense) and because the concept's own
+     sense IS the verb `to engineer`, which is what makes a gerund on-sense. */
+  assert.equal(hitText("school of nuclear science & engineering", "engineer"), true);
+  assert.equal(hitText("the human skills of nutrition coaching", "coach"), true);
 });
 
 test("hitText: a term matches its own plural, including the -es plural", () => {
@@ -90,6 +96,120 @@ test("hitText: derivational compounds are NOT inflections -- `war` does not reac
 test("hitText: stem-mutating inflections stay out (they need a stemmer, not a suffix)", () => {
   assert.equal(hitText("stories", "story"), false);
   assert.equal(hitText("baking", "bake"), false);
+});
+
+/* ---------- #248: the sense-locked stems take s/es but never ing ---------- */
+
+/* Each member is asserted INDIVIDUALLY rather than in a loop over the exported
+   set, deliberately. A loop over `SENSE_LOCKED_STEMS` would be a tautology --
+   delete a member and the loop simply stops checking it, silently and green,
+   which is the "assertion that asserts nothing" this file's history is made of.
+   Naming the five surface words pins the behaviour independently of the set. */
+
+test("hitText: a sense-locked stem does not reach its -ing form (#248)", () => {
+  /* `training` is a real inflection of `to train` -- the wrong verb for a concept
+     carrying only the railway noun. 32 pool items, the largest single off-sense
+     bucket the `ing` allowance opened. */
+  assert.equal(hitText("constraint-led speed training", "train"), false);
+  assert.equal(hitText("the pre-training wall", "train"), false);
+  assert.equal(hitText("wellness marketing vs. evidence", "market"), false);
+  assert.equal(hitText("the dilemma hanging over f1's future", "hang"), false);
+  assert.equal(hitText("summer travel and booking", "book"), false);
+  assert.equal(hitText("a long winding road", "wind"), false);
+});
+
+test("hitText: a sense-locked stem keeps its bare form and its plural (#248)", () => {
+  /* The point of #248 is that the fix is NOT deleting `train` from the concept.
+     If the lock ever cost the natural singular or plural, it would have
+     reintroduced the #218 defect it is built to preserve. */
+  assert.equal(hitText("american civil war railroads and trains", "train"), true);
+  assert.equal(hitText("a train", "train"), true);
+  assert.equal(hitText("the tungsten market", "market"), true);
+  assert.equal(hitText("markets all around the world", "market"), true);
+  assert.equal(hitText("banned books", "book"), true);
+  assert.equal(hitText("a book", "book"), true);
+  assert.equal(hitText("offshore wind", "wind"), true);
+  assert.equal(hitText("a comedy hang", "hang"), true);
+});
+
+test("hitText: the sense lock is NARROW -- on-sense stems keep their -ing (#248)", () => {
+  /* The lock is a subtraction from a set that #218 measured, so the thing that
+     makes it acceptable is that it subtracts almost nothing: 46 off-sense (term,
+     item) pairs out of 258, leaving these. Adding any of them to the set would
+     undo #218 in the same motion. */
+  assert.equal(hitText("grilling with steven raichlen", "grill"), true);
+  assert.equal(hitText("school of nuclear science & engineering", "engineer"), true);
+  assert.equal(hitText("nutrition coaching", "coach"), true);
+  assert.equal(hitText("homebrewing a wet-hopped ipa", "homebrew"), true);
+  /* Not an inflection at all, so the suffix set never applied to it -- the
+     `homebrew` items in the pool are reached through the tag `homebrewing`. */
+  assert.equal(hitText("homebrewcon asheville", "homebrew"), false);
+  assert.equal(hitText("shooting in remote regions", "film"), false); // unrelated word, sanity
+  assert.equal(hitText("filming in remote regions", "film"), true);
+  assert.equal(hitText("murdering her father", "murder"), true);
+  assert.equal(hitText("crafting characters", "craft"), true);
+});
+
+test("hitText: the sense lock does not admit -ed either, or any other suffix (#248)", () => {
+  /* The locked set is `(?:s|es)?`, so everything the main set already excluded
+     stays excluded. If someone "simplifies" the lock to a bare `s?` this still
+     passes -- that is what the -es claim below is for. */
+  assert.equal(hitText("trained", "train"), false);
+  assert.equal(hitText("marketed", "market"), false);
+  assert.equal(hitText("trainer", "train"), false);
+  assert.equal(hitText("bookish", "book"), false);
+  assert.equal(hitText("window", "wind"), false);
+  assert.equal(hitText("hanger", "hang"), false);
+});
+
+test("hitText: the sense lock keeps -es, so it subtracts exactly one suffix (#248)", () => {
+  /* None of "traines"/"marketes"/"bookes"/"windes"/"hanges" is a word, so this
+     allowance is inert on today's five members and cannot be verified against the
+     pool. It is pinned on a synthetic string precisely BECAUSE it is inert: the
+     locked set must differ from the main set on `ing` and on nothing else, so
+     that a future member ending in a sibilant (the coach/coaches shape) gets a
+     working plural without anyone having to rediscover why. */
+  assert.equal(hitText("traines", "train"), true);
+  assert.equal(hitText("bookes", "book"), true);
+});
+
+test("hitText: the sense lock does not weaken the prefix guard (#248)", () => {
+  /* A narrower suffix set must not accidentally become a looser prefix rule --
+     these terms are still long-branch terms and still carry the lookbehind. */
+  assert.equal(hitText("retraining", "train"), false);
+  assert.equal(hitText("supermarket", "market"), false);
+  assert.equal(hitText("supermarkets", "market"), false);
+  assert.equal(hitText("ebook", "book"), false);
+  assert.equal(hitText("headwind", "wind"), false);
+  assert.equal(hitText("2train", "train"), false);
+});
+
+test("hitTag: the sense lock applies to TAGS too, not just prose (#248)", () => {
+  /* tagDF and scoreMatch's +2.5 tag bonus both run through hitTag, and tags are
+     where the off-sense count concentrates (`wellness-marketing`, `marketing`,
+     `referral-marketing` are real tags in data/item-tags.json). A lock that lived
+     only in hitText would leave the strongest signal in the ranker unlocked. */
+  assert.equal(hitTag("training", "train"), false);
+  assert.equal(hitTag("speed-training", "train"), false);
+  assert.equal(hitTag("wellness-marketing", "market"), false);
+  assert.equal(hitTag("referral-marketing", "market"), false);
+  /* ...while the plural and the bare tag still hit. */
+  assert.equal(hitTag("trains", "train"), true);
+  assert.equal(hitTag("freight-trains", "train"), true);
+  assert.equal(hitTag("markets", "market"), true);
+});
+
+test("the sense-locked set is exported and holds exactly its documented members", () => {
+  /* A pin, not a tautology: the membership RULE lives in a comment, so the only
+     mechanical guard against a member arriving without a measurement is that
+     changing this set is a visible, deliberate edit. Five members, each argued
+     and counted in search-engine.js. If you are here because this went red, the
+     rule and the per-member counts are what you need to satisfy -- and the
+     rejected list right below them is where `engineer` (188 on-sense items) and
+     `grill` (#218's whole purpose) are kept out. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  assert.ok(SE.SENSE_LOCKED_STEMS instanceof Set);
+  assert.deepEqual([...SE.SENSE_LOCKED_STEMS].sort(), ["book", "hang", "market", "train", "wind"]);
 });
 
 /* ---------- THE PREFIX GUARD: must stay exactly as strict ---------- */
