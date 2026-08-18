@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "notes": "Seven synthetic episodes for the boundary fixture (#236). cdn.example is never fetched — the checker's URL checks are lexical, and no test here opens a socket.",
+  "sources": [
+    {
+      "id": "boundary-ep-a",
+      "show": "Fixture Show A",
+      "title": "Fixture episode A",
+      "audio_url": "https://cdn.example/boundary-ep-a.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3600,
+      "dai_suspected": false
+    },
+    {
+      "id": "boundary-ep-b",
+      "show": "Fixture Show B",
+      "title": "Fixture episode B",
+      "audio_url": "https://cdn.example/boundary-ep-b.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3600,
+      "dai_suspected": false
+    },
+    {
+      "id": "boundary-ep-c",
+      "show": "Fixture Show C",
+      "title": "Fixture episode C",
+      "audio_url": "https://cdn.example/boundary-ep-c.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3600,
+      "dai_suspected": false
+    },
+    {
+      "id": "boundary-ep-d",
+      "show": "Fixture Show D",
+      "title": "Fixture episode D",
+      "audio_url": "https://cdn.example/boundary-ep-d.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3600,
+      "dai_suspected": false
+    },
+    {
+      "id": "boundary-ep-e",
+      "show": "Fixture Show E",
+      "title": "Fixture episode E",
+      "audio_url": "https://cdn.example/boundary-ep-e.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3600,
+      "dai_suspected": false
+    },
+    {
+      "id": "boundary-ep-f",
+      "show": "Fixture Show F",
+      "title": "Fixture episode F",
+      "audio_url": "https://cdn.example/boundary-ep-f.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3600,
+      "dai_suspected": false
+    },
+    {
+      "id": "boundary-ep-held",
+      "show": "Fixture Show HELD",
+      "title": "Fixture episode HELD",
+      "audio_url": "https://cdn.example/boundary-ep-held.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 3600,
+      "dai_suspected": false
+    }
+  ]
+}
