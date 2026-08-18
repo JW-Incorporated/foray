@@ -45,6 +45,16 @@
  *     dispatch list while the first `start` was still UNANSWERED, where a duplicate
  *     sits in the queue undispatched and invisible. Draining the queue first is what
  *     makes a second `start` observable.
+ *   - dropping the rejection handler from the queue's clear link. A rejected `queue`
+ *     is PERMANENT — every later `.then` is skipped and the shell stops talking to
+ *     native for the rest of the session, silently. Two tests now reject through it:
+ *     a bridge that rejects, and a `log` that throws (it is the embedder's function,
+ *     `console.warn` in a browser, and it is called from that very handler).
+ *
+ * ONE OF THOSE TWO TESTS WAS ALSO WRONG FIRST, in a way worth naming because it is
+ * the commonest fake-test bug here: it played a SECOND element and left the first
+ * still playing, so `activeCount` never reached zero, no settle window was ever
+ * armed, and it failed for a reason that had nothing to do with what it was testing.
  *
  * AND ONE MUTATION THAT SURVIVED BECAUSE THE CODE WAS WRONG, NOT THE TEST.
  * `requestStop` also set `serviceRunning = false` at dispatch, under a comment
@@ -52,6 +62,33 @@
  * `wanted` alone decides `ensureStarted`'s guard and it already goes false at
  * dispatch. The line was removed rather than given a test, and the shell's comment
  * records the false alarm. A surviving mutant is not always a missing test.
+ *
+ * ── WHAT A HUMAN REVIEW PASS FOUND THAT NONE OF THE ABOVE DID (section 8) ─────
+ *
+ * Four defects, none of which any fake in this file could see, because in each case
+ * the fake agreed with the code:
+ *
+ *   1. THE GATE READ A RACE. `ForayAudioPlugin.start()` reported `running` from a read
+ *      taken right after `startForegroundService`, which only asks ActivityManager —
+ *      the service's `onStartCommand` runs later on the main thread, so that field was
+ *      false on every first start. `ensureStarted` gated on it, so its short-circuit
+ *      could never fire and EVERY play() re-issued a start, including the one across a
+ *      hidden seam: a background foreground-service start, which is the one call the
+ *      settle window exists to avoid. The fixture returned `running: true`, so the
+ *      fake was the only place the code worked.
+ *   2. `error` DID NOT RELEASE AN ELEMENT. Only the media load algorithm sets
+ *      `paused = true`, so a fatal error mid-playback leaves `paused === false`. The
+ *      parameterised RELEASE_EVENTS test set `paused = true` before emitting, so it
+ *      passed for `error` without exercising the real element state.
+ *   3. THE VISIBILITY NET CANCELLED LIVE SETTLE WINDOWS, not just frozen ones —
+ *      reintroducing the background start it was written to prevent.
+ *   4. `uninstall()` RESTORED BLINDLY, deleting any later patch of
+ *      `HTMLMediaElement.prototype.play` — the mirror image of rule 1 above.
+ *
+ * The lesson for anyone extending this file: a fake that is written from the same
+ * mental model as the code cannot falsify that model. `DEFAULT_ANSWERS` exists so the
+ * bridge protocol lives in ONE place here, and `shell-invariants.test.mjs` asserts
+ * those field names against the Java rather than against this file.
  */
 
 import test from "node:test";
@@ -106,6 +143,20 @@ function makeElement(proto, { playReturns = { ok: true } } = {}) {
   return el;
 }
 
+/** What `ForayAudioPlugin.java` answers on the happy path, kept in one place so the
+ *  fakes cannot drift from the real protocol independently of each other.
+ *
+ *  NOTE WHAT IS *NOT* HERE: no `running` on `start` or `stop`. The Java deliberately
+ *  does not report it, because `startForegroundService` and `stopService` are both
+ *  asynchronous and the service's own flag has not moved yet — the field it used to
+ *  return was a race that answered false on every first start.
+ *  `shell-invariants.test.mjs` asserts these field names against the Java. */
+const DEFAULT_ANSWERS = {
+  start: { started: true, alreadyRunning: false, reason: "" },
+  stop: { stopped: true, wasRunning: true, reason: "" },
+  state: { running: true, platform: "android" },
+};
+
 /** A bridge that records every call. `results` maps a method name to what native
  *  answers with; the defaults are the happy path. */
 function makeCapacitor({ platform = "android", results = {}, throwOnGetPlatform = false, omitNativePromise = false } = {}) {
@@ -122,9 +173,7 @@ function makeCapacitor({ platform = "android", results = {}, throwOnGetPlatform 
       calls.push({ name, method });
       const answer = Object.prototype.hasOwnProperty.call(results, method)
         ? results[method]
-        : method === "start"
-          ? { started: true, running: true, reason: "" }
-          : { stopped: true, running: false, reason: "" };
+        : DEFAULT_ANSWERS[method];
       if (typeof answer === "function") return answer();
       return Promise.resolve(answer);
     };
@@ -132,10 +181,19 @@ function makeCapacitor({ platform = "android", results = {}, throwOnGetPlatform 
   return bridge;
 }
 
-function makeClock({ throwOnSet = false } = {}) {
+/** Timers AND a clock, because the shell now needs both: the settle window is a
+ *  timer, and the visibility net compares elapsed time against it to tell a FROZEN
+ *  timer from one still legitimately counting. `advance` moves the clock WITHOUT
+ *  firing anything, which is exactly what a frozen page does. */
+function makeClock({ throwOnSet = false, start = 1_000_000 } = {}) {
   let nextId = 1;
+  let t = start;
   const timers = new Map();
   return {
+    now: () => t,
+    advance(ms) {
+      t += ms;
+    },
     setTimeout(fn, ms) {
       if (throwOnSet) throw new Error("setTimeout exploded");
       const id = nextId++;
@@ -149,13 +207,13 @@ function makeClock({ throwOnSet = false } = {}) {
       return [...timers.keys()];
     },
     delays() {
-      return [...timers.values()].map((t) => t.ms);
+      return [...timers.values()].map((x) => x.ms);
     },
     fireAll() {
       for (const id of [...timers.keys()]) {
-        const t = timers.get(id);
+        const timer = timers.get(id);
         timers.delete(id);
-        t.fn();
+        timer.fn();
       }
     },
   };
@@ -198,6 +256,7 @@ function setup(opts = {}) {
     doc,
     setTimeout: clock.setTimeout,
     clearTimeout: clock.clearTimeout,
+    now: clock.now,
     settleMs: opts.settleMs,
     log: (m, e) => logs.push({ m, e }),
   });
@@ -387,6 +446,7 @@ test("A REFUSED PLAY NEVER STARTS THE SERVICE", async () => {
     doc: makeDoc("hidden"),
     setTimeout: clock.setTimeout,
     clearTimeout: clock.clearTimeout,
+    now: clock.now,
   });
   shell.install();
   const el = makeElement(proto, { playReturns: blocked });
@@ -410,8 +470,8 @@ test("a start Android REFUSES is retried on the next play", async () => {
         attempt++;
         return Promise.resolve(
           attempt === 1
-            ? { started: false, running: false, reason: "ForegroundServiceStartNotAllowedException: nope" }
-            : { started: true, running: true, reason: "" }
+            ? { started: false, reason: "ForegroundServiceStartNotAllowedException: nope" }
+            : DEFAULT_ANSWERS.start
         );
       },
     },
@@ -421,14 +481,14 @@ test("a start Android REFUSES is retried on the next play", async () => {
   const a = makeElement(proto);
   a.play();
   await flush();
-  assert.equal(shell.inspect().serviceRunning, false);
+  assert.equal(shell.inspect().startAccepted, false);
   assert.match(shell.inspect().lastReason, /ForegroundServiceStartNotAllowed/);
-  assert.ok(logs.some((l) => /not running/.test(l.m)), "a refused start was not reported anywhere");
+  assert.ok(logs.some((l) => /refused to start/.test(l.m)), "a refused start was not reported anywhere");
 
   makeElement(proto).play();
   await flush();
   assert.deepEqual(methods(capacitor), ["start", "start"]);
-  assert.equal(shell.inspect().serviceRunning, true);
+  assert.equal(shell.inspect().startAccepted, true);
 });
 
 test("a bridge that throws synchronously does not take the play down with it", async () => {
@@ -443,7 +503,7 @@ test("a bridge that throws synchronously does not take the play down with it", a
   assert.doesNotThrow(() => el.play());
   await flush();
   assert.equal(el.playCalls, 1);
-  assert.equal(shell.inspect().serviceRunning, false);
+  assert.equal(shell.inspect().startAccepted, false);
   assert.ok(logs.some((l) => /start failed/.test(l.m)));
 });
 
@@ -473,7 +533,7 @@ test("the settle window elapsing with nothing playing stops the service", async 
   clock.fireAll();
   await flush();
   assert.deepEqual(methods(capacitor), ["start", "stop"]);
-  assert.equal(shell.inspect().serviceRunning, false);
+  assert.equal(shell.inspect().startAccepted, false);
   assert.equal(shell.inspect().wanted, false);
 });
 
@@ -500,7 +560,7 @@ test("A SEAM DOES NOT STOP THE SERVICE: pause, then a play on a different elemen
   clock.fireAll();
   await flush();
   assert.deepEqual(methods(capacitor), ["start"], "the service was stopped or restarted across a seam");
-  assert.equal(shell.inspect().serviceRunning, true);
+  assert.equal(shell.inspect().startAccepted, true);
 });
 
 test("pausing one of two elements does not arm anything", async () => {
@@ -607,12 +667,15 @@ for (const event of ACQUIRE_EVENTS) {
 
 /* ------------------------------------------------------- 5. the visibility net */
 
-test("becoming visible with nothing playing stops the service immediately", async () => {
-  /* THE UNFREEZE NET. Blink freezes a hidden, silent page 30 s after audio stops,
-     so a settle timer that has not fired by then may never fire and the service
-     would still be up when the user came back. Becoming visible is both the proof
-     and the safest moment to fix it: a restart from the foreground is always
-     permitted. */
+test("becoming visible with an OVERDUE settle timer stops the service immediately", async () => {
+  /* THE UNFREEZE NET. Blink freezes a hidden, silent page 30 s after audio stops, so a
+     settle timer that has not fired by then may never fire and the service would still
+     be up when the user came back. Becoming visible is both the proof and the safest
+     moment to fix it: a restart from the foreground is always permitted.
+
+     THE CLOCK IS ADVANCED WITHOUT FIRING ANYTHING, which is exactly what a frozen page
+     does to a pending timer, and it is what makes this test about FROZEN rather than
+     about "visible and silent" — see the next test for the difference. */
   const { shell, proto, capacitor, clock, doc } = setup({ visibility: "hidden" });
   shell.install();
   const el = makeElement(proto);
@@ -622,6 +685,7 @@ test("becoming visible with nothing playing stops the service immediately", asyn
   el.emit("pause");
   assert.equal(shell.inspect().stopPending, true);
 
+  clock.advance(STOP_SETTLE_MS + 1);
   doc.visibilityState = "visible";
   doc.emit("visibilitychange");
   await flush();
@@ -713,12 +777,7 @@ function makeDeferredCapacitor({ platform = "android" } = {}) {
         pending.push({
           method,
           settle(answer) {
-            resolve(
-              answer ||
-                (method === "start"
-                  ? { started: true, running: true, reason: "" }
-                  : { stopped: true, running: false, reason: "" })
-            );
+            resolve(answer || DEFAULT_ANSWERS[method]);
           },
         });
       });
@@ -754,7 +813,7 @@ test("A PLAY WHILE A STOP IS IN FLIGHT STILL STARTS THE SERVICE", async () => {
   const el = makeElement(proto);
   el.play();
   await capacitor.settleNext();
-  assert.equal(shell.inspect().serviceRunning, true);
+  assert.equal(shell.inspect().startAccepted, true);
 
   el.paused = true;
   el.emit("pause");
@@ -783,7 +842,7 @@ test("A PLAY WHILE A STOP IS IN FLIGHT STILL STARTS THE SERVICE", async () => {
     "a play during an in-flight stop never asked for the service back"
   );
   await capacitor.settleNext();
-  assert.equal(shell.inspect().serviceRunning, true, "audio is playing with the service off");
+  assert.equal(shell.inspect().startAccepted, true, "audio is playing with the service off");
 });
 
 test("a stop and the start behind it reach native in that order", async () => {
@@ -816,7 +875,7 @@ test("a stop and the start behind it reach native in that order", async () => {
   assert.equal(capacitor.pending[0].method, "start");
   await capacitor.settleNext();
   assert.deepEqual(methods(capacitor), ["start", "stop", "start"]);
-  assert.equal(shell.inspect().serviceRunning, true);
+  assert.equal(shell.inspect().startAccepted, true);
 });
 
 test("two plays before the first start is answered ask native once", async () => {
@@ -836,7 +895,7 @@ test("two plays before the first start is answered ask native once", async () =>
   await flush();
   assert.deepEqual(methods(capacitor), ["start"], "a duplicate start was queued behind the first");
   assert.equal(capacitor.pending.length, 0, "something is still in flight");
-  assert.equal(shell.inspect().serviceRunning, true);
+  assert.equal(shell.inspect().startAccepted, true);
 });
 
 test("a refused start is still retried after it settles, so the dedupe is not a latch", async () => {
@@ -848,9 +907,259 @@ test("a refused start is still retried after it settles, so the dedupe is not a 
   shell.install();
   const el = makeElement(proto);
   el.play();
-  await capacitor.settleNext({ started: false, running: false, reason: "ForegroundServiceStartNotAllowedException" });
-  assert.equal(shell.inspect().serviceRunning, false);
+  await capacitor.settleNext({ started: false, reason: "ForegroundServiceStartNotAllowedException" });
+  assert.equal(shell.inspect().startAccepted, false);
   makeElement(proto).play();
   await flush();
   assert.deepEqual(methods(capacitor), ["start", "start"]);
+});
+
+test("a rejected bridge call does not poison the queue for the rest of the session", async () => {
+  /* A rejected `queue` is PERMANENT: every later `.then` is skipped and the shell
+     stops talking to native for good, with no error anywhere. The bridge rejects here
+     and a later play must still reach native. */
+  let attempt = 0;
+  const capacitor = makeCapacitor({
+    results: {
+      start: () => {
+        attempt++;
+        return attempt === 1
+          ? Promise.reject(new Error("androidBridge went away"))
+          : Promise.resolve(DEFAULT_ANSWERS.start);
+      },
+    },
+  });
+  const { shell, proto } = setup({ capacitor });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, false);
+
+  makeElement(proto).play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "start"], "the queue stopped dispatching after a rejection");
+  assert.equal(shell.inspect().startAccepted, true);
+});
+
+test("a log function that throws does not poison the queue either", async () => {
+  /* `log` is the EMBEDDER's function, not ours — in the browser it is
+     `console.warn`. It is called from the queue's rejection handler, so a throw there
+     would reject `queue` itself. */
+  const capacitor = makeCapacitor({
+    results: { start: () => Promise.reject(new Error("bridge gone")) },
+  });
+  const proto = makeProto();
+  const clock = makeClock();
+  let logCalls = 0;
+  const shell = createForayAudioShell({
+    capacitor,
+    mediaProto: proto,
+    doc: makeDoc("hidden"),
+    setTimeout: clock.setTimeout,
+    clearTimeout: clock.clearTimeout,
+    now: clock.now,
+    log: () => {
+      logCalls++;
+      throw new Error("the console exploded");
+    },
+  });
+  shell.install();
+  /* ONE element for the whole test. An earlier version played a second one and left
+     the first still "playing", so `activeCount` never reached zero, no settle window
+     was ever armed, and the test failed for a reason that had nothing to do with the
+     queue. */
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.ok(logCalls > 0, "the failure was never reported");
+
+  /* And the shell is still alive: a stop is still dispatched when playback settles. */
+  el.paused = true;
+  el.emit("pause");
+  clock.fireAll();
+  await flush();
+  assert.ok(methods(capacitor).includes("stop"), "the queue died with the throwing log");
+});
+
+/* ───── 8. the four things a review pass found that the fakes had not ────────── */
+
+test("A FATAL MEDIA ERROR MID-PLAYBACK RELEASES THE ELEMENT", async () => {
+  /* The parameterised RELEASE_EVENTS test above sets `paused = true` before emitting,
+     so it passed for `error` without ever exercising the real element state. Only the
+     media LOAD algorithm sets `paused = true` — which is what makes `emptied` and
+     `abort` safe — so a fatal decode or network error mid-playback leaves
+     `paused === false` and `ended === false`. Without `el.error` in the prune the
+     element stays in `active` forever, `reconcile` keeps calling `ensureStarted`, and
+     the service and its notification stay up for the rest of the session with no
+     audio: the exact leak the prune exists to prevent. */
+  const { shell, proto, capacitor, clock } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.equal(shell.inspect().active, 1);
+
+  /* Exactly what a fatal error looks like on a real element: `error` is set, `paused`
+     is still false, `ended` is still false. */
+  el.error = { code: 3, message: "MEDIA_ERR_DECODE" };
+  el.emit("error");
+  assert.equal(shell.inspect().active, 0, "a fatally errored element was still counted as playing");
+  assert.equal(shell.inspect().stopPending, true, "no settle window opened after a fatal error");
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"]);
+});
+
+test("readyState 0 does NOT release an element, because that is every seam's first moment", async () => {
+  /* `el.readyState === 0` was suggested alongside `el.error` and is deliberately not
+     used. A brand-new element has readyState 0 for the whole gap between `play()` and
+     its first metadata — which is precisely the incoming element at a seam — so
+     pruning on it would drop the one element the service is being started for. */
+  const { shell, proto, capacitor } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.readyState = 0;
+  el.play();
+  await flush();
+  assert.equal(shell.inspect().active, 1, "the incoming element of a seam was pruned before it loaded");
+  assert.deepEqual(methods(capacitor), ["start"]);
+});
+
+test("BECOMING VISIBLE MID-SEAM DOES NOT CANCEL A SETTLE WINDOW THAT IS STILL COUNTING", async () => {
+  /* The visibility net used to stop the service on ANY visible-and-silent transition.
+     A hidden cross-episode seam measures 9–11 s and #239 allows it 20 s, so a user
+     foregrounding the app mid-load cancelled a window that was still legitimately
+     counting — and if they backgrounded it again before the seam's `play()` landed,
+     that `play()` issued a BACKGROUND startForegroundService, which Android 12+
+     refuses. The failure the window exists to prevent, reintroduced by the net meant
+     to protect it. */
+  const { shell, proto, capacitor, clock, doc } = setup({ visibility: "hidden" });
+  shell.install();
+  const outgoing = makeElement(proto);
+  outgoing.play();
+  await flush();
+
+  outgoing.paused = true;
+  outgoing.emit("pause");
+  assert.equal(shell.inspect().stopPending, true);
+
+  /* Ten seconds into a twenty-five second window: a slow hidden load, not a frozen
+     timer. The user brings the app to the front. */
+  clock.advance(10_000);
+  doc.visibilityState = "visible";
+  doc.emit("visibilitychange");
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "the settle window was cancelled mid-seam");
+  assert.equal(shell.inspect().stopPending, true, "the settle timer was disarmed mid-seam");
+
+  /* And the seam completes, as it would have. */
+  const incoming = makeElement(proto);
+  incoming.play();
+  await flush();
+  assert.equal(shell.inspect().stopPending, false);
+  assert.deepEqual(methods(capacitor), ["start"], "the service was restarted across a seam");
+});
+
+test("the shell gates on `started`, not on whether native says the service is running", async () => {
+  /* THE HIGH-SEVERITY FINDING. `startForegroundService` only asks ActivityManager; the
+     service's `onStartCommand` runs later on the main thread, so a `running` read in
+     the same plugin method answers false on every first start. Gating on it meant
+     `ensureStarted`'s short-circuit could never fire and EVERY play() re-issued a
+     start — including the one across a hidden seam, which is a background
+     foreground-service start and the one call the settle window exists to avoid.
+
+     So a native answer that reports `started: true` while the service has not come up
+     yet — which is the NORMAL answer — must still short-circuit the next play. */
+  const capacitor = makeCapacitor({
+    results: { start: { started: true, alreadyRunning: false, reason: "" } },
+  });
+  const { shell, proto } = setup({ capacitor });
+  shell.install();
+  const a = makeElement(proto);
+  a.play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, true);
+  assert.equal(shell.inspect().lastKnownRunning, null, "nothing has asked native for the real state yet");
+
+  /* Five more plays, exactly as a Foray's seams would. Not one of them may re-ask. */
+  for (let i = 0; i < 5; i++) {
+    const el = makeElement(proto);
+    el.play();
+    await flush();
+  }
+  assert.deepEqual(methods(capacitor), ["start"], "a start was re-issued while one was already accepted");
+});
+
+test("refresh() is the only thing that reports whether the service is really running", async () => {
+  const capacitor = makeCapacitor({ results: { state: { running: true, platform: "android" } } });
+  const { shell, proto } = setup({ capacitor });
+  shell.install();
+  makeElement(proto).play();
+  await flush();
+  assert.equal(shell.inspect().lastKnownRunning, null);
+
+  await shell.refresh();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "state"]);
+  assert.equal(shell.inspect().lastKnownRunning, true);
+});
+
+test("refresh() reports and logs a service that was accepted but never came up", async () => {
+  /* The failure only `state()` can see: `startForegroundService` succeeded, and then
+     the service's own `startForeground()` threw — an API 34 service-type mismatch, or
+     a missing FOREGROUND_SERVICE_MEDIA_PLAYBACK permission — so it called `stopSelf`.
+     `start` answered `started: true` and was right to. */
+  const capacitor = makeCapacitor({ results: { state: { running: false, platform: "android" } } });
+  const { shell, proto, logs } = setup({ capacitor });
+  shell.install();
+  makeElement(proto).play();
+  await flush();
+  await shell.refresh();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, true, "the start really was accepted");
+  assert.equal(shell.inspect().lastKnownRunning, false);
+  assert.ok(
+    logs.some((l) => /accepted but is not running/.test(l.m)),
+    "a service that never came up was not reported anywhere"
+  );
+});
+
+test("uninstall does not delete somebody else's later patch of play()", async () => {
+  /* The mirror image of rule 1 in this file's header. If another Capacitor plugin or an
+     injected script patches HTMLMediaElement.prototype.play after we do, restoring
+     blindly silently removes THEIR wrapper. */
+  const { shell, proto, logs } = setup();
+  const original = proto.play;
+  shell.install();
+  const ours = proto.play;
+
+  let theirCalls = 0;
+  const theirs = function somebodyElsesPlay() {
+    theirCalls++;
+    return ours.apply(this, arguments);
+  };
+  proto.play = theirs;
+
+  assert.equal(shell.uninstall(), true);
+  assert.equal(proto.play, theirs, "uninstall deleted a wrapper installed after ours");
+  assert.notEqual(proto.play, original);
+  assert.ok(logs.some((l) => /patched again/.test(l.m)), "the refusal to restore was not reported");
+
+  /* And theirs still works, calling through to ours, which calls through to the real
+     one. Nothing in the chain was broken. */
+  const el = makeElement(proto);
+  el.play();
+  assert.equal(theirCalls, 1);
+  assert.equal(el.playCalls, 1);
+});
+
+test("uninstall still restores when ours IS the one on the prototype", async () => {
+  /* The other direction, so the guard above cannot be satisfied by never restoring. */
+  const { shell, proto } = setup();
+  const original = proto.play;
+  shell.install();
+  assert.notEqual(proto.play, original);
+  assert.equal(shell.uninstall(), true);
+  assert.equal(proto.play, original, "uninstall stopped restoring the original play");
 });

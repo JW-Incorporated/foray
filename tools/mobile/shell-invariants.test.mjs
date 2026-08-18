@@ -904,3 +904,67 @@ test("the plugin adds no third-party Gradle dependency of its own", () => {
     "the plugin must depend on capacitor-android"
   );
 });
+
+test("start() and stop() do not claim to know whether the service is running", () => {
+  /* THE HIGH-SEVERITY FINDING FROM THE REVIEW PASS, pinned so it cannot come back.
+     `startForegroundService` only asks ActivityManager; the service's `onStartCommand`
+     — which sets the flag — is dispatched later on the app's MAIN thread, while the
+     plugin method runs on the bridge's worker pool. So a `result.put("running",
+     isRunning())` after that call is a race that answers false on every first start.
+
+     It was there, and the web half gated on it: `ensureStarted`'s short-circuit could
+     never fire, so every play() re-issued a start — including the one across a hidden
+     seam, which is a BACKGROUND foreground-service start and the exact call the settle
+     window exists to avoid. Nothing failed; the app would simply have kept asking
+     Android for something Android refuses.
+
+     Asserted as the SET of fields each method resolves with, derived from the Java, so
+     a re-added `running` fails here rather than on a device. */
+  const java = fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
+    "utf8"
+  );
+  const bodyOf = (method) => {
+    const at = java.indexOf(`public void ${method}(PluginCall call) {`);
+    assert.ok(at > 0, `ForayAudioPlugin.java has no ${method}(PluginCall)`);
+    const end = java.indexOf("\n    }", at);
+    assert.ok(end > at, `could not find the end of ${method}()`);
+    return java.slice(at, end);
+  };
+  /* A SET, because the success and failure branches both put `started`/`stopped` and
+     `reason`. What is being asserted is which fields can appear at all. */
+  const fieldsOf = (method) => [
+    ...new Set([...bodyOf(method).matchAll(/result\.put\(\s*"(\w+)"/g)].map((m) => m[1])),
+  ].sort();
+
+  assert.deepEqual(
+    fieldsOf("start"),
+    ["alreadyRunning", "reason", "started"],
+    "start() must report whether the REQUEST was accepted, and must not report a post-call `running` " +
+      "— that read races the service's own onStartCommand and answers false on every first start."
+  );
+  assert.deepEqual(
+    fieldsOf("stop"),
+    ["reason", "stopped", "wasRunning"],
+    "stop() must not report a post-call `running` either; stopService is asynchronous too."
+  );
+  assert.deepEqual(
+    fieldsOf("state"),
+    ["platform", "running"],
+    "state() is the ONLY method that may answer `running`, and it can because it is a separate call."
+  );
+
+  /* And the web half must gate on the field that is knowable. Checked on the source
+     because the alternative — a test that mocks the bridge — is the suite in
+     foray-audio-shell.test.mjs, and this is the seam between the two languages. */
+  const shellSrc = fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-audio-shell.js"), "utf8");
+  assert.match(
+    shellSrc,
+    /startAccepted = !!result\.started;/,
+    "the web half must set its gate from `started`, the only thing a synchronous bridge call knows."
+  );
+  assert.ok(
+    !/= !!result\.running;/.test(shellSrc.replace(/lastKnownRunning = !!result\.running;/g, "")),
+    "something other than lastKnownRunning is reading `result.running` — only state() answers that."
+  );
+});

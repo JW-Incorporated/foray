@@ -53,6 +53,22 @@ public class ForayAudioPlugin extends Plugin {
     public void start(PluginCall call) {
         Context context = getContext();
         JSObject result = new JSObject();
+        /* READ BEFORE THE CALL, AND THIS IS THE WHOLE POINT OF THE FIELD NAME.
+           `startForegroundService` only asks ActivityManager to start the service;
+           `PlaybackKeepAliveService.onStartCommand` — the thing that sets `running` —
+           is dispatched later, on the app's MAIN thread, while this method runs on the
+           bridge's worker pool. So reading `isRunning()` after the call is a race that
+           answers false on every first start, and a review pass found this reported as
+           `running` and gated on by the web half: `ensureStarted`'s short-circuit could
+           never fire, so every play() re-issued `start` — including the play() on the
+           far side of a hidden seam, which is a BACKGROUND foreground-service start and
+           the one call the web half's settle window exists to avoid.
+
+           So nothing here reports the post-call state. `alreadyRunning` is a truthful
+           synchronous fact — whether this start is a no-op re-start — and `state()` is
+           the method that answers "is it running?" honestly, because by the time
+           anyone calls it, onStartCommand has run. */
+        result.put("alreadyRunning", PlaybackKeepAliveService.isRunning());
         try {
             ContextCompat.startForegroundService(context, serviceIntent(context));
             result.put("started", true);
@@ -67,15 +83,12 @@ public class ForayAudioPlugin extends Plugin {
             result.put("started", false);
             result.put("reason", e.getClass().getSimpleName() + ": " + e.getMessage());
         }
-        /* Reported SEPARATELY from `started`, and read after the attempt rather than
-           inferred from it. `startForegroundService` returning normally means the
-           service was START-ed; the service can still fail its own
-           `startForeground()` call a moment later (see
-           PlaybackKeepAliveService.onStartCommand), in which case `running` is the
-           truthful answer and `started` is the optimistic one. A single boolean here
-           would be the "reports success while nothing happened" shape this repo keeps
-           paying for. */
-        result.put("running", PlaybackKeepAliveService.isRunning());
+        /* NOT reported: whether the service is running now. `started` means "the
+           request was accepted", which is the strongest thing knowable at this
+           instant, and it is what the web half gates on. The weaker guarantee is
+           stated rather than faked: a service that is started can still fail its own
+           `startForeground()` a moment later (an API 34 type mismatch, a missing
+           permission), and `state()` is what sees that. */
         call.resolve(result);
     }
 
@@ -83,6 +96,9 @@ public class ForayAudioPlugin extends Plugin {
     public void stop(PluginCall call) {
         Context context = getContext();
         JSObject result = new JSObject();
+        /* Same race, inverted: `stopService` is asynchronous, so `onDestroy` — which
+           clears the flag — has not run yet. Read BEFORE, and named for what it is. */
+        result.put("wasRunning", PlaybackKeepAliveService.isRunning());
         try {
             context.stopService(serviceIntent(context));
             result.put("stopped", true);
@@ -92,15 +108,22 @@ public class ForayAudioPlugin extends Plugin {
             result.put("stopped", false);
             result.put("reason", e.getClass().getSimpleName() + ": " + e.getMessage());
         }
-        result.put("running", PlaybackKeepAliveService.isRunning());
         call.resolve(result);
     }
 
     /**
-     * What the service actually is, for a probe or a device pass to read. The only
-     * method here with no side effect, and the reason
-     * {@code HUMAN-ACTIONS.md}'s Android device pass can report something better
-     * than "the audio kept playing".
+     * Whether the service is running, and the only method here that can answer that
+     * truthfully.
+     *
+     * <p>It is truthful precisely because it is a SEPARATE call: by the time anything
+     * asks, the main-thread dispatch of {@code onStartCommand} or {@code onDestroy}
+     * has happened. {@code start()} and {@code stop()} deliberately do not try to
+     * answer it — see the comment in {@code start}.
+     *
+     * <p>No side effects, and the reason {@code HUMAN-ACTIONS.md}'s Android device
+     * pass can report something better than "the audio kept playing":
+     * {@code await Capacitor.nativePromise("ForayAudio", "state", {})} from
+     * {@code chrome://inspect}, or {@code await window.ForayAudioShell.refresh()}.
      */
     @PluginMethod
     public void state(PluginCall call) {

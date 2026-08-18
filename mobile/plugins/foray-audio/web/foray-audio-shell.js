@@ -138,6 +138,9 @@ export function createForayAudioShell(env) {
   const setTimer = env.setTimeout;
   const clearTimer = env.clearTimeout;
   const log = typeof env.log === "function" ? env.log : function () {};
+  /** A clock, only ever used for elapsed time — never for wall-clock meaning — so a
+   *  test can drive it and `Date.now` is a fine default. */
+  const now = typeof env.now === "function" ? env.now : Date.now;
 
   /** Elements that have been played and not yet released. A `Set` rather than a
    *  counter because `play()` on an already-playing element is legal and must not
@@ -149,13 +152,34 @@ export function createForayAudioShell(env) {
 
   let installed = false;
   let originalPlay = null;
+  /** The wrapper we installed, so `uninstall` can tell whether it is still the one
+   *  on the prototype. */
+  let patchedPlay = null;
   /** Have we asked for the service and not yet asked to stop it? */
   let wanted = false;
-  /** Native's last answer about the service. Distinct from `wanted`: a start can
-   *  be refused, and then the next `play()` must try again. */
-  let serviceRunning = false;
+  /**
+   * Did native ACCEPT our last start? Distinct from `wanted`: a start can be
+   * refused — `ForegroundServiceStartNotAllowedException` — and then the next
+   * `play()` must try again.
+   *
+   * DELIBERATELY NOT "is the service running". A review pass found this gated on
+   * native's post-call read of the service's own flag, which is a race:
+   * `startForegroundService` only asks ActivityManager, and the service's
+   * `onStartCommand` runs later on the main thread, so that read answered false on
+   * every first start — which made this guard never short-circuit and every
+   * subsequent `play()` re-issue a start, including the one across a hidden seam
+   * that the settle window exists to keep out of the background. `started` is the
+   * strongest thing knowable synchronously, so it is what this tracks.
+   */
+  let startAccepted = false;
+  /** Native's answer to the last `state()` call, which is the only call that can
+   *  answer "is it running?" truthfully. `null` means nobody has asked. */
+  let lastKnownRunning = null;
   let lastReason = "";
   let stopTimer = null;
+  /** When the settle window was armed, so the visibility net can tell a frozen timer
+   *  from one that is still legitimately counting. See `onVisibilityChange`. */
+  let stopArmedAt = 0;
   let visibilityHandler = null;
   /** Serialises bridge calls, so a `stop` and the `start` behind it cannot land out
    *  of order. See `callAndRecord`. */
@@ -203,39 +227,71 @@ export function createForayAudioShell(env) {
           }
         },
         function (e) {
-          serviceRunning = false;
+          startAccepted = false;
           lastReason = String((e && e.message) || e);
           log("foray-audio: " + method + " failed", e);
         }
       );
     });
-    queue = queue.then(function () {
+    /* BOTH handlers, so this link can never leave `queue` in a rejected state. A
+       rejected `queue` is permanent: every later `.then` is skipped, and the shell
+       would silently stop talking to native for the rest of the session. The `.then`
+       above cannot reject today — `call(method).then(ok, err)` handles both sides —
+       but `err` calls `log`, which is the embedder's function and not ours. One
+       argument here is one whole class of dead shell. */
+    const clearInFlight = function () {
       if (inFlight === method) inFlight = null;
-    });
+    };
+    queue = queue.then(clearInFlight, clearInFlight);
   }
 
   function ensureStarted() {
-    if (wanted && serviceRunning) return;
+    if (wanted && startAccepted) return;
     wanted = true;
     callAndRecord("start", function (result) {
-      serviceRunning = !!result.running;
+      startAccepted = !!result.started;
       lastReason = result.reason || "";
-      if (!serviceRunning) {
+      if (!startAccepted) {
         /* The degraded case, and the one a device pass has to be able to see:
            playback continues, the process is merely no longer protected. */
-        log("foray-audio: the foreground service is not running — " + (lastReason || "no reason given"));
+        log("foray-audio: Android refused to start the foreground service — " + (lastReason || "no reason given"));
       }
     });
+  }
+
+  /**
+   * Ask native whether the service is actually running, and remember the answer.
+   *
+   * A SEPARATE CALL ON PURPOSE, and never gated on. `start()` cannot answer it —
+   * `startForegroundService` is asynchronous and the service's `onStartCommand` runs
+   * later on the main thread — but by the time anything calls this, that dispatch has
+   * happened. It is the honest instrument, and it is the one thing that can see a
+   * service that started and then failed its own `startForeground()` (an API 34
+   * service-type mismatch, a missing permission).
+   *
+   * Exposed as `window.ForayAudioShell.refresh()` so a device pass can read a real
+   * answer off `chrome://inspect` rather than a guess.
+   */
+  function refresh() {
+    callAndRecord("state", function (result) {
+      lastKnownRunning = !!result.running;
+      if (wanted && !lastKnownRunning) {
+        log("foray-audio: the service was accepted but is not running — check logcat for startForeground");
+      }
+    });
+    /* Resolves after everything already queued, which is what makes an awaited
+       `refresh()` see the result of a start issued a moment earlier. */
+    return queue;
   }
 
   function requestStop() {
     if (!wanted) return;
     /* `wanted` GOES FALSE AT DISPATCH, and that is what makes the window between
        asking for a stop and native answering safe. A `play()` in that window reaches
-       `ensureStarted`, whose guard is `wanted && serviceRunning` — false on the first
+       `ensureStarted`, whose guard is `wanted && startAccepted` — false on the first
        term — so it queues a start rather than returning early.
 
-       An earlier version of this function ALSO set `serviceRunning = false` here,
+       An earlier version of this function ALSO cleared the start flag here,
        with a comment calling it a bug fix. It was not: the mutation harness deleted
        the line and all 39 tests stayed green, because `wanted` alone already decides
        that guard. The line was removed rather than kept with a truer comment, since a
@@ -244,7 +300,12 @@ export function createForayAudioShell(env) {
        not" is worth more written down than quietly dropped. */
     wanted = false;
     callAndRecord("stop", function (result) {
-      serviceRunning = !!result.running;
+      /* `startAccepted` is about a START, so a stop clears it rather than reading
+         anything back: whatever native says, we are no longer holding a service we
+         asked for. `wasRunning` is native's truthful pre-call read and is kept only as
+         diagnostics. */
+      startAccepted = false;
+      lastKnownRunning = result.wasRunning === undefined ? lastKnownRunning : false;
       lastReason = result.reason || "";
     });
   }
@@ -268,12 +329,27 @@ export function createForayAudioShell(env) {
    * element would otherwise sit in `active` forever and hold the service up for the
    * rest of the session. Reading `paused`/`ended` back off the element after the
    * real `play()` has run is what makes a refused play self-correcting.
+   *
+   * `el.error` IS PART OF THE TEST, and a review pass is why. Only the media LOAD
+   * algorithm sets `paused = true` — which is what makes `emptied` and `abort` safe —
+   * so a fatal decode or network error MID-PLAYBACK leaves `paused === false` and
+   * `ended === false`. `error` is in `RELEASE_EVENTS`, but the event alone changed
+   * nothing: the element stayed in `active`, `reconcile` kept calling
+   * `ensureStarted`, and the service plus its notification stayed up for the rest of
+   * the session with no audio — exactly the leak this prune exists to prevent. The
+   * parameterised `RELEASE_EVENTS` test set `paused = true` before emitting, so it
+   * passed for `error` without ever exercising the real element state.
+   *
+   * `el.readyState === 0` was suggested with it and is DELIBERATELY NOT USED. A
+   * brand-new element has `readyState === 0` for the whole gap between `play()` and
+   * its first metadata — which is precisely the incoming element at a seam — so
+   * pruning on it would drop the one element the service is being started for.
    */
   function activeCount() {
     active.forEach(function (el) {
       let stopped = true;
       try {
-        stopped = !!(el.paused || el.ended);
+        stopped = !!(el.paused || el.ended || el.error);
       } catch (e) {
         stopped = true;
       }
@@ -295,6 +371,7 @@ export function createForayAudioShell(env) {
   function armStop() {
     if (!wanted) return;
     if (stopTimer !== null) return;
+    stopArmedAt = now();
     stopTimer = setTimer(function () {
       stopTimer = null;
       if (activeCount() === 0) requestStop();
@@ -347,13 +424,27 @@ export function createForayAudioShell(env) {
   /**
    * The visibility hook, which exists for exactly one failure mode: if the settle
    * timer was frozen by Blink before it fired, the service would still be running
-   * when the user came back. Becoming visible with nothing playing is both the
-   * proof that happened and the safest possible moment to fix it, because a
-   * restart from the foreground is always permitted.
+   * when the user came back. Becoming visible with nothing playing is both the proof
+   * that happened and the safest possible moment to fix it, because a restart from
+   * the foreground is always permitted.
+   *
+   * THE ELAPSED-TIME CHECK IS THE WHOLE GUARD, and a review pass caught its absence.
+   * Without it this stopped the service on ANY visible-and-silent transition — so a
+   * user foregrounding the app in the middle of a hidden seam (9–11 s measured, 20 s
+   * allowed by #239) cancelled a settle window that was still legitimately counting.
+   * Background the app again before the seam's `play()` lands and that `play()` issues
+   * a background `startForegroundService`, which Android 12+ refuses: the exact
+   * failure the settle window exists to prevent, reintroduced by the net meant to
+   * protect it.
+   *
+   * `now() - stopArmedAt >= settleMs` is precisely "this timer should already have
+   * fired", which is the definition of frozen. A window still inside its own duration
+   * is left alone, and its own timer stops the service on time.
    */
   function onVisibilityChange() {
     try {
-      if (isVisible() && activeCount() === 0 && wanted) {
+      const overdue = stopTimer !== null && now() - stopArmedAt >= settleMs;
+      if (isVisible() && wanted && activeCount() === 0 && overdue) {
         cancelStop();
         requestStop();
         return;
@@ -372,7 +463,7 @@ export function createForayAudioShell(env) {
     originalPlay = mediaProto.play;
     /* A NAMED function expression, so this shows up as `forayAudioPlay` in a stack
        trace rather than as an anonymous frame inside somebody else's player. */
-    mediaProto.play = function forayAudioPlay() {
+    patchedPlay = function forayAudioPlay() {
       const el = this;
       try {
         watch(el);
@@ -393,6 +484,7 @@ export function createForayAudioShell(env) {
       /* Returned untouched and unobserved. See rule 3 in the header. */
       return returned;
     };
+    mediaProto.play = patchedPlay;
 
     if (doc && typeof doc.addEventListener === "function") {
       visibilityHandler = onVisibilityChange;
@@ -407,7 +499,15 @@ export function createForayAudioShell(env) {
    *  inverse is a patch nobody can bisect. */
   function uninstall() {
     if (!installed) return false;
-    mediaProto.play = originalPlay;
+    /* ONLY IF OURS IS STILL THE ONE ON THE PROTOTYPE. If anything patched
+       `HTMLMediaElement.prototype.play` after we did — another Capacitor plugin, an
+       injected script — restoring blindly would silently DELETE that wrapper, which is
+       the mirror image of rule 1 in this file's header. Found by a review pass. */
+    if (mediaProto.play === patchedPlay) {
+      mediaProto.play = originalPlay;
+    } else {
+      log("foray-audio: play() was patched again after we installed; leaving it alone");
+    }
     if (doc && visibilityHandler && typeof doc.removeEventListener === "function") {
       doc.removeEventListener("visibilitychange", visibilityHandler, false);
     }
@@ -418,22 +518,31 @@ export function createForayAudioShell(env) {
     return true;
   }
 
-  /** State, for the suite and for a device probe that needs to report something
-   *  better than "the audio kept playing". No side effects except the pruning
-   *  `activeCount` does. */
+  /**
+   * State, for the suite and for a device probe that needs to report something better
+   * than "the audio kept playing". No side effects except the pruning `activeCount`
+   * does.
+   *
+   * READ THE FIELD NAMES LITERALLY, because two of them used to be one field that
+   * claimed more than it knew. `startAccepted` is *our request was accepted*, which is
+   * all a synchronous bridge call can establish. `lastKnownRunning` is *the service's
+   * own answer, as of the last `refresh()`* — `null` until something asks. Nothing
+   * here reports "the service is running now"; only `await refresh()` gets that.
+   */
   function inspect() {
     return {
       installed,
       active: activeCount(),
       wanted,
-      serviceRunning,
+      startAccepted,
+      lastKnownRunning,
       lastReason,
       stopPending: stopTimer !== null,
       settleMs,
     };
   }
 
-  return { install, uninstall, inspect };
+  return { install, uninstall, inspect, refresh };
 }
 
 /* ------------------------------------------------------------- auto-install */
@@ -455,7 +564,9 @@ if (typeof window !== "undefined") {
       },
     });
     /* Exposed so `chrome://inspect` on a real device can read `inspect()` without a
-       build. `HUMAN-ACTIONS.md`'s Android device pass is the reader. */
+       build, and `await window.ForayAudioShell.refresh()` before it, which is the only
+       call that gets a truthful "is the service running". `HUMAN-ACTIONS.md`'s Android
+       device pass is the reader. */
     window.ForayAudioShell = shell;
     shell.install();
   } catch (e) {

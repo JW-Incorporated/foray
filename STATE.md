@@ -125,16 +125,27 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `tools/mobile/foray-audio-shell.test.mjs` (new), `docs/mobile-shell.md`,
   `docs/android-shell-build.md`, this file. **Nothing under `player/`** — #224 and
   PR #241 are live there — and nothing in `.github/`.
-- **Both APKs still build**, no version pin needed: debug **4,969,849 B** (11 m 40 s),
-  unsigned release **3,883,705 B** (18 m 33 s), `lintVitalRelease` passed including
+- **Both APKs still build**, no version pin needed: debug **4,990,799 B**, unsigned
+  release **3,887,277 B**; 11 m 40 s and 18 m 33 s from cold, plus a 3 m 42 s
+  incremental rebuild after the review fixes. `lintVitalRelease` passed, including
   `:foray-audio:lintVitalAnalyzeRelease`. Same toolchain as #37 (Gradle 8.14.3, AGP
   8.13.0, JDK 21.0.12+8, minSdk 24, compile/target 36).
 - **STILL NEVER EXECUTED, and read this before quoting the above.** No emulator, no
-  device. The web half's state machine has 35 Node tests against fakes and 12 caught
+  device. The web half's state machine has 49 Node tests against fakes and 19 caught
   mutations; the manifest merge and both APK payloads were read out of build output.
   Whether the service *starts*, holds process importance, or keeps audio alive is
   **unverified** — as is Android 15's audio-focus rule, which cuts both ways
   (`docs/android-native-code.md` §6.2).
+- **A REVIEW PASS FOUND FOUR DEFECTS THE FAKES COULD NOT**, and the worst one defeated
+  the design's central safety property: `start()` reported the service's state from a
+  read that races its own `onStartCommand`, so it was false on every first start, so
+  the shell's short-circuit never fired and EVERY play() re-issued a start — including
+  the one across a hidden seam, which is the background foreground-service start the
+  settle window exists to avoid. Fixed; `state()`/`refresh()` is now the only truthful
+  reading. The other three: a fatal media `error` never released the element (the
+  service leaked for the session), the visibility net cancelled settle windows that
+  were still counting, and `uninstall()` deleted later patches of `play`.
+  `docs/android-native-code.md` §5.4.
 - **DO NOT READ THIS AS A SEAM FIX.** Hidden-page throttling is on the media-load
   task chain and keyed to **visibility**, not audibility, so an FGS does not shorten
   a seam and neither do local files. The seam entries below are unaffected.

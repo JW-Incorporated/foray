@@ -38,7 +38,7 @@ MP1 §1 keep the same table for the same reason.
 | A local Capacitor plugin at `mobile/plugins/foray-audio/` is discovered and wired into the generated project | **Executed.** `cap add android` reports `Found 5 Capacitor plugins for android: foray-audio@0.1.0`, and the generated Gradle files name it. §3.1 |
 | Both APKs still build, with sizes and wall clock | **Executed on this machine.** §4 |
 | The `<service>` and both `FOREGROUND_SERVICE*` permissions reach the app's merged manifest | **Executed** — read out of `app/build/intermediates/merged_manifest/…/AndroidManifest.xml` after `assembleDebug`. §4.2 |
-| The web half's state machine — start on first play, stop after a settle window, survive a seam, self-correct a refused play | **Executed, against fakes.** 35 tests in Node, 12 mutations, 12 caught. §5.3. **No WebView ran.** |
+| The web half's state machine — start on first play, stop after a settle window, survive a seam, self-correct a refused play | **Executed, against fakes.** 49 tests in Node (45 static + 4 generated), 19 mutations, 19 caught. §5.3. **No WebView ran.** |
 | The foreground service actually starts, or holds process importance, or keeps audio alive | **NEITHER MEASURED NOR INFERRED — UNVERIFIED.** Nothing has run this code on an emulator or a device. §6 |
 | A `mediaPlayback` FGS prevents freezing | **INFERRED**, and the inference is MP1 §5.3's, not upgraded here |
 | Our CSP does not block the injected Capacitor bridge | **INFERRED** by `docs/android-shell-build.md` §2, unchanged. This change does not depend on it: the script it adds is an ordinary same-origin `<script src>` placed **after** the CSP meta, so `script-src 'self'` is genuinely what allows it |
@@ -211,8 +211,15 @@ set.
 
 | | Result | APK | vs #37 | Wall clock |
 |---|---|---|---|---|
-| `./gradlew assembleDebug` | **BUILD SUCCESSFUL** | `app-debug.apk`, **4,969,849 bytes** | +37,364 B | 11 m 40 s, 243 tasks all executed |
-| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **3,883,705 bytes** | +31,432 B | 18 m 33 s, 316 of 323 executed |
+| `./gradlew assembleDebug` | **BUILD SUCCESSFUL** | `app-debug.apk`, **4,990,799 bytes** | +58,314 B | 11 m 40 s from cold, 243 tasks all executed |
+| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **3,887,277 bytes** | +35,004 B | 18 m 33 s, 316 of 323 executed |
+
+Stated precisely, because the numbers come from two runs and saying otherwise would be
+the kind of quiet rounding this document's §1 exists to prevent: both configurations
+were built **from cold** at the wall clocks above, and both were **rebuilt
+incrementally after §5.4's review fixes changed the Java** — 3 m 42 s for the pair, 89
+of 559 tasks executed, `BUILD SUCCESSFUL`, `:app:lintVitalRelease` again included. The
+byte counts are from the final artefacts.
 
 `assembleRelease` runs `lintVitalRelease`, the lint pass that can fail a release
 build on its own, and it passed — **including `:foray-audio:lintVitalAnalyzeRelease`,
@@ -297,7 +304,7 @@ on the governed side of that line is the point.
 
 ### 5.3 `foray-audio-shell.test.mjs` — and the two bugs it found
 
-35 tests against a fake bridge, a fake prototype and a fake clock. **It found two
+49 tests against a fake bridge, a fake prototype and a fake clock. **It found two
 real bugs in code that had already been read twice:**
 
 1. A `playing` event reconciled but never put the element **back** in the active set
@@ -324,15 +331,73 @@ wrong in public is cheaper than being wrong in private.** The same pass added
 `serviceRunning = false` at stop-dispatch time under a comment calling it a bug fix,
 on the reasoning that a `play()` in that window would hit `ensureStarted`'s `wanted &&
 serviceRunning` guard and return early. **The mutation harness deleted the line and
-all 39 tests stayed green — correctly**, because `wanted` already goes false at
+every test stayed green — correctly**, because `wanted` already goes false at
 dispatch and it is the first term of that guard. The line was removed rather than kept
 with a truer comment. A surviving mutant is not always a missing test; sometimes it is
 a mechanism that was never doing anything.
 
-**Mutation results, in full: 13 mutations of the shell, 13 caught** — plus the one
+**Mutation results, in full: 19 mutations of the shell, 19 caught** — plus the one
 above, which was removed instead. The two that would matter most on a device are
-`activeCount`'s prune (17 tests fail) and the call-through ordering in the `play`
-wrapper (31 fail).
+`activeCount`'s prune (20 tests fail) and the call-through ordering in the `play`
+wrapper (40 fail).
+
+### 5.4 And four more that only a human review pass found
+
+Recorded at this length because the pattern behind all four is the point: **a fake
+written from the same mental model as the code cannot falsify that model.** Every one
+of these was green in a 41-test suite.
+
+1. **The gate read a race, and it defeated the settle window.** `start()` reported
+   `running` from a read taken immediately after `startForegroundService` — which only
+   asks ActivityManager; the service's `onStartCommand` runs later on the main thread,
+   so the field was **false on every first start**. `ensureStarted` gated on it, so its
+   short-circuit could never fire and **every** `play()` re-issued a start — including
+   the one on the far side of a hidden seam, which is a *background*
+   `startForegroundService` and precisely the call §3.4's whole design exists to
+   avoid. The fixture answered `running: true`, so the fake was the only place the code
+   worked. Now: `start()` reports `started` (the request was accepted) and
+   `alreadyRunning` (a truthful *pre*-call read); `stop()` reports `stopped` and
+   `wasRunning`; **`state()` is the only method that answers "is it running"**, and it
+   can because by the time anything calls it the main-thread dispatch has happened.
+   `shell-invariants.test.mjs` now pins the exact field set of all three against the
+   Java.
+2. **A fatal media error never released the element.** Only the media *load* algorithm
+   sets `paused = true` — which is what makes `emptied` and `abort` safe — so a decode
+   or network error mid-playback leaves `paused === false` and `ended === false`. The
+   service and its notification would have stayed up for the rest of the session with
+   no audio: the exact leak the prune was written to prevent. `el.error` is now part of
+   the test. `el.readyState === 0` was suggested with it and is **deliberately not**
+   used — a brand-new element has `readyState 0` between `play()` and its first
+   metadata, which is every seam's incoming element.
+3. **The visibility net cancelled settle windows that were still counting.** It fired
+   on any visible-and-silent transition, so foregrounding the app mid-seam disarmed a
+   live window; backgrounding again before the seam's `play()` landed produced the
+   refused background start the window exists to prevent. It now requires
+   `now() - stopArmedAt >= settleMs`, which is exactly "this timer should already have
+   fired" — the definition of frozen.
+4. **`uninstall()` restored `play` blindly**, deleting any wrapper installed after ours
+   — the mirror image of the "always call through" rule the file opens with.
+
+**One instrument changed shape because of finding 1, and `HUMAN-ACTIONS.md`'s device
+pass should use the new one.** `inspect()` now reports `startAccepted` (our request was
+accepted) and `lastKnownRunning` (native's answer as of the last `refresh()`, `null`
+until asked). The truthful reading is `await window.ForayAudioShell.refresh()` followed
+by `window.ForayAudioShell.inspect()` — and `refresh()` is also the only thing that can
+see a service that started and then failed its own `startForeground()`, which is the
+API 34 service-type and permission failure mode.
+
+### 5.5 One thing the review could not pin down, recorded rather than dropped
+
+Against an intermediate state of this branch, `node --test` over the three
+`tools/mobile` suites failed **3 of 15 runs** — once with 31 failures — with assertions
+of the shape "the native call had not been dispatched yet". Every failing test passed
+in isolation. It did not reproduce on the finished tree across ~20 runs including under
+saturating CPU load, and the most likely cause is the exact defect fixed in between: a
+`queue` link with no rejection handler, which silently stops all further dispatch for
+the life of the shell. Written down because `npm test` runs the whole root group in one
+`node --test` invocation, so if it resurfaces it will resurface as CI flake rather than
+as a local failure — and because a flake that has been seen and not explained is worth
+more on the page than in nobody's memory.
 
 ## 6. What is NOT done, and what is not known
 
@@ -392,11 +457,15 @@ read: **a real phone over USB, off charger, app backgrounded and screen locked**
 across at least two cross-episode seams, `chrome://inspect` on the desktop. This
 change adds two instruments worth using —
 
-- `window.ForayAudioShell.inspect()` reports `{ installed, active, wanted,
-  serviceRunning, lastReason, stopPending }`, so "the service is not running and here
-  is the exception Android threw" is readable from the console rather than guessable.
-- `ForayAudio.state()` answers the same question from the native side, so the two can
-  be compared.
+- `await window.ForayAudioShell.refresh()` then `window.ForayAudioShell.inspect()`.
+  `refresh()` calls native's `state()`; `inspect()` then reports
+  `{ installed, active, wanted, startAccepted, lastKnownRunning, lastReason,
+  stopPending }`. **Read those two names literally** — `startAccepted` is *our request
+  was accepted*, `lastKnownRunning` is *the service's own answer as of the last
+  refresh*, and nothing reports "running now" without a `refresh()`. §5.4 finding 1 is
+  why.
+- `Capacitor.nativePromise("ForayAudio", "state", {})` asks native directly, so the two
+  sides can be compared.
 
 — and one thing to watch for: `adb shell dumpsys activity services com.jwincorporated.foray`
 should show the service with `foregroundServiceType=mediaPlayback`. `HUMAN-ACTIONS.md`'s
