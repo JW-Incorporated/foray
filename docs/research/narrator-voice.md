@@ -216,14 +216,30 @@ should use it and will not be surprised. That belongs to
 `docs/narrator-pipeline.md`; it is stated here only because this is where the
 number was derived.
 
-The second is a warning. A default in the neighbourhood of 168 words per minute
-is at or past the fast end of long-form narration practice, and our copy is the
-worst possible copy to read fast: § 2 measures a proper noun every 37 words and a
-term the listener has never heard every second beat. Information density and
-speaking rate trade against each other, so **speaking rate has to be an explicit
-setting, not an accepted default** — and it has to be a setting we can prove is
-being applied, because it is the one voice parameter whose absence is invisible in
-a script review and obvious in the ear.
+The second is a warning, and it is not the obvious one. 168 words per minute is
+*not* anomalously fast for spoken audio — `docs/curation/segment-length-rules.md`
+§ 2a already establishes 170 wpm as this repo's working estimate for podcast
+speech, having chased the folklore "150 wpm average conversation" back to a single
+non-peer-reviewed page and rejected it. So ElevenLabs' implied default lands
+almost exactly on the rate of the tape it will be spliced between.
+
+**Judgement.** That coincidence is the problem, not a comfort. Two things argue
+for deliberately setting the narrator *below* the tape rather than accepting a
+default that matches it.
+
+- **Register.** The narrator's job is to be recognisably not-a-guest. A voice
+  arriving at the same rate as the surrounding tape has given up the cheapest
+  available signal that the work has changed levels. Slower is the direction that
+  reads as authored rather than as one more talker.
+- **Density.** § 2 measures a proper noun every 37 words and a term the listener
+  has never heard in 46 % of beats. Podcast speech at 170 wpm is conversational
+  and redundant; our copy is neither. The same rate carries much more per second.
+
+So **speaking rate is an explicit setting, not an accepted default** — the
+documented `speed` range is 0.7–1.2, which means a deliberate slow read is
+available and cheap. It also has to be a setting we can prove is applied, because
+it is the one voice parameter whose absence is invisible in a script review and
+obvious in the ear.
 
 ### 3.2 What a 2026 voice can actually be told to do
 
@@ -277,3 +293,105 @@ users". No official catalogue of named voices with per-voice descriptors is
 currently documented; the pages that used to hold one return 404. So the selection
 process is a library filter plus an ear, not a documented shortlist, and that ear
 requires the key.
+
+---
+
+## 4. Several voices, mapped to topics — no, and the repo already measured why
+
+The founder raised this and it deserves a real answer rather than a preference.
+The honest surprise is that the strongest evidence on the question was already in
+this repo, filed under a different problem.
+
+### 4.1 The case for several voices, put properly
+
+It is not a weak case.
+
+- **§ 2 measured it.** The two spines have genuinely different lexical characters:
+  barbecue is proper-noun dense at one per 25.5 words and its subject is labour,
+  credit and race; alcohol is technical vocabulary and Latin binomials at one per
+  46.7 words and its subject is process engineering. A voice that suits a
+  paragraph about who was made to stay up all night tending a pit is not obviously
+  the voice that suits parallel starch conversion in a koji mash.
+- **Documented.** The Voice Library's own taxonomy treats "Narration" and
+  "Educational" as *different* use-case categories, which is the vendor conceding
+  that one voice does not cover both jobs.
+- **A catalogue argument.** If Forays eventually span a hundred subjects, one
+  voice for all of them is a house style, and house styles get stale. Radio
+  networks run more than one presenter for exactly that reason.
+- **A practical one.** Voices differ in how they handle hard words. A voice that
+  says `baijiu` acceptably might mangle `Taíno`. Per-domain voices let each one be
+  chosen against the vocabulary it will actually face.
+
+### 4.2 The case against, which is measured rather than argued
+
+`docs/curation/segment-length-rules.md` § 2a assembled the perceptual literature
+on voice changes in order to set a cut budget. Every finding in it applies with
+equal force to a narrator change, and two of them are decisive.
+
+**Documented, and the repo grades it "solid".** Wang et al. 2019 (*Journal of
+Cognition*) measured the cardiac orienting response to an instantaneous voice
+change in radio content over a 6–10 s post-onset window and found it **did not
+habituate across five repetitions** when listeners were doing something else. The
+repo's own gloss: "Every cut pays full price. The listener does not get used to
+it." Foray's listening context is driving and chores, which is the distracted
+condition that finding was measured in.
+
+**Documented, and directly measured.** Lin & Carlile 2015 (*Frontiers in
+Neuroscience*) found the comprehension cost of a talker switch lands almost
+entirely on **the single sentence after the switch** — recall on that sentence
+falls from 71.6 % to 51.9 %.
+
+**Judgement, and this is the argument.** Put those two next to what a narration
+item is *for*. A bridged seam gets no silence at all — `player/seam-gap.js`
+returns 0 for `bridged`, because "Narration is a better marker than silence". So
+the narration item **is** the transition, and its first sentence is the highest
+value sentence in it: it closes the last clip and orients the listener into the
+next beat. Lin & Carlile says a talker switch costs you precisely that sentence.
+Wang says the cost recurs every single time. Splitting the narrator by topic
+therefore spends the repo's most expensive measured currency on its most valuable
+sentence, repeatedly, and buys tonal fit — a benefit nobody has measured at all.
+
+Three more things stack on top.
+
+- **The narrator is the only relief the format offers.** A Foray is already a work
+  made of strangers: Foray #1 makes 31 hard cuts between different people, rooms
+  and mic chains. Every one of those is an orienting response the listener pays
+  for. The narrator is the one voice that recurs, and its recurrence is the only
+  thing converting a playlist into a work. A second narrator does not add variety
+  to a monotonous programme — it removes the single constant from an already
+  fragmented one.
+- **Familiarity compounds, and only for one voice.** § 2a puts adaptation to an
+  unfamiliar voice at 12–18 sentences. One narrator across the whole catalogue
+  means a returning listener is *permanently* adapted and pays that cost once,
+  ever. Four narrators means paying it four times and re-paying whenever a domain
+  has not come up lately. This is the one benefit of consistency that grows with
+  the size of the catalogue, which is exactly the axis on which the case for
+  several voices was strongest.
+- **The topic axis is the worst available axis.** § 2a's McLaughlin et al. 2023
+  finding is that switch costs are *additive*. A topic-mapped narrator changes
+  voice at exactly the moment the subject also changes — so the listener eats a
+  talker switch and a topic switch simultaneously, when the entire purpose of
+  narration at that seam was to make the topic change legible. Of every axis one
+  could split a narrator on, subject domain is the one that guarantees the two
+  costs coincide.
+
+### 4.3 Where the multi-voice instinct is actually pointing
+
+**Judgement.** The founder's instinct is not wrong, it is aimed at the wrong
+layer. What differs between the barbecue spine and the alcohol spine is not the
+voice that should read them — it is the *register* of what gets written: how much
+is explained, how much authority the narrator claims, whether it is telling a
+story about labour or walking through a mechanism. That is a scripting decision,
+and one voice can deliver both registers because register lives in the words. It
+belongs to `docs/curation/narration-craft.md`, not here.
+
+**One voice. Across all topics, all Forays, and the whole catalogue.**
+
+**The one place a second voice would be legitimate**, and it is not a topic split:
+a *functional* split, where a distinct voice marks a distinct kind of utterance —
+a disclosure that a beat has no tape behind it, or a correction. That is a
+different speech act, not a different subject, and marking it with a different
+voice is honest rather than decorative. Even then, do not build it yet: it is
+worth exactly one voice-change's worth of orienting cost per occurrence, and the
+first version of a narrator should establish that there is a narrator before it
+starts qualifying who is talking.
