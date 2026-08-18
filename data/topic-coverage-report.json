@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-18T05:16:47.024Z",
+  "built_at": "2026-08-18T05:59:45.010Z",
   "provenance": {
     "produced_by": "topic-coverage-report.mjs",
     "method": "deterministic cross-reference; no LLM. tag_count/text_hits use search-engine.js's exported hitTag/hitText directly (#219), so they are the ranker's own matching semantics rather than a copy of them. Counts before 2026-08-17 came from a looser local copy (bare substring, no collision guard) and were optimistic.",
@@ -821,7 +821,7 @@
       ],
       "catalog_count": 0,
       "tag_count": 0,
-      "text_hits": 12,
+      "text_hits": 11,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -1216,7 +1216,7 @@
       ],
       "catalog_count": 11,
       "tag_count": 34,
-      "text_hits": 24,
+      "text_hits": 23,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1905,7 +1905,7 @@
       ],
       "catalog_count": 0,
       "tag_count": 37,
-      "text_hits": 34,
+      "text_hits": 25,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -2058,7 +2058,7 @@
       ],
       "catalog_count": 11,
       "tag_count": 59,
-      "text_hits": 43,
+      "text_hits": 42,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2080,7 +2080,7 @@
       ],
       "catalog_count": 8,
       "tag_count": 23,
-      "text_hits": 19,
+      "text_hits": 18,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2103,7 +2103,7 @@
       ],
       "catalog_count": 0,
       "tag_count": 337,
-      "text_hits": 114,
+      "text_hits": 113,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -2558,7 +2558,7 @@
       ],
       "catalog_count": 1,
       "tag_count": 7,
-      "text_hits": 10,
+      "text_hits": 9,
       "content_depth": "thin",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -3285,7 +3285,7 @@
       ],
       "catalog_count": 11,
       "tag_count": 65,
-      "text_hits": 57,
+      "text_hits": 56,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -3418,7 +3418,7 @@
       ],
       "catalog_count": 11,
       "tag_count": 61,
-      "text_hits": 40,
+      "text_hits": 39,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [

@@ -49,9 +49,17 @@ test("hitText: a term matches its own plural, including the -es plural", () => {
   assert.equal(hitText("coaches", "coach"), true);
 });
 
-test("hitText: a term matches its own -ed form", () => {
-  assert.equal(hitText("the ghost bomber crashed", "crash"), true);
-  assert.equal(hitText("murdered bill and peggy", "murder"), true);
+test("hitText: -ed is deliberately NOT in the set, and that was a reversal", () => {
+  /* `ed` was in the shipped set until it was measured over the whole vocabulary
+     rather than over the battery's 51 needles. On the needles it looked free (4
+     on-subject items: three "murdered", one "crashed"). Over the vocabulary
+     roughly 4 of its ~18 matches are on-subject and the rest are filler
+     participles -- "AI-powered threats" for `power`, "engineered", "launched" a
+     startup for the space sense of `launch`. Pinned so re-adding it is a
+     deliberate act with a measurement attached, not a tidy-up. */
+  assert.equal(hitText("the ghost bomber crashed", "crash"), false);
+  assert.equal(hitText("murdered bill and peggy", "murder"), false);
+  assert.equal(hitText("ai-powered threats", "power"), false);
 });
 
 test("hitText: the bare term still matches, unchanged", () => {
@@ -108,8 +116,14 @@ test("hitText: prefix guard blocks `geopolitics` for `politics`", () => {
 });
 
 test("hitText: a digit immediately before the term also blocks the match", () => {
-  assert.equal(hitText("4war", "war"), false);
+  /* Long-branch terms only. `war` is 3 chars and takes the SHORT branch, whose
+     guard is `\b` and never evaluates the lookbehind at all -- an assertion on
+     "4war" here would be green with the lookbehind deleted, so it would be
+     vacuous with respect to the guard this test is named after. It lives in the
+     short-branch section below instead, as a `\b` claim. */
   assert.equal(hitText("2fusion", "fusion"), false);
+  assert.equal(hitText("9roman", "roman"), false);
+  assert.equal(hitText("1politics", "politics"), false);
 });
 
 test("hitText: widening the suffix did not open a prefix hole on the new suffixes", () => {
@@ -157,6 +171,9 @@ test("hitText: short terms get NO -es/-ing/-ed, measured rather than assumed", (
 test("hitText: the short branch still requires a whole word", () => {
   assert.equal(hitText("nbaa business aviation", "nba"), false);
   assert.equal(hitText("swar", "war"), false);
+  /* A digit before a short term is blocked by `\b`, not by the long branch's
+     lookbehind -- see the digit test above for why this claim lives here. */
+  assert.equal(hitText("4war", "war"), false);
 });
 
 /* ---------- hitTag ---------- */
@@ -189,14 +206,29 @@ test("hitTag: a short term does not match a segment that merely starts with it",
 /* ---------- #219: nobody re-implements the shared matcher ---------- */
 
 test("no file outside search-engine.js declares its own hitText/hitTag", () => {
-  /* THREE independent copies of these helpers existed and TWO disagreed with
-     the ranker: the battery's (#211) and topic-coverage-report.mjs's (#219).
-     Both were LOOSER than the ranker they described, which is the dangerous
-     direction -- an oracle that admits what the ranker rejects hides real gaps
-     and contradicts the collision assertions in the same repo. Copies are how
-     they drifted, so the copies are what this forbids. Importing is fine; a
-     destructuring `const { hitText, hitTag } = SE` is an import, not a
-     declaration, and is deliberately not matched. */
+  /* Copies of these helpers existed and disagreed with the ranker: the battery's
+     (#211) and topic-coverage-report.mjs's (#219). Both were LOOSER than the
+     ranker they described, which is the dangerous direction -- an oracle that
+     admits what the ranker rejects hides real gaps and contradicts the collision
+     assertions in the same repo. Copies are how they drifted, so copies are what
+     this forbids. Importing is fine; a destructuring
+     `const { hitText, hitTag } = SE` is an import, not a declaration, and is
+     deliberately not matched.
+     BE PRECISE ABOUT ITS REACH, because it is easy to over-read as "no copies
+     exist anywhere". It catches a NAMED declaration reusing one of these two
+     identifiers, in a file other than search-engine.js. It does NOT catch a copy
+     under a different name, nor an anonymous inline one, nor anything inside
+     search-engine.js itself -- and there IS one, found reviewing this change:
+     `tagDF` inlines the pre-#211 loose predicate (`tag.includes(term)`, no
+     collision guard, no plural on the short branch) as an anonymous arrow. So the
+     count was four copies, not three. That one is BEHAVIOURAL -- tagDF feeds
+     expansion pruning, where df > 60 deletes a term and df > 25 cuts its weight,
+     and 13 vocabulary terms land in a different bucket than the shared matcher
+     would give them (`ship` 155 -> dropped, against 6 -> kept at full weight, on
+     a count made entirely of `relationships`/`championship` substring hits the
+     ranker would never make). Changing it moves rankings, so it is filed rather
+     than bundled here, and named in this comment so the green tick below is not
+     read as a claim it is clean. */
   const DECL = /(?:^|[^.\w])(?:const|let|var|function)\s+(hitText|hitTag)\s*(?:=|\()/;
   const SKIP = new Set(["node_modules", ".git", "audio-cache", "data-local", "ios", "mobile"]);
   const offenders = [];

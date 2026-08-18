@@ -238,11 +238,9 @@ function passesFilters(item, filters) {
    flood.
 
    The allowance is a BOUNDED, NAMED set of inflections, not a stemmer, because a
-   stemmer's failure mode here is unbounded and unreviewable while a four-element
+   stemmer's failure mode here is unbounded and unreviewable while a three-element
    list can be justified element by element and measured. Over the whole query
-   vocabulary (1,364 concept terms) against every surface word in the pool, each
-   suffix admits only genuine inflections of the term -- zero coincidental
-   different-word matches:
+   vocabulary (1,364 concept terms) against every surface word in the pool:
 
      s    kept as-is.
      es   4 pairs (coach/coaches, crash/crashes, glass/glasses,
@@ -250,15 +248,39 @@ function passesFilters(item, filters) {
           which a bare "s" structurally cannot reach.
      ing  19 pairs, and the reason #218 exists: grill/grilling. Also
           engineer/engineering, murder/murdering, coach/coaching, film/filming.
-     ed   10 pairs (murder/murdered, crash/crashed, launch/launched, ...). The
-          weakest of the four by an order of magnitude: measured as (term, item)
-          matches over the whole vocabulary it is worth 18 against `ing`'s 258,
-          and its 10 pairs skew toward participles used as filler ("powered by")
-          rather than as subject matter. It is IN because it earns 4 real items
-          on the battery's own needles -- three "murdered" true-crime episodes
-          and one "crashed" bomber -- at a measured zero coincidental matches,
-          not because it pulls weight. It is the first thing to drop if a later
-          measurement finds it costing precision.
+          Worth 258 (term, item) matches, the bulk of this change.
+
+   `ed` WAS IN THIS SET AND WAS CUT, which is worth recording because the first
+   version of this comment argued for it. It looked free on the battery's 51
+   needles -- 4 real items, three "murdered" true-crime episodes and one
+   "crashed" bomber, no visible cost. Measured over the whole vocabulary instead
+   of over the needles, it is a losing trade: of the ~18 (term, item) matches it
+   adds, roughly 4 are on-subject and the rest are participles used as filler in
+   prose that is about something else -- "AI-powered threats" for `power`,
+   "engineered" for `engineer`, "launched" a startup for the `space`/`rockets`
+   sense of `launch`. Needle-scoped measurement could not see that, because none
+   of those terms is a needle. The earlier comment promised `ed` would be the
+   first thing dropped if a measurement found it costing precision. It did, so it
+   is.
+
+   WHAT THIS SET STILL GETS WRONG, stated plainly rather than left to be
+   rediscovered: the scan behind the table above applied a MORPHOLOGICAL test --
+   is the surface word an inflection of the term -- and passing it does not make a
+   match right. A term can be a genuine inflection of the wrong SENSE of an
+   ambiguous stem. `train` is a term of the `trains` concept
+   (topics: transport/trains) and carries only the railway sense, but `training`
+   is a real inflection of the unrelated verb, so `ing` newly matches 32 fitness,
+   dog-training and AI-pre-training items. That is user-visible, not just an
+   oracle count: `search("train history")` now returns "The Pre-Training Wall"
+   and a speed-training episode inside its top 10. Same shape, 1-2 items each,
+   for `book`/booking and `wind`/winding.
+   This is NOT fixable by choosing different suffixes -- `ing` is exactly what
+   #218 asks for, and `grill`/`grilling` needs it. It is a vocabulary problem: an
+   ambiguous bare stem in a single-sense concept. #218 names the substitution
+   ("matcher changes and vocabulary changes can substitute for each other here")
+   and it is filed separately rather than bundled, because dropping `train` from
+   the concept would stop the natural singular from triggering it at all, which
+   is the very defect #218 exists to fix.
 
    Deliberately OUT: y->ies (story/stories), e-dropping (bake/baking) and any
    consonant doubling. Each needs to MUTATE the stem rather than append to it,
@@ -284,7 +306,7 @@ function passesFilters(item, filters) {
    through the `bbq` concept's separately authored `grilling` term. That
    redundancy is now harmless rather than load-bearing; retiring it is a
    vocabulary question, not a matcher one. */
-const LONG_INFLECTIONS = "(?:s|es|ing|ed)?";
+const LONG_INFLECTIONS = "(?:s|es|ing)?";
 const SHORT_INFLECTIONS = "s?";
 
 /* Compiled patterns are CACHED per term, which is a real cost here rather than

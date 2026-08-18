@@ -156,14 +156,20 @@ function search(query, opts) {
  *
  * Then #218 widened the SUFFIX side of the same matcher, and the direction
  * reversed. Re-measured on today's pool (1,540 items, not the 1,516 those figures
- * were taken on — the nightly grows it): 1,261 -> 1,288, a widening of 27, of
- * which the >=4-char suffix set is +13 and the new under-4-char plural is +14.
+ * were taken on — the nightly grows it): 1,261 -> 1,284, a widening of 23, of
+ * which the >=4-char suffix set is +9 and the new under-4-char plural is +14.
  * FOUR needles move and every one of them moves UP: grill 0 -> 7 (it could not
- * match "grilling"), war 87 -> 101 ("wars"), murder 29 -> 33 ("murdering",
- * "murdered"), crash 9 -> 11 ("crashes", "crashed"). Nothing narrows, and the
- * needles that a widening would be expected to endanger do not move at all:
- * politics stays 35 and roman stays 14, because `geopolitics` and `romance` are
- * PREFIX collisions and the prefix guard is deliberately untouched. */
+ * match "grilling"), war 87 -> 101 ("wars"), murder 29 -> 30 ("murdering"),
+ * crash 9 -> 10 ("crashes"). Nothing narrows, and the needles a widening would
+ * be expected to endanger do not move at all: politics stays 35 and roman stays
+ * 14, because `geopolitics` and `romance` are PREFIX collisions and the prefix
+ * guard is deliberately untouched.
+ *
+ * These needles are also where `ed` was cut from the suffix set: it added 4 items
+ * here and looked free, and measuring the whole vocabulary instead showed most of
+ * what it adds is filler participles on terms that are not needles at all. A
+ * 51-needle blast radius is the right instrument for "did anything break"; it is
+ * the wrong one for "is this suffix worth having". */
 function itemHas(item, needle) {
   const n = needle.toLowerCase();
   const tags = itemTags.tags?.[item.id] || [];
