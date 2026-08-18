@@ -747,3 +747,307 @@ being run *after* generation. That is fixable for free.
 **One number this document does not give.** Per-Foray cost in currency, and the count
 of Forays. Those belong to the parallel cost work, and the input it needs from here is
 the character range above plus the sentence that the ceiling row is not a plan.
+
+---
+
+## 5. The words
+
+Voice is somebody else's document. This section is about what is on the page: person,
+tense, register, sentence, number, uncertainty, attribution.
+
+### 5a. Person
+
+- **Third person. The narrator never says "I".** Not once, in any mode. An "I"
+  invents a character, and a character has opinions, a biography and a relationship
+  with the listener — none of which the product has designed and all of which would
+  compete with the people on the tape. This is the copy-side consequence of the same
+  fact the voice document is grappling with: the narrator is the only recurring voice
+  in a work made of strangers, so every claim it makes on the listener's attention is
+  a claim it takes from a source.
+- **"We" only where it means humanity**, and only where the beat already does. The
+  barbecue spine's Act I is about "the animal doing it", and *"we"* meaning our species
+  is correct there. **"We" never means the makers of the Foray.** No "we found", no "we
+  could not find a source for this" — see §5e for the publishable form of that
+  sentence.
+- **"You" is permitted for exactly one job: handing the listener a tool.** The alcohol
+  spine's beat 16 is written to a second person by design — "the listener can now place
+  a drink they have never heard of", and the beat's proof is "running an unfamiliar one
+  through the key from scratch." A key is used by somebody, and telling them so in the
+  second person is the whole point. Outside that job, "you" is presumption.
+
+### 5b. Tense
+
+> **Present tense for mechanism. Past tense for history. Never the historical
+> present.**
+
+This looks like a style preference and it is load-bearing, because of a structural
+decision both spines made. The alcohol spine, §2c: "History is not an act. It is
+admitted beat by beat, and only where it explains a production fact." So mechanism and
+history are interleaved *inside single beats*, and the listener has no chapter heading
+telling them which they are hearing. **In audio, tense is the only cue available.**
+Collapse it into a dramatic historical present — "it is 1801, and a Frenchman is
+building a column" — and the listener loses the one signal that separates "this is how
+the thing works" from "this is how it came to work that way." That distinction is the
+whole difference between the Foray the founder asked for and a story about drinks.
+
+The same applies to barbecue's two-clause through-line: technique is present tense
+("collagen converts to gelatin"), labour and history are past ("the work was performed
+by enslaved people"). Where a beat asserts a live continuity, say so in a clause rather
+than by borrowing the wrong tense.
+
+### 5c. Register
+
+Sentence case. No exclamation marks. Beyond that, a list of bans, each with the reason
+it earns one:
+
+- **No adjectives of significance.** Remarkable, fascinating, surprising, extraordinary,
+  striking. The beat's claim should be interesting; asserting that it is interesting is
+  the most reliable tell of a script written to fill a length rather than to make a
+  point. Treat every instance as a §6 R2 signal.
+- **No "imagine", no "picture this", no second-hand awe.** The narrator did not see it
+  either.
+- **No suspense constructions.** "Little did they know", "but there was a problem",
+  "what happened next changed everything." A Foray is an argument, and its unit of
+  interest is a claim being established, not a reveal being withheld.
+- **No rhetorical questions**, with one exception: MacAdam's *Question → Answer*, where
+  the narrator asks and **the tape answers immediately**. A question the narrator then
+  answers itself is a padding pattern.
+- **No throat-clearing openers.** "It turns out", "as it happens", "interestingly",
+  "of course", "now". Cost: three to six characters per instance, dozens of instances
+  per Foray, and zero information.
+- **Contractions are correct.** Everett's first tip is "use colloquial language and
+  contractions; read aloud to ensure it's speakable," and a TTS engine reads a
+  contraction more naturally than the expansion.
+- **Jargon is defined at first use or replaced.** Everett's ninth. In a process Foray
+  this is constant work: the alcohol spine's Act I has sixteen beats of mechanism, and
+  a term used before it is defined costs the listener the rest of the derivation.
+
+### 5d. Sentences and numbers
+
+| | rule | why |
+|---|---|---|
+| mean sentence length | **12–15 words** | Everett's "short sentences"; at 150 wpm a 20-word sentence is 8 s of unbroken breath, the entire transition budget |
+| maximum sentence | **25 words**, one level of subordination | past that a listener holds a clause open across a comma they cannot see |
+| rhythm | any narration item over 20 s contains **at least one sentence under 6 words** | anti-uniformity at the sentence scale; the reasoning in `segment-length-rules.md` §2d is about texture, and prose has texture too |
+| voice | **active** | Everett's fifth. Also: the passive is how an unattributed claim hides — "it is thought that" has no subject on purpose |
+| openers | no sentence begins with a long participial phrase | Everett's second: "move descriptive phrases to sentence endings instead" |
+| numbers | **one number per sentence, at most three per narration item** | a spoken number cannot be re-read |
+| number form | written as spoken — "about eighteen hours", "eighteen-oh-one", not "18 hrs" or "1801" | correctness for the ear and for the engine; a numeral is an instruction to a TTS voice that we have not tested |
+| precision | round unless the precision is the point | "roughly two centuries" is honest; "204 years" is a false claim about our own confidence |
+
+### 5e. Uncertainty — four calibrated forms, and the rule that governs them
+
+The narrator must use **the weakest form the evidence supports**, and the fourth form is
+allowed.
+
+| | form | pattern | when |
+|---|---|---|---|
+| **U1** | flat assertion | *"Collagen converts to gelatin above about 70 degrees."* | the spine's claim asserts it and a named source supports it |
+| **U2** | attributed | *"Adrian Miller's account of the newspaper record is that…"* | the claim is one scholar's, or is a reading of evidence |
+| **U3** | contested, with the axis named | *"How the transfer is traced is argued, and the argument is about how much weight comparative practice can bear."* | there is a real disagreement — name what it is about, not merely that it exists |
+| **U4** | **absent** | *"No recorded conversation we could find makes this argument at length."* | we looked and there is nothing |
+
+**U4 is permitted, and it is better than filling.** This is not a concession; it is the
+standard the spines already hold *tape* to. The barbecue spine on beat 1: "Tape that
+*names the disagreement* is better tape than tape that asserts the tidy version, because
+the disagreement is what makes this history rather than a fun fact." On beat 15, the
+chosen segment "says out loud that **there is no direct evidence** for the transmission.
+The spine explicitly prizes a speaker who says so over one who asserts it." On beat 20:
+"A speaker who is explicit about how much weight that evidence bears is worth more than
+one who asserts a direct line."
+
+> **The narrator's uncertainty vocabulary must be at least as good as the best tape's.**
+> If a segment earns its place partly by saying "there is no direct evidence", a
+> narrator that will not say the same thing about its own material is held to a lower
+> standard than the strangers it is introducing.
+
+**Banned outright — the unattributed hedges.** "Some say", "it is believed", "many
+historians believe", "legend has it", "it is often said", "experts think", "some
+argue". Each has the grammatical shape of U2 or U3 with the attribution deleted, which
+means it manufactures authority out of nothing while sounding careful. **This is the
+fluency failure in a single phrase**, and it is the highest-yield thing to grep a script
+for.
+
+Note the asymmetry with the internal documents. `grilling-history-coverage.md` writes in
+the first person and says "I cannot know that" — correct for a working document with a
+named author. The narrator has no author and no first person, so its version of the same
+honesty is U4 in the third person.
+
+### 5f. Attribution, and the rule that makes a Carry honest
+
+**Pattern:** name, then standing, then show — *"Candice Goucher, an archaeologist who
+works on African and Caribbean transmission, on The Moreish Podcast."* Everett's *Title
+First*: the descriptive title comes before the listener has to do anything with the
+name. Show named once per source per Foray (§3d).
+
+**And then the rule this document most wants remembered:**
+
+> **Every Carry item names, out loud, at least one source it is standing in for.**
+
+The reasoning is not politeness and it is not citation hygiene. **The narrator has no
+on-air authority of its own.** Every other voice in a Foray arrives with a show, a
+guest credit and a reason to be believed. A Carry item arrives with none of that, so an
+unattributed Carry is the product asserting on its own credit — credit it has not
+earned and has no mechanism for earning. It is also, exactly, what a padded beat sounds
+like, which is why this rule and §6's R3 are the same rule seen from two sides.
+
+For beats where no tape exists, the source named is the **literature**, and the coverage
+report usually says which: on barbecue beat 20, "the argument lives in Twitty and in
+Miller's own book"; the spine says "Twitty and Miller are the archetype of the
+register." So the Carry says so. **A Carry that names a book is doing something a
+podcast segment cannot do**, which is worth noticing — it is the one respect in which
+a narration beat is better than the tape it replaces, and it is the reason a Carry is a
+legitimate artefact rather than a patch over an absence.
+
+**Attribution slots are a hard generation gate.** A script with an unfilled speaker
+name — `[speaker: confirm from audio]` — must fail the dry run and must not be voiced.
+Both worked examples in §7 carry such a slot, because the coverage report describes the
+Argentina guest and the jerk researcher without naming them, and inventing a name is
+the single worst thing this pipeline could do.
+
+---
+
+## 6. How a narration script gets rejected
+
+The load-bearing section. Everything above is craft; this is the gate, and it exists
+because #226's rule applies to a script exactly as it applies to a cut: **a narration
+script must be rejectable for being off-beat.**
+
+The parallel is deliberate and it should be maintained in the tooling. Tape is scored
+against a claim by a stage-2 pass that is allowed to return "empty". A script is scored
+against the same claim by the tests below and they are allowed to return "unwritable".
+
+### 6a. The six tests
+
+A script fails if it fails **any one**. Order matters only in that R1 and R2 are the
+cheap ones and catch the most.
+
+**R1 — the licence test (relevance).**
+Read the beat's claim sentence. Then read the script one sentence at a time. Every
+sentence must have exactly one of six licences, and the script records which:
+
+1. it asserts or supports **this beat's claim**;
+2. it is a **required attribution** (§5f);
+3. it is **required structural signposting** — a Marker's job (§3b, S7);
+4. it is a **required correction** of adjacent tape (§3f);
+5. it supplies an **antecedent the tape assumes** and the coverage report names as
+   missing;
+6. it is the **sacrificial head** — two or three words of orientation (§3h).
+
+A sentence with no licence is cut. **If more than about a quarter of the item's words
+have no licence, the item is rejected rather than trimmed**, because a script that
+needed that much filler was written to a length instead of to a claim, and trimming it
+leaves the same script shorter.
+
+**R2 — the substitution test. This is the one that catches fluent filler.**
+
+> **Take the script. Change only the proper nouns. Could it now sit under a different
+> beat of the same spine? If yes, reject.**
+
+This is the test the product actually needs, because the failure mode is not prose that
+is wrong — it is prose that is *plausible*, and plausible prose is exactly prose that
+would fit anywhere. A script bound to a specific claim cannot be relocated: its
+sentences depend on that claim's mechanism, its numbers, its named evidence and its
+place in the chain. A script that is really a well-turned paragraph about barbecue in
+general will relocate cleanly, and the relocation is the proof.
+
+The failing form is easy to recognise once named. It moves from the general to the
+general; it states that something mattered, was important, shaped what came after; it
+attributes to nobody; and it contains no number, no mechanism and no name that the beat
+could not do without. §7b shows one and runs the test on it.
+
+Two cheap proxies for R2 that a checker could apply, both signals rather than verdicts:
+zero named sources in a Carry (that is R3 anyway), and zero of the beat's own evidence
+vocabulary — the "evidence that counts" paragraph of every spine beat is a ready-made
+keyword set, and a Carry that contains none of it is very likely relocatable.
+
+**R3 — the evidence test.**
+Every factual assertion in a Patch or Carry is attributable to a named source recorded
+in the script, and at least one of those sources is named **on air** (§5f). No source
+means the sentence is a banned hedge (§5e) or is cut. An unfilled attribution slot is a
+generation-blocking failure, not a warning.
+
+**R4 — the spoiler and redundancy test.**
+For Frame and Hinge: does the script state the claim the adjacent tape makes? Reject
+(§3c). Then run the deletion check: remove the narration and play the tape. If nothing
+is lost, the narration is redundant and is cut; if the tape becomes unintelligible or
+unattributed, the narration is doing its job.
+
+**R5 — the juxtaposition test (integrity, hard reject).**
+Does the script imply agreement, disagreement, sequence or reply between speakers
+recorded years apart in different rooms? Does grammar run across a cross-episode seam?
+Does a Hinge attribute a position to a speaker in order to set up the next one? Any of
+these is a hard reject on RTDNA grounds, not a style note (§3g).
+
+**R6 — the budget test (mechanical, checkable).**
+Mode band respected. Transition items ≤ 8 s, or ≤ 12 s with the reason recorded.
+Carry ≤ 150 s without `needs_review`, ≤ 180 s absolutely. Adjacent empty beats merged.
+At most two consecutive narration items. No three consecutive narration items within
+±20 %. Foray R-foray share within ceiling. Sentence mean and maximum. Numbers per item.
+Banned-phrase list clean.
+
+### 6b. What R1 and R2 look like together
+
+R1 catches a script that wandered. R2 catches a script that never went anywhere. They
+are different defects and a padded beat usually passes R1 — every sentence is *about*
+the beat — while failing R2 completely, because being about a subject is precisely what
+generic prose does. **R2 is the test to run first on a Carry.** R1 is the test to run
+first on a Patch, because a Patch's failure mode is scope creep into material the tape
+already covers.
+
+### 6c. Who rejects, and what happens to a rejected script
+
+The discipline is `grilling-history-coverage.md`'s: **label, never exclude.** A rejected
+script stays in the repo with its rejection reason recorded against the beat, exactly as
+rejected segments stay in `data/segments.json` with theirs. Three reasons: the next
+author needs to know what was tried; a rejection is evidence about the beat, not only
+about the script; and a script rejected under R2 for a beat that later gains tape may be
+recoverable as a Patch.
+
+Recorded as a request to the pipeline document: **a rejection reason is a required field,
+and a rejected script is not deleted.**
+
+### 6d. Unwritable — the third verdict, and the escalation
+
+Here is the case the coverage vocabulary cannot currently express. A beat is empty. An
+author sits down to Carry it. The script cannot pass R2 and R3 — there is nothing
+beat-specific and sourced to say, because the material genuinely is not in reach of
+anybody writing from what we have.
+
+**That beat is not a narration beat. It is unwritable, and "write it anyway" is not
+among the options.** The escalation, in order:
+
+1. **A fan stop: drop it.** Both spines say a missing fan stop is invisible once the
+   boundary is announced. This is the cheap and correct outcome and it needs no
+   permission.
+2. **A chain link: do not ship the act.** Keep sourcing. The barbecue coverage report
+   already models this — it names the remaining shots for beat 20 and says that if
+   neither lands, "beat 20 is a narration beat permanently and should be written as one
+   rather than left open."
+3. **The claim is the problem: recommend a spine amendment.** Two are already pending
+   (beats 22 and 27). A beat whose claim cannot be written *or* sourced may be a beat
+   whose claim is wrong, and that is a finding worth recording rather than a script
+   worth faking.
+
+> **The rule, stated to match the one it mirrors.** A beat that comes back empty stays
+> empty. **A beat that comes back unwritable stays unwritten.**
+
+**Recommendation to the coverage-report vocabulary:** carry `writable` / `unwritable` as
+a second axis on empty beats, and record it at the same time as the empty verdict rather
+than discovering it at script time. Stage 2 already knows enough to predict it — an
+empty beat whose literature the report can name (beat 20: Twitty, Miller) is writable; an
+empty beat where the report cannot say what would be said is not. This document does not
+edit the coverage report; it recommends the addition.
+
+### 6e. The thing that makes narration harder to police than tape, said plainly
+
+Bad tape announces itself. The Welsh bakestone segment was audibly about Welsh
+bakestones, and anyone listening to the Foray heard a subject change. **Bad narration
+does not announce itself.** It is in the house voice, at the house level, in the right
+place, at the right length, on topic, grammatical, and it can be produced without limit.
+Every quality signal a listener has access to says it belongs.
+
+Which is why the gate is written as text tests run before generation, and why R2 exists
+in the form it does. **The only reliable evidence that a Carry is not filler is that it
+could not have been written for any other beat.** Everything else — fluency, relevance,
+correct length, pleasant delivery — a padded beat has too.
