@@ -31,7 +31,9 @@
    document and reports what they said.
 */
 
-import { buildForayQueue, forayRuntimeSec, SEGMENT } from "./foray-queue.js";
+import {
+  buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration, SEGMENT,
+} from "./foray-queue.js";
 
 /** The one status that may be shown to a visitor who did not ask by id. */
 export const PUBLISHED = "published";
@@ -139,11 +141,19 @@ export function hydrateForayItems(foray, { segments, sources } = {}) {
       dropped.push({ position, segment_id: null, reason: "not an object" });
       return;
     }
-    // Narration bridges are the other authored item type (#134). None exist
-    // yet, and inventing audio for them is not this module's call, so they pass
-    // straight through to the builder, which drops any that carry no asset.
+    /* Narration bridges are the other authored item type (#134). Inventing
+       AUDIO for them is not this module's call, so they pass straight through to
+       the builder, which drops any that carry no asset — but their LENGTH is
+       resolved here as well as there, so that `duration_sec` means the same
+       thing on a narration entry as it does on a segment entry and `authoredSec`
+       below can sum one field over both. `narrationDuration` keeps its own
+       provenance, so resolving in two places cannot promote an estimate. */
     if (raw.type !== SEGMENT) {
-      items.push({ ...raw, ord: items.length, position });
+      const dur = narrationDuration(raw);
+      items.push({
+        ...raw, ord: items.length, position,
+        duration_sec: dur.sec, duration_source: dur.source,
+      });
       return;
     }
 
@@ -227,6 +237,8 @@ function spanOf(seg) {
  *   slots: object[],               entries grouped into the authored slots
  *   totalSec: number,              runtime of what will ACTUALLY play
  *   authoredSec: number,           runtime of what was authored
+ *                                  Both are the LISTENER'S clock and both count
+ *                                  narration. They are not the sum of the tape.
  *   shows: string[],
  *   unplayable: object[],          every item that will not play, with a reason
  *   warnings: string[],
@@ -245,12 +257,18 @@ export function resolveForay(foray, opts = {}) {
   });
 
   /* buildForayQueue keys everything by the item's index in the list it was
-     given, which is `ord` — that is the join back to the authored order. */
+     given, which is `ord` — that is the join back to the authored order, and it
+     is now carried on the queue item rather than parsed back out of its id.
+
+     THE PARSE WAS A NARRATION BUG. A segment's queue id is `${forayId}#${ord}`,
+     so recovering `ord` from it worked; a narration item keeps its AUTHORED id
+     (`nar-7`), the parse returned null, and the bridge was left out of
+     `queueByOrd` entirely — so a narration item that plays perfectly well was
+     reported `playable: false` and listed in `unplayable` as "not queued". */
   const skippedByOrd = new Map(report.skipped.map((s) => [s.index, s]));
   const queueByOrd = new Map();
   report.items.forEach((qi, queueIndex) => {
-    const ord = ordOfQueueId(qi.id, report.id);
-    if (ord != null) queueByOrd.set(ord, { queueIndex, item: qi });
+    if (Number.isInteger(qi?.ord)) queueByOrd.set(qi.ord, { queueIndex, item: qi });
   });
 
   const entries = [];
@@ -289,17 +307,6 @@ export function resolveForay(foray, opts = {}) {
     unplayable,
     warnings: report.warnings,
   };
-}
-
-/** `foray#7` -> 7. Queue ids are `${forayId}#${index}` (foray-queue.js), and a
-    narration item may carry an AUTHORED id instead, which is why this returns
-    null rather than guessing — an unparseable id simply has no authored slot to
-    be paired with. */
-function ordOfQueueId(queueId, forayId) {
-  if (!nonEmpty(queueId) || !nonEmpty(forayId)) return null;
-  if (!queueId.startsWith(`${forayId}#`)) return null;
-  const n = Number(queueId.slice(forayId.length + 1));
-  return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 /**
@@ -344,10 +351,15 @@ export function segmentStarts(items) {
   return starts;
 }
 
+/* Every Foray-clock calculation in this file — `segmentStarts`,
+   `segmentAtElapsed`, `forayElapsed`, `progressSegments` — measures an item with
+   this one function, and it is `foray-queue.js`'s `itemRuntimeSec` rather than a
+   local subtraction. It used to be a local subtraction, and that is precisely
+   how a narration item came to be worth 0 s here AND in `forayRuntimeSec`: two
+   copies of the same rule, both wrong the same way, either of which could have
+   been fixed without the other. */
 function lengthOf(item) {
-  const end = isNum(item?.authored_end_sec) ? item.authored_end_sec : item?.end_sec;
-  if (isNum(item?.start_sec) && isNum(end) && end > item.start_sec) return end - item.start_sec;
-  return 0;
+  return itemRuntimeSec(item);
 }
 
 /**
@@ -385,9 +397,15 @@ export function segmentAtElapsed(items, elapsed) {
  * is deliberately pure and knows nothing about resolved Forays, so this is the
  * adapter between the two: `resumePoint(record, { segments: progressSegments(r) })`.
  *
- * `id` is null for any item with no authored segment (a narration bridge, when
- * one exists) rather than invented — an unidentifiable item simply cannot anchor
- * a resume, and saying so is better than matching the wrong thing.
+ * `id` is null for any item with no authored segment (a narration bridge)
+ * rather than invented — an unidentifiable item simply cannot anchor a resume,
+ * and saying so is better than matching the wrong thing.
+ *
+ * A NARRATION BRIDGE STILL GETS A ROW, with its real `durationSec`. It has to:
+ * `startSec` is cumulative, so a bridge counted as 0 s would leave every segment
+ * after it claiming a Foray-clock start earlier than the one the listener
+ * reaches, and `reconcileSegment` would then re-derive a resume point short by
+ * the total narration ahead of it. The row is unanchorable, not absent.
  */
 export function progressSegments(resolved) {
   const items = resolved?.playable ?? [];

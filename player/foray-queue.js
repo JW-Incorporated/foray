@@ -49,6 +49,110 @@ export const NARRATION = "narration";
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 
+/* ── How long a narration item is ─────────────────────────────────────────
+
+   A segment's length is a subtraction: it is a slice, and the slice knows its
+   own bounds. A narration item is not a slice of anything, so its length has to
+   be CARRIED, and until it was, it was silently zero — a Foray with 23 minutes
+   of narration reported a runtime 23 minutes short of what a listener hears,
+   and `check-forays.mjs`'s D1 budget, `progressSegments` and every resume
+   arithmetic downstream inherited the shortfall.
+
+   Three sources, in this precedence, and the answer always says WHICH:
+
+     1. `duration_sec` — MEASURED. `tools/narrate/` stamps it at generation time
+        from the file it produced (`docs/narrator-pipeline.md` §1's first
+        recommendation for this module). This is the only reading that is a fact
+        rather than a projection, and it includes the padding baked into the
+        asset, because it is a property of the file.
+     2. `script` — ESTIMATED at `docs/curation/narration-craft.md` §0's published
+        planning rate, 17 characters per second (1,020 chars/min). That document
+        derives all six of its mode budgets from this same constant, so an
+        estimate made with it agrees with the budget the script was written to.
+        Scripts exist before audio does — narration-craft is explicit that "the
+        word budgets are the primitive" — so this is the ordinary state of an
+        authored-but-unvoiced bridge, not an error.
+     3. Neither — FALLBACK, and the item is a defect. See the constant.
+
+   `duration_source` survives a second pass, so resolving twice cannot promote an
+   estimate to a measurement.
+
+   NOT INCLUDED, deliberately: the seam beat and the TTS padding. The 2.0 s beat
+   is wall clock the manager spends between two items and has never been part of
+   authored runtime (`player/seam-gap.js`); the ~0.5 s padding is baked into the
+   asset, so a measured duration already carries it and an estimate deliberately
+   does not guess it. Which of those two numbers governs a bridge is
+   `HUMAN-ACTIONS.md` #3 and is not settled here. */
+
+/** `docs/curation/narration-craft.md` §0: 170 wpm x 6.0 chars/word. Characters
+    rather than words because characters are what the pipeline bills and counts
+    exactly, and because the rate is stated per character. */
+export const NARRATION_CHARS_PER_SEC = 17;
+
+/** What a narration item with neither a duration nor a script is worth.
+
+    NOT ZERO. Zero is the bug: it makes an item that a listener sits through for
+    eight seconds free, everywhere, silently. `tools/foray/check-forays.mjs`
+    REJECTS such an item, so this number should never be reached by anything that
+    passed CI — it exists so that a hand-edited or half-deployed document
+    degrades to a visible over-estimate instead of an invisible omission.
+
+    8 s is the transition ceiling from `docs/brief/04_VOICE_AUDIO_SPEC.md` and
+    narration-craft §0: the largest a bridge — the commonest narration item — is
+    allowed to be. Erring long is the safe direction here, because an
+    over-counted bridge lands a resume slightly EARLY, and re-hearing four
+    seconds of a narrator is recoverable where skipping past content is not. */
+export const NARRATION_FALLBACK_SEC = 8;
+
+export const DURATION_MEASURED = "measured";
+export const DURATION_ESTIMATED = "estimated";
+export const DURATION_FALLBACK = "fallback";
+
+/**
+ * How long a narration item runs, and on what authority.
+ *
+ * @param {object} item  an authored or hydrated narration item
+ * @returns {{ sec: number, source: string }}
+ */
+export function narrationDuration(item) {
+  if (isNum(item?.duration_sec) && item.duration_sec > 0) {
+    /* An already-resolved item keeps its provenance. Without this, running the
+       resolver twice would relabel an estimate as a measurement — the field
+       would be present the second time, and "present" is what `measured`
+       means. */
+    return {
+      sec: item.duration_sec,
+      source: nonEmpty(item.duration_source) ? item.duration_source : DURATION_MEASURED,
+    };
+  }
+  const script = typeof item?.script === "string" ? item.script.trim() : "";
+  if (script.length > 0) {
+    return { sec: script.length / NARRATION_CHARS_PER_SEC, source: DURATION_ESTIMATED };
+  }
+  return { sec: NARRATION_FALLBACK_SEC, source: DURATION_FALLBACK };
+}
+
+/**
+ * One queue item's contribution to the Foray clock, in seconds.
+ *
+ * THE ONLY definition of "how long is this item", and it is exported so it stays
+ * that way. `forayRuntimeSec` below, and `segmentStarts` / `segmentAtElapsed` /
+ * `forayElapsed` / `progressSegments` in `foray-resolve.js`, all route through
+ * it — four private copies of this subtraction is how narration came to be worth
+ * 0 s in every one of them at once, and how a fix could have landed in one and
+ * not the others.
+ *
+ * A segment's authored length wins over its padded one: the pad is tolerance,
+ * not content (ADR-0008). A narration item has no bounds and falls through to
+ * the duration `buildForayQueue` stamped on it.
+ */
+export function itemRuntimeSec(item) {
+  const end = isNum(item?.authored_end_sec) ? item.authored_end_sec : item?.end_sec;
+  if (isNum(item?.start_sec) && isNum(end) && end > item.start_sec) return end - item.start_sec;
+  if (isNum(item?.duration_sec) && item.duration_sec > 0) return item.duration_sec;
+  return 0;
+}
+
 /**
  * @param {object} foray  `{ id, title, items: [...] }`
  * @param {object} [opts]
@@ -97,9 +201,21 @@ export function buildForayQueue(foray, opts = {}) {
       // A missing narration line must not stall the Foray — the same rule the
       // manager already applies to a missing TTS bridge (corner case #12).
       if (!nonEmpty(url)) return drop("narration has no asset");
+      /* The duration is resolved HERE, once, and carried on the queue item. The
+         alternative — every consumer calling `narrationDuration` on the authored
+         record — puts the precedence rule in five places and guarantees that one
+         of them keeps the old answer of zero. */
+      const dur = narrationDuration(raw);
+      if (dur.source === DURATION_FALLBACK) {
+        warnings.push(
+          `${qid}: narration has neither a duration_sec nor a script — counted as ` +
+          `${NARRATION_FALLBACK_SEC}s so it is not free, but the runtime is a guess`
+        );
+      }
       items.push({
-        id: uniqueId(raw.id), kind: "tts", audio_url: url,
+        id: uniqueId(raw.id), ord: index, kind: "tts", audio_url: url,
         title: raw.title ?? "", script: raw.script ?? "",
+        duration_sec: dur.sec, duration_source: dur.source,
       });
       return;
     }
@@ -183,6 +299,13 @@ export function buildForayQueue(foray, opts = {}) {
 
     items.push({
       id: uniqueId(qid),
+      /* The item's position in the AUTHORED list, carried rather than recovered
+         from the id. `foray-resolve.js` used to parse `${forayId}#${n}` back out
+         of the id to pair a queue item with the authored item it came from,
+         which works for a segment and fails for a narration item — those keep an
+         authored id like `nar-7`, so the parse returned null and the bridge was
+         reported as an item that would not play. */
+      ord: index,
       kind: "episode",
       audio_url: episode.audio_url,
       start_sec: startSec,
@@ -207,12 +330,9 @@ export function buildForayQueue(foray, opts = {}) {
   return { id: forayId, title: foray?.title ?? "", items, skipped, warnings };
 }
 
-/** Total authored runtime of a built queue, in seconds. Segments count their
-    authored length, not their padded one — the pad is tolerance, not content. */
+/** Total authored runtime of a built queue, in seconds — the LISTENER'S clock,
+    so narration counts. Segments count their authored length, not their padded
+    one: the pad is tolerance, not content. */
 export function forayRuntimeSec(items) {
-  return (items ?? []).reduce((total, i) => {
-    const end = isNum(i.authored_end_sec) ? i.authored_end_sec : i.end_sec;
-    if (isNum(i.start_sec) && isNum(end)) return total + (end - i.start_sec);
-    return total;
-  }, 0);
+  return (items ?? []).reduce((total, i) => total + itemRuntimeSec(i), 0);
 }

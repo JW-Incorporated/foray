@@ -50,6 +50,19 @@ import { fileURLToPath } from "node:url";
  * consolidated away. It is plain CJS with no build step for this reason. */
 import copyRules from "../../backend/src/copy/rules.js";
 
+/* Same discipline, same reason: a narration item's duration is resolved by ONE
+ * rule, and the player owns it because the player is what spends it. Imported
+ * rather than re-derived — a second copy of the precedence here is how the
+ * checker would come to bless a runtime the player does not agree with.
+ * `player/foray-queue.js` is pure ESM with one pure import, so a keyless Action
+ * can load it from a bare checkout exactly like `copyRules`. */
+import {
+  narrationDuration,
+  NARRATION_CHARS_PER_SEC,
+  DURATION_MEASURED,
+  DURATION_ESTIMATED,
+} from "../../player/foray-queue.js";
+
 const { BANNED, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -73,6 +86,26 @@ export function d1Budget(runtimeSec) {
 export const ROLE_FLOOR_SEC = { quote: 30, explanation: 60, exchange: 75, narrative: 120 };
 export const ROLE_MAX_SEC = { quote: 90, explanation: 360, exchange: 480, narrative: 480 };
 export const L4_SOFT_MAX_SEC = 240;
+
+/* Narration ceilings, from docs/curation/narration-craft.md §0.
+ *
+ * The soft max warns and the hard max fails. Both are that document's own
+ * numbers for its longest mode: "Carry soft max 150 s -> needs_review, must
+ * state what the extra minute does" and "Carry hard max 180 s. The narrator is
+ * never the longest item in the Foray."
+ *
+ * They are here rather than in `player/foray-queue.js` because the player must
+ * play whatever shipped — refusing an over-long bridge at playback would turn an
+ * authoring mistake into a silent gap in a listener's ear. A ceiling belongs on
+ * the gate, and the gate is this file. */
+export const NARRATION_SOFT_MAX_SEC = 150;
+export const NARRATION_HARD_MAX_SEC = 180;
+
+/* The shortest legal narration item: narration-craft §0's Hinge floor, 3 s /
+ * 50 characters. A "script" below it is not a short bridge, it is a placeholder
+ * — and a placeholder that estimates to a fraction of a second reintroduces the
+ * bug this check exists to close, just with a smaller number than zero. */
+export const NARRATION_MIN_SEC = 3;
 
 /* D-tier constants. */
 export const D3_MEAN_FLOOR_SEC = 90;
@@ -279,6 +312,13 @@ export function checkForays(files) {
 
     /* ---- resolve items */
     const played = [];
+    /* Every item that occupies the listener's clock, in authored order — tape
+     * AND narration. `played` is the tape-only list every per-segment rule reads
+     * (D2, D3, D5, L2/L3/L4, M3, M4 are all about segments); `timeline` is what
+     * D1 measures its 600 s windows on, because §5c says "600-second window of
+     * Foray PLAYBACK" and a bridge is playback. */
+    const timeline = [];
+    const narrations = [];
     const seenLabels = new Set();
     const seenSegmentIds = new Set();
     let itemsOk = true;
@@ -286,11 +326,53 @@ export function checkForays(files) {
       const at = `items[${i}]`;
       if (!isPlainObject(item)) { E(`${at} is not an object`); itemsOk = false; continue; }
       /* Narration bridges are the other member of #134's typed list. None are
-       * authored yet (grilling-foray.md §5: "no bridge records exist yet"), so
-       * they are accepted and skipped rather than rejected — a Foray that grows
-       * bridges must not have to change this file to stay valid. */
+       * authored yet (grilling-foray.md §5: "no bridge records exist yet"), so a
+       * Foray that grows one must not have to change this file to stay valid —
+       * but it must not be able to grow one that CONTRIBUTES NOTHING either.
+       *
+       * An item whose length is unknowable is the defect that produced this
+       * block: it was accepted with an id and nothing else, so it played for
+       * eight seconds and cost zero everywhere — in `runtime_sec`, in D1's
+       * clock, in `progressSegments`, and therefore in a listener's resume.
+       * `narrationDuration` in `player/foray-queue.js` resolves a length from
+       * `duration_sec` (measured) or the `script` (estimated at
+       * narration-craft's 17 chars/s); "neither" is what is rejected here. */
       if (item.type === "narration") {
         if (typeof item.id !== "string" || !item.id) E(`${at}: a narration item needs an id`);
+        const name = typeof item.id === "string" && item.id ? `narration "${item.id}"` : at;
+        if (item.duration_sec !== undefined && !(typeof item.duration_sec === "number" && item.duration_sec > 0 && Number.isFinite(item.duration_sec))) {
+          E(`${at}: ${name} has a \`duration_sec\` of ${JSON.stringify(item.duration_sec)} — it must be a positive finite number of seconds, or absent`);
+          itemsOk = false;
+          continue;
+        }
+        const hasScript = typeof item.script === "string" && item.script.trim().length > 0;
+        if (item.duration_sec === undefined && !hasScript) {
+          E(
+            `${at}: ${name} has neither a \`duration_sec\` nor a \`script\`, so nothing can say how ` +
+              `long it is. It would run for real seconds and be counted as zero in \`runtime_sec\`, ` +
+              `in D1's window and in a listener's resume. Give it the script, or let ` +
+              `tools/narrate/ stamp \`duration_sec\` from the audio it generated.`
+          );
+          itemsOk = false;
+          continue;
+        }
+        const dur = narrationDuration(item);
+        if (dur.sec < NARRATION_MIN_SEC) {
+          E(
+            `${at}: ${name} is ${dur.sec.toFixed(1)} s (${dur.source}), under the ${NARRATION_MIN_SEC} s Hinge ` +
+              `floor in narration-craft.md §0 — a script this short is a placeholder, not a bridge`
+          );
+        }
+        if (dur.sec > NARRATION_HARD_MAX_SEC) {
+          E(
+            `${at}: ${name} is ${dur.sec.toFixed(1)} s (${dur.source}), over the ${NARRATION_HARD_MAX_SEC} s Carry ` +
+              `hard max in narration-craft.md §0 — "the narrator is never the longest item in the Foray"`
+          );
+        } else if (dur.sec > NARRATION_SOFT_MAX_SEC) {
+          W(`${name} is ${dur.sec.toFixed(1)} s (${dur.source}), past narration-craft.md §0's ${NARRATION_SOFT_MAX_SEC} s Carry soft max — it should state what the extra minute does`);
+        }
+        narrations.push({ at, id: item.id ?? null, sec: dur.sec, source: dur.source });
+        timeline.push({ kind: "narration", duration: dur.sec });
         continue;
       }
       if (item.type !== "segment") { E(`${at}: unknown item type ${JSON.stringify(item.type)}`); itemsOk = false; continue; }
@@ -333,6 +415,7 @@ export function checkForays(files) {
       }
 
       played.push({ ...item, seg, role, duration: seg.end_sec - seg.start_sec });
+      timeline.push({ kind: "segment", duration: seg.end_sec - seg.start_sec });
     }
     /* An unresolvable item used to skip every ordering rule for the whole
      * Foray and leave `report.forays` empty, so one bad segment_id hid D1, D5,
@@ -346,18 +429,82 @@ export function checkForays(files) {
       W(`${foray.items.length - played.length} item(s) did not resolve; every rule below is judged on the ${played.length} that did, so these verdicts are partial`);
     }
 
-    /* ---- derived */
+    /* ---- derived: TWO clocks, and keeping them apart is the whole fix
+     *
+     * `tapeRuntime` is the sum of the segments. Every per-segment rule below
+     * measures against it, because they are rules about tape: D3's mean is
+     * "mean SEGMENT duration", D5's IQR is a spread of segment durations, M4's
+     * share is one episode's seconds over all episodes' seconds, and narration
+     * belongs to no episode.
+     *
+     * `runtime` is the listener's clock — tape plus narration — and it is what
+     * the Foray IS. It sets D1's budget band (§5c bands are by "total Foray
+     * duration"), it is what `runtime_sec` in the data file must agree with, and
+     * it is the number the player's `forayRuntimeSec` now returns.
+     *
+     * With zero narration authored the two are identical, which is why nothing
+     * in the committed data moves. */
     const durations = played.map((p) => p.duration);
-    const runtime = durations.reduce((a, b) => a + b, 0);
+    const tapeRuntime = durations.reduce((a, b) => a + b, 0);
+    const narrationRuntime = narrations.reduce((a, n) => a + n.sec, 0);
+    const runtime = tapeRuntime + narrationRuntime;
+    const mean = tapeRuntime / durations.length;
+
+    /* ---- D1's start list, on the listener's clock ------------------------
+     *
+     * IS A NARRATION ITEM A SEGMENT START? NO — and this is a ruling, so here is
+     * the argument rather than the behaviour alone.
+     *
+     *   - §5c caps "the number of SEGMENT STARTS". A narration item is not a
+     *     segment; #134 types them separately, and every companion rule in the
+     *     same box ("at most 2 consecutive SEGMENTS under 60 s", "mean SEGMENT
+     *     duration >= 90 s") is unambiguously about tape.
+     *   - The rule's mechanism is §2a's non-habituating re-orientation cost: a
+     *     new voice, a new room, a new level, with no warning. A bridge is the
+     *     opposite of unwarned — §6b makes narration the MARKER of the move, and
+     *     `player/seam-gap.js` already spends 0 s of silence at a bridged seam
+     *     for exactly that reason ("narration is a better marker than silence").
+     *     Counting the bridge as a cut charges D1 twice for one move: once for
+     *     the bridge, once for the segment it introduces.
+     *   - It is the same voice at the same level every time, in every Foray. The
+     *     cost §2a measures is the cost of an UNFAMILIAR voice. The narrator is
+     *     the cheapest transition available, not another instance of the
+     *     expensive one.
+     *   - Narration is already budgeted, separately and more tightly, by
+     *     narration-craft.md §0: whole-Foray share <= 25 % (ceiling 35 %), at
+     *     most 2 consecutive narration items, and its own +/-20 % anti-uniformity
+     *     rule. If a bridge were also a D1 start, those would be a second budget
+     *     on the same quantity, disagreeing with the first.
+     *
+     * BUT THE CLOCK IS THE LISTENER'S. §5c: "in any rolling 600-second window of
+     * Foray PLAYBACK". So a bridge's DURATION advances the window even though the
+     * bridge is not a start — which is the half that was actually wrong, and the
+     * half the TODO that used to sit here anticipated.
+     *
+     * Net effect on a narrated Foray, stated plainly because it cuts both ways:
+     * the same starts spread over a longer clock, so D1 gets EASIER to pass
+     * within a band — and harder at a band edge, since a Foray with 44 min of
+     * tape and 8 min of narration is a 52-minute Foray and drops from N=8 to
+     * N=6. Both movements are §5c's own text.
+     *
+     * If the founders want a bridge to cost a cut, the change is one line —
+     * push `clock` for a narration item too. Cheap to reverse on purpose. */
     const starts = [];
-    let t = 0;
-    for (const d of durations) { starts.push(t); t += d; }
-    const mean = runtime / durations.length;
+    let clock = 0;
+    for (const entry of timeline) {
+      if (entry.kind === "segment") starts.push(clock);
+      clock += entry.duration;
+    }
 
     /* A stated runtime is a drift detector: swap a segment for one of a
-     * different length and this is what notices. */
+     * different length and this is what notices. It is compared against the
+     * LISTENER'S clock, so a Foray that gains a bridge has to restate it — the
+     * alternative is a `runtime_sec` that no surface can render honestly. */
     if (typeof foray.runtime_sec === "number" && Math.abs(foray.runtime_sec - runtime) > 0.5) {
-      E(`\`runtime_sec\` says ${foray.runtime_sec.toFixed(2)} but the items sum to ${runtime.toFixed(2)}`);
+      E(
+        `\`runtime_sec\` says ${foray.runtime_sec.toFixed(2)} but the items sum to ${runtime.toFixed(2)}` +
+          (narrationRuntime > 0 ? ` (${tapeRuntime.toFixed(2)} of tape + ${narrationRuntime.toFixed(2)} of narration)` : "")
+      );
     }
 
     /* ---- slots appear as contiguous blocks, in the declared order */
@@ -369,19 +516,22 @@ export function checkForays(files) {
       if (blocks.join("|") !== declared.join("|")) E(`slot blocks play as ${blocks.join(" -> ")} but \`slots\` declares ${declared.join(" -> ")}`);
     }
 
-    /* ---- D1: rolling cut budget
+    /* ---- D1: rolling cut budget, on the clock built above.
      *
-     * TODO(bridges): `starts` is the TAPE timeline — the cumulative sum of
-     * segment durations. The rule is about the listener's 600 s window, and
-     * today the two are the same thing because narration items contribute 0 s
-     * and none exist. The moment a bridge is authored with a duration, every
-     * start after it shifts later in playback and this becomes strictly
-     * conservative: it will report more starts per window than the listener
-     * hears, so it can fail a Foray that is actually fine. Fix it by summing
-     * bridge durations into `starts` when the narration record gains one; the
-     * warning below is here so that day is noticed rather than discovered. */
-    if (foray.items.some((i) => i?.type === "narration")) {
-      W("D1 is computed on the tape timeline; narration items contribute 0 s, so the budget is measured against a shorter clock than the listener's");
+     * The old TODO here said `starts` was the tape timeline and that narration
+     * contributed 0 s, so the budget was "measured against a shorter clock than
+     * the listener's". It is not any more. What remains worth saying out loud is
+     * when part of that clock is a PROJECTION rather than a measurement: an
+     * estimated bridge is a character count divided by 17, and a D1 verdict that
+     * leans on one is only as good as the speaking rate nobody has measured yet
+     * (narrator-pipeline.md §6). */
+    const estimated = narrations.filter((n) => n.source !== DURATION_MEASURED);
+    if (estimated.length) {
+      W(
+        `D1's clock includes ${estimated.length} narration item(s) whose length is estimated from the script at ` +
+          `${NARRATION_CHARS_PER_SEC} chars/s, not measured from audio: ` +
+          `${estimated.map((n) => n.id ?? n.at).join(", ")}. tools/narrate/ should stamp \`duration_sec\` at generation time.`
+      );
     }
     const budget = d1Budget(runtime);
     const worst = maxStartsInWindow(starts);
@@ -488,7 +638,13 @@ export function checkForays(files) {
       lastStart.set(p.seg.item_id, p.seg.start_sec);
     }
 
-    /* ---- M4: no one episode over 25 % of segments or runtime */
+    /* ---- M4: no one episode over 25 % of segments or runtime
+     *
+     * TAPE runtime, deliberately. M4 asks whether one episode dominates the
+     * sourcing, so the denominator has to be the thing episodes are competing
+     * for. Dividing by the listener's clock would let a Foray buy its way under
+     * the cap by adding narration — the share would fall without a single
+     * segment changing, and the imbalance the rule is about would be untouched. */
     const byEpisode = new Map();
     for (const p of played) {
       const e = byEpisode.get(p.seg.item_id) ?? { n: 0, sec: 0 };
@@ -497,7 +653,7 @@ export function checkForays(files) {
     }
     for (const [itemId, e] of byEpisode) {
       const nShare = e.n / played.length;
-      const secShare = e.sec / runtime;
+      const secShare = e.sec / tapeRuntime;
       if (nShare > M4_SHARE_MAX || secShare > M4_SHARE_MAX) {
         E(`M4 FAIL: "${itemId}" is ${(nShare * 100).toFixed(1)} % of segments and ${(secShare * 100).toFixed(1)} % of runtime, over the ${M4_SHARE_MAX * 100} % cap`);
       }
@@ -519,7 +675,20 @@ export function checkForays(files) {
       id: fid,
       status: foray.status,
       segments: played.length,
+      /* `runtime_sec` is the listener's clock and always has been the field
+         everything reads; the tape sum is reported BESIDE it rather than instead
+         of it, so the two can be compared without recomputing either. On a Foray
+         with no narration they are equal, `narration_sec` is 0, and every
+         existing assertion on this shape holds. */
       runtime_sec: +runtime.toFixed(2),
+      tape_runtime_sec: +tapeRuntime.toFixed(2),
+      narration_items: narrations.length,
+      narration_sec: +narrationRuntime.toFixed(2),
+      /* narration-craft.md §0's whole-Foray share. Reported, not gated: the
+         target (25 %) and ceiling (35 %) are that document's own invention and
+         it says the ratio is "a symptom, not a budget" — a Foray over it is
+         under-sourced, which is an editorial verdict and not a schema one. */
+      narration_share: runtime > 0 ? +(narrationRuntime / runtime).toFixed(4) : 0,
       mean_sec: +mean.toFixed(1),
       d1_budget: budget,
       d1_max_starts_in_window: worst.count,
@@ -564,7 +733,12 @@ if (invokedDirectly) {
   } else {
     for (const f of report.forays) {
       console.log(
-        `${f.id} (${f.status}): ${f.segments} segments, ${(f.runtime_sec / 60).toFixed(1)} min, mean ${f.mean_sec} s\n` +
+        `${f.id} (${f.status}): ${f.segments} segments, ${(f.runtime_sec / 60).toFixed(1)} min, mean ${f.mean_sec} s` +
+          (f.narration_items
+            ? `\n  ${f.narration_items} narration item(s), ${(f.narration_sec / 60).toFixed(1)} min ` +
+              `(${(f.narration_share * 100).toFixed(1)} % of the Foray; ${(f.tape_runtime_sec / 60).toFixed(1)} min is tape)`
+            : "") +
+          "\n" +
           `  D1 ${f.d1_max_starts_in_window}/${f.d1_budget} starts per ${D1_WINDOW_SEC} s   ` +
           `D5 ${f.d5_pairwise_violations} triples, IQR ${f.d5_iqr_sec} s`
       );

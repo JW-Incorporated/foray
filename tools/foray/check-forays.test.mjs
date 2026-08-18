@@ -859,18 +859,281 @@ test("Foray #1's topic is a real taxonomy node", () => {
 
 /* -------------------------------------------------------------- narration */
 
-test("narration items are accepted between segments and ignored by the rules", () => {
+/** A well-formed bridge: an id, and a length something can read. 40 s is a
+    Patch, comfortably inside narration-craft.md §0's 20-45 s band. */
+const bridge = (extra = {}) => ({ type: "narration", id: "nar-1", duration_sec: 40, ...extra });
+
+/** Insert a bridge into a cloned Foray and restate its runtime, because
+    `runtime_sec` is now the LISTENER's clock and a bridge moves it. Returns the
+    clone so a test can read the errors it actually cares about. */
+function withBridges(forayId, inserts) {
+  const f = clone();
+  const target = forayBy(f, forayId);
+  /* Spliced back to front so each index still refers to the position the caller
+     meant by the time its turn comes. */
+  for (const { at, item } of [...inserts].sort((a, b) => b.at - a.at)) target.items.splice(at, 0, item);
+  const added = inserts.reduce((t, i) => t + i.item.duration_sec, 0);
+  if (typeof target.runtime_sec === "number") target.runtime_sec = +(target.runtime_sec + added).toFixed(2);
+  return f;
+}
+
+test("a well-formed narration item is accepted between segments", () => {
   // No bridges are authored yet (grilling-foray.md §5), but #134's shape has
   // them interleaved. A Foray that grows one must not have to change this file.
-  const f = clone();
-  foray0(f).items.splice(1, 0, { type: "narration", id: "nar-1", script: "Two million years later." });
-  assert.deepEqual(errorsFor(f), []);
+  assert.deepEqual(errorsFor(withBridges("grilling-history-1", [{ at: 1, item: bridge() }])), []);
 });
 
 test("a narration item without an id is rejected", () => {
   const f = clone();
-  foray0(f).items.splice(1, 0, { type: "narration", script: "..." });
+  foray0(f).items.splice(1, 0, { type: "narration", script: "a bridge long enough to be a bridge and not a placeholder" });
   assert.match(errorsFor(f).join("\n"), /narration item needs an id/);
+});
+
+/* ---------- narration has to say how long it is ----------
+
+   The gap `docs/narrator-pipeline.md` §1 item 2 records: this file validated a
+   narration item's `id` and nothing else, so an item with no script and no audio
+   passed — and then contributed 0 s to `runtime_sec`, to D1's window, and to
+   every resume arithmetic in the player. */
+
+test("a narration item that nothing can time is REJECTED, not silently free", () => {
+  /* The headline. Mutation that kills it: delete this branch, or soften it to
+     `W(...)`. Either way an item worth an unknown number of a listener's seconds
+     goes back to being worth zero of ours. */
+  const f = clone();
+  foray0(f).items.splice(1, 0, { type: "narration", id: "nar-1" });
+  assert.match(errorsFor(f).join("\n"), /has neither a `duration_sec` nor a `script`/);
+});
+
+test("a narration item is timed by EITHER a duration or a script", () => {
+  // Mutation: require both. Scripts exist long before audio does —
+  // narration-craft.md is explicit that the word budgets are the primitive — so
+  // demanding a measured duration at authoring time would block the normal case.
+  assert.deepEqual(errorsFor(withBridges("grilling-history-1", [{ at: 1, item: bridge() }])), []);
+  const scripted = clone();
+  const target = forayBy(scripted, "grilling-history-1");
+  target.items.splice(1, 0, { type: "narration", id: "nar-1", script: "x".repeat(340) });  // 20.0 s
+  target.runtime_sec = +(target.runtime_sec + 20).toFixed(2);
+  assert.deepEqual(errorsFor(scripted), []);
+});
+
+test("a duration_sec that is not a positive finite number of seconds is rejected", () => {
+  /* Mutation: accept anything truthy. `"40"` is the shape a hand-edited JSON
+     file produces, and string arithmetic would make the runtime a concatenation
+     rather than a sum. 0 is the shape that reintroduces the original defect
+     while looking deliberate. */
+  for (const bad of [0, -12, "40", null, NaN, {}]) {
+    const f = clone();
+    foray0(f).items.splice(1, 0, { type: "narration", id: "nar-1", duration_sec: bad, script: "x".repeat(340) });
+    assert.match(
+      errorsFor(f).join("\n"), /must be a positive finite number of seconds/,
+      `duration_sec: ${JSON.stringify(bad)} should be rejected even with a usable script beside it`
+    );
+  }
+});
+
+test("a narration item over the 180 s Carry hard max is rejected, and over 150 s warns", () => {
+  /* narration-craft.md §0: "Carry hard max 180 s. The narrator is never the
+     longest item in the Foray." Mutation: raise NARRATION_HARD_MAX_SEC, or turn
+     the error into a warning — a single 20-minute "bridge" would then pass, and
+     narration would be able to eat a Foray one legal item at a time. */
+  const over = withBridges("grilling-history-1", [{ at: 1, item: bridge({ duration_sec: 181 }) }]);
+  assert.match(errorsFor(over).join("\n"), /over the 180 s Carry hard max/);
+  const soft = withBridges("grilling-history-1", [{ at: 1, item: bridge({ duration_sec: 160 }) }]);
+  assert.deepEqual(errorsFor(soft), [], "the soft max warns; it does not fail");
+  assert.match(checkForays(soft).warnings.join("\n"), /past narration-craft.md §0's 150 s Carry soft max/);
+  // And the boundary is inclusive on the passing side, not off by one.
+  assert.deepEqual(errorsFor(withBridges("grilling-history-1", [{ at: 1, item: bridge({ duration_sec: 180 }) }])), []);
+});
+
+test("a script too short to be a bridge is rejected as a placeholder", () => {
+  /* "Two million years later." is 24 characters — 1.4 s. Mutation: drop the
+     NARRATION_MIN_SEC check, and a one-word stub passes and contributes 1.4 s
+     instead of the real length of whatever eventually gets voiced. That is the
+     original defect with a smaller number, which is harder to notice. */
+  const f = clone();
+  foray0(f).items.splice(1, 0, { type: "narration", id: "nar-1", script: "Two million years later." });
+  assert.match(errorsFor(f).join("\n"), /under the 3 s Hinge floor/);
+});
+
+test("an estimated narration length is reported as an estimate; a measured one is not", () => {
+  /* A D1 verdict that leans on a character count is only as good as a speaking
+     rate nobody has measured (narrator-pipeline.md §6). Mutation: warn
+     unconditionally, or not at all — either way the report stops distinguishing
+     a fact from a projection. */
+  const scripted = clone();
+  const t = forayBy(scripted, "grilling-history-1");
+  t.items.splice(1, 0, { type: "narration", id: "nar-1", script: "x".repeat(340) });
+  t.runtime_sec = +(t.runtime_sec + 20).toFixed(2);
+  assert.match(checkForays(scripted).warnings.join("\n"), /estimated from the script at 17 chars\/s/);
+  const measured = withBridges("grilling-history-1", [{ at: 1, item: bridge() }]);
+  assert.doesNotMatch(checkForays(measured).warnings.join("\n"), /estimated from the script/);
+});
+
+test("`runtime_sec` is the listener's clock, so a Foray that gains a bridge must restate it", () => {
+  /* Mutation: compare `runtime_sec` against `tapeRuntime`. The stated runtime
+     would then agree with a number no listener experiences, and the drift
+     detector would stop noticing that 23 minutes of narrator had been added. */
+  const f = clone();
+  foray0(f).items.splice(1, 0, bridge());          // +40 s, runtime_sec untouched
+  assert.match(errorsFor(f).join("\n"), /`runtime_sec` says 3673\.03 but the items sum to 3713\.03 \(3673\.03 of tape \+ 40\.00 of narration\)/);
+});
+
+test("the report keeps the two clocks apart", () => {
+  // Mutation: report `tape_runtime_sec: runtime`. Nothing would fail, and the
+  // one number that says how much of a Foray is narrator would silently be 0.
+  const f = withBridges("grilling-history-1", [{ at: 1, item: bridge() }, { at: 5, item: bridge({ id: "nar-2", duration_sec: 60 }) }]);
+  const r = checkForays(f).report.forays[0];
+  assert.equal(r.tape_runtime_sec, 3673.03);
+  assert.equal(r.narration_sec, 100);
+  assert.equal(r.runtime_sec, 3773.03);
+  assert.equal(r.narration_items, 2);
+  assert.equal(r.narration_share, +(100 / 3773.03).toFixed(4));
+  // The per-segment rules are unmoved, because they are rules about tape.
+  assert.equal(r.mean_sec, 114.8);
+  assert.equal(r.d5_iqr_sec, 57.81);
+});
+
+/* ---------- D1 on the listener's clock, proved on a purpose-built Foray ----
+
+   #236's recommendation, and the only honest way to prove a D1 movement: the two
+   grilling Forays carry ~130 assertion sites between them and `grilling-history-2`
+   is what the founder listens to, so a proof that needs particular durations
+   builds its own tape rather than bending theirs. These segments and sources are
+   synthetic, they exist only inside the returned clone, and nothing on disk
+   moves.
+
+   Nine 60-second segments is the whole point of the shape: tape-only they are
+   nine starts inside one 600 s window against a budget of 8, which fails by
+   exactly one. */
+
+const NINE_SIXTIES = Array.from({ length: 9 }, () => 60);
+
+/**
+ * Append a synthetic Foray to a clone. `spec` is a list of numbers (segment
+ * lengths in seconds, one synthetic episode each so M4 can never be the thing
+ * that fires) and narration objects.
+ */
+function fixtureForay(spec, { forayId = "fixture-1" } = {}) {
+  const f = clone();
+  const items = [];
+  let n = 0;
+  for (const s of spec) {
+    if (typeof s !== "number") { items.push({ type: "narration", ...s }); continue; }
+    const eid = `${forayId}-ep${n}`;
+    const sid = `${forayId}-seg${n}`;
+    f.sources.sources.push({
+      id: eid, show: "Fixture Show", title: `Fixture episode ${n}`,
+      audio_url: `https://cdn.example/${eid}.mp3`, audio_type: "audio/mpeg",
+      duration_sec: 3600, dai_suspected: false,
+    });
+    f.segments.segments.push({
+      id: sid, item_id: eid, start_sec: 100, end_sec: 100 + s, reference_duration_sec: 3600,
+    });
+    items.push({ type: "segment", slot: "one", segment_id: sid });
+    n++;
+  }
+  f.forays.forays.push({
+    id: forayId, kind: "deep-dive", status: "draft", topic: foray0(files).topic,
+    title: "A fixture Foray", summary: "A fixture Foray",
+    slots: [{ id: "one", title: "One" }], items,
+  });
+  return f;
+}
+
+const d1FailsIn = (f, forayId = "fixture-1") =>
+  errorsFor(f).some((e) => e.includes(`foray "${forayId}"`) && e.includes("D1 FAIL"));
+
+test("the D1 fixture fails on tape alone — nine 60 s segments, budget 8", () => {
+  // The control. If this ever stops failing, every assertion below is vacuous:
+  // they would be proving that a passing Foray passes.
+  assert.equal(d1FailsIn(fixtureForay(NINE_SIXTIES)), true);
+});
+
+test("D1's 600 s window is the listener's clock, and a bridge is not a segment start", () => {
+  /* The same nine segments, with two 60 s bridges dropped in. Nothing about the
+     tape changed; the ninth start simply now falls at 600 s of PLAYBACK instead
+     of 480 s, which is §5c's "600-second window of Foray playback".
+
+     TWO mutations kill this, in opposite directions, and that is the point:
+
+       - stop advancing the clock for narration (`clock += entry.duration` only
+         for segments) and the nine starts crowd back into one window: FAIL.
+       - count a bridge AS a start (`starts.push(clock)` unconditionally) and the
+         window from zero holds eight segment starts plus two bridges: also FAIL.
+
+     Only the ruling actually implemented — narration occupies the clock, and is
+     not itself a cut — passes. */
+  const bridged = fixtureForay([
+    60, 60, 60,
+    { id: "nar-a", duration_sec: 60 },
+    60, 60, 60,
+    { id: "nar-b", duration_sec: 60 },
+    60, 60, 60,
+  ]);
+  assert.equal(d1FailsIn(bridged), false);
+  const r = checkForays(bridged).report.forays.find((x) => x.id === "fixture-1");
+  assert.equal(r.tape_runtime_sec, 540);
+  assert.equal(r.runtime_sec, 660);
+  assert.equal(r.d1_max_starts_in_window, 8, "eight tape starts, not ten items");
+  assert.equal(r.d1_budget, 8);
+});
+
+test("D1's budget BAND is set by the listener's clock too", () => {
+  /* §5c's bands are by "total Foray duration", and a Foray's duration is what a
+     listener sits through. Forty 60 s segments is 40 min of tape — band N=8 — and
+     stays 40 min of tape when 9 minutes of narrator is added on top, at which
+     point it is a 49-minute Foray and the band is N=6.
+
+     Mutation: `d1Budget(tapeRuntime)`. The band stays 8 and a Foray the listener
+     experiences as 49 minutes long is judged against the under-45-minute
+     allowance. */
+  const tape = Array.from({ length: 40 }, () => 60);
+  const bare = checkForays(fixtureForay(tape)).report.forays.find((x) => x.id === "fixture-1");
+  assert.equal(bare.runtime_sec, 2400);
+  assert.equal(bare.d1_budget, 8);
+
+  // Nine 60 s bridges: 540 s, taking the Foray to 49 minutes.
+  const withNarration = fixtureForay([
+    ...tape.slice(0, 20),
+    ...Array.from({ length: 9 }, (_, i) => ({ id: `nar-${i}`, duration_sec: 60 })),
+    ...tape.slice(20),
+  ]);
+  const r = checkForays(withNarration).report.forays.find((x) => x.id === "fixture-1");
+  assert.equal(r.tape_runtime_sec, 2400);
+  assert.equal(r.runtime_sec, 2940);
+  assert.equal(r.d1_budget, 6, "a 49-minute Foray is in the 45-120 band");
+});
+
+test("M4's denominator stays the tape, so narration cannot buy a Foray under the cap", () => {
+  /* M4 asks whether one episode dominates the SOURCING. Two segments of one
+     episode against one of another is 62.0 % of the tape and fails; adding six
+     minutes of narrator does not rebalance the sourcing by one second, so the
+     reported share must not move.
+
+     Mutation: `e.sec / runtime`. The share falls to 31.1 % — still over the cap
+     here, but on a marginal Foray the same change would let narration buy a pass
+     that no editorial decision earned. */
+  const spec = [153, 149, 101];
+  const bare = errorsFor(fixtureForay(spec)).filter((e) => e.includes("M4 FAIL"));
+  const padded = errorsFor(fixtureForay([spec[0], spec[1], { id: "nar-a", duration_sec: 180 }, spec[2], { id: "nar-b", duration_sec: 180 }]))
+    .filter((e) => e.includes("M4 FAIL"));
+  assert.ok(bare.length > 0, "the fixture has to fail M4 for this to be testing anything");
+  assert.deepEqual(padded, bare);
+});
+
+test("the CLI exits 1 on a bridge nothing can time", () => {
+  /* Same discipline as the D1/D5 proofs below: the real CLI, a mutated
+     checkout, and the exit code — not an inspection of the code. This is also
+     the test that proves `check-forays.mjs` can still load `narrationDuration`
+     from `player/` in a bare checkout with no install step, which is the one
+     risk the shared-rule import carries. */
+  const root = mutatedCheckout((f) => {
+    foray0(f).items.splice(1, 0, { type: "narration", id: "nar-1" });
+  });
+  const { status, stderr } = runCli(root);
+  assert.equal(status, 1);
+  assert.match(stderr, /has neither a `duration_sec` nor a `script`/);
 });
 
 test("an unknown item type is rejected", () => {
