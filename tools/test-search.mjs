@@ -149,10 +149,27 @@ function search(query, opts) {
  * `hitText`/`hitTag` are now exported from search-engine.js. Reimplementing them
  * here is what allowed the two to drift in the first place, so don't.
  *
- * Net effect on the whole `fullPool()` (1,516 items — NOT `discover.items`, which
- * is 1,489 and misses 27 session episodes; see fullPool's comment), summed over
- * the 51 topical needles: 1,292 -> 1,246. A NARROWING of 46, despite gaining a
- * whole new field, because the collision guard removes more than `hook` adds. */
+ * Net effect on the whole `fullPool()` (NOT `discover.items`, which misses the 27
+ * session episodes; see fullPool's comment), summed over the 51 topical needles:
+ * 1,292 -> 1,246 at the time, a NARROWING of 46 despite gaining a whole new
+ * field, because the collision guard removes more than `hook` adds.
+ *
+ * Then #218 widened the SUFFIX side of the same matcher, and the direction
+ * reversed. Re-measured on today's pool (1,540 items, not the 1,516 those figures
+ * were taken on — the nightly grows it): 1,261 -> 1,284, a widening of 23, of
+ * which the >=4-char suffix set is +9 and the new under-4-char plural is +14.
+ * FOUR needles move and every one of them moves UP: grill 0 -> 7 (it could not
+ * match "grilling"), war 87 -> 101 ("wars"), murder 29 -> 30 ("murdering"),
+ * crash 9 -> 10 ("crashes"). Nothing narrows, and the needles a widening would
+ * be expected to endanger do not move at all: politics stays 35 and roman stays
+ * 14, because `geopolitics` and `romance` are PREFIX collisions and the prefix
+ * guard is deliberately untouched.
+ *
+ * These needles are also where `ed` was cut from the suffix set: it added 4 items
+ * here and looked free, and measuring the whole vocabulary instead showed most of
+ * what it adds is filler participles on terms that are not needles at all. A
+ * 51-needle blast radius is the right instrument for "did anything break"; it is
+ * the wrong one for "is this suffix worth having". */
 function itemHas(item, needle) {
   const n = needle.toLowerCase();
   const tags = itemTags.tags?.[item.id] || [];
@@ -204,6 +221,17 @@ const topicalCases = [
   // catalogue-growth flip as "plane crashes" (2026-08-06) below. The
   // on-topic needle check is what guards quality here, not the label.
   { query: "how bbq works", status: "ok", checkTop: 4, anyOf: ["bbq", "barbecue", "grill"] },
+  /* `grill` ALONE, and that is the whole point of the case (#218). The case
+     above passes on `bbq`/`barbecue`, so `grill` contributing NOTHING was
+     invisible in it -- an OR over needles cannot tell you that one of them is
+     dead. It was dead: `hitText` allowed a term plus an optional trailing "s"
+     and no more, so `grill` matched 0 of the pool's 1,540 items while all 7
+     candidates carried the tag `grilling`, and this assertion is red on main
+     with every pick off-topic. The query itself was NOT broken on main -- the
+     `bbq` concept hand-authors both `grill` and `grilling`, so expansion
+     rescued the picks while the matcher stayed wrong, which is exactly how this
+     survived. Single-needle on purpose: a second needle would re-hide it. */
+  { query: "grill", status: "ok", checkTop: 5, anyOf: ["grill"] },
   { query: "the history of jazz", status: "sparse", checkTop: 2, anyOf: ["jazz"] },
   { query: "true crime", status: "ok", checkTop: 5, anyOf: ["true-crime", "crime", "murder", "serial-killer"] },
   { query: "comedy", status: "ok", checkTop: 5, anyOf: [] /* checked separately via branchOf */ },
@@ -379,22 +407,30 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
      `covered` and switch the gate off for an item the ranker will never return,
      which is the NBAA failure in a different costume. No catalog show currently
      contains the word, so this is prophylactic.
-     COLLAPSE THIS INTO THE SHARED MATCHER once search-engine.js exports
-     hitText/hitTag. PR #211 does exactly that -- and its rewritten itemHas is
-     already equivalent to this predicate, so the collapse is a pure deletion,
-     not a re-derivation. It is open and carries `needs-founder`, so it is
-     waiting on founder action rather than on any work. The duplication is the
-     price of not exporting them and should be paid back, not kept. */
-  const nbaWord = new RegExp("\\b" + needle + "\\b");
+     COLLAPSED ONTO THE SHARED MATCHER, 2026-08-17 (#219), and the hand-mirror is
+     gone. What is shared is the MATCHING; what stays local is the FIELD LIST,
+     which is the part with a reason (`show` excluded, `hook` included, both
+     argued above). Sharing only half of a predicate is what this file warns
+     about, so to be explicit: `taggedLeague`/`titleHit`/`topicsHit` below now use
+     search-engine.js's own hitTag/hitText, and differ from itemHas() only in
+     which fields they read.
+     This was not cosmetic by the time it was done. #218 gave the under-4-char
+     branch a plural allowance, so the shared matcher now admits "NBAs" while the
+     hand-mirror's `\bnba\b` did not -- leaving the mirror STRICTLY NARROWER than
+     the ranker. Under-counting `covered` is the safe direction for the
+     honest-empty gate, but `namesLeague` also backs the PURITY check, where a
+     narrower predicate is a false RED: one item saying "NBAs" in a hook and the
+     battery blames the ranker for a pick it was right to return. That is the
+     third instance of the same defect in this one file, from the same cause. */
   const taggedLeague = (i) => {
     const tags = itemTags.tags?.[i.id] || [];
-    return tags.some((t) => t === needle || t.split("-").includes(needle));
+    return tags.some((t) => SE.hitTag(t, needle));
   };
-  const titleHit = (i) => nbaWord.test(i.title.toLowerCase());
-  const topicsHit = (i) => nbaWord.test((i.topics || []).join(" ").toLowerCase());
+  const titleHit = (i) => SE.hitText(i.title.toLowerCase(), needle);
+  const topicsHit = (i) => SE.hitText((i.topics || []).join(" ").toLowerCase(), needle);
   const namesLeague = (i) =>
     taggedLeague(i) ||
-    nbaWord.test([i.title, i.hook, (i.topics || []).join(" ")].join(" ").toLowerCase());
+    SE.hitText([i.title, i.hook, (i.topics || []).join(" ")].join(" ").toLowerCase(), needle);
 
   const covered = pool.filter(namesLeague).length;
   const { status, picks, results, interp } = search(needle);
@@ -528,10 +564,34 @@ const collisionCases = [
   { query: "rome", bannedId: "huberman-lab--science-of-attraction-compatibility-and-romance-dr-paul-east", note: "roman should not match inside romance" },
   { query: "an nba team", bannedId: "railway-mania--richard-peacock", note: "team should not match inside steam" },
 ];
+/* ASSERTED ON RAW `results`, NOT ONLY ON `picks`, and that was found by
+   mutation rather than by reading (#218). Removing the prefix guard from
+   search-engine.js -- deleting the exact mechanism these three cases exist to
+   protect -- left ALL THREE of them GREEN. The reason is specific and worth
+   recording: the `diffusion` collision does come straight back, re-entering
+   retrieval at raw index 13 with sum 6.00 against a relative strong bar of
+   5.50, so it is genuinely a strong match again; it just lands outside the
+   10-item truncation that `picks` applies. An assertion that reads only `picks`
+   cannot see a collision that ranks 11th, which is most of them.
+   `results` is the honest surface for this claim: gated on the primary token and
+   `sum > minScore`, sorted, UNTRUNCATED, and computed before classifyResults
+   derives any relative bar -- the same argument the "nba" retrieval check above
+   makes for reading it. With the guard intact all three banned ids are absent
+   from `results` entirely, so this costs nothing today.
+   HONEST ABOUT THE OTHER TWO: they stay vacuous under that mutation, and
+   promoting them to `results` does not change it. The romance item never reaches
+   `results` because `roman` arrives as a low-weight expansion whose title-only
+   hit does not clear minScore, and "an nba team" is AND-gated as a proper-noun
+   query so it returns nothing at all. Both are kept out by SCORING, not by the
+   matcher, so neither can witness the guard. The direct witnesses live in
+   test/search-matcher.test.js, where breaking the guard kills five tests
+   including all three collisions by name, in milliseconds. */
 for (const c of collisionCases) {
-  const { picks } = search(c.query);
-  check(`"${c.query}" excludes ${c.bannedId} (${c.note})`, !picks.some((p) => p.i.id === c.bannedId),
+  const { picks, results } = search(c.query);
+  check(`"${c.query}" excludes ${c.bannedId} from picks (${c.note})`, !picks.some((p) => p.i.id === c.bannedId),
     `still present in picks`);
+  check(`"${c.query}" never even retrieves ${c.bannedId} (${c.note})`, !results.some((r) => r.i.id === c.bannedId),
+    `absent from picks but PRESENT in the raw result set -- the collision is back and is only hidden by the 10-pick truncation`);
 }
 
 /* ---------- 7. proper-noun matching (fix B) ---------- */

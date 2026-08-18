@@ -226,12 +226,126 @@ function passesFilters(item, filters) {
    two are collisions this very comment names and that the battery separately
    asserts the ranker must not make. An oracle may not be more permissive than
    its subject, and the only way to guarantee that is to share the matcher rather
-   than to reimplement it. Do not inline these again. */
-const longTermPattern = (t) => new RegExp("(?<![a-z0-9])" + t + "s?(?![a-z0-9])");
+   than to reimplement it. Do not inline these again.
+
+   THE SUFFIX SIDE WIDENED, AND ONLY THE SUFFIX SIDE, 2026-08-17 (#218). An
+   optional "s" was too narrow to be honest about English: `grill` could not
+   match "grilling", so the battery's own bbq needle contributed nothing and
+   every coverage count taken through this matcher under-reported. The prefix
+   guard above is UNCHANGED and must stay that way -- the asymmetry the previous
+   paragraphs describe is real (all known collisions prepend letters), and it is
+   the only thing standing between this matcher and the "software"/"toward"-as-war
+   flood.
+
+   The allowance is a BOUNDED, NAMED set of inflections, not a stemmer, because a
+   stemmer's failure mode here is unbounded and unreviewable while a three-element
+   list can be justified element by element and measured. Over the whole query
+   vocabulary (1,364 concept terms) against every surface word in the pool:
+
+     s    kept as-is.
+     es   4 pairs (coach/coaches, crash/crashes, glass/glasses,
+          tornado/tornadoes) -- the plural of every term that ends in a sibilant,
+          which a bare "s" structurally cannot reach.
+     ing  19 pairs, and the reason #218 exists: grill/grilling. Also
+          engineer/engineering, murder/murdering, coach/coaching, film/filming.
+          Worth 258 (term, item) matches, the bulk of this change.
+
+   `ed` WAS IN THIS SET AND WAS CUT, which is worth recording because the first
+   version of this comment argued for it. It looked free on the battery's 51
+   needles -- 4 real items, three "murdered" true-crime episodes and one
+   "crashed" bomber, no visible cost. Measured over the whole vocabulary instead
+   of over the needles, it is a losing trade: of the ~18 (term, item) matches it
+   adds, roughly 4 are on-subject and the rest are participles used as filler in
+   prose that is about something else -- "AI-powered threats" for `power`,
+   "engineered" for `engineer`, "launched" a startup for the `space`/`rockets`
+   sense of `launch`. Needle-scoped measurement could not see that, because none
+   of those terms is a needle. The earlier comment promised `ed` would be the
+   first thing dropped if a measurement found it costing precision. It did, so it
+   is.
+
+   WHAT THIS SET STILL GETS WRONG, stated plainly rather than left to be
+   rediscovered: the scan behind the table above applied a MORPHOLOGICAL test --
+   is the surface word an inflection of the term -- and passing it does not make a
+   match right. A term can be a genuine inflection of the wrong SENSE of an
+   ambiguous stem. `train` is a term of the `trains` concept
+   (topics: transport/trains) and carries only the railway sense, but `training`
+   is a real inflection of the unrelated verb, so `ing` newly matches 32 fitness,
+   dog-training and AI-pre-training items. That is user-visible, not just an
+   oracle count: `search("train history")` now returns "The Pre-Training Wall"
+   and a speed-training episode inside its top 10. Same shape, 1-2 items each,
+   for `book`/booking and `wind`/winding.
+   This is NOT fixable by choosing different suffixes -- `ing` is exactly what
+   #218 asks for, and `grill`/`grilling` needs it. It is a vocabulary problem: an
+   ambiguous bare stem in a single-sense concept. #218 names the substitution
+   ("matcher changes and vocabulary changes can substitute for each other here")
+   and it is filed as #248 rather than bundled, because dropping `train` from
+   the concept would stop the natural singular from triggering it at all, which
+   is the very defect #218 exists to fix.
+
+   Deliberately OUT: y->ies (story/stories), e-dropping (bake/baking) and any
+   consonant doubling. Each needs to MUTATE the stem rather than append to it,
+   which is stemming; the honest fix for those is vocabulary, see below.
+
+   THE UNDER-4-CHAR BRANCH GETS "s" AND NOTHING MORE, and that asymmetry is
+   measured rather than assumed. Same scan, restricted to the 42 short terms the
+   vocabulary actually contains: "s" yields 14 pairs, all true plurals (war/wars
+   -- the second half of #218 -- plus art/arts, car/cars, lab/labs, llm/llms).
+   "es" yields exactly one pair and it is wrong: rag/rages, where `rag` is
+   retrieval-augmented generation. "ing" likewise yields exactly one, also wrong:
+   car/caring. "ed" yields none at all. A three-letter stem is a prefix of too
+   much English for anything but the plural to be safe, which is the same
+   reasoning that put the length-4 threshold here in the first place.
+
+   Note what this does NOT fix, so nobody re-files it: this widens what a TERM
+   matches in the text, never what a typed QUERY word maps to. Query "grilled"
+   still finds nothing, because `grilled` is not a term in any concept and
+   nothing stems it back to `grill`. And data/semantic-index.json is still full
+   of hand-authored inflection pairs (engineering/engineers/engineer,
+   trains/train, books/book, laugh/laughs) doing this matcher's job by hand --
+   which is why "grill" already returned 8 correct picks before this change,
+   through the `bbq` concept's separately authored `grilling` term. That
+   redundancy is now harmless rather than load-bearing; retiring it is a
+   vocabulary question, not a matcher one. */
+const LONG_INFLECTIONS = "(?:s|es|ing)?";
+const SHORT_INFLECTIONS = "s?";
+
+/* Compiled patterns are CACHED per term, which is a real cost here rather than
+   premature tuning. scoreMatch calls hitText five times per term per item over a
+   1,540-item pool, so a single battery run is millions of calls, and the terms
+   repeat on every one of them. It also repairs a regression this change would
+   otherwise have introduced: hitTag's short branch used to be a string compare
+   (`tag === t || tag.split("-").includes(t)`) and now needs a pattern, which
+   measured ~4us per call compiling one regex PER HYPHEN SEGMENT. Cached, both
+   branches are cheaper than what they replace.
+   Keyed by branch + term, since the same term compiles differently on each. The
+   size cap matters because query tokens come from a text box, so the key space is
+   attacker-controlled in a long-lived tab; the vocabulary itself is ~1,400 terms,
+   so the cap is never reached by legitimate use. Clearing wholesale is fine --
+   these are pure functions of the key and cost microseconds to rebuild. */
+const PATTERN_CACHE_MAX = 4000;
+const patternCache = new Map();
+function compiledPattern(key, build) {
+  let re = patternCache.get(key);
+  if (re === undefined) {
+    if (patternCache.size >= PATTERN_CACHE_MAX) patternCache.clear();
+    re = build();
+    patternCache.set(key, re);
+  }
+  return re;
+}
+const longTermPattern = (t) =>
+  compiledPattern("long:" + t, () => new RegExp("(?<![a-z0-9])" + t + LONG_INFLECTIONS + "(?![a-z0-9])"));
+const shortTermPattern = (t) =>
+  compiledPattern("shortText:" + t, () => new RegExp("\\b" + t + SHORT_INFLECTIONS + "\\b"));
+const shortTagPattern = (t) =>
+  compiledPattern("shortTag:" + t, () => new RegExp("^" + t + SHORT_INFLECTIONS + "$"));
 const hitText = (text, t) =>
-  t.length < 4 ? new RegExp("\\b" + t + "\\b").test(text) : longTermPattern(t).test(text);
-const hitTag = (tag, t) =>
-  t.length < 4 ? (tag === t || tag.split("-").includes(t)) : longTermPattern(t).test(tag);
+  (t.length < 4 ? shortTermPattern(t) : longTermPattern(t)).test(text);
+const hitTag = (tag, t) => {
+  if (t.length >= 4) return longTermPattern(t).test(tag);
+  const re = shortTagPattern(t);
+  return tag.split("-").some(seg => re.test(seg));
+};
 
 function scoreMatch(item, interp, itemTags) {
   const title = item.title.toLowerCase();

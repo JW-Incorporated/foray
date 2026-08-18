@@ -7,6 +7,70 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### search matcher — `grill` reaches `grilling`, and the third copy of the matcher dies (2026-08-17, one PR, founder-gated, no follow-up)
+
+- **What:** `fix/218-219-suffix-matcher`. #218 (widen the SUFFIX side of
+  `hitText`/`hitTag`; give under-4-char terms a plural) and #219 (delete
+  `tools/topic-coverage-report.mjs`'s third copy of the matcher). **#216 is
+  deliberately untouched** — search orders on `matched` while the strong bar
+  filters on `sum`; it is real, separate, and bundling it makes this unreadable.
+- **Shared files:** `search-engine.js`, `tools/test-search.mjs` (GOVERNED —
+  blocks auto-merge, needs `founder-approved`), `tools/topic-coverage-report.mjs`,
+  `data/topic-coverage-report.json` (regenerated), `test/search-matcher.test.js`
+  (new), `test/suite-integrity.test.js` (one floor), this file. **Nothing else** —
+  no `app.js`, no `player/`, no other `data/`.
+- **The suffix set is bounded and named:** `s|es|ing` at >=4 chars, `s` alone
+  under 4. Measured over all 1,364 concept terms against every surface word in the
+  pool: on a 3-letter stem `es` yields only `rag`->`rages` and `ing` only
+  `car`->`caring` — both wrong — so the short branch takes the plural and nothing
+  more. **The prefix guard is byte-identical to `main`** and must stay that way;
+  it is the only thing blocking `software`/`toward` as "war".
+- **`ed` was in the set and was CUT during review, which is the useful lesson.**
+  On the 51 needles it looked free (4 on-subject items). Measured over the whole
+  vocabulary, ~4 of the ~18 matches it adds are on-subject and the rest are filler
+  participles on terms that are not needles at all — "AI-powered threats" for
+  `power`, "engineered", "launched" a startup for the space sense of `launch`. A
+  51-needle radius answers "did anything break", not "is this suffix worth it".
+- **KNOWN COST, disclosed not buried: `ing` makes the railway term `train` match
+  `training`.** `train` is a term of the `trains` concept (transport/trains) and
+  carries only the railway sense, so 32 fitness/dog-training/AI-pre-training items
+  now match it, and `search("train history")` returns "The Pre-Training Wall" and
+  a speed-training episode in its top 10. Not fixable by suffix choice — `ing` is
+  what #218 asks for and `grill`/`grilling` needs it. It is an ambiguous bare stem
+  in a single-sense concept, i.e. the vocabulary substitution #218 itself names,
+  and dropping `train` from the concept would stop the natural singular triggering
+  it at all. Filed as its own issue. Same shape, 1-2 items: `book`/booking,
+  `wind`/winding.
+- **There was a FOURTH copy of the matcher, inside `search-engine.js`.** `tagDF`
+  inlines the pre-#211 loose predicate as an anonymous arrow, which the new scan
+  structurally cannot see. It is behavioural — tagDF drives expansion pruning, and
+  13 terms bucket differently than the shared matcher would give them (`ship` 155
+  -> dropped vs 6 -> full weight, on a count made of `relationships`/`championship`
+  substring hits). **Filed as #249**, not bundled: changing it moves rankings.
+- **THE HEADLINE IN #218 IS NOT WHAT A LISTENER EXPERIENCED, and that is the
+  finding.** `search("grill")` already returned 8 correct picks on `main`: the
+  `bbq` concept hand-authors BOTH `grill` and `grilling`, so expansion rescued the
+  query while the matcher stayed wrong. The `0` is the single-needle ORACLE count,
+  which is what the battery's on-topic check and every coverage report use. Real
+  damage: coverage under-counted, the ranking was wrong (Steven Raichlen, THE
+  grilling author, sat 6th for "grill" and 1st for "grilling" — now 1st for both),
+  and any term whose inflections nobody hand-authored was simply unreachable.
+  `data/semantic-index.json` is full of hand-written inflection pairs
+  (`engineering`/`engineers`/`engineer`, `trains`/`train`, `books`/`book`) doing
+  this matcher's job by hand. Retiring them is a vocabulary question, filed nowhere
+  yet, deliberately out of scope here.
+- **All three section-6 collision assertions in the battery were VACUOUS,** found
+  by mutation. Deleting the prefix guard left them green: the `diffusion` collision
+  returns at raw index 13 with sum 6.00 against a 5.50 bar and is hidden only by
+  the 10-pick truncation, while the other two are held out by scoring, not by the
+  matcher. They now also assert on raw `results`; the direct witnesses live in the
+  new unit suite, where breaking the guard kills 5 tests in milliseconds.
+- **Numbers.** 51 needles over `fullPool()` (**1,540** items today, not the 1,516
+  in #218): 1,261 -> 1,284, four needles move, all UP, nothing narrows. Coverage
+  report, same data: `tag_count` 9,643 -> 8,875 (#219 removing optimism) -> 8,891
+  (#218); `text_hits` 5,567 -> 4,966 -> 5,065. Battery 101 -> 107 passed, 0 failed.
+  The matcher is also **2.5x faster than `main`** (patterns cached per term).
+
 ### playback speed — 0.75x-2x, and it survives a seam (2026-08-17, one PR, no follow-up)
 
 - **What:** `feature/playback-speed`. Founder request: "add play speed options,

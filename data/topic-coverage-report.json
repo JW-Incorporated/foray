@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "built_at": "2026-08-17T07:58:19.003Z",
+  "built_at": "2026-08-18T05:59:45.010Z",
   "provenance": {
     "produced_by": "topic-coverage-report.mjs",
-    "method": "deterministic cross-reference (mirrors app.js query matching); no LLM",
+    "method": "deterministic cross-reference; no LLM. tag_count/text_hits use search-engine.js's exported hitTag/hitText directly (#219), so they are the ranker's own matching semantics rather than a copy of them. Counts before 2026-08-17 came from a looser local copy (bare substring, no collision guard) and were optimistic.",
     "inputs": [
       "data/top-topics.json",
       "data/discover.json",
@@ -20,9 +20,9 @@
       "1": 2,
       "2": 46,
       "3": 28,
-      "4": 5,
+      "4": 4,
       "5": 5,
-      "6": 69
+      "6": 70
     },
     "by_semantic_status": {
       "covered": 80,
@@ -44,9 +44,9 @@
       "taxonomy_nodes": [
         "true-crime"
       ],
-      "catalog_count": 68,
-      "tag_count": 91,
-      "text_hits": 66,
+      "catalog_count": 70,
+      "tag_count": 93,
+      "text_hits": 67,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -67,9 +67,9 @@
         "true-crime/cold-cases",
         "true-crime"
       ],
-      "catalog_count": 68,
-      "tag_count": 36,
-      "text_hits": 59,
+      "catalog_count": 70,
+      "tag_count": 35,
+      "text_hits": 56,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -89,9 +89,9 @@
       "taxonomy_nodes": [
         "comedy"
       ],
-      "catalog_count": 163,
-      "tag_count": 161,
-      "text_hits": 28,
+      "catalog_count": 168,
+      "tag_count": 166,
+      "text_hits": 29,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -112,8 +112,8 @@
         "music"
       ],
       "catalog_count": 50,
-      "tag_count": 89,
-      "text_hits": 36,
+      "tag_count": 87,
+      "text_hits": 30,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -133,8 +133,8 @@
       "taxonomy_nodes": [
         "true-crime"
       ],
-      "catalog_count": 68,
-      "tag_count": 12,
+      "catalog_count": 70,
+      "tag_count": 5,
       "text_hits": 10,
       "content_depth": "deep",
       "semantic_status": "missing",
@@ -154,8 +154,8 @@
         "news"
       ],
       "catalog_count": 0,
-      "tag_count": 9,
-      "text_hits": 26,
+      "tag_count": 10,
+      "text_hits": 27,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -174,8 +174,8 @@
         "news/politics"
       ],
       "catalog_count": 0,
-      "tag_count": 55,
-      "text_hits": 23,
+      "tag_count": 43,
+      "text_hits": 21,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -193,9 +193,9 @@
       "taxonomy_nodes": [
         "society"
       ],
-      "catalog_count": 76,
-      "tag_count": 64,
-      "text_hits": 17,
+      "catalog_count": 77,
+      "tag_count": 58,
+      "text_hits": 15,
       "content_depth": "deep",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -213,9 +213,9 @@
       "taxonomy_nodes": [
         "comedy/stand-up"
       ],
-      "catalog_count": 18,
-      "tag_count": 163,
-      "text_hits": 79,
+      "catalog_count": 19,
+      "tag_count": 164,
+      "text_hits": 74,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -236,9 +236,9 @@
         "comedy/interviews",
         "comedy/casual-hangs"
       ],
-      "catalog_count": 153,
-      "tag_count": 177,
-      "text_hits": 98,
+      "catalog_count": 158,
+      "tag_count": 175,
+      "text_hits": 48,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -259,9 +259,9 @@
       "taxonomy_nodes": [
         "relationships"
       ],
-      "catalog_count": 37,
-      "tag_count": 42,
-      "text_hits": 17,
+      "catalog_count": 38,
+      "tag_count": 43,
+      "text_hits": 16,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -282,9 +282,9 @@
         "philosophy",
         "philosophy/ideas"
       ],
-      "catalog_count": 26,
-      "tag_count": 46,
-      "text_hits": 69,
+      "catalog_count": 27,
+      "tag_count": 47,
+      "text_hits": 70,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -304,9 +304,9 @@
       "taxonomy_nodes": [
         "sports"
       ],
-      "catalog_count": 38,
-      "tag_count": 56,
-      "text_hits": 20,
+      "catalog_count": 39,
+      "tag_count": 59,
+      "text_hits": 21,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -327,9 +327,9 @@
         "true-crime/fraud-cults",
         "true-crime"
       ],
-      "catalog_count": 68,
-      "tag_count": 93,
-      "text_hits": 21,
+      "catalog_count": 70,
+      "tag_count": 38,
+      "text_hits": 2,
       "content_depth": "deep",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -350,7 +350,7 @@
         "true-crime/justice-forensics",
         "true-crime"
       ],
-      "catalog_count": 68,
+      "catalog_count": 70,
       "tag_count": 23,
       "text_hits": 9,
       "content_depth": "deep",
@@ -371,7 +371,7 @@
         "true-crime/fraud-cults",
         "true-crime"
       ],
-      "catalog_count": 68,
+      "catalog_count": 70,
       "tag_count": 0,
       "text_hits": 3,
       "content_depth": "deep",
@@ -392,8 +392,8 @@
         "news/daily"
       ],
       "catalog_count": 0,
-      "tag_count": 9,
-      "text_hits": 24,
+      "tag_count": 10,
+      "text_hits": 25,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -412,8 +412,8 @@
         "news/commentary"
       ],
       "catalog_count": 0,
-      "tag_count": 44,
-      "text_hits": 17,
+      "tag_count": 45,
+      "text_hits": 18,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -432,8 +432,8 @@
         "news/tech"
       ],
       "catalog_count": 0,
-      "tag_count": 143,
-      "text_hits": 52,
+      "tag_count": 32,
+      "text_hits": 30,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -453,9 +453,9 @@
       "taxonomy_nodes": [
         "personal-journals"
       ],
-      "catalog_count": 53,
-      "tag_count": 267,
-      "text_hits": 12,
+      "catalog_count": 54,
+      "tag_count": 269,
+      "text_hits": 8,
       "content_depth": "deep",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -498,8 +498,8 @@
         "sports/basketball"
       ],
       "catalog_count": 0,
-      "tag_count": 1,
-      "text_hits": 2,
+      "tag_count": 2,
+      "text_hits": 3,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -599,9 +599,9 @@
       "taxonomy_nodes": [
         "comedy"
       ],
-      "catalog_count": 163,
-      "tag_count": 213,
-      "text_hits": 30,
+      "catalog_count": 168,
+      "tag_count": 164,
+      "text_hits": 24,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -621,8 +621,8 @@
       "taxonomy_nodes": [
         "comedy"
       ],
-      "catalog_count": 163,
-      "tag_count": 159,
+      "catalog_count": 168,
+      "tag_count": 164,
       "text_hits": 30,
       "content_depth": "deep",
       "semantic_status": "covered",
@@ -645,7 +645,7 @@
       ],
       "catalog_count": 25,
       "tag_count": 21,
-      "text_hits": 23,
+      "text_hits": 24,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -666,8 +666,8 @@
         "society/government"
       ],
       "catalog_count": 2,
-      "tag_count": 161,
-      "text_hits": 8,
+      "tag_count": 162,
+      "text_hits": 9,
       "content_depth": "thin",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -687,8 +687,8 @@
         "culture/mythology"
       ],
       "catalog_count": 15,
-      "tag_count": 34,
-      "text_hits": 17,
+      "tag_count": 35,
+      "text_hits": 18,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -729,9 +729,9 @@
       "taxonomy_nodes": [
         "society/law"
       ],
-      "catalog_count": 62,
+      "catalog_count": 63,
       "tag_count": 49,
-      "text_hits": 45,
+      "text_hits": 43,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -752,8 +752,8 @@
         "society/immigration-diaspora"
       ],
       "catalog_count": 1,
-      "tag_count": 30,
-      "text_hits": 36,
+      "tag_count": 31,
+      "text_hits": 41,
       "content_depth": "thin",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -775,8 +775,8 @@
         "society/lgbtq"
       ],
       "catalog_count": 1,
-      "tag_count": 92,
-      "text_hits": 49,
+      "tag_count": 87,
+      "text_hits": 53,
       "content_depth": "thin",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -798,7 +798,7 @@
         "sports/fantasy"
       ],
       "catalog_count": 0,
-      "tag_count": 49,
+      "tag_count": 51,
       "text_hits": 11,
       "content_depth": "absent",
       "semantic_status": "misrouted",
@@ -820,8 +820,8 @@
         "sports/golf"
       ],
       "catalog_count": 0,
-      "tag_count": 1,
-      "text_hits": 14,
+      "tag_count": 0,
+      "text_hits": 11,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -840,8 +840,8 @@
         "sports/tennis"
       ],
       "catalog_count": 0,
-      "tag_count": 6,
-      "text_hits": 14,
+      "tag_count": 4,
+      "text_hits": 5,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -920,8 +920,8 @@
         "sports/endurance"
       ],
       "catalog_count": 20,
-      "tag_count": 57,
-      "text_hits": 43,
+      "tag_count": 59,
+      "text_hits": 42,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -941,9 +941,9 @@
       "taxonomy_nodes": [
         "sports/biomechanics"
       ],
-      "catalog_count": 18,
-      "tag_count": 231,
-      "text_hits": 98,
+      "catalog_count": 19,
+      "tag_count": 211,
+      "text_hits": 97,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -964,8 +964,8 @@
       "taxonomy_nodes": [
         "business"
       ],
-      "catalog_count": 92,
-      "tag_count": 88,
+      "catalog_count": 94,
+      "tag_count": 91,
       "text_hits": 168,
       "content_depth": "deep",
       "semantic_status": "covered",
@@ -987,9 +987,9 @@
         "business/startups",
         "business/founders"
       ],
-      "catalog_count": 92,
-      "tag_count": 103,
-      "text_hits": 64,
+      "catalog_count": 94,
+      "tag_count": 105,
+      "text_hits": 65,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1011,8 +1011,8 @@
         "economics/markets"
       ],
       "catalog_count": 43,
-      "tag_count": 98,
-      "text_hits": 43,
+      "tag_count": 43,
+      "text_hits": 26,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1035,7 +1035,7 @@
       ],
       "catalog_count": 43,
       "tag_count": 69,
-      "text_hits": 34,
+      "text_hits": 31,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1056,9 +1056,9 @@
       "taxonomy_nodes": [
         "health"
       ],
-      "catalog_count": 75,
-      "tag_count": 111,
-      "text_hits": 29,
+      "catalog_count": 78,
+      "tag_count": 113,
+      "text_hits": 23,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1078,9 +1078,9 @@
       "taxonomy_nodes": [
         "health/mental"
       ],
-      "catalog_count": 51,
+      "catalog_count": 54,
       "tag_count": 118,
-      "text_hits": 51,
+      "text_hits": 40,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1100,9 +1100,9 @@
       "taxonomy_nodes": [
         "history"
       ],
-      "catalog_count": 197,
-      "tag_count": 301,
-      "text_hits": 90,
+      "catalog_count": 200,
+      "tag_count": 300,
+      "text_hits": 91,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1123,8 +1123,8 @@
         "history/military-modern"
       ],
       "catalog_count": 39,
-      "tag_count": 76,
-      "text_hits": 140,
+      "tag_count": 78,
+      "text_hits": 153,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1146,8 +1146,8 @@
         "engineering/ai-robotics"
       ],
       "catalog_count": 25,
-      "tag_count": 120,
-      "text_hits": 118,
+      "tag_count": 122,
+      "text_hits": 119,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1170,8 +1170,8 @@
         "computing/history"
       ],
       "catalog_count": 20,
-      "tag_count": 119,
-      "text_hits": 49,
+      "tag_count": 118,
+      "text_hits": 47,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1193,8 +1193,8 @@
         "business/careers"
       ],
       "catalog_count": 0,
-      "tag_count": 63,
-      "text_hits": 30,
+      "tag_count": 64,
+      "text_hits": 31,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -1215,8 +1215,8 @@
         "tv-film"
       ],
       "catalog_count": 11,
-      "tag_count": 44,
-      "text_hits": 24,
+      "tag_count": 34,
+      "text_hits": 23,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1281,7 +1281,7 @@
       ],
       "catalog_count": 3,
       "tag_count": 31,
-      "text_hits": 30,
+      "text_hits": 26,
       "content_depth": "thin",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -1303,9 +1303,9 @@
       "taxonomy_nodes": [
         "health/mental"
       ],
-      "catalog_count": 51,
+      "catalog_count": 54,
       "tag_count": 16,
-      "text_hits": 42,
+      "text_hits": 41,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1327,7 +1327,7 @@
       ],
       "catalog_count": 0,
       "tag_count": 6,
-      "text_hits": 11,
+      "text_hits": 12,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -1348,8 +1348,8 @@
         "history/military-ancient"
       ],
       "catalog_count": 48,
-      "tag_count": 46,
-      "text_hits": 44,
+      "tag_count": 42,
+      "text_hits": 32,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1372,8 +1372,8 @@
         "history/military-modern"
       ],
       "catalog_count": 39,
-      "tag_count": 315,
-      "text_hits": 143,
+      "tag_count": 314,
+      "text_hits": 154,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1393,9 +1393,9 @@
       "taxonomy_nodes": [
         "science"
       ],
-      "catalog_count": 106,
-      "tag_count": 219,
-      "text_hits": 95,
+      "catalog_count": 107,
+      "tag_count": 197,
+      "text_hits": 94,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1418,8 +1418,8 @@
         "space/rockets"
       ],
       "catalog_count": 22,
-      "tag_count": 46,
-      "text_hits": 40,
+      "tag_count": 34,
+      "text_hits": 34,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1441,9 +1441,9 @@
       "taxonomy_nodes": [
         "education/self-improvement"
       ],
-      "catalog_count": 30,
-      "tag_count": 126,
-      "text_hits": 46,
+      "catalog_count": 32,
+      "tag_count": 132,
+      "text_hits": 32,
       "content_depth": "deep",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -1479,51 +1479,6 @@
       "priority": 2
     },
     {
-      "id": "pop-culture-recaps",
-      "label": "Pop culture recaps",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "culture/pop-culture"
-      ],
-      "catalog_count": 7,
-      "tag_count": 76,
-      "text_hits": 25,
-      "content_depth": "thin",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "celebrities -> [comedy/casual-hangs, tv-film]"
-      ],
-      "breadth_supply": 677,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "semantic-concept-fix",
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
-      "id": "parenting",
-      "label": "Parenting",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "kids-family/parenting"
-      ],
-      "catalog_count": 12,
-      "tag_count": 20,
-      "text_hits": 6,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "parenting"
-      ],
-      "breadth_supply": 260,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 2
-    },
-    {
       "id": "biology-medicine",
       "label": "Biology & medicine",
       "tier": 2,
@@ -1531,9 +1486,9 @@
         "medicine/biology",
         "medicine"
       ],
-      "catalog_count": 56,
-      "tag_count": 78,
-      "text_hits": 19,
+      "catalog_count": 58,
+      "tag_count": 80,
+      "text_hits": 17,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1554,9 +1509,9 @@
       "taxonomy_nodes": [
         "medicine/neuroscience"
       ],
-      "catalog_count": 40,
-      "tag_count": 37,
-      "text_hits": 29,
+      "catalog_count": 42,
+      "tag_count": 41,
+      "text_hits": 31,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1577,8 +1532,8 @@
         "engineering/energy-grid"
       ],
       "catalog_count": 31,
-      "tag_count": 59,
-      "text_hits": 71,
+      "tag_count": 58,
+      "text_hits": 55,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1594,70 +1549,6 @@
       "priority": 6
     },
     {
-      "id": "jazz",
-      "label": "Jazz",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "music/jazz"
-      ],
-      "catalog_count": 0,
-      "tag_count": 2,
-      "text_hits": 2,
-      "content_depth": "absent",
-      "semantic_status": "misrouted",
-      "semantic_concepts": [
-        "music -> [music/theory-production, craft/instrument-making]"
-      ],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "defer"
-      ],
-      "priority": 5
-    },
-    {
-      "id": "hip-hop-rap",
-      "label": "Hip-hop & rap",
-      "tier": 2,
-      "taxonomy_nodes": [
-        "music/hip-hop"
-      ],
-      "catalog_count": 0,
-      "tag_count": 7,
-      "text_hits": 7,
-      "content_depth": "absent",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "cooking",
-      "label": "Cooking",
-      "tier": 1,
-      "taxonomy_nodes": [
-        "food/cooking-science"
-      ],
-      "catalog_count": 16,
-      "tag_count": 4,
-      "text_hits": 4,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "cooking"
-      ],
-      "breadth_supply": 88,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
       "id": "movie-tv-reviews",
       "label": "Movie & TV reviews",
       "tier": 2,
@@ -1666,7 +1557,7 @@
       ],
       "catalog_count": 11,
       "tag_count": 23,
-      "text_hits": 19,
+      "text_hits": 16,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1729,8 +1620,8 @@
         "health/alternative"
       ],
       "catalog_count": 0,
-      "tag_count": 124,
-      "text_hits": 27,
+      "tag_count": 126,
+      "text_hits": 24,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -1751,7 +1642,7 @@
         "health/sexuality"
       ],
       "catalog_count": 2,
-      "tag_count": 4,
+      "tag_count": 5,
       "text_hits": 1,
       "content_depth": "thin",
       "semantic_status": "missing",
@@ -1772,7 +1663,7 @@
         "science/physics"
       ],
       "catalog_count": 3,
-      "tag_count": 30,
+      "tag_count": 27,
       "text_hits": 13,
       "content_depth": "thin",
       "semantic_status": "misrouted",
@@ -1788,6 +1679,224 @@
       "priority": 2
     },
     {
+      "id": "pop-culture-recaps",
+      "label": "Pop culture recaps",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "culture/pop-culture"
+      ],
+      "catalog_count": 7,
+      "tag_count": 73,
+      "text_hits": 24,
+      "content_depth": "thin",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "celebrities -> [comedy/casual-hangs, tv-film]"
+      ],
+      "breadth_supply": 677,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "semantic-concept-fix",
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "parenting",
+      "label": "Parenting",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "kids-family/parenting"
+      ],
+      "catalog_count": 12,
+      "tag_count": 20,
+      "text_hits": 6,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "parenting"
+      ],
+      "breadth_supply": 260,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 2
+    },
+    {
+      "id": "jazz",
+      "label": "Jazz",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "music/jazz"
+      ],
+      "catalog_count": 0,
+      "tag_count": 2,
+      "text_hits": 2,
+      "content_depth": "absent",
+      "semantic_status": "misrouted",
+      "semantic_concepts": [
+        "music -> [music/theory-production, craft/instrument-making]"
+      ],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "defer"
+      ],
+      "priority": 5
+    },
+    {
+      "id": "history-of-technology",
+      "label": "History of technology",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "history/technology"
+      ],
+      "catalog_count": 90,
+      "tag_count": 325,
+      "text_hits": 101,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "history",
+        "engineering-history"
+      ],
+      "breadth_supply": 89,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "espionage-cold-war",
+      "label": "Espionage & Cold War",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "espionage/cold-war-tech"
+      ],
+      "catalog_count": 7,
+      "tag_count": 99,
+      "text_hits": 62,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "espionage"
+      ],
+      "breadth_supply": 15,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "retag-existing"
+      ],
+      "priority": 4
+    },
+    {
+      "id": "cybersecurity",
+      "label": "Cybersecurity",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "computing/cybersecurity"
+      ],
+      "catalog_count": 0,
+      "tag_count": 7,
+      "text_hits": 0,
+      "content_depth": "absent",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "chemistry",
+      "label": "Chemistry",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "science/chemistry"
+      ],
+      "catalog_count": 13,
+      "tag_count": 14,
+      "text_hits": 11,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "chemistry"
+      ],
+      "breadth_supply": 148,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "promote-from-breadth"
+      ],
+      "priority": 3
+    },
+    {
+      "id": "math-puzzles",
+      "label": "Math & puzzles",
+      "tier": 3,
+      "taxonomy_nodes": [
+        "math/puzzles"
+      ],
+      "catalog_count": 2,
+      "tag_count": 4,
+      "text_hits": 4,
+      "content_depth": "thin",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "math"
+      ],
+      "breadth_supply": 19,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "hip-hop-rap",
+      "label": "Hip-hop & rap",
+      "tier": 2,
+      "taxonomy_nodes": [
+        "music/hip-hop"
+      ],
+      "catalog_count": 0,
+      "tag_count": 11,
+      "text_hits": 8,
+      "content_depth": "absent",
+      "semantic_status": "missing",
+      "semantic_concepts": [],
+      "breadth_supply": 0,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
+      "id": "cooking",
+      "label": "Cooking",
+      "tier": 1,
+      "taxonomy_nodes": [
+        "food/cooking-science"
+      ],
+      "catalog_count": 16,
+      "tag_count": 4,
+      "text_hits": 4,
+      "content_depth": "deep",
+      "semantic_status": "covered",
+      "semantic_concepts": [
+        "cooking"
+      ],
+      "breadth_supply": 88,
+      "fusion_bug_flagged": false,
+      "recommended_actions": [
+        "none"
+      ],
+      "priority": 6
+    },
+    {
       "id": "language-learning",
       "label": "Language learning",
       "tier": 2,
@@ -1795,8 +1904,8 @@
         "education/language-learning"
       ],
       "catalog_count": 0,
-      "tag_count": 36,
-      "text_hits": 32,
+      "tag_count": 37,
+      "text_hits": 25,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -1818,7 +1927,7 @@
       ],
       "catalog_count": 0,
       "tag_count": 121,
-      "text_hits": 97,
+      "text_hits": 122,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -1837,8 +1946,8 @@
         "kids-family/stories"
       ],
       "catalog_count": 8,
-      "tag_count": 49,
-      "text_hits": 53,
+      "tag_count": 51,
+      "text_hits": 58,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1925,8 +2034,8 @@
         "craft/diy-home"
       ],
       "catalog_count": 30,
-      "tag_count": 73,
-      "text_hits": 39,
+      "tag_count": 67,
+      "text_hits": 33,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1949,7 +2058,7 @@
       ],
       "catalog_count": 11,
       "tag_count": 59,
-      "text_hits": 46,
+      "text_hits": 42,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1963,51 +2072,6 @@
       "priority": 2
     },
     {
-      "id": "history-of-technology",
-      "label": "History of technology",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "history/technology"
-      ],
-      "catalog_count": 89,
-      "tag_count": 328,
-      "text_hits": 103,
-      "content_depth": "deep",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "history",
-        "engineering-history"
-      ],
-      "breadth_supply": 89,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
-      "id": "espionage-cold-war",
-      "label": "Espionage & Cold War",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "espionage/cold-war-tech"
-      ],
-      "catalog_count": 7,
-      "tag_count": 96,
-      "text_hits": 49,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "espionage"
-      ],
-      "breadth_supply": 15,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "retag-existing"
-      ],
-      "priority": 4
-    },
-    {
       "id": "aviation",
       "label": "Aviation",
       "tier": 2,
@@ -2015,8 +2079,8 @@
         "aviation/accidents"
       ],
       "catalog_count": 8,
-      "tag_count": 30,
-      "text_hits": 48,
+      "tag_count": 23,
+      "text_hits": 18,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2031,26 +2095,6 @@
       "priority": 4
     },
     {
-      "id": "cybersecurity",
-      "label": "Cybersecurity",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "computing/cybersecurity"
-      ],
-      "catalog_count": 0,
-      "tag_count": 8,
-      "text_hits": 0,
-      "content_depth": "absent",
-      "semantic_status": "missing",
-      "semantic_concepts": [],
-      "breadth_supply": 0,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "none"
-      ],
-      "priority": 6
-    },
-    {
       "id": "film-history",
       "label": "Film history",
       "tier": 3,
@@ -2058,8 +2102,8 @@
         "tv-film/history"
       ],
       "catalog_count": 0,
-      "tag_count": 357,
-      "text_hits": 127,
+      "tag_count": 337,
+      "text_hits": 113,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -2103,7 +2147,7 @@
       ],
       "catalog_count": 0,
       "tag_count": 2,
-      "text_hits": 58,
+      "text_hits": 54,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -2122,8 +2166,8 @@
         "music/classical"
       ],
       "catalog_count": 16,
-      "tag_count": 100,
-      "text_hits": 53,
+      "tag_count": 89,
+      "text_hits": 36,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2145,8 +2189,8 @@
         "music/theory-production"
       ],
       "catalog_count": 28,
-      "tag_count": 93,
-      "text_hits": 46,
+      "tag_count": 91,
+      "text_hits": 40,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2168,7 +2212,7 @@
       ],
       "catalog_count": 25,
       "tag_count": 34,
-      "text_hits": 34,
+      "text_hits": 28,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2180,50 +2224,6 @@
         "none"
       ],
       "priority": 6
-    },
-    {
-      "id": "chemistry",
-      "label": "Chemistry",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "science/chemistry"
-      ],
-      "catalog_count": 13,
-      "tag_count": 15,
-      "text_hits": 11,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "chemistry"
-      ],
-      "breadth_supply": 148,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "promote-from-breadth"
-      ],
-      "priority": 3
-    },
-    {
-      "id": "math-puzzles",
-      "label": "Math & puzzles",
-      "tier": 3,
-      "taxonomy_nodes": [
-        "math/puzzles"
-      ],
-      "catalog_count": 2,
-      "tag_count": 7,
-      "text_hits": 12,
-      "content_depth": "thin",
-      "semantic_status": "covered",
-      "semantic_concepts": [
-        "math"
-      ],
-      "breadth_supply": 19,
-      "fusion_bug_flagged": false,
-      "recommended_actions": [
-        "retag-existing"
-      ],
-      "priority": 4
     },
     {
       "id": "online-courses-lectures",
@@ -2252,7 +2252,7 @@
       "taxonomy_nodes": [
         "education/self-improvement"
       ],
-      "catalog_count": 30,
+      "catalog_count": 32,
       "tag_count": 5,
       "text_hits": 1,
       "content_depth": "deep",
@@ -2272,8 +2272,8 @@
       "taxonomy_nodes": [
         "kids-family/education"
       ],
-      "catalog_count": 19,
-      "tag_count": 55,
+      "catalog_count": 20,
+      "tag_count": 56,
       "text_hits": 26,
       "content_depth": "deep",
       "semantic_status": "misrouted",
@@ -2337,8 +2337,8 @@
         "religion/islam"
       ],
       "catalog_count": 0,
-      "tag_count": 2,
-      "text_hits": 2,
+      "tag_count": 1,
+      "text_hits": 1,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -2357,8 +2357,8 @@
         "religion/hinduism"
       ],
       "catalog_count": 0,
-      "tag_count": 29,
-      "text_hits": 20,
+      "tag_count": 30,
+      "text_hits": 21,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -2379,8 +2379,8 @@
         "food/fermentation"
       ],
       "catalog_count": 17,
-      "tag_count": 38,
-      "text_hits": 43,
+      "tag_count": 33,
+      "text_hits": 40,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2447,7 +2447,7 @@
       ],
       "catalog_count": 17,
       "tag_count": 12,
-      "text_hits": 8,
+      "text_hits": 7,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2469,7 +2469,7 @@
       ],
       "catalog_count": 9,
       "tag_count": 30,
-      "text_hits": 35,
+      "text_hits": 32,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2490,8 +2490,8 @@
         "craft/instrument-making"
       ],
       "catalog_count": 13,
-      "tag_count": 58,
-      "text_hits": 97,
+      "tag_count": 38,
+      "text_hits": 96,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2534,8 +2534,8 @@
         "gaming/tabletop"
       ],
       "catalog_count": 0,
-      "tag_count": 21,
-      "text_hits": 34,
+      "tag_count": 18,
+      "text_hits": 19,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -2558,7 +2558,7 @@
       ],
       "catalog_count": 1,
       "tag_count": 7,
-      "text_hits": 11,
+      "text_hits": 9,
       "content_depth": "thin",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -2600,8 +2600,8 @@
         "cities/urbanism"
       ],
       "catalog_count": 25,
-      "tag_count": 45,
-      "text_hits": 32,
+      "tag_count": 31,
+      "text_hits": 17,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2646,7 +2646,7 @@
       ],
       "catalog_count": 57,
       "tag_count": 23,
-      "text_hits": 9,
+      "text_hits": 7,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2666,9 +2666,9 @@
       "taxonomy_nodes": [
         "paranormal"
       ],
-      "catalog_count": 23,
-      "tag_count": 47,
-      "text_hits": 50,
+      "catalog_count": 24,
+      "tag_count": 49,
+      "text_hits": 55,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2689,8 +2689,8 @@
         "engineering"
       ],
       "catalog_count": 123,
-      "tag_count": 97,
-      "text_hits": 87,
+      "tag_count": 96,
+      "text_hits": 84,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2712,7 +2712,7 @@
       ],
       "catalog_count": 3,
       "tag_count": 31,
-      "text_hits": 37,
+      "text_hits": 30,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2733,8 +2733,8 @@
         "transport/maritime"
       ],
       "catalog_count": 12,
-      "tag_count": 53,
-      "text_hits": 18,
+      "tag_count": 20,
+      "text_hits": 14,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2755,8 +2755,8 @@
         "nature/ocean-science"
       ],
       "catalog_count": 4,
-      "tag_count": 248,
-      "text_hits": 119,
+      "tag_count": 226,
+      "text_hits": 116,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2800,8 +2800,8 @@
         "nature/earth-science"
       ],
       "catalog_count": 25,
-      "tag_count": 238,
-      "text_hits": 119,
+      "tag_count": 216,
+      "text_hits": 114,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2822,8 +2822,8 @@
         "fiction/sci-fi"
       ],
       "catalog_count": 2,
-      "tag_count": 229,
-      "text_hits": 103,
+      "tag_count": 207,
+      "text_hits": 98,
       "content_depth": "thin",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -2847,7 +2847,7 @@
       ],
       "catalog_count": 9,
       "tag_count": 12,
-      "text_hits": 13,
+      "text_hits": 7,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2868,8 +2868,8 @@
         "fiction/comedy"
       ],
       "catalog_count": 0,
-      "tag_count": 169,
-      "text_hits": 30,
+      "tag_count": 174,
+      "text_hits": 27,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -2913,7 +2913,7 @@
         "engineering/precision-mfg"
       ],
       "catalog_count": 38,
-      "tag_count": 49,
+      "tag_count": 50,
       "text_hits": 27,
       "content_depth": "deep",
       "semantic_status": "covered",
@@ -2935,8 +2935,8 @@
       "taxonomy_nodes": [
         "psychology"
       ],
-      "catalog_count": 63,
-      "tag_count": 73,
+      "catalog_count": 67,
+      "tag_count": 77,
       "text_hits": 12,
       "content_depth": "deep",
       "semantic_status": "covered",
@@ -2958,8 +2958,8 @@
         "engineering/disasters"
       ],
       "catalog_count": 13,
-      "tag_count": 110,
-      "text_hits": 208,
+      "tag_count": 109,
+      "text_hits": 210,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -3003,8 +3003,8 @@
       "taxonomy_nodes": [
         "psychology/decision-making"
       ],
-      "catalog_count": 20,
-      "tag_count": 91,
+      "catalog_count": 21,
+      "tag_count": 74,
       "text_hits": 54,
       "content_depth": "deep",
       "semantic_status": "misrouted",
@@ -3025,7 +3025,7 @@
       "taxonomy_nodes": [
         "health/mental"
       ],
-      "catalog_count": 51,
+      "catalog_count": 54,
       "tag_count": 16,
       "text_hits": 15,
       "content_depth": "deep",
@@ -3047,7 +3047,7 @@
       "taxonomy_nodes": [
         "health/mental"
       ],
-      "catalog_count": 51,
+      "catalog_count": 54,
       "tag_count": 8,
       "text_hits": 10,
       "content_depth": "deep",
@@ -3070,8 +3070,8 @@
         "history/military-modern"
       ],
       "catalog_count": 39,
-      "tag_count": 68,
-      "text_hits": 65,
+      "tag_count": 66,
+      "text_hits": 59,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -3091,7 +3091,7 @@
       "taxonomy_nodes": [
         "education/self-improvement"
       ],
-      "catalog_count": 30,
+      "catalog_count": 32,
       "tag_count": 0,
       "text_hits": 11,
       "content_depth": "deep",
@@ -3112,8 +3112,8 @@
         "economics/markets"
       ],
       "catalog_count": 43,
-      "tag_count": 15,
-      "text_hits": 73,
+      "tag_count": 10,
+      "text_hits": 48,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -3175,9 +3175,9 @@
       "taxonomy_nodes": [
         "comedy/interviews"
       ],
-      "catalog_count": 54,
-      "tag_count": 161,
-      "text_hits": 67,
+      "catalog_count": 56,
+      "tag_count": 165,
+      "text_hits": 45,
       "content_depth": "deep",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -3220,8 +3220,8 @@
         "automotive/ev-future"
       ],
       "catalog_count": 0,
-      "tag_count": 18,
-      "text_hits": 18,
+      "tag_count": 6,
+      "text_hits": 11,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -3264,8 +3264,8 @@
         "hobbies/gardening"
       ],
       "catalog_count": 0,
-      "tag_count": 23,
-      "text_hits": 33,
+      "tag_count": 14,
+      "text_hits": 22,
       "content_depth": "absent",
       "semantic_status": "missing",
       "semantic_concepts": [],
@@ -3284,8 +3284,8 @@
         "culture/design"
       ],
       "catalog_count": 11,
-      "tag_count": 74,
-      "text_hits": 63,
+      "tag_count": 65,
+      "text_hits": 56,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -3329,8 +3329,8 @@
         "nature/pets"
       ],
       "catalog_count": 0,
-      "tag_count": 50,
-      "text_hits": 35,
+      "tag_count": 51,
+      "text_hits": 47,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -3372,8 +3372,8 @@
         "music/pop-global"
       ],
       "catalog_count": 3,
-      "tag_count": 110,
-      "text_hits": 52,
+      "tag_count": 109,
+      "text_hits": 46,
       "content_depth": "thin",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -3395,8 +3395,8 @@
         "sports/combat-sports"
       ],
       "catalog_count": 0,
-      "tag_count": 50,
-      "text_hits": 10,
+      "tag_count": 52,
+      "text_hits": 9,
       "content_depth": "absent",
       "semantic_status": "misrouted",
       "semantic_concepts": [
@@ -3417,8 +3417,8 @@
         "culture/design"
       ],
       "catalog_count": 11,
-      "tag_count": 83,
-      "text_hits": 49,
+      "tag_count": 61,
+      "text_hits": 39,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [
