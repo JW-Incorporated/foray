@@ -30,15 +30,44 @@
  *     Already pulled in by capacitor-android and by every bundled plugin, and
  *     asking for it by the same coordinate they use adds no new Maven artefact.
  *
- * NOT MEDIA3, ON PURPOSE. A `mediaPlayback` foreground service that only keeps
- * the process alive needs no player library: the audio is the WebView's own
- * `<audio>` element, not an ExoPlayer. Media3 is the right answer for the NEXT
- * piece — `MediaSession` + a `Player` adapter over the WebView element is how
- * #27's lock-screen metadata and transport controls get built, because
- * `navigator.mediaSession` is switched off in Android WebView
- * (docs/research/mp1-background-audio.md §5.4) — and at that point this service
- * should become a `MediaSessionService`. Declaring `androidx.media3.session` today
- * would be a dependency with no caller.
+ * AND SINCE #27, TWO MEDIA3 DEPENDENCIES, WHICH ARE NEW MAVEN ARTEFACTS — the
+ * first this module has added, so they are named individually with what each is
+ * for. #244's own comment here said Media3 was "the right answer for the NEXT
+ * piece" and that declaring it then "would be a dependency with no caller"; this
+ * is that piece, and it has callers.
+ *
+ *   - androidx.media3:media3-session  — `MediaSession`, the object that publishes a
+ *     platform media session for the lock screen and the media panel to read, and
+ *     `MediaStyleNotificationHelper`, which stamps that session's token onto our
+ *     notification so the system pairs the two. This is the artefact #27 cannot be
+ *     built without: `navigator.mediaSession` is switched off in Android WebView at
+ *     the engine level (docs/research/mp1-background-audio.md §5.4), so the whole
+ *     surface is native.
+ *   - androidx.media3:media3-common   — `SimpleBasePlayer`, which is the documented
+ *     base class for "a player that supports only a subset of commands" and is
+ *     what lets a Media3 session read a state we hold rather than a player we own.
+ *     Also `Player`, `MediaMetadata` and `PlaybackParameters`.
+ *
+ * `media3-common` arrives transitively through `media3-session` and is declared
+ * ANYWAY, because `WebViewPlayer.java` imports it directly and a module should ask
+ * for what it compiles against rather than inherit it. Same version, one place.
+ *
+ * NOT MEDIA3-EXOPLAYER, NOT MEDIA3-UI. There is no player to build and no view to
+ * inflate: the audio is the WebView's own `<audio>` element. `media3-ui` would be
+ * ~1 MB of `PlayerView` for a notification we build with `NotificationCompat`, and
+ * `media3-exoplayer` would put a second, real audio pipeline in a process whose whole
+ * design is that the page owns the one that exists.
+ *
+ * WHAT COMES IN BEHIND THEM, stated because a transitive dependency is still a
+ * dependency: `media3-common` exposes `com.google.guava:guava` (33.3.1-android) as
+ * `api`, and it is unavoidable rather than chosen — `SimpleBasePlayer`'s own abstract
+ * methods return `ListenableFuture`, so the type is in the contract we implement.
+ * `media3-session` also brings `media3-datasource` and `media3-container`, which is
+ * where its default `BitmapLoader` lives. Guava-android is the large one; the APK
+ * cost of all of it is measured in docs/android-native-code.md §4.
+ *
+ * NOT A `MediaSessionService`, EITHER, and that is a design decision rather than a
+ * dependency one — PlaybackKeepAliveService.onBind's comment is the argument.
  *
  * NO `buildscript { }` BLOCK, unlike @capacitor/app's copy of this file, which
  * pins `com.android.tools.build:gradle:8.13.0` for its own standalone `./gradlew
@@ -49,6 +78,18 @@
 
 ext {
     androidxAppCompatVersion = project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'
+    /* PINNED HERE, unlike appcompat above, and the difference is deliberate. The
+       Capacitor-shaped `rootProject.ext` lookup exists so a module tracks whatever the
+       generated project was built against — but the generated `variables.gradle` has no
+       Media3 entry to track, so a `hasProperty` dance would be a fallback pretending to
+       be a lookup. `cap add android` would also silently change this number on a
+       Capacitor upgrade if it ever gained one, which for a library that owns the lock
+       screen is a thing to notice rather than inherit.
+
+       1.11.0, read from Google's Maven `maven-metadata.xml` as the current `<release>`
+       on 2026-08-18 — not from memory, because the wrong Media3 version is a build
+       failure with a resolution error rather than anything about media. */
+    media3Version = project.hasProperty('media3Version') ? rootProject.ext.media3Version : '1.11.0'
 }
 
 apply plugin: 'com.android.library'
@@ -86,4 +127,6 @@ repositories {
 dependencies {
     implementation project(':capacitor-android')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.media3:media3-session:$media3Version"
+    implementation "androidx.media3:media3-common:$media3Version"
 }

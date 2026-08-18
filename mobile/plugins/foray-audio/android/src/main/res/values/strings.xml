@@ -3,12 +3,21 @@
   Library resources merge into the generated app, so every name here is prefixed
   `foray_` to make a collision with Capacitor's own strings impossible.
 
-  The notification text says "Playback active" and NOT an episode title, because
-  the shell has no episode metadata on the native side yet. Getting it there is
-  #27's Android half: `navigator.mediaSession` is switched off in Android WebView
-  (docs/research/mp1-background-audio.md §5.4), so metadata has to cross the bridge
-  explicitly. A placeholder that is honest beats a placeholder that looks like a
-  feature.
+  THE NOTIFICATION TITLE AND TEXT ARE NOW FALLBACKS, NOT THE CONTENT. #244 shipped
+  "Foray" / "Playback active" because the shell had no episode metadata on the native
+  side — "a placeholder that is honest beats a placeholder that looks like a feature".
+  #27's half carries it across the bridge (`foray-media-session.js` ->
+  `ForayAudioPlugin.setNowPlaying`), so the notification says the source episode and
+  the source show, exactly as `player/media-session.js` §1 decides they should be
+  worded. These two strings are what it says in the gap between the service starting
+  and the page's first report — and if the page never reports, they are still true.
+
+  THE FOUR ACTION LABELS ARE READ ALOUD, WHICH IS WHY THEY ARE NOT "NEXT" AND "BACK".
+  A notification action's title is its accessibility label and its text on a car head
+  unit that renders labels rather than glyphs. "Next segment" says what a Foray's
+  next actually is — an authored running order's next item, not a chapter and not a
+  30-second nudge, which is the ± pair and has no button here. Sentence case, matching
+  the repo's prose convention and Android's own.
 -->
 <resources>
     <string name="foray_playback_service_description">Keeps a Foray playing while the app is in the background.</string>
@@ -16,4 +25,9 @@
     <string name="foray_playback_channel_description">Shown while a Foray is playing, so Android keeps the app running in the background.</string>
     <string name="foray_playback_notification_title">Foray</string>
     <string name="foray_playback_notification_text">Playback active</string>
+    <string name="foray_action_play">Play</string>
+    <string name="foray_action_pause">Pause</string>
+    <string name="foray_action_previous">Previous segment</string>
+    <string name="foray_action_next">Next segment</string>
+    <string name="foray_action_stop">Stop</string>
 </resources>

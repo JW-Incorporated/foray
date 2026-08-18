@@ -80,6 +80,9 @@ import { fileURLToPath } from "node:url";
 
 import { MAX_BYTES, MIN_DERIVED_DATA_FILES } from "./prepare-webdir.mjs";
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
+import {
+  PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS,
+} from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -738,6 +741,13 @@ test("every file the Android plugin needs is TRACKED by git", () => {
     "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java",
     "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java",
     "web/foray-audio-shell.js",
+    /* #27's Android half. Native code and its web half are useless separately: the
+       polyfill with no Java answers "plugin not implemented" on every write, and the
+       Java with no polyfill is a MediaSession nothing ever populates. */
+    "web/foray-media-session.js",
+    "android/src/main/java/com/jwincorporated/foray/audio/NowPlaying.java",
+    "android/src/main/java/com/jwincorporated/foray/audio/NowPlayingHub.java",
+    "android/src/main/java/com/jwincorporated/foray/audio/WebViewPlayer.java",
   ];
   const res = git(["ls-files", "--", PLUGIN_REL]);
   assert.equal(res.status, 0, "could not read the git index; this invariant is about what is COMMITTED");
@@ -751,7 +761,7 @@ test("every file the Android plugin needs is TRACKED by git", () => {
   /* And the repo really does have native sources now, which is the state #37 left it
      unable to reach: `git ls-files` used to contain zero .java and zero .kt files. */
   const natives = [...tracked].filter((f) => /\.(java|kt)$/.test(f));
-  assert.ok(natives.length >= 2, "expected the plugin's Java to be tracked, found " + natives.length);
+  assert.ok(natives.length >= 5, "expected the plugin's Java to be tracked, found " + natives.length);
 });
 
 test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path inside mobile/", () => {
@@ -835,6 +845,148 @@ test("the plugin name the web half calls is the name the Java registers", () => 
   for (const method of called) {
     assert.ok(declared.has(method), "the shell calls ForayAudio." + method + "(), which is not a @PluginMethod");
   }
+
+  /* #27's half calls the same plugin by the same name, from a SECOND web file — so
+     there are now three places one rename breaks silently. `SET_METHOD` is checked
+     against the @PluginMethod set for the same reason `start` is: a typo there means
+     the lock screen is never populated and nothing anywhere goes red. */
+  assert.equal(MEDIA_PLUGIN_NAME, PLUGIN_NAME, "the two web halves disagree about the plugin's name");
+  assert.ok(
+    declared.has(SET_METHOD),
+    "foray-media-session.js calls ForayAudio." + SET_METHOD + "(), which is not a @PluginMethod"
+  );
+  /* And the EVENT name, which is the only thing crossing the bridge in the other
+     direction. If these disagree, `notifyListeners` posts to an event nobody
+     subscribed to: every transport press is dropped, in silence, on a surface whose
+     whole purpose is those presses. */
+  const javaEvent = /static final String TRANSPORT_EVENT = "(\w+)"/.exec(java);
+  assert.ok(javaEvent, "ForayAudioPlugin.java no longer declares TRANSPORT_EVENT");
+  assert.equal(javaEvent[1], TRANSPORT_EVENT, "the Java's transport event name and the web half's disagree");
+});
+
+/** Java source with its comments removed, so scanning for call sites cannot be fooled
+ *  by a doc comment that names one. These files carry more prose than code and the
+ *  prose quotes method names on purpose. */
+function stripJavaComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+}
+
+test("EVERY TRANSPORT ACTION THE NATIVE SIDE CAN SEND IS ONE THE PAGE CAN ROUTE", () => {
+  /* The other silent seam, and the sharper one: the action names are string literals in
+     two Java files and a `Map` lookup in JavaScript. A `"nextTrack"` for a
+     `"nexttrack"` compiles, installs, posts an event, finds no handler and does
+     nothing — from a steering wheel, at 70 mph, with every test green.
+
+     DERIVED from the Java by scanning both senders rather than listed here, so a new
+     action added natively without a web handler fails. */
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio");
+  const player = stripJavaComments(fs.readFileSync(path.join(dir, "WebViewPlayer.java"), "utf8"));
+  const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
+  /* THE WHOLE ARGUMENT LIST, not the first argument, and the first draft of this test
+     was wrong in the way that matters: `send(playWhenReady ? "play" : "pause", …)` and
+     `transportIntent(playing ? "pause" : "play", 2)` are ternaries, so a regex anchored
+     to a leading string literal found six actions and missed play and pause — the two
+     every other button is beside. It failed loudly only because of the count assertion
+     below, which is why that assertion is there. */
+  const sent = new Set(
+    [...player.matchAll(/\bsend\(([^)]*)\)/g), ...service.matchAll(/transportIntent\(([^)]*)\)/g)]
+      .flatMap((m) => [...m[1].matchAll(/"([a-z]+)"/g)].map((q) => q[1]))
+  );
+  assert.ok(sent.size >= 7, "expected at least seven transport actions in the Java, found " + [...sent].join(", "));
+  for (const action of sent) {
+    assert.ok(
+      ROUTABLE_ACTIONS.includes(action),
+      "the Java sends the transport action " + action + ", which foray-media-session.js cannot route"
+    );
+  }
+  /* Both halves of play/pause and both skips must be reachable, because each is a
+     separate acceptance criterion in #27 and each is a separate button. */
+  for (const action of ["play", "pause", "nexttrack", "previoustrack", "seekto"]) {
+    assert.ok(sent.has(action), "nothing in the Java can send " + action);
+  }
+});
+
+test("EACH NOTIFICATION BUTTON GETS ITS OWN PendingIntent REQUEST CODE", () => {
+  /* `PendingIntent` equality IGNORES EXTRAS. Two of them differing only in an extra,
+     with the same request code, are the SAME PendingIntent — and FLAG_UPDATE_CURRENT
+     then rewrites the first one's extras. Share a code across these buttons and every
+     control on the notification performs whichever action was built last: press
+     previous, get stop.
+
+     Nothing about that fails a build, a lint or any other test in this repo, and on a
+     device it looks like a mis-wired remote rather than a bug in a number. */
+  const service = fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java"),
+    "utf8"
+  );
+  const uses = [...stripJavaComments(service).matchAll(/transportIntent\(([^)]*?),\s*(\d+)\s*\)/g)]
+    .map((m) => ({
+      /* Both literals when the argument is a ternary, joined — so play and pause sharing
+         one request code is correct (they are one button) and reads as one entry here. */
+      action: [...m[1].matchAll(/"([a-z]+)"/g)].map((q) => q[1]).join("/"),
+      code: Number(m[2]),
+    }));
+  assert.ok(uses.length >= 5, "expected at least five transport intents, found " + uses.length);
+  const byCode = new Map();
+  for (const use of uses) {
+    const existing = byCode.get(use.code);
+    assert.ok(
+      existing === undefined || existing === use.action,
+      "request code " + use.code + " is shared by " + existing + " and " + use.action +
+        ": PendingIntent equality ignores extras, so one of those buttons will do the other's job"
+    );
+    byCode.set(use.code, use.action);
+  }
+  /* And zero is the Activity launch intent's code, which is a getActivity rather than a
+     getService — a collision there would replace "tap to open the app". */
+  assert.ok(!byCode.has(0), "a transport intent reuses request code 0, which the launch intent holds");
+});
+
+test("the notification permission is declared, aliased, and asked for exactly once", () => {
+  /* #244 deliberately did NOT declare POST_NOTIFICATIONS, on the correct grounds that a
+     foreground service runs without it. #27 changes that: from Android 13 an
+     unpermitted notification is not shown, and the notification IS the transport
+     controls — so on most devices the deliverable does not exist until this is granted.
+
+     Three things have to line up or the request is a no-op: the manifest declaration,
+     the @Permission alias the plugin requests by, and the web half asking. */
+  const manifest = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/AndroidManifest.xml"), "utf8");
+  assert.ok(
+    manifest.includes("android.permission.POST_NOTIFICATIONS"),
+    "POST_NOTIFICATIONS is not declared, so requesting it at runtime silently fails"
+  );
+  const java = fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
+    "utf8"
+  );
+  const alias = /static final String NOTIFICATIONS = "(\w+)"/.exec(java);
+  assert.ok(alias, "the plugin no longer declares a notifications permission alias");
+  assert.match(
+    java,
+    /@Permission\(alias = ForayAudioPlugin\.NOTIFICATIONS, strings = \{ Manifest\.permission\.POST_NOTIFICATIONS \}\)/,
+    "the @Permission annotation must bind the alias to POST_NOTIFICATIONS"
+  );
+  assert.match(
+    java,
+    /requestPermissionForAlias\(NOTIFICATIONS, call, "notificationsResult"\)/,
+    "the request must name a @PermissionCallback that exists"
+  );
+  assert.match(java, /@PermissionCallback\s+private void notificationsResult\(PluginCall call\)/);
+  /* ONCE. A prompt on every play would be Android's own re-prompt limit doing our
+     rate-limiting for us, which it only does twice. */
+  const shellSrc = fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-audio-shell.js"), "utf8");
+  assert.match(shellSrc, /if \(notificationsAsked\) return;/, "the shell can ask more than once");
+});
+
+test("the web half of #27 depends on nothing under player/", () => {
+  /* It is copied to the BUNDLE ROOT by prepare-webdir.mjs, so a relative import of
+     `player/media-session.js` would resolve from a different depth there than in the
+     repo — and the Node suite imports it with no `player/` alongside at all. The two
+     duplicated constants are kept honest by reading the other file in
+     foray-media-session.test.mjs instead. */
+  const src = fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8");
+  const imports = [...src.matchAll(/^\s*import[^\n]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
+  assert.deepEqual(imports, [], "foray-media-session.js must have no imports at all: " + imports.join(", "));
 });
 
 test("the service is declared as a mediaPlayback foreground service, with its permissions", () => {
@@ -883,20 +1035,54 @@ test("the plugin declares an Android platform and no iOS one", () => {
   assert.equal(pkg.private, true, "this plugin is not published; keep it private");
 });
 
-test("the plugin adds no third-party Gradle dependency of its own", () => {
-  /* Both of its dependencies are already in every generated Capacitor project, so the
-     native half of the shell costs no new Maven artefact. Media3 is the right answer
-     for #27's metadata and transport controls and is deliberately absent until
-     something calls it — see the build.gradle's header. */
+test("the plugin's Gradle dependencies are androidx only, and each is named in the header", () => {
+  /* #244's version of this test required androidx.appcompat and nothing else, on the
+     grounds that the native half then cost NO new Maven artefact. #27 spends that: a
+     lock screen needs a `MediaSession`, and `navigator.mediaSession` is switched off in
+     Android WebView at the engine level, so there is no cheaper way to get one.
+
+     What the rule becomes is not "nothing new" — it is **androidx or Capacitor, and
+     named in the build.gradle header with what calls it**. A random Maven coordinate, a
+     Guava pinned by hand, a `com.github.*` fork all still fail, and each of those is a
+     mutation this test catches. The header requirement is enforced literally: the
+     artefact id has to appear in the comment block. */
   const gradle = fs.readFileSync(path.join(PLUGIN_DIR, "android", "build.gradle"), "utf8");
   const coords = [
     ...gradle.matchAll(/^\s*(?:implementation|api|compileOnly|runtimeOnly)\s+["']([^"']+)["']/gm),
   ].map((m) => m[1]);
-  const allowed = [/^androidx\.appcompat:appcompat:/];
+  const allowed = [/^androidx\.appcompat:appcompat:/, /^androidx\.media3:media3-(session|common):/];
+  const header = gradle.slice(0, gradle.indexOf("*/"));
   for (const c of coords) {
     assert.ok(
       allowed.some((re) => re.test(c)),
       "the plugin declares " + c + ". Name it and say why in the build.gradle header before adding it."
+    );
+    const artefact = c.split(":")[1];
+    assert.ok(
+      header.includes(artefact),
+      "the plugin declares " + c + " and the build.gradle header does not mention " + artefact
+    );
+  }
+  /* NOT exoplayer and NOT ui, which are the two easy mistakes: one puts a second real
+     audio pipeline in a process whose whole design is that the page owns the only one,
+     and the other is ~1 MB of PlayerView for a notification built with
+     NotificationCompat. */
+  for (const c of coords) {
+    assert.ok(
+      !/media3-(exoplayer|ui)/.test(c),
+      "the plugin declares " + c + ": there is no player to build and no view to inflate here"
+    );
+  }
+  /* A FIXED VERSION, not a range. `1.+` or `latest.release` makes the lock screen's
+     behaviour a function of the day the APK was built, which is the one property a
+     media surface must not have. */
+  const media3 = /media3Version = [^\r\n]*?: '([^']+)'/.exec(gradle);
+  assert.ok(media3, "the Media3 version is no longer declared as a single ext property");
+  assert.match(media3[1], /^\d+\.\d+\.\d+$/, "the Media3 version must be exact, not a range: " + media3[1]);
+  for (const c of coords.filter((x) => x.startsWith("androidx.media3:"))) {
+    assert.ok(
+      c.endsWith("$media3Version"),
+      c + " pins its own Media3 version instead of using the one ext property"
     );
   }
   assert.ok(
@@ -950,8 +1136,24 @@ test("start() and stop() do not claim to know whether the service is running", (
   );
   assert.deepEqual(
     fieldsOf("state"),
-    ["platform", "running"],
-    "state() is the ONLY method that may answer `running`, and it can because it is a separate call."
+    ["notificationPermission", "notificationsEnabled", "platform", "running", "sessionActive"],
+    "state() is the ONLY method that may answer `running`, and it can because it is a separate call. " +
+      "#27 added three diagnostics beside it, because \"the lock screen is blank\" has at least three " +
+      "causes and only one of them is a bug in this code."
+  );
+  /* #27's own two, held to the same rule. `setNowPlaying` may report `running` and
+     `sessionActive` because it reads them as FACTS ALONGSIDE its own answer rather than
+     as the result of anything it just did — there is no asynchronous request behind
+     them to race. */
+  assert.deepEqual(
+    fieldsOf("setNowPlaying"),
+    ["ok", "reason", "running", "sessionActive"],
+    "setNowPlaying() must report whether the state was accepted, and may report the service's own flags"
+  );
+  assert.deepEqual(
+    fieldsOf("requestNotifications"),
+    ["granted", "reason", "requested"],
+    "requestNotifications() must distinguish `requested` (was a dialog shown) from `granted` (the answer)"
   );
 
   /* And the web half must gate on the field that is knowable. Checked on the source

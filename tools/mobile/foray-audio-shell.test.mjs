@@ -173,6 +173,10 @@ const DEFAULT_ANSWERS = {
   start: { started: true, alreadyRunning: false, reason: "" },
   stop: { stopped: true, wasRunning: true, reason: "" },
   state: { running: true, platform: "android" },
+  /* #27. The happy answer is "already granted", which is what an Android 12 device and
+     a second launch both report — so a test that wants the DENIED path has to ask for
+     it, and the denied path is where the interesting behaviour is. */
+  requestNotifications: { requested: false, granted: true, reason: "" },
 };
 
 /** A bridge that records every call. `results` maps a method name to what native
@@ -276,6 +280,15 @@ function setup(opts = {}) {
     clearTimeout: clock.clearTimeout,
     now: clock.now,
     settleMs: opts.settleMs,
+    /* OFF unless a test asks for it, and the reason is the same one `settleMs` is
+       overridable: the notification request fires on the first accepted start, so
+       leaving it on would append a `requestNotifications` to the recorded call list in
+       every one of the thirty tests below that assert an exact sequence about the
+       SERVICE. That would be thirty assertions carrying a fact none of them is about.
+       The default is `true` and §"the permission" asserts that separately, on a shell
+       built with no options at all — the same shape as the settle window's own
+       "the real default is what an unconfigured shell uses". */
+    askNotifications: opts.askNotifications === true,
     log: (m, e) => logs.push({ m, e }),
   });
   return { proto, capacitor, clock, doc, logs, shell };
@@ -1399,4 +1412,316 @@ test("an event on a watched element after uninstall does not resurrect it into t
 
   shell.install();
   assert.equal(shell.inspect().active, 0, "the re-installed shell started with a stale active element");
+});
+
+/* ---------------------------------------------------- 10. #27: a loaded Foray
+
+   The service now lives for as long as a Foray is LOADED rather than as long as
+   audio is SOUNDING, because the Media3 `MediaSession` — the lock screen's metadata
+   and its buttons — lives in the service. Stopping it 25 s after a pause took the
+   controls away from the listener who had just used them.
+
+   THE ADVERSARIAL PASS ON THIS SECTION, because three of these are one-line
+   deletions that left it green when it was three tests instead of nine:
+     - dropping `!mediaLoaded` from the SETTLE TIMER's callback. Caught only by
+       asserting no `stop` is dispatched after the window elapses — asserting
+       `stopPending` is false is not enough, because the timer clears itself either
+       way.
+     - dropping `!mediaLoaded` from `onVisibilityChange`'s guard. Caught only by a
+       test that goes overdue AND becomes visible, which is the frozen-timer path.
+     - reading `mediaLoaded` at ARM time rather than at FIRE time. Caught by
+       "a Foray closed DURING the settle window". */
+
+test("a loaded Foray survives the settle window: the service is not stopped", async () => {
+  const { shell, proto, clock, capacitor } = setup({ settleMs: 1000 });
+  shell.install();
+  shell.setMediaLoaded(true);
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"]);
+
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+  assert.equal(shell.inspect().stopPending, true, "the pause should have armed a window");
+  /* ADVANCE AND THEN FIRE, and both halves are needed: this fake clock's `advance`
+     moves `now` only, so an earlier draft of this test asserted "no stop" against a
+     timer that had never run. It would have passed with `mediaLoaded` deleted
+     entirely, which is the definition of a vacuous test. */
+  clock.advance(1000);
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start"],
+    "a pause with a Foray still loaded stopped the session the listener paused with"
+  );
+  assert.equal(shell.inspect().mediaLoaded, true);
+});
+
+test("an UNLOADED page still stops after the settle window, exactly as #244 had it", async () => {
+  /* The fallback that makes `foray-media-session.js`'s absence cost nothing: with
+     nothing ever reporting `loaded`, every path is the old one. */
+  const { shell, proto, clock, capacitor } = setup({ settleMs: 1000 });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+  clock.advance(1000);
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"]);
+});
+
+test("CLOSING THE PLAYER STOPS THE SERVICE AT ONCE, with no settle window", async () => {
+  /* The payoff #244's own header predicted: "once a pause can come from a transport
+     control, a pause the app ISSUED is attributable and can stop the service at
+     once". `setMediaLoaded(false)` is that attributable signal — `client.js` nulls the
+     media session's metadata in `stopAndClose` and nowhere else. */
+  const { shell, proto, clock, capacitor } = setup({ settleMs: 1000 });
+  shell.install();
+  shell.setMediaLoaded(true);
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+  assert.equal(shell.inspect().stopPending, true, "the pause should have armed a window");
+
+  shell.setMediaLoaded(false);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"], "a closed player did not stop the service");
+  assert.equal(shell.inspect().stopPending, false, "the armed window outlived the stop that replaced it");
+});
+
+test("a Foray closed DURING the settle window is not stopped twice", async () => {
+  /* And the reason `mediaLoaded` is read when the window FIRES rather than when it is
+     armed. Armed while loaded, closed 200 ms later: the close stops the service, and
+     the window must not then stop it again — a second `stop` is a bridge round-trip
+     for a service already down, and it would clear `lastKnownRunning` for a call
+     nobody needed. */
+  const { shell, proto, clock, capacitor } = setup({ settleMs: 1000 });
+  shell.install();
+  shell.setMediaLoaded(true);
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+
+  clock.advance(200);
+  shell.setMediaLoaded(false);
+  await flush();
+  assert.equal(clock.ids().length, 0, "the close left the settle timer armed");
+  clock.advance(1000);
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"]);
+});
+
+test("BECOMING VISIBLE WITH A FORAY LOADED DOES NOT TEAR THE SESSION DOWN", async () => {
+  /* The visibility net stops a service whose settle timer was FROZEN by Blink. With a
+     Foray still loaded there is nothing to stop — and becoming visible is precisely
+     when a listener is about to look at the notification. Without `!mediaLoaded` in
+     that guard, foregrounding the app after a long pause destroyed the lock-screen
+     session it was about to be used from. */
+  const { shell, proto, clock, doc, capacitor } = setup({ settleMs: 1000, visibility: "hidden" });
+  shell.install();
+  shell.setMediaLoaded(true);
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+
+  /* Past the window without the timer having run — which is what a frozen timer looks
+     like from the outside. */
+  clock.advance(1500);
+  doc.visibilityState = "visible";
+  doc.emit("visibilitychange");
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "the visibility net stopped a loaded Foray's session");
+});
+
+test("becoming visible with NOTHING loaded still stops a frozen window's service", async () => {
+  /* So the guard above is not "never stop from the visibility net", which would
+     reintroduce the leak that net exists for. */
+  const { shell, proto, clock, doc, capacitor } = setup({ settleMs: 1000, visibility: "hidden" });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+  clock.advance(1500);
+  doc.visibilityState = "visible";
+  doc.emit("visibilitychange");
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"]);
+});
+
+test("setMediaLoaded(false) with audio still flowing stops nothing", async () => {
+  /* Ordering safety. `client.js` clears the metadata inside `stopAndClose`, which
+     awaits `manager.stop()` first — so in principle the clear can land before the
+     element's `pause` event. Stopping the service while an element is still audible
+     would be the exact failure the settle window exists to prevent, arriving from the
+     new signal. */
+  const { shell, proto, capacitor } = setup({ settleMs: 1000 });
+  shell.install();
+  shell.setMediaLoaded(true);
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  shell.setMediaLoaded(false);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "the service was stopped underneath live audio");
+});
+
+test("setMediaLoaded is idempotent in both directions", async () => {
+  const { shell, proto, capacitor } = setup({ settleMs: 1000 });
+  shell.install();
+  shell.setMediaLoaded(true);
+  shell.setMediaLoaded(true);
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+  shell.setMediaLoaded(false);
+  shell.setMediaLoaded(false);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"], "a repeated close asked twice");
+});
+
+test("uninstall clears mediaLoaded, so a re-installed shell does not start dirty", async () => {
+  /* Same hazard as the `active` set: a shell that came back believing a Foray from a
+     previous life was loaded would make its first settle window a no-op and leave the
+     service up with nothing playing. */
+  const { shell } = setup({ settleMs: 1000 });
+  shell.install();
+  shell.setMediaLoaded(true);
+  shell.uninstall();
+  assert.equal(shell.inspect().mediaLoaded, false);
+  shell.install();
+  assert.equal(shell.inspect().mediaLoaded, false);
+});
+
+/* ------------------------------------------ 11. #27: the notification permission
+
+   From Android 13 a notification the user has not permitted is not shown, and from
+   #27 the notification IS the transport controls — so on most devices the lock screen
+   stays blank until this is granted, with everything else working perfectly. */
+
+test("the first accepted start asks for the notification permission, once", async () => {
+  const { shell, proto, capacitor } = setup({ askNotifications: true });
+  shell.install();
+  const first = makeElement(proto);
+  first.play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "requestNotifications"]);
+
+  first.paused = true;
+  first.emit("pause");
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start", "requestNotifications"],
+    "a second play asked for the permission again"
+  );
+  assert.equal(shell.inspect().notificationsGranted, true);
+});
+
+test("A START ANDROID REFUSED DOES NOT ASK FOR NOTIFICATIONS", async () => {
+  /* A refused start means no service, so no notification — so a system dialog with
+     nothing behind it. The listener would be asked to permit something we could not
+     show them. */
+  const { shell, proto, capacitor } = setup({
+    askNotifications: true,
+    bridge: { results: { start: { started: false, reason: "ForegroundServiceStartNotAllowedException" } } },
+  });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"]);
+  assert.equal(shell.inspect().notificationsAsked, false);
+});
+
+test("a DENIED permission is logged and costs nothing else", async () => {
+  const { shell, proto, capacitor, logs } = setup({
+    askNotifications: true,
+    bridge: { results: { requestNotifications: { requested: true, granted: false, reason: "denied" } } },
+  });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.equal(shell.inspect().notificationsGranted, false);
+  assert.equal(shell.inspect().startAccepted, true, "a denied notification permission invalidated the start");
+  assert.match(logs.map((l) => l.m).join(" "), /lock-screen controls will not appear/);
+
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+  assert.equal(shell.inspect().wanted, true);
+  assert.deepEqual(methods(capacitor), ["start", "requestNotifications"]);
+});
+
+test("A FAILED requestNotifications DOES NOT CLEAR THE START GATE", async () => {
+  /* The whitelist in `callAndRecord`'s rejection handler. It used to read
+     `method !== "state"`, which was correct with three methods and silently wrong with
+     four: a permission call that rejected would clear `startAccepted` while the
+     service was up, and from there every `play()` re-issues a start — including the one
+     across a hidden seam that Android 12+ refuses. That is §5.4 finding 1's re-issue
+     loop, reached through the error path of a permission prompt. */
+  const { shell, proto, capacitor } = setup({
+    askNotifications: true,
+    bridge: { results: { requestNotifications: () => Promise.reject(new Error("no activity")) } },
+  });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, true, "a rejected permission call cleared the start gate");
+
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start", "requestNotifications"],
+    "the next play re-issued a start it did not need"
+  );
+});
+
+test("an unconfigured shell DOES ask — the default is on, not off", async () => {
+  /* The default is the whole mechanism, and `setup()` turns it off so thirty tests
+     about the service can assert exact call sequences. Asserted here on a shell built
+     with no options at all, the same shape as the settle window's own default test, so
+     the override cannot become a way to hide this from the suite. */
+  const proto = makeProto();
+  const capacitor = makeCapacitor();
+  const clock = makeClock();
+  const shell = createForayAudioShell({
+    capacitor,
+    mediaProto: proto,
+    doc: makeDoc(),
+    setTimeout: clock.setTimeout,
+    clearTimeout: clock.clearTimeout,
+    now: clock.now,
+  });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.deepEqual(capacitor.calls.map((c) => c.method), ["start", "requestNotifications"]);
 });
