@@ -580,3 +580,170 @@ lands in `segment-length-rules.md` §6a's **"should merge"** band, and the cover
 report keeps them separate. Merging removes a Hinge and simplifies where the
 *ch'arki* correction goes. That is a live assembly question rather than a ruling from
 this document, and it is raised here because the narration cost is a new input to it.
+
+---
+
+## 4. The ratio
+
+### 4a. Three ratios, not one, and the founder question splits along them
+
+`segment-length-rules.md` §2b framed this as one number and marked it founder-facing.
+It is three, and conflating them is why the answer looked like a product identity
+crisis. Answered separately, two of the three are easy.
+
+| | ratio | target | ceiling | who it is about |
+|---|---|---|---|---|
+| **R-beat** | tape : narration **inside a covered beat** | **90 / 10** | 85 / 15 | the format's identity |
+| **R-foray** | narration as a share of **total runtime** | **≤ 25 %** | **35 %** | the Foray's honesty about its own coverage |
+| **R-essay** | the line past which it is a different product | — | **40 %** | whether to ship at all |
+
+**R-beat is 90/10 and this document does not move it.** Where tape exists it carries
+the beat, and the machinery around it is a Frame in and a Hinge out — 110–270
+characters against a 110-second segment. That is the inversion of radio's published
+~50/50 copy-to-tape baseline, and the inversion is the product. Nothing in the coverage
+numbers argues against it, because the coverage numbers are about beats that have no
+tape at all.
+
+**R-foray is the new number and it is the one that binds.** It is not a statement
+about style. It is a statement about how much of a spine a Foray is allowed to
+*narrate its way through* before it stops being a work made of authorities.
+
+**R-essay is where the founder's own framing lands.** Past 40 % the narrator is
+carrying the argument and the tape is illustrating it, which is a radio feature — a
+good form, competently served by others, and not this one. At that point the honest
+outputs are a shorter Foray or a written piece, not a longer script.
+
+### 4b. The barbecue arithmetic, which is the reason the ceiling exists
+
+Worked from `grilling-history-coverage.md`'s actual numbers rather than from a guess,
+because the result is sharp enough to be a finding.
+
+**Tape available.** Eleven strong beats. Six have measured segment durations in the
+coverage report's projected-runtime table (beats 1, 5, 14, 15, 32 at 239, 79, 277, 322
+and 127 s) and five more come from The Grill Coach and the proposed beat 4 cut (18, 21,
+22, 24, 38 at 182, 171, 90 and two further cuts). Call the strong total **~1,960 s**.
+Nine thin beats with a partial cut each at the report's typical lengths, **~990 s**.
+Total tape **≈ 2,950 s ≈ 49 min**.
+
+**Machinery for the 20 covered beats.** About 30 segments, so about 29 seams at an
+average 7 s Hinge or Frame = 203 s. Five Markers at 15 s = 75 s. Four Corrections at
+10 s = 40 s. Nine Patches at 32 s = 288 s. **Narration ≈ 606 s ≈ 10 min.**
+
+**So the covered-beats-only Foray is 3,556 s (59 min) at 17.1 % narration.**
+Comfortably inside target, and worth noticing: **a Foray made only of the beats that
+have tape is not narration-heavy at all.** The whole problem is the empty beats.
+
+**Now add empty beats.** Each carried beat costs ~80 s. The Carry budget available at a
+given ceiling is:
+
+```
+narration_allowed = tape_sec × ceiling / (1 − ceiling)
+carry_budget      = narration_allowed − machinery_sec
+carry_beats       ≈ carry_budget / 80
+```
+
+| | narration allowed | headroom over machinery | empty beats carryable |
+|---|---|---|---|
+| target 25 % | 983 s | 377 s | **~5 of 20** |
+| ceiling 35 % | 1,588 s | 982 s | **~12 of 20** |
+| all 20 carried | 2,206 s | — | **42.8 % narration** |
+
+**The finding: the complete 40-beat barbecue Foray, written honestly on today's
+coverage, is about 86 minutes long and 43 % narrator.** That is past R-essay. It is not
+a Foray, and the arithmetic says so before a word is written — which is exactly what a
+ratio rule is for.
+
+Three things follow, and the third is the useful one.
+
+- Twelve of the twenty empty beats can be carried at the ceiling. Not twenty.
+- **Which twelve is decided by structure, not by which are easiest to write** (§4c).
+- **The number of empty beats a Foray can carry is a function of how much tape it has,
+  not of how many holes its spine has.** This is the sentence a script author should
+  hold on to. Sourcing one more strong episode buys about 180 s of tape, which buys
+  about 97 s of narration at the ceiling, which buys **one more carried beat**. Tape
+  and narration are not substitutes competing for runtime; tape is what *funds*
+  narration.
+
+### 4c. Enforcement — over-ceiling is fixed by cutting beats, not words
+
+This is the rule that keeps the ratio from becoming a licence to compress.
+
+> **When a Foray exceeds R-foray's ceiling, the narration is not trimmed. Beats are
+> dropped, in this order: fan stops first, then thin-beat Patches whose missing
+> material is not load-bearing, then nothing. Chain links are never dropped.**
+
+The precedent is exact and it is already written down twice. `grilling-history-coverage.md`:
+"A beat that comes back empty stays empty." The alcohol spine, §5: "An over-supplied
+beat has no claim on runtime that an under-supplied beat lost. Time freed by an empty
+beat 9 does not transfer to beat 37; it becomes narration on beat 9, or it becomes a
+shorter Foray, **and a shorter Foray is a legitimate outcome.**"
+
+Both spines hand over the drop order directly, and it is the same order in both:
+
+| cheapest to drop | | most expensive |
+|---|---|---|
+| a fan stop — "a missing stop on a tour is invisible" | a missing step inside a family — "the process narrated up to a gap and then resumed past it" | a chain link — "a missing link in a chain is a hole" |
+
+The alcohol spine's three-grade table (§2a) is the sharper version, and its verdict
+is the allocation rule: **"Act I is the most dangerous place in the spine for a hole
+and the small family stops in Acts II through V are the safest."**
+
+> **Allocation rule.** Spend the Carry budget **chain-first**. Reserve it for chain
+> links before any fan stop gets a second of it, and pay for the reservation by
+> dropping fan stops. In alcohol terms: every one of Act I's sixteen beats gets carried
+> before beat 25 (the milk alcohols) or beat 50 (arrack) gets anything, because Act I
+> "cannot be reordered and cannot be entered late" and a missing family stop costs the
+> listener nothing once the boundary is announced.
+
+Note what this rule forbids, since it is the tempting move: **it forbids shortening
+Act I's Carry items so that more fan stops fit.** The alcohol spine pre-empts the
+mirror-image error in the same paragraph — "above all do not compensate by lengthening
+a neighbour" — and the reasoning generalises. A derivation with a rushed step in place
+of a missing one is still broken.
+
+### 4d. The cost handle
+
+For the cost model, three per-beat constants and one formula. At 15 characters per
+second (§2a):
+
+| beat verdict | narration | characters |
+|---|---|---|
+| **strong** (Frame + Hinge, share of a Marker) | ~17 s | **~250** |
+| **thin** (the above + a Patch) | ~40 s | **~600** |
+| **empty, carried** (a Carry, no separate machinery) | ~80 s | **~1,200** |
+
+```
+Foray narration characters ≈ 250·(strong) + 600·(thin) + 1200·(carried)
+```
+
+**Barbecue**, 11 strong / 9 thin, at the two ratio bounds:
+
+| | carried beats | characters |
+|---|---|---|
+| target 25 % | 5 | **~14,150** |
+| ceiling 35 % | 12 | **~22,550** |
+| all 20 (fails R-essay) | 20 | **~32,150** |
+
+**Alcohol**, projected — and flagged as **projection**, because no coverage report
+exists yet. Taking the spine's own prediction that it will be narration-heavier with
+Act I thinnest, and scaling barbecue's proportions across 63 beats gives roughly 15
+strong / 18 thin / 30 empty, tape ≈ 4,680 s:
+
+| | carried beats | characters |
+|---|---|---|
+| target 25 % | ~6 of 30 | **~21,750** |
+| ceiling 35 % | ~18 of 30 | **~35,000** |
+
+So the planning figures a cost model should use are **14k–23k characters of narration
+for a barbecue-scale Foray and 22k–35k for an alcohol-scale one**, with the upper
+figure of each pair being a ceiling that should not be treated as a plan.
+
+**Re-generation factor: budget 1.5×, and treat anything above 2.0× as a process bug
+rather than a cost.** The rejection test in §6 is designed to run on text, before
+anything is voiced, and the charter's dry-run requirement exists precisely so that a
+rejected script costs nothing. A high re-generation factor means the review gate is
+being run *after* generation. That is fixable for free.
+
+**One number this document does not give.** Per-Foray cost in currency, and the count
+of Forays. Those belong to the parallel cost work, and the input it needs from here is
+the character range above plus the sentence that the ceiling row is not a plan.
