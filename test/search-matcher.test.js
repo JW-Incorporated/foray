@@ -214,11 +214,31 @@ test("the sense-locked set is exported and holds exactly its documented members"
 
 /* ---------- THE PREFIX GUARD: must stay exactly as strict ---------- */
 
-test("hitText: prefix guard blocks the three documented collisions", () => {
+test("hitText: the LEADING guard blocks the two prefix collisions", () => {
+  /* Split from the trailing-guard test below, 2026-08-17. These two collisions
+     add letters BEFORE the term and are the lookbehind's own work: delete
+     `(?<![a-z0-9])` and exactly these fail. */
   assert.equal(hitText("diffusion llms", "fusion"), false);
+  assert.equal(hitText("kings of the steam age", "team"), false);
+});
+
+test("hitText: the TRAILING guard blocks the romance collision", () => {
+  /* `roman` inside "romance"/"romantic" adds letters AFTER the term, so the
+     lookbehind has nothing to do with it -- this is `(?![a-z0-9])` after the
+     suffix alternation. It used to sit in the prefix-guard test above, which
+     made the prefix guard look like it was doing work it was not, and led
+     tools/test-search.mjs §6 to record the "rome" collision case as vacuous
+     when in fact it is witnessed by mutating THIS guard: drop the trailing
+     lookahead and the Huberman romance episode is retrieved for "rome".
+     Keeping the two in separate tests is what keeps each witness legible. */
   assert.equal(hitText("romance and compatibility", "roman"), false);
   assert.equal(hitText("romantic", "roman"), false);
-  assert.equal(hitText("kings of the steam age", "team"), false);
+  /* The suffix allowance must not become a hole in the trailing guard either:
+     "romances" is `roman` + a suffix outside the named set, and stays out. */
+  assert.equal(hitText("romances", "roman"), false);
+  /* ...while a term followed by a genuine word boundary still matches. */
+  assert.equal(hitText("the roman empire", "roman"), true);
+  assert.equal(hitText("romans", "roman"), true);
 });
 
 test("hitText: prefix guard blocks the oracle's historical false friends for `war`", () => {
@@ -338,17 +358,19 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
      exist anywhere". It catches a NAMED declaration reusing one of these two
      identifiers, in a file other than search-engine.js. It does NOT catch a copy
      under a different name, nor an anonymous inline one, nor anything inside
-     search-engine.js itself -- and there IS one, found reviewing this change:
-     `tagDF` inlines the pre-#211 loose predicate (`tag.includes(term)`, no
-     collision guard, no plural on the short branch) as an anonymous arrow. So the
-     count was four copies, not three. That one is BEHAVIOURAL -- tagDF feeds
-     expansion pruning, where df > 60 deletes a term and df > 25 cuts its weight,
-     and 13 vocabulary terms land in a different bucket than the shared matcher
-     would give them (`ship` 155 -> dropped, against 6 -> kept at full weight, on
-     a count made entirely of `relationships`/`championship` substring hits the
-     ranker would never make). Changing it moves rankings, so it is filed as #249
-     rather than bundled, and named in this comment so the tick below is not
-     read as a claim it is clean. */
+     search-engine.js itself. There WAS one of exactly that shape -- `tagDF`
+     inlined the pre-#211 loose predicate (`tag.includes(term)`, no collision
+     guard, no plural on the short branch) as an anonymous arrow, making the count
+     four copies rather than three -- and #249 collapsed it onto `hitTag`.
+     THE SCAN IS STILL NOT WHAT CAUGHT IT and still could not catch its return, so
+     do not read the tick below as coverage of this file. #249 deliberately did NOT
+     widen the scan to chase anonymous or differently-named copies: the predicate
+     has no stable syntax to match, so any regex would be a guess that reads as a
+     guarantee. What guards it instead is the BEHAVIOURAL pair of tagDF tests
+     below, which compare counts against hitTag on synthetic tags and fail for any
+     disagreeing predicate regardless of how it is spelled or whether it is named.
+     search-engine.js therefore stays exempt from this scan, on the grounds that
+     the scan was never the right instrument for it. */
   const DECL = /(?:^|[^.\w])(?:const|let|var|function)\s+(hitText|hitTag)\s*(?:=|\()/;
   const SKIP = new Set(["node_modules", ".git", "audio-cache", "data-local", "ios", "mobile"]);
   const offenders = [];
@@ -368,6 +390,72 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
   assert.deepEqual(offenders, [],
     `these files declare their own hitText/hitTag instead of importing search-engine.js's: ${offenders.join(", ")}. ` +
     `Three copies existed and two drifted looser than the ranker (#211, #219) -- import them.`);
+});
+
+/* ---------- #249: tagDF counts through the shared matcher ---------- */
+
+test("tagDF counts tags through hitTag, not a loose substring (#249)", () => {
+  /* THE FOURTH COPY. `tagDF` inlined the pre-#211 loose predicate as an anonymous
+     arrow -- `tag.includes(term)` on the long branch, no collision guard, and no
+     plural on the short branch -- inside search-engine.js itself, where the
+     reimplementation scan above cannot see it (it matches NAMED declarations and
+     skips this file by path).
+     This is a BEHAVIOURAL test, not a scan, and that is the point: a scan can only
+     ever catch the copies it knows how to describe, whereas this fails for any
+     predicate that disagrees with hitTag on these tags, named or anonymous.
+     Synthetic ctx on purpose -- no data dependency, so a nightly refresh cannot
+     flip it. The tag shapes are the real ones from #249's report: `ship` was
+     counted at 155 and DELETED from expansions (df > 60) on a tally made of
+     `relationships` and `championship` substring hits, against a true count of 6. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const ctx = {
+    itemTags: { tags: {
+      a: ["ship", "maritime"],          // a real `ship` tag
+      b: ["relationships", "dating"],   // loose predicate counted this as `ship`
+      c: ["championship", "sports"],    // and this
+      d: ["ships", "naval"],            // a genuine plural, which the loose short
+      e: ["shipwrecks"],                // branch missed; this one is a collision
+    } },
+  };
+  /* 2, not 5: `relationships` and `championship` are substring hits the ranker
+     would never make, and `shipwrecks` adds letters after the term. Only the
+     literal `ship` (item a) and the genuine plural `ships` (item d) count -- the
+     plural is in the named suffix set, and the loose SHORT branch had no plural
+     allowance at all, which is the other half of the same defect. The loose
+     predicate scores this same fixture 5 -- every one of the five items -- so it
+     fails here by 3. */
+  assert.equal(SE.tagDF("ship", ctx), 2);
+
+  /* The short branch, where the loose predicate had no plural allowance at all.
+     `car` is 3 chars: exact tag, hyphen segment, or their plurals. */
+  const shortCtx = {
+    itemTags: { tags: {
+      a: ["car"], b: ["cars"], c: ["electric-car"], d: ["car-culture"],
+      e: ["carbon"], f: ["nascar"],
+    } },
+  };
+  assert.equal(SE.tagDF("car", shortCtx), 4);
+
+  /* And the sense lock reaches tagDF too, since tagDF is now a hitTag consumer:
+     `training` tags must not inflate the railway term's count. */
+  const trainCtx = {
+    itemTags: { tags: {
+      a: ["trains", "railway"], b: ["training"], c: ["strength-training"], d: ["train"],
+    } },
+  };
+  assert.equal(SE.tagDF("train", trainCtx), 2);
+});
+
+test("tagDF memoizes per ctx without leaking between ctxs (#249)", () => {
+  /* The memo is keyed by term on the ctx object, and tagDF is the only writer.
+     Two ctxs with different data must not share an answer -- a cache keyed
+     globally would make the count depend on which query ran first. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const one = { itemTags: { tags: { a: ["ship"] } } };
+  const two = { itemTags: { tags: { a: ["ship"], b: ["ships"] } } };
+  assert.equal(SE.tagDF("ship", one), 1);
+  assert.equal(SE.tagDF("ship", two), 2);
+  assert.equal(SE.tagDF("ship", one), 1);
 });
 
 test("the matcher is actually exported, so sharing it is possible at all", () => {

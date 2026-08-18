@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-18T05:59:45.010Z",
+  "built_at": "2026-08-18T07:02:51.666Z",
   "provenance": {
     "produced_by": "topic-coverage-report.mjs",
     "method": "deterministic cross-reference; no LLM. tag_count/text_hits use search-engine.js's exported hitTag/hitText directly (#219), so they are the ranker's own matching semantics rather than a copy of them. Counts before 2026-08-17 came from a looser local copy (bare substring, no collision guard) and were optimistic.",
@@ -238,7 +238,7 @@
       ],
       "catalog_count": 158,
       "tag_count": 175,
-      "text_hits": 48,
+      "text_hits": 46,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -1011,8 +1011,8 @@
         "economics/markets"
       ],
       "catalog_count": 43,
-      "tag_count": 43,
-      "text_hits": 26,
+      "tag_count": 37,
+      "text_hits": 21,
       "content_depth": "deep",
       "semantic_status": "covered",
       "semantic_concepts": [
@@ -2712,7 +2712,7 @@
       ],
       "catalog_count": 3,
       "tag_count": 31,
-      "text_hits": 30,
+      "text_hits": 29,
       "content_depth": "thin",
       "semantic_status": "covered",
       "semantic_concepts": [

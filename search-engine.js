@@ -64,13 +64,67 @@ function branchOf(item) {
   return t.split("/")[0] || "other";
 }
 
+/* How many tagged items carry `term` as a tag, THROUGH THE SHARED MATCHER.
+   #249. This inlined the pre-#211 loose predicate as an anonymous arrow:
+
+     tags.some(tag => term.length < 4
+       ? (tag === term || tag.split("-").includes(term))
+       : tag.includes(term))
+
+   -- bare `tag.includes(term)` on the long branch with no collision guard, and no
+   plural allowance on the short branch. It was the FOURTH copy of the matcher.
+   #219 counted three and fixed them; this one survived because
+   test/search-matcher.test.js's reimplementation scan matches NAMED declarations
+   and skips search-engine.js by path, so an anonymous arrow in this very file was
+   invisible to it. The scan was green with the copy sitting in the same module as
+   the original.
+
+   IT WAS NOT A REPORTING BUG. `tagDF` drives expansion pruning in
+   interpretQuery: `df > 60` DELETES a term from the expansion and `df > 25` cuts
+   its weight to 0.4x, so an inflated count silently removes vocabulary. It also
+   sets `group.df`, which picks scoreMatch's per-group multiplier
+   (<=10 -> 1.35, <=30 -> 1, else 0.75). Two consumers, two sets of thresholds,
+   both reading a number the ranker itself would never produce.
+
+   Measured over the whole vocabulary (1,364 terms against 1,540 tagged items,
+   2026-08-17): 102 terms change count, 94 narrower and 8 wider, 10,035 -> 8,665
+   summed. 13 change PRUNING bucket, all of them toward keeping more vocabulary:
+
+     ship          155 -> 6    dropped -> full weight
+     story         460 -> 31   dropped -> 0.4x
+     tech          137 -> 23   dropped -> full weight
+     improv         69 -> 12   dropped -> full weight
+     sport          72 -> 49   dropped -> 0.4x
+     hang           61 -> 54   dropped -> 0.4x
+     entrepreneurs  51 -> 0    0.4x    -> full weight
+     search         44 -> 1    0.4x    -> full weight
+     wood           41 -> 1    0.4x    -> full weight
+     ships          41 -> 6    0.4x    -> full weight
+     film           36 -> 21   0.4x    -> full weight
+     myth           30 -> 11   0.4x    -> full weight
+     physics        27 -> 24   0.4x    -> full weight
+
+   `ship` is the clearest: deleted as "too broad" on a tally built entirely out of
+   `relationships` and `championship` substring hits, matches the ranker could
+   never make because the ranker uses the guarded matcher. `entrepreneurs` is the
+   sharpest -- a true count of ZERO was being read as 51 and having its weight cut.
+
+   A 14th term, `train` (31 -> 7, 0.4x -> full weight), changes bucket only
+   because #248 landed first: the loose predicate and the pre-#248 shared matcher
+   both counted `training` tags and agreed at 31. It is #248's sense lock becoming
+   visible here, not this change's own effect.
+
+   FORWARD REFERENCE, and it is safe: `hitTag` is a `const` arrow declared below.
+   `tagDF` is only ever called from query time (interpretQuery / suggestAdjacent-
+   Topics), long after module evaluation, so the binding is initialized. Do not
+   move a CALL to tagDF to module scope. */
 function tagDF(term, ctx) {
   if (!ctx._dfMemo) ctx._dfMemo = new Map();
   if (ctx._dfMemo.has(term)) return ctx._dfMemo.get(term);
   const tagsMap = ctx.itemTags?.tags || {};
   let n = 0;
   for (const tags of Object.values(tagsMap)) {
-    if (tags.some(tag => term.length < 4 ? (tag === term || tag.split("-").includes(term)) : tag.includes(term))) n++;
+    if (tags.some(tag => hitTag(tag, term))) n++;
   }
   ctx._dfMemo.set(term, n);
   return n;
@@ -210,13 +264,29 @@ function passesFilters(item, filters) {
 /* Terms >=4 chars used to match via plain substring (text.includes(t)),
    which collides on an unrelated word that happens to CONTAIN the term:
    "fusion" inside "diffusion", "roman" inside "romance"/"romantic",
-   "team" inside "steam". All three known collisions add extra letters
-   BEFORE the term, never after -- so instead of a blanket switch to
-   word-boundary matching (which would also break legitimate plural
-   matches some concepts rely on, e.g. a term "rocket" matching text
-   "rockets"), this requires no letter/digit immediately before the
-   match and allows an optional trailing "s". Blocks all three known
+   "team" inside "steam". So instead of a blanket switch to word-boundary
+   matching (which would break legitimate plural matches some concepts
+   rely on, e.g. a term "rocket" matching text "rockets"), this is a
+   word-boundary match on BOTH sides with a bounded suffix allowance in
+   between: no letter/digit immediately before, the named inflections
+   below, then no letter/digit immediately after. Blocks all three known
    collisions, keeps plural matching, touches nothing else.
+
+   THE TWO GUARDS BLOCK DIFFERENT COLLISIONS, and conflating them cost this
+   file two wrong claims. Earlier revisions of this comment said "all three
+   known collisions add extra letters BEFORE the term, never after", and
+   tools/test-search.mjs §6 said the romance case could not witness the
+   guard because scoring kept it out. Both are wrong, measured 2026-08-17:
+
+     LEADING lookbehind  blocks dif+fusion and s+team -- letters before.
+     TRAILING lookahead  blocks roman+ce and roman+tic -- letters AFTER.
+
+   Delete the lookbehind and the `diffusion` case goes red; delete the
+   lookahead and the `romance` case goes red, scoring notwithstanding -- with
+   the lookbehind gone the romance item still scores 0, because "romance" was
+   never a prefix collision. Each guard has its own witness; neither is
+   redundant. See test/search-matcher.test.js, where they are pinned as two
+   separate tests for this reason.
 
    MODULE SCOPE AND EXPORTED, as of 2026-08-17. These were closures inside
    scoreMatch, and `tools/test-search.mjs` — the battery that judges whether a

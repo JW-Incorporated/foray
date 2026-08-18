@@ -578,14 +578,33 @@ const collisionCases = [
    derives any relative bar -- the same argument the "nba" retrieval check above
    makes for reading it. With the guard intact all three banned ids are absent
    from `results` entirely, so this costs nothing today.
-   HONEST ABOUT THE OTHER TWO: they stay vacuous under that mutation, and
-   promoting them to `results` does not change it. The romance item never reaches
-   `results` because `roman` arrives as a low-weight expansion whose title-only
-   hit does not clear minScore, and "an nba team" is AND-gated as a proper-noun
-   query so it returns nothing at all. Both are kept out by SCORING, not by the
-   matcher, so neither can witness the guard. The direct witnesses live in
-   test/search-matcher.test.js, where breaking the guard kills five tests
-   including all three collisions by name, in milliseconds. */
+   ONE OF THE OTHER TWO IS NOT VACUOUS AFTER ALL, corrected 2026-08-18 (#249).
+   This said both stayed vacuous because "the romance item never reaches `results`
+   -- `roman` arrives as a low-weight expansion whose title-only hit does not clear
+   minScore", i.e. that scoring kept it out. That was reasoned, not measured, and
+   it is wrong. Measured: with the prefix guard deleted the romance item scores
+   0.00 -- not a low score, NO MATCH -- because "romance" is `roman` plus letters
+   AFTER the term, and it is the TRAILING `(?![a-z0-9])`, not the leading
+   lookbehind, that blocks it. The prefix mutation was simply the wrong mutation
+   for this case.
+   Delete the trailing guard instead and this case goes red exactly as intended:
+   the Huberman romance episode is retrieved for "rome" and both assertions fire.
+   So two of the three §6 cases have real witnesses, one per guard:
+
+     "...about fusion" / diffusion   witnessed by deleting the LEADING lookbehind
+     "rome" / romance                witnessed by deleting the TRAILING lookahead
+
+   THE THIRD IS GENUINELY VACUOUS AND CANNOT BE FIXED HERE. "an nba team" is
+   AND-gated as a proper-noun query (neither `nba` nor `team` is concept
+   vocabulary), so every primary token must match and no item carries both --
+   the query returns nothing whatever the matcher does. That is a property of the
+   query shape, not of the guard, so no matcher mutation can ever witness it and
+   no rewrite of this case will change that. It is kept because it costs nothing
+   and documents the collision; it is not evidence of anything.
+   The fast direct witnesses live in test/search-matcher.test.js, where the two
+   guards are now pinned as SEPARATE tests -- they were one test named after the
+   prefix guard, which is what made a trailing-guard claim look like a
+   prefix-guard claim and produced the wrong note above. */
 for (const c of collisionCases) {
   const { picks, results } = search(c.query);
   check(`"${c.query}" excludes ${c.bannedId} from picks (${c.note})`, !picks.some((p) => p.i.id === c.bannedId),
