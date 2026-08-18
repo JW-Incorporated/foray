@@ -112,10 +112,17 @@ function findAllIn(root, sel) { return root.tree().filter((e) => e !== root && m
  * @param {Error} [opts.reportThrows]  make the bridge throw.
  * @param {boolean} [opts.clipboard]   whether `navigator.clipboard.writeText` exists.
  * @param {boolean} [opts.clipboardRefuses] make it reject, as a WebView does.
+ * @param {boolean} [opts.boot] let the REAL `init()` wire the drawer, serving the
+ *   committed `data/*.json` off disk. Without this the harness calls the bind
+ *   functions itself, which is fast and covers the sheet — but it cannot see
+ *   whether `init()` calls them at all, or in which order. A mutation round proved
+ *   that mattered: deleting `bindDiagnosticsControl()` from `init()` left every
+ *   other test in this file green. Only one test uses it, because a booted page
+ *   also writes `cp_recent_branches` and `cp_seen` as a matter of course.
  */
 function mount({
   report = "Foray playback diagnostics — v1\nentries 2 of 200 (oldest dropped first)",
-  reportThrows = null, clipboard = true, clipboardRefuses = false, seed = {},
+  reportThrows = null, clipboard = true, clipboardRefuses = false, seed = {}, boot = false,
 } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
   const fetches = [];
@@ -123,7 +130,10 @@ function mount({
   const cleared = [];
   const body = new El("body");
   for (const id of ["view", "drawer", "drawer-overlay", "drawer-playlists",
-    "family-toggle", "player-toggle", "menu-btn", "refresh-btn"]) {
+    "family-toggle", "player-toggle", "menu-btn", "refresh-btn",
+    // The home screen's own vocabulary, needed only under `boot`.
+    "banner-slot", "home-intro", "intro-close", "pl-form", "pl-input", "pl-note",
+    "pl-remove", "banner-done"]) {
     const el = new El("div");
     el.id = id;
     body.append(el);
@@ -134,7 +144,16 @@ function mount({
     /* Never settles: parks `init()` at its first await, exactly as
        test/app-security.test.js and test/data-deletion.test.js do. Every entry
        recorded here is a request this surface must never make. */
-    fetch: (url) => { fetches.push(String(url)); return new Promise(() => {}); },
+    fetch: (url) => {
+      fetches.push(String(url));
+      if (!boot) return new Promise(() => {});
+      const file = path.join(ROOT, String(url));
+      const ok = fs.existsSync(file);
+      return Promise.resolve({
+        ok, status: ok ? 200 : 404,
+        json: async () => JSON.parse(fs.readFileSync(file, "utf8")),
+      });
+    },
     localStorage: {
       get length() { return store.size; },
       key: (i) => [...store.keys()][i] ?? null,
@@ -186,10 +205,25 @@ function mount({
     };
     ctx.window.forayDiagnosticClear = () => { cleared.push(true); return true; };
   }
-  /* `init()` binds this in a browser; it is parked on its never-settling fetch
-     here, so the harness calls it — the same shape data-deletion.test.js uses. */
-  ctx.bindDiagnosticsControl();
-  ctx.bindDeleteControl();
+  /* `init()` binds this in a browser. Under `boot` the harness must NOT — that is
+     the whole assertion there. Otherwise `init()` is parked on its never-settling
+     fetch and the harness calls the binders, the same shape
+     test/data-deletion.test.js uses. */
+  if (boot) {
+    ctx.window.ForayPlayer = {
+      listForays: () => [],
+      forayResumeList: () => [],
+      forayResume: () => null,
+      forayDriftIsClean: () => true,
+      canPlay: () => false,
+      fmtClock: (n) => String(Math.round(n)),
+      fmtSpan: (n) => `${Math.round(n)}s`,
+      resolve: () => null,
+    };
+  } else {
+    ctx.bindDiagnosticsControl();
+    ctx.bindDeleteControl();
+  }
 
   const ui = {
     open: findIn(body, "#diag-open"),
@@ -204,29 +238,46 @@ function mount({
   return { ctx, body, ui, store, fetches, copied, cleared };
 }
 
+/** Mount with the real `init()` doing the wiring, and wait for it to land. */
+async function mountBooted() {
+  const m = mount({ boot: true });
+  for (let i = 0; i < 60 && !findIn(m.body, "#diag-open"); i++) {
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  return m;
+}
+
 /* ==================================================================== */
 /* 1. reachable, on a phone, without devtools                            */
 /* ==================================================================== */
 
 test("the drawer carries a Playback diagnostics item", () => {
-  /* MUTATION: drop the `bindDiagnosticsControl()` call from `init()`, or the
-     `drawer.appendChild(btn)` inside it. The record becomes unreachable without
-     devtools, which is the exact failure #264 is about, and this fails. */
-  const { body, ui } = mount();
+  /* MUTATION: drop the `drawer.appendChild(btn)`. The record becomes unreachable
+     without devtools, which is the exact failure #264 is about, and this fails. */
+  const { ui } = mount();
   assert.ok(ui.open, "no #diag-open in the drawer");
   assert.strictEqual(ui.open.textContent, "Playback diagnostics");
   assert.strictEqual(ui.open.parent.id, "drawer", "it has to be IN the drawer");
 });
 
-test("Delete my data stays the drawer's LAST item", () => {
-  /* Not cosmetics. The last item is where a scrolled thumb lands, and "Delete my
-     data" is the one control in there that cannot be undone — `app.js`'s own
-     comment says so. Adding a control above it must not push it up.
-     MUTATION: call `bindDiagnosticsControl()` after `bindDeleteControl()` in
-     `init()`. This fails. */
-  const { body } = mount();
+test("THE REAL init() wires it, and leaves Delete my data as the drawer's LAST item", async () => {
+  /* THE ONE TEST THAT BOOTS THE PAGE FOR REAL, and it exists because a mutation
+     round proved it had to. Every other test in this file calls the bind functions
+     itself, so deleting `bindDiagnosticsControl()` from `init()` — a control that
+     exists, is tested, and is never wired — left them all green. That is the
+     "passed with the mechanism removed" shape this repo keeps producing.
+
+     The ORDER is not cosmetics either. The drawer's last item is where a scrolled
+     thumb lands, and "Delete my data" is the one control in there that cannot be
+     undone — `app.js`'s own comment says exactly that. A new control must go above
+     it.
+
+     MUTATION 1: remove `bindDiagnosticsControl()` from `init()`. This fails.
+     MUTATION 2: move it below `bindDeleteControl()`. This fails. */
+  const { body } = await mountBooted();
   const drawer = findIn(body, "#drawer");
-  const ids = drawer.children.map((c) => c.id);
+  const ids = drawer.children.map((c) => c.id).filter(Boolean);
+  assert.ok(ids.includes("diag-open"), `init() never wired the control: ${ids.join(", ")}`);
   assert.strictEqual(ids[ids.length - 1], "delete-data", `drawer order was ${ids.join(", ")}`);
   assert.ok(ids.indexOf("diag-open") < ids.indexOf("delete-data"));
 });
