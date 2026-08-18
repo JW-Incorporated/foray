@@ -395,3 +395,148 @@ voice is honest rather than decorative. Even then, do not build it yet: it is
 worth exactly one voice-change's worth of orienting cost per occurrence, and the
 first version of a narrator should establish that there is a narrator before it
 starts qualifying who is talking.
+
+---
+
+## 5. What breaks the illusion first
+
+Ranked by expected frequency on *our* copy, not in general. The basis for each
+rank is stated, because the ranking is the useful part and it is mostly
+judgement resting on measured density.
+
+### 5.1 First: mispronounced proper nouns and loanwords
+
+**Measured.** 46 % of beats contain at least one term from the audited lexicon;
+103 occurrences across the two spines; 22 tokens carry non-ASCII diacritics.
+
+**Documented, and the mechanism is worse than it looks.** ElevenLabs supports
+pronunciation dictionaries in IPA and CMU Arpabet, uploaded as `.PLS` files and
+attached per request via `pronunciation_dictionary_locators`, with "up to 3
+locators per request". But: "Pronunciation dictionary phoneme tags only work with
+eleven_flash_v2 and eleven_v3 models", and on every other model "Other models skip
+dictionary phoneme tags and use the default pronunciation." **The failure is
+silent** — no error, just the wrong word. That single sentence eliminates
+`eleven_multilingual_v2` from consideration for this product no matter what else
+recommends it, and `eleven_multilingual_v2` is the model ElevenLabs' own model page
+calls "Most stable on long-form generations".
+
+There is a second constraint pointing the same way: "If you want to use IPA and
+CMU pronunciations in languages other than English, you will have to switch to the
+eleven_v3 model." Our copy is English prose containing Japanese, Korean, Chinese,
+Quechua, Georgian, Nahuatl and Māori words. Whether the dictionary treats those as
+"languages other than English" is not documented, and the safe reading is that it
+does.
+
+**Documented, and this is the number to hold on to.** For v3's native IPA support:
+"V3's IPA support achieves 80-90% pronunciation consistency. While significantly
+more reliable than v2's XML phoneme tags, it is not 100% consistent."
+
+**Measured against that documented rate.** 103 risk-term occurrences at 80–90 %
+consistency is **10 to 21 audible mispronunciations across the two Forays even
+with a complete, correct pronunciation dictionary in place.** That is the honest
+ceiling. Pronunciation is not a problem this stack solves; it is a problem this
+stack reduces, and the residue has to be caught by listening.
+
+### 5.2 Second: wrong emphasis, because nothing controls it
+
+**Measured.** The claim text contains 62 contrastive constructions — `rather
+than` (40), `is/are/was not` (13), `not just`/`not only` (2), `instead of` (1),
+`the real`/`the actual`/`the whole` (6) — one per 136 words, in **50 % of beats**.
+Separately, the authors marked emphasis by hand 53 times using single-asterisk
+italics, in 33 beats.
+
+**Judgement.** These are the sentences where meaning lives in which word carries
+the stress. "Malting is tricking the grain into digesting *itself*" means something
+different with the stress elsewhere, and § 3.2's control table has no knob for it —
+not in v2's settings and not in v3's audio tags, which cue *manner* (`[whispers]`)
+rather than *focus*. Two consequences, and the second is the one people miss.
+
+- Emphasis is a property of the script, so the only lever is writing sentences
+  whose stress pattern is unambiguous from syntax. That is `narration-craft.md`'s
+  problem, and it should know that 50 % of beats hand it one.
+- **The 53 italic spans are emphasis instructions that markdown-stripping will
+  silently discard.** An author already told us which word to stress, 53 times,
+  and a naive script generator will throw all 53 away and no reviewer reading the
+  script will notice, because the script will look right on the page.
+
+### 5.3 Third: uniform prosody across the whole work
+
+**Documented.** `stability` trades range against consistency, and the vendor's own
+word for the high end is "monotonous". v3's Robust mode is "less responsive to
+directional prompts".
+
+**Documented precedent, in this repo.** `segment-length-rules.md` grades
+"Anti-uniformity — no 3 consecutive segments within ±20 % of each other" as
+**evidenced**, having concluded that "Uniform segment length is itself a defect"
+because the founder's complaint was "repeatedly".
+
+**Judgement.** The same defect is available to narration and is easier to fall
+into, because every narration item comes from one voice at one setting. § 2
+measures the mean claim at 489 characters — if 34 narration beats are all one
+paragraph, one length, one rate and one shape, the uniformity *is* the synthetic
+tell, and it will read as robotic even if every individual item sounds fine in
+isolation. Whoever tunes settings should be tuning against the whole work, not
+against a sample.
+
+### 5.4 Fourth: prosody at chunk boundaries — and why it matters less here
+
+**Documented.** ElevenLabs offers two continuity mechanisms: `previous_text` /
+`next_text`, and request stitching via `previous_request_ids` / `next_request_ids`
+to "maintain voice prosody over multiple chunks". Stitching carries real limits:
+"A maximum of 3 request_ids can be send", "The request IDs should be no older than
+two hours", it requires `enable_logging` to be on, and — decisively — "Request
+stitching is not available for the `eleven_v3` model". Per-request character caps
+are 5,000 for v3, 10,000 for multilingual v2, 40,000 for Flash v2.5.
+
+**Measured, and this is the Foray-specific finding.** The mean claim is 489
+characters and the longest spine's mean is 536. Even with narration written
+several times longer than the claim it serves, **a narration beat comfortably fits
+in a single v3 request under the 5,000-character cap.** So the classic long-form
+problem — stitching a chapter out of many chunks and hearing the joins — largely
+does not arise for us. One beat is one request.
+
+**Judgement.** That is what makes v3 usable despite having no request stitching,
+and it is the load-bearing step in § 6's recommendation. Foray's narration is
+naturally chunked by beats, each chunk is separated from the next by *minutes of
+somebody else's tape*, and prosody continuity across a gap that large is not a
+thing a listener can perceive. The constraint that would disqualify v3 for an
+audiobook is close to irrelevant for this format.
+
+### 5.5 Fifth: breath, and it is genuinely the least of it
+
+**Judgement.** Breath absence is the classic tell in synthetic audiobook reading,
+where a voice runs uninterrupted for forty minutes. Our items are short — a 489
+character claim is roughly 30 seconds at the vendor's own rate — and each one is
+bounded by real tape and, per `docs/brief/04_VOICE_AUDIO_SPEC.md`, about 0.5 s of
+padding. The pathology needs sustained duration to accumulate, and this format
+does not give it any. Ranked last, and worth no engineering.
+
+### 5.6 The one thing that is not a voice problem but will be blamed on the voice
+
+**Documented.** AES TD1004.1.15-10, via `segment-length-rules.md` § 2f, warns that
+inserting externally-produced material into a programme can produce loudness jumps
+"of up to 7 LU, which is outside the comfort zone of most" listeners.
+
+**Judgement.** A narration item is exactly such an insertion, and it is the one
+piece of audio in a Foray whose level we fully control. If narration lands louder
+or quieter than the tape around it, every listener will describe it as the voice
+sounding wrong, and no amount of voice selection will fix it. Level-matching
+narration to the surrounding segments is a pipeline obligation
+(`docs/narrator-pipeline.md`), noted here only so that a bad first listen is
+diagnosed correctly instead of being blamed on the voice and answered by shopping
+for another one.
+
+### 5.7 The acceptance test, which is designed here and costs almost nothing
+
+**Measured.** The audited lexicon is 81 terms. Put each in a short carrier
+sentence and the whole fixture is roughly 4,500 characters — **which fits inside a
+single v3 request under the documented 5,000-character cap.** One generation, one
+listen, a pass/fail per term.
+
+**Judgement.** That is the test that should gate the spend decision, and it should
+run *before* anyone chooses a voice on how pleasant it sounds, because it
+discriminates between voices on the axis § 2 says will actually break. Run it on
+each shortlisted voice; the winner is the one needing the fewest dictionary
+entries, not the one with the nicest timbre. The fixture belongs in the dry-run
+adapter's test corpus (`tools/narrate/**`); the term list is in the appendix below
+so that whoever builds it does not have to re-derive it.
