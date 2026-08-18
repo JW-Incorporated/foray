@@ -445,8 +445,13 @@ segment. There is no second on-plot passage in that episode. The check was worth
 running and the answer was no.
 
 **One honest caveat about M4 itself.** It is computed on the tape timeline, so
-narration contributes zero seconds — the same limitation `check-forays.mjs`
-documents for D1 in its `TODO(bridges)` comment. In a Foray that is 34 of 40 beats
+narration contributes zero seconds. That was once true of D1 as well, and #260
+ended it: `narrationDuration` and `itemRuntimeSec` in `player/foray-queue.js` now
+resolve a length for every narration item, and `check-forays.mjs` measures D1 on
+the listener's clock — tape plus narration — while keeping M4 on tape alone,
+deliberately, because a share is one episode's seconds over all episodes' seconds
+and narration belongs to no episode. So the caveat below is now M4's alone. In a
+Foray that is 34 of 40 beats
 narration, the true listener-facing runtime would be far larger and every episode
 share far smaller, so M4 as measured today is strictly conservative for exactly
 this kind of Foray. **That is an argument for revisiting the rule, not for evading
