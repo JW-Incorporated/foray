@@ -273,10 +273,16 @@ export function createAdapter(opts = {}) {
        failure. Unparseable therefore contradicts. */
     const statusUnparseable = rawStatus !== undefined && rawStatus !== null && status === null;
     const statusAffirms = status !== null && status >= 200 && status < 300;
-    const okAffirms = result?.ok === true;
+    /* Read ONCE, like `status` above. Reading `result.ok` three times let a
+       non-idempotent getter returning true, false, true be cached as a success --
+       the severe direction. Only a pathological transport can do that, but the
+       whole posture of this block is not trusting the object it was handed, and a
+       value that can change between two reads is not a value. */
+    const rawOk = result?.ok;
+    const okAffirms = rawOk === true;
     // `ok` present but not strictly true contradicts, which catches `ok: 0` and
     // `ok: null` as well as `ok: false`.
-    const okContradicts = result?.ok !== undefined && result?.ok !== true;
+    const okContradicts = rawOk !== undefined && rawOk !== true;
     const statusContradicts = statusUnparseable || (status !== null && !statusAffirms);
     const bytes = byteCountOf(result?.bytes);
 
@@ -335,7 +341,10 @@ export function byteCountOf(b) {
      natural-looking `bytes: r.headers.get("content-length")` — a STRING — would
      report "41234" as 5 bytes. Refusing all of those means such a transport
      re-bills rather than recording a wrong number, which is the safe direction. */
-  const n = b?.byteLength ?? b?.size;
+  /* `size` is read ONLY off a real Blob. It duck-types onto Set, Map and
+     URLSearchParams otherwise (`byteCountOf(new Set([1,2]))` would answer 2),
+     which is the same objection this function already makes to `.length`. */
+  const n = b?.byteLength ?? (typeof Blob === "function" && b instanceof Blob ? b.size : undefined);
   return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
 }
 

@@ -18,6 +18,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import os from "node:os";
+import { execFileSync } from "node:child_process";
 
 import {
   billableText, countChars, nonAsciiChars, estimateDurationSec,
@@ -32,6 +34,13 @@ import { projectForay, tierFor, SPINE } from "./projection.mjs";
 import { reportScripts, reportProjection, PRICING } from "./narrate.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+/** The CLI, driven as a real subprocess so the actual argv path runs. */
+const CLI = path.join(HERE, "narrate.mjs");
+/** Scratch dir for CLI fixtures. Outside the repo: a test must never write into a
+    tree the repo serves, and #247's tools are dependency-free so there is no
+    tmp-dir helper to reach for. */
+const TMP = fs.mkdtempSync(path.join(os.tmpdir(), "foray-narrate-"));
 
 /** A transport that records exactly what it was asked to send and returns fake
     bytes. It cannot invent a payload — it only ever reports the real one.
@@ -570,7 +579,10 @@ test("no API key, endpoint call or network reach exists anywhere in tools/narrat
     assert.ok(!/\bfetch\s*\(/.test(code), `${f} must not call fetch`);
     assert.ok(!/transport\s*=\s*fetch/.test(code), `${f} must not default transport to fetch`);
     assert.ok(!/\bsk_[a-zA-Z0-9]{8}/.test(src), `${f} must not contain an API key`);
-    assert.ok(!/process\.env\.(ELEVEN|XI_)/.test(code), `${f} must not read a key from the environment`);
+    /* ANY env read, not just an ELEVEN/XI_ prefix: the narrow regex would have
+       missed `process.env.TTS_API_KEY`. Nothing here has a legitimate reason to
+       consult the environment at all, so the whole surface is banned. */
+    assert.ok(!/process\.env/.test(code), `${f} must not read anything from the environment`);
   }
 });
 
@@ -944,4 +956,132 @@ test("the pipeline doc does not describe a transport contract the code rejects",
   assert.ok(!/`transport` is `fetch` in production/i.test(doc),
     "the doc must not say transport IS fetch — a bare Response is rejected");
   assert.match(doc, /affirms?/i, "it must describe the positive rule");
+});
+
+/* ---------- fourth round: the test gaps mutation testing exposed ---------- */
+
+test("the cache key resists a forged FIELD DELIMITER, not just a forged newline", () => {
+  /* A REVIEWER'S MUTATION SURVIVED THE SUITE HERE. The shipped length prefix is
+     correct, but the only forgery this suite tried was a newline one — which
+     collides under NEITHER encoding, so the test was toothless about the very
+     property it was named for. The real vector is the delimiter actually in use,
+     a colon:
+
+       text "A" + "voiceId:" + "B",  voice "C"
+       text "A",                     voice "B" + "voiceId:" + "C"
+
+     Those two share a digest under `${name}:${v}` and differ under
+     `${name}:${byteLength}:${v}`.
+     MUTATION THAT KILLS THIS: drop the length from the prefix in cacheKey(),
+     leaving `h.update(`${name}:${v}`)`. */
+  const a = cacheKey({ text: "AvoiceId:B", voiceId: "C", modelId: "m", outputFormat: "f" });
+  const b = cacheKey({ text: "A", voiceId: "BvoiceId:C", modelId: "m", outputFormat: "f" });
+  assert.notEqual(a, b, "a colon-delimited forgery must not collide");
+
+  // And the same across the modelId boundary, with a numeric-looking prefix.
+  assert.notEqual(
+    cacheKey({ text: "x", voiceId: "1:modelId:2", modelId: "3", outputFormat: "f" }),
+    cacheKey({ text: "x", voiceId: "1", modelId: "2:modelId:3", outputFormat: "f" }),
+  );
+});
+
+test("byteCountOf reads size ONLY off a real Blob", () => {
+  /* `.size` duck-types onto Set, Map and URLSearchParams — the same objection this
+     function already makes to `.length`, and a reviewer's mutation exposed that the
+     accept side was pinned while the reject side was not.
+     MUTATION THAT KILLS THIS: replace the `b instanceof Blob` test with a bare
+     `b?.size`. */
+  assert.equal(byteCountOf(new Blob(["abcdefghij"])), 10, "a Blob still counts");
+  assert.equal(byteCountOf(new Set([1, 2])), null, "a Set is not audio");
+  assert.equal(byteCountOf(new Map([["a", 1]])), null, "a Map is not audio");
+  assert.equal(byteCountOf(new URLSearchParams("a=1&b=2")), null, "a query string is not audio");
+  assert.equal(byteCountOf({ size: 5 }), null, "a bare size is not audio");
+});
+
+test("byteCountOf rejects a non-finite count", () => {
+  /* Another surviving mutation: only ±Infinity slipped through, but a byte count
+     that is not a finite number is not a byte count.
+     MUTATION THAT KILLS THIS: drop `Number.isFinite(b)` from the number branch of
+     byteCountOf. */
+  assert.equal(byteCountOf(Infinity), null);
+  assert.equal(byteCountOf(-Infinity), null);
+  assert.equal(byteCountOf({ byteLength: Infinity }), null);
+});
+
+test("a transport whose ok flip-flops between reads cannot be cached as a success", async () => {
+  /* `result.ok` used to be read three times, so a non-idempotent getter returning
+     true, false, true was recorded as a success — the severe direction. It is now
+     read once, so a single authoritative value decides.
+     MUTATION THAT KILLS THIS: in synthesize(), inline `result?.ok` into both
+     okAffirms and okContradicts instead of reading rawOk once. */
+  let reads = 0;
+  const cache = new NarrationCache();
+  const adapter = createAdapter({
+    apiKey: "fake", cache, voiceId: "v1",
+    // false on the first read, true afterwards: under repeated reads okContradicts
+    // saw false-ish and okAffirms saw true, and the result was cached.
+    transport: async () => ({ get ok() { reads++; return reads !== 1; }, status: 200, bytes: 1024 }),
+  });
+  const r = await adapter.synthesize({ id: "b", text: "a line of narration" });
+  assert.equal(reads, 1, "`ok` must be consulted exactly once");
+  assert.ok(r.failed, "the single authoritative read said false, so this is a failure");
+  assert.equal(Object.keys(cache.dump().entries).length, 0);
+});
+
+test("the CLI's argument walk survives a flag value that repeats an earlier token", () => {
+  /* `main()` was entirely untested, and commit 1 of this branch claimed to fix its
+     argv walk without shipping a test — exactly the gap this repo's suite-integrity
+     floor exists to prevent. Driven as a real subprocess so the actual argv path
+     runs, not a re-implementation of it.
+     MUTATION THAT KILLS THIS: in main(), find the scripts file with
+     `args.find((a) => !a.startsWith("--"))` (then `--voice`'s VALUE can be taken
+     as the file), or drop the `i++` that skips a flag's value. */
+  const scripts = path.join(TMP, "argv-walk.json");
+  fs.writeFileSync(scripts, JSON.stringify({
+    id: "argv", beats: [{ id: "beat-1", text: "Fire came first." }],
+  }));
+  /* THE FILE COMES AFTER THE FLAGS, which is the whole point and which the first
+     draft of this test got wrong: with the file FIRST, any implementation finds it
+     and both argv mutations survived. A flag's VALUE precedes it here, so a walk
+     that does not skip flag values picks up "narrator" as the filename. */
+  const out = execFileSync(process.execPath, [
+    CLI, "--voice", "narrator", "--format", "narrator", scripts,
+  ], { encoding: "utf8" });
+  assert.match(out, /beat-1/, "the scripts file must be found after the flags");
+  assert.match(out, /16 characters/);
+  assert.match(out, /Voice narrator/);
+
+  // And the file-first ordering must keep working.
+  const first = execFileSync(process.execPath, [CLI, scripts, "--voice", "narrator"], { encoding: "utf8" });
+  assert.match(first, /beat-1/);
+});
+
+test("the CLI honours --cache, so a re-run of an unchanged script bills nothing", () => {
+  /* The idempotence promise, end to end through the real CLI. A mutation making
+     `flag()` ignore its argument left --cache silently unused and every re-run
+     billing in full, with the report looking entirely normal.
+     MUTATION THAT KILLS THIS: in main(), pass `cacheIndex: null` unconditionally,
+     or make flag() return its default always. */
+  const scripts = path.join(TMP, "cache-cli.json");
+  const text = "Fire came first, and everything else followed it.";
+  fs.writeFileSync(scripts, JSON.stringify({ id: "c", beats: [{ id: "b1", text }] }));
+
+  const voice = "NARRATOR_X";
+  const cold = execFileSync(process.execPath, [CLI, scripts, "--voice", voice], { encoding: "utf8" });
+  assert.match(cold, /BILLABLE this run: 49 characters/);
+  assert.match(cold, /miss/);
+
+  // An index recording that exact generation.
+  const cache = new NarrationCache();
+  const key = cacheKey({ text, voiceId: voice, modelId: DEFAULT_MODEL_ID, outputFormat: DEFAULT_OUTPUT_FORMAT });
+  cache.record(key, { chars: 49 });
+  const idx = path.join(TMP, "cache-cli-index.json");
+  fs.writeFileSync(idx, JSON.stringify(cache.dump()));
+
+  const warm = execFileSync(process.execPath, [CLI, scripts, "--voice", voice, "--cache", idx], { encoding: "utf8" });
+  assert.match(warm, /BILLABLE this run: 0 characters/, "an unchanged script must re-bill nothing");
+  assert.match(warm, /HIT/);
+  // A different voice invalidates, so the same index must bill in full again.
+  const other = execFileSync(process.execPath, [CLI, scripts, "--voice", "OTHER", "--cache", idx], { encoding: "utf8" });
+  assert.match(other, /BILLABLE this run: 49 characters/, "a voice change must re-bill");
 });
