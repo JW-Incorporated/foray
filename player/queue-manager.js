@@ -264,6 +264,14 @@ export class PlayerQueueManager {
         WHEN it is compared is the load-bearing part; see `_transport`. */
     this._loadSeq = 0;
 
+    /** Nesting depth of `_handle`'s effect loop. Non-zero means the state value
+        has already moved and the effects that make it TRUE of the world have not
+        all run yet — `playing` is set before `startPlayback` is performed, so
+        inside that window a paused element is correct rather than a lie. The one
+        reader is `reconcileWithBackend`, which must not mistake a transition in
+        progress for a stop nobody saw. */
+    this._applying = 0;
+
     /** A backend with no out-point watch cannot play a Foray at all — it would
         run each segment to the end of its whole episode. Recorded once here so
         the refusal below can name the cause instead of the symptom. */
@@ -279,6 +287,17 @@ export class PlayerQueueManager {
 
     backend.onItemEnded = (reason) => this._handleBackendItemEnded(reason);
     backend.onError = (msg) => this._handle(E.error(String(msg)));
+    /* The element stopped and nothing here asked it to (#263) — a car switched
+       off, a call, headphones out. One of TWO triggers for the same reconcile;
+       the other is the surface coming back to the foreground, for the case where
+       the page was not running to receive this at all. Both re-read the element,
+       so neither trusts the event that woke it. */
+    backend.onUnexplainedPause = () => {
+      // Nothing awaits a media event, so the rejection has to land somewhere
+      // other than the console's unhandled bucket.
+      this.reconcileWithBackend("unexplainedPause")
+        .catch((err) => this._emit(`reconcile.failed: ${err?.message ?? err}`));
+    };
   }
 
   /* ---------- lifecycle ---------- */
@@ -587,9 +606,109 @@ export class PlayerQueueManager {
     if (this._disposed) return;
     const [next, effects] = reduce(this.state, event);
     this.state = next;
-    for (const effect of effects) await this._perform(effect);
+    /* Counted, not a boolean: `_perform` re-enters this method (a load dispatches
+       `itemLoaded`, a failed one dispatches `error`), so a flag would be cleared
+       by the inner frame while the outer one still had effects to run.
+       `try/finally` because an effect that throws must not leave the player
+       looking permanently mid-transition — that would silence the reconcile for
+       the rest of the session. */
+    this._applying++;
+    try {
+      for (const effect of effects) await this._perform(effect);
+    } finally {
+      this._applying--;
+    }
     this._syncTimer();
   }
+
+  /**
+   * Correct the state machine against what the audio element is actually doing.
+   *
+   * THE SURFACE IS A CACHE; THE ELEMENT IS THE AUTHORITY (#263). The founder
+   * drove with the screen off, switched the car off, and the audio route vanished
+   * — correctly stopping the audio. But nothing told this state machine, so it
+   * still said `playing`, the transport still said Pause, and his first press
+   * went on correcting the app's belief rather than resuming. One press must do
+   * what the listener meant.
+   *
+   * Called from two places and it must not matter which: the backend's
+   * `onUnexplainedPause`, for a stop that happened while JS was running, and
+   * `client.js`'s `visibilitychange`, for one that happened while it was not. A
+   * suspended page receives no events at all, so the boundary where the app
+   * becomes visible is the only place the second kind can be noticed.
+   *
+   * THREE PROPERTIES, all deliberate:
+   *
+   *  - **It only ever moves towards paused.** It never calls play. #227 shipped a
+   *    recovery that read every `play()` rejection as an autoplay refusal and
+   *    restarted audio a listener had just stopped, with every surface showing
+   *    paused. The bug being fixed here is a UI that lies; replacing it with
+   *    unrequested playback would be worse than the lie.
+   *  - **It is idempotent.** The first call leaves the machine in `interrupted`,
+   *    and every guard below then declines. Two triggers can race freely.
+   *  - **A finished Foray must not come back looking mid-listen.** `pause` fires
+   *    BEFORE `ended`, so a file that simply ran out looks exactly like a stolen
+   *    route to anything that only asks "is it paused" — and #227's mutation round
+   *    already caught a detector that false-positived on one. `ended` is
+   *    positional and readable long afterwards, which is what makes the guard work
+   *    even for a page that was asleep when the file finished.
+   *
+   * Routed through `interruptionBegan` rather than a new event, because that is
+   * already the reducer's word for "audio stopped and we did not choose it"
+   * (`pause()` uses it too) and it lands in `interrupted` with `wasPlaying` true —
+   * the state whose whole purpose is that one press resumes from it. The
+   * accompanying `savePosition` writes the playhead the route died at, which is
+   * the other half of what a listener needs to be right after an interruption.
+   *
+   * @returns {Promise<boolean>} true iff the machine was actually corrected.
+   */
+  async reconcileWithBackend(why = "visible") {
+    if (this._disposed) return false;
+    /* `playing` and nothing wider. A seam beat is `loadingItem` with a paused
+       element BY DESIGN — the 2.0 s silence is the product — and `interrupted`,
+       `idle` and `ended` all already agree with a paused element. `playing` is
+       the only state that claims audio is coming out right now, so it is the only
+       one that can be caught lying. */
+    if (this.state.type !== "playing") return false;
+    /* A transition in flight is not a lie. `_handle` sets `playing` and then
+       performs `startPlayback`, so between those two the element is legitimately
+       still paused; reconciling there would pause a Foray one instruction before
+       it started. */
+    if (this._applying > 0) {
+      this._emit(`reconcile.skipped.applying why=${why}`);
+      return false;
+    }
+    // The element agrees with us. Nothing to correct, and asking cost nothing.
+    if (this.backend.paused !== true) return false;
+    // It ran out rather than being taken away — `onItemEnded` owns that, and
+    // advancing the queue is its job, not ours.
+    if (this.backend.ended === true) {
+      this._emit(`reconcile.skipped.ended why=${why}`);
+      return false;
+    }
+
+    this._emit(`reconcile.externalStop why=${why} — the element is paused and we said playing`);
+    await this._transport("reconcile", () => this._handle(E.interruptionBegan()));
+    return true;
+  }
+
+  /**
+   * Which queue item's audio the element is actually holding, or null.
+   *
+   * NOT the same question as `currentIndex`, and the difference is a reported bug
+   * (#263's second field report). `_loadItem` moves `currentIndex` BEFORE calling
+   * `backend.load`, deliberately — `savePosition` has to run against the outgoing
+   * item first — and sets this only after the load resolves. So a load that
+   * failed leaves `currentIndex` pointing at a segment whose audio the element
+   * never received, while the element's `currentTime` has already been reset to 0
+   * by the `src` assignment.
+   *
+   * A surface that reads the playhead without asking this gets a fabricated
+   * position — the failed segment's in-point — and `client.js` was writing that
+   * over a good resume row. "Which item is the playhead about" has to be
+   * answerable, so it is answered here.
+   */
+  get playheadItemId() { return this._loadedId; }
 
   /** Every effect gets an explicit case. An unhandled one throws rather than
       silently doing nothing — a missed effect is a stuck player, and that is
@@ -996,6 +1115,20 @@ export class PlayerQueueManager {
     if (bIdx >= 0) this.currentIndex = bIdx;
     try {
       await this.backend.load(bridge, { startOffset: 0 });
+      /* THE BRIDGE IS WHAT THE ELEMENT IS HOLDING, so it has to say so (#263).
+         `_loadItem` sets this on its own success path and this method is the
+         other way audio gets loaded — the omission was invisible while
+         `_loadedId` only fed `resumingInPlace`, because a bridge always starts
+         at 0 and never resumes in place.
+
+         `playheadItemId` made it visible: a surface asking "which item is the
+         playhead about" got the PREVIOUS segment for the bridge's whole length,
+         so `client.js`'s `forayPlayhead` read null and the Foray clock froze —
+         up to 180 s of a transport display that does not move, which is the
+         exact defect `foray-resolve.js` records having already fixed one level
+         down. Set after the load resolves, like `_loadItem`, so it is never
+         true of audio the element does not yet have. */
+      this._loadedId = bridge.id;
       this.backend.play();
     } catch (err) {
       this._emit(`transitionTTS.loadFailed: ${err?.message ?? err}`);

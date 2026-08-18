@@ -490,6 +490,12 @@ export class HtmlAudioBackend {
       : () => (typeof document !== "undefined" && document.hidden === true);
     this.onItemEnded = null;
     this.onError = null;
+    /** The element stopped and nobody here asked it to (#263). Not an error and
+        not an end: a route disappearing, a call arriving, headphones out. The
+        backend cannot tell whether that contradicts anything — it does not know
+        what state the player is meant to be in — so it reports and the manager
+        decides. See `_notePause`. */
+    this.onUnexplainedPause = null;
     /** Called once per armed boundary, PREFETCH_LEAD_SEC of wall clock before
         it, so whoever owns the queue can say what to warm. The backend has the
         playhead; it does not know what comes next, and it must not learn. */
@@ -600,7 +606,15 @@ export class HtmlAudioBackend {
          element sets the flag and produces no `pause` event at all, so the leak
          is the ordinary case rather than an edge one — found by the test that
          fires an unexplained pause after a load. Clearing it here means the flag
-         can only ever cover a pause we caused while audio was running. */
+         can only ever cover a pause we caused while audio was running.
+
+         STILL HERE, and deliberately, even though `_expectOwnPause` now refuses
+         to arm the flag for an element that will fire nothing (#263). That
+         closes the leak at every site we know about; this line is what covers a
+         pause that was genuinely coming and then did not arrive — a src drop, a
+         seek, an engine that coalesced it. Two independent guarantees, because
+         the failure this protects is invisible: the swallowed pause is the one
+         the transport needed in order to stop saying "playing". */
       this._expectPause = false;
       this._lastFineTime = null;
       this._scheduleFineWatch();
@@ -797,7 +811,7 @@ export class HtmlAudioBackend {
     );
     // Our own pause, at the boundary, and a prefetch is normally in flight
     // right now — so it must not be mistaken for the session being taken.
-    this._expectPause = true;
+    this._expectOwnPause(this.el);
     this.el.pause();
     if (this.onItemEnded) this.onItemEnded(END_OUT_POINT);
   }
@@ -1091,6 +1105,30 @@ export class HtmlAudioBackend {
    * than silence). So it stands warming down for the rest of the session and
    * says so, which turns an invisible failure into a recorded one.
    */
+  /**
+   * Arm the "this pause is ours" flag — but only when a pause is actually coming.
+   *
+   * THE FLAG IS A TOKEN THAT MUST BE SPENT. `_notePause` consumes it, so one set
+   * with no matching event leaves it true and silently swallows the NEXT pause,
+   * which is the one the whole mechanism exists to notice. `_onPlaying` clears it
+   * defensively, and that was enough while nothing acted on an unexplained pause;
+   * #263 wires one to the surface, so a swallowed pause is now a transport that
+   * lies about playing and the leak has to be closed where it starts.
+   *
+   * The condition is just the spec: `pause()` and the media load algorithm fire
+   * `pause` only if the element was NOT already paused. Re-pausing an element
+   * that has already stopped — which is exactly what reconciling a lost route
+   * does — therefore produces no event and must arm nothing.
+   *
+   * `el.paused !== true` rather than `el.paused === false`: an element that does
+   * not model `paused` (several fakes in this repo's suites) keeps the behaviour
+   * that shipped, so the guard tightens the real case without silently changing
+   * what the tests are asserting about.
+   */
+  _expectOwnPause(el) {
+    if (el?.paused !== true) this._expectPause = true;
+  }
+
   _notePause() {
     if (this._expectPause) { this._expectPause = false; return; }
     /* A FILE THAT RAN OUT IS NOT A STOLEN SESSION. The end-of-media steps set
@@ -1101,6 +1139,24 @@ export class HtmlAudioBackend {
        away a buffer the very next `load()` was about to promote, making that
        seam slow too. `ended` is positional and is already true here. */
     if (this.el.ended) return;
+
+    /* TELL SOMEBODY (#263). Everything below this point is about standing
+       warming down; nothing above it ever reached the surface, which is why the
+       founder's transport went on saying "playing" after his car took the audio
+       route away. The observation was here all along and had no wire attached.
+
+       Reported rather than acted on: this class does not know whether the player
+       is meant to be audible right now, and the manager does. The callback is
+       also NOT the only path — a page that was suspended never got this event at
+       all — so `queue-manager.js` re-reads `paused` for itself either way and
+       this is one of two triggers for the same idempotent reconcile. */
+    this._emit("audio.pausedUnexpectedly — nobody asked for this pause");
+    if (this.onUnexplainedPause) {
+      // A surface must never break the player: the stand-down below is the
+      // thing this method actually owns and it has to run regardless.
+      try { this.onUnexplainedPause(); } catch (_) { /* reported, not fatal */ }
+    }
+
     /* AND ONLY WHILE A WARM LOAD IS ACTUALLY IN FLIGHT. The hypothesis this
        detector exists for is "a second element LOADING media took the session",
        so the causal window is the load, not the whole 12 s the buffer then sits
@@ -1357,8 +1413,9 @@ export class HtmlAudioBackend {
 
       // Re-pointing a PLAYING element fires `pause` as the media load algorithm
       // starts. That is our own doing, so it must not read as the session being
-      // taken from us — see `_notePause`.
-      this._expectPause = true;
+      // taken from us — see `_notePause`. A PAUSED element fires nothing, so
+      // nothing is armed for it: see `_expectOwnPause`.
+      this._expectOwnPause(el);
       el.src = item.audio_url;
       el.load();
       /* AFTER `load()`, deliberately. A probe's telemetry sink writes
@@ -1525,7 +1582,11 @@ export class HtmlAudioBackend {
 
   pause() {
     if (this._released) return;
-    this._expectPause = true;
+    /* Guarded, because pausing an ALREADY-PAUSED element is not hypothetical
+       here: it is what every reconcile of a stop the page could not observe does
+       (#263), and an unguarded arm would spend the token on an event that never
+       comes and swallow the next real one. */
+    this._expectOwnPause(this.el);
     // A deliberate stop ends the recovery window: whatever a pending `play()`
     // rejects with after this point, nothing may start audio again on its own.
     this._handoverUnproven = false;
@@ -1607,6 +1668,43 @@ export class HtmlAudioBackend {
   }
 
   get currentTime() { return this.el?.currentTime ?? 0; }
+
+  /**
+   * What the ELEMENT says about itself, not what we believe about it (#263).
+   *
+   * The founder turned his car off, the audio route vanished, and when he came
+   * back the transport still said playing — so his first press went on
+   * correcting the app's belief instead of resuming. A pause the page was not
+   * running to see leaves no event behind, but it leaves this: `paused` is
+   * positional, readable at any later moment, and it is the authority the
+   * surface reconciles against on the way back (`client.js`'s
+   * `visibilitychange`, `queue-manager.js`'s `reconcileWithBackend`).
+   *
+   * THE DIRECTION OF THE DEFAULT is the load-bearing part: an element that does
+   * not model `paused` must read as NOT paused, so a caller that acts on this can
+   * only ever be driven by a definite yes. The reconcile it feeds moves the
+   * surface towards paused, and the cost of guessing wrong is a Foray stopped for
+   * no reason.
+   *
+   * `=== true` rather than truthiness is the narrower claim, and worth being
+   * honest about: for a missing property the two agree (`!!undefined` is false
+   * too), so the suite pins the default's direction and not the operator. The
+   * operator only matters for a truthy NON-boolean, which no real media element
+   * produces — it is here so that a fake or a future backend cannot widen the
+   * definition of "paused" by accident.
+   */
+  get paused() { return this.el?.paused === true; }
+
+  /**
+   * Whether the element ran out of media.
+   *
+   * A Foray ENDING and a Foray being interrupted look the same to a flag and
+   * completely different to a listener, so every caller that asks "did somebody
+   * take our audio away" has to ask this too — `pause` fires before `ended`, and
+   * `_notePause` already refuses to read a file running out as a stolen session
+   * for exactly this reason. Positional, like `paused`: still true minutes later.
+   */
+  get ended() { return this.el?.ended === true; }
 
   get duration() {
     const d = this.el?.duration;
