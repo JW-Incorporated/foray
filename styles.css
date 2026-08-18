@@ -914,6 +914,51 @@ body.fy-sheet-open { overflow: hidden; }
 }
 .fy-src-eps li span { color: var(--text-dim); opacity: 0.75; white-space: nowrap; }
 
+/* ---------- playback diagnostics (#264) ----------
+   Reuses the same sheet shell as the two below. Only three decisions here, and all
+   three are about reading a seam log on a phone in a car:
+
+   MONOSPACE AND `pre` WRAPPING. Every line is a column-aligned row of numbers, and
+   a proportional font or a collapsed run of spaces destroys the alignment that
+   makes "gap 14022ms  deadline 20000ms" readable at a glance. `pre` rather than
+   `pre-wrap` so a long line scrolls sideways instead of folding — a folded row
+   reads as two rows.
+
+   A HEIGHT IN `vh`, capped. The record is the whole content of this sheet, so it
+   takes what the viewport can give; the cap stops the panel growing past the point
+   where Copy scrolls off screen, which is the one control that has to stay in
+   reach. */
+.diag-panel { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.diag-text {
+  display: block;
+  width: 100%;
+  height: 46vh;
+  max-height: 420px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+  resize: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.diag-clear {
+  display: block; width: 100%;
+  margin-top: 10px; padding: 9px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-dim);
+  font: inherit; font-size: 0.8rem;
+  cursor: pointer;
+}
+
 /* ---------- delete my data (#42) ----------
    The sheet reuses the reason sheet's shell (.fy-sheet / .fy-scrim / .fy-panel /
    .fy-sheet-actions), so only the parts that have no counterpart there are
