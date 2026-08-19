@@ -200,26 +200,77 @@ function poolItem(n, over = {}) {
   };
 }
 
-/** Install a pool and clear the derived index, as a fresh page would have. */
+/* THE HARNESS RULE THIS SUITE LEARNED THE HARD WAY, stated here because the next
+   agent inherits these two helpers.
+
+   `setPool` and `rotateOut` both clear `state.itemIndex` and `state.poolIds`, and
+   that is CORRECT: each of them models a fresh page load — the one after the
+   nightly refresh moved the catalogue. Keep it.
+
+   What was WRONG was that every render assertion in the first draft of this file
+   rendered once, from exactly that just-cleared state. `state.itemIndex` is
+   session-lived and `renderPlaylistDetail` writes to it, so the second render of
+   the same page in one session ran against state no test ever constructed — and
+   that is where the fix silently stopped working (an archived part read as live
+   from render two onward). The fake was more forgiving than the browser.
+
+   So the resets stay, and `renderTwice` below is the second entry point: it
+   renders, then renders again with NOTHING reset in between, which is what a
+   listener does by leaving the page and coming back, and what the drawer's two
+   toggles do on their own by calling route(). If a property is supposed to hold
+   for a playlist, assert it on the SECOND render. */
+
+/** Install a pool as a freshly-loaded page would have it. */
 function setPool(m, items) {
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
   m.state.discover = { items };
   m.state.taxonomy = { nodes: [] };
   m.state.itemIndex = {};
+  m.state.poolIds = new Set();
   return items;
 }
 
 /* Take ids out of the pool exactly as the nightly refresh does — out of BOTH
    halves of it, since fullPool() unions session.json's curated episodes with
-   discover.json's — and drop the derived index, as a fresh page would. */
+   discover.json's — and drop the derived caches, as a fresh page would. */
 function rotateOut(m, gone) {
   m.state.discover.items = m.state.discover.items.filter((it) => !gone.has(it.id));
   for (const id of gone) delete m.state.session.episodes[id];
   m.state.itemIndex = {};
+  m.state.poolIds = new Set();
+}
+
+/** Render the same playlist twice in one session, touching nothing in between.
+    Returns both HTML strings. This is a navigation, not a reload. */
+function renderTwice(m, id) {
+  m.ctx.renderPlaylistDetail(id);
+  const first = m.view();
+  m.ctx.renderPlaylistDetail(id);
+  return { first, second: m.view() };
+}
+
+/** Run the REAL bindPickLogging over one link and click it. The DOM stub cannot
+    parse innerHTML, so the markup and the handler are asserted separately: a test
+    that wants both checks the attributes in the HTML and then drives the handler
+    with the same values. Anything else would be the handler-shaped no-op this
+    suite's header warns about. */
+function clickPick(m, { ep, ctx: dataCtx, app }) {
+  const handlers = [];
+  const a = {
+    dataset: { ev: "picked", ep, ctx: dataCtx, ...(app ? { app } : {}) },
+    addEventListener: (t, fn) => { if (t === "click") handlers.push(fn); },
+  };
+  m.ctx.bindPickLogging({ querySelectorAll: () => [a] });
+  assert.strictEqual(handlers.length, 1, "bindPickLogging did not bind the link");
+  handlers[0]({});
+  return a;
 }
 
 const rowCount = (html) => (html.match(/class="ep-row/g) || []).length;
 const goneCount = (html) => (html.match(/class="ep-row gone"/g) || []).length;
+const nextMarkers = (html) =>
+  [...html.matchAll(/<span class="q-num ([^"]*)">(\d+)<\/span>/g)]
+    .filter(([, cls]) => cls.includes("next")).map(([, , n]) => n);
 
 /* ==================================================================== */
 /* 1. THE REPRODUCTION — the real catalogue, the real builder            */
@@ -446,6 +497,95 @@ test("an archived part is SHOWN and labelled, never hidden — 'label, never exc
   assert.ok(html.includes("Episode 2 of something"), "the archived part must still be named");
   assert.ok(html.includes("Show 2"), "and still credit its show");
   assert.ok(html.includes("not in Foray right now"), "and say what happened to it");
+});
+
+test("THE SECOND RENDER SAYS WHAT THE FIRST SAID — liveness is the pool, not the snapshot cache", () => {
+  /* THE MOST IMPORTANT TEST IN THIS FILE, and it exists because the first version
+     of this fix worked exactly once per page session and then reverted to the
+     defect #276 is about — found by review, not by these tests.
+
+     `renderPlaylistDetail` seeds an archived part into `state.itemIndex` so it can
+     be starred and reported. `resolveParts` originally asked `state.itemIndex` whether
+     a part was live. Nothing clears that cache in a session, so on render two the
+     part it had just seeded came back LIVE: the `gone` class went, the "not in
+     Foray right now" caption went, `partsNote` went, and the next-up marker moved
+     onto a row that cannot be played. Reachable by opening a playlist, going back
+     and opening it again — or by touching either drawer toggle, which calls route().
+
+     MUTATION: revert liveness to `state.itemIndex[id]` in resolveParts (drop the
+     `state.poolIds.has(id) &&`). THE FIRST RENDER STILL PASSES; every `second`
+     assertion below fails. That asymmetry is the whole point of the test, so if
+     you are checking it, check which half goes red.
+     MUTATION 2: stop assigning `state.poolIds` in fullPool. Nothing is ever live
+     and the live-row assertions fail. */
+  const m = mount();
+  const items = setPool(m, [poolItem(1), poolItem(2)]);
+  m.ctx.fullPool();
+  m.ctx.savePlaylists([{
+    id: "q1", query: "physics", title: "Physics", items: items.map((it) => m.ctx.playlistPart(it)),
+    created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
+  }]);
+  setPool(m, [poolItem(2)]);            // episode 1 rotated out; ep2 is still live
+  const { first, second } = renderTwice(m, "q1");
+
+  for (const [label, html] of [["first", first], ["second", second]]) {
+    assert.strictEqual(rowCount(html), 2, `${label} render: both parts must be there`);
+    assert.strictEqual(goneCount(html), 1, `${label} render: the archived part must stay marked`);
+    assert.ok(html.includes("not in Foray right now"), `${label} render: it must keep its caption`);
+    assert.ok(html.includes("class=\"note\""), `${label} render: the shortfall must still be announced`);
+    assert.deepStrictEqual(nextMarkers(html), ["2"], `${label} render: next belongs on the live part`);
+    assert.strictEqual((html.match(/data-play="/g) || []).length, 1,
+      `${label} render: only the live part may offer in-app playback`);
+  }
+  assert.strictEqual(first, second, "a re-render with nothing changed must be byte-identical");
+});
+
+test("a rotated-out part does not become live for a DIFFERENT playlist that also holds it", () => {
+  /* The same cache pollution across two playlists rather than two renders: open
+     playlist A holding the archived part, then playlist B holding the same id.
+     B's first render is B's only render, so a per-render guard would not save it —
+     only a liveness test that asks the pool.
+
+     MUTATION: revert liveness to `state.itemIndex[id]`. B renders the part as a
+     normal episode and this fails. */
+  const m = mount();
+  const items = setPool(m, [poolItem(1), poolItem(2)]);
+  m.ctx.fullPool();
+  const parts = items.map((it) => m.ctx.playlistPart(it));
+  m.ctx.savePlaylists([
+    { id: "qA", title: "A", items: parts, created: "2026-08-18T00:00:00.000Z" },
+    { id: "qB", title: "B", items: [parts[1]], created: "2026-08-18T00:00:00.000Z" },
+  ]);
+  setPool(m, [poolItem(1)]);            // episode 2 rotated out of both
+  m.ctx.renderPlaylistDetail("qA");
+  assert.strictEqual(goneCount(m.view()), 1, "A must mark it");
+  m.ctx.renderPlaylistDetail("qB");
+  assert.strictEqual(goneCount(m.view()), 1, "and B must mark it too, on its first render");
+  assert.ok(m.view().includes("not in Foray right now"));
+});
+
+test("an archived pick never becomes the continue banner, and cannot degrade a live snapshot", () => {
+  /* The other half of the same root cause. `bindPickLogging` writes
+     `state.itemIndex[id]` into `cp_lastpick`, and `bannerHtml()` later re-runs
+     `snapshot()` over it — so a PARTIAL archived snapshot stored there would
+     overwrite the pool's full entry on a later page load where the episode is back,
+     leaving a live episode with a play button that does nothing (`bindPlay` resolves
+     through `state.itemIndex`). Banner-wise it would also offer to resume something
+     the app cannot play.
+
+     MUTATION: revert the guard to `const snap = state.itemIndex[id]`. cp_lastpick
+     gains the archived part and the first assertion fails. */
+  const m = mount();
+  withArchivedPart(m);                  // ep2 archived, ep1 live, both rendered
+  clickPick(m, { ep: "show-2--episode-2", ctx: "playlist-q1" });
+  assert.strictEqual(m.store.get("cp_lastpick") ?? null, null,
+    "an episode the catalogue no longer has must not become the continue banner");
+
+  /* A live pick still does, unchanged — the guard must not cost the feature. */
+  clickPick(m, { ep: "show-1--episode-1", ctx: "playlist-q1" });
+  const last = JSON.parse(m.store.get("cp_lastpick"));
+  assert.strictEqual(last.id, "show-1--episode-1");
+  assert.strictEqual(last.audio_url, "https://audio.test/1/episode.mp3", "and it keeps its audio");
 });
 
 test("an archived part offers no in-app play button — the audio URL was deliberately not kept", () => {

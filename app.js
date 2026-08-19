@@ -19,7 +19,8 @@ const state = {
   forayPlaying: null,       // id of the Foray the player is inside, or null
   forayPainted: null,       // last segment index painted onto the running order
   cardSlots: [],            // the four dealt suggestions
-  itemIndex: {},            // id -> snapshot
+  itemIndex: {},            // id -> snapshot (a CACHE, never a membership test — see fullPool)
+  poolIds: new Set(),       // ids the catalogue holds RIGHT NOW — rebuilt by fullPool
   ready: false,
 };
 
@@ -351,6 +352,15 @@ function snapshot(id, src) {
   return snap;
 }
 
+/* `state.poolIds` is the ONLY answer to "is this episode in the catalogue right
+   now", and it exists because `state.itemIndex` was being used for that and is
+   not it (#276 review). `itemIndex` is a snapshot CACHE: it is session-lived,
+   nothing ever clears it, and three different callers write to it — fullPool,
+   bannerHtml, and renderPlaylistDetail seeding a part the pool no longer has. So
+   "has an entry in itemIndex" drifts to "was mentioned at some point this
+   session", which made an aged-out playlist part read as live from its second
+   render onward and silently restored the exact defect #276 removes. Membership
+   is rebuilt from scratch on every pool build, so it cannot accumulate. */
 function fullPool() {
   const pool = [];
   const seen = new Set();
@@ -359,8 +369,11 @@ function fullPool() {
     seen.add(id);
   }
   for (const item of (state.discover?.items || [])) {
-    if (!seen.has(item.id)) pool.push(snapshot(item.id, item));
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    pool.push(snapshot(item.id, item));
   }
+  state.poolIds = seen;
   return pool;
 }
 
@@ -656,7 +669,7 @@ function playlistPart(src) {
 /** The mirror, kept in step on every write so it can never drift from the
     spine — a stale mirror is this same disagreement one level down. */
 function withMirror(p) {
-  return Array.isArray(p.items) ? { ...p, item_ids: p.items.map(part => part.id) } : p;
+  return Array.isArray(p.items) ? { ...p, item_ids: p.items.map(partId) } : p;
 }
 
 /* The pool, for hydration. `state.itemIndex` is already full by the first
@@ -694,16 +707,19 @@ function hydrationPool() {
    down permanently — the migration only gets one first go. The worst case here
    is an all-stub spine the next read repairs.
 
+   @param {object} p
+   @param {() => object} sources  lazily builds `{ pool, saved }`, shared across
+     every playlist in one read so 50 legacy playlists cost one `cp_saved` parse
+     rather than 50 — and cost nothing at all when no playlist needs them.
    @returns {boolean} whether anything changed and needs persisting. */
-function hydratePlaylistParts(p) {
+function hydratePlaylistParts(p, sources) {
   const hadItems = Array.isArray(p.items);
-  const spine = hadItems ? p.items : (Array.isArray(p.item_ids) ? p.item_ids : []).map(id => ({ id }));
+  const spine = hadItems ? p.items : playlistSpine(p);
   let changed = !hadItems;
   /* Fast path, and the reason hydration is affordable on every read: a
      fully-snapshotted playlist touches neither the pool nor cp_saved. */
   if (spine.some(part => part && part.id && !part.title)) {
-    const pool = hydrationPool();
-    const saved = savedMap();
+    const { pool, saved } = sources();
     p.items = spine.map(part => {
       if (!part || !part.id || part.title) return part;
       const src = pool[part.id] || saved[part.id];
@@ -718,14 +734,32 @@ function hydratePlaylistParts(p) {
      them is REPAIRED here rather than merely ignored. It cannot arise from a store
      this version wrote — withMirror() sees every write — but the mirror exists for
      the benefit of an older `app.js` counting from it, and a mirror that is only
-     right when nothing has gone wrong is not worth the 47 B a part it costs. */
+     right when nothing has gone wrong is not worth the 47 B a part it costs.
+
+     `partId` rather than `part.id` throughout, because a corrupt row must not take
+     the whole app down: `playlists()` feeds the list, the detail view AND the
+     drawer, so one `null` in one playlist's `items` used to throw out of all
+     three — the permanent-blank failure the mirror exists to prevent, arriving
+     through the repair. It also has to be STABLE for such a row, or the mirror
+     disagrees forever and every read rewrites the entire store. */
   const mirror = Array.isArray(p.item_ids) ? p.item_ids : null;
   if (!changed && (!mirror || mirror.length !== p.items.length
-      || p.items.some((part, i) => mirror[i] !== part.id))) {
+      || p.items.some((part, i) => (mirror[i] ?? null) !== partId(part)))) {
     changed = true;
   }
-  if (changed) p.item_ids = p.items.map(part => part.id);
+  if (changed) p.item_ids = p.items.map(partId);
   return changed;
+}
+
+/** A part's id, or null for a row corrupt enough not to have one. */
+function partId(part) { return part && part.id ? part.id : null; }
+
+/** The ordered spine of a playlist: `items` when it has them, else the legacy
+    `item_ids` as stubs. One definition, so resolveParts and the migration cannot
+    disagree about what a playlist contains. */
+function playlistSpine(p) {
+  if (Array.isArray(p.items)) return p.items;
+  return (Array.isArray(p.item_ids) ? p.item_ids : []).map(id => ({ id }));
 }
 
 function playlists() {
@@ -735,9 +769,13 @@ function playlists() {
     all = lsGet("cp_quests", []);   // migrate the old key once
     touched = true;
   }
+  if (!Array.isArray(all)) return [];   // a store this app never wrote
+  let cached = null;
+  const sources = () => (cached ||= { pool: hydrationPool(), saved: savedMap() });
   for (const p of all) {
+    if (!p) continue;
     if (!p.title) { p.title = prettyTitle(p.query || ""); touched = true; }
-    if (hydratePlaylistParts(p)) touched = true;
+    if (hydratePlaylistParts(p, sources)) touched = true;
   }
   /* Deliberately not through savePlaylists(): a read must not be the thing that
      enforces the 50 cap on a store that already holds more. */
@@ -760,13 +798,22 @@ function savePlaylists(all) { return lsSet("cp_playlists", all.slice(0, 50).map(
                 can still describe works against the reason it is there.
      unnamed    a legacy id with no snapshot behind it and no pool entry. Still a
                 row, because a count that agrees with nothing is the defect, and
-                still recoverable — see hydratePlaylistParts. */
+                still recoverable — see hydratePlaylistParts.
+
+   LIVENESS COMES FROM `state.poolIds`, NOT FROM `state.itemIndex`, and the
+   difference is the whole reason this comment is here. The first version asked
+   `state.itemIndex[part.id]`, which is a snapshot cache that nothing clears and
+   that this very function's caller writes archived parts into — so the SECOND
+   render of the same playlist in one page session found the archived part in the
+   cache, called it live, dropped its label and its note, and put the next-up
+   marker on a row that cannot be played. The fix worked exactly once and then
+   restored the defect. `poolIds` is rebuilt from scratch by fullPool and means
+   only "the catalogue holds this right now". */
 function resolveParts(p) {
-  const spine = Array.isArray(p.items)
-    ? p.items
-    : (Array.isArray(p.item_ids) ? p.item_ids : []).map(id => ({ id }));
+  const spine = playlistSpine(p);
   return spine.map(part => {
-    const live = part && part.id ? state.itemIndex[part.id] : null;
+    const id = part && part.id ? part.id : null;
+    const live = id && state.poolIds.has(id) ? state.itemIndex[id] : null;
     if (live) return { item: live, part, state: "live" };
     if (part && part.title) return { item: part, part, state: "archived" };
     return { item: part || {}, part, state: "unnamed" };
@@ -816,7 +863,15 @@ function buildPlaylist(query) {
     last_played_at: null,
     sparse: status === "sparse",
   });
-  savePlaylists([playlist, ...playlists()]);
+  /* A refused write is reported rather than assumed away (#276 review). lsSet has
+     returned a boolean since #40 and this was discarding it, so a store at quota
+     produced a playlist the home screen then navigated to and the detail view
+     rendered as "Playlist not found." — a dead end with no explanation. Pre-#276
+     that was hard to reach; taking a full store from ~33 KB to ~168 KB is what
+     makes it worth handling. */
+  if (!savePlaylists([playlist, ...playlists()])) {
+    return { status: "unsaved", suggestions: [] };
+  }
   return { status, playlist };
 }
 
@@ -834,7 +889,15 @@ function bindPickLogging(scope) {
       const m = /^playlist-(.+)$/.exec(a.dataset.ctx || "");
       if (m) touchPlaylistPlayed(m[1]);
 
-      const snap = state.itemIndex[id];
+      /* Only a part the catalogue still holds may become the continue banner. An
+         archived playlist part has a snapshot in `state.itemIndex` (seeded by
+         renderPlaylistDetail so this handler can report its topics), but that
+         snapshot is a PARTIAL one — no audio_url, no hook, no artwork — and
+         bannerHtml() re-runs `snapshot()` over whatever cp_lastpick holds, which
+         would overwrite the pool's full entry with the partial and leave a live
+         episode with a play button that does nothing. Besides which, the banner
+         offers to resume something the app cannot play. */
+      const snap = state.poolIds.has(id) ? state.itemIndex[id] : null;
       if (snap && a.dataset.ctx !== "continue") {
         lsSet("cp_lastpick", { ...snap, ts: new Date().toISOString() });
       }
@@ -989,9 +1052,13 @@ function renderHome() {
       location.hash = "#/playlist/" + result.playlist.id;
     } else {
       const note = $("#pl-note");
-      note.textContent = result.suggestions.length
-        ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
-        : `Not much on "${query}" yet — try different words.`;
+      note.textContent = result.status === "unsaved"
+        /* Says what happened and what to do, and does not blame the listener for
+           a device that is out of room. */
+        ? "That playlist could not be saved — this device has no storage space left. Removing a playlist you have finished with frees enough for a new one."
+        : result.suggestions.length
+          ? `Not much on "${query}" yet — try ${result.suggestions.map(s => s.label).join(", ")} instead.`
+          : `Not much on "${query}" yet — try different words.`;
       note.hidden = false;
     }
   });
@@ -1069,10 +1136,17 @@ function partsNote(rows) {
   if (!archived && !unnamed) return "";
   const parts = [];
   if (archived) {
-    parts.push(`${archived} part${archived === 1 ? " is" : "s are"} not in Foray's catalogue right now, so ${archived === 1 ? "it" : "they"} cannot play in the app — open ${archived === 1 ? "it" : "them"} in your podcast app instead.`);
+    const one = archived === 1;
+    parts.push(`${archived} part${one ? " is" : "s are"} not in Foray's catalogue right now, so ${one ? "it" : "they"} cannot play in the app — open ${one ? "it" : "them"} in your podcast app instead.`);
   }
   if (unnamed) {
-    parts.push(`${unnamed} part${unnamed === 1 ? "" : "s"} ${unnamed === 1 ? "was" : "were"} saved before Foray kept episode details and cannot be named yet — ${unnamed === 1 ? "it" : "they"} will fill in if the episode${unnamed === 1 ? "" : "s"} return, and building the playlist again from the home screen replaces ${unnamed === 1 ? "it" : "them"} now.`);
+    const one = unnamed === 1;
+    /* EVERY plural agrees, verbs included. The first draft pluralised the noun and
+       not the verb, so a listener with exactly one gap read "if the episode
+       return" — and the note a reviewer reads is never the one that ships to them.
+       It also no longer claims rebuilding REPLACES this playlist: buildPlaylist
+       mints a new id and prepends a new playlist, leaving this one untouched. */
+    parts.push(`${unnamed} part${one ? " was" : "s were"} saved before Foray kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the home screen gives you a fresh one from what Foray has today.`);
   }
   return `<p class="note">${esc(parts.join(" "))}</p>`;
 }
@@ -1083,16 +1157,23 @@ function renderPlaylistDetail(id) {
   if (!p) { $("#view").innerHTML = `<div class="page"><p class="note">Playlist not found.</p></div>`; return; }
   fullPool(); // populate itemIndex
   const rows = resolveParts(p);
-  /* An archived part goes into itemIndex under its own id so the rest of the app
-     can see it: without this, starring one is a no-op (toggleStar needs a
-     snapshot) and a `picked` from one reports no topics. Live entries are never
-     overwritten — the pool is always the better copy. */
+  /* An archived part goes into the snapshot cache under its own id so the rest of
+     the app can describe it: without this, starring one is a no-op (toggleStar
+     needs a snapshot) and a `picked` from one reports no topics.
+
+     This is safe ONLY because liveness is `state.poolIds`, not "is in itemIndex".
+     While it was the latter, this loop was the bug: it taught the cache the id, and
+     the next render of the same playlist called the part live again. The absence
+     check is kept because the pool's copy is always the better one, and a second
+     render must not replace a full snapshot with a partial. */
   for (const r of rows) {
     if (r.state === "archived" && !state.itemIndex[r.item.id]) state.itemIndex[r.item.id] = r.item;
   }
   const history = new Set(pickedHistory());
   /* The "next" marker belongs on the next part that can actually be opened. */
   const nextIdx = rows.findIndex(r => r.state === "live" && !history.has(r.item.id));
+  /* Played is an id-in-history question, not a liveness one: a part played before
+     it aged out stays played, and so does an unnamed one whose id is in history. */
   const played = rows.filter(r => r.item.id && history.has(r.item.id)).length;
   const ctx = (p.isSubject ? "subject-" : "playlist-") + p.id;
 
