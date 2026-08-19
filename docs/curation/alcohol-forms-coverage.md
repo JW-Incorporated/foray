@@ -409,9 +409,9 @@ left off"*; out around *"…it forms smaller bubbles and more stable bump bubble
 **Why it advances beat 3.** It is the one place in the readable pool where dissolved
 gas is treated as a variable a producer chooses rather than a property a drink has:
 nitrogen *"doesn't replace the CEO two. It's a mixture of the carbon dioxide and
-nitrogen, but nitrogen isn't absorbed into the beer like carbon dioxide is. So it has
+nitrogen, but nitrogen isn't absorbed into the beer like carbon dioxide is. So it it has
 the same pressure of just a regular beer, but it has a lot less CO two, and so it's
-not as physy"*, and nitrogen *"forms smaller bubbles and more stable bubbles"*. That
+not as physy"*, and nitrogen *"forms smaller bubbles and more stable bump bubbles"*. That
 is the third of beat 3's three moves — inject the gas afterwards — with a real
 solubility argument attached.
 
@@ -569,8 +569,8 @@ them, it's like the spirit rises through increasingly higher up stages and it's
 reheated and heated and heated, and so it becomes pure and pure the higher up it
 goes."* And the economic consequence, which the beat calls plain: *"because you could
 get pure alcohol um to use as the base spirit for gin, you had less of a funky, foul,
-nasty taste that you needed to cover up with stuff like Botanicals or sugar or
-turpentine."*
+nasty taste that you needed to cover up with stuff like um. Botanicals or sugar or
+turpentine um."*
 
 **Why it is thin and not strong.** Register first — two hosts working from an article.
 Then the attribution: the beat asks for *"dates and attribution for the column with the
@@ -586,7 +586,7 @@ trim the in-point carefully.
 
 **Nothing**, and this is the clearest rejection in the report. SYSK How Moonshine
 Works, 814.64 → 840.60, is the only passage in the readable pool about the hazard, and
-it is beat 13's claim inverted: *"these these impurities are called congeners, right,
+it is beat 13's claim inverted: *"And these impurities are called congeners, right,
 And what those are, it's it's just to catch all name for any impurity that's a complex
 compound, like a polyphenol um or histamine, you know, those things that give you
 allergic reactions. These can easily end up in your batch. And this is why people often
@@ -618,7 +618,7 @@ oak as a straw, it doesn't work because white oak has these little Bubbles in th
 that just develop after the tree is done using those straws to move water up and down
 the tree, and so those bubbles prevent liquid from escaping from the barrel itself."*
 He then names the three woods that can hold a long-aged spirit — *"There's French yoak,
-Hungarian oak, and white oak"* — and *"quircus elbow"* for *Quercus alba*, and closes
+Hungarian oak, and white oak"* — and *"quercus elbow"* for *Quercus alba*, and closes
 the first-fill question: *"you can only use that barrel once. After they use the bourbon
 barrel, they usually sell it off to other, you know, liquor distillers because the
 barrels are expensive and very good."*
@@ -732,8 +732,8 @@ readable pool and it is the beat's own list, in the beat's own order: riddling a
 *"a pretty thankless job"* taking *"about four to six weeks"* with the bottle *"stored
 upside down"* and *"a little chalk mark on each one"*; disgorgement as *"it's just a
 thing of sediment … accumulated at the neck and you put it in an ice bath"*, contrasted
-with the older method where *"they would pop open a bottle, decant it, filter it, and
-they would pour it back"*; the CO2 doing the work — *"there's you know, carbon dioxide
+with the older method where *"they would pop open a bottle, decant it, filter it, and um
+they would uh pour it back"*; the CO2 doing the work — *"there's you know, carbon dioxide
 gas in there at this point and it forces that plug out"* — and the dosage as the
 sweetness dial, *"maybe a little brandy, little sugar, a little white wine back in."*
 **The pressure figure sits just outside the band**, at 2044.96 → 2078.20: *"If you want
@@ -745,8 +745,8 @@ without the number inside the band, or the number with a `needs_review` length.
 **Second, if a shorter cut is wanted:** **1594.08 → 1696.28 (102.2 s)**, the second
 fermentation itself — *"you're gonna start that second fermentation process by adding
 sugar and yeast. Then you drop the temperature on your cooler … well you can also do
-this in the tank. Like they're different methods, but that's called the shar Met
-method"* — which is the one place in the readable pool where the tank method is
+this in the tank. Like they're different methods, but right, that's the that's called
+the shar Met method"* — which is the one place in the readable pool where the tank method is
 distinguished from the traditional one at all.
 
 **Why it is thin, and what is missing.** Register, and three gaps the beat names
@@ -906,9 +906,9 @@ around an argument between the hosts about whether it names three ingredients or
 **Nothing**, and this rejection is worth stating precisely because the spine's own
 revision note predicted the error. SYSK How Beer Works, 1590.20 → 1638.52, is the only
 account of the ale/lager split in the readable pool: *"If you are making a logger which
-in Germany, which in German is a verb meaning to store, you're going to it's gonna take
-a few months, and you're going to store this stuff. You're gonna let it ferment um at
-near freezing temperatures and it's gonna ferment at the bottom."*
+in Germany, which in German is a verb meaning to store, um you're going to it's gonna
+take a few months, um and you're going to store this stuff. You're gonna let it ferment um
+at near freezing temperatures and it's gonna ferment at the bottom."*
 
 The spine's §8 records: *"Beat 28 had lager fermenting near freezing, which is the
 conditioning stage."* A reviewer removed that error from the spine, and the only
@@ -964,9 +964,9 @@ the coolship and the seasonal restriction, the succession of organisms over mont
 *Brettanomyces* and what it metabolises, *Pediococcus* and *Lactobacillus*, and
 blending young and old beer to trigger a bottle refermentation. `lambic` returns 0 in
 both catalogue pools; SYSK's beer episode mentions it four times, at
-1772.44 → 1825.16, and gets the claim's core right — *"lambics are a type of
-spontaneously fermented brew … they're basically just leaving their stuff out to be
-exposed to wild yeast that grows in the area"* — before landing on *"I don't care for it
+1772.44 → 1825.16, and gets the claim's core right — *"lambics are um a type of
+spontaneously fermented brew … they're they're basically just leaving their stuff out to
+be exposed to wild yeast that grows in the area"* — before landing on *"I don't care for it
 a whole lot. It's kind of has a sour aftertaste"*, which is the tasting reaction the
 beat rejects.
 
@@ -1074,7 +1074,7 @@ narration for this beat has to supply it or the payoff at 58 arrives unprepared.
 **1694.40 → 1803.80 (109.4 s)**, which carries the medical lineage this beat needs —
 *"They were medicinal drinks, but it didn't take them very long to figure out it gives
 you a pretty pretty good buzz too, and by the sixteenth century, I believe people were
-like, just just give me that"*, then *"the tradition that they'd gotten from their Arab
+like, just just give me that"*, then *"this tradition that they'd gotten from their Arab
 friends of making these medicinal liqueur"*, then *"by the nineteenth, eighteenth and
 nineteenth centuries, apothecaries and pharmacists were like, give me those, I'm going
 to start selling these."* Taking it means two segments on a 2.0 % beat, which §4a
@@ -1147,11 +1147,11 @@ going to arrive at basically the same base neutral spirit"* at about 605, which 
 sentence the beat wants and a better out-point than the band's tail.
 
 **Why it advances beat 41.** The beat's central claim is that the feedstock is rectified
-out by design, and this states it twice and lists the feedstocks: *"because you're
+out by design, and this states it twice and lists the feedstocks: *"because you're step you're
 starting out with such a ridiculously high proof um alcohol like neutral alcohol. You can
 use basically an old shoe to make that that neutral grain spirit. It's gonna taste
-virtually the same as neutral grain spirit made from barley or from way, or from potatoes
-or grapes. It just is the the alcoholic essence of those things."* For a beat the spine
+virtually the same as neutral grain spirit made from a neutral spirit made from barley or
+from way, or from potatoes or grapes. It just is the the alcoholic essence of those things."* For a beat the spine
 calls *"the most useful single debunk available in the whole subject"*, that is the debunk,
 from the one episode in the catalogue that had reason to make it.
 
@@ -1346,7 +1346,7 @@ yes, or wine."*
 **Why it advances beat 57.** It is the only passage in the readable pool that treats
 extraction as the variable: *"you just soak some some bittering agents and herbs,
 whatever your proprietary blend is. You let it soak for a little while. Sometimes you
-might redistill it with the with the herbs and botanicals in it, but a lot of people just
+might redistill it with the herbs and botanicals in it, but a lot of people just
 let it sit for a while … and then I think that's called mass rating or infusing … and
 then you add a little sugar after you filter out the solids, and then you let it age for
 several years."* Maceration against redistillation, plus the sugar, plus the base spirit
@@ -1396,13 +1396,13 @@ than as a preserved theory of digestion.
 
 **Chosen:** SYSK The Myth of Absinthe, band **2334.52 → 2450.48 (116.0 s)**. In on
 *"But for the most part, if you wanted to get absinthe, it was very, very difficult"*;
-out on *"…you can't import something labeled absinthe or any bottle that shows like
-people tripping."*
+out on *"…you can't import something labeled absinthe or any bottle that you know, shows
+like people tripping."*
 
 **Why it advances beat 59.** It is the beat's myth-correction, made as a correction: the
 syndrome named, then withdrawn — *"Absinthe is um this UH syndrome, which was the
-collection of maladies everything from hallucination, sleeplessness, tremors, convulsions,
-madness from drinking absinthe. And in retrospect historians say this didn't exist. Like
+collection of maladies everything from m hallucination, sleeplessness, tremors,
+convulsions, madness from drinking absinthe. And in retrospect historians say this didn't exist. Like
 what this person was describing was excessive alcohol use, like all this stuff you can get
 from drinking way too much high proof alcohol"* — with the mechanism of the panic named
 explicitly: *"there was an accompanying made up syndrome to to give like a veneer of
@@ -1414,7 +1414,7 @@ the wine industry's role in the bans, which is beat 59's own claim that they tra
 temperance politics and a wine trade rebuilding rather than any toxin: *"And then wine
 makers, which is sort of weird, got involved in the temperance movement in a way when they
 said, yeah, absentthe is terrible and it's not like cognac … But this stuff is really bad
-stuff. It's cheap and it's petty, and it's for the lower class. So we're going to join up
+stuff. It's cheap and it's it's it's petty, and it's for the lower class. So we're going to join up
 in the temperance movement ourselves to help get rid of it."* At 49.8 s it is above the
 floor and below the band.
 
@@ -1468,7 +1468,7 @@ um like laws or anything restricting types of whiskey. I'm sure there are in Sco
 we're talking about America in this episode."* Geographical indication as a legal
 mechanism is absent, so is cross-border enforcement and litigation, and so is the honest
 account of what the rules genuinely preserve. The whiskey hour supplies one adjacent fact
-that beat 61 could use and beat 14 is taking — that American single malt *"is now a
+that beat 61 could use and beat 14 is taking — that American single malt *"It's now a
 defined brand whiskey category in the code of reference"* — which is a category coming
 into existence, and the closest this catalogue gets to the beat's arbitrariness point.
 
@@ -1577,8 +1577,8 @@ buildable.
 
 - **Act I is a broken derivation from end to end.** Not one of its sixteen beats has
   strong tape, and the three that have anything at all are about a nitrogen widget, a
-  continuous still and an oak tree. The spine's §2a says a hole here *"reads as a broken
-  explanation"* and carries the highest cost in the document; there is no hole here to
+  continuous still and an oak tree. The spine's §2a grades a hole here as *"a broken
+  explanation"* and gives it the highest cost in the document; there is no hole here to
   cost, because there is no floor. **This is the finding that cannot be worked around by
   transcription**, since §10's entire queue would close at most three of the thirteen.
 - **The fortification chain is four for four empty**, and it takes beat 5 with it. Beat 5
