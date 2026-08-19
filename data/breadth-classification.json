@@ -81123,13 +81123,949 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-18-76810232",
       "classified_at": "2026-08-18T16:51:01.626Z"
+    },
+    "1886270666": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on historical content.",
+      "display_title": "Mythology for Sleep",
+      "blurb": "drift into deep rest while traveling through the timeless world of mythology",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1886311634": {
+      "topics": [
+        "music",
+        "comedy",
+        "science",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "education",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on music analysis.",
+      "display_title": "Swiftologist",
+      "blurb": "swiftologist is the official audio feed of pop culture commentator zachary hourihane",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1886650616": {
+      "topics": [
+        "personal-journals"
+      ],
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on personal-journals.",
+      "display_title": "靈犬賴希",
+      "blurb": "徐凱希 x 小賴 賴晏駒 x 全新podcast「靈犬賴希」 無論你是什麼領域 想要探討什麼議題 從內在聊到外在 從生理聊到命理 從人間聊到陰間 我們百無禁忌 腦洞心房大開 完全不設限 帶領你一起嗅出最有趣、精彩的話題 🔔每週二中午12:00更新 🔗連結靈犬賴希：https://portaly.cc/gooddog 🤝合作邀約：gooddog@forward.com.tw -- hosting provided by soundon.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1886705492": {
+      "topics": [
+        "business",
+        "science",
+        "engineering/energy-fusion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on business guidance.",
+      "display_title": "Harvard Business Review",
+      "blurb": "at harvard business review, we believe in management",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1886846930": {
+      "topics": [
+        "health/alternative",
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health and wellness.",
+      "display_title": "Coping",
+      "blurb": "the podcast about why life feels like this",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1887104942": {
+      "topics": [
+        "science",
+        "history",
+        "business"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "The Ancient Modern",
+      "blurb": "pastors looking at current events and topics through a biblical/supernatural lens.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1887248606": {
+      "topics": [
+        "business",
+        "craft",
+        "health/alternative",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.65
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on business guidance.",
+      "display_title": "Connected By Health",
+      "blurb": "connected by health is a modern healthcare podcast hosted by krishna vedala, md, mph, mba, cpe—a board-certified internal medicine and obesity medicine physician, healthcare executive, and innovation leader based in.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1887346526": {
+      "topics": [
+        "health/alternative",
+        "medicine/biology",
+        "science",
+        "architecture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.6
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health and wellness.",
+      "display_title": "Autoimmunity and the Good Girls: Behind-the-Page with Sar...",
+      "blurb": "welcome to behind the page, a limited podcast series for my first book,\"autoimmunity and the good girls: how permission to put ourselves first has the power to keep us well.\".",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1888280834": {
+      "topics": [
+        "music",
+        "craft",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on music analysis.",
+      "display_title": "Textile Indie Podcast",
+      "blurb": "the textile indie podcast is a fiber arts podcast for makers who love spinning, weaving, dyeing, needle arts, and building a creative practice",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1888286450": {
+      "topics": [
+        "health/alternative",
+        "engineering",
+        "medicine/biology",
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.65
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.6
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health and wellness.",
+      "display_title": "Plane Brain: The Pilot License Study Guide",
+      "blurb": "getting your private pilot license",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1888343624": {
+      "topics": [
+        "comedy",
+        "comedy/casual-hangs",
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on comedy.",
+      "display_title": "Cracking On with Sam Frost and Sarah Roberts",
+      "blurb": "hosted by sam frost and sarah roberts, cracking on is a podcast about the beautiful chaos of picking yourself up, resetting, and getting on with it",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1888656884": {
+      "topics": [
+        "business",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on business guidance.",
+      "display_title": "The Download",
+      "blurb": "the weekly intelligence briefing for podcast industry executives",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1888923038": {
+      "topics": [
+        "business",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on business guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1889554850": {
+      "topics": [
+        "science",
+        "business",
+        "craft"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "business",
+          "confidence": 0.45
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1889690420": {
+      "topics": [
+        "craft",
+        "science",
+        "history",
+        "business"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on craft and making.",
+      "display_title": "American Power",
+      "blurb": "american power is a geopolitical podcast about the forces beneath the headlines, where military strategy, energy markets, and political decision-making collide.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1889914574": {
+      "topics": [
+        "comedy",
+        "comedy/casual-hangs",
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on comedy.",
+      "display_title": "Two Sons and Me",
+      "blurb": "two sons & me puts the one and only todd chrisley in a room with chase and grayson, and nobody's holding back",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1889915468": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "Between Two Pumps",
+      "blurb": "between two pumps is where real car conversations happen—hosted by terry shea, mike musto, and terry mcgean",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1889983712": {
+      "topics": [
+        "science",
+        "engineering/energy-fusion"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "Learned the Hard Way with Kier Gaines",
+      "blurb": "no fluff",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1890040064": {
+      "topics": [
+        "business",
+        "comedy",
+        "business/startups",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on business guidance.",
+      "display_title": "Build Black Show | Business Growth & Entrepreneurship",
+      "blurb": "the build black show is where entrepreneurs,creators, and visionaries unlock strategy, and real business blueprints with a mix of cultural relevancy",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1890277832": {
+      "topics": [
+        "music",
+        "comedy",
+        "comedy/casual-hangs",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on music analysis.",
+      "display_title": "Music and Revolution: Songs That Changed the World",
+      "blurb": "some songs entertain",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1890324434": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "Antispiral",
+      "blurb": "your weekly dose of hope, wins, and reality checks, all broken down so you don’t spiral too hard",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1890389738": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "Mastering the Water",
+      "blurb": "mastering the water is a podcast dedicated to swimming, from technique and training tips to mindset, endurance, and performance",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1890417590": {
+      "topics": [
+        "science",
+        "architecture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1890552134": {
+      "topics": [
+        "science",
+        "education",
+        "business"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "education",
+          "confidence": 0.55
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "America, Actually with Astead Herndon",
+      "blurb": "donald trump has defined american political discourse for more than a decade",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1890878156": {
+      "topics": [
+        "business",
+        "health/alternative",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/alternative",
+          "confidence": 0.65
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on business guidance.",
+      "display_title": "The Eat Build Sculpt Podcast",
+      "blurb": "eat build sculpt is a podcast for women 35+ who want direct, clear guidance on what it actually takes to build the body and the confidence they want",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1891156880": {
+      "topics": [
+        "science",
+        "craft"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "Saints & Sevens: A Trench Crusade Podcast",
+      "blurb": "a trench crusade podcast focusing on building a positive community around the gameplay, lore, aesthetic, and rules surrounding the wargame trench crusade..",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1893230054": {
+      "topics": [
+        "science",
+        "engineering/energy-fusion",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "engineering/energy-fusion",
+          "confidence": 0.45
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "The Cosmic Brief",
+      "blurb": "the cosmic brief delivers quick trips through the cosmos, covering space missions, discoveries, strange phenomena, and real-time events in the universe.",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1893663230": {
+      "topics": [
+        "music",
+        "comedy",
+        "comedy/casual-hangs"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on music analysis.",
+      "display_title": "Memento Morbid",
+      "blurb": ", poignant, and surprisingly life-affirming conversations about death, the human condition, and life’s great mysteries",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1893952532": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "Blood and Water",
+      "blurb": "in 2001, leslie preer was found brutally murdered, her body left in the shower of her home in the wealthy suburbs of washington, d.c",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1894669466": {
+      "topics": [
+        "science",
+        "architecture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.6
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on scientific content.",
+      "display_title": "Movie HighLow",
+      "blurb": "movie highlow is a movie review and film analysis podcast about the best, worst, and weirdest movies cinema has to offer",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1895055236": {
+      "topics": [
+        "health/alternative",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health and wellness.",
+      "display_title": "Simplifying Diabetes",
+      "blurb": "managing type 2 diabetes or prediabetes can feel confusing, overwhelming, and honestly… like a full-time job",
+      "display_copy_ok": true,
+      "model": "claude-haiku (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-e5fef6f6",
+      "classified_at": "2026-08-19T00:50:07.625Z"
     }
   },
-  "built_at": "2026-08-18T16:51:01.626Z",
+  "built_at": "2026-08-19T00:50:07.625Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-18-76810232",
+    "last_batch_id": "fresh-2026-08-19-e5fef6f6",
     "last_batch_tier": 1
   }
 }
