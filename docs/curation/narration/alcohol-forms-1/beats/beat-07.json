@@ -1,0 +1,218 @@
+{
+  "schema": "narration-beat/1",
+  "beat_id": "beat-07",
+  "level": 3,
+  "foray_id": "alcohol-forms-1",
+  "thread_id": "T2-sugar-unlock",
+  "spine_beat": 7,
+  "spine_heading": "Malting is tricking the grain into digesting itself",
+  "coverage_verdict": "empty",
+  "mode": "carry",
+  "provenance": "carry-by-default",
+  "share_pct": 2.0,
+  "heard_audio": null,
+  "rejection_reason": null,
+  "establishes": [
+    "malting-is-germinate-then-arrest",
+    "grain-supplies-its-own-amylase",
+    "kiln-is-the-flavour-step",
+    "mash-temperature-is-a-dial"
+  ],
+  "assumes": [
+    "conversion-step-required-for-starch",
+    "locked-sugar-feedstocks",
+    "yeast-ferments-simple-sugars"
+  ],
+  "numeric_facts": ["C7.5:alpha-amylase 63-70 C", "C7.5:beta-amylase 55-65 C"],
+  "sentences": [
+    { "text": "The European and Middle Eastern answer uses the grain's own machinery.", "licence": "head", "claims": [] },
+    { "text": "A resting barley grain already holds one starch-cutting enzyme, beta-amylase, in an inactive form.", "licence": "claim", "claims": ["C7.2"] },
+    { "text": "Germination wakes that one and produces the enzymes that will break the grain's starch down.", "licence": "claim", "claims": ["C7.1"] },
+    { "text": "Steep the barley.", "licence": "claim", "claims": ["C7.1"] },
+    { "text": "Let it sprout until the enzymes peak.", "licence": "claim", "claims": ["C7.1"] },
+    { "text": "Then kiln it, which dries the grain and halts the germination.", "licence": "claim", "claims": ["C7.3"] },
+    { "text": "The maltster's whole trick is to allow the sprouting and then stop it.", "licence": "claim", "claims": ["C7.1"] },
+    { "text": "What the maltster is harvesting is enzymes, not flavour.", "licence": "claim", "claims": ["C7.1"] },
+    { "text": "Flavour and colour arrive in the kiln instead, through the Maillard reaction.", "licence": "claim", "claims": ["C7.4"] },
+    { "text": "Then a brewer or a distiller picks a mash temperature, and that choice is a dial with a predictable output.", "licence": "claim", "claims": ["C7.5"] },
+    { "text": "Alpha-amylase peaks between sixty-three and seventy degrees Celsius.", "licence": "claim", "claims": ["C7.5"] },
+    { "text": "Beta-amylase peaks lower, between fifty-five and sixty-five.", "licence": "claim", "claims": ["C7.5"] },
+    { "text": "The two bands nearly overlap, so a single rest usually runs both enzymes at once.", "licence": "claim", "claims": ["C7.5"] },
+    { "text": "Where inside that window the rest sits decides how much of the sugar the yeast can eat.", "licence": "claim", "claims": ["C7.5"] },
+    { "text": "Rest hot and alpha-amylase leaves more sugar the yeast cannot use, so the drink finishes fuller and sweeter.", "licence": "claim", "claims": ["C7.5"] },
+    { "text": "Rest cool instead and the same grain finishes thinner and drier.", "licence": "claim", "claims": ["C7.5"] },
+    { "text": "That is a production step behaving like a dial rather than a ritual.", "licence": "claim", "claims": ["C7.6"] }
+  ],
+  "claims": [
+    {
+      "claim_id": "C7.1",
+      "text": "Malting is steeping, germinating and drying grain; the enzymes produced during germination are what break the starch down for the brewer or distiller, and the maltster stops germination when the required enzymes are optimal.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-malting",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Malting",
+          "url": "https://en.wikipedia.org/wiki/Malting",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Malting&oldid=1367553472",
+          "revision": "1367553472",
+          "retrieved": "2026-08-19",
+          "quote": "Malting is the process of steeping, germinating, and drying grain to convert it into malt."
+        },
+        {
+          "source_id": "wp-malting",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Malting",
+          "url": "https://en.wikipedia.org/wiki/Malting",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Malting&oldid=1367553472",
+          "revision": "1367553472",
+          "retrieved": "2026-08-19",
+          "quote": "Germination and sprouting involve a number of enzymes to produce the changes from seed to seedling and the malt producer stops this stage of the process when the required enzymes are optimal."
+        },
+        {
+          "source_id": "wp-malting",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Malting",
+          "url": "https://en.wikipedia.org/wiki/Malting",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Malting&oldid=1367553472",
+          "revision": "1367553472",
+          "retrieved": "2026-08-19",
+          "quote": "The enzymes produced during germination are needed to break down the starch for the brewer or distiller during the mashing process."
+        }
+      ]
+    },
+    {
+      "claim_id": "C7.2",
+      "text": "Beta-amylase is present in an inactive form prior to seed germination, and it acts on starch to produce maltose.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-beta-amylase",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "β-Amylase",
+          "url": "https://en.wikipedia.org/wiki/Beta-amylase",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Beta-amylase&oldid=1353198068",
+          "revision": "1353198068",
+          "retrieved": "2026-08-19",
+          "quote": "β-amylase is present in an inactive form prior to seed germination."
+        },
+        {
+          "source_id": "wp-beta-amylase",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "β-Amylase",
+          "url": "https://en.wikipedia.org/wiki/Beta-amylase",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Beta-amylase&oldid=1353198068",
+          "revision": "1353198068",
+          "retrieved": "2026-08-19",
+          "quote": "This enzyme acts on starch, glycogen and related polysaccharides and oligosaccharides producing beta-maltose by an inversion."
+        }
+      ]
+    },
+    {
+      "claim_id": "C7.3",
+      "text": "Kilning reduces the grain's moisture content and stops the germination process.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-malting",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Malting",
+          "url": "https://en.wikipedia.org/wiki/Malting",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Malting&oldid=1367553472",
+          "revision": "1367553472",
+          "retrieved": "2026-08-19",
+          "quote": "Kilning reduces the grain moisture content and stops the germination process."
+        }
+      ]
+    },
+    {
+      "claim_id": "C7.4",
+      "text": "The high temperatures of kilning produce the colour in the malt through the Maillard reaction.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-malting",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Malting",
+          "url": "https://en.wikipedia.org/wiki/Malting",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Malting&oldid=1367553472",
+          "revision": "1367553472",
+          "retrieved": "2026-08-19",
+          "quote": "The high temperatures of kilning also produce the colour in the malt through the Maillard reaction."
+        }
+      ]
+    },
+    {
+      "claim_id": "C7.5",
+      "text": "Peak activity for alpha-amylase is 63-70 °C and for beta-amylase 55-65 °C, so the two rests are often performed at once, with the time and temperature of the rest determining the ratio of fermentable to non-fermentable sugars in the wort; a hotter rest gives a fuller-bodied, sweeter beer.",
+      "tier": "2",
+      "tier_reason": "quantitative — two temperature bands the listener is expected to retain",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-mashing",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Mashing",
+          "url": "https://en.wikipedia.org/wiki/Mashing",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Mashing&oldid=1366554333",
+          "revision": "1366554333",
+          "retrieved": "2026-08-19",
+          "quote": "Because of the closeness in temperatures of peak activity of an α-amylase (63-70 °C) and β-amylase (55-65 °C), the two rests are often performed at once with the time and temperature of the rest determining the ratio of fermentable to non-fermentable sugars in the wort and, hence, the final sweetness of the fermented drink."
+        },
+        {
+          "source_id": "wp-mashing",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Mashing",
+          "url": "https://en.wikipedia.org/wiki/Mashing",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Mashing&oldid=1366554333",
+          "revision": "1366554333",
+          "retrieved": "2026-08-19",
+          "quote": "A hotter rest results in a fuller-bodied, sweeter beer as α-amylase produces more non-fermentable sugars."
+        }
+      ]
+    },
+    {
+      "claim_id": "C7.6",
+      "text": "Mash temperature is a production step whose output is predictable from the setting, rather than a fixed traditional procedure.",
+      "tier": "1",
+      "support": "inference",
+      "inferred_from": ["C7.5", "C7.1"],
+      "reasoning": "C7.5 gives the causal mechanism — where the rest sits decides the sugar ratio and therefore the finished sweetness. C7.1 gives what makes the choice available at all: malting hands the brewer a stock of enzymes rather than a finished sugar. The characterisation of that as a dial rather than a ritual is the editorial point the beat exists to make, and it is recorded as an inference because no span states it."
+    },
+    {
+      "claim_id": "C7.7",
+      "text": "Alpha-amylase denatures above 78 °C, so the mash-out temperature rarely exceeds it and starch extracted above it cannot be broken down.",
+      "tier": "2",
+      "tier_reason": "quantitative",
+      "support": "quoted",
+      "spoken": false,
+      "not_spoken_reason": "Cut by narration-craft §5d's cap of three numeric facts per narration item, not for relevance or for want of a source. Item T2-A already carries three (the four routes at C6.12, and the two temperature bands at C7.5). Kept in the record so the reference surface is complete and so a later item split can spend it. This is the concrete cost cited in narration-architecture.md §9.",
+      "sources": [
+        {
+          "source_id": "wp-mashing",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Mashing",
+          "url": "https://en.wikipedia.org/wiki/Mashing",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Mashing&oldid=1366554333",
+          "revision": "1366554333",
+          "retrieved": "2026-08-19",
+          "quote": "Although mash temperature and viscosity are roughly inversely proportional, the ability of brewers and distillers to use this relationship is constrained by the fact that α-Amylase quickly denatures above 78 °C (172.4 °F). Any starches extracted once the mash is brought above this temperature cannot be broken down and will cause a starch haze in the finished product."
+        }
+      ]
+    }
+  ]
+}

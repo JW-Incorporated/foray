@@ -1,0 +1,258 @@
+{
+  "schema": "narration-beat/1",
+  "beat_id": "beat-06",
+  "level": 3,
+  "foray_id": "alcohol-forms-1",
+  "thread_id": "T2-sugar-unlock",
+  "spine_beat": 6,
+  "spine_heading": "The first and biggest question in the taxonomy is whether the sugar was already free",
+  "coverage_verdict": "empty",
+  "mode": "carry",
+  "provenance": "carry-by-default",
+  "share_pct": 2.0,
+  "heard_audio": null,
+  "rejection_reason": null,
+  "establishes": [
+    "yeast-ferments-simple-sugars",
+    "starch-is-a-glucose-polymer",
+    "conversion-step-required-for-starch",
+    "free-versus-locked-fork",
+    "free-sugar-feedstocks",
+    "locked-sugar-feedstocks",
+    "lactose-needs-an-unusual-yeast"
+  ],
+  "assumes": [
+    "fermentation-is-yeast-metabolism",
+    "ethanol-and-co2-are-the-products"
+  ],
+  "numeric_facts": ["C6.12:the four routes"],
+  "sentences": [
+    { "text": "Start with what a yeast can actually eat.", "licence": "head", "claims": [] },
+    { "text": "Yeast ferments simple sugars — glucose, fructose, and the sucrose it splits into those two.", "licence": "claim", "claims": ["C6.2"] },
+    { "text": "Starch is not one of them.", "licence": "claim", "claims": ["C6.1"] },
+    { "text": "It is a carbohydrate built from glucose units joined end to end in long chains.", "licence": "claim", "claims": ["C6.1"] },
+    { "text": "An enzyme called amylase has to cut those chains into sugars before a yeast can touch them.", "licence": "claim", "claims": ["C6.4", "C6.3"] },
+    { "text": "So the fermented world splits on one question, and it is the first question here.", "licence": "claim", "claims": ["C6.3"] },
+    { "text": "The question is whether the raw material offered its sugar already free, or stored it as starch.", "licence": "claim", "claims": ["C6.3"] },
+    { "text": "Grapes offer it free, as glucose and fructose, once the fruit ripens.", "licence": "claim", "claims": ["C6.7"] },
+    { "text": "Honey is mostly those same two sugars.", "licence": "claim", "claims": ["C6.8"] },
+    { "text": "Cane stores sucrose.", "licence": "claim", "claims": ["C6.9"] },
+    { "text": "Palm sap runs sweet before anything ferments it.", "licence": "claim", "claims": ["C6.10"] },
+    { "text": "Milk sits on the free-sugar side too, though its sugar is one most brewing yeast cannot grow on.", "licence": "claim", "claims": ["C6.6"] },
+    { "text": "Barley, wheat and rye do not offer it free.", "licence": "claim", "claims": ["C6.5"] },
+    { "text": "Neither does rice, and neither does maize.", "licence": "claim", "claims": ["C6.5"] },
+    { "text": "Crushed grapes will ferment on their own, because the yeast is already on the skins and the sugar is already sugar.", "licence": "claim", "claims": ["C6.11"] },
+    { "text": "A barley field doesn't become beer without a person doing something specific to it first.", "licence": "claim", "claims": ["C6.5"] },
+    { "text": "That asymmetry is the fork this whole subject is organised on.", "licence": "claim", "claims": ["C6.3"] },
+    { "text": "The step that unlocks the locked half is called conversion, and there are four ways to do it.", "licence": "signpost", "claims": ["C6.12"] }
+  ],
+  "claims": [
+    {
+      "claim_id": "C6.1",
+      "text": "Starch is a carbohydrate consisting of numerous glucose units joined by glycosidic bonds, in linear amylose and branched amylopectin chains.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-starch",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Starch",
+          "url": "https://en.wikipedia.org/wiki/Starch",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Starch&oldid=1368852455",
+          "revision": "1368852455",
+          "retrieved": "2026-08-19",
+          "quote": "Starch is a carbohydrate consisting of numerous glucose units joined by glycosidic bonds. This polysaccharide is produced by most green plants for energy storage. It consists of two types of molecules: the linear and helical amylose and the branched amylopectin."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.2",
+      "text": "Ethanol fermentation converts simple sugars — glucose, fructose and sucrose — into ethanol and carbon dioxide, and sucrose is first cleaved into glucose and fructose by invertase.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-ethanol-fermentation",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Ethanol fermentation",
+          "url": "https://en.wikipedia.org/wiki/Ethanol_fermentation",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Ethanol_fermentation&oldid=1357691718",
+          "revision": "1357691718",
+          "retrieved": "2026-08-19",
+          "quote": "Ethanol fermentation, also called alcoholic fermentation, is a biological process which converts sugars such as glucose, fructose, and sucrose into cellular energy, producing ethanol and carbon dioxide as by-products. In the first step of alcoholic fermentation, the enzyme invertase cleaves the glycosidic linkage between the glucose and fructose molecules."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.3",
+      "text": "Starch must be hydrolysed into sugars by an amylase before yeast can ferment it, so a feedstock storing starch requires a conversion step that a feedstock offering free sugar does not.",
+      "tier": "1",
+      "support": "inference",
+      "inferred_from": ["C6.1", "C6.2", "C6.4", "C6.5"],
+      "reasoning": "C6.2 gives the substrates fermentation actually consumes (simple sugars). C6.1 gives starch as a polymer of those units rather than one of them. C6.4 gives amylase as the enzyme that hydrolyses starch to sugars. C6.5 gives the practice: grain starch is fermented only after amylase has converted it. No single fetched span states the fork itself, so the fork is recorded as an inference from four spans rather than asserted as sourced."
+    },
+    {
+      "claim_id": "C6.4",
+      "text": "Amylase is an enzyme that catalyses the hydrolysis of starch into sugars.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-amylase",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Amylase",
+          "url": "https://en.wikipedia.org/wiki/Amylase",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Amylase&oldid=1368597304",
+          "revision": "1368597304",
+          "retrieved": "2026-08-19",
+          "quote": "An amylase () is an enzyme that catalyses the hydrolysis of starch (Latin amylum) into sugars."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.5",
+      "text": "Grain starch is fermented only after conversion to sugar by amylase, which is present in malted grain kernels, and unmalted grain and potato starch can be added because the same amylase acts on them.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-ethanol-fermentation",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Ethanol fermentation",
+          "url": "https://en.wikipedia.org/wiki/Ethanol_fermentation",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Ethanol_fermentation&oldid=1357691718",
+          "revision": "1357691718",
+          "retrieved": "2026-08-19",
+          "quote": "Grain starches that have been converted to sugar by the enzyme amylase, which is present in grain kernels that have been malted (i.e. germinated). Other sources of starch (e.g. potatoes and unmalted grain) may be added to the mixture, as the amylase will act on those starches as well."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.6",
+      "text": "Saccharomyces cerevisiae grows on glucose, maltose and trehalose and fails to grow on lactose, so milk sugar needs a yeast other than the standard brewing species.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-s-cerevisiae",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Saccharomyces cerevisiae",
+          "url": "https://en.wikipedia.org/wiki/Saccharomyces_cerevisiae",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Saccharomyces_cerevisiae&oldid=1369045673",
+          "revision": "1369045673",
+          "retrieved": "2026-08-19",
+          "quote": "cerevisiae can grow aerobically on glucose, maltose, and trehalose and fail to grow on lactose and cellobiose."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.7",
+      "text": "Grapes accumulate sucrose which is hydrolysed into glucose and fructose during ripening, and the phloem supplies the berry with soluble glucose and fructose after ripening begins.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-grape",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Grape",
+          "url": "https://en.wikipedia.org/wiki/Grape",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Grape&oldid=1355964656",
+          "revision": "1355964656",
+          "retrieved": "2026-08-19",
+          "quote": "Grapes accumulate sugars as they grow on the grapevine through the transportation of sucrose molecules that are produced by photosynthesis from the leaves. During ripening the sucrose molecules are hydrolyzed (separated) into glucose and fructose."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.8",
+      "text": "Honey is sweet because of high concentrations of the monosaccharides fructose and glucose.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-honey",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Honey",
+          "url": "https://en.wikipedia.org/wiki/Honey",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Honey&oldid=1365511306",
+          "revision": "1365511306",
+          "retrieved": "2026-08-19",
+          "quote": "Honey is sweet because of its high concentrations of the monosaccharides fructose and glucose."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.9",
+      "text": "Sugarcane stalks are rich in sucrose, which accumulates in the stalk internodes.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-sugarcane",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Sugarcane",
+          "url": "https://en.wikipedia.org/wiki/Sugarcane",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Sugarcane&oldid=1369371979",
+          "revision": "1369371979",
+          "retrieved": "2026-08-19",
+          "quote": "The plants are 2–7 m (6–20 ft) tall with stout, jointed, fibrous stalks that are rich in sucrose, which accumulates in the stalk internodes."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.10",
+      "text": "Palm sap is very sweet and non-alcoholic before it ferments.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-palm-wine",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Palm wine",
+          "url": "https://en.wikipedia.org/wiki/Palm_wine",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Palm_wine&oldid=1368758291",
+          "revision": "1368758291",
+          "retrieved": "2026-08-19",
+          "quote": "The white liquid that initially collects tends to be very sweet and non-alcoholic before it is fermented."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.11",
+      "text": "Yeast is naturally present on grape skins, so crushed fruit carries both its own fermentable sugar and its own inoculum.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-wine",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Wine",
+          "url": "https://en.wikipedia.org/wiki/Wine",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Wine&oldid=1369157660",
+          "revision": "1369157660",
+          "retrieved": "2026-08-19",
+          "quote": "Yeast is naturally present on grape skins, but most producers choose to use a specific strain for their predictable behaviour, allowing them to control the flavors produced."
+        }
+      ]
+    },
+    {
+      "claim_id": "C6.12",
+      "text": "The thread covers four routes by which starch or fructan is converted to fermentable sugar: germination (malting), a mould's secreted enzymes (koji and qu), salivary amylase (chewing), and heat.",
+      "tier": "1",
+      "support": "self",
+      "self_check": "thread.routes.length",
+      "spoken_number": 4,
+      "reasoning": "A count of the routes this thread actually establishes and sources, not a claim that four is the complete set of routes in the world. It is therefore checkable against the artifacts rather than against a source — the mechanism narration-craft.md §6a already allows for a synthesis Carry, applied to a number. The spine's beat 9 names a fifth route, purchased exogenous enzymes and acid hydrolysis, which is recorded BLOCKED at C9.6 for want of a fetched span; the spoken count is four and matches what the thread delivers. If C9.6 is ever sourced, thread.routes gains an entry and this check fails until the spoken number changes with it."
+    }
+  ]
+}

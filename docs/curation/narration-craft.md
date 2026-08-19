@@ -54,9 +54,12 @@ that document names the file.
 - **The complete 40-beat barbecue Foray, written honestly on today's coverage, is
   about 44 % narrator.** It is therefore not shippable as a Foray, and the number
   says so before anyone writes a word (§4b).
-- **A Patch or Carry must name a source out loud.** The narrator has no on-air
-  authority of its own, so an unattributed one is the product asserting on its own
-  credit, which it has not earned (§5f).
+- **A Patch or Carry must be sourced, and the source is never spoken.** Every
+  narrated claim carries a fetched, verbatim span at a pinned revision in the
+  accompanying text; reciting a citation on air is banned by founder ruling of
+  2026-08-19 (§5f, §6a R3). The narrator still has no on-air authority of its own,
+  so it calibrates instead — §5e's U5 names the class of evidence, never the
+  citation.
 - **The rejection test that actually catches fluent filler is the substitution test**
   (§6, R2): if the script would fit another beat of the same spine with only the
   proper nouns changed, it is filler, and it is rejected rather than trimmed.
@@ -461,8 +464,12 @@ its source. Three additions:
   *"later in the same interview"*, or the speaker's surname alone. Full
   re-attribution on every return costs 8–12 words each time, and by §4d that is real
   money.
-- **A Carry names the literature.** See §5f — this is the rule that separates an
-  honest narration beat from an assertion by an anonymous voice.
+- **A Carry stands on the literature, and does not read its spine label out.**
+  Revised 2026-08-19 with §5f and §6a R3: the citation moves to the accompanying
+  text, and what the script says out loud is the *class* of evidence (§5e's U5) plus
+  what the argument is actually about. That is still the rule separating an honest
+  narration beat from an assertion by an anonymous voice; what changed is that the
+  proof is now auditable rather than merely audible.
 
 ### 3e. Cross the distance once, and name only the axis that matters
 
@@ -504,12 +511,25 @@ Five rules on the mode:
 - **Correct the claim, never the speaker.** "That lineage is disputed" and "she has
   the etymology wrong" are the same fact and only one of them is publishable. The
   speakers did not consent to being in our Foray and they are not here to answer.
-- **A correction cites — always in the script, on air when it contradicts a person.**
-  The script always records where the other account comes from. It is named *on air*
-  when the correction contradicts a named speaker's stated position, and not when it
-  corrects an incidental point of fact such as an etymology, where an on-air citation
-  would cost more than the correction. A narrator that contradicts a named historian
-  on its own unsourced authority is the worst sentence the product can emit.
+- **A correction is always sourced, and the source is in the accompanying text.**
+  **Revised 2026-08-19, and this is the one place ruling 3 costs the product
+  something real.** The old rule read: "always in the script, on air when it
+  contradicts a person" — the citation recorded in the script, and spoken whenever the
+  correction contradicted a named speaker's stated position. Ruling 3 removes the
+  spoken half, in Correction as in every other mode.
+  The reason the old rule existed does not go away: **a narrator that contradicts a
+  named historian on its own unsourced authority is the worst sentence the product can
+  emit.** So the replacement is stricter in the two places it can be:
+  **(a)** a Correction that contradicts a named speaker is **tier 2** under
+  `narration-architecture.md` §6 — a factual claim about a named person — and therefore
+  needs a fetched span plus a second independent source or an explicit U3 framing;
+  **(b)** the script must name the *axis* of the disagreement and the class of evidence
+  behind it, in §5e's U3 or U5 form, so the listener hears that the correction rests on
+  something even though they do not hear what.
+  **This is genuinely weaker on air and it is a founder-facing consequence**, recorded
+  in `narration-architecture.md` §13 rather than smoothed over here. A correction whose
+  span cannot be fetched is not a correction: leave the tape unbounded and say so, or
+  do not use the tape.
 - **Bound rather than contradict where that is honest.** If the speaker's argument
   survives the correction, say what the correction is *about* rather than that they
   were wrong. §7a does this with beat 15's etymology: the syncretism argument stands,
@@ -968,6 +988,7 @@ is allowed.
 | **U2** | attributed | *"Adrian Miller's account of the newspaper record is that…"* | the claim is one scholar's, or is a reading of evidence |
 | **U3** | contested, with the axis named | *"How the transfer is traced is argued, and the argument is about how much weight comparative practice can bear."* | there is a real disagreement — name what it is about, not merely that it exists |
 | **U4** | **absent** | *"No recorded conversation reaches this argument at length."* | we looked and there is nothing |
+| **U5** | **evidence-class** | *"The reading rests on the genome rather than on any record."* | the claim is sourced but the reference may not be spoken (§6a R3). Name the **kind** of evidence; the citation is in the accompanying text. **U5 does not license flattening**: where the source itself says "some scholars believe", U3 is the weakest form the evidence supports and U5 may only accompany it, never replace it — the first draft of this row used an exemplar that made exactly that mistake |
 
 **U4 is permitted, and it is better than filling.** This is not a concession; it is the
 standard the spines already hold *tape* to. The barbecue spine on beat 1: "Tape that
@@ -991,6 +1012,17 @@ which means it manufactures authority out of nothing while sounding careful. **T
 is the fluency failure in a single phrase**, and it is the highest-yield thing to
 grep a script for.
 
+**U5 and the banned list are one word apart, so the line has to be written down.**
+*"Many historians believe"* has the grammatical shape of an attribution with the
+subject deleted, and there is nothing behind it a listener could go and check.
+*"Genomic work reads it as"* names a **method**, and behind it sits a fetched span
+in the accompanying text with a revision and a retrieval date on it. The test is
+mechanical from the artifact side: **a U5 sentence must be bound to a claim whose
+support is `quoted`, and the class of evidence it names must be the class the span
+actually is.** A U5 sentence with no span behind it is a banned hedge that has
+learned better vocabulary, and it is the most likely way a script evades R3 now
+that R3 no longer requires a spoken name.
+
 Note the asymmetry with the internal documents. Both spines write in the first person
 and say so plainly — "not a claim that such tape exists — I cannot know that" — and
 the coverage report does the same about its own predictions. That is correct for a
@@ -1004,26 +1036,49 @@ works on African and Caribbean transmission, on The Moreish Podcast."* Everett's
 *Title First*: the descriptive title comes before the listener has to do anything
 with the name. Show named once per source per Foray (§3d).
 
-**And then the rule this document most wants remembered:**
+**And then the rule this document most wants remembered. It was revised on
+2026-08-19 and the revision matters, so both versions are here.**
 
-> **Every Patch and every Carry names, out loud, at least one source it is standing
-> in for.**
+> **Superseded:** *"Every Patch and every Carry names, out loud, at least one
+> source it is standing in for."*
+>
+> **In force:** **Every Patch and every Carry is sourced — by a fetched, verbatim
+> span at a pinned revision, recorded in the accompanying text — and the source is
+> never spoken.**
 
-The reasoning is not politeness and it is not citation hygiene. **The narrator has no
-on-air authority of its own.** Every other voice in a Foray arrives with a show, a
-guest credit and a reason to be believed. A Carry item arrives with none of that, so
-an unattributed Carry is the product asserting on its own credit — credit it has not
-earned and has no mechanism for earning. It is also, exactly, what a padded beat
-sounds like, which is why this rule and §6's R3 are the same rule seen from two
-sides.
+The reasoning behind the superseded rule was not politeness and it was not citation
+hygiene, and **none of it has gone away.** **The narrator has no on-air authority of
+its own.** Every other voice in a Foray arrives with a show, a guest credit and a
+reason to be believed. A Carry item arrives with none of that, so an unsourced Carry
+is the product asserting on its own credit — credit it has not earned and has no
+mechanism for earning. It is also, exactly, what a padded beat sounds like, which is
+why this rule and §6's R3 are the same rule seen from two sides.
 
-For beats where no tape exists, the source named is the **literature**, and the
-coverage report usually says which: on barbecue beat 20, "the argument lives in
-Twitty and in Miller's own book"; the spine says "Twitty and Miller are the archetype
-of the register." So the Carry says so. **A Carry that names a book is doing
-something a podcast segment cannot do**, which is worth noticing — it is the one
-respect in which a narration beat is better than the tape it replaces, and it is the
-reason a Carry is a legitimate artefact rather than a patch over an absence.
+What changed is only **where the answer to that argument lives.** The founder's
+ruling is that references must never reach the listener's ear, so the answer moved
+off the air and into the accompanying surface
+(`narration-architecture.md` §8), where it is more auditable than a spoken name
+ever was: a span, verbatim, pinned to a revision, bound to the sentence that rests
+on it.
+
+**Two things the narrator must still do out loud, since the citation no longer
+does them.**
+
+- **Calibrate, through §5e's U5.** *"Genomic work reads it as…"* names the class of
+  evidence, which is what a listener can act on, and it is checkable against the
+  accompanying text. An assertion with no calibration and no source is the same
+  defect as before.
+- **Attribute tape.** Naming the speaker and show of adjacent tape is a different
+  rule (§3d, `segment-length-rules.md` X2) and is untouched.
+
+For beats where no tape exists, the evidence is the **literature**, and the coverage
+report usually says which: on barbecue beat 20, "the argument lives in Twitty and in
+Miller's own book"; the spine says "Twitty and Miller are the archetype of the
+register." **That literature is now cited in the accompanying text and summarised,
+un-cited, in the script** — *"the argument is made in print, and it is made from
+comparative practice, later testimony and archaeology rather than from documents."*
+A Carry can still do something a podcast segment cannot: it can stand on a book. It
+just may not read the spine label out.
 
 **Attribution slots are a hard generation gate.** A script with an unfilled speaker
 name — `[speaker: confirm from audio]` — must fail the dry run and must not be
@@ -1083,19 +1138,60 @@ attributes to nobody; and it contains no number, no mechanism and no name that t
 beat could not do without. §7b shows one and runs the test on it.
 
 Two cheap proxies for R2 that a checker could apply, both signals rather than
-verdicts: zero named sources in a Carry (that is R3 anyway), and zero of the beat's
-own evidence vocabulary — the "evidence that counts" paragraph of every spine beat is
+verdicts. **The first was rewritten on 2026-08-19 because ruling 3 broke it.** It used
+to be "zero named sources in a Carry"; under the new R3 *every* Carry has zero named
+sources, so the proxy was constant-true and therefore useless. Its replacement asks
+the same question of the record instead of the script: **a Carry whose claims are
+overwhelmingly `support: "inference"`, or which rests on one source for most of its
+spans, is very likely relocatable** — a script assembled from general reasoning rather
+than from this beat's own evidence. The second proxy is unchanged: **zero of the beat's
+own evidence vocabulary** — the "evidence that counts" paragraph of every spine beat is
 a ready-made keyword set, and a Carry that contains none of it is very likely
 relocatable.
 
 **R3 — the evidence test.**
-**Every factual assertion in any mode** is attributable to a named source **recorded in
-the script** — a Frame that supplies an antecedent is asserting it on the narrator's
-credit too, so the recorded-source half of this test is not confined to the long
-modes.
-**On-air naming** is what is confined to Patch and Carry, where at least one source is
-spoken (§5f). No source means the sentence is a banned hedge (§5e) or is cut. An
-unfilled attribution slot is a generation-blocking failure, not a warning.
+
+> **Every factual assertion in any mode is sourced and auditable. The source
+> lives in accompanying text and is never spoken.**
+
+Two halves, and they are separable in a way the first version of this test did
+not make them.
+
+**Sourced and auditable** is the half that carries R3's whole purpose, unchanged:
+*a claim whose evidence nobody can check is not asserted.* A Frame that supplies
+an antecedent is asserting it on the narrator's credit too, so this half is not
+confined to the long modes. Operationally it means what
+`narration-architecture.md` §7 requires: a **fetched, verbatim span at a pinned
+revision**, stored against the claim, so a checker can diff the claim's numbers
+against the span without re-researching anything — numbers mechanically, names by
+review, and `narration-architecture.md` §6a says why the second is not automated. **A citation an agent
+produced from memory does not satisfy R3** — that is the failure this test now
+exists to catch, and it is a different failure from citing a merely-decent
+source. Tertiary sources, Wikipedia included, are acceptable evidence
+(`narration-architecture.md` §6). No source at all means the sentence is a banned
+hedge (§5e) or is cut, and an unfilled attribution slot is still a
+generation-blocking failure rather than a warning.
+
+**Never spoken** is the half that changed, by founder ruling of 2026-08-19:
+*"It would be so terrible if the references were read aloud, they should all just
+be in some accompanying text."* So the earlier requirement that a Patch or Carry
+**name a source out loud** is withdrawn. A publication, an article or book title,
+a URL, a retrieval or a page number may not appear in a script in any mode.
+
+Three consequences worth stating, because withdrawing the spoken half removes a
+mechanism §5f was relying on:
+
+- **Attribution of tape is not a reference and stays spoken.** *"Adrian Miller, a
+  historian of Black foodways, on The Grill Coach"* is who the next voice is, and
+  `segment-length-rules.md` X1 and X2 require it. The rule above is about the
+  evidence for a **narrated** claim, not about who is about to talk.
+- **Calibration moves to U5**, the evidence-class form added in §5e: name the kind
+  of evidence, never the citation. This is what answers §5f's "the narrator has no
+  on-air authority" argument now that citation cannot.
+- **The synthesis exception, below, survives and generalises.**
+  `narration-architecture.md` §4b turns it into a support kind: a claim about the
+  Foray's own contents is verified against the artifacts (`support: "self"`), and
+  **a number checked against the artifacts is stronger than a cited one.**
 
 **One exception, and it is narrow: the synthesis Carry.** A beat whose claim is a
 conclusion drawn from the Foray's own preceding beats — alcohol beat 16, the
@@ -1449,8 +1545,20 @@ Miller**, which turns out to matter.
   archaeology", "how much weight that combination carries" and the three-inheritance
   structure are all specific to this beat's claim and to its named reject criterion.
   There is no other beat in the spine it fits.
-- **R3.** Two named sources, both spoken. Two named books. The evidentiary argument
-  attributed to the people who make it. No hedge without a subject.
+- **R3. This is the one place the 2026-08-19 ruling breaks a worked example, and it
+  is left broken on purpose.** As drafted it passed the old test perfectly — two named
+  sources, both spoken, two named books, the evidentiary argument attributed to the
+  people who make it, no hedge without a subject. Under R3 as it now stands the
+  sentence *"Michael Twitty and Adrian Miller argue the same thing about them, in The
+  Cooking Gene and in Black Smoke"* **fails**, because two book titles are a reference
+  and references are not spoken. The fix is one sentence and it loses nothing a
+  listener can use: *"Two writers who have worked the documentary record argue the
+  same thing about them, and they argue it in print"* — U5, with both books and their
+  page ranges in the accompanying text. Note what survives untouched: the third
+  paragraph's account of *what the evidence actually is* — comparative practice,
+  later testimony, archaeology, and the disagreement over how much weight the
+  combination carries — was always the part doing the epistemic work, and it needed no
+  citation to do it.
 - **R4.** It does not state beat 21's claim — beat 21 is about the labour system and
   about authorship, and nothing here trespasses on it. Checked, because a Carry that
   hands to tape is a Frame in its last sentence and inherits the spoiler rule.
@@ -1700,7 +1808,7 @@ have one.
 | The **Carry-budget formula** and the 240 / 780 / 1,360-character per-beat constants, reconciled against §4b (§4d) | |
 | **U1–U4** and the requirement to use the weakest form the evidence supports (§5e) | the standard is the spines' standard for tape; applying it to the narrator is ours |
 | The **banned-hedge and banned-adjective lists** | |
-| **Every Carry names a source out loud**, and the **synthesis-Carry exception** (§5f, R3) | |
+| **Every Patch and Carry is sourced in accompanying text and never on air** (§5f, R3), **U5 evidence-class attribution** (§5e), and the **synthesis-Carry exception** | the sourced half and the synthesis exception are ours. The never-on-air half is a **founder ruling** of 2026-08-19, not an invention of this document, and it superseded the original "names a source out loud" rule |
 | The **six-test rejection gate**, and **R2 the substitution test** in particular | |
 | **Unwritable** as a third verdict, and the escalation ladder (§6d) | |
 | **Carry-by-default vs Carry-by-design** (§2d) | |
@@ -1719,10 +1827,19 @@ have one.
   express. If the voice work concludes that several voices are worth their cost,
   §3d's attribution rules do not change — a second narrator voice is still a
   narrator, not a second authority.
+- **Who writes which lines, and who checks whom.** The three-level agent
+  architecture — dots, threads, beats — the machine-checkable form of a thread's
+  start and end criteria, the parent-checks-child review contract, the two-tier
+  source rule, and where references live now that they may not be spoken: all of it
+  is `docs/curation/narration-architecture.md`. That document is also where the
+  arithmetic lives for whether the alcohol spine is fundable as a tape-led product,
+  and the answer is no. Read it alongside §4 and §6 of this one.
 - **Script format, storage, generation, caching, idempotence.** The pipeline document
   owns them. The fields these rules imply, offered as input rather than as a schema:
-  `beat_id`, `mode`, a per-sentence `licence` from R1's list of six, `sources[]` with
-  a flag for which are named on air, unfilled `[slot]`s as a generation-blocking
+  `beat_id`, `mode`, a per-sentence `licence` from R1's list of six, `sources[]`
+  carrying a **fetched verbatim span with a pinned revision and a retrieval date** —
+  the "flag for which are named on air" this list used to ask for is withdrawn with
+  the rest of the on-air rule — unfilled `[slot]`s as a generation-blocking
   condition, a `heard_audio` boolean required wherever §3i applies, a
   `rejection_reason` that is never deleted, and an optional `pre_gap_sec` for act
   boundaries.

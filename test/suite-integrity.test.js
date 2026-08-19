@@ -251,6 +251,28 @@ const FLOORS = {
      boundary fixture itself passes with zero errors" is what stops every proof
      below it from becoming a demonstration that broken data is broken. */
   "tools/foray/check-forays.test.mjs": 110,
+  /* The narration evidence gate (#247, and the founder's citation rulings of
+     2026-08-19). Zero slack, and for a sharper reason than most suites here.
+
+     Three of its tests are the only mechanical defence in the repo against the
+     specific failure the founder named — an agent inventing a plausible fact:
+     "a number in a claim that appears in none of its fetched spans", "a claim
+     whose text carries a digit cannot declare tier 1", and "a tier 2 claim may
+     not rest on inference". Delete them and the pipeline still runs, still goes
+     green, and starts asserting figures nobody fetched, in the house voice, at
+     the right length. `narration-craft.md` §6e is the reason that is not
+     recoverable downstream: bad narration does not announce itself.
+
+     Two more are the only enforcement of ruling 3, that references are never
+     read aloud: "reference apparatus may not appear in a spoken line" and its
+     bare-domain/page-citation twin.
+
+     And the fixture is deliberately the real committed artifacts rather than a
+     hand-built one, because a hand-built narration fixture is precisely the
+     "more forgiving than the thing it stood for" shape this file's own header
+     warns about. That coupling is a feature: these tests fail if the committed
+     thread stops being clean. */
+  "tools/foray/check-narration.test.mjs": 49,
   /* The narration pipeline's dry run (#247). Zero slack. Two of its tests are
      the only things standing between this repo and a paid API call: one asserts
      `synthesize()` refuses without a key, and one greps every `.mjs` in

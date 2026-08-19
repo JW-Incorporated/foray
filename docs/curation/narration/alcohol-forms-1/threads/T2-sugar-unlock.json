@@ -1,0 +1,137 @@
+{
+  "schema": "narration-thread/1",
+  "thread_id": "T2-sugar-unlock",
+  "level": 2,
+  "foray_id": "alcohol-forms-1",
+  "dot_id": "D1",
+  "title": "The first fork: was the sugar already free, or locked in starch?",
+  "spine_beats": [6, 7, 8, 9],
+  "structure": "chain",
+  "coverage": {
+    "strong": 0,
+    "thin": 0,
+    "empty": 4,
+    "tape_sec": 0,
+    "note": "All four beats come back empty in docs/curation/alcohol-forms-coverage.md. Beat 7's single candidate is rejected there as wrong on the mechanism. This thread has no tape at all, so its narration share is 100% by construction and no ratio rule can be satisfied locally — see narration-architecture.md §9."
+  },
+  "share_pct": 6.9,
+  "share_sec_at_150min": 621,
+  "routes": [
+    "malting-is-germinate-then-arrest",
+    "mould-route-secretes-enzymes",
+    "salivary-amylase-route",
+    "heat-route-for-fructans"
+  ],
+  "routes_note": "The routes this thread actually delivers with a fetched span behind them. beat-06's spoken count (C6.12, support 'self') is checked against the length of this array, so the number the listener hears cannot drift from the number of routes the artifacts contain. A fifth route is blocked at C9.6.",
+
+  "start_criteria": [
+    {
+      "id": "S1",
+      "polarity": "requires",
+      "holds": "The listener can state that fermentation is a yeast consuming sugar and excreting ethanol and carbon dioxide.",
+      "established_by": "beat-02",
+      "key": "fermentation-is-yeast-metabolism",
+      "check": "beat-02.establishes contains 'fermentation-is-yeast-metabolism'. Until beat-02 exists this is an OPEN start criterion and the thread ships with a recorded dependency, not with an assumption."
+    },
+    {
+      "id": "S2",
+      "polarity": "requires",
+      "holds": "The listener knows a fermentation stalls between 14 and 16 per cent ABV.",
+      "established_by": "beat-05",
+      "key": "fermentation-ceiling-14-to-16",
+      "check": "beat-05.establishes contains 'fermentation-ceiling-14-to-16'. Load-bearing: beat-08's claim that sake exceeds a simple mash's reach is unintelligible without it, and beat-08.assumes names it."
+    },
+    {
+      "id": "S3",
+      "polarity": "forbids",
+      "holds": "The listener has NOT yet been told what starch is, what an enzyme does, or that any conversion step exists anywhere in the subject.",
+      "established_by": null,
+      "key": "conversion-step-required-for-starch",
+      "check": "No beat with spine_beat < 6 lists 'starch-is-a-glucose-polymer' or 'conversion-step-required-for-starch' in establishes. This is a NEGATIVE start criterion and it is the one that does real work: it is what licenses beat-06 to spend eleven seconds defining starch, and it is what would be violated if an upstream beat quietly explained starch first, leaving beat-06 repeating it."
+    },
+    {
+      "id": "S4",
+      "polarity": "requires",
+      "holds": "The listener knows the products of the reaction are ethanol and carbon dioxide.",
+      "established_by": "beat-02",
+      "key": "ethanol-and-co2-are-the-products",
+      "check": "beat-02.establishes contains 'ethanol-and-co2-are-the-products'. beat-06 names it in assumes; every key a child assumes must be satisfied by an earlier beat or declared here, which is what stops a thread from quietly resting on something nothing establishes."
+    }
+  ],
+
+  "end_criteria": [
+    {
+      "id": "E1",
+      "listener_can": "Given a named raw material — grape, honey, cane, palm sap, milk, barley, rice, maize, agave — say whether it needs a conversion step before a yeast can work on it.",
+      "check": "Every material in the list appears in some sentence of beats 6-9 on a stated side of the fork. Mechanical: the checker asserts each of the nine terms occurs in the thread's assembled script.",
+      "delivered_by": ["beat-06", "beat-09"]
+    },
+    {
+      "id": "E2",
+      "listener_can": "Name the conversion routes the thread delivers and say what supplies the amylase in each: the grain itself (malting), a mould (koji), the maker's saliva (chewing), and heat (agave, where there is no amylase at all).",
+      "check": "The count spoken at C6.12 equals the number of routes the thread's beats actually establish with support != 'blocked'. Mechanical: 'four' at C6.12 must equal |{malting, mould, saliva, heat}| = 4, and it must change if C9.6 (bought enzymes, currently blocked) is ever sourced.",
+      "delivered_by": ["beat-07", "beat-08", "beat-09"]
+    },
+    {
+      "id": "E3",
+      "listener_can": "State why the mould route reaches a strength the malt route cannot: conversion runs in parallel with fermentation, so the sugar arrives gradually rather than all at once.",
+      "check": "beat-08.establishes contains both 'parallel-conversion-and-fermentation' and 'sake-exceeds-the-simple-mash-ceiling', and the causal link between them is recorded at C8.6 with its support kind. Currently 'inference' — a reviewer reading this criterion must see that the causal step is ours and not a source's.",
+      "delivered_by": ["beat-08"]
+    },
+    {
+      "id": "E4",
+      "listener_can": "Predict one consequence of a mash temperature: a hotter rest leaves more sugar the yeast cannot use, so the drink finishes fuller and sweeter.",
+      "check": "beat-07.establishes contains 'mash-temperature-is-a-dial', and the direction of the prediction (hotter -> sweeter) appears verbatim inside a quoted span on C7.5. This is the criterion that catches a script that names the temperatures without saying what they buy.",
+      "delivered_by": ["beat-07"]
+    },
+    {
+      "id": "E5",
+      "listener_can": "NOT name any drink as a category yet. No beer, no sake, no tequila as families — those are Acts III and IV.",
+      "check": "NEGATIVE end criterion. The assembled script may name a drink only where it is the vehicle for a conversion mechanism (sake as the case of parallel fermentation, chicha as the case of salivary amylase, an agave spirit as the case of heat), never as a family being introduced. Mechanical proxy: no sentence in beats 6-9 carries a family-defining verb ('is made by', 'is a style of', 'belongs to the family'). Judgement beyond that, and it is the level-1 reviewer's call because only level 1 can see Act III.",
+      "delivered_by": []
+    }
+  ],
+
+  "out_of_scope": [
+    "Why fermentation stops (beat 5, upstream).",
+    "What the by-products taste like (beat 10, downstream) — beat 7's kiln sentence stops at colour and the Maillard reaction and does not reach flavour compounds.",
+    "Beer as a family, sake as a family, agave spirits as a family (Acts III and IV).",
+    "Apples and cider. The spine's beat 6 sentence lists apples among the free-sugar feedstocks; the fetched span at Wikipedia:Wine says most fruits other than grapes lack sufficient fermentable sugars and need winemaker intervention, and the spine's own beat 22 calls cider 'the same operation on a fruit that resists it'. Naming apples here without that caveat would license an inference beat 22 has to retract, so apples are handled at beat 22 and dropped from beat 6. Recorded, not silently cut."
+  ],
+
+  "items": [
+    {
+      "item_id": "T2-A",
+      "mode": "carry",
+      "beats": ["beat-06", "beat-07"],
+      "seam_sentences": [],
+      "seam_note": "No seam sentence authored. beat-06's closing signpost ('...called conversion, and there are four ways to do it') opens beat-07's head sentence ('The European and Middle Eastern answer...') without help. A seam sentence here would be a Hinge inside a single item, which is not a seam at all.",
+      "needs_review": false,
+      "long_reason": null
+    },
+    {
+      "item_id": "T2-B",
+      "mode": "carry",
+      "beats": ["beat-08", "beat-09"],
+      "seam_sentences": [],
+      "seam_note": "beat-08 ends on the parallel-conversion payoff; beat-09's head ('Two more routes...') counts on from it. §2e requires the second of two consecutive narration items to be shorter than the first, and it is.",
+      "needs_review": false,
+      "long_reason": null
+    }
+  ],
+
+  "merge_rationale": "narration-craft.md §2e requires adjacent empty beats in one chain to be authored as ONE item. Four beats at the §4d planning figure of ~80 s is ~320 s, well past the 180 s hard max, so the merge splits. The split is at the beat 7/8 boundary because that is where the claim changes owner: beats 6-7 are the fork and the answer that uses the plant's own enzymes; beats 8-9 are the answers that come from outside the plant. Splitting at 6/7 instead would put the fork alone in a ~71 s item and the three answers in one item measuring 181.8 s, which is 1.8 s PAST the 180 s hard max and would be rejected outright — and even if it fitted, three answers in one item reads as a list. The merge is performed HERE, at level 2, and not by the beat agents, because choosing a split point requires seeing all four beats at once — which is exactly what a level-3 agent cannot do.",
+
+  "known_violations": [
+    {
+      "rule": "narration-craft.md §5d, numbers: at most three numeric facts per narration item",
+      "status": "satisfied, but binding",
+      "detail": "Item T2-A carries exactly three: the four routes (C6.12) and the two temperature bands (C7.5). C7.7 — alpha-amylase denaturing above 78 °C — is sourced, relevant, and cut solely to stay inside the cap. See narration-architecture.md §9 for the recommendation this produces."
+    },
+    {
+      "rule": "narration-craft.md §2e, consecutive narration items: at most two in a row",
+      "status": "satisfied locally, fails in assembly",
+      "detail": "This thread is exactly two items, which is the cap. Beats 4, 5, 10 and 11 are also empty in the coverage report, so the real run in Act I is beats 4 through 11 — eight consecutive empty beats between beat 3's tape and beat 12's tape. Merged at the 180 s hard max that is a minimum of four consecutive narration items, twice the cap, and no choice made inside this thread can fix it. Escalated to level 1."
+    }
+  ]
+}
