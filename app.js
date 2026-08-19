@@ -454,9 +454,16 @@ function toggleStar(id) {
   });
 }
 
+/* `data-star` goes through esc() like every other interpolation (CLAUDE.md
+   § Conventions). It did not, and #276 is what made that reachable from STORAGE
+   rather than only from a fresh fetch: a playlist part's id is persisted in
+   `cp_playlists` and replayed into this attribute on every visit, so a feed value
+   that once broke out would keep breaking out. Escaping does not affect
+   toggleStar's `[data-star="…"]` lookup — the browser decodes the entity back to
+   the raw id before the selector ever sees it. */
 function starBtn(id) {
   const on = isSaved(id);
-  return `<button class="star ${on ? "on" : ""}" data-star="${id}" aria-label="Save">${on ? "★" : "☆"}</button>`;
+  return `<button class="star ${on ? "on" : ""}" data-star="${esc(id)}" aria-label="Save">${on ? "★" : "☆"}</button>`;
 }
 
 /* ---------- the four suggestions ---------- */
@@ -639,13 +646,19 @@ function prettyTitle(query) {
    At 39 B it is the cheapest field that does not rot.
 
    THE ARITHMETIC against savePlaylists' cap of 50 and SearchEngine.DEFAULT_CAP's
-   10 picks: 268 B a part → 2.7 KB of parts, plus a 0.5 KB `item_ids` mirror and
-   ~0.2 KB of metadata → ~3.4 KB a playlist, ~168 KB for a full 50 (from ~33 KB
-   before). A blanket self-sufficient copy would be ~861 B a part — ~430 KB — for
-   the worse failure mode above. This lands in DurableStore's localStorage tier,
-   where `cp_events` (5,000 entries) is already several times either figure, so
-   it is not the largest thing in there; and lsSet reports a refused write rather
-   than swallowing it, so a quota failure is recorded in storage health.
+   10 picks. Measured over all 1,534 items, the MEAN part is 268 B → 2.7 KB of
+   parts, plus a 0.5 KB `item_ids` mirror and ~0.2 KB of metadata → ~3.4 KB a
+   playlist, ~168 KB for a full 50 (from ~33 KB before). The WORST case is worth
+   naming rather than rounding away: the largest single part is 468 B, and 50
+   playlists of the ten longest-titled episodes in the catalogue come to ~252 KB.
+   A blanket self-sufficient copy would be ~861 B a part — ~430 KB — for the worse
+   failure mode above. This lands in DurableStore's localStorage tier, where
+   `cp_events` (5,000 entries) is already several times any of these figures, so it
+   is not the largest thing in there; and lsSet reports a refused write rather than
+   swallowing it, which buildPlaylist now ACTS on rather than discarding. All four
+   figures are asserted against the real catalogue in
+   test/playlist-durability.test.js, so widening the whitelist turns CI red rather
+   than this comment stale.
 
    `item_ids` STAYS, as a derived mirror, and that is deliberate rather than
    leftover: a listener whose service worker is still serving an older `app.js`
@@ -770,10 +783,18 @@ function playlists() {
     touched = true;
   }
   if (!Array.isArray(all)) return [];   // a store this app never wrote
+  /* An entry that is not an object is not a playlist, and dropping it is not data
+     loss — there is nothing in it to lose. It is also the only safe answer: SIX
+     places iterate this array (renderPlaylists, renderDrawer, playlistById,
+     touchPlaylistPlayed, savePlaylists and the remove button's filter), and a
+     `null` in it threw out of whichever ran first, blanking the list, the detail
+     view and the drawer together. Guarding one call site would have moved the
+     crash rather than removed it. */
+  const real = all.filter(p => p && typeof p === "object");
+  if (real.length !== all.length) { all = real; touched = true; }
   let cached = null;
   const sources = () => (cached ||= { pool: hydrationPool(), saved: savedMap() });
   for (const p of all) {
-    if (!p) continue;
     if (!p.title) { p.title = prettyTitle(p.query || ""); touched = true; }
     if (hydratePlaylistParts(p, sources)) touched = true;
   }

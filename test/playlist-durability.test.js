@@ -385,17 +385,33 @@ test("a full store of 50 playlists stays inside its stated storage budget", () =
   const m = mount();
   const cap = m.evalIn("SearchEngine.DEFAULT_CAP");
   assert.strictEqual(cap, 10, "the arithmetic below is stated against a 10-pick playlist");
+  /* Measured over the WHOLE catalogue rather than its first ten rows, and with the
+     worst case separated from the mean — the first draft sampled `slice(0, 10)` and
+     left 49% slack against its own stated figure, so adding `hook` (97 B) or
+     `duration_sec` (20 B) would have passed the budget it claimed to defend. The
+     ceilings below are tight enough that either one goes red. */
   const real = readJson("data/discover.json").items;
-  const parts = real.slice(0, cap).map((it) => m.ctx.playlistPart(it));
-  const perPart = JSON.stringify(parts).length / cap;
-  assert.ok(perPart < 400, `a part serialises to ${Math.round(perPart)} B; the budget is 400`);
+  const sizes = real.map((it) => JSON.stringify(m.ctx.playlistPart(it)).length);
+  const mean = sizes.reduce((a, b) => a + b, 0) / sizes.length;
+  assert.ok(mean < 285, `the mean part is ${mean.toFixed(0)} B against a documented 268; the budget is 285`);
+  assert.ok(Math.max(...sizes) < 500, `the largest part is ${Math.max(...sizes)} B; the budget is 500`);
 
-  const one = m.ctx.withMirror({
+  const playlistOf = (parts) => m.ctx.withMirror({
     id: "q1", query: "a query somebody typed", title: "A Query Somebody Typed",
     items: parts, created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
   });
-  const total = JSON.stringify(Array.from({ length: 50 }, () => one)).length;
-  assert.ok(total < 220 * 1024, `50 playlists serialise to ${Math.round(total / 1024)} KB; the budget is 220 KB`);
+  const fifty = (parts) => JSON.stringify(Array.from({ length: 50 }, () => playlistOf(parts))).length;
+
+  /* The typical full store, which is the ~168 KB app.js documents. */
+  const typical = fifty(real.slice(0, cap).map((it) => m.ctx.playlistPart(it)));
+  assert.ok(typical < 180 * 1024, `50 typical playlists are ${(typical / 1024).toFixed(0)} KB; the budget is 180 KB`);
+
+  /* And the true worst case: 50 playlists of the ten longest-titled episodes in the
+     catalogue. ~252 KB, which is the number to compare against a browser quota. */
+  const longest = [...real].sort((a, b) =>
+    JSON.stringify(m.ctx.playlistPart(b)).length - JSON.stringify(m.ctx.playlistPart(a)).length).slice(0, cap);
+  const worst = fifty(longest.map((it) => m.ctx.playlistPart(it)));
+  assert.ok(worst < 270 * 1024, `the worst 50 are ${(worst / 1024).toFixed(0)} KB; the budget is 270 KB`);
 });
 
 test("the item_ids mirror tracks items on every write, so an older app.js cannot read a lie", () => {
@@ -445,6 +461,20 @@ test("items is authoritative: a mirror that disagrees is repaired, not believed"
   const [p] = m.ctx.playlists();
   assert.deepStrictEqual([...p.item_ids], parts.map((x) => x.id), "the mirror must be corrected");
   assert.deepStrictEqual([...m.playlistsRaw()[0].item_ids], parts.map((x) => x.id), "and the correction persisted");
+
+  /* ORDER, not just length. The ghost mirror above is longer, so a repair that only
+     compared `length` would pass it — and order is the whole point of a mirror an
+     older app.js counts positions from. This one is the right length and wrong. */
+  const swapped = mount();
+  setPool(swapped, [poolItem(1), poolItem(2)]);
+  swapped.ctx.fullPool();
+  swapped.store.set("cp_playlists", JSON.stringify([{
+    id: "q1", title: "T", items: parts, item_ids: [parts[1].id, parts[0].id],
+    created: "2026-08-18T00:00:00.000Z",
+  }]));
+  swapped.ctx.playlists();
+  assert.deepStrictEqual([...swapped.playlistsRaw()[0].item_ids], parts.map((x) => x.id),
+    "a same-length mirror in the wrong order must still be repaired");
   m.ctx.renderPlaylists();
   assert.ok(m.view().includes("2 parts"), `the list must count items: ${/\d+ parts/.exec(m.view())}`);
   m.ctx.renderPlaylistDetail("q1");
@@ -633,14 +663,24 @@ test("the page says what happened, once, and says nothing when nothing is missin
      polish.
 
      MUTATION: delete `${partsNote(rows)}` from the template. This fails.
-     MUTATION 2: emit it unconditionally. The all-live assertion fails. */
+     MUTATION 2: emit it unconditionally. The all-live assertion fails.
+
+     The note is asserted through `partsNote` output rather than by fishing for a
+     substring in the page: the first draft looked for `1 part is not in Foray's
+     catalogue` in the RENDERED html, where `esc()` has already turned the
+     apostrophe into `&#39;`, so that disjunct could never match and the whole
+     assertion was carried by `includes("not in Foray")` — which archivedRow's own
+     caption satisfies. It passed with partsNote returning anything at all. */
   const m = mount();
   const withGaps = withArchivedPart(m, { extraStub: true });
   const notes = (withGaps.match(/class="note"/g) || []).length;
   assert.strictEqual(notes, 1, "one note, not one per missing part");
-  assert.ok(/1 part is not in Foray's catalogue right now/.test(m.ctx.esc(withGaps)) || withGaps.includes("not in Foray"),
-    "the note must name the shortfall");
-  assert.ok(withGaps.includes("home screen"), "and say what can be done about it");
+  const noteText = /<p class="note">([\s\S]*?)<\/p>/.exec(withGaps)[1];
+  assert.match(noteText, /^1 part is not in Foray&#39;s catalogue right now/,
+    `the note must open by naming the shortfall: ${noteText}`);
+  assert.match(noteText, /1 part was saved before Foray kept episode details/,
+    `and name the unnameable one too: ${noteText}`);
+  assert.match(noteText, /home screen/, "and say what can be done about it");
 
   const m2 = mount();
   const items = setPool(m2, [poolItem(1), poolItem(2)]);
@@ -659,22 +699,38 @@ test("the new copy follows the repo's rules: no exclamation, no blame, an actual
      the strings are generated in three plural branches, so a reviewer reads one
      of them and the listener with two missing parts reads another.
 
-     MUTATION: write "you saved this before…" or add an exclamation mark. */
+     MUTATION 1: write "you saved this before…" or add an exclamation mark.
+     MUTATION 2: pluralise a noun without its verb — `${one ? "" : "s"}` on `part`
+     while leaving `return` alone, which is exactly what the first draft did and
+     shipped "if the episode return" to every listener with one gap. The
+     verb-agreement assertions below are what catch it, and they are why this test
+     exercises the SINGULAR branch as carefully as the plural one. */
   const m = mount();
   const rows = [
     { item: { id: "a", title: "A", show: "S" }, part: {}, state: "archived" },
     { item: { id: "b", title: "B", show: "S" }, part: {}, state: "archived" },
     { item: { id: "c" }, part: {}, state: "unnamed" },
+    { item: { id: "d" }, part: {}, state: "unnamed" },
   ];
-  const two = m.ctx.partsNote(rows);
-  const one = m.ctx.partsNote(rows.slice(1));
-  for (const note of [one, two]) {
+  const many = m.ctx.partsNote(rows);
+  const single = m.ctx.partsNote([rows[1], rows[2]]);
+  for (const note of [single, many]) {
     assert.ok(!note.includes("!"), `no exclamation marks: ${note}`);
     assert.ok(!/\byou (saved|built|did|chose)\b/i.test(note), `no blaming the listener: ${note}`);
   }
-  assert.ok(two.includes("2 parts are not"), `plural must agree: ${two}`);
-  assert.ok(one.includes("1 part is not"), `singular must agree: ${one}`);
-  assert.ok(two.includes("podcast app"), "an archived part must be given somewhere to go");
+  assert.match(many, /2 parts are not/, `plural must agree: ${many}`);
+  assert.match(single, /1 part is not/, `singular must agree: ${single}`);
+  /* Verb agreement, both branches, because this is the one that shipped wrong. */
+  assert.match(single, /1 part was saved before/, `singular verb: ${single}`);
+  assert.match(single, /if the episode returns to the catalogue/, `singular verb: ${single}`);
+  assert.match(many, /2 parts were saved before/, `plural verb: ${many}`);
+  assert.match(many, /if the episodes return to the catalogue/, `plural verb: ${many}`);
+  assert.ok(!/episode return\b/.test(single), `"the episode return" is not English: ${single}`);
+  assert.match(many, /podcast app/, "an archived part must be given somewhere to go");
+  /* And it must not promise something buildPlaylist does not do: rebuilding mints
+     a NEW playlist and leaves this one alone, stubs included. */
+  assert.ok(!/replaces/.test(many), `rebuilding does not replace this playlist: ${many}`);
+  assert.match(many, /gives you a fresh one/, `say what rebuilding actually does: ${many}`);
 });
 
 test("an archived title is escaped, so a hostile feed cannot reach the page through a saved playlist", () => {
@@ -683,12 +739,45 @@ test("an archived title is escaped, so a hostile feed cannot reach the page thro
      Storage is also a longer-lived injection vector than a fetch: this string was
      written weeks ago and is replayed on every visit.
 
-     MUTATION: interpolate `item.title` or `item.show` raw in archivedRow. */
+     Every interpolation in the new row is covered, not just the two obvious ones:
+     a mutation round found that dropping `esc()` from the href, from `data-ep` or
+     from `data-ctx` all survived the first draft, because the only assertions were
+     on title and show.
+
+     MUTATION 1: interpolate `item.title` or `item.show` raw in archivedRow.
+     MUTATION 2: drop `esc()` (or `safeUrl()`) from the row's `href`.
+     MUTATION 3: drop `esc()` from `data-ep` or `data-ctx`. */
   const m = mount();
   const html = withArchivedPart(m, { over: { title: `<img src=x onerror="alert(1)">`, show: `"><script>alert(2)</script>` } });
   assert.ok(!html.includes("<img src=x"), "raw markup from a stored title reached the page");
   assert.ok(!html.includes("<script>alert(2)"), "raw markup from a stored show name reached the page");
   assert.ok(html.includes("&lt;img src=x"), "the title should be there, escaped");
+
+  /* The href, `data-ep` and `data-ctx`. A stored `apple_collection_id` goes
+     straight into the Apple URL, so it is an attribute-breakout vector even though
+     it looks like a number, and the id reaches both `data-ep` and that URL. Only
+     the archived part carries these values, so the whole page is the right scope —
+     an `on…=` handler anywhere in it means one of them escaped. */
+  const hostile = mount();
+  const rowHtml = withArchivedPart(hostile, {
+    over: { id: `ep" onmouseover="alert(3)`, apple_collection_id: `9" onfocus="alert(4)` },
+  });
+  /* The payload text survives either way — what must NOT survive is a RAW quote
+     ending the attribute, so the check is for `onmouseover="` with a real `"`
+     rather than for the words. `onmouseover=&quot;` is inert. */
+  assert.ok(!/onmouseover="/.test(rowHtml), `the id broke out of an attribute: ${rowHtml}`);
+  assert.ok(!/onfocus="/.test(rowHtml), `the collection id broke out of the href: ${rowHtml}`);
+  assert.ok(rowHtml.includes("&quot; onmouseover=&quot;"), "the id should be there, escaped");
+  assert.ok(rowHtml.includes("&quot; onfocus=&quot;"), "and so should the collection id");
+  /* And the star, which is the attribute this found the hard way: it interpolated
+     `data-star` raw, and a playlist part is the first STORED id to reach it. */
+  assert.match(rowHtml, /data-star="ep&quot; onmouseover=&quot;alert\(3\)"/, "data-star must be escaped");
+
+  /* NOT ASSERTED, and named so nobody writes a hollow test for it later: `safeUrl`
+     on this row cannot currently refuse anything, because `playLink` always builds
+     its own `https://` prefix, so no stored field can change the scheme. The
+     `safeUrl()` call is defensive against a future playLink, and a test pretending
+     to exercise it would pass with `safeUrl` deleted. */
 });
 
 test("an archived part keeps its star, and starring it makes it permanently recoverable", () => {
@@ -703,8 +792,15 @@ test("an archived part keeps its star, and starring it makes it permanently reco
      star is a no-op and this fails. MUTATION 2: drop `starBtn` from archivedRow —
      the control is unreachable, and the assertion on the rendered row fails, which
      is what stops the rest of this test from covering something a listener cannot
-     do. MUTATION 3: make the loop overwrite live entries — the live part loses its
-     audio_url and its play button, which the play-button test above catches. */
+     do.
+
+     A CLAIM THIS TEST USED TO MAKE AND DOES NOT: "make the loop overwrite live
+     entries and the live part loses its audio_url". That mutation kills nothing,
+     and cannot: the loop only touches rows `resolveParts` returned as `archived`,
+     and an archived row's id is by construction absent from the live pool, so
+     there is no live entry there to overwrite. The `!state.itemIndex[...]` guard is
+     belt-and-braces against a future caller, not a live defence — said plainly
+     rather than left as a mutation a reviewer would try and find dead. */
   const m = mount();
   const html = withArchivedPart(m);
   assert.ok(html.includes(`data-star="show-2--episode-2"`), "the archived row must offer the star");
@@ -730,10 +826,20 @@ test("opening an archived part still records the pick, so history and the played
      The topics it reports come from the seeded snapshot, which is the reachable
      justification for persisting `topics`.
 
-     MUTATION 1: drop `data-ev="picked"` (or `data-ep`) from archivedRow's link.
-     bindPickLogging never binds it and this fails.
-     MUTATION 2: drop `topics` from PLAYLIST_PART_FIELDS. The logged event reports
-     no topics and the last assertion fails. */
+     Two halves, asserted separately because the DOM stub cannot parse innerHTML:
+     the MARKUP carries the right attributes, and the REAL bindPickLogging, driven
+     with those attributes, does the four things that matter. The first draft
+     hand-rolled a `logEvent` call and claimed it was the handler, which covered
+     nothing — `touchPlaylistPlayed` in particular had no coverage at all.
+
+     MUTATION 1: drop `data-ev="picked"` or `data-ep` from archivedRow's link. The
+     markup assertion fails.
+     MUTATION 2: drop `topics` from PLAYLIST_PART_FIELDS. The handler reports no
+     topics and that assertion fails.
+     MUTATION 3: delete the itemIndex seeding loop. Same — the handler has no
+     snapshot to read topics from.
+     MUTATION 4: remove the `touchPlaylistPlayed` call from bindPickLogging. The
+     `last_played_at` assertion fails. */
   const m = mount();
   const html = withArchivedPart(m, { extraStub: true });
   assert.ok(/data-ev="picked" data-ep="show-2--episode-2" data-ctx="playlist-q1"/.test(html),
@@ -741,15 +847,16 @@ test("opening an archived part still records the pick, so history and the played
   /* The unnameable part has no link, so it must log nothing at all. */
   assert.ok(!html.includes(`data-ep="long-gone--episode"`), "there is nothing to open, so nothing to log");
 
-  /* And the wiring, through the real handler rather than the markup: bindPickLogging
-     reads the seeded snapshot, so the event carries the part's topics. */
-  m.ctx.logEvent("picked", {
-    episode_id: "show-2--episode-2",
-    topics: m.state.itemIndex["show-2--episode-2"].topics,
-    context: "playlist-q1",
-  });
-  const ev = JSON.parse(m.store.get("cp_events")).pop();
-  assert.deepStrictEqual(ev.payload.topics, ["science/physics"]);
+  clickPick(m, { ep: "show-2--episode-2", ctx: "playlist-q1" });
+
+  const ev = JSON.parse(m.store.get("cp_events")).filter((e) => e.type === "picked").pop();
+  assert.ok(ev, "the real handler logged no picked event");
+  assert.strictEqual(ev.payload.episode_id, "show-2--episode-2");
+  assert.deepStrictEqual(ev.payload.topics, ["science/physics"],
+    "the topics come from the seeded snapshot — this is what `topics` is persisted for");
+  assert.deepStrictEqual(JSON.parse(m.store.get("cp_history")), ["show-2--episode-2"],
+    "an archived part must still enter cp_history, or the played count regresses");
+  assert.ok(m.playlistsRaw()[0].last_played_at, "and the playlist must be marked as played");
 });
 
 test("the 'next' marker never lands on a part that cannot be opened in the app", () => {
@@ -929,6 +1036,123 @@ test("HEALING: a stub upgrades itself the day the pool carries that episode agai
   assert.strictEqual(after.items[0].title, "Episode 1 of something", "the stub never healed");
   assert.strictEqual(m.playlistsRaw()[0].items[0].title, "Episode 1 of something", "and it must be persisted");
   assert.deepStrictEqual({ ...after.items[2] }, { id: "long-gone--episode" }, "the others stay stubs");
+});
+
+test("A CORRUPT STORE COSTS ONE ROW, NOT THE WHOLE APP", () => {
+  /* `playlists()` feeds the list, the detail view AND the drawer, so anything that
+     throws out of it blanks all three — the permanent-blank failure the `item_ids`
+     mirror exists to prevent, arriving through the mirror repair itself. Verified
+     before the fix: `items: [null, …]` threw
+     `TypeError: Cannot read properties of null (reading 'id')`.
+
+     The second half is quieter and worse: a part with no `id` made the mirror
+     disagree forever, so EVERY read rewrote the entire store.
+
+     MUTATION 1: use `part.id` instead of `partId(part)` in the mirror comparison
+     or in either `map`. This throws and fails.
+     MUTATION 2: drop the `if (!Array.isArray(all)) return []` guard. `for…of` over
+     an object throws.
+     MUTATION 3: drop the non-object filter. `playlistById`'s `find` is the first of
+     six iterations of this array to throw on the null, and it takes the detail view,
+     the list and the drawer with it. */
+  const m = mount();
+  setPool(m, [poolItem(1)]);
+  m.ctx.fullPool();
+
+  m.store.set("cp_playlists", JSON.stringify([
+    null,
+    { id: "q1", title: "T", items: [null, { id: "show-1--episode-1", title: "Episode 1 of something" }] },
+    { id: "q2", title: "U", items: [{ title: "no id at all" }] },
+  ]));
+  const all = m.ctx.playlists();
+  /* The two real playlists survive; the `null` is discarded, because it is not a
+     playlist and there is nothing in it to lose. */
+  assert.strictEqual(all.length, 2, `the real playlists must survive: ${all.length}`);
+  assert.deepStrictEqual(all.map((p) => p.id), ["q1", "q2"]);
+  assert.strictEqual(m.playlistsRaw().length, 2, "and the cleaned store is persisted");
+  /* The rows still render, and the corrupt part is an unnameable row rather than a
+     crash — count and contents still agree, which is the invariant. */
+  m.ctx.renderPlaylistDetail("q1");
+  assert.strictEqual(rowCount(m.view()), 2);
+  assert.ok(m.view().includes("2 episodes"));
+  m.ctx.renderPlaylists();
+  assert.ok(m.view().includes("2 parts") && m.view().includes("1 parts"));
+
+  /* And the no-id row must be STABLE: read it repeatedly and the store is written
+     once, not once per read. */
+  const before = m.writes.filter((k) => k === "cp_playlists").length;
+  m.ctx.playlists();
+  m.ctx.playlists();
+  m.ctx.playlists();
+  assert.strictEqual(m.writes.filter((k) => k === "cp_playlists").length, before,
+    "a corrupt row must not make every read rewrite the whole store");
+});
+
+test("a playlist the device refuses to store is reported, not navigated to", () => {
+  /* `lsSet` has returned a boolean since #40 and `buildPlaylist` was discarding it,
+     so a store at quota produced a playlist the home screen navigated to and the
+     detail view rendered as "Playlist not found." — a dead end with no
+     explanation. Reachable now that a full store is ~168 KB rather than ~33 KB.
+
+     MUTATION: go back to ignoring savePlaylists' return value. `status` comes back
+     `ok` and this fails. */
+  const m = mount();
+  const items = setPool(m, Array.from({ length: 12 }, (_, i) => poolItem(i + 1)));
+  m.ctx.fullPool();
+  m.state.semantic = { concepts: {} };
+  m.state.itemTags = {};
+  m.store.set("cp_playlists", JSON.stringify([]));
+  const realSet = m.ctx.localStorage.setItem;
+  m.ctx.localStorage.setItem = (k, v) => {
+    if (k === "cp_playlists") { const e = new Error("QuotaExceededError"); e.name = "QuotaExceededError"; throw e; }
+    return realSet.call(m.ctx.localStorage, k, v);
+  };
+  /* Drive the builder the way the form does, with a query the synthetic pool
+     answers, and assert the refusal is surfaced rather than the playlist. */
+  const result = m.ctx.buildPlaylist("physics");
+  assert.strictEqual(result.status, "unsaved", `a refused write must be reported: ${result.status}`);
+  assert.deepStrictEqual([...(result.suggestions || [])], [],
+    "the home screen's else-branch reads suggestions, so it must be present");
+  assert.ok(!result.playlist, "and there must be no playlist to navigate to");
+  m.ctx.localStorage.setItem = realSet;
+  assert.ok(items.length > 0);
+});
+
+test("one read parses cp_saved once, however many legacy playlists there are", () => {
+  /* Post-#274 some legacy ids are permanently unresolvable, so the migration's slow
+     path never stops running for those playlists — and `playlists()` is on the path
+     for every drawer open, every list render and every pick. The pool build and the
+     `cp_saved` parse are therefore hoisted to one per READ, not one per playlist.
+
+     MUTATION 1: move `savedMap()`/`hydrationPool()` back inside
+     hydratePlaylistParts. Reads go to 5 and this fails.
+     MUTATION 2: build the sources eagerly in `playlists()` instead of lazily. The
+     fully-hydrated case reads cp_saved when it should not, and the second half
+     fails. */
+  const m = mount();
+  setPool(m, [poolItem(1)]);
+  m.ctx.fullPool();
+  const reads = [];
+  const realGet = m.ctx.localStorage.getItem;
+  m.ctx.localStorage.getItem = (k) => { reads.push(k); return realGet.call(m.ctx.localStorage, k); };
+
+  m.store.set("cp_playlists", JSON.stringify(
+    Array.from({ length: 5 }, (_, i) => ({ id: `q${i}`, title: `T${i}`, item_ids: ["long-gone--episode"] }))
+  ));
+  m.ctx.playlists();
+  assert.strictEqual(reads.filter((k) => k === "cp_saved").length, 1,
+    `five legacy playlists must cost one cp_saved parse, not five: ${reads.filter((k) => k === "cp_saved").length}`);
+
+  /* And a fully-hydrated store must not consult it at all — that is the fast path. */
+  reads.length = 0;
+  m.ctx.savePlaylists([{
+    id: "q9", title: "T", items: [m.ctx.playlistPart(poolItem(1))], created: "2026-08-18T00:00:00.000Z",
+  }]);
+  reads.length = 0;
+  m.ctx.playlists();
+  assert.strictEqual(reads.filter((k) => k === "cp_saved").length, 0,
+    "a snapshotted playlist must not touch cp_saved");
+  m.ctx.localStorage.getItem = realGet;
 });
 
 test("THE FIRST MIGRATION STILL WORKS: cp_quests becomes cp_playlists, with the title backfill", () => {
