@@ -566,20 +566,22 @@ and no `variables.gradle` edit was needed**. The toolchain is the durable copy f
 
 | | Result | APK | vs #244 | Wall clock |
 |---|---|---|---|---|
-| `./gradlew assembleDebug` | **BUILD SUCCESSFUL** | `app-debug.apk`, **7,345,186 bytes** | +2,319,399 B | 16 m 35 s for the pair, from `clean`, 497 of 559 tasks executed |
-| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **5,787,664 bytes** (571 entries, 15,423,345 B uncompressed) | +1,897,259 B | as above — both were built in one invocation |
+| `./gradlew assembleDebug` | **BUILD SUCCESSFUL** | `app-debug.apk`, **7,345,746 bytes** | +2,292,242 B | 18 m 49 s for the pair, from `clean`, 497 of 559 tasks executed |
+| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **5,788,240 bytes** | +1,897,835 B | as above — both were built in one invocation |
 
 **The "vs #244" column is Media3 and Guava, and it is the honest cost of this
 change.** #244 recorded 5,025,787 and 3,890,405; the baseline build in
 `docs/android-shell-build.md` §1.2a — this branch's own source before any of it, on the
-copied toolchain — measured **5,053,504**, so **+2,291,682 bytes of debug APK is
-attributable here** and the remaining ~28 KB is `data/` growth. §10.1 is why that
+copied toolchain — measured **5,053,504**, so **+2,292,242 bytes of debug APK is
+attributable here** and the remaining ~27 KB is `data/` growth. §10.1 is why that
 number is not a floor: nothing is minified.
 
-**Three builds, and saying so precisely because the alternative is a quiet rounding.**
-The baseline above, then two that were **thrown away** (§6.3), then this one — from
-`clean`, with the tree frozen and committed first, and nothing else touching it. The
-numbers above are that last run's.
+**Four builds, and saying so precisely because the alternative is a quiet rounding.**
+The baseline in §1.2a of the build doc, then two that were **thrown away** (§6.3), then
+one clean pair after the second review pass, then this one after the third — each from
+`clean`, with the tree frozen and committed first and nothing else touching it. The
+numbers above are the last run's; the pair before it measured 7,345,186 and 5,787,664,
+so the third pass's fixes cost 560 and 576 bytes.
 
 ### 6.2 The part a build alone does prove
 
@@ -603,8 +605,7 @@ in:
   **`POST_NOTIFICATIONS`** are present. A library manifest that failed to merge builds
   silently and throws at runtime, and the new permission is the one that would have.
 - **Both halves of the web side are in the APK**:
-  `assets/public/foray-audio-shell.js` (42,973 B) and
-  `assets/public/foray-media-session.js` (44,249 B), with both
+  `assets/public/foray-audio-shell.js` and `assets/public/foray-media-session.js`, with both
   `<script type="module">` tags in the bundle's `index.html`, and
   `assets/capacitor.plugins.json` naming
   `com.jwincorporated.foray.audio.ForayAudioPlugin`.
