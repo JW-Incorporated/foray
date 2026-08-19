@@ -805,14 +805,23 @@ for (const query of ["how bbq works", "the history of jazz"]) {
        A "sparse" answer is drawn from the narrow branch, and diversify()'s
        backfill returns all of it when it fits under the cap -- so a sparse
        answer that is not exactly the prefix is the #216 defect, visible on the
-       page. Gated on `picks.length < 10` because at the cap the truncation is
-       doing the cutting and prefix-closure is not the claim.
-       The single-show branch takes the same path with status "ok" and is NOT
-       covered here, deliberately: the only way to tell it apart from the wide
-       branch out here is to recompute classifyResults' own condition, and a
-       mirror of an engine predicate in this file is the defect §3 and §6 both
-       record. The fixture suite covers that branch by construction instead. */
-    if (status === "sparse" && picks.length < 10) {
+       page. Gated on the engine's own `DEFAULT_CAP` -- not a literal 10 -- because
+       at the cap the truncation is doing the cutting and prefix-closure is not the
+       claim, and a hardcoded bound would either start false-reding or, worse,
+       silently stop asserting on queries it should cover the day that constant
+       moved.
+       The single-show branch is NOT covered here and does not need to be: it
+       keeps the bar-clearers rather than the prefix, precisely so that the
+       per-show cap cannot promote a cross-show sub-bar result over the show's
+       own strong episodes (see classifyResults). Telling it apart from the wide
+       branch out here would mean mirroring the engine's own condition, which is
+       the defect §3 and §6 both record; it is pinned on fixtures instead, in
+       test/search-tiering.test.js, where the shows can be set directly.
+       An earlier draft of this comment claimed the fixture suite covered that
+       branch "by construction". It did not -- every fixture there defaulted its
+       show to its id, so `singleShow` was false in all of them and the branch had
+       no coverage anywhere. Review caught it; the fixtures now set shows. */
+    if (status === "sparse" && picks.length < SE.DEFAULT_CAP) {
       const missing = prefix.filter((x) => !picks.some((p) => p.i.id === x.i.id));
       if (missing.length) skipping.push(`"${query}" (${picks.length} picks): ${missing.map((x) => `${x.i.id} m${x.matched}/${x.sum.toFixed(3)}`).join(", ")}`);
     }

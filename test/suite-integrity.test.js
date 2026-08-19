@@ -165,7 +165,7 @@ const FLOORS = {
      a candidate-counted `sparse` are both one line, both pass the battery, and
      both silently break a whole class of query. Every test in there was
      mutation-checked, with the killing mutation named in the test. */
-  "test/search-tiering.test.js": 9,
+  "test/search-tiering.test.js": 11,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there

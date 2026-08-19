@@ -123,6 +123,54 @@ test("a prefix-admitted result does not count toward RICH_MIN, so status cannot 
   assert.deepEqual(ids(out), ["a", "b", "c", "d", "e", "f"]);
 });
 
+test("a prefix longer than the page falls back to the bar-clearers, so none is truncated out", () => {
+  /* Found by review, and it is the #216 defect committed by the fix for #216.
+     diversify() truncates at `cap` while the prefix is unbounded, so a long
+     prefix does not just widen the answer -- it pushes bar-clearers off the end.
+     Here: one top-tier result, twelve sub-bar results in the tier below it, and
+     one genuine clearer beneath those. Unbounded, this returned status "sparse"
+     over TEN picks, nine of them sub-bar, with "clearer2" gone -- padding, in the
+     branch whose whole job is to refuse to pad.
+     The bound is `prefix.length <= cap`, so this falls back to the clearers and
+     matches main exactly.
+
+     KILLED BY: dropping the `prefix.length <= cap` guard. */
+  const results = [
+    row("top", 3, 10),
+    ...Array.from({ length: 12 }, (_, k) => row("sub" + k, 2, 4.9)),
+    row("clearer2", 1, 6),
+  ];
+  const out = SE.classifyResults(results);
+  assert.equal(out.status, "sparse");
+  assert.deepEqual(ids(out), ["top", "clearer2"]);
+});
+
+test("a single-show answer keeps the bar-clearers, so the per-show cap cannot promote filler", () => {
+  /* Also found by review, and the reason the two halves of the narrow branch are
+     treated differently. When every clearer is one show, diversify()'s per-show
+     cap DEFERS that show's own episodes, so any cross-show result in the
+     candidate set is promoted over them -- the "Texas" leak dated 2026-07-30 in
+     classifyResults' comment. Widening this half to the prefix handed it exactly
+     the sub-bar cross-show results the leak is made of: measured, "texas" landed
+     at rank 2, above five strong episodes of the show being searched for.
+     Note the shows are set explicitly here. `row` defaults `show` to `id`, which
+     made `singleShow` false in every other fixture in this file -- so before this
+     test the branch had no coverage anywhere, in either suite. That gap is what
+     let the regression above go green.
+
+     KILLED BY: dropping the `!singleShow` guard, which puts "texas" at index 1. */
+  const results = [
+    row("bbq1", 2, 10, "bbqcentral"),
+    row("texas", 2, 4.0, "casefile"),
+    row("bbq2", 1, 6, "bbqcentral"), row("bbq3", 1, 5.8, "bbqcentral"),
+    row("bbq4", 1, 5.6, "bbqcentral"), row("bbq5", 1, 5.4, "bbqcentral"),
+    row("bbq6", 1, 5.2, "bbqcentral"),
+  ];
+  const out = SE.classifyResults(results);
+  assert.equal(out.status, "ok");
+  assert.deepEqual(ids(out), ["bbq1", "bbq2", "bbq3", "bbq4", "bbq5", "bbq6"]);
+});
+
 test("the strong bar stays relative: the same shape at a tenth of the scale tiers the same", () => {
   /* Scale-invariance is the property that lets one rule cover both scoreMatch's
      ~2..16 range and the zero-content-token case, where `sum` comes from
