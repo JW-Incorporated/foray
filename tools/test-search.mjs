@@ -77,9 +77,9 @@
         it shows. The witness lives in test/search-tiering.test.js; see §9 for
         why the two suites split that way.
         (Two sections are numbered 9. That is pre-existing and left alone rather
-        than renumbered, because §9 is referred to by number from
-        search-engine.js, test/search-tiering.test.js and test/suite-integrity
-        .test.js, and silently moving what "§9" means is worse than a duplicate.)
+        than renumbered: "§9" is cited by number from search-engine.js twice and
+        from test/search-tiering.test.js twice, and silently moving what it points
+        at is worse than a visible duplicate.)
 
     10. Catalogue growth cannot retune the interpreter (#275): every query's
         interpretation -- expansion terms, weights, broad flags, df multiplier
