@@ -463,10 +463,38 @@ export function discoverSlice(doc, { perShow = BUNDLED_ITEMS_PER_SHOW } = {}) {
 
   const byShow = new Map();
   items.forEach((item, i) => {
-    const show = typeof item?.show === "string" ? item.show : "";
+    const show = typeof item?.show === "string" && item.show !== "" ? item.show : "";
     if (!byShow.has(show)) byShow.set(show, []);
     byShow.get(show).push(i);
   });
+
+  /* THE SECOND FAILS-GREEN GUARD, and it closes the same hole as the one above for
+     the OTHER field this function cannot work without. `show` is the grouping key AND
+     the join key, so if the pipeline renames it every item lands in one anonymous
+     bucket, that bucket gets `perShow` slots, and the bundle ships 93 of 1,534
+     episodes — under the per-file budget, under the 3 MB cap, with `lostShows` empty
+     and both join maps comparing empty against empty. MEASURED, by renaming `show` to
+     `show_name` in a copy of the real document: 93 items kept and
+     `assertDiscoverSliceComplete` returned true.
+
+     PROPORTIONAL rather than a fixed floor, deliberately. A count ("at least 50
+     shows") has to be a parameter so fixtures can be small, and a parameter is a
+     thing a future edit can pass 0 for. A share is scale-free: it holds for a 20-item
+     fixture and for the real catalogue, and it distinguishes the case that matters —
+     a WHOLESALE rename, where every item loses the field — from the case that must
+     not break a nightly build, which is a handful of items legitimately missing one.
+     All 1,534 items carry a `show` today. */
+  const unshown = byShow.get("")?.length ?? 0;
+  if (unshown > items.length * 0.05) {
+    throw new WebDirError(
+      `${unshown} of ${items.length} discover items have no usable "show", so grouping by show ` +
+        `is meaningless and the slice would be a fraction of the size it should be — while ` +
+        `passing every check in this file, because a document with no shows loses no shows. ` +
+        `"show" is both the grouping key and the key player/foray-sources.js joins a Foray's ` +
+        `artwork and credit links on. If the pipeline renamed it, fix that; if these items are ` +
+        `genuinely show-less, they cannot be recommended anyway.`
+    );
+  }
 
   const keep = new Set();
   const artSource = artworkUrlsByShow(doc);
@@ -584,6 +612,14 @@ export function assertDiscoverSliceComplete(source, slice) {
     );
   }
 
+  /* Same shape a third time: "every topic survived" is vacuously true of a document
+     with no topics, which is what a renamed `topics` field produces. */
+  if (topicsIn(source).size === 0) {
+    throw new WebDirError(
+      `no discover item carries a "topics" array, so "every topic survived the slice" is ` +
+        `trivially true and means nothing. app.js routes #/subject/<topic> off this field.`
+    );
+  }
   const lostTopics = missingFrom(topicsIn(source), topicsIn(slice));
   if (lostTopics.length) {
     throw new WebDirError(

@@ -362,6 +362,35 @@ test("a discover document with no items is a hard error, not an empty catalogue"
   assert.throws(() => discoverSlice({ items: {} }), WebDirError);
 });
 
+test("REAL REPO: a renamed show field is a hard error, not a 93-item catalogue", () => {
+  /* THE SECOND FAILS-GREEN CASE, found by a reviewer probing the first one. `show` is
+     the grouping key AND the join key. Rename it and every item lands in one anonymous
+     bucket, which gets `perShow` slots — so the bundle ships 93 of 1,534 episodes,
+     under its per-file budget, under the 3 MB cap, with no show lost (a document with
+     no shows loses none) and both join maps comparing empty against empty.
+
+     Run against the REAL document rather than a fixture, because the number is the
+     point: this is what a one-word pipeline rename would have shipped. */
+  const source = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "discover.json"), "utf8"));
+  const renamed = { ...source, items: source.items.map(({ show, ...rest }) => ({ ...rest, show_name: show })) };
+  assert.throws(
+    () => discoverSlice(renamed),
+    (e) => e instanceof WebDirError && /have no usable "show"/.test(e.message) && /loses no shows/.test(e.message)
+  );
+  /* A HANDFUL of show-less items must NOT break the build: an unclassifiable episode
+     is a data condition, not a pipeline failure, and failing here would stop a nightly
+     refresh for it. The guard is proportional for exactly this reason. */
+  const few = { ...source, items: source.items.map((it, i) => (i < 20 ? { ...it, show: "" } : it)) };
+  assert.equal(assertDiscoverSliceComplete(few, discoverSlice(few)), true);
+
+  /* And the same vacuity in the topic dimension. */
+  const untopiced = { ...source, items: source.items.map(({ topics, ...rest }) => rest) };
+  assert.throws(
+    () => assertDiscoverSliceComplete(untopiced, discoverSlice(untopiced)),
+    (e) => e instanceof WebDirError && /trivially true and means nothing/.test(e.message)
+  );
+});
+
 test("the slice carries every field of every item it keeps, unchanged", () => {
   /* Field trimming was measured and rejected (see the module header): the bundle
      shows FEWER items, never thinner ones. If that ever changes it must be a

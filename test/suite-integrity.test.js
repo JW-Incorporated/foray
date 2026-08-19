@@ -251,7 +251,7 @@ const FLOORS = {
      `shell-invariants` gained two, one of which pins the slice's per-file budget —
      the same self-referential hole that `MAX_BYTES = 30 * 1024 * 1024` opened in the
      size cap, closed in advance this time. */
-  "tools/mobile/prepare-webdir.test.mjs": 51,
+  "tools/mobile/prepare-webdir.test.mjs": 52,
   "tools/mobile/shell-invariants.test.mjs": 46,
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
