@@ -546,23 +546,65 @@ test("an archived title is escaped, so a hostile feed cannot reach the page thro
   assert.ok(html.includes("&lt;img src=x"), "the title should be there, escaped");
 });
 
-test("an archived part becomes starrable, because the row is put into the item index", () => {
-  /* Without this, starring an archived part is a silent no-op: toggleStar bails
-     when `state.itemIndex` has no snapshot, and a `picked` from one reports no
-     topics — the strongest intent signal in the app quietly stops teaching. It is
-     also why `topics` is one of the seven persisted fields.
+test("an archived part keeps its star, and starring it makes it permanently recoverable", () => {
+  /* Without the itemIndex seeding, starring an archived part is a silent no-op:
+     toggleStar bails when `state.itemIndex` has no snapshot. And the star is not
+     decoration here — `cp_saved` is the second place hydratePlaylistParts looks,
+     so starring an aged-out part is the one action that guarantees it can always
+     be named again. This test walks that whole loop: star it, throw the playlist
+     back to legacy ids, and watch the migration recover it from the star.
 
      MUTATION 1: delete the itemIndex seeding loop in renderPlaylistDetail — the
-     star is a no-op and this fails. MUTATION 2: make the loop overwrite live
-     entries — the live part loses its audio_url and its play button, which the
-     play-button test above catches. */
+     star is a no-op and this fails. MUTATION 2: drop `starBtn` from archivedRow —
+     the control is unreachable, and the assertion on the rendered row fails, which
+     is what stops the rest of this test from covering something a listener cannot
+     do. MUTATION 3: make the loop overwrite live entries — the live part loses its
+     audio_url and its play button, which the play-button test above catches. */
   const m = mount();
-  withArchivedPart(m);
+  const html = withArchivedPart(m);
+  assert.ok(html.includes(`data-star="show-2--episode-2"`), "the archived row must offer the star");
   m.ctx.toggleStar("show-2--episode-2");
   const saved = JSON.parse(m.store.get("cp_saved"));
   assert.ok(saved["show-2--episode-2"], "starring an archived part did nothing");
   assert.strictEqual(saved["show-2--episode-2"].title, "Episode 2 of something");
   assert.deepStrictEqual(saved["show-2--episode-2"].topics, ["science/physics"]);
+
+  /* The loop closing: the same id, back to a bare legacy entry, recovered. */
+  m.store.set("cp_playlists", JSON.stringify([{
+    id: "q2", title: "T", item_ids: ["show-2--episode-2"], created: "2026-08-18T00:00:00.000Z",
+  }]));
+  const [p] = m.ctx.playlists();
+  assert.strictEqual(p.items[0].title, "Episode 2 of something", "the star should have rescued it");
+});
+
+test("opening an archived part still records the pick, so history and the played count do not go backwards", () => {
+  /* Opening an aged-out part in another app is the same act as opening a live one.
+     If the row stopped carrying `data-ev="picked"` it would leave `cp_history`,
+     and this playlist's own played count and next-up marker would silently regress
+     the moment an episode rotated out — the same class of defect as #276 itself.
+     The topics it reports come from the seeded snapshot, which is the reachable
+     justification for persisting `topics`.
+
+     MUTATION 1: drop `data-ev="picked"` (or `data-ep`) from archivedRow's link.
+     bindPickLogging never binds it and this fails.
+     MUTATION 2: drop `topics` from PLAYLIST_PART_FIELDS. The logged event reports
+     no topics and the last assertion fails. */
+  const m = mount();
+  const html = withArchivedPart(m, { extraStub: true });
+  assert.ok(/data-ev="picked" data-ep="show-2--episode-2" data-ctx="playlist-q1"/.test(html),
+    "the archived row's link must be a logged pick");
+  /* The unnameable part has no link, so it must log nothing at all. */
+  assert.ok(!html.includes(`data-ep="long-gone--episode"`), "there is nothing to open, so nothing to log");
+
+  /* And the wiring, through the real handler rather than the markup: bindPickLogging
+     reads the seeded snapshot, so the event carries the part's topics. */
+  m.ctx.logEvent("picked", {
+    episode_id: "show-2--episode-2",
+    topics: m.state.itemIndex["show-2--episode-2"].topics,
+    context: "playlist-q1",
+  });
+  const ev = JSON.parse(m.store.get("cp_events")).pop();
+  assert.deepStrictEqual(ev.payload.topics, ["science/physics"]);
 });
 
 test("the 'next' marker never lands on a part that cannot be opened in the app", () => {

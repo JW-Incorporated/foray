@@ -178,7 +178,7 @@ const FLOORS = {
      only form the reproduction can take. Every test names the mutation that kills
      it — see the suite header for how the coverage divides against
      data-deletion and app-security. */
-  "test/playlist-durability.test.js": 26,
+  "test/playlist-durability.test.js": 27,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there

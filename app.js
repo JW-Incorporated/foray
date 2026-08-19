@@ -1019,16 +1019,34 @@ function epRow(item, idx, ctx, nextIdx) {
    (#276). It keeps its number and its place, so the count above it stays true.
    What it cannot offer is in-app playback — `audio_url` is the field deliberately
    not persisted because it moves — so it links out instead, exactly the
-   degradation playBtn() already gives an item with no audio. No star either: a
-   star stores a snapshot, and this is not one.
+   degradation playBtn() already gives an item with no audio.
+
+   IT KEEPS ITS STAR, and that closes a loop rather than decorating the row:
+   `cp_saved` holds whole snapshots, and hydratePlaylistParts reads it, so a
+   starred part is one the migration can always name again. Starring an aged-out
+   episode is the one action that makes it permanently recoverable. It works
+   because renderPlaylistDetail seeds the snapshot into `state.itemIndex`, which
+   toggleStar requires; an `unnamed` part has no snapshot to store, so it gets no
+   star.
 
    `apple_collection_id` is what a link-out needs, and an `unnamed` part has
    neither that nor a title, so it gets no link rather than a link to
-   `.../idundefined`. */
-function archivedRow(item, idx) {
+   `.../idundefined`.
+
+   THE LINK STILL CARRIES `data-ev="picked"`, and it has to. Opening an archived
+   part in another app is the same act as opening a live one, so it must reach
+   bindPickLogging: otherwise it stops entering `cp_history`, and this playlist's
+   own "played" count and its next-up marker would go backwards the moment an
+   episode aged out — the same class of quiet regression as the one #276 is about.
+   That path reads `state.itemIndex` for the topics it reports, which is why
+   renderPlaylistDetail seeds the archived snapshot there and why `topics` is one
+   of the persisted fields. An `unnamed` part has no link and nothing to report,
+   so it logs nothing. */
+function archivedRow(item, idx, ctx) {
   const named = !!item.title;
   const link = item.apple_collection_id
-    ? `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener">Open</a>`
+    ? `<a class="go" href="${esc(safeUrl(playLink(item)))}" target="_blank" rel="noopener"
+         data-ev="picked" data-ep="${esc(item.id)}" data-ctx="${esc(ctx)}">Open</a>`
     : "";
   return `<div class="ep-row gone">
     <span class="q-num">${idx + 1}</span>
@@ -1038,7 +1056,7 @@ function archivedRow(item, idx) {
         ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in Foray right now`
         : "Saved before Foray kept episode details"}</div>
     </div>
-    ${link}
+    ${named ? starBtn(item.id) : ""}${link}
   </div>`;
 }
 
@@ -1089,7 +1107,7 @@ function renderPlaylistDetail(id) {
       </div>
       ${p.sparse ? `<p class="note">Only found a few on this — here's what we've got.</p>` : ""}
       ${partsNote(rows)}
-      ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : archivedRow(r.item, i)).join("")}
+      ${rows.map((r, i) => r.state === "live" ? epRow(r.item, i, ctx, nextIdx) : archivedRow(r.item, i, ctx)).join("")}
       ${p.isSubject ? "" : `<button class="danger" id="pl-remove">remove this playlist</button>`}
     </div>`;
 
