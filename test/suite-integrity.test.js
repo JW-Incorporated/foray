@@ -146,6 +146,13 @@ const FLOORS = {
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
   "test/data-topic-integrity.test.js": 12,
+  /* The code citations in the two store-submission documents. Same argument as
+     data-deletion above and the same stakes: what this suite guards is whether a
+     document going to a store reviewer describes the code that shipped. It is
+     also the suite most tempting to delete, because it is the only one that goes
+     red for a reason in a `.md` file — the 27 line numbers it replaced went stale
+     precisely because correcting them was somebody's optional courtesy. */
+  "test/legal-citations.test.js": 12,
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~110-second

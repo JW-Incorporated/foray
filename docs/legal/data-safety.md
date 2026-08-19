@@ -13,6 +13,16 @@ code reference. **If you change the answer in a form, change it here in the same
 PR** — a published declaration that no longer matches the code is a public,
 binding, wrong statement.
 
+**How to read a code reference here.** They name a declared symbol —
+`app.js:toEventRow()`, `app.js:SB_ARCHETYPES`, `app.js:#pl-input` — not a line
+number. Line numbers were used until 2026-08-19: there were 27 across this file
+and `privacy-policy.md`, 23 of them here, and 26 of the 27 had gone stale without
+anything reporting it, because a stale line number still lands on a line.
+`test/legal-citations.test.js` now fails if a reference here names something the
+code does not declare, if the set of event types the client transmits stops
+matching `privacy-policy.md` §2, or if either document's event-type totals stop
+matching the code. **No answer in this file changed with it.**
+
 Both stores define "collect" as **transmitted off the device**. Data that only
 ever sits in `localStorage` or IndexedDB is *not* collected under either
 definition. That is why §1 of the audit matters more than any other section: most
@@ -33,16 +43,18 @@ every answer below:
    transmitted.
 2. **Exactly 5 of 18 event types are transmitted**, to one endpoint
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
-   Mapping: `app.js:220–256`. Transmission: `app.js:258–284`, called from
-   `app.js:664, 686, 999, 1776`.
-3. **Audio streams directly from publisher hosts** (`player/html-audio-backend.js:410`;
+   Mapping: `app.js:toEventRow()` — the five `case` arms that return a row are
+   the whole transmitted set, and every other type falls to `return null`.
+   Transmission: `app.js:trySyncEvents()`, called after a pick, after a play,
+   after a thumb, and once on first render.
+3. **Audio streams directly from publisher hosts** (`player/html-audio-backend.js:load()`;
    URLs from `data/segment-sources.json`, `data/session.json` and
    `data/discover.json`). **43 distinct first-hop hosts**, many of them
    measurement or ad-attribution prefixes that redirect onward, so the real chain
    is longer. No Foray server in the path; we receive nothing. See §A6 — this is
    the answer most likely to be got wrong in either direction.
 
-The client's CSP (`index.html:13`) sets `connect-src 'self'` plus the Supabase
+The client's CSP (`index.html`) sets `connect-src 'self'` plus the Supabase
 project, so the transmitted set above is the *most* the browser would permit for
 a data-sending request without a code change. Note it also allows
 `img-src https:` and `media-src https:` — any HTTPS host — which is how audio and
@@ -66,7 +78,7 @@ ones a template gets wrong.
 | **Location** (approximate or precise) | **No** | No | No geolocation call anywhere in the client. No permission requested. |
 | **Personal info — Name** | **No** | No | Never asked. No signup. |
 | **Personal info — Email address** | **No** | No | Never asked. Anonymous accounts only (ADR-0005). |
-| **Personal info — User IDs** | **Yes** | No | Every transmitted row carries the Supabase anonymous account id (`toEventRow`, `app.js:222`). It is opaque and holds no PII. |
+| **Personal info — User IDs** | **Yes** | No | Every transmitted row carries the Supabase anonymous account id (`app.js:toEventRow()` stamps `user_id` on every row it builds). It is opaque and holds no PII. |
 | **Personal info — Address / Phone / Race / Political or religious beliefs / Sexual orientation** | **No** | No | Never asked. See the note in A5 on the two thumbs-down reason codes — they are content feedback, not a declared belief. |
 | **Personal info — Other info** | **No** | No | — |
 | **Financial info** | **No** | No | No payments, no IAP, no billing code in the repo. |
@@ -77,16 +89,16 @@ ones a template gets wrong.
 | **Files and docs** | **No** | No | — |
 | **Calendar** | **No** | No | — |
 | **Contacts** | **No** | No | — |
-| **App activity — App interactions** | **Yes** | No | The five transmitted events are interactions: picked, finished, saved, thumbs, session shown (`app.js:223–255`). The `picked` row's `context` field is filtered against a five-value allowlist (`app.js:214`) but the app only ever produces `continue` or a value the filter discards, so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw. |
-| **App activity — In-app search history** | **No** | No | The playlist box (`app.js:1040`, `maxlength=120`) is searched entirely on-device by `search-engine.js`; `playlist_built`/`playlist_removed` are local-only (they fall to `toEventRow`'s `default: return null`). Stored in `cp_playlists`, never sent — which since #276 also holds a copy of each saved episode’s title, show, length, topic ids and Apple Podcasts ids, so an aged-out part still renders. That is catalogue metadata about episodes, not search history about you, and none of it leaves the device either. |
-| **App activity — Installed apps** | **No** | No | Nothing is enumerated. `cp_player` (your preferred external app) is local-only and never transmitted. The `picked` row carries an `app` field, but it reads a `data-app` attribute **nothing in the app ever sets**, so it is always the hardcoded literal `"Apple Podcasts"` regardless of your preference (`app.js:652`) — it reports nothing about you or your device. |
-| **App activity — Other user-generated content** | **Yes** | No | The thumbs-down free-text note is transmitted (`app.js:994`; input `#fy-sheet-note`, `app.js:1087`, up to 200 chars). |
-| **App activity — Other actions** | **Yes** | No | Thumbs direction and the fixed reason codes (`app.js:966–970`, sent at `app.js:246`). |
+| **App activity — App interactions** | **Yes** | No | The five transmitted events are interactions: picked, finished, saved, thumbs, session shown (`app.js:toEventRow()`). The `picked` row's `context` field is filtered against a five-value allowlist (`app.js:SB_ARCHETYPES`) but the app only ever produces `continue` or a value the filter discards, so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw. |
+| **App activity — In-app search history** | **No** | No | The playlist box (`app.js:#pl-input`, `maxlength=120`) is searched entirely on-device by `search-engine.js`; `playlist_built`/`playlist_removed` are local-only (they fall to `toEventRow`'s `default: return null`). Stored in `cp_playlists`, never sent — which since #276 also holds a copy of each saved episode’s title, show, length, topic ids and Apple Podcasts ids, so an aged-out part still renders. That is catalogue metadata about episodes, not search history about you, and none of it leaves the device either. |
+| **App activity — Installed apps** | **No** | No | Nothing is enumerated. `cp_player` (your preferred external app) is local-only and never transmitted. The `picked` row carries an `app` field, but it reads a `data-app` attribute **nothing in the app ever sets**, so it is always the hardcoded literal `"Apple Podcasts"` regardless of your preference (`app.js:bindPickLogging()`) — it reports nothing about you or your device. |
+| **App activity — Other user-generated content** | **Yes** | No | The thumbs-down free-text note is transmitted (`app.js:toEventRow()`; typed into `app.js:#fy-sheet-note`, `maxlength=200`). |
+| **App activity — Other actions** | **Yes** | No | Thumbs direction and the fixed reason codes (`app.js:FB_CHIPS`, sent by `app.js:toEventRow()`). |
 | **Web browsing history** | **No** | No | The app cannot see your browsing. |
 | **App info and performance — Crash logs** | **No** | No | **No crash reporter.** Nothing bundled, nothing sent. |
 | **App info and performance — Diagnostics** | **No** | No | Two local-only records, neither transmitted. `cp_storage_health` records storage-tier faults; `storage_fault` is a local-only event type. `cp_diag` (#264) records how the audio player behaved — seam durations, load deadlines, out-point overshoot, stops, resume decisions, and background/foreground transitions with their durations — capped at 200 entries, oldest dropped first, readable and clearable from the drawer's **Playback diagnostics** (`player/diagnostic-log.js`). It holds no audio, no URLs, no account id and no device names: only numbers matched by an explicit pattern, authored segment ids, and stage names from a fixed vocabulary — a telemetry line's text is never stored, and a recognised audio route is recorded as a fact rather than by name. It is deliberately OUTSIDE the `cp_events` pipeline, so no code path can send it. |
 | **App info and performance — Other app performance data** | **No** | No | — |
-| **Device or other IDs** | **No** | No | No advertising id, no device id, no fingerprinting. `cp_profile_id` is a locally-generated random string (`app.js:152–159`) and is **deliberately not included** in any transmitted row — `toEventRow` never copies it. |
+| **Device or other IDs** | **No** | No | No advertising id, no device id, no fingerprinting. `cp_profile_id` is a locally-generated random string (`app.js:profileId()`) and is **deliberately not included** in any transmitted row — `toEventRow` never copies it. |
 
 ## A3. For each collected type — the follow-up questions
 
@@ -98,17 +110,17 @@ and **Other actions** (the four "Yes" rows above).
 - **Is collection required or optional?** **Required** for App interactions,
   User IDs and Other actions — the app syncs without asking. **Optional** for
   Other user-generated content (the note): it is only sent if you type one, and
-  a thumbs-down commits only on submit (`app.js:1161`).
+  a thumbs-down commits only on submit (`app.js:bindFeedback()`).
   - *Honest caveat for the founder:* Play's "optional" means the user can use the
     app without providing it. That is true of the note. It is **not** true of the
     others — there is no opt-out or consent gate for event sync today; the first
-    load emits `session_shown` and syncs it (`app.js:1775–1776`). If you would
+    load emits `session_shown` and syncs it (`app.js:init()`). If you would
     rather answer "optional" across the board, that requires building a toggle
     first. See § What would change these answers.
 - **Purposes** (check these, and only these):
   - **App functionality** — resume, saved items, and the feedback record.
   - **Personalization** — thumbs and plays move the interest weights that pick
-    your menu (`nudgeTopics`, `app.js:305`).
+    your menu (`app.js:nudgeTopics()`).
   - **Do NOT check:** Analytics, Advertising or marketing, Developer
     communications, Fraud prevention, Account management. None apply. There is no
     analytics pipeline and no ad code.
@@ -118,12 +130,12 @@ and **Other actions** (the four "Yes" rows above).
 **No** — under Play's definition. Play excludes transfers to a **service provider
 processing on the developer's behalf**. Supabase is our hosted database, not a
 recipient with its own purpose. We send data to nobody else: the CSP permits no
-other endpoint (`index.html:13`).
+other endpoint (`index.html`).
 
 ## A5. Two judgement calls a founder should see rather than inherit
 
 1. **The political-slant reason codes.** Two of the nine fixed thumbs-down chips
-   are "Leans too far left" and "Leans too far right" (`app.js:966–970`), and the
+   are "Leans too far left" and "Leans too far right" (`app.js:FB_CHIPS`), and the
    selected chip is transmitted. These record a reaction to *an episode*, not a
    declaration of the listener's own politics, and the app never asks for
    political views — so the "Political or religious beliefs" row above is
@@ -140,7 +152,7 @@ other endpoint (`index.html:13`).
 ## A6. Playback from publisher CDNs — why it is not a Play "sharing" answer
 
 Playing anything points an `<audio>` element at the publisher's own URL
-(`player/html-audio-backend.js:410`). Your device therefore reveals its **IP
+(`player/html-audio-backend.js:load()`). Your device therefore reveals its **IP
 address and user-agent** to that host.
 
 **Know the real scale before you answer this.** It is not a handful of CDNs:
@@ -155,7 +167,7 @@ counters** — `pdst.fm`/`pdcn.co`/`pdrl.fm`, `chrt.fm`, `pscrb.fm`,
 `claritaspod.com`/`clrtpod.com`, `prfx.byspotify.com`, `tracking.swap.fm`,
 `pfx.vpixl.com`, the `gum.fm` hosts. Three of them appear in `data/session.json`,
 the default home cards — so this is the shipped default path, not an edge case.
-`index.html:9` already says as much in the CSP's own comment: "~41 different
+`index.html` already says as much in the CSP's own comment: "~41 different
 podcast CDNs that we neither control nor can enumerate."
 
 **Our answer: not declared as collection, and not declared as sharing.** The
@@ -194,12 +206,12 @@ drawn.
 
 ## A7. Security practices section
 
-- **Is data encrypted in transit?** **Yes.** Every request is HTTPS
-  (`app.js:173` `https://…supabase.co`; the CSP forbids cleartext, and audio is
-  `media-src https:`).
+- **Is data encrypted in transit?** **Yes.** Every request is HTTPS — the one
+  endpoint is `app.js:SB_URL`, an `https://…supabase.co` literal; the CSP forbids
+  cleartext, and audio is `media-src https:`.
 - **Do you provide a way for users to request that their data be deleted?**
   **Yes.** The app's menu (☰) carries **Delete my data** — the control built in
-  #42, `app.js` § delete my data. Play's question is about in-app deletion of
+  #42, `app.js:deleteMyData()`. Play's question is about in-app deletion of
   *account data*, and this deletes both halves of it:
   - **On the device:** every `cp_` key, in **both** tiers, enumerated from the
     tiers themselves and re-read afterwards to verify
@@ -265,14 +277,14 @@ longer than the real-time request needs**. Same conclusion as Play — the local
 | **Location** (precise or coarse) | **No** | No geolocation call; no permission requested. |
 | **Sensitive Info** | **No** | Apple's category covers racial/ethnic data, sexual orientation, pregnancy, disability, religious or political *belief*, biometric and genetic data. Foray asks for none. See A5 for the slant-chip judgement. |
 | **Contacts** | **No** | — |
-| **User Content — Other User Content** | **Yes** | The free-text thumbs-down note is transmitted (`app.js:994`). |
+| **User Content — Other User Content** | **Yes** | The free-text thumbs-down note is transmitted (`app.js:toEventRow()`). |
 | **User Content** — photos, videos, audio, gameplay, customer support | **No** | None exist. The app plays third-party audio; it records and uploads none. |
 | **Browsing History** | **No** | Not accessible to the app. |
 | **Search History** | **No** | Playlist search is on-device and never transmitted (`search-engine.js`; playlist events are local-only). |
-| **Identifiers — User ID** | **Yes** | The Supabase anonymous account id on every row (`app.js:222`). |
+| **Identifiers — User ID** | **Yes** | The Supabase anonymous account id on every row (`app.js:toEventRow()`). |
 | **Identifiers — Device ID** | **No** | No IDFA, IDFV, or fingerprint. `cp_profile_id` is local-only and never transmitted. |
 | **Purchases** | **No** | — |
-| **Usage Data — Product Interaction** | **Yes** | picked / finished / saved / thumbs / session shown (`app.js:223–255`). |
+| **Usage Data — Product Interaction** | **Yes** | picked / finished / saved / thumbs / session shown (`app.js:toEventRow()`). |
 | **Usage Data — Advertising Data** | **No** | No ads anywhere. |
 | **Usage Data — Other Usage Data** | **No** | Nothing beyond the five mapped types. |
 | **Diagnostics** (crash, performance, other) | **No** | No crash reporter; `storage_fault`, `cp_storage_health` and `cp_diag` never leave the device. |
@@ -309,7 +321,10 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
   any bundled third-party SDK on Apple's "commonly used SDK" list.
   **The web client bundles no third-party SDK** — no `@supabase/supabase-js`; the
   Supabase calls are raw `fetch` precisely to satisfy the strict CSP
-  (`app.js:172` comment). So no SDK manifest is inherited **today**.
+  (every request is a hand-written `fetch`: `app.js:sbAuth()` for auth,
+  `app.js:trySyncEvents()` for the event insert, `app.js:sbDeleteOwnRows()` for
+  the deletion — and `package.json` declares no dependencies and no build
+  step). So no SDK manifest is inherited **today**.
   - > TODO(founder): if the native shell ever adds the Supabase Swift SDK or any
     Capacitor plugin, each needs its own manifest entry. `docs/marketing/05-legal-risk-memo.md`
     flagged a Supabase-SDK manifest as a checklist item; that item is **not
@@ -354,7 +369,7 @@ are the answers that will actually be submitted.
 | Aspect | Web | Native shell | Effect on the declarations |
 |---|---|---|---|
 | Event sync to Supabase | Yes | **Yes — unchanged.** The shell keeps `connect-src … supabase.co` in its CSP. | **None.** Every "Yes" above still applies. |
-| Service worker / `foray-v4` cache | Registered | **Not registered** — `shouldRegisterServiceWorker()` returns false for `capacitor:`/`ionic:` origins and native platforms | None (that cache was never declarable — same-origin app shell). |
+| Service worker / `foray-v5` cache | Registered | **Not registered** — `shouldRegisterServiceWorker()` returns false for `capacitor:`/`ionic:` origins and native platforms | None (that cache was never declarable — same-origin app shell). |
 | Catalogue JSON | Fetched from GitHub Pages | **Bundled in the app** (`tools/mobile/prepare-webdir.mjs`) | Slightly *fewer* third parties: GitHub no longer sees catalogue requests. |
 | App origin | `https://…github.io` | `capacitor://localhost` (iOS) / `https://localhost` (Android) | None. It is why the shell widens `img-src` to include `'self'`. |
 | Audio from publisher CDNs | Direct | **Direct — unchanged** | §A6 applies identically. |
@@ -379,7 +394,7 @@ forms.**
 | **Backend sync of the rest of local state** — positions, interests, history, playlists | The largest change. Play: `Other actions` broadens; `In-app search history` becomes **Yes** if `cp_playlists` queries sync. Apple: `Search History` **Yes**; `Product Interaction` widens. Policy §1's "does it leave your device" column must be rewritten row by row — it is the column most likely to go stale. |
 | **A live per-user API replacing static `data/*.json`** | Our server would then observe request patterns per user — a new collection surface with no checkbox, and it needs its own policy paragraph. `docs/DECISIONS.md` records this was deliberately *not* built. |
 | **ElevenLabs narration** (sanctioned in principle, build deferred) | If narration is **pre-generated** from our scripts and shipped as audio files, **nothing changes** — no user data leaves. If it is generated **per user or per request** from anything user-derived, then user data reaches a third-party AI vendor: Apple **rule 5.1.2 disclosure and explicit consent before first transmission**, naming the vendor; a new third-party recipient in the policy; and Play `Shared: Yes`. The distinction is the whole disclosure question — decide it deliberately. |
-| **Wiring the Postgres `userInterestsProvider` into the build pipeline** | **The likeliest silent invalidation, and it needs no client change at all.** `backend/src/enrich/AnthropicEnricher.ts:173` already sends `Listener context: …` in the why-line prompt; `sessionBuilder.ts` builds that from `resolveEffectiveTaxonomy()`, whose first tier is observed `taxonomy_nodes` rows — i.e. derived from the very `events` table the client POSTs to. Today it is inert: `buildSession.ts` passes a fixed placeholder id and no provider, and `createUserInterestsProvider.ts` is gated on `DATABASE_URL` (`docs/DECISIONS.md` records the decision not to stand it up). Setting that env var would send event-derived interest labels to a third-party AI vendor **with no CSP change and no code review of the client** — so there is no tripwire. That triggers Apple rule 5.1.2 disclosure and consent, a new third-party recipient in the policy, and Play `Shared: Yes`. |
+| **Wiring the Postgres `userInterestsProvider` into the build pipeline** | **The likeliest silent invalidation, and it needs no client change at all.** `backend/src/enrich/AnthropicEnricher.ts:buildWhyLinePrompt()` already sends `Listener context: …` in the why-line prompt; `sessionBuilder.ts` builds that from `resolveEffectiveTaxonomy()`, whose first tier is observed `taxonomy_nodes` rows — i.e. derived from the very `events` table the client POSTs to. Today it is inert: `buildSession.ts` passes a fixed placeholder id and no provider, and `createUserInterestsProvider.ts` is gated on `DATABASE_URL` (`docs/DECISIONS.md` records the decision not to stand it up). Setting that env var would send event-derived interest labels to a third-party AI vendor **with no CSP change and no code review of the client** — so there is no tripwire. That triggers Apple rule 5.1.2 disclosure and consent, a new third-party recipient in the policy, and Play `Shared: Yes`. |
 | **Any AI call made from the device** | Same as above, plus `connect-src` must be widened — which *is* a tripwire. A new `connect-src` entry in `index.html` is a privacy change and should be reviewed as one. |
 | **Ads or any monetization** | Advertising data, ad identifiers, tracking, ATT prompt, `Shared: Yes`, and a conflict with product principle 1. |
 | **Asking for an email to link the anonymous account** (ADR-0005's opt-in upgrade) | Play `Personal info — Email address` **Yes**; Apple `Contact Info — Email` **Yes**. Also makes account deletion unambiguously required (5.1.1(v)). |
@@ -398,10 +413,10 @@ is a fact the answers assume.
    client carries a real project URL and publishable key — so the declarations
    are written as though transmission happens, which is the conservative and
    correct posture for shipped code. But anonymous sign-in is a project setting
-   that cannot be read from this repo; if it is disabled, `ensureAnonSession()`
-   returns null and events buffer locally forever (`app.js:265`). **Verify in the
-   Supabase dashboard.** This changes nothing about what to declare — the code
-   attempts it — but it changes whether rows exist today.
+   that cannot be read from this repo; if it is disabled,
+   `app.js:ensureAnonSession()` returns null and events buffer locally forever.
+   **Verify in the Supabase dashboard.** This changes nothing about what to
+   declare — the code attempts it — but it changes whether rows exist today.
 2. **Whether the RLS policies are live and verified.** ADR-0005's own Risks
    section says they were "written to spec but **not yet verified against a live
    project**". They live in `backend/migrations/supabase/0001_auth_and_rls.sql`,
