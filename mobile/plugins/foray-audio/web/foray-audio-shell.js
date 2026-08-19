@@ -236,6 +236,17 @@ export function createForayAudioShell(env) {
   /** Native's answer, or `null` until it has been asked. `false` is the one value that
    *  explains a blank lock screen with everything else working. */
   let notificationsGranted = null;
+  /**
+   * Has native reported the service RUNNING at any point since our last start?
+   *
+   * The discriminator that makes `noteServiceRunning` safe. Without it, a
+   * `running: false` arriving in the window between `startForegroundService` and the
+   * service's own `onStartCommand` — which is a real window, on a different thread —
+   * would look identical to a service that died, and clearing the gate there would
+   * re-issue a start for no reason. That is §5.4 finding 1's re-issue loop, and this
+   * flag is what keeps this recovery from becoming it.
+   */
+  let sawServiceRunning = false;
   /** Serialises bridge calls, so a `stop` and the `start` behind it cannot land out
    *  of order. See `callAndRecord`. */
   let queue = Promise.resolve();
@@ -299,10 +310,21 @@ export function createForayAudioShell(env) {
              background-start behaviour §5.4's first finding was about, reintroduced
              through the error path.
 
-             SPELLED AS A WHITELIST rather than `method !== "state"`, because the
-             blacklist form was already wrong the moment #27 added a third method, and
-             it would have been wrong SILENTLY: a permission prompt the user dismissed
-             would have cleared the gate and put the shell back into the re-issue loop. */
+             SPELLED AS A WHITELIST rather than `method !== "state"`, AND THE MUTATION
+             HARNESS SAYS THAT IS CURRENTLY A DISTINCTION WITHOUT A DIFFERENCE — recorded
+             because the alternative is a reader concluding the test for it is vacuous.
+
+             The blacklist form WAS wrong for a while: #27 added `requestNotifications`
+             to this queue, and a prompt the user dismissed would have cleared the gate
+             and put the shell back into the re-issue loop. A later review pass then took
+             that call OUT of the queue entirely (it blocks every call behind a human —
+             see `askForNotifications`), so `start`, `stop` and `state` are once again the
+             only methods here and the two spellings agree on all three.
+
+             Kept as a whitelist anyway, because the next method added to this queue
+             should have to opt IN to clearing the gate rather than opt out, and because
+             the failure mode of getting it wrong is silent. Swapping it back is a
+             mutation that survives, and this paragraph is the reason. */
           if (method === "start" || method === "stop") startAccepted = false;
           lastReason = String((e && e.message) || e);
           log("foray-audio: " + method + " failed", e);
@@ -335,9 +357,46 @@ export function createForayAudioShell(env) {
     queue = queue.then(clearInFlight, clearInFlight);
   }
 
+  /**
+   * Native says whether the service is running. Recover if it went away.
+   *
+   * WHY THIS EXISTS, and it is not defensive padding. The service can stop without the
+   * page asking: Android killing it under memory pressure (it is `START_NOT_STICKY`, so
+   * nothing restarts it), a native stop from the page-load listener, a
+   * `startForeground` that failed a moment after the start was accepted. In every one
+   * of those the shell's own gate — `wanted && startAccepted` — stays true, so
+   * `ensureStarted` short-circuits and **no later `play()` ever re-asks**. Playback
+   * continues unprotected for the rest of the Foray with a blank lock screen, silently.
+   * A review pass found the first route to that state; this closes all of them.
+   *
+   * Clearing `startAccepted` is the whole recovery: the next `play()` — the next seam,
+   * at most a couple of minutes away — re-issues a start. It does NOT start one from
+   * here, deliberately: this can be called while the app is backgrounded, and a
+   * background `startForegroundService` is the call Android 12+ refuses.
+   */
+  function noteServiceRunning(running) {
+    if (!installed) return;
+    if (running) {
+      sawServiceRunning = true;
+      lastKnownRunning = true;
+      return;
+    }
+    lastKnownRunning = false;
+    if (!wanted || !startAccepted) return;
+    /* See `sawServiceRunning`: without this, a start that has been accepted but not yet
+       dispatched reads exactly like a service that died. */
+    if (!sawServiceRunning) return;
+    sawServiceRunning = false;
+    startAccepted = false;
+    log("foray-audio: the foreground service went away underneath us; the next play will re-start it");
+  }
+
   function ensureStarted() {
     if (wanted && startAccepted) return;
     wanted = true;
+    /* Cleared at DISPATCH, so the recovery above cannot fire on the strength of a
+       `running: true` from before this start. */
+    sawServiceRunning = false;
     callAndRecord("start", function (result) {
       startAccepted = !!result.started;
       lastReason = result.reason || "";
@@ -373,15 +432,37 @@ export function createForayAudioShell(env) {
     if (!askNotifications) return;
     if (notificationsAsked) return;
     notificationsAsked = true;
-    callAndRecord("requestNotifications", function (result) {
-      notificationsGranted = !!result.granted;
-      if (!notificationsGranted) {
-        log(
-          "foray-audio: notifications are not permitted, so the lock-screen controls will not appear — "
-          + (result.reason || "denied")
-        );
+    /* DELIBERATELY NOT `callAndRecord`, and a review pass found why. That helper
+       serialises every call on one promise chain so a `stop` and the `start` behind it
+       cannot land out of order — and `requestNotifications` resolves only after the user
+       answers a system dialog. Put it in that chain and it is a head-of-line block: a
+       `stop` issued while the dialog is up is queued and never dispatched, so the
+       foreground service keeps running; and if the Activity is torn down under the
+       dialog and the call is lost, the chain never advances again and the shell can
+       neither start nor stop the service for the rest of the session.
+
+       Ordering only ever mattered BETWEEN `start` and `stop`. This is neither, so it
+       goes out on its own with both handlers supplied. */
+    call("requestNotifications").then(
+      function (result) {
+        const answer = result || {};
+        notificationsGranted = !!answer.granted;
+        if (!notificationsGranted) {
+          log(
+            "foray-audio: notifications are not permitted, so the lock-screen controls will not appear — "
+            + (answer.reason || "denied")
+          );
+        }
+      },
+      function (e) {
+        /* Never touches `startAccepted`: whether a notification is SHOWN has nothing to
+           do with whether we hold the service. Clearing the gate here would put the shell
+           back into the re-issue loop §5.4 finding 1 was about, through a permission
+           dialog. */
+        lastReason = String((e && e.message) || e);
+        log("foray-audio: requestNotifications failed", e);
       }
-    });
+    );
   }
 
   /**
@@ -399,10 +480,14 @@ export function createForayAudioShell(env) {
    */
   function refresh() {
     callAndRecord("state", function (result) {
-      lastKnownRunning = !!result.running;
-      if (wanted && !lastKnownRunning) {
+      /* THROUGH `noteServiceRunning`, so the diagnostic and the recovery cannot
+         disagree. It used to only log this case; logging a permanently unprotected
+         Foray to a console nobody is reading is not a mechanism. */
+      const running = !!result.running;
+      if (wanted && !running) {
         log("foray-audio: the service was accepted but is not running — check logcat for startForeground");
       }
+      noteServiceRunning(running);
     });
     /* Resolves after everything already queued, which is what makes an awaited
        `refresh()` see the result of a start issued a moment earlier. */
@@ -424,6 +509,7 @@ export function createForayAudioShell(env) {
        Recorded because "I thought this was a defect and my own test proved it was
        not" is worth more written down than quietly dropped. */
     wanted = false;
+    sawServiceRunning = false;
     callAndRecord("stop", function (result) {
       /* `startAccepted` is about a START, so a stop clears it either way: whatever
          native says, we are no longer holding a service we asked for. */
@@ -702,6 +788,7 @@ export function createForayAudioShell(env) {
        believing a Foray from a previous life is still loaded, which would make its
        first settle window a no-op and leave the service up with nothing playing. */
     mediaLoaded = false;
+    sawServiceRunning = false;
     installed = false;
     return true;
   }
@@ -730,10 +817,11 @@ export function createForayAudioShell(env) {
       mediaLoaded,
       notificationsAsked,
       notificationsGranted,
+      sawServiceRunning,
     };
   }
 
-  return { install, uninstall, inspect, refresh, setMediaLoaded };
+  return { install, uninstall, inspect, refresh, setMediaLoaded, noteServiceRunning };
 }
 
 /* ------------------------------------------------------------- auto-install */

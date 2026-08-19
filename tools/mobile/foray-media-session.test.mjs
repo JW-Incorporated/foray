@@ -40,10 +40,17 @@
  *     only by mutating the caller's object after assigning it.
  *   - dispatching `seekto` with a missing `positionMs` as a seek to 0. Caught only by
  *     asserting the handler was NOT called, since a `seekTime` of 0 is a legal value.
- *   - reporting `loaded` from `playbackState` rather than from `metadata`. Caught
- *     only by the FINISHED-Foray case, where `media-session.js` deliberately reports
- *     `"none"` with the metadata still in place — the state where the two spellings
- *     disagree and the wrong one stops a service mid-Foray.
+ *   - reporting `loaded` as "anything but idle". Caught only by the FINISHED-Foray
+ *     case — and that one was a BLOCKING review finding rather than a hypothetical: a
+ *     finished Foray offers no transport natively, including no stop, so holding the
+ *     service open there is an indefinite foreground service behind a button-less
+ *     notification, in the state every session ends in. §6 now asserts both directions.
+ *   - dropping a rate-limited position write instead of deferring it. Caught only by
+ *     scrubbing WHILE PAUSED, where no later write ever arrives to repair it.
+ *   - committing `lastIdentity` for a write that was rejected. Same shape: only
+ *     detectable while paused, because a moving playhead hides it within a second.
+ *   - leaving `lastIdentity` set across an uninstall/install cycle, which makes the
+ *     first `flush` after re-installing dedupe itself away and never report `loaded`.
  */
 
 import test from "node:test";
@@ -133,13 +140,27 @@ function setup(opts = {}) {
   const scheduler = makeScheduler();
   const nav = opts.nav || {};
   const loaded = [];
+  const answers = [];
   const logs = [];
   let t = 1_000_000;
+  /* A timer list rather than real timeouts, so the trailing position write is
+     observable without waiting a second. Same shape as `foray-audio-shell.test.mjs`'s
+     clock: `advance` moves `now`, `fireTimers` runs callbacks, and a test that forgets
+     the second one proves nothing. */
+  const timers = new Map();
+  let nextTimer = 1;
   const session = createForayMediaSession({
     capacitor,
     nav,
     schedule: scheduler.schedule,
     now: () => t,
+    setTimeout: opts.noTimer ? undefined : (fn, ms) => {
+      const id = nextTimer++;
+      timers.set(id, { fn, ms });
+      return id;
+    },
+    clearTimeout: opts.noTimer ? undefined : (id) => timers.delete(id),
+    onNativeAnswer: (result) => answers.push(result),
     onLoadedChange: opts.onLoadedChange === null ? undefined : (v) => loaded.push(v),
     positionMinIntervalMs: opts.positionMinIntervalMs,
     baseUrl: opts.baseUrl === null ? "" : (opts.baseUrl || BASE),
@@ -147,8 +168,19 @@ function setup(opts = {}) {
     log: (m, e) => logs.push({ m, e }),
   });
   return {
-    capacitor, scheduler, nav, loaded, logs, session,
+    capacitor, scheduler, nav, loaded, answers, logs, session,
     advance(ms) { t += ms; },
+    /** Every armed trailing timer's delay, so a test can assert one exists. */
+    timerDelays() {
+      return [...timers.values()].map((x) => x.ms);
+    },
+    fireTimers() {
+      for (const id of [...timers.keys()]) {
+        const timer = timers.get(id);
+        timers.delete(id);
+        timer.fn();
+      }
+    },
     /**
      * One whole turn: run the coalescing callback, then let the promise chain that
      * serialises bridge calls drain.
@@ -519,6 +551,87 @@ test("identityKey ignores the playhead and nothing else", () => {
   }
 });
 
+test("A RATE-LIMITED POSITION WRITE IS DEFERRED, NOT DROPPED", async () => {
+  /* THE SEQUENCE A REVIEW PASS FOUND: scrub from the lock screen WHILE PAUSED. The
+     identity does not change, the write lands inside the interval, and with a bare
+     `return` nothing ever re-arms — paused means no further `timeupdate`, and Media3
+     only extrapolates while playing. So the lock-screen playhead would stick at the
+     pre-seek position until playback resumed. */
+  const s = setup({ positionMinIntervalMs: 1000 });
+  s.session.install();
+  s.nav.mediaSession.metadata = meta();
+  s.nav.mediaSession.playbackState = "paused";
+  s.nav.mediaSession.setPositionState({ duration: 3600, position: 10, playbackRate: 1 });
+  await s.turn();
+  assert.equal(s.sent().length, 1);
+
+  s.advance(200);
+  s.nav.mediaSession.setPositionState({ duration: 3600, position: 1800, playbackRate: 1 });
+  await s.turn();
+  assert.equal(s.sent().length, 1, "the write should not have gone out yet");
+  assert.deepEqual(s.timerDelays(), [800], "no trailing write was armed for the remainder");
+
+  s.advance(800);
+  s.fireTimers();
+  /* `turn()`, not a bare `flush()`: the timer does not write, it SCHEDULES a write —
+     so the deferred path goes back through the same coalescing turn as every other
+     write and cannot become a second way to reach native. */
+  await s.turn();
+  assert.equal(s.sent().length, 2, "the deferred position write never arrived");
+  assert.equal(s.last().positionMs, 1_800_000);
+});
+
+test("only ONE trailing write is armed, however many repaints are refused", async () => {
+  /* At 4 Hz a dropped write per repaint would arm four timers a second, and the pending
+     one is always for the earliest moment a write is allowed anyway. */
+  const s = setup({ positionMinIntervalMs: 1000 });
+  s.session.install();
+  s.nav.mediaSession.metadata = meta();
+  s.nav.mediaSession.playbackState = "playing";
+  s.nav.mediaSession.setPositionState({ duration: 3600, position: 10, playbackRate: 1 });
+  await s.turn();
+  for (const position of [10.25, 10.5, 10.75]) {
+    s.advance(100);
+    s.nav.mediaSession.setPositionState({ duration: 3600, position, playbackRate: 1 });
+    await s.turn();
+  }
+  assert.equal(s.timerDelays().length, 1, "one timer per refused write");
+});
+
+test("a write that DOES go out cancels a trailing one", async () => {
+  const s = setup({ positionMinIntervalMs: 1000 });
+  s.session.install();
+  s.nav.mediaSession.metadata = meta();
+  s.nav.mediaSession.playbackState = "playing";
+  s.nav.mediaSession.setPositionState({ duration: 3600, position: 10, playbackRate: 1 });
+  await s.turn();
+  s.advance(100);
+  s.nav.mediaSession.setPositionState({ duration: 3600, position: 11, playbackRate: 1 });
+  await s.turn();
+  assert.equal(s.timerDelays().length, 1);
+  /* A metadata change is an identity change and goes out at once, carrying the position
+     with it — so the trailing timer has nothing left to deliver. */
+  s.nav.mediaSession.metadata = meta({ title: "next segment" });
+  await s.turn();
+  assert.equal(s.timerDelays().length, 0, "a stale trailing write was left armed");
+  assert.equal(s.last().positionMs, 11_000);
+});
+
+test("with no timer injected a refused write is dropped, not thrown", async () => {
+  /* Degraded rather than broken, which is why the timer is optional at all: a platform
+     with no `setTimeout` still gets every identity change. */
+  const s = setup({ positionMinIntervalMs: 1000, noTimer: true });
+  s.session.install();
+  s.nav.mediaSession.metadata = meta();
+  s.nav.mediaSession.playbackState = "playing";
+  s.nav.mediaSession.setPositionState({ duration: 3600, position: 10, playbackRate: 1 });
+  await s.turn();
+  s.advance(100);
+  s.nav.mediaSession.setPositionState({ duration: 3600, position: 11, playbackRate: 1 });
+  await s.turn();
+  assert.equal(s.sent().length, 1);
+});
+
 test("the default rate limit is what an unconfigured session uses", () => {
   assert.equal(POSITION_MIN_INTERVAL_MS, 1000);
 });
@@ -599,14 +712,23 @@ test("transportState maps the spec's four cases", () => {
   assert.equal(transportState({ metadata: meta(), playbackState: "invented" }), "paused");
 });
 
-test("A FINISHED FORAY IS ENDED, NOT UNLOADED — and the service must stay up", async () => {
-  /* The one place `playbackState` and `metadata` disagree about "is anything loaded",
-     and the reason `loaded` is read from the metadata. `media-session.js` §4 reports
-     the spec's `"none"` for a finished Foray on purpose — "a car display offering a
-     play button that does nothing is worse than no display at all" — so keying the
-     service's lifetime on `playbackState === "none"` would tear the session down the
-     moment a Foray ended, with the player still open in front of the listener. */
-  const { session, nav, scheduler, loaded, last, turn } = setup();
+test("A FINISHED FORAY IS REPORTED ENDED, AND IS NOT LOADED", async () => {
+  /* THIS TEST USED TO ASSERT THE OPPOSITE, AND THE OPPOSITE WAS A BLOCKING REVIEW
+     FINDING. The reasoning was that `media-session.js` §4 reports the spec's `"none"`
+     for a finished Foray on purpose, so keying the service's lifetime on
+     `playbackState` would tear the session down the moment one ended — true, and it
+     led to keying it on "anything but idle", which is worse.
+
+     A finished Foray has NO transport to offer: `NowPlaying.acceptsTransport()` is
+     false natively, so every notification action is skipped INCLUDING STOP. Holding the
+     service open there is an indefinite foreground service behind a button-less
+     notification, in the state every session ends in, with no exit but unlocking the
+     phone. So `isTransportable` — playing or paused — is the rule on both sides: the
+     surface with no controls is also the surface that does not hold a service open.
+
+     The payload still says `"ended"` rather than `"idle"`, because the two are
+     different things to a controller and the metadata is still worth showing. */
+  const { session, nav, loaded, last, turn } = setup();
   session.install();
   nav.mediaSession.metadata = meta();
   nav.mediaSession.playbackState = "playing";
@@ -615,8 +737,22 @@ test("A FINISHED FORAY IS ENDED, NOT UNLOADED — and the service must stay up",
 
   nav.mediaSession.playbackState = "none";
   await turn();
-  assert.equal(last().state, "ended");
-  assert.deepEqual(loaded, [true], "a finished Foray was reported as unloaded");
+  assert.equal(last().state, "ended", "an ended Foray must not be reported as idle");
+  assert.deepEqual(loaded, [true, false], "a finished Foray kept the foreground service open");
+});
+
+test("a PAUSED Foray is still loaded, because pausing is the case the session exists for", async () => {
+  /* The other side of the same rule, and the one that must not regress: the whole
+     reason the service's lifetime changed is that pausing from the lock screen must not
+     take the buttons away. */
+  const { session, nav, loaded, turn } = setup();
+  session.install();
+  nav.mediaSession.metadata = meta();
+  nav.mediaSession.playbackState = "playing";
+  await turn();
+  nav.mediaSession.playbackState = "paused";
+  await turn();
+  assert.deepEqual(loaded, [true], "a pause was reported as unloaded");
 });
 
 test("CLEARING THE METADATA REPORTS UNLOADED, WHICH IS WHAT STOPS THE SERVICE", async () => {
@@ -643,6 +779,10 @@ test("uninstall reports unloaded, so the service is never stranded", async () =>
   const { session, nav, scheduler, loaded, turn } = setup();
   session.install();
   nav.mediaSession.metadata = meta();
+  /* PLAYING, explicitly. With the default `"none"` this would be a FINISHED Foray,
+     which is not "loaded" — so without this line the test would assert its own premise
+     away and pass for the wrong reason. */
+  nav.mediaSession.playbackState = "playing";
   await turn();
   assert.deepEqual(loaded, [true]);
   session.uninstall();
@@ -971,6 +1111,89 @@ test("a scheduler that throws does not leave the flush latched off", async () =>
   assert.equal(capacitor.calls.filter((c) => c.method === SET_METHOD).length, 1);
 });
 
+test("A REJECTED WRITE IS RE-SENT, because the record of it is torn up", async () => {
+  /* `flush` commits `lastIdentity` before dispatching, so a rejected write leaves us
+     believing native knows something it does not. While PLAYING the next position write
+     repairs it within a second; while PAUSED the playhead never moves again, so the lock
+     screen would sit on "playing" with a pause button for the whole pause. */
+  let failNext = true;
+  const capacitor = makeCapacitor();
+  const inner = capacitor.nativePromise;
+  capacitor.nativePromise = (name, method, options) => {
+    inner(name, method, options);
+    if (failNext) {
+      failNext = false;
+      return Promise.reject(new Error("bridge asleep"));
+    }
+    return Promise.resolve({ ok: true });
+  };
+  const s = setup({ capacitor, positionMinIntervalMs: 1000 });
+  s.session.install();
+  s.nav.mediaSession.metadata = meta();
+  s.nav.mediaSession.playbackState = "playing";
+  await s.turn();
+  assert.equal(s.sent().length, 1);
+
+  /* The same payload again — which without the reset would be deduped away for ever. */
+  s.nav.mediaSession.playbackState = "playing";
+  s.nav.mediaSession.metadata = meta();
+  await s.turn();
+  assert.equal(s.sent().length, 2, "the payload native never received was never re-sent");
+});
+
+test("native's answer is handed to the shell, so a lost service can be noticed", async () => {
+  /* `setNowPlaying` is the only regular traffic to native while a Foray plays, so its
+     answer is the cheapest health check available. The shell uses `running` to recover
+     when the foreground service goes away without being asked. */
+  const s = setup({ bridge: { results: { [SET_METHOD]: { ok: true, running: false, sessionActive: true } } } });
+  s.session.install();
+  s.nav.mediaSession.metadata = meta();
+  s.nav.mediaSession.playbackState = "playing";
+  await s.turn();
+  assert.deepEqual(s.answers, [{ ok: true, running: false, sessionActive: true }]);
+});
+
+test("an onNativeAnswer that throws does not poison the queue", async () => {
+  const capacitor = makeCapacitor();
+  const nav = {};
+  const scheduler = makeScheduler();
+  const session = createForayMediaSession({
+    capacitor, nav, schedule: scheduler.schedule, baseUrl: BASE, origin: ORIGIN,
+    onNativeAnswer: () => { throw new Error("shell exploded"); },
+  });
+  session.install();
+  nav.mediaSession.metadata = meta();
+  nav.mediaSession.playbackState = "playing";
+  scheduler.tick();
+  await flush();
+  nav.mediaSession.metadata = meta({ title: "second" });
+  scheduler.tick();
+  await flush();
+  assert.equal(capacitor.calls.filter((c) => c.method === SET_METHOD).length, 2);
+});
+
+test("UNINSTALL FORGETS WHAT IT SENT, so a re-install does not dedupe itself away", async () => {
+  /* Otherwise the same metadata at the same position hashes equal after an
+     uninstall/install cycle, `flush` returns before reporting `loaded`, the shell's
+     `mediaLoaded` stays false, and its next settle window tears the session down under a
+     Foray that is loaded and playing. */
+  const s = setup();
+  s.session.install();
+  s.nav.mediaSession.metadata = meta();
+  s.nav.mediaSession.playbackState = "playing";
+  await s.turn();
+  assert.deepEqual(s.loaded, [true]);
+  s.session.uninstall();
+  assert.deepEqual(s.loaded, [true, false]);
+
+  s.session.install();
+  s.nav.mediaSession.metadata = meta();
+  s.nav.mediaSession.playbackState = "playing";
+  await s.turn();
+  assert.deepEqual(s.loaded, [true, false, true], "the re-installed session never reported loaded");
+  assert.equal(s.sent().length, 2);
+});
+
 test("inspect and peek answer without writing anything", async () => {
   const { session, nav, capacitor, scheduler, turn } = setup();
   session.install();
@@ -991,4 +1214,43 @@ test("the plugin name and the method name are the ones the Java answers to", () 
   assert.equal(PLUGIN_NAME, "ForayAudio");
   assert.equal(SET_METHOD, "setNowPlaying");
   assert.equal(TRANSPORT_EVENT, "transport");
+});
+
+
+test("TWO DIFFERENT DISPLAYS CANNOT HASH TO THE SAME IDENTITY", () => {
+  /* A MUTATION FOUND THIS GAP: replacing the separator with `""` left every test green,
+     because the suite only ever changed ONE field at a time and single-field changes
+     differ under any separator. The collision needs two fields moving in opposite
+     directions — `{title:"ab", artist:"c"}` against `{title:"a", artist:"bc"}` — which
+     is a real shape at a seam, where the title and the show change together.
+
+     What the collision costs: `flush` classifies the change as position-only, so it is
+     delayed by up to a second, or never sent at all if the playhead happens to be still
+     (paused). The lock screen then keeps the previous segment's text. */
+  const left = nowPlayingPayload({
+    metadata: meta({ title: "ab", artist: "c" }), playbackState: "playing",
+  });
+  const right = nowPlayingPayload({
+    metadata: meta({ title: "a", artist: "bc" }), playbackState: "playing",
+  });
+  assert.notEqual(
+    identityKey(left), identityKey(right),
+    "two different displays hash equal, so one of them will never reach the lock screen"
+  );
+
+  /* And the same shape end to end, because the key is only interesting through `flush`. */
+  const s = setup({ positionMinIntervalMs: 1000 });
+  s.session.install();
+  s.nav.mediaSession.metadata = meta({ title: "ab", artist: "c" });
+  s.nav.mediaSession.playbackState = "playing";
+  s.nav.mediaSession.setPositionState({ duration: 3600, position: 10, playbackRate: 1 });
+  return s.turn().then(() => {
+    assert.equal(s.sent().length, 1);
+    s.advance(50);
+    s.nav.mediaSession.metadata = meta({ title: "a", artist: "bc" });
+    return s.turn().then(() => {
+      assert.equal(s.sent().length, 2, "a title and show change inside the rate limit was not sent");
+      assert.equal(s.last().title, "a");
+    });
+  });
 });

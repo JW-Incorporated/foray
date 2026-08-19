@@ -1756,3 +1756,280 @@ test("an unconfigured shell DOES ask — the default is on, not off", async () =
   await flush();
   assert.deepEqual(capacitor.calls.map((c) => c.method), ["start", "requestNotifications"]);
 });
+
+
+/* ------------------------------ 12. #27: the service can vanish underneath us
+
+   Every one of these is a state the shell used to be unable to leave. `wanted` and
+   `startAccepted` both stay true when the service stops without being asked — Android
+   killing it under memory pressure (it is START_NOT_STICKY, so nothing restarts it), a
+   native stop, a `startForeground` that failed a moment after the start was accepted —
+   and `ensureStarted`'s short-circuit then means NO later `play()` ever re-asks.
+   Playback continues unprotected for the rest of the Foray with a blank lock screen.
+
+   A review pass found the first route to it (a fragment navigation reaching native's
+   page-load listener). `noteServiceRunning` closes all of them from the JS side, and it
+   is fed by `setNowPlaying`'s own answer, so it costs no extra bridge traffic. */
+
+test("A SERVICE THAT DIES IS NOTICED, AND THE NEXT PLAY RE-STARTS IT", async () => {
+  const { shell, proto, capacitor } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"]);
+  assert.equal(shell.inspect().startAccepted, true);
+
+  /* Native confirms it is up, then reports it gone — which is what a memory-pressure
+     kill looks like from here. */
+  shell.noteServiceRunning(true);
+  shell.noteServiceRunning(false);
+  assert.equal(shell.inspect().startAccepted, false, "a service that went away was not noticed");
+  assert.equal(shell.inspect().lastKnownRunning, false);
+
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start", "start"],
+    "the next play did not re-start the service"
+  );
+});
+
+test("A running:false BEFORE THE SERVICE HAS EVER STARTED IS NOT A DEATH", async () => {
+  /* The race this whole mechanism has to survive, and the reason for `sawServiceRunning`.
+     `startForegroundService` only asks ActivityManager; the service's `onStartCommand`
+     runs later on the MAIN thread, so a `running: false` in that window is normal. Acting
+     on it would clear the gate and re-issue a start — §5.4 finding 1's re-issue loop,
+     reached through the recovery meant to prevent a different failure. */
+  const { shell, proto, capacitor } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  shell.noteServiceRunning(false);
+  shell.noteServiceRunning(false);
+  assert.equal(shell.inspect().startAccepted, true, "a start that had not landed yet was treated as a death");
+  assert.deepEqual(methods(capacitor), ["start"]);
+});
+
+test("a fresh start re-arms the guard, so a stale running:true cannot be believed", async () => {
+  /* Otherwise: service dies, next play starts it, and a `running: false` from a report
+     that was in flight before that start would look like a second death. */
+  const { shell, proto } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  shell.noteServiceRunning(true);
+  shell.noteServiceRunning(false);
+  assert.equal(shell.inspect().startAccepted, false);
+
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, true);
+  assert.equal(shell.inspect().sawServiceRunning, false, "the new start inherited the old confirmation");
+  shell.noteServiceRunning(false);
+  assert.equal(shell.inspect().startAccepted, true, "a stale report invalidated a fresh start");
+});
+
+test("noteServiceRunning does nothing when we do not hold a service", async () => {
+  const { shell, capacitor } = setup();
+  shell.install();
+  shell.noteServiceRunning(true);
+  shell.noteServiceRunning(false);
+  assert.equal(shell.inspect().wanted, false);
+  assert.deepEqual(methods(capacitor), [], "the recovery started or stopped something on its own");
+});
+
+test("noteServiceRunning NEVER starts the service itself", async () => {
+  /* It can be called while the app is backgrounded — the reports that feed it come from
+     a 1 Hz write during playback — and a background `startForegroundService` is the one
+     call Android 12+ refuses. Recovery is "let the next play re-ask", never "ask now". */
+  const { shell, proto, capacitor } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  shell.noteServiceRunning(true);
+  shell.noteServiceRunning(false);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "the recovery issued a start of its own");
+});
+
+test("noteServiceRunning after uninstall does nothing", async () => {
+  const { shell, proto } = setup();
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  shell.noteServiceRunning(true);
+  shell.uninstall();
+  await flush();
+  shell.noteServiceRunning(false);
+  assert.equal(shell.inspect().installed, false);
+});
+
+test("THE PERMISSION PROMPT DOES NOT BLOCK A STOP BEHIND IT", async () => {
+  /* `callAndRecord` serialises calls so a `stop` and the `start` behind it cannot land
+     out of order. `requestNotifications` resolves only when the user answers a system
+     dialog, so putting it in that chain is a head-of-line block: the `stop` waits on a
+     human. A review pass found it, and the fix is that the prompt goes out on its own
+     chain — ordering only ever mattered between `start` and `stop`. */
+  let answerDialog;
+  const dialog = new Promise((resolve) => { answerDialog = resolve; });
+  const { shell, proto, clock, capacitor } = setup({
+    askNotifications: true,
+    settleMs: 1000,
+    bridge: { results: { requestNotifications: () => dialog } },
+  });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "requestNotifications"]);
+
+  /* The listener pauses while the dialog is still up. */
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+  clock.advance(1000);
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start", "requestNotifications", "stop"],
+    "the stop was queued behind an unanswered permission dialog"
+  );
+
+  answerDialog({ requested: true, granted: true, reason: "" });
+  await flush();
+  assert.equal(shell.inspect().notificationsGranted, true);
+});
+
+test("a permission dialog that is never answered leaves the queue usable", async () => {
+  /* The worse half of the same bug: if the Activity is torn down under the dialog the
+     call is simply lost, and a chain waiting on it would never advance again — the shell
+     could not start or stop the service for the rest of the session. */
+  const { shell, proto, clock, capacitor } = setup({
+    askNotifications: true,
+    settleMs: 1000,
+    bridge: { results: { requestNotifications: () => new Promise(() => {}) } },
+  });
+  shell.install();
+  const first = makeElement(proto);
+  first.play();
+  await flush();
+  first.paused = true;
+  first.emit("pause");
+  await flush();
+  clock.advance(1000);
+  clock.fireAll();
+  await flush();
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start", "requestNotifications", "stop", "start"],
+    "an unanswered dialog stopped the shell talking to native"
+  );
+});
+
+
+test("A RETRIED START AFTER A REFUSAL DOES NOT INHERIT A CONFIRMATION", async () => {
+  /* THE SEQUENCE THAT MAKES `ensureStarted`'s RESET LOAD-BEARING, and finding it took a
+     surviving mutation and then a trace. `requestStop` also clears the flag, so any
+     stop-then-start sequence is covered by that — which is why the obvious test for this
+     line was vacuous. The uncovered path is a start Android REFUSED, with no stop in
+     between:
+
+       play    -> start refused, so `startAccepted` false and `wanted` still true
+       native  -> reports the service running anyway (it can: `started: false` means the
+                  REQUEST was refused, and a service that came up some other way is
+                  exactly what `state()` exists to reveal)
+       play    -> `ensureStarted` retries, because `startAccepted` is false
+
+     Without the reset at that dispatch, the retry begins already "confirmed", so the
+     ordinary `running: false` from its own startup race reads as a death, clears the
+     gate, and the play after that issues a start that may be a background one. */
+  const { shell, proto, capacitor } = setup({
+    bridge: { results: { start: { started: false, reason: "ForegroundServiceStartNotAllowedException" } } },
+  });
+  shell.install();
+  const first = makeElement(proto);
+  first.play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, false);
+  assert.equal(shell.inspect().wanted, true, "a refused start still means we want the service");
+
+  shell.noteServiceRunning(true);
+  assert.equal(shell.inspect().sawServiceRunning, true);
+
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.equal(
+    shell.inspect().sawServiceRunning, false,
+    "the retried start inherited a confirmation from before it"
+  );
+  shell.noteServiceRunning(false);
+  const third = makeElement(proto);
+  third.play();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start", "start", "start"],
+    "the retry sequence issued more starts than it needed"
+  );
+});
+
+test("A CONFIRMED SERVICE DOES NOT VOUCH FOR THE NEXT START", async () => {
+  /* A MUTATION FOUND THIS GAP TOO, and the earlier test for it was vacuous: it asserted
+     `sawServiceRunning === false` after a second start in a sequence where the flag was
+     already false, so deleting the reset changed nothing observable.
+
+     The sequence that needs it is a full stop and restart. Native confirms the service
+     is up, the Foray is paused, the settle window stops it, and a later play starts a
+     NEW one. Without clearing the flag at that dispatch, the new start arrives already
+     "confirmed" — so the ordinary `running: false` from its own startup race reads as a
+     death, clears the gate, and the play after that re-issues a start Android may refuse
+     because it is a background one. That is §5.4 finding 1's re-issue loop reached
+     through the recovery built to prevent a different failure. */
+  const { shell, proto, clock, capacitor } = setup({ settleMs: 1000 });
+  shell.install();
+  const first = makeElement(proto);
+  first.play();
+  await flush();
+  shell.noteServiceRunning(true);
+  assert.equal(shell.inspect().sawServiceRunning, true);
+
+  first.paused = true;
+  first.emit("pause");
+  await flush();
+  clock.advance(1000);
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "stop"]);
+
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, true);
+  assert.equal(
+    shell.inspect().sawServiceRunning, false,
+    "the new start inherited the previous service's confirmation"
+  );
+
+  /* The new service's own startup race must now be harmless. */
+  shell.noteServiceRunning(false);
+  assert.equal(
+    shell.inspect().startAccepted, true,
+    "a startup-race report invalidated a fresh start, which puts the shell back in the re-issue loop"
+  );
+  const third = makeElement(proto);
+  third.play();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start", "stop", "start"],
+    "a redundant start was issued"
+  );
+});

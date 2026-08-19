@@ -138,10 +138,27 @@ public class PlaybackKeepAliveService extends Service {
      */
     private static volatile boolean running = false;
 
-    /** Whether the {@link MediaSession} exists. Reported by the plugin's
-     *  {@code state()} so a device pass can tell "no controls because there is no
-     *  session" apart from "no controls because the notification is suppressed". */
-    private static volatile boolean sessionActive = false;
+    /**
+     * The service instance that currently owns a live {@link MediaSession}, or null.
+     *
+     * <p>Reported by the plugin's {@code state()} so a device pass can tell "no controls
+     * because there is no session" apart from "no controls because the notification is
+     * suppressed".
+     *
+     * <p><b>AN IDENTITY RATHER THAN A BOOLEAN, and a review pass is why.</b> A stop and a
+     * start can overlap — the new instance's {@code onCreate} can run before the old
+     * one's {@code onDestroy} — and with a plain flag the OLD instance's
+     * {@code releaseSession()} sets it false while the NEW session is live. So
+     * {@code state()} would report no session during exactly the restart a device pass
+     * would be trying to diagnose, on the field the documentation tells it to trust.
+     * {@link NowPlayingHub} identity-checks {@code listener} and {@code sink} for this
+     * same overlap; this is the third of the three.
+     */
+    @Nullable private static volatile PlaybackKeepAliveService sessionOwner = null;
+
+    /** What the notification last SAID, so an unchanged one is not re-posted. Null
+     *  until the first post. */
+    @Nullable private String lastNotificationKey;
 
     @Nullable private MediaSession session;
     @Nullable private WebViewPlayer player;
@@ -152,7 +169,7 @@ public class PlaybackKeepAliveService extends Service {
     }
 
     static boolean isSessionActive() {
-        return sessionActive;
+        return sessionOwner != null;
     }
 
     @Override
@@ -194,7 +211,7 @@ public class PlaybackKeepAliveService extends Service {
             if (launch != null) builder.setSessionActivity(launch);
             player = built;
             session = builder.build();
-            sessionActive = true;
+            sessionOwner = this;
             listener = nowPlaying -> onNowPlayingChanged();
             NowPlayingHub.setListener(listener);
         } catch (Exception e) {
@@ -206,7 +223,9 @@ public class PlaybackKeepAliveService extends Service {
     private void releaseSession() {
         NowPlayingHub.clearListener(listener);
         listener = null;
-        sessionActive = false;
+        /* ONLY IF WE ARE STILL THE OWNER. See the field's comment: a newer instance may
+           already have taken it, and claiming otherwise would make `state()` lie. */
+        if (sessionOwner == this) sessionOwner = null;
         try {
             if (session != null) session.release();
         } catch (Exception e) {
@@ -235,6 +254,23 @@ public class PlaybackKeepAliveService extends Service {
     private void onNowPlayingChanged() {
         if (player != null) player.refresh();
         if (!running) return;
+        NowPlaying np = NowPlayingHub.get();
+        /* THE PLAYER IS REFRESHED EVERY TIME AND THE NOTIFICATION IS NOT, and a review
+           pass is why. The page reports the playhead about once a second — the web half
+           spends real effort getting it down from four (`foray-media-session.js`
+           decision 1) — and Media3 genuinely needs those, because it extrapolates the
+           position from the last one. The NOTIFICATION does not: nothing on it depends on
+           the playhead (no `setProgress`, no chronometer), so re-posting it at 1 Hz is
+           ~3,600 byte-identical notifications an hour, each one rebuilding six
+           `PendingIntent`s — and `player/media-session.js`'s own header warns that
+           writing at rate "on Android … redraws the notification and visibly flickers".
+           So the bridge rate was argued down and then spent here.
+
+           `visibleKey` is the same idea as the web half's `identityKey`, one layer
+           further in: everything a listener can SEE, and nothing else. */
+        String key = visibleKey(np);
+        if (key.equals(lastNotificationKey)) return;
+        lastNotificationKey = key;
         try {
             NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, buildNotification());
         } catch (Exception e) {
@@ -256,6 +292,12 @@ public class PlaybackKeepAliveService extends Service {
             if (action != null && !action.isEmpty()) NowPlayingHub.dispatch(action, 0L, 0L);
         }
         try {
+            /* SEEDED HERE, because `startForeground` posts the notification too. Without
+               this the first `onNowPlayingChanged` after a start would compare against a
+               null key, decide the display had changed, and post an identical
+               notification — harmless, but it would make the gate above look like it was
+               working when it was one post behind. */
+            lastNotificationKey = visibleKey(NowPlayingHub.get());
             ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), foregroundServiceType());
             running = true;
         } catch (Exception e) {
@@ -383,17 +425,24 @@ public class PlaybackKeepAliveService extends Service {
                one surface #27 is about is the one this controls. */
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
-            /* ONGOING ONLY WHILE SOUNDING. A paused Foray's notification should be
-               swipeable — that is how a listener says "I am done" without hunting for a
-               button — and the swipe is wired to `stop` below, so dismissing it closes
-               the player rather than orphaning a service. While audio is flowing it stays
-               put, because a notification a user can lose mid-listen takes the transport
-               controls with it. */
+            /* ONGOING ONLY WHILE SOUNDING — AND ON MOST ANDROID VERSIONS THAT BUYS
+               NOTHING, which a review pass caught being stated as if it were a mechanism.
+               The platform ORs FLAG_FOREGROUND_SERVICE / FLAG_NO_CLEAR onto a foreground
+               service's notification, and user dismissal of one arrived in Android 14
+               (API 34). minSdk here is 24, so on API 24-33 this notification cannot be
+               swiped away at all and `setDeleteIntent` below can never fire.
+
+               It is kept because it is correct from 14 on, and because it costs nothing.
+               What a listener on API 24-33 actually has is the STOP BUTTON — which is why
+               that button is not gated on `acceptsTransport()` — plus the service
+               stopping on its own once nothing is playing. The doc says this plainly now
+               rather than promising a swipe. */
             .setOngoing(np.state == NowPlaying.PLAYING)
             .setShowWhen(false)
             /* Swiping the notification away IS a stop, routed through the page exactly
-               as the button is. Without this the service would survive a dismissal with
-               nothing visible to stop it. */
+               as the button is — WHERE SWIPING IS POSSIBLE AT ALL, which per the comment
+               above is Android 14 and later. Set unconditionally because it is inert
+               rather than wrong below that. */
             .setDeleteIntent(transportIntent("stop", 5))
             /* Without this the system may hold the notification back for ~10 s.
                A user who backgrounds the app should be able to see immediately why
@@ -442,7 +491,17 @@ public class PlaybackKeepAliveService extends Service {
             );
             nextIndex = index++;
         }
-        if (transport && np.canStop) {
+        /* STOP IS NOT GATED ON `transport`, and that gap was a BLOCKING review finding.
+           `acceptsTransport()` is false for a FINISHED Foray — correctly, because a play
+           button that does nothing is worse than none — and the first version gated every
+           action on it, INCLUDING STOP. Every session ends in that state, so every session
+           ended with an ongoing notification carrying no buttons at all and no way out but
+           unlocking the phone and closing the player. §5.1's whole trade rests on stop
+           being "the one-press exit", so it has to exist in every state that can show a
+           notification. The web half now also reports a finished Foray as not-loaded, so
+           the service stops on its own — two independent fixes, because this one is the
+           one a listener can act on. */
+        if (np.isLoaded() && np.canStop) {
             notification.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
                 getString(R.string.foray_action_stop),
@@ -480,6 +539,20 @@ public class PlaybackKeepAliveService extends Service {
      *  there. Stop is deliberately not in the compact view: it is the cancel button and
      *  the swipe, and a stop next to a play on a lock screen is a mis-tap away from
      *  ending the Foray. */
+    /**
+     * Everything on the notification a listener can SEE, as one string.
+     *
+     * <p>Deliberately excludes the playhead — see {@link #onNowPlayingChanged}. Includes
+     * the capability flags as well as the text, because they decide which BUTTONS are
+     * drawn, and a Foray moving from playing to paused has to repaint even though every
+     * string is identical.
+     */
+    private static String visibleKey(@NonNull NowPlaying np) {
+        return np.state + "|" + np.title + "|" + np.artist + "|" + np.album
+            + "|" + np.hasPrevious + np.hasNext + np.canPlay + np.canPause + np.canStop
+            + "|" + np.acceptsTransport();
+    }
+
     private static int[] compactActions(int prevIndex, int playIndex, int nextIndex) {
         int count = 0;
         if (prevIndex >= 0) count++;

@@ -170,8 +170,8 @@ final class NowPlaying {
             string(data, "artist"),
             string(data, "album"),
             string(data, "artworkUri"),
-            Math.max(0L, longOf(data, "durationMs")),
-            Math.max(0L, longOf(data, "positionMs")),
+            clampMs(longOf(data, "durationMs")),
+            clampMs(longOf(data, "positionMs")),
             rateOf(data),
             bool(data, "canPlay"),
             bool(data, "canPause"),
@@ -239,6 +239,30 @@ final class NowPlaying {
 
     private static long longOf(JSObject data, String key) {
         return (long) number(data, key, 0d);
+    }
+
+    /** The longest duration or position this will believe: 24 hours in milliseconds.
+     *
+     *  <p>A Foray is 45 to 90 minutes, so anything past a day is a bug in the caller
+     *  rather than a long Foray. */
+    private static final long MAX_MS = 24L * 60L * 60L * 1000L;
+
+    /**
+     * Clamp a millisecond value to something Media3 can hold.
+     *
+     * <p><b>THE SIGN WAS NOT ENOUGH, and a review pass found the hole.</b> The original
+     * clamped with {@code Math.max(0L, …)}, which is exactly the shape of the three
+     * clamps documented above — and {@code WebViewPlayer} then multiplies
+     * {@code durationMs} by 1000 to get microseconds. A non-finite or absurd JSON
+     * number reaches {@code Long.MAX_VALUE} through the {@code (long)} cast, and
+     * {@code Long.MAX_VALUE * 1000} wraps <b>negative</b>, and
+     * {@code MediaItemData.Builder.setDurationUs} rejects a negative duration by
+     * throwing on the MAIN THREAD inside {@code getState()} — the precise crash class
+     * these clamps exist to prevent, arriving through the clamp itself.
+     */
+    private static long clampMs(long ms) {
+        if (ms < 0L) return 0L;
+        return Math.min(ms, MAX_MS);
     }
 
     private static boolean bool(JSObject data, String key) {

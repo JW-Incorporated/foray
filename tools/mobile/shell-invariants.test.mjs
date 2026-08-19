@@ -871,6 +871,13 @@ function stripJavaComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 }
 
+/** JavaScript source with its comments removed. Same job as `stripJavaComments`, and
+ *  needed for the same reason: these files carry more prose than code and the prose
+ *  quotes the very call sites being searched for. */
+function stripJsComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/[^\n]*/gm, " ");
+}
+
 test("EVERY TRANSPORT ACTION THE NATIVE SIDE CAN SEND IS ONE THE PAGE CAN ROUTE", () => {
   /* The other silent seam, and the sharper one: the action names are string literals in
      two Java files and a `Map` lookup in JavaScript. A `"nextTrack"` for a
@@ -1183,8 +1190,155 @@ test("start() and stop() do not claim to know whether the service is running", (
     /startAccepted = !!result\.started;/,
     "the web half must set its gate from `started`, the only thing a synchronous bridge call knows."
   );
-  assert.ok(
-    !/= !!result\.running;/.test(shellSrc.replace(/lastKnownRunning = !!result\.running;/g, "")),
-    "something other than lastKnownRunning is reading `result.running` — only state() answers that."
+  /* AND NOTHING DERIVES THE START GATE FROM `running`, which is the rule that finding
+     was really about. #27 gave the shell a second, legitimate consumer of a `running`
+     value — `noteServiceRunning`, which recovers when the service goes away underneath
+     us — so "only `lastKnownRunning` may read it" stopped being the right spelling of
+     the invariant and started being a spelling that forbade a fix. What must never come
+     back is `startAccepted` being computed from a raced read. */
+  assert.match(
+    shellSrc,
+    /function noteServiceRunning\(running\) \{/,
+    "the shell must have a single named place where native's `running` is consumed"
   );
+  const startAssignments = [...shellSrc.matchAll(/startAccepted = ([^;]+);/g)].map((m) => m[1].trim());
+  for (const rhs of startAssignments) {
+    assert.ok(
+      !/result\.running|\brunning\b/.test(rhs),
+      "the start gate is being set from a `running` read (" + rhs + "), which races the service's own onStartCommand"
+    );
+  }
+  assert.ok(
+    startAssignments.includes("!!result.started"),
+    "the start gate must still be set from `started`: " + startAssignments.join(" / ")
+  );
+});
+
+
+/* --------------------------- 7. #27's four review findings, pinned in the source
+
+   Every one of these was found by a human reading the Java, not by a failing test, and
+   every one of them is invisible at runtime until a listener hits it. They are asserted
+   over the source because there is no JVM test harness in this repo — which is a real
+   limitation and the reason these are worded as narrowly as they are. */
+
+test("THE STOP BUTTON IS NOT GATED ON acceptsTransport()", () => {
+  /* THE BLOCKING FINDING. `acceptsTransport()` is false for a FINISHED Foray —
+     correctly, because a play button that does nothing is worse than none — and the
+     first version gated EVERY notification action on it, including stop. Every session
+     ends in that state, so every session ended with an ongoing foreground-service
+     notification carrying no buttons at all, exitable only by unlocking the phone and
+     closing the player. The whole trade in `docs/android-lock-screen.md` §5.1 rests on
+     stop being the one-press exit, so it has to exist wherever a notification can. */
+  const service = fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java"),
+    "utf8"
+  );
+  /* `[^{]`, not `[^)]`: the guard contains a call — `np.isLoaded()` — so a
+     paren-excluding class cannot reach across it, and the first version of this test
+     failed with "no conditional stop action" while looking straight at one. */
+  const stopGuard = /if \(([^{]*?)&& np\.canStop\) \{/.exec(stripJavaComments(service));
+  assert.ok(stopGuard, "the notification no longer has a conditional stop action");
+  assert.ok(
+    !/transport/.test(stopGuard[1]),
+    "the stop action is gated on `transport` (" + stopGuard[1].trim() + "), so a finished Foray has no exit"
+  );
+  assert.match(stopGuard[1], /np\.isLoaded\(\)/, "stop should be offered whenever anything is loaded");
+});
+
+test("the page-load listener compares the document, so a hash route is not a stop", () => {
+  /* THE OTHER HIGH-SEVERITY FINDING. This app routes entirely by URL fragment and
+     Android WebView fires `onPageFinished` for same-document navigations, so an
+     unconditional stop here tears the service down when the listener opens the drawer
+     mid-Foray — with the page still alive and its gate still saying it holds a service,
+     so nothing ever re-starts it. */
+  const plugin = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
+    "utf8"
+  ));
+  const body = /public void onPageLoaded\(WebView webView\) \{([\s\S]*?)\}/.exec(plugin);
+  assert.ok(body, "the WebViewListener no longer overrides onPageLoaded");
+  assert.ok(
+    !/stopServiceQuietly\(\)/.test(body[1]),
+    "onPageLoaded stops the service unconditionally; a fragment navigation would trigger it"
+  );
+  assert.match(plugin, /private static String stripFragment\(String url\)/);
+  assert.match(plugin, /lastDocumentUrl/, "nothing remembers the last document, so nothing can compare it");
+});
+
+test("the notification repaint is gated on what the notification SAYS", () => {
+  /* The page reports the playhead ~1 Hz because Media3 extrapolates from it. Nothing on
+     the notification depends on it, so re-posting there is ~3,600 identical
+     notifications an hour — and `player/media-session.js`'s own header warns that
+     writing at rate redraws the notification and visibly flickers on Android. */
+  const service = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java"),
+    "utf8"
+  ));
+  assert.match(service, /private static String visibleKey\(/, "there is no visible-state key to compare");
+  assert.match(
+    service,
+    /if \(key\.equals\(lastNotificationKey\)\) return;/,
+    "onNowPlayingChanged does not short-circuit on an unchanged display"
+  );
+  /* And the key must not carry the playhead, or it would never match. */
+  const key = /private static String visibleKey\(@NonNull NowPlaying np\) \{([\s\S]*?)\}/.exec(service);
+  assert.ok(key, "could not read visibleKey's body");
+  assert.ok(
+    !/positionMs|durationMs/.test(key[1]),
+    "visibleKey includes the playhead, so the gate can never match and the repaint is not gated at all"
+  );
+});
+
+test("the session's owner is identity-checked, like the hub's listener and sink", () => {
+  /* A stop and a start can overlap — the new instance's onCreate can run before the old
+     one's onDestroy — so a plain boolean lets the OLD instance report "no session" while
+     the NEW one is live. `state()` would then lie during exactly the restart a device
+     pass is trying to diagnose, on a field the documentation tells it to trust. */
+  const service = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java"),
+    "utf8"
+  ));
+  assert.match(
+    service,
+    /if \(sessionOwner == this\) sessionOwner = null;/,
+    "releaseSession clears the session owner without checking it is still ours"
+  );
+  assert.ok(
+    !/sessionActive = (true|false)/.test(service),
+    "the session flag is a plain boolean again; overlapping instances will disagree"
+  );
+});
+
+test("a millisecond value is clamped at both ends before it reaches Media3", () => {
+  /* `WebViewPlayer` multiplies durationMs by 1000 for microseconds. Clamping only the
+     sign leaves Long.MAX_VALUE reachable, and Long.MAX_VALUE * 1000 wraps NEGATIVE —
+     which `MediaItemData.Builder.setDurationUs` rejects by throwing on the main thread
+     inside getState(), the exact crash class the clamps exist to prevent. */
+  const now = stripJavaComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/NowPlaying.java"),
+    "utf8"
+  ));
+  assert.match(now, /private static long clampMs\(long ms\)/, "there is no magnitude clamp");
+  assert.match(now, /return Math\.min\(ms, MAX_MS\);/, "clampMs does not bound the magnitude");
+  for (const field of ["durationMs", "positionMs"]) {
+    assert.match(
+      now,
+      new RegExp('clampMs\\(longOf\\(data, "' + field + '"\\)\\)'),
+      field + " is not clamped through clampMs"
+    );
+  }
+});
+
+test("the permission prompt is not issued through the serialised bridge queue", () => {
+  /* `callAndRecord` exists to order `start` against `stop`. `requestNotifications`
+     resolves only when a human answers a dialog, so putting it in that chain blocks a
+     `stop` behind a person — and if the Activity is torn down under the dialog, the chain
+     never advances again and the shell can neither start nor stop for the session. */
+  const shellSrc = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-audio-shell.js"), "utf8"));
+  assert.ok(
+    !/callAndRecord\("requestNotifications"/.test(shellSrc),
+    "requestNotifications goes through the serialised queue, where it blocks every call behind it"
+  );
+  assert.match(shellSrc, /call\("requestNotifications"\)\.then\(/);
 });

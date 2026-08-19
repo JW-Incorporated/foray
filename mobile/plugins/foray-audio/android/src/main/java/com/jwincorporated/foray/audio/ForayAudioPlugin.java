@@ -7,6 +7,7 @@ import android.os.Build;
 import android.util.Log;
 import android.webkit.WebView;
 
+import androidx.annotation.Nullable;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
@@ -132,12 +133,65 @@ public class ForayAudioPlugin extends Plugin {
             bridge.addWebViewListener(new WebViewListener() {
                 @Override
                 public void onPageLoaded(WebView webView) {
-                    stopServiceQuietly();
+                    onDocumentMaybeChanged(webView);
                 }
             });
         } catch (Exception e) {
             Log.w(TAG, "could not register the page-load listener", e);
         }
+    }
+
+    /**
+     * The last loaded URL with its fragment removed, so a hash route can be told from a
+     * real document load.
+     */
+    @Nullable
+    private String lastDocumentUrl;
+
+    /**
+     * Stop the service only when a NEW DOCUMENT loaded — never on a hash route.
+     *
+     * <p><b>A REVIEW PASS CAUGHT THIS AS A HIGH-SEVERITY BUG AND IT WOULD HAVE BEEN
+     * BAD.</b> The first version stopped the service on every {@code onPageLoaded}, on
+     * the reasoning that a fresh page has nothing playing. <b>This app routes entirely
+     * by URL fragment</b> — {@code app.js} sets {@code location.hash} and listens for
+     * {@code hashchange} — and Android WebView dispatches
+     * {@code WebViewClient.onPageFinished} for same-document fragment navigations,
+     * which is exactly what Capacitor's {@code BridgeWebViewClient} turns into
+     * {@code onPageLoaded}.
+     *
+     * <p>So: a Foray is playing, the listener opens the drawer and taps a playlist, and
+     * the service is torn down and the {@code MediaSession} released <b>while the page
+     * and its JS live on</b>. The web half still holds {@code wanted} and
+     * {@code startAccepted} true, so {@code ensureStarted}'s short-circuit means no
+     * later {@code play()} — not one of the 20-30 remaining seams — ever re-asks. The
+     * process loses its importance protection and its audio-focus exemption, and the
+     * lock screen stays blank, for the rest of the Foray, silently.
+     *
+     * <p>Two independent fixes, because one of them is a heuristic about somebody
+     * else's callback: this method compares the document URL, <b>and</b> the web half
+     * now recovers on its own if the service disappears underneath it
+     * ({@code noteServiceRunning} in {@code foray-audio-shell.js}).
+     */
+    private void onDocumentMaybeChanged(@Nullable WebView webView) {
+        try {
+            String url = webView == null ? null : webView.getUrl();
+            String document = url == null ? null : stripFragment(url);
+            /* A null URL means we cannot tell, and the safe answer is to do NOTHING:
+               a missed stop leaves a service the settle window or `stopWithTask` will
+               deal with, while a wrong stop is the failure above. */
+            if (document == null) return;
+            boolean changed = !document.equals(lastDocumentUrl);
+            lastDocumentUrl = document;
+            if (changed) stopServiceQuietly();
+        } catch (Exception e) {
+            Log.w(TAG, "could not decide whether the document changed", e);
+        }
+    }
+
+    private static String stripFragment(String url) {
+        int at = url.indexOf('#');
+        return at < 0 ? url : url.substring(0, at);
     }
 
     @PluginMethod
@@ -343,9 +397,16 @@ public class ForayAudioPlugin extends Plugin {
         }
     }
 
-    /** {@code "granted"}, {@code "denied"}, {@code "prompt"} — Capacitor's own three
-     *  words — or {@code "unsupported"} below API 33, where there is no such
-     *  permission to have a state. */
+    /**
+     * Capacitor's own {@code PermissionState} word, or {@code "unsupported"} below API
+     * 33 where there is no such permission to have a state.
+     *
+     * <p><b>FOUR WORDS, NOT THREE:</b> {@code granted}, {@code denied}, {@code prompt}
+     * and {@code prompt-with-rationale}. An earlier comment here promised three and a
+     * review pass caught it — worth fixing rather than shrugging at, because this string
+     * is passed straight through to a device pass as a diagnostic, and a reader told to
+     * expect three words will read the fourth as a bug in the plugin.
+     */
     private String notificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return "unsupported";
         try {

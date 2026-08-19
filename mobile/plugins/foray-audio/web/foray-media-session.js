@@ -75,12 +75,21 @@
  * screen, wait 25 seconds, and the controls you paused with disappear — leaving no
  * way to resume without unlocking the phone and finding the app.
  *
- * So the service's lifetime becomes **"a Foray is loaded"** rather than **"audio is
- * sounding"**, and this file owns that signal because it is the only thing that can
- * see it: `media.release()` (which `client.js` calls from `stopAndClose` and
- * nowhere else) sets `metadata = null`, and that is unambiguous — the player has
- * been closed, not paused. `onLoadedChange(false)` then lets the shell stop the
- * service AT ONCE rather than 25 s later.
+ * So the service's lifetime becomes **"the transport can act on something"** rather
+ * than **"audio is sounding"** — `isTransportable`, which is playing or paused and
+ * nothing else. This file owns that signal because it is the only thing that can see
+ * it: `media.release()` (which `client.js` calls from `stopAndClose` and nowhere
+ * else) sets `metadata = null`, and that is unambiguous — the player has been closed,
+ * not paused. `onLoadedChange(false)` then lets the shell stop the service AT ONCE
+ * rather than 25 s later.
+ *
+ * **A FINISHED FORAY IS NOT LOADED, and getting that wrong was a blocking review
+ * finding.** An earlier version said "anything but idle", which made a finished Foray
+ * keep the service alive — with `acceptsTransport()` false on the native side, that
+ * is an indefinite foreground service behind a notification with NO BUTTONS ON IT,
+ * including no stop. Every session ends in that state. `isTransportable` is the same
+ * rule on both sides of the bridge, so the surface with no controls is also the
+ * surface that does not hold a service open.
  *
  * Two things that follow, both worth stating:
  *
@@ -295,9 +304,48 @@ export function nowPlayingPayload({
   };
 }
 
+/** Is this a state the transport can act on — and therefore one the native session
+ *  and its foreground service should exist for?
+ *
+ *  PLAYING OR PAUSED, and deliberately NOT "anything but idle". A review pass found
+ *  two ways `"ended"` arrives: a genuinely finished Foray, and `mediaPlaybackState`'s
+ *  `!hasItem` branch (an out-of-range queue index), which reports the spec's `"none"`
+ *  with the metadata object still in place. Treating either as "loaded" left the
+ *  shell's settle window a permanent no-op — an ongoing notification with no buttons
+ *  and a foreground service nothing in JS would stop. And an ended Foray has no
+ *  transport to offer anyway (`NowPlaying.acceptsTransport` on the native side is the
+ *  same rule), so "the service lives while the transport is usable" is both simpler
+ *  and the thing actually wanted. */
+export function isTransportable(payload) {
+  return payload.state === "playing" || payload.state === "paused";
+}
+
 /** The part of a payload a listener can SEE. Everything except the playhead, which
  *  native extrapolates on its own — so a change here is sent at once and a change
- *  in `positionMs` alone waits for the rate limit. */
+ *  in `positionMs` alone waits for the rate limit.
+ *
+ *  JOINED WITH A NUL, not with nothing, and a review pass is why: `join("")` makes
+ *  `{title:"ab", artist:"c"}` and `{title:"a", artist:"bc"}` the same key, so a real
+ *  change would fall through to the position-only branch — delayed by up to a second,
+ *  or never sent at all if the playhead happened to be still. A separator that cannot
+ *  occur in any of these fields removes the class rather than making it unlikely.
+ *  See `KEY_SEPARATOR` below for which character, and for the two ways writing it
+ *  went wrong before it was written this way. */
+/** The separator between `identityKey`'s fields.
+ *
+ *  ASCII 31, the unit separator, built with `fromCharCode` rather than written as a
+ *  literal or as an escape. Both alternatives went wrong here in one sitting: an
+ *  earlier draft carried the invisible byte in the source, which is a byte nobody can
+ *  review, and the escape form was silently flattened to an EMPTY STRING by the tool
+ *  that replaced it — which would have restored the exact collision this constant
+ *  exists to remove, with every test still green. `player/media-session.js`'s
+ *  `CONTROL` class keeps its own bytes as escapes for the first reason; this goes one
+ *  step further because of the second.
+ *
+ *  It cannot occur in any field being joined: `artworkUrl()` upstream refuses any URL
+ *  containing a control character, and the rest is podcast metadata. */
+const KEY_SEPARATOR = String.fromCharCode(31);
+
 export function identityKey(payload) {
   return [
     payload.state, payload.title, payload.artist, payload.album, payload.artworkUri,
@@ -306,7 +354,7 @@ export function identityKey(payload) {
     payload.hasNext, payload.hasPrevious,
     payload.canSeekBack, payload.canSeekForward, payload.canSeekTo,
     payload.seekBackMs, payload.seekForwardMs,
-  ].join("");
+  ].join(KEY_SEPARATOR);
 }
 
 /**
@@ -336,6 +384,10 @@ export function mediaSessionApplies(capacitor) {
  * @param {Function} [env.schedule]    runs a coalescing callback; a microtask by
  *   default, injected so a test does not have to await one
  * @param {Function} [env.now]
+ * @param {Function} [env.setTimeout]   for the trailing position write; see `flush`
+ * @param {Function} [env.clearTimeout]
+ * @param {Function} [env.onNativeAnswer] handed every `setNowPlaying` result, so the
+ *   shell can notice a foreground service that went away underneath it
  * @param {Function} [env.onLoadedChange] told whether media is loaded — the seam
  *   with `foray-audio-shell.js`; see the header
  * @param {number} [env.positionMinIntervalMs]
@@ -351,6 +403,9 @@ export function createForayMediaSession(env) {
     ? env.schedule
     : (fn) => Promise.resolve().then(fn);
   const onLoadedChange = typeof env.onLoadedChange === "function" ? env.onLoadedChange : null;
+  const onNativeAnswer = typeof env.onNativeAnswer === "function" ? env.onNativeAnswer : null;
+  const setTimer = typeof env.setTimeout === "function" ? env.setTimeout : null;
+  const clearTimer = typeof env.clearTimeout === "function" ? env.clearTimeout : null;
   const minInterval = isNum(env.positionMinIntervalMs)
     ? env.positionMinIntervalMs
     : POSITION_MIN_INTERVAL_MS;
@@ -379,6 +434,8 @@ export function createForayMediaSession(env) {
   let lastPositionMs = null;
   let lastSentAt = 0;
   let lastLoaded = null;
+  /** A position write the rate limit refused, still waiting to be sent. See `flush`. */
+  let deferredTimer = null;
   let sends = 0;
   let lastReason = "";
   /** Serialises bridge calls so two `setNowPlaying`s cannot land out of order and
@@ -405,9 +462,31 @@ export function createForayMediaSession(env) {
          is skipped — and this surface would then silently stop updating for the rest
          of the session with the lock screen frozen on one segment's title. */
       return p.then(
-        function () {},
+        function (result) {
+          if (!onNativeAnswer) return;
+          try {
+            /* `setNowPlaying` answers with the service's own `running` flag, and this is
+               the only regular traffic to native while a Foray plays — so it is also the
+               cheapest possible health check. The shell uses it to notice a foreground
+               service that went away without being asked (Android killing it under
+               memory pressure, a native stop) and to re-ask on the next play. Without
+               it, its own `wanted && startAccepted` gate stays true and NOTHING ever
+               re-starts the service for the rest of the session. */
+            onNativeAnswer(result || {});
+          } catch (e) {
+            log("foray-media-session: handling the " + SET_METHOD + " answer failed", e);
+          }
+        },
         function (e) {
           lastReason = String((e && e.message) || e);
+          /* THE RECORD OF WHAT WE SENT IS TORN UP, and a review pass is why. `flush`
+             commits `lastIdentity` before the write is dispatched, so a rejected write
+             leaves us believing native knows something it does not. A position write
+             normally repairs that within a second because each carries the whole
+             payload — but not while PAUSED, where the playhead never moves again: the
+             lock screen would sit on "playing" with a pause button for the whole pause.
+             Clearing the key makes the next write unconditional. */
+          lastIdentity = null;
           log("foray-media-session: " + SET_METHOD + " failed", e);
         }
       );
@@ -429,14 +508,25 @@ export function createForayMediaSession(env) {
     const payload = nowPlayingPayload({
       metadata, positionState, playbackState, actions: handlers.keys(), uri: uriEnv,
     });
-    const loaded = payload.state !== "idle";
+    const loaded = isTransportable(payload);
     const identity = identityKey(payload);
     const identityChanged = identity !== lastIdentity;
     const t = now();
     if (!identityChanged) {
       if (payload.positionMs === lastPositionMs) return;
-      if (t - lastSentAt < minInterval) return;
+      if (t - lastSentAt < minInterval) {
+        /* DEFERRED, NOT DROPPED, and a review pass found the difference on a real
+           sequence: scrub from the lock screen WHILE PAUSED. The identity does not
+           change, the write lands inside the interval, and with a bare `return` nothing
+           ever re-arms — paused means no further `timeupdate`, and Media3 only
+           extrapolates while playing, so the lock-screen playhead sticks at the
+           pre-seek position until playback resumes. A trailing timer costs one timeout
+           per dropped write and makes the last position always arrive. */
+        deferPositionWrite(minInterval - (t - lastSentAt));
+        return;
+      }
     }
+    cancelDeferred();
     lastIdentity = identity;
     lastPositionMs = payload.positionMs;
     lastSentAt = t;
@@ -456,6 +546,42 @@ export function createForayMediaSession(env) {
           log("foray-media-session: onLoadedChange failed", e);
         }
       }
+    }
+  }
+
+  /**
+   * Arm a trailing flush for a position write the rate limit refused.
+   *
+   * ONE TIMER AT A TIME: a 4 Hz repaint would otherwise arm four a second. The pending
+   * one is always for the earliest moment a write is allowed, so re-arming would only
+   * ever push it later.
+   *
+   * If no timer was injected and the platform has none, the write is dropped as before
+   * — degraded, not broken, and the reason this is not simply assumed to exist.
+   */
+  function deferPositionWrite(delay) {
+    if (deferredTimer !== null) return;
+    if (!setTimer) return;
+    try {
+      deferredTimer = setTimer(function () {
+        deferredTimer = null;
+        scheduleFlush();
+      }, Math.max(0, delay));
+    } catch (e) {
+      deferredTimer = null;
+      log("foray-media-session: could not defer a position write", e);
+    }
+  }
+
+  function cancelDeferred() {
+    if (deferredTimer === null) return;
+    const timer = deferredTimer;
+    deferredTimer = null;
+    if (!clearTimer) return;
+    try {
+      clearTimer(timer);
+    } catch (e) {
+      log("foray-media-session: clearing the deferred write failed", e);
     }
   }
 
@@ -705,6 +831,16 @@ export function createForayMediaSession(env) {
     metadata = null;
     positionState = null;
     playbackState = "none";
+    cancelDeferred();
+    /* THE DEDUPE STATE GOES TOO, and a review pass found what happens when it does not.
+       After an uninstall/install cycle the same metadata at the same position hashes
+       equal, so `flush` returns BEFORE reporting `loaded` — the shell's `mediaLoaded`
+       stays false, and its next settle window tears down the session under a Foray that
+       is loaded and playing. One line, and it is the same class as `active.clear()` in
+       `foray-audio-shell.js`'s own uninstall. */
+    lastIdentity = null;
+    lastPositionMs = null;
+    lastSentAt = 0;
     return true;
   }
 
@@ -719,6 +855,7 @@ export function createForayMediaSession(env) {
       state: transportState({ metadata, playbackState }),
       title: str(metadata?.title),
       loaded: lastLoaded,
+      deferred: deferredTimer !== null,
       sends,
       lastReason,
       positionMs: lastPositionMs,
@@ -756,9 +893,19 @@ if (typeof window !== "undefined") {
          than captured: the two scripts are independent module tags and neither may
          assume the other has run. If the shell is absent this is a no-op and the
          session simply lives as long as the service does. */
+      setTimeout: window.setTimeout.bind(window),
+      clearTimeout: window.clearTimeout.bind(window),
       onLoadedChange: function (loaded) {
         const shell = window.ForayAudioShell;
         if (shell && typeof shell.setMediaLoaded === "function") shell.setMediaLoaded(loaded);
+      },
+      /* The same lazy lookup, for the same reason: neither script may assume the other
+         has run. */
+      onNativeAnswer: function (result) {
+        const shell = window.ForayAudioShell;
+        if (shell && typeof shell.noteServiceRunning === "function") {
+          shell.noteServiceRunning(result.running === true);
+        }
       },
       log: function (message, error) {
         if (window.console && window.console.warn) window.console.warn(message, error || "");
