@@ -426,6 +426,18 @@ test("assertDiscoverSliceComplete is a real guard and not decoration", () => {
   );
   /* 5. and an empty slice, which is the shape a broken projection produces */
   assert.throws(() => assertDiscoverSliceComplete(discover, { items: [] }), WebDirError);
+  /* 6. A SLICE LARGER THAN ITS SOURCE. Every check above asks "did the slice lose
+        anything", which an entirely unsliced document passes — so the guard is
+        one-directional without this, and a first mutation run proved it by deleting
+        the bound and staying green. */
+  assert.throws(
+    () => assertDiscoverSliceComplete({ items: discover.items.slice(0, 2) }, good),
+    (e) => e instanceof WebDirError && /cannot be larger than what it is a slice of/.test(e.message)
+  );
+  /* Equal sizes stay legal: a document small enough that the slice is the whole thing
+     is what every fixture here looks like, and shell-invariants asserts the REAL
+     document actually shrinks. */
+  assert.equal(assertDiscoverSliceComplete(good, good), true);
 });
 
 test("the anchor is the item the JOIN reads, not simply the first one", () => {
@@ -514,6 +526,19 @@ test("data/item-tags.json is COPIED WHOLE, and the bundle proves it byte for byt
   assert.ok(COPIED_WHOLE.includes("data/item-tags.json"));
   /* And it is not in PROJECTED_DATA, which is the list that would trim it. */
   assert.equal(PROJECTED_DATA.some((sp) => COPIED_WHOLE.includes(sp.rel)), false);
+
+  /* THE GUARD ITSELF, REACHED. A first mutation run deleted the COPIED_WHOLE loop
+     inside `assertSlicesOnDisk` and this test stayed green, because everything above
+     reads the two files directly — it proves `prepare` copies, not that anything
+     would NOTICE if it stopped. So corrupt the bundled copy and demand the throw. */
+  const bundled = path.join(fake, "www", "data", "item-tags.json");
+  const whole = JSON.parse(fs.readFileSync(bundled, "utf8"));
+  delete whole.tags[Object.keys(whole.tags)[0]];
+  fs.writeFileSync(bundled, serializeSlice(whole));
+  assert.throws(
+    () => assertSlicesOnDisk(path.join(fake, "www"), fake),
+    (e) => /not byte-identical to the source/.test(e.message) && /tagDF/.test(e.message)
+  );
 });
 
 test("REAL REPO: trimming item-tags to the bundled pool WOULD re-rank the app", () => {
