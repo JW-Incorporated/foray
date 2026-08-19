@@ -120,11 +120,24 @@ function basenameIndex() {
   return byBasename;
 }
 
-/** The repo-relative path a cited path denotes, or null. */
+/**
+ * The repo-relative path a cited path denotes, or null.
+ *
+ * An exact path wins. Otherwise the basename must be UNIQUE in the repo: taking
+ * the first of several hits would let a renamed file go on resolving against an
+ * unrelated namesake, which is the whole failure this suite exists to stop. Five
+ * citations resolve this way today (`sessionBuilder.ts`, `buildSession.ts`,
+ * `createUserInterestsProvider.ts` and the two documents' references to each
+ * other), and each is unique. `package.json` has eight namesakes and resolves
+ * exactly, so the ambiguity never arises — but it would the moment the root one
+ * were renamed, and then the citation should fail rather than quietly land on
+ * `backend/package.json`.
+ */
 function resolveFile(cited) {
   if (fs.existsSync(path.join(ROOT, cited))) return cited;
   const hits = basenameIndex().get(path.basename(cited)) || [];
-  return hits.length ? hits[0] : null;
+  if (hits.length === 1) return hits[0];
+  return null;
 }
 
 /* ---------- resolving an anchor ---------- */
@@ -173,9 +186,11 @@ function declaresBinding(src, name) {
   return new RegExp(`(?:export\\s+)?(?:const|let|var)\\s+${n}\\s*=`).test(src);
 }
 
+const escape = (s) => s.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
+
 /** `#dom-id` — an element this file creates. */
 function declaresElement(src, id) {
-  return new RegExp(`id=["']${id.replace(/[-]/g, "\\-")}["']`).test(src);
+  return new RegExp(`id=["']${escape(id)}["']`).test(src);
 }
 
 /**
