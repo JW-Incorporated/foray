@@ -1641,6 +1641,37 @@ test("the first accepted start asks for the notification permission, once", asyn
   assert.equal(shell.inspect().notificationsGranted, true);
 });
 
+test("A STOP AND A FRESH PLAY DO NOT ASK A SECOND TIME", async () => {
+  /* A MUTATION FOUND THIS GAP. Deleting `if (notificationsAsked) return;` left the
+     suite green, because the test above proves "once" through a second play — and a
+     second play short-circuits in `ensureStarted`'s own `wanted && startAccepted`
+     guard, so the start callback never runs again and nothing would have asked twice
+     anyway. The flag only earns its keep across a STOP: after one, `startAccepted` is
+     false, the next play really does re-issue a start, and its callback really would
+     prompt again. Two dialogs in one session is Android's own re-prompt limit doing
+     our rate-limiting — and it only does it twice. */
+  const { shell, proto, clock, capacitor } = setup({ askNotifications: true, settleMs: 1000 });
+  shell.install();
+  const first = makeElement(proto);
+  first.play();
+  await flush();
+  first.paused = true;
+  first.emit("pause");
+  await flush();
+  clock.advance(1000);
+  clock.fireAll();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start", "requestNotifications", "stop"]);
+
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.deepEqual(
+    methods(capacitor), ["start", "requestNotifications", "stop", "start"],
+    "the play after a stop prompted for notifications a second time"
+  );
+});
+
 test("A START ANDROID REFUSED DOES NOT ASK FOR NOTIFICATIONS", async () => {
   /* A refused start means no service, so no notification — so a system dialog with
      nothing behind it. The listener would be asked to permit something we could not

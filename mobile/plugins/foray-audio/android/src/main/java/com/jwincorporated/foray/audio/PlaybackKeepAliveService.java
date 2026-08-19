@@ -454,10 +454,15 @@ public class PlaybackKeepAliveService extends Service {
                instead of leaving it an ordinary ongoing notification. Without the
                session there is still a notification with working buttons; there is just
                no media panel. */
+            /* NO `setShowCancelButton`/`setCancelButtonIntent`. They were in the first
+               draft of this method and the compiler's deprecation note is what sent me to
+               read them: both are documented in Media3 as *"a no-op and usages can be
+               safely removed… previously only operational on API < 21"*, and minSdk here
+               is 24. They would have read as the dismissal mechanism and been nothing.
+               The real one is `setDeleteIntent` above plus `setOngoing` tracking whether
+               audio is actually sounding. */
             MediaStyleNotificationHelper.MediaStyle style =
-                new MediaStyleNotificationHelper.MediaStyle(live)
-                    .setShowCancelButton(true)
-                    .setCancelButtonIntent(transportIntent("stop", 5));
+                new MediaStyleNotificationHelper.MediaStyle(live);
             int[] compact = compactActions(prevIndex, playIndex, nextIndex);
             if (compact.length > 0) style.setShowActionsInCompactView(compact);
             notification.setStyle(style);

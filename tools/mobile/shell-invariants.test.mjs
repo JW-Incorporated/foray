@@ -888,9 +888,14 @@ test("EVERY TRANSPORT ACTION THE NATIVE SIDE CAN SEND IS ONE THE PAGE CAN ROUTE"
      to a leading string literal found six actions and missed play and pause — the two
      every other button is beside. It failed loudly only because of the count assertion
      below, which is why that assertion is there. */
+  /* `[A-Za-z]`, NOT `[a-z]`, and a mutation is why. Scanning for lowercase-only
+     literals made the one misspelling this test exists to catch — `"nextTrack"` for
+     `"nexttrack"` — invisible, because a camelCase action simply did not match the
+     pattern and so was never checked against the routable set. The test survived the
+     exact mutation it is named after. */
   const sent = new Set(
     [...player.matchAll(/\bsend\(([^)]*)\)/g), ...service.matchAll(/transportIntent\(([^)]*)\)/g)]
-      .flatMap((m) => [...m[1].matchAll(/"([a-z]+)"/g)].map((q) => q[1]))
+      .flatMap((m) => [...m[1].matchAll(/"([A-Za-z]+)"/g)].map((q) => q[1]))
   );
   assert.ok(sent.size >= 7, "expected at least seven transport actions in the Java, found " + [...sent].join(", "));
   for (const action of sent) {
@@ -923,7 +928,7 @@ test("EACH NOTIFICATION BUTTON GETS ITS OWN PendingIntent REQUEST CODE", () => {
     .map((m) => ({
       /* Both literals when the argument is a ternary, joined — so play and pause sharing
          one request code is correct (they are one button) and reads as one entry here. */
-      action: [...m[1].matchAll(/"([a-z]+)"/g)].map((q) => q[1]).join("/"),
+      action: [...m[1].matchAll(/"([A-Za-z]+)"/g)].map((q) => q[1]).join("/"),
       code: Number(m[2]),
     }));
   assert.ok(uses.length >= 5, "expected at least five transport intents, found " + uses.length);
@@ -1089,6 +1094,19 @@ test("the plugin's Gradle dependencies are androidx only, and each is named in t
     /implementation project\(':capacitor-android'\)/.test(gradle),
     "the plugin must depend on capacitor-android"
   );
+  /* AND EACH REQUIRED ARTEFACT IS PRESENT, which the allow-list above cannot say. A
+     mutation that replaced the appcompat line with a second media3-session line
+     survived: every coordinate was allowed and named in the header, and appcompat —
+     which is where `NotificationCompat`, `ServiceCompat` and `ContextCompat` come from
+     — had silently gone. That build fails, so it is not the worst kind of hole; but a
+     test whose whole subject is the dependency list should not need the compiler to
+     notice a missing dependency. */
+  for (const required of ["androidx.appcompat:appcompat:", "androidx.media3:media3-session:", "androidx.media3:media3-common:"]) {
+    assert.ok(
+      coords.some((c) => c.startsWith(required)),
+      "the plugin no longer declares " + required + ", which it compiles against"
+    );
+  }
 });
 
 test("start() and stop() do not claim to know whether the service is running", () => {

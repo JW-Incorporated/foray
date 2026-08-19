@@ -462,6 +462,21 @@ in mobile browsers, and #28's native backend needs the same metadata mapping —
 it buys the Android *app* nothing. On Android those controls are native work, and
 §5 explains why they and the foreground service are the same piece of work.
 
+> **BUILT SINCE, 2026-08-18 — `docs/android-lock-screen.md`.** The controls exist
+> natively now, on a Media3 `MediaSession` carried by the foreground service. Two
+> things about this section survive it exactly:
+>
+> - **The inference is unchanged.** That `navigator.mediaSession` is absent is still
+>   source-derived, still unmeasured, and is now the **premise** of a change rather
+>   than a scope note — so a device pass that finds the API present would be the most
+>   valuable result available here, not a curiosity. `navigator.mediaSession.forayPolyfill`
+>   is `true` when our stand-in installed, and the polyfill deliberately declines to
+>   install if the engine already has one.
+> - **`player/media-session.js` turned out not to need re-implementing at all.** Its
+>   mapping is what the Android lock screen shows, because the native side supplies
+>   the missing `navigator.mediaSession` and lets that module drive it unmodified.
+>   "It buys the Android app nothing" was true of the API and never of the module.
+
 ## 5. The foreground service, given #227 — reasoning, not a verdict
 
 > **BUILT SINCE, 2026-08-17 — `docs/android-native-code.md`.** This section is left
@@ -607,8 +622,9 @@ things the question is made of.
 | `npx cap sync` for Android | **Works**, verified as its own run: `npm run sync` finishes in **13.8 s** (`copy android`, `update android`, `copy web`, `update web`). Not while Gradle is running — §1.1 |
 | CSP versus the injected bridge | **Answered by inference**, §2. Unmeasured, §3 |
 | App launched, or any line read from a running WebView | **No.** No emulator, no device |
-| `navigator.mediaSession` absent | **Inferred**, §4. Unchanged from MP1 |
-| Foreground service | **BUILT SINCE, and still never executed** — `docs/android-native-code.md`. §5's reasoning is unchanged and its conclusion is not: the FGS was built because §5.2's OS-level arguments were never weakened, and because §4 means #27 needs native code on Android regardless. A `mediaPlayback` service starts on the first `play()` and stops after a settle window; both APKs still build. Lock-screen metadata and transport controls are still not done |
+| `navigator.mediaSession` absent | **Inferred**, §4. Unchanged from MP1 — and now the premise of a shipped change, which raises the value of measuring it |
+| Foreground service | **BUILT SINCE, and still never executed** — `docs/android-native-code.md`. §5's reasoning is unchanged and its conclusion is not: the FGS was built because §5.2's OS-level arguments were never weakened, and because §4 means #27 needs native code on Android regardless. A `mediaPlayback` service starts on the first `play()`; both APKs still build |
+| Lock-screen metadata and transport controls | **BUILT SINCE, 2026-08-18, and never rendered** — `docs/android-lock-screen.md`. A Media3 `MediaSession` in that service, fed by a `navigator.mediaSession` polyfill so `player/media-session.js` drives it unmodified; play, pause, next/previous segment, ±30/−15, scrub and stop, all routed back to the page. Both APKs still build. **Nothing has been executed on a device or an emulator** |
 | Signed release / Play upload | **Not attempted.** No keystore, no Play account |
 
 Unchanged and still blocking a store submission, from #36: **bundled data is
