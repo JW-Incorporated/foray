@@ -653,9 +653,16 @@ anyone re-cutting this episode should keep it out.
 
 **Nothing.** §5 ranked this fourteenth-hardest on the grounds that it needs a producer
 arguing against wood, "a real position but a quiet one". In this catalogue it is a
-silent one: `stainless` returns one hit, inside beat 30's carrier and about cleaning a
-fermenter, and `qvevri`, `tinaja`, `amphora` and `concrete` return zero. The
-whiskey-hour episode argues the opposite position at length.
+nearly silent one. `stainless` returns two hits across every transcript read: one
+inside beat 30's carrier, about cleaning a fermenter, and one in the champagne episode
+at 1145.44, which is the closest thing to this beat anywhere in the pool — *"they put
+it in stainless steel vats unless you're super old world. I guess, uh some people do
+use wood still, but yeah, that you're allowed to use for the for the initial
+fermentation."* That is the choice named and then dropped: what stainless does and does
+not permit is exactly what the beat asks for and the sentence is a permission rather
+than a mechanism, and at 12 s it is well under the floor. `qvevri`, `tinaja`, `amphora`
+and `concrete` return zero. The whiskey-hour episode argues the opposite position at
+length.
 
 ### Beat 16 — the classification key — **empty by design**
 
@@ -707,8 +714,8 @@ fermenting vat of grapes.
 **Nothing.** `malolactic` 0, `lees` 0 in the wine sense, `sulphur`/`sulfur` 0 in the
 winemaking sense, `fining` 0, `filtration` 0 in the wine sense. §5 predicted this beat
 would be **over**-supplied on the grounds that the wine podcast world is large. The
-wine podcast world is large and none of it is in this catalogue: §11 counts 24 wine
-shows in `catalog-breadth.json`, none curated.
+wine podcast world is large and none of it is in this catalogue: §11 counts 25 wine
+shows in `catalog-breadth.json`, none of them curated.
 
 ### Beat 20 — sparkling wine as contained pressure — **thin**
 
@@ -731,7 +738,7 @@ sweetness dial, *"maybe a little brandy, little sugar, a little white wine back 
 about five or six atmospheres of pressure or about I think sixty to seventy square or
 pounds per square inch of pressure in a bottle of wine."* Reaching it means running the
 cut to 2078.20, which is 231 s and over the 180 s band, so it is a trade: the sequence
-without the number inside the band, or the number with a  length.
+without the number inside the band, or the number with a `needs_review` length.
 
 **Second, if a shorter cut is wanted:** **1594.08 → 1696.28 (102.2 s)**, the second
 fermentation itself — *"you're gonna start that second fermentation process by adding
@@ -785,8 +792,18 @@ hits in the readable pool and every one is the Guinness widget.
 
 ### Beat 24 — sap drinks that cannot be shipped — **empty**
 
-**Nothing.** `pulque` 0, `palm wine` 0, `aguamiel` 0, `toddy` 0, `tapping` 0 in this
-sense. §5 ranked this twelfth-hardest and expected partial coverage; there is none.
+**Nothing cuttable.** `pulque`, `palm wine`, `aguamiel` and `toddy` all return 0 across
+both catalogue pools. There is exactly one naming in a read transcript, in the
+world-survey passage at `this-podcast-will-kill-you` 3943.32 → 3950.68: *"In Mexico
+people made pulke from the fermented sap of the agave plant."* That is one clause of a
+sixty-seven-second list of local ferments — Orkney barley, Tasmanian gum sap, Victorian
+honey and gum, African banana beer and palm wine, Mexican pulque, Southeast Asian
+cassava — whose whole content is that the drinks existed. **The list is considered and
+rejected at four beats — 24, 34, 51 and 63 — for the same reason each time: it names
+the drinks and never says how any of them is made.** Beat 24's claim is about the
+few-hour timeline and the impossibility of shipping, and neither is in it. §5 ranked
+this beat twelfth-hardest and expected partial coverage; a name in a list is less than
+that.
 
 ### Beat 25 — the milk alcohols — **empty**
 
@@ -982,9 +999,13 @@ token but `rhizopus` 0 and `shaoxing` 0. Settled by the same absence as beat 8.
 
 ### Beat 34 — chewed, sprouted and tuber brews — **empty**
 
-**Nothing.** `chicha` 0, `jora` 0, `cassava` 0, `masticat` 0. §5 ranked this
-thirteenth-hardest and suggested checking whether one candidate could serve both this
-beat and beat 9 without double-counting. There is no candidate to check.
+**Nothing cuttable.** `chicha` 0, `jora` 0, `cassava` 0, `masticat` 0 across both
+catalogue pools. The single naming is beat 24's world-survey list again —
+*"in Southeast Asia people made to pie from fermented cassava"* — which is a drink named
+and a process not described, and cassava's detoxification, the only actively poisonous
+raw material in the Foray, is absent. §5 ranked this beat thirteenth-hardest and
+suggested checking whether one candidate could serve both this beat and beat 9 without
+double-counting. The check is moot: the one candidate serves neither.
 
 ### Beat 35 — the industrial adjunct lager — **empty**, and its near-miss is an advocacy passage
 
@@ -1002,3 +1023,484 @@ what lifts the cap, and high-gravity fermentation with dilution afterwards —
 genuinely the most surprising piece of process in the act, and absent. `high gravity`
 and `deaerated` return zero; `gravity` appears once in the beer episode, defined
 incorrectly as *"gravity is how much alcohol is in your beer."*
+
+---
+
+## 6. Act IV — concentration: the spirits (chain link, then a fan by feedstock, beats 36–51)
+
+**No strong tape, five thin, eleven empty.** The five thin verdicts — 36, 39, 41, 42
+and 43 — come from three episodes, and two of those episodes are the same one: SYSK's
+gin hour carries 41 and 42 and lent beat 12 its column. Everything the column still did
+*not* create is empty: agave, brandy, the fruit distillates, baijiu, soju and shochu,
+aquavit, arrack and the margins are nine consecutive empty beats, and the whisky chain
+loses three of its four.
+
+**The act's shape is the inverse of what §5 predicted.** §5 named whisky 37 to 40 as
+*"the single most podcast-covered subject in drinks, and the place this Foray will
+bloat first"*. On this catalogue whisky is three-quarters empty and its one thin beat
+rests on a thirteen-minute Short Stuff. §9c takes that up.
+
+### Beat 36 — where distillation came from — **thin**
+
+**Chosen:** `this-podcast-will-kill-you` Ep 85, band **4448.80 → 4548.76 (100.0 s)**.
+In on *"I'm excited for this. Distillation is a fairly old concept with fairly old
+technology"*; out on *"…rum would also be added to water barrels on boats"* — the tail
+drifts into naval ration colour, so the out-point wants pulling back to *"far superior
+to wine or beer for long distance travel"* at about 4540.
+
+**Why it advances beat 36.** It is the beat's claim with the beat's own hedging
+discipline. The antiquity and the geographic spread: *"Experimental distillation was
+practiced in ancient China, India, Egypt, Mesopotamia, and Greece, with the technology
+most probably originating in the area around the border between modern Pakistan and
+India, but it wasn't really until the thirteenth century in China and the sixteenth
+through the eighteenth centuries in Europe that it became widespread."* Then the
+sequencing that makes spirits younger than drinking: *"Brandy distilled from wine was
+the first spirit produced in large quantities in Europe, and then there was whiskey,
+gin, vodka and others that followed."* **The "most probably" is the strong signal** —
+beat 36 asks for *"a speaker who marks the contested attributions as contested —
+including the genuinely open question of independent early distillation in China and
+South Asia"* — and this speaker does exactly that, and names no inventor.
+
+**Why it is thin.** Two PhD epidemiologists reading from Rod Phillips and Edward
+Slingerland are not the historian of science, medicine or drink the beat asks for, and
+the medicine half of the beat is entirely absent from this span: no alembic, no
+etymology of *alcohol* or *alembic*, no *aqua vitae*, no Salerno, no monastic or
+apothecary channel. Since beats 57 and 58 collect on that medicine framing, the
+narration for this beat has to supply it or the payoff at 58 arrives unprepared.
+
+**Second candidate, and it is a better fit for the missing half:** SYSK That's Amaro!,
+**1694.40 → 1803.80 (109.4 s)**, which carries the medical lineage this beat needs —
+*"They were medicinal drinks, but it didn't take them very long to figure out it gives
+you a pretty pretty good buzz too, and by the sixteenth century, I believe people were
+like, just just give me that"*, then *"the tradition that they'd gotten from their Arab
+friends of making these medicinal liqueur"*, then *"by the nineteenth, eighteenth and
+nineteenth centuries, apothecaries and pharmacists were like, give me those, I'm going
+to start selling these."* Taking it means two segments on a 2.0 % beat, which §4a
+permits, and means the amaro episode carries three cuts.
+
+### Beat 37 — malt whisky, and peat at the kiln — **empty**
+
+**Nothing.** `peat` returns 0 in discover and 5 in the archive, none about whisky.
+`lyne arm`, `reflux`, `wash still`, `spirit still` and `phenol` all return zero across
+every transcript read. The one whisky-production source in the readable pool is the
+whiskey hour, whose entire technical content is cask finishing and is committed to beat
+14.
+
+**What is missing.** Everything, including the beat's most valuable single move —
+relocating peat from the still to the kiln. §5 predicted this beat would be
+over-supplied. It is empty.
+
+### Beat 38 — grain whisky, blending and the 1909 ruling — **empty**
+
+**Nothing.** `royal commission` 0, `blender` 0 in this sense, `grain whisky` 0. The
+whiskey hour talks about industry consolidation in passing — *"that's again why it was
+like it's consolidation industry"* — which is §6b business material and does not touch
+the ruling.
+
+### Beat 39 — American whiskey's legal definition — **thin**, on a standard the tape misstates twice
+
+**Chosen:** SYSK Short Stuff: Whisky or Bourbon?, band **218.44 → 331.00 (112.6 s)**.
+In on *"So if you want to be bourbon, you have to be corn"*; out on *"…Congress declared
+bourbon as quote America's native spirit."*
+
+**Why it advances beat 39.** It does the beat's central move, which is to treat the
+category as a production specification rather than a place: *"you might be saying, hey,
+guys, you left out probably the most important part. It has to be made in Bourbon
+County, Kentucky, or at least Kentucky. Well, friend, you'd be wrong on both parts,
+because bourbon can be made anywhere in the States."* That is beat 39's own reject line
+— *"any tape asserting bourbon must come from Kentucky"* — refuted rather than repeated.
+It also has the distillation proof cap: *"it can't be distilled at anything higher than
+one sixty proof … because remember we said one ninety for whiskey"*, the mandatory new
+charred oak, and the "straight" designation distinguished from bourbon.
+
+**Why it is thin, and this one is worse than register alone.** The beat's strong signal
+is *"the regulation quoted or paraphrased accurately"*, and the tape gets two numbers
+wrong: barrel entry is given as *"something like one forty"* where the standard is 125
+proof, and the maturation minimum as *"I believe four years for bourbon"* where straight
+bourbon is two. The 51 % maize threshold is never stated — *"you have to be corn"* is as
+close as it gets. Sour mash is absent entirely, and so is bottled-in-bond, which §8 of
+the spine had to relocate to this beat. The causal link from new-cask extraction to
+flavour is not made; when it comes up the host says *"I believe it becomes brown from
+the charred oak um aging process. I think that's right."*
+
+**Also considered and rejected.** `odd-lots` at 302.64 → 320.00 states the standard as
+*"fifty one percent corn that's distilled three times and put into barrels at eighty
+proof"* — the 51 % correct, the other two wrong. Two independent readable sources, two
+misstatements of the same standard, in opposite directions. **Whatever this beat ends up
+carrying, the narration has to state the rule itself.**
+
+### Beat 40 — world whisky and climate — **empty**
+
+**Nothing.** `angel` in the angels'-share sense 0, `evaporative loss` 0, `warehouse` 0
+in this sense, `triple distill` appears once and it is the odd-lots misstatement about
+bourbon. The Indian-molasses question — which the beat calls the same taxonomy problem
+the 1909 commission answered — has no tape of any kind.
+
+### Beat 41 — vodka, defined by subtraction — **thin**
+
+**Chosen:** SYSK Everything You Ever Wanted to Know About Gin, band
+**498.44 → 621.20 (122.8 s)**. In on *"and then you distill that further in the process
+of … the presence of botanicals"*; out around *"no matter what you make it from You're
+going to arrive at basically the same base neutral spirit"* at about 605, which is the
+sentence the beat wants and a better out-point than the band's tail.
+
+**Why it advances beat 41.** The beat's central claim is that the feedstock is rectified
+out by design, and this states it twice and lists the feedstocks: *"because you're
+starting out with such a ridiculously high proof um alcohol like neutral alcohol. You can
+use basically an old shoe to make that that neutral grain spirit. It's gonna taste
+virtually the same as neutral grain spirit made from barley or from way, or from potatoes
+or grapes. It just is the the alcoholic essence of those things."* For a beat the spine
+calls *"the most useful single debunk available in the whole subject"*, that is the debunk,
+from the one episode in the catalogue that had reason to make it.
+
+**Why it is thin.** Register, and then the absence of the legal half, which is what
+turns the claim from an assertion into a production fact: neither the EU nor the US
+definition is quoted or paraphrased, and the beat's point that both are *framed around
+the absence of distinguishing character* is never made. Also missing: how many plates
+rectification takes, what charcoal filtration does and does not remove, blind-tasting
+evidence, and the beat's strong signal — a producer deliberately under-rectifying to
+keep something.
+
+### Beat 42 — gin as a flavouring operation — **thin**
+
+**Chosen:** same episode, band **754.08 → 842.00 (87.9 s)**. In on *"the first way is
+steeping"*; out on *"…it's got like kind of the tea of botanicals brewing and then's
+just vaporizing through those other those last two."*
+
+**Why it advances beat 42.** All three of the beat's methods, in the beat's order, with
+a working example for each: steeping — *"you have your base spirit heating up and it
+simmers, and then you have those botanicals right in there and the oils are releasing
+and it's just infusing through the whole thing"*; vapour infusion — *"that is when you
+have the botanicals in a basket hanging above the boiling spirit and that that vapor
+rises"*; and the combination — *"they use the steeping method for most of the botanicals
+and then they use the vapor method for I think like Douglas fur and bay Laurel leaves."*
+
+**Second segment:** **954.96 → 1031.16 (76.2 s)**, which is the legal half and the
+category's real boundary: *"distilled London dry gin"* against *"flavored vodkas which
+you could literally put any flavor into this neutral spirit and call it gin. Distill gin
+means it went through that process like we described before the break."*
+
+**What is missing.** Juniper as the single legal requirement is implied by the whole
+episode and never stated as the rule. Genever is present but as taste rather than as a
+production route — *"sort of like the maltiness of a whiskey, but the botanicals of a
+gin"* at 1267.28 — so the beat's key contrast, that genever is built on a malt-grain
+distillate rather than a neutral base, is missing. What London Dry actually forbids is
+never said. And the 18th-century panic is handled in both registers at once: the
+licensing and taxation story the beat wants is at 1742.64 → 1771.96, *"really expensive
+to have a license to selgon, really expensive to import neutral spirits"*, sitting a
+few minutes after Judith Defour and the turpentine-and-sulphuric-acid material, which is
+the moral spectacle the beat rejects.
+
+### Beat 43 — rum, the by-product spirit — **thin**, on a 64-second clause
+
+**Chosen:** SYSK Sugar: It Powers the Earth, band **939.80 → 1003.40 (63.6 s)**. In on
+*"So chuck their byproducts to this whole process"*; out before the bagasse aside at
+about 985, which would make the usable cut roughly 45 s.
+
+**Why it advances beat 43.** It states the beat's premise, which is the economic reason
+rum exists: *"Essentially, molasses is chief among them … it's a byproduct that comes
+from boiling sugar"*, then *"the greatest byproduct of molasses is of course rum."* One
+clause, correctly, from a sugar episode rather than a rum one.
+
+**Why it is thin, and it is the thinnest verdict in the report.** Everything else in a
+2.0 % beat is missing: the difference between molasses and fresh cane juice, dunder and
+the muck pit and the ester chemistry, pot against column, the absence of a category
+standard and its consequences, and cachaça under its own Brazilian definition. `dunder`
+returns 2 in the archive and both are Dunder Mifflin; `rhum agricole`, `cachaça` and
+`ester` return zero. The one piece of adjacent material worth naming is inside beat 36's
+carrier, where the pharmacology episode explains molasses' availability through
+plantation slavery — which is §6b's bounded case, admissible only as evidence for why
+molasses was worthless, and it is committed to another beat in any case.
+
+### Beat 44 — agave, and the oven that decides — **empty**
+
+**Nothing.** `agave`, `mezcal`, `sotol`, `piña`, `fructan` and `tahona` all return 0
+across both catalogue pools, and `tequila` returns 16 archive hits of which every one is
+a comedy or chat-show mention. `agave` appears exactly once in a read transcript, inside
+beat 24's world-survey list, as the plant pulque comes from. Nothing anywhere describes
+cooking a piña. §5 predicted this beat would be
+over-supplied because agave is currently fashionable. It is one of the emptiest beats in
+the document, and it is one of §4's twelve at 2.0 %.
+
+### Beat 45 — brandy, and shipping wine dry — **empty**
+
+**Nothing.** `cognac` returns 1 archive hit, `armagnac` 0, `brouillis` 0, `charentais`
+0, `pisco` 0. The word "brandy" appears inside beat 36's carrier — *"Brandy distilled
+from wine was the first spirit produced in large quantities in Europe"* — and inside
+beat 20's dosage passage, and neither is this beat. The Dutch freight explanation, which
+the spine calls history doing §2c's work perfectly, has no tape.
+
+### Beat 46 — the fruit distillates and pectin — **empty**
+
+**Nothing.** `grappa` 0 in the catalogue pools, `slivovitz` 0, `rakia` 0, `pálinka` 0,
+`kirsch` 0, `calvados` 0, `feni` 0, `stone fruit` 0 — and `pectin` 0, which is worth
+stating separately because it is the beat's whole mechanism and it appears in none of the
+seventeen transcripts read either. The amaro episode
+mentions grappa twice as a base spirit — *"a lot of times It will be grappa, which is
+great brandy"* — inside beat 57's carrier, which is a feedstock mention rather than the
+pectin problem.
+
+### Beat 47 — baijiu, the mash that is a solid — **empty**
+
+**Nothing.** `baijiu` 0, `daqu` 0, `solid-state` 0, `sauce aroma` 0. §5 ranked this
+tenth-hardest and expected tasting reactions. There are not even tasting reactions: the
+world's best-selling spirit category appears nowhere in 75,253 items and episodes.
+
+### Beat 48 — soju, shochu and the rice ban — **empty**
+
+**Nothing.** `soju` 0, `shochu` 0, `awamori` 0, `honkaku` 0. The Korean rice ban, which
+the spine calls the clearest case in the Foray of §2c's rule paying off, has no tape.
+
+### Beat 49 — aquavit and the northern infusions — **empty**
+
+**Nothing.** `aquavit` 0, `akvavit` 0, `caraway` 0, `żubrówka` 0, `bison grass` 0.
+§7 of the spine already records this beat as one of the two whose why-it-belongs is
+thinnest; this pass adds no reason to keep or cut it, since availability is not the
+test §7 asks about.
+
+### Beat 50 — arrack and the palm-sap spirits — **empty**
+
+**Nothing.** `arrack` 0, `arak` 0, `toddy` 0, `batavia` 0. §5 ranked this sixth-hardest
+and expected almost no English coverage that was not colonial-trade history or cocktail
+revivalism. There is neither, which means even the material the beat would have rejected
+is absent.
+
+### Beat 51 — the margins of the taxonomy — **empty**
+
+**Nothing.** `arkhi` 0, `whey spirit` 0, `destilado` 0, `birch sap` 0, `sugar beet` 0.
+§5 ranked this third-hardest and named *arkhi* as *"the only candidate I would expect to
+exist at all."* It does not. Beat 24's world-survey list is the one thing that reaches
+this beat's territory and it is rejected here for the beat's own reason: its only
+content is that the drinks exist, which is *"weird-booze listicles"* by another name, and
+its drinks are fermented rather than distilled in any case.
+
+---
+
+## 7. Act V — made by addition (chain link, a short chain, then a fan, beats 52–60)
+
+**No strong tape, three thin, six empty.** The whole fortification chain — 52 as its
+chain link and 53, 54 and 55 as the chain ordered by when the spirit goes in — is empty,
+four for four. The three thin beats are 57, 58 and 59, all from two SYSK episodes, and
+they are the liqueur-amari-absinthe cluster §5 predicted would be over-supplied *"because
+they are cocktail-adjacent"*. They are the best-served cluster in the report, which is
+the prediction half-holding: the tape exists, it is just two episodes deep rather than
+abundant.
+
+### Beat 52 — fortification is a valve — **empty**
+
+**Nothing.** `fortified` returns 7 hits across the readable pool — five in the amaro
+episode, one in the absinthe episode and one in the kombucha episode — and every one is
+the word used as a category label. None explains the mechanism. `residual sugar` 0, `mutage` 0, `grape spirit` 0.
+
+**This is the most structurally expensive empty beat in Act V.** The spine calls it *"the
+most economical explanatory beat in the whole Foray"* — one mechanism, four famous
+drinks — and it is also the last of beat 5's four routes past the ceiling to be
+demonstrated. With 5 and 52 both empty, the Foray's enumeration of routes past the
+ceiling is never opened and never closed.
+
+### Beat 53 — port: early spirit, a race, two ages — **empty**
+
+**Nothing.** `port` in the drink sense returns 0 across both catalogue pools — 52 archive
+hits and 2 discover hits, all seaports and airports — and `lagares`, `treading` and
+`tawny` return zero. The one drink-sense mention in a read transcript is the whiskey
+hour's *"Angels Envy decided to start finishing in pork casks"* and *"even Jack Daniels
+did this. A port cask"*, which is beat 14's cask trade.
+
+### Beat 54 — sherry: the flor and the solera — **empty**
+
+**Nothing.** `solera` 0, `criadera` 0, `flor` in the yeast sense 0 across 13 archive
+hits that are all surnames, `fino` 0, `oloroso` 1 and it is inside beat 14's
+second segment as a cask type. The spine calls this *"the best single case study in the
+entire Foray for question four"* and the one place where maturation is performed by a
+living organism. There is no tape.
+
+### Beat 55 — madeira: heat as maturation — **empty**
+
+**Nothing.** `madeira` 0, `estufagem` 0, `canteiro` 0, `maillard` 0.
+
+### Beat 56 — vermouth as stacked additions — **empty**
+
+**Nothing**, and this is the beat where a raw count would most badly mislead.
+`vermouth` returns 0 in both catalogue pools but **20 hits across three read
+transcripts** — 11 in the amaro episode, 7 in the absinthe episode, 2 in the gin
+episode — which looks like coverage and is not. Seven of the twenty are martini service
+(*"it annoys me when asked for a dry martini when they just put their vermouth in, swish
+it around, then dump it out"*), which is §6b cocktails and service. One is the
+etymology, at absinthe 503.08 → 525.88: *"in German wormwood is called the ver moot …
+Vermouth is a fortified wine that contains wormwood, among other things."* The best of
+them is the amaro comparison at 1192.40, where vermouth *"is also infused with bitters
+and botanicals and It is also a bitter sweet and used as a bitter sweetening agent in
+cocktails. It is very wormwood forward."* That is two of the four layers, with the base
+wine, its legal proportion and the fortification step all absent, and it is framed as a
+cocktail ingredient, which the beat rejects by name. Beat 56's claim is the *stacking*,
+and nothing here stacks. `artemisia` 0, `quinquina` 0, `americano` 0.
+
+### Beat 57 — liqueurs and how flavour is captured — **thin**
+
+**Chosen:** SYSK That's Amaro!, band **393.88 → 470.00 (76.1 s)**. In on *"to make a
+marrow is actually very easy"*; out on *"…most Italian amorrow is or amari is grappa,
+yes, or wine."*
+
+**Why it advances beat 57.** It is the only passage in the readable pool that treats
+extraction as the variable: *"you just soak some some bittering agents and herbs,
+whatever your proprietary blend is. You let it soak for a little while. Sometimes you
+might redistill it with the with the herbs and botanicals in it, but a lot of people just
+let it sit for a while … and then I think that's called mass rating or infusing … and
+then you add a little sugar after you filter out the solids, and then you let it age for
+several years."* Maceration against redistillation, plus the sugar, plus the base spirit
+as a choice — *"that base alcohol can vary. A lot of times It will be grappa, which is
+great brandy"* — is beat 57's construction, in a beat's-worth of one breath.
+
+**Why it is thin.** The beat's actual distinguishing claim is that the category is
+defined in law by a minimum sugar content and that everything else is extraction
+technique, and neither the legal minimum nor the higher thresholds certain names require
+appear anywhere. Two of the four techniques are missing — percolation for barks and
+roots, and purchased essences at the industrial end — and so is what heat does to
+delicate aromatics. Emulsion stability in cream liqueurs is absent. And the monastic
+liqueurs are present in the wrong register: `chartreuse` returns 0 in both catalogue
+pools and twice in this episode, at 2172.60 and 2210.52, as recipe secrecy and a
+botanical count — *"only two of them know … there's one hundred and thirty two botanicals
+in chartreuse"* — where the beat asks for *"the monastic-recipe secrecy handled as a
+commercial convention rather than as mystique"*. `bénédictine` returns 0 everywhere. And see
+§2c — this episode is evidence for the region {57, 58} rather than for either beat, so
+the split between them is a judgement recorded rather than a fact found.
+
+### Beat 58 — bitters, amari and real medicine — **thin**
+
+**Chosen:** same episode, band **706.92 → 782.52 (75.6 s)**. In on *"There's no rules.
+There are rules, and we'll get into him late"*; out on *"…you'll see on a label something
+that says China."*
+
+**Why it advances beat 58.** It names the bitter compounds and gives one of them a real
+pharmacological lineage rather than a decorative one: wormwood as *"a classic bittering
+agent"*, then *"sinchona, which … it's a bark of a tree in South America. It's where you
+get quinine, which they used to treat malaria and is what gives tonic water. It's very
+bitter taste. Yeah, so a lot of a lot of Amari use sinchona in it."* Quinine, the bark,
+the antimalarial use and the tonic-water link in one span is the beat's medical-lineage
+claim at its most concrete.
+
+**Why it is thin.** Gentian is named earlier in the episode and only as a punchline —
+*"here, gentiin meat, moonshine essentially"* — so the beat's leading bitter compound has
+no account. The beat's strong signal is *"a distinction drawn between the products whose
+medical claims were real pharmacology and those that were patent-medicine advertising"*,
+and the episode instead hedges in one direction: *"I don't think it's some snake oil cure
+all or anything, but I believe it's a legit digestive. Plus also, um, a lot of those herbs
+are like hepato protective."* That is the opposite of the distinction. Also missing: how
+bitterness is balanced against sugar, and any documented medicinal registration or patent
+history. The aperitivo and digestivo split is present but as a serving convention rather
+than as a preserved theory of digestion.
+
+### Beat 59 — the anise family and a wrong ban — **thin**
+
+**Chosen:** SYSK The Myth of Absinthe, band **2334.52 → 2450.48 (116.0 s)**. In on
+*"But for the most part, if you wanted to get absinthe, it was very, very difficult"*;
+out on *"…you can't import something labeled absinthe or any bottle that shows like
+people tripping."*
+
+**Why it advances beat 59.** It is the beat's myth-correction, made as a correction: the
+syndrome named, then withdrawn — *"Absinthe is um this UH syndrome, which was the
+collection of maladies everything from hallucination, sleeplessness, tremors, convulsions,
+madness from drinking absinthe. And in retrospect historians say this didn't exist. Like
+what this person was describing was excessive alcohol use, like all this stuff you can get
+from drinking way too much high proof alcohol"* — with the mechanism of the panic named
+explicitly: *"there was an accompanying made up syndrome to to give like a veneer of
+science to the moral panic."* It closes with a number, the modern *"through jone free …
+less than ten parts per million"* limit.
+
+**Second, and it is the half the spine cares most about:** **2021.40 → 2071.24 (49.8 s)**,
+the wine industry's role in the bans, which is beat 59's own claim that they tracked
+temperance politics and a wine trade rebuilding rather than any toxin: *"And then wine
+makers, which is sort of weird, got involved in the temperance movement in a way when they
+said, yeah, absentthe is terrible and it's not like cognac … But this stuff is really bad
+stuff. It's cheap and it's petty, and it's for the lower class. So we're going to join up
+in the temperance movement ourselves to help get rid of it."* At 49.8 s it is above the
+floor and below the band.
+
+**Why it is thin.** The production half of the beat is almost absent and the physical
+chemistry is entirely absent. There is no anethole and no louche: `anethole` 0 and
+`louche` 0 across every source read, so the emulsion the beat calls *"a nice piece of
+physical chemistry the listener can verify in a glass"* is unsourced. The family across
+borders is missing — `ouzo`, `raki`, `pastis` and `sambuca` are all 0 — so the beat's
+"one compound in many countries" framing has exactly one country. And the correction is
+made against the modern legal limit rather than against *"the measured thujone content of
+surviving pre-ban bottles"*, which is the evidence the beat asks for by name.
+
+### Beat 60 — the additive frontier, both ways — **empty**
+
+**Nothing.** `seltzer` returns 4 archive hits, of which the closest is Adam Carolla's
+*"Hard Seltzer Taste Test"*; `dealcoholis`/`dealcoholiz` 0, `spinning cone` 0, `reverse
+osmosis` 0, `vacuum distillation` 0, `ready-to-drink` 0.
+
+**The nearest candidate is a stop and it is worth naming**, because it looks like a hit.
+`craft-beer-and-brewing-magazine-podcast--the-post-s-nick-tedeschi-brews-flavorful-low-abv-beers-for-g`
+(3,914 s), *"A brewer makes the case for flavorful, low-alcohol beer built for real
+food"*, is the only low-alcohol row in the catalogue and beat 60's second half is about
+low alcohol. But brewing a beer to a low strength and *removing* ethanol from a finished
+drink are different operations with different physics, and the beat's claim is about the
+second — *"a fifth question the four cannot answer"*. Brewing to 3 % is question two. **Stop.**
+
+---
+
+## 8. Act VI — the rules, and the coda (chain, beats 61–63)
+
+**No strong tape, one thin, two empty.**
+
+### Beat 61 — category law is production law — **thin**
+
+**Chosen:** SYSK Short Stuff: Whisky or Bourbon?, band **62.52 → 194.28 (131.8 s)**. In
+on *"So around the world, if you have Japanese whiskey"*; out on *"…it all has to come
+from the same state as to be still distilled in the same state."*
+
+**Why it advances beat 61.** It states the beat's thesis as a comparison between
+regulatory regimes rather than between drinks: *"when you get to America … we have like
+the most strict, extensive laws detailing what can be considered a type of whiskey any of
+anywhere in the world … it's very much regulated by the Alcohol and Tobacco Tax and Trade
+Bureau"*, and then reads the specification off as a production mandate — new charred oak
+containers, a grain percentage, two years, same-state distillation. That is a statute
+functioning as a recipe, which is the beat's whole claim.
+
+**Why it is thin.** The beat's strong signal is *"at least two jurisdictions contrasted
+so that the arbitrariness is visible — the same liquid legal under one name and not
+another"*, and the second jurisdiction here is a shrug: *"I don't believe there's too many
+um like laws or anything restricting types of whiskey. I'm sure there are in Scotland. But
+we're talking about America in this episode."* Geographical indication as a legal
+mechanism is absent, so is cross-border enforcement and litigation, and so is the honest
+account of what the rules genuinely preserve. The whiskey hour supplies one adjacent fact
+that beat 61 could use and beat 14 is taking — that American single malt *"is now a
+defined brand whiskey category in the code of reference"* — which is a category coming
+into existence, and the closest this catalogue gets to the beat's arbitrariness point.
+
+### Beat 62 — proof, the hydrometer and 40 % — **empty**
+
+**Nothing.** §5 ranked this eighth-hardest, needing *"a historian of measurement or
+taxation"*, and the outcome is worse than absence: `proof` returns **33** hits across the
+eight read transcripts that use it at all, and **every one is a number**, used as a unit
+by speakers who never say what it measures. The Short Stuff uses it ten times without
+defining it once; the
+amaro episode manages *"Proof is double the percentage, right"*, which is the American
+convention stated as arithmetic with no institution behind it. `hydrometer` 0,
+`gunpowder test` 0, `minimum bottling strength` 0, `duty` 0 in this sense.
+
+**What is missing.** The whole institutional half: proof spirit as a reference strength
+for levying duty, hydrometers commissioned for revenue purposes, and the minimum legal
+strengths and duty thresholds that are why so much of the world's spirit sits at 40 %.
+The beat's specific instruction — that the gunpowder test is attested while its status as
+the origin of the legal term is the traditional account — cannot be tested against tape
+that never mentions either.
+
+### Beat 63 — coda: four questions, open list — **empty by design**
+
+**Nothing, correctly.** §5 ranked this fifteenth and last of its narration predictions
+and called it designed as narration. Confirmed, on the same reasoning as beat 16:
+nothing in the readable pool articulates the shared mechanism across families, and the
+only cross-family speech in the pool sorts drinks by strength or by prestige.
+
+**One candidate was considered and it is the closest miss in the report.** Beat 24's
+world-survey passage, `this-podcast-will-kill-you` 3893.28 → 3960.04 (66.8 s), does
+demonstrate half of this beat's claim — that alcohol was made from whatever sugar was
+locally available, on six continents — and it even concedes the incompleteness the beat
+wants: *"Much of the very early history of alcohol is a bit like guesswork."* It is
+rejected because the other half is missing entirely. There is no molecule and no
+organism in it, so it is a list of feedstocks rather than the shared mechanism, and beat
+63's evidence line asks for *"a speaker articulating the shared mechanism across families
+rather than within one."* A coda that lists is the thing a coda must not be.
