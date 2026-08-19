@@ -36,7 +36,15 @@
 #                 - default: GREEN, with a loud summary. Report-only.
 #                 - with repo variable PATH_POLICY_ENFORCE set: RED.
 #
-# Report-only is the shipped default deliberately. Landing this enforcing would
+# ENFORCEMENT IS ON. `PATH_POLICY_ENFORCE=1` was set 2026-08-16, so UNAPPROVED is
+# RED today and the "until then" below has already passed. What is still open is
+# only step 2 of HUMAN-ACTIONS.md #1: marking the check REQUIRED on `main`. So a
+# governed-path PR goes red and loudly, and still merges, because `backend` and
+# `data-and-site` are the required checks. Three agents and a coordinator read
+# the paragraph below as a statement about today and were wrong: a default is not
+# a setting, and an open ticket is not a state. Read the repo variable.
+#
+# Report-only WAS the shipped default deliberately. Landing this enforcing would
 # turn every in-flight `.github/`, `CLAUDE.md` and `docs/adr/` PR red on the day
 # it merged, before anyone had agreed the check should block — and a red check
 # nobody agreed to is how a check gets ignored. The owner flips one repo

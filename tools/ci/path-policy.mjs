@@ -385,6 +385,11 @@ export function automergeDecision(input = {}) {
  *   APPROVED    governed paths touched, and the approval label is present
  *   UNAPPROVED  governed paths touched, no approval label
  *
+ * NOTE 2026-08-16: enforcement is ON in this repo (`PATH_POLICY_ENFORCE=1`), so
+ * the default described below is no longer what runs. Read the repo variable, not
+ * this default — three agents and a coordinator called the check "report-only" on
+ * the strength of this paragraph. A default is not a setting.
+ *
  * `exitCode` is 1 only for UNAPPROVED *while enforcing*. Report-only is the
  * shipped default so the check is visible on day one without turning every
  * `.github/` PR red before anyone has agreed it should block; the owner flips
