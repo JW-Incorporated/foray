@@ -893,7 +893,8 @@
           "explainer"
         ],
         "confidence": "Moderate-to-good on the beat, lower on its payload. The hook states the beat's own causal chain and the `cold-chain` tag names the rail half, but beat 31's strong signal is 'a speaker who states the functional-to-decorative transition outright' for smoking or curing, and a general refrigeration episode may never mention smoke. Realistic outcome: a cut that carries the mechanism plus a Patch that supplies the consequence — which still moves the beat off empty and still sheds a Carry.",
-        "ranked": 1
+        "ranked": 1,
+        "register_caveat": "NOT REGISTER-CLEARED, and this corpus cannot clear it. data/catalog.json's editorial note for the show reads 'Two science journalists dissect food chemistry and history -- a stretch pick for engineering minds.' Two journalists is nearer to the SYSK shape than to The Grill Coach's, where a named historian makes his own argument. Cutting the other way, and not decisively: the tags are food-science and food-history rather than banter, and beat 31 asks for 'a historian of food technology or of refrigeration', which is a subject a journalist can carry by interviewing one. If the founder rules the SYSK register out, whether that ruling reaches this show is a question the READ has to answer before a cut is minted."
       },
       {
         "show": "Proof (America's Test Kitchen)",

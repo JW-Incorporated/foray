@@ -397,11 +397,19 @@ transition outright"*. A general refrigeration episode may well never mention sm
 So the realistic outcome is a cut that carries the mechanism and a Patch that supplies
 the consequence — which still moves the beat off empty and still sheds a Carry.
 
-**On register, and this is the reason to prefer it to the tape the report already
-argues about.** Gastropod is two hosts working with named academic and industry guests
-rather than two hosts working from an article, which is the distinction that put SYSK
-in front of a founder. It is not the same call, and nothing here asks for it to be
-re-opened.
+**On register, and the catalogue's own words make this a real question rather than a
+formality.** The SYSK problem was a register problem — two hosts working from an
+article, no guest, no sourced expertise — and `data/catalog.json`'s editorial note for
+this show reads: *"Two science journalists dissect food chemistry and history -- a stretch
+pick for engineering minds."* **Two journalists is nearer to SYSK's shape than to The
+Grill Coach's**, where a named historian makes his own argument, and this document is not
+going to pretend otherwise on the strength of a hook. Two things cut the other way and
+neither is decisive: the show is tagged `food-science` and `food-history` rather than
+`banter`, and beat 31 asks for *"a historian of food technology or of refrigeration"*,
+which is a subject a journalist can carry by interviewing one. **So rank 1 is not
+register-cleared, the corpus cannot clear it, and if the founder rules the SYSK register
+out then whether that ruling reaches this show is a question the read has to answer
+before a cut is minted.** Recorded here so nobody discovers it after the CPU is spent.
 
 **Blocked on two things, in order.** First **ad probes**: `dai_suspected` is `true`,
 `audio_bytes` is `null` and the enclosure is a Megaphone file behind a Podtrac
