@@ -52,6 +52,23 @@ const ALIASES = {
    over it (history 23.0%, science 18.6%). Tunable — see tools/test-search.mjs. */
 const BROAD_DF_THRESHOLD = 0.10;
 
+/* PLACEHOLDER PROSE -- rewritten once the values are measured. */
+const DF_DROP_THRESHOLD = 0.10;
+const DF_DEMOTE_THRESHOLD = 0.025;
+const DF_BOOST_THRESHOLD = 0.008;
+const DF_PENALTY_THRESHOLD = 0.02;
+
+/* scoreMatch's per-group multiplier, as a function of the query token's tagDF.
+   A NAMED EXPORTED FUNCTION rather than an inline ternary, because
+   tools/test-search.mjs §3 had to know the tiers to know which fields can clear
+   `minScore` on their own, and it MIRRORED them -- a fourth-copy-of-the-matcher
+   shape (#249) one level up, and one that #275 would have broken silently: the
+   mirror compared a fraction against 10 and 30 and every term would have landed
+   in the same tier. An oracle may not reimplement its subject. */
+function dfMultiplier(df) {
+  return df <= DF_BOOST_THRESHOLD ? 1.35 : df <= DF_PENALTY_THRESHOLD ? 1 : 0.75;
+}
+
 function tokenize(q) {
   return q.toLowerCase().split(/[^a-z0-9]+/)
     .filter(w => w.length > 1 && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
@@ -65,6 +82,12 @@ function branchOf(item) {
 }
 
 /* How many tagged items carry `term` as a tag, THROUGH THE SHARED MATCHER.
+   An ABSOLUTE count, and the only caller that wants one is `tagDF` below, which
+   divides it by the size of the map -- see there for why every THRESHOLD reads
+   the fraction and never this. Exported because it is what
+   test/search-matcher.test.js pins the matcher-sharing on: a count is the
+   quantity that mechanism is about, and normalising it would only add a
+   denominator to every expected value.
    #249. This inlined the pre-#211 loose predicate as an anonymous arrow:
 
      tags.some(tag => term.length < 4
@@ -79,12 +102,12 @@ function branchOf(item) {
    invisible to it. The scan was green with the copy sitting in the same module as
    the original.
 
-   IT WAS NOT A REPORTING BUG. `tagDF` drives expansion pruning in
-   interpretQuery: `df > 60` DELETES a term from the expansion and `df > 25` cuts
-   its weight to 0.4x, so an inflated count silently removes vocabulary. It also
-   sets `group.df`, which picks scoreMatch's per-group multiplier
-   (<=10 -> 1.35, <=30 -> 1, else 0.75). Two consumers, two sets of thresholds,
-   both reading a number the ranker itself would never produce.
+   IT WAS NOT A REPORTING BUG. `tagCount` drives expansion pruning in
+   interpretQuery (via `tagDF`): over DF_DROP_THRESHOLD DELETES a term from the
+   expansion and over DF_DEMOTE_THRESHOLD cuts its weight to 0.4x, so an inflated
+   count silently removes vocabulary. It also sets `group.df`, which picks
+   scoreMatch's per-group multiplier (see dfMultiplier). Two consumers, two sets
+   of thresholds, both reading a number the ranker itself would never produce.
 
    Measured over the whole vocabulary (1,364 terms against 1,540 tagged items,
    2026-08-17): 102 terms change count, 94 narrower and 8 wider, 10,035 -> 8,665
@@ -118,7 +141,7 @@ function branchOf(item) {
    `tagDF` is only ever called from query time (interpretQuery / suggestAdjacent-
    Topics), long after module evaluation, so the binding is initialized. Do not
    move a CALL to tagDF to module scope. */
-function tagDF(term, ctx) {
+function tagCount(term, ctx) {
   if (!ctx._dfMemo) ctx._dfMemo = new Map();
   if (ctx._dfMemo.has(term)) return ctx._dfMemo.get(term);
   const tagsMap = ctx.itemTags?.tags || {};
@@ -128,6 +151,49 @@ function tagDF(term, ctx) {
   }
   ctx._dfMemo.set(term, n);
   return n;
+}
+
+/* Fraction of the TAG MAP (0..1) whose tag list carries `term`, through the same
+   matcher. #275.
+
+   THIS USED TO BE THE ABSOLUTE COUNT, and every threshold reading it was an
+   absolute count too -- `df > 60`, `df > 25`, and scoreMatch's buckets at 10 and
+   30 -- while `corpusDF` ten lines down was already a fraction. So half of this
+   module's document-frequency logic was scale-free and half was not, which means
+   the scale-bound half silently retuned itself every night as the catalogue grew.
+   `df > 60` meant "in more than 6.8% of the tag map" at 878 entries and "more
+   than 3.8%" at 1,561. Measured over the whole vocabulary (1,366 terms) against
+   five real nightly snapshots, 878 -> 1,561 entries, 2026-07-19 -> 2026-08-18: 52
+   terms changed expansion bucket and 125 changed score multiplier, with no code
+   change and nobody deciding anything.
+
+   THE DENOMINATOR IS THE TAG MAP, NOT THE POOL, and that is the load-bearing
+   choice rather than a detail. `corpusDF` divides by `discover.items.length`
+   because it counts items; this counts ENTRIES IN THE TAG MAP, so the fraction it
+   reports is a fraction of the population it actually scanned. Two consequences:
+
+     it is the only denominator under which SUBSETTING THE MAP is safe. #274 wanted
+     to ship the app a tag map trimmed to the items the app bundles (1,561 entries
+     -> 649, ~174 KB). Under an absolute count that scales every df by ~0.42 and
+     the app ranks differently from the website: `war` 72 -> 24, deleted from the
+     expansion on the web and at full weight on the phone. Dividing by the map's
+     own size cancels that scaling exactly, so a representative subset reports the
+     same fractions and the divergence is a sampling question rather than an
+     arithmetic one -- measured at 0 terms moved, see
+     tools/mobile/prepare-webdir.test.mjs.
+
+     it is NOT interchangeable with the pool size, so do not "tidy" it into one.
+     `discover.items` and the searched pool are different sets from the tag map
+     (app.js searches session.episodes + discover.items; the map is keyed by
+     whatever the tagger has reached), and dividing by a set this function never
+     walked would reintroduce exactly the two-denominators problem #275 is about.
+
+   Memoized on the same `_dfMemo` as `tagCount` via that function, plus one cached
+   map size -- `Object.keys().length` is O(entries) and query time calls this once
+   per expansion term. */
+function tagDF(term, ctx) {
+  if (ctx._dfTotal === undefined) ctx._dfTotal = Object.keys(ctx.itemTags?.tags || {}).length;
+  return ctx._dfTotal ? tagCount(term, ctx) / ctx._dfTotal : 0;
 }
 
 function itemWordSet(item, tagsMap) {
@@ -213,8 +279,8 @@ function interpretQuery(q, ctx) {
     for (const [t, info] of [...terms]) {
       if (info.w >= 1) continue;
       const df = tagDF(t, ctx);
-      if (df > 60) terms.delete(t);
-      else if (df > 25) terms.set(t, { ...info, w: info.w * 0.4 });
+      if (df > DF_DROP_THRESHOLD) terms.delete(t);
+      else if (df > DF_DEMOTE_THRESHOLD) terms.set(t, { ...info, w: info.w * 0.4 });
     }
 
     return {
@@ -552,7 +618,7 @@ function scoreMatch(item, interp, itemTags) {
       matchedGroups++;
       if (!group.broad) primaryMatched++;
     }
-    sum += best * (group.df <= 10 ? 1.35 : group.df <= 30 ? 1 : 0.75);
+    sum += best * dfMultiplier(group.df);
   }
   for (const tb of interp.topicBoosts) {
     if ((item.topics || []).includes(tb)) sum += 2;
@@ -900,9 +966,16 @@ function classifyResults(results, { cap = DEFAULT_CAP, perShowCap = PER_SHOW_CAP
 
 /* Deterministic "here's what's actually covered nearby" suggestions for the
    honest-empty state -- concepts related to the query's own concept(s),
-   kept only if they have real catalog coverage (tagDF > 0 on at least one
+   kept only if they have real catalog coverage (tagCount > 0 on at least one
    term). No LLM, no fabrication: an uncovered related concept is silently
-   dropped rather than suggested. */
+   dropped rather than suggested.
+   READS `tagCount`, NOT `tagDF`, and #275 is where that stopped being the same
+   thing. `coverage` is a sum used only to rank suggestions against each other and
+   to test `> 0`, so a common denominator cancels out of both and the fraction
+   would be an identical ordering expressed in worse units -- but it is a COUNT of
+   items that this is honest about ("real catalog coverage"), and a threshold is
+   the one thing it must never grow into. If a future change wants "covered
+   enough", that is a fraction and belongs with the constants at the top. */
 function suggestAdjacentTopics(interp, ctx) {
   const concepts = ctx.semantic?.concepts || {};
   const seen = new Set();
@@ -915,7 +988,7 @@ function suggestAdjacentTopics(interp, ctx) {
         seen.add(rid);
         const rc = concepts[rid];
         if (!rc) continue;
-        const coverage = (rc.terms || []).reduce((n, t) => n + tagDF(t, ctx), 0);
+        const coverage = (rc.terms || []).reduce((n, t) => n + tagCount(t, ctx), 0);
         if (coverage > 0) suggestions.push({ id: rid, label: prettyConceptLabel(rid), coverage });
       }
     }
@@ -929,8 +1002,9 @@ function prettyConceptLabel(id) {
 
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
+  DF_DROP_THRESHOLD, DF_DEMOTE_THRESHOLD, DF_BOOST_THRESHOLD, DF_PENALTY_THRESHOLD,
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
-  tokenize, branchOf, tagDF, corpusDF, hitText, hitTag,
+  tokenize, branchOf, tagCount, tagDF, dfMultiplier, corpusDF, hitText, hitTag,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,
