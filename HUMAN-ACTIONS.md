@@ -16,7 +16,7 @@ it is filed under `DONE`.
 
 ## OPEN
 
-### 1. Decide whether `path-policy` should block, and make it required
+### 1. Make `path-policy` a required check on `main`
 
 **Tag:** `[UPGRADE]` · **Time:** ~3 minutes · **Owner:** Wyatt
 
@@ -26,10 +26,10 @@ were merged from a laptop with `gh pr merge` and a founder token and went
 straight past it — not by defeating the deny-list, but because on that route
 there was nothing to defeat. The policy is now one tested module
 (`tools/ci/path-policy.mjs`) reported as a status check named `path-policy` on
-every PR. Today it is **report-only**: it says loudly in the PR's checks when a
-PR touches a governed path (`.github/`, `CLAUDE.md`, `docs/adr/`, `docs/roles.md`,
-`backend/src/`, `tools/ci/`) without a founder's `founder-approved` label, but it
-stays green. These two steps make it actually block.
+every PR. It **blocks today**: since 2026-08-16 it fails a PR that
+touches a governed path (`.github/`, `CLAUDE.md`, `docs/adr/`, `docs/roles.md`,
+`backend/src/`, `tools/ci/`) without a founder's `founder-approved` label. What is
+left is making it *required*, so a PR cannot merge while it is failing.
 
 **Read this before doing it — it is a real trade, not a formality.**
 
@@ -78,6 +78,12 @@ is outstanding, and it is deliberately parked. Read the prerequisite first.
 > **Do this after the next nightly refresh PR (≈11:45 UTC) shows a green
 > `path-policy` in its checks.** That is the evidence that bot PRs get the check
 > at all. One observation is enough.
+>
+> **SATISFIED 2026-08-19.** The nightly refresh merged as **#284** at 11:45Z with
+> `path-policy` **SUCCESS** in its checks, alongside `backend`, `data-and-site`,
+> `automerge-decision`, `triage`, `ios-kit` and Vercel. Bot-authored PRs do get the
+> check, which is the thing this was parked on. **Nothing is waiting on it now —
+> step 2 is a founder click.**
 
 **Steps.**
 
