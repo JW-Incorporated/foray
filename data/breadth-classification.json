@@ -82059,13 +82059,851 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-19-e5fef6f6",
       "classified_at": "2026-08-19T00:50:07.625Z"
+    },
+    "1895193584": {
+      "topics": [
+        "sports/volleyball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official Major League Volleyball podcast with insider interviews and behind-the-scenes access.",
+      "display_title": "Set 6: The Official MLV Podcast",
+      "blurb": "Behind-the-scenes conversations with Major League Volleyball players, coaches, and personalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895196722": {
+      "topics": [
+        "craft",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Four hosts discuss knitting and crochet patterns, projects, burnout, and fiber arts community.",
+      "display_title": "Yarn Barf",
+      "blurb": "A relaxed podcast where four crafters discuss knitting, crochet, and the joys of making.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895278526": {
+      "topics": [
+        "news/politics",
+        "economics/markets",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "SEC Chairman discusses financial regulation, investor education, and market policy.",
+      "display_title": "Material Matters With SEC Chairman Paul Atkins",
+      "blurb": "Conversations on financial regulation, investor protection, and capital markets from SEC leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895295734": {
+      "topics": [
+        "culture/pop-culture",
+        "tv-film",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.7
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Two hosts discuss trending pop culture, viral moments, celebrity gossip, and entertainment.",
+      "display_title": "We're Obsessed",
+      "blurb": "Weekly pop culture podcast covering viral trends, celebrity gossip, and entertainment moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895317970": {
+      "topics": [
+        "news"
+      ],
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Appears to be spam/SEO content promoting a Vietnamese betting website disguised as podcast.",
+      "display_title": "max789site",
+      "blurb": "Promotional content for online betting platform.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895357318": {
+      "topics": [
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guests bring films to discuss with curator Paul Martinovic in conversational, in-depth format.",
+      "display_title": "Old Movies",
+      "blurb": "Film curator conversations where guests discuss their favorite classic films in depth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895697026": {
+      "topics": [
+        "sports/cricket"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local cricket club members discuss matches, team performances, and behind-the-scenes stories.",
+      "display_title": "OCC Midwicket Chat",
+      "blurb": "Cricket club podcast featuring match analysis, banter, and behind-the-scenes club insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895834900": {
+      "topics": [
+        "medicine/biology",
+        "science",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Documentary-style investigation of biofield therapies and energy healing research.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895849180": {
+      "topics": [
+        "personal-journals",
+        "health/mental",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Candid conversations about spinal cord injury, accessibility, relationships, and adaptation.",
+      "display_title": "Powering Through",
+      "blurb": "Unfiltered conversations about living with spinal cord injury, community, and finding purpose.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1895880368": {
+      "topics": [
+        "education/self-improvement",
+        "business/careers"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guide for aspiring motivational speakers on building on-camera presence and confidence.",
+      "display_title": "Motivational Speaking Without a Stage",
+      "blurb": "Practical training for aspiring speakers on camera skills, building confidence, speaking opportunities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896065990": {
+      "topics": [
+        "history/military-ancient",
+        "history/military-modern",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Explores queer stories hidden in WWI history, including drag performances and forbidden love.",
+      "display_title": "Lavender Ranks",
+      "blurb": "Stories of queer lives during WWI that didn't make official history, from drag shows to relationships.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896136820": {
+      "topics": [
+        "sports",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekday sports commentary on baseball, basketball, football with culture conversation.",
+      "display_title": "The John Browner Podcast",
+      "blurb": "Daily sports and culture commentary covering baseball, basketball, and entertainment news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896205466": {
+      "topics": [
+        "culture/fashion",
+        "culture/design",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Examines construction and history of garments, from textile makers to fashion designers.",
+      "display_title": "The Culture of Cloth",
+      "blurb": "Fashion history podcast exploring the construction, power, and stories embedded in clothing design.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896215426": {
+      "topics": [
+        "math"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese podcast covering new arXiv math papers in algebra and ring theory.",
+      "display_title": "プレプリどんどん: math.RA",
+      "blurb": "Daily summaries of new academic papers in algebra and ring theory from arXiv.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896249464": {
+      "topics": [
+        "philosophy/ideas",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily reflections on math, philosophy, and certainty with focus on questions.",
+      "display_title": "Reasonable Hope (Math)",
+      "blurb": "Daily reflections connecting math to life philosophy, uncertainty, and personal growth.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896279542": {
+      "topics": [
+        "gaming",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Four sisters discuss mahjong gameplay, strategy, community, and personal experiences.",
+      "display_title": "Little House of Mahj",
+      "blurb": "Sisters discuss mahjong strategy, tips, community, and the social aspects of the game.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896301118": {
+      "topics": [
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Compilation of dating drama episodes featuring ghosting, relationship twists, and resolution.",
+      "display_title": "Second Date Update: The Binge",
+      "blurb": "Dating drama episodes featuring ghosting mysteries, relationship complications, and resolutions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896355970": {
+      "topics": [
+        "news/tech",
+        "economics/markets",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily briefing on AI infrastructure, data centers, energy markets, and semiconductors.",
+      "display_title": "The Data Center Daily",
+      "blurb": "Daily briefing on AI compute infrastructure, data centers, energy grids, and related markets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896400412": {
+      "topics": [
+        "culture",
+        "history",
+        "paranormal"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "history",
+          "confidence": 0.65
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Casual storytelling on history, folklore, true crime, and paranormal in conversational format.",
+      "display_title": "Lore Lodge Podcast",
+      "blurb": "Casual storytelling covering history, folklore, true crime, and paranormal topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896474452": {
+      "topics": [
+        "fiction/comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Award-winning audio drama about doppelgangers disrupting lives at a wellness empire.",
+      "display_title": "THE DOUBLE[S]",
+      "blurb": "Tribeca award-winning audio drama about identity, doppelgangers, and a mysterious support group.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896571976": {
+      "topics": [
+        "medicine/biology",
+        "nature/ocean-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Seattle Aquarium experts expand on Lightning Talks, discussing marine science and conservation.",
+      "display_title": "Lightning Strikes Twice",
+      "blurb": "Seattle Aquarium experts discuss marine science, sea turtles, invertebrates, and conservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896663764": {
+      "topics": [
+        "culture/design",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Early product designers discuss creation decisions for iconic digital products.",
+      "display_title": "V1 with Elizabeth Laraki",
+      "blurb": "Product designers behind Google Maps and YouTube discuss early design decisions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896666596": {
+      "topics": [
+        "science",
+        "culture"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hank Green interviews diverse people from science, politics, entertainment, and media.",
+      "display_title": "Humans",
+      "blurb": "Conversations with scientists, artists, and thinkers on curiosity, creativity, and meaning.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896679004": {
+      "topics": [
+        "sports/soccer"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrative series on U.S. soccer culture and history leading up to the Men's World Cup.",
+      "display_title": "American Futbol",
+      "blurb": "Stories about U.S. soccer culture, history, and the sport's underdog roots in America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896737930": {
+      "topics": [
+        "space",
+        "science/physics",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intuitive explanations of theoretical physics using visual analogies and minimal math.",
+      "display_title": "Shard Cosmology",
+      "blurb": "Intuitive approaches to theoretical physics and cosmology without heavy mathematics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896738410": {
+      "topics": [
+        "sports/volleyball"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball coach discusses coaching philosophy, player development, and leadership.",
+      "display_title": "Coach Chijo Podcast",
+      "blurb": "Conversations on volleyball coaching, player development, mindset, and leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896758426": {
+      "topics": [
+        "comedy/interviews",
+        "culture/pop-culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Official podcast with Jonas Brothers discussing life, projects, and interviewing celebrities.",
+      "display_title": "Hey Jonas!",
+      "blurb": "Conversations with the Jonas Brothers covering music, personal stories, and celebrity guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896770666": {
+      "topics": [
+        "comedy/interviews",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy talk show with musical duets featuring comedians and industry professionals.",
+      "display_title": "Doooets with Jake Schroeder",
+      "blurb": "Comedy interviews with singers performing duets, blending conversation with musical performances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896785828": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Two hosts build cases for greatest wrestlers of all time with detailed career analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896790106": {
+      "topics": [
+        "food/cooking-science",
+        "food"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast on sourdough, grain, fermentation, and real bread craftsmanship.",
+      "display_title": "Saving Bread",
+      "blurb": "Practical lessons and interviews on sourdough, fermentation, grains, and real bread making.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896799022": {
+      "topics": [
+        "sports/tennis",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guide for student-athletes, parents, and coaches on college recruiting and development.",
+      "display_title": "The Level Field Podcast",
+      "blurb": "Information on college recruiting, athletic development, and what coaches look for in young athletes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-f681e559",
+      "classified_at": "2026-08-19T08:51:41.997Z"
     }
   },
-  "built_at": "2026-08-19T00:50:07.625Z",
+  "built_at": "2026-08-19T08:51:41.997Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-19-e5fef6f6",
+    "last_batch_id": "fresh-2026-08-19-f681e559",
     "last_batch_tier": 1
   }
 }
