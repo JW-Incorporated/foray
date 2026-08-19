@@ -13,8 +13,9 @@ docs/. Completed workstreams move to their plan doc's retro section.
   its 3.00 MB cap — 16 KB of headroom** — and `data/discover.json` grows ~35 KB every
   night, so the next catalogue refresh would have failed the mobile build and the
   failure would have read as the build breaking rather than as the catalogue growing.
-  The bundle now carries a **bounded slice**: the newest `BUNDLED_ITEMS_PER_SHOW` (3)
-  items of each of the 213 shows, plus enough to keep every topic represented, and
+  The bundle now carries a **bounded slice**: `BUNDLED_ITEMS_PER_SHOW` (3) items of
+  each of the 213 shows — its join anchor plus the newest of the rest — plus enough to
+  keep every topic represented, and
   **35 files, 1.96 MB** (was 2.98). O(shows × topics), not O(episodes), so a year of
   nightlies adds nothing to that file.
 - **Not done, deliberately:** the cap was NOT raised and NOT lowered — 3 MB still
@@ -992,8 +993,8 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Heads-up — `data/discover.json` is NOT copied into the bundle; a bounded SLICE of
   it is.** The bundle hit 2.98 MB of the 3.00 MB cap on 2026-08-18 with
   `discover.json` growing ~35 KB every night, so the next refresh would have failed the
-  mobile build. It now carries the newest `BUNDLED_ITEMS_PER_SHOW` (3) items of each of
-  the 213 shows plus enough to keep every topic — 622 of 1,534 items, 680 KB — which is
+  mobile build. It now carries `BUNDLED_ITEMS_PER_SHOW` (3) items of each of the 213
+  shows plus enough to keep every topic — 622 of 1,534 items, 680 KB — which is
   O(shows × topics) rather than O(episodes), so a year of nightlies adds nothing. If you
   add a data file whose size tracks the CATALOGUE rather than the product, it needs a
   `PROJECTED_DATA` entry too. **And do not trim `data/item-tags.json`** — it looks like

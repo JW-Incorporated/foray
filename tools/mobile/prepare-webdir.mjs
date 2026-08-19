@@ -63,17 +63,25 @@
  * `data/discover.json` and `data/item-tags.json` are the only two bundled files
  * whose size is a function of the CATALOGUE rather than of the product, and the
  * nightly refresh grows them. Measured over 2026-07-19..08-18, `discover.json`
- * grew 681 KB -> 1.70 MB, about 35 KB a night, and `item-tags.json` 166 KB ->
- * 295 KB, about 4 KB a night. At that rate the 3 MB cap below is not a ceiling a
+ * grew 681 KB -> 1.70 MB, about 35 KB a night, and `item-tags.json` 162 KB ->
+ * 302 KB, about 4 KB a night. At that rate the 3 MB cap below is not a ceiling a
  * human ever decides to cross; it is a date. It was going to fire on the next
  * refresh and it was going to look like the mobile build breaking.
  *
  * So the bundle stopped carrying the whole CATALOGUE and started carrying a BOUNDED
- * SLICE of it: the newest `BUNDLED_ITEMS_PER_SHOW` items of every show, plus
- * whatever else it takes to keep every topic represented (`discoverSlice`). The
- * shape of that number is what matters — it is O(shows x topics), NOT O(episodes)
- * — because shows have been flat at 213 since 2026-07-13 while episodes went 764
- * -> 1534. A year of nightlies adds 8,000 episodes and ZERO bundle bytes to it.
+ * SLICE of it: `BUNDLED_ITEMS_PER_SHOW` items of every show — its join anchor plus the
+ * newest of the rest — plus whatever else it takes to keep every topic represented
+ * (`discoverSlice`). Not simply "the newest 3": document order is not recency order,
+ * so for 111 of 213 shows one of those three slots goes to an older episode. Why that
+ * slot is not negotiable is the § below on the join.
+ *
+ * THE SHAPE OF THAT NUMBER is what matters — it is O(shows x topics), NOT
+ * O(episodes) — because shows have been flat at 213 since 2026-07-13 while episodes
+ * went 764 -> 1534. A year of nightlies adds 8,000 episodes and ZERO bundle bytes to
+ * it. One caveat, since the anchor is a PREFIX: a show with a long run of items both
+ * joins skip keeps that whole run, so it goes O(episodes) until the run ends. All
+ * 1,534 items are joinable today, and the per-file budget is the alarm if that
+ * changes.
  *
  * `item-tags.json` is COPIED WHOLE and that is a deliberate, measured refusal, not
  * an oversight — see the § above `PROJECTED_DATA`. Trimming it is what makes the app
@@ -650,7 +658,7 @@ export function assertDiscoverSliceComplete(source, slice) {
 /* The one that is NOT sliced, and why, because "it is only tags" was the wrong
  * answer and a reviewer caught it.
  *
- * `data/item-tags.json` is the OTHER catalogue-proportional file: 295 KB, ~4 KB a
+ * `data/item-tags.json` is the OTHER catalogue-proportional file: 302 KB, ~4 KB a
  * night, second only to `discover.json`. Trimming it to the bundled pool takes it to
  * 121 KB and looks completely safe — `search-engine.js` only ever looks a tag list
  * up by an item it is already scoring, so an entry for an absent item is dead weight.
@@ -770,9 +778,11 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
       throw new Error(
         `the bundled ${spec.rel} is ${fmt(bytes)}, over its ${fmt(spec.maxBytes)} budget.\n` +
           `This budget is not the 3 MB bundle cap — it is the alarm for the slice having ` +
-          `stopped being bounded. Either the catalogue gained shows or topics (each show costs ` +
-          `BUNDLED_ITEMS_PER_SHOW items), or the items got fatter. Lower ` +
-          `BUNDLED_ITEMS_PER_SHOW, or raise this budget deliberately and say what it now guards.`
+          `stopped being bounded. Three ways that happens: the catalogue gained shows or ` +
+          `topics (each show costs BUNDLED_ITEMS_PER_SHOW items), the items got fatter, or a ` +
+          `show grew a long run of items BOTH joins skip — no artwork and no valid collection ` +
+          `id — which the anchor prefix has to keep walking. Lower BUNDLED_ITEMS_PER_SHOW, or ` +
+          `raise this budget deliberately and say what it now guards.`
       );
     }
     spec.verify(

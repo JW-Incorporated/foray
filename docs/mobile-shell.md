@@ -8,7 +8,7 @@ Foray ships as a **Capacitor shell around the real web player**. The app loads t
 same `index.html`, `app.js`, `styles.css` and `player/` the website serves —
 copied at build time, never forked — plus the `data/*.json` the client actually
 fetches. That data was **2.1 MB** of a 2.5 MB bundle when this was written and had
-reached 2.3 MB of 2.98 MB by 2026-08-18; it is **1.15 MB of a 1.96 MB bundle** since
+reached 2.3 MB of 2.98 MB by 2026-08-18; it is **1.18 MB of a 1.96 MB bundle** since
 the catalogue became a bounded slice rather than a copy (§3).
 
 ## 0. Status — what exists and what does not
@@ -123,7 +123,7 @@ which also holds ~62 MB of pipeline inputs in `data/`
 and 12.2 MB `.gz` archives). The client fetches **2.1 MB** of it.
 
 `tools/mobile/prepare-webdir.mjs` copies the shell, every non-test module in
-`player/`, and only the data the client fetches, into `mobile/www` — two of those
+`player/`, and only the data the client fetches, into `mobile/www` — one of those
 data files as a bounded slice rather than a copy, for the reason §3 measures. It is
 dependency-free, uses Node builtins only, and **fails** above 3 MB rather than
 warning — that cap is the only thing between the bundle and the 16 MB
@@ -248,7 +248,7 @@ than in `mobile/`, and why `mobile/package.json` carries a comment saying so.
 `validated-links.json`, `taxonomy.json`, `discover.json`, `semantic-index.json`,
 `item-tags.json`, `forays.json`, `segments.json`, `segment-sources.json`.
 
-**Seven of the nine are copied. Two are a bounded slice, and that is the answer to
+**Eight of the nine are copied. One is a bounded slice, and that is the answer to
 "should the whole catalogue ship inside the app at all".** No, and the reason is
 arithmetic rather than taste.
 
@@ -261,21 +261,38 @@ breaking* rather than as the catalogue growing. The cap was not a ceiling anybod
 would decide to cross. It was a date.
 
 Those two files are the only bundled ones whose size is a function of the
-**catalogue** rather than of the **product**, so they are now derived rather than
-copied — see `tools/mobile/prepare-webdir.mjs`'s `discoverSlice`:
+**catalogue** rather than of the **product**. `discover.json` is now derived rather
+than copied; `item-tags.json` could not be, for the reason §3.1 measures — see
+`tools/mobile/prepare-webdir.mjs`'s `discoverSlice`:
 
 | | Source | Bundled | Rule |
 |---|---|---|---|
-| `data/discover.json` | 1.70 MB, 1,534 items | **680 KB, 622 items** | the newest `BUNDLED_ITEMS_PER_SHOW` (3) items of every show, plus enough to leave every topic represented |
-| `data/item-tags.json` | 295 KB, 1,561 entries | **copied whole** | trimming it to the bundled pool re-ranks search in the app and not on the web — see below |
+| `data/discover.json` | 1.70 MB, 1,534 items | **680 KB, 622 items** | `BUNDLED_ITEMS_PER_SHOW` (3) items of every show — its join anchor plus the newest of the rest — plus enough to leave every topic represented |
+| `data/item-tags.json` | 302 KB, 1,561 entries | **copied whole** | trimming it to the bundled pool re-ranks search in the app and not on the web — see §3.1 |
 
 **35 files, 1.96 MB of 3.00 MB.** The shape of that selection is the whole point:
 it is **O(shows × topics)**, not O(episodes). Shows have been flat at **213 since
 2026-07-13** while episodes went 764 → 1,534, because the nightly refresh adds
 episodes to shows already in the catalogue. **A year of nightlies is ~8,000 more
-episodes and zero bundle bytes** — a claim executed as a test, not asserted:
-*"REAL REPO: a year of nightly refreshes adds no bundle bytes"* synthesises the
-year and slices it (the same year copied whole would be a 9.6 MB file).
+episodes and zero bundle bytes for this file** — a claim executed as a test, not
+asserted: *"REAL REPO: a year of nightly refreshes adds no bundle bytes"* synthesises
+the year and slices it (the same year copied whole would be a 9.6 MB file).
+
+Two honest qualifications on that bound, both found by review:
+
+- **It is 3 items per show, not the 3 newest, for 111 of the 213 shows.** Document
+  order is not recency order — there are 886 within-show inversions — and one of each
+  show's three slots is spent on its **join anchor**, the item
+  `player/foray-sources.js` reads (see below). For 112 shows that anchor is not among
+  the show's three newest, so those shows ship the anchor plus the two newest of the
+  rest. Measured, not estimated. Lower `BUNDLED_ITEMS_PER_SHOW` and this cost stays
+  fixed at one slot; raise it and it amortises.
+- **O(shows × topics) holds while every item carries artwork and a valid collection
+  id, which all 1,534 do today.** The anchor is a document-order *prefix*, so a show
+  with a long run of items the joins skip keeps that whole run: probed synthetically,
+  a show with 500 artwork-less items followed by one with artwork keeps all 501. That
+  show is then O(episodes) — and the 800 KB per-file budget is exactly the alarm for
+  it, which is the right outcome rather than a silent one.
 
 ### 3.1 `item-tags.json` is copied whole, and that is the most interesting thing here
 
@@ -401,10 +418,14 @@ both documents on 2026-08-18** rather than reasoned about:
 
 - The searchable pool — `session.json`'s episodes plus the catalogue — is **649
   items, from 1,561.**
-- **Shows findable by their own name: 188 of 213, against 190 on the full
-  document.** The gap is two shows, not the 40% the pool shrank by, because every
-  show keeps items. (Neither number is 213: 23 show names do not surface a pick on
-  the *full* document either, which is a ranker property and not this change's.)
+- **Shows findable by their own name: essentially unchanged.** Two harnesses that
+  approximate `app.js`'s search path slightly differently got 188 on the slice against
+  190 on the full document, and 184 against 184. Read the robust part: **the gap is
+  0–2 shows, not the 40% the pool shrank by**, because every show keeps items. Neither
+  harness reaches 213 on the *full* document either — ~25 show names surface no pick
+  even there, which is a ranker property and not this change's. Deliberately not
+  pinned by a test, unlike §3.1's figures: it depends on `diversify` and on interest
+  weights, so a precise number here would be a flake.
 - Per-query results move in both directions, because `corpusDF` is a fraction of the
   pool it is given and the relaxation ladder reads it: `physics`, `comedy`, `jazz`,
   `ai safety`, `startup fundraising` return the same ten picks; `sleep` returns 8 of
@@ -413,6 +434,33 @@ both documents on 2026-08-18** rather than reasoned about:
   document and returns ten picks on the slice.
 - A listener who refreshes all day sees repeats sooner. `app.js`'s `SEEN_WINDOW` is
   100 and the pool is 622, so there is still 6× the window.
+- **A saved playlist can lose entries after an app update, and two screens then
+  disagree about how many episodes it has.** This is the one degradation that is not
+  about a smaller pool, it is about *persistence*, and it was missed until a second
+  review pass. `cp_playlists` stores **ids only** — unlike `cp_saved`, which stores
+  full snapshots — and `renderPlaylistDetail` resolves them through `state.itemIndex`,
+  which `fullPool()` builds from `session.json`'s episodes plus the bundled catalogue:
+
+  ```js
+  const items = p.item_ids.map(i => state.itemIndex[i]).filter(Boolean);   // app.js
+  ```
+
+  On the web that pool is all 1,534 items, so an id keeps resolving indefinitely. In
+  the app it is 622, and an item leaves the slice once its show publishes
+  `BUNDLED_ITEMS_PER_SHOW` newer episodes — at the observed ~22 items a night across
+  213 shows, roughly three weeks per show. **What the listener sees:** the playlists
+  list says "7 parts" (`p.item_ids.length`, raw) and the playlist itself shows five
+  episodes (`items.length`, after `filter(Boolean)`). Nothing crashes and nothing is
+  lost from storage; the ids are still there and would resolve again on the web.
+  `cp_history` decays the same way, which makes the show-diversity penalty in
+  `listenedShows()` milder in the app than on the web.
+
+  Not fixed here, and the fix is not a bundle change: it is either persisting
+  snapshots for playlists as `cp_saved` already does, or rendering the resolved count
+  in both places so the two screens cannot disagree. Both are `app.js` changes with
+  their own reasoning, and the second is worth doing regardless — those two numbers
+  can already disagree on the **web** whenever the refresh drops an episode from the
+  catalogue entirely.
 
 That is the honest shape: the *curation* is offline-complete and shallower, the
 *audio* is not offline at all, and #29 (downloads) is the issue that changes the

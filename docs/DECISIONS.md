@@ -718,9 +718,9 @@ its reasoning.
   would have failed `prepare-webdir.mjs` and the failure would have read as *the
   mobile build breaking* rather than as the catalogue growing. Those two files are the
   only bundled ones whose size tracks the **catalogue** rather than the **product**,
-  so `data/discover.json` is now derived: the newest `BUNDLED_ITEMS_PER_SHOW` (3)
-  items of every show, plus enough to leave every topic represented — **622 of 1,534
-  items, 680 KB, a 1.96 MB bundle**. The shape is what matters: **O(shows × topics), not
+  so `data/discover.json` is now derived: `BUNDLED_ITEMS_PER_SHOW` (3) items of every
+  show — its join anchor plus the newest of the rest — plus enough to leave every topic
+  represented — **622 of 1,534 items, 680 KB, a 1.96 MB bundle**. The shape is what matters: **O(shows × topics), not
   O(episodes)**, and shows have been flat at 213 since 2026-07-13 while episodes went
   764 → 1,534, so a year of nightlies adds zero bundle bytes. Trimming fields instead
   was measured and rejected — every field but `episode_guid` (1.9 KB of 1.70 MB) has a
