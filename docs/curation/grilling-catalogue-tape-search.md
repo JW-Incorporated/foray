@@ -261,7 +261,7 @@ is a cycling-advocacy book tour.
 **The freight half of the beat has plenty of tape and it is the wrong half.** The
 catalogue holds a rail-history run — `the-roundhouse--civil-war-railroads` (*"How
 railroads shaped Civil War logistics, with a rail-history society"*),
-`the-roundhouse--canadian-pacific`, four `railway-mania` items,
+`the-roundhouse--canadian-pacific`, two `railway-mania` items,
 `well-theres-your-problem--up-ns-merger` — and none of it touches food, let alone the
 causal chain from a stockyard to a sauce recipe. Beat 28's reject line is *"best-of
 restaurant lists"*; these rows fail earlier than that, on subject. Two of the four
@@ -476,7 +476,7 @@ minutes of compute. Applied honestly, that makes most of this catalogue a stop.
 | `the-moth--soul-searching-soul-food-and-the` | 20 | Title-only match; the hook corroborates no food content |
 | `cbc-ideas--fear-of-fire` | 1 | Hook: *"Author John Vaillant on how fire shaped humanity — and how we're now reshaping fire."* Wildfire and climate, not cooking. Beat 1 is strong and deliberately capped at two segments in any case |
 | `engines-of-our-ingenuity--the-engines-of-our-ingenuity-1615` | 5 | *"A short history of why humans took so long to learn to burn coal well"*, four minutes, industrial fuel. Beat 5 is strong |
-| `the-roundhouse--civil-war-railroads`, `the-roundhouse--canadian-pacific`, `railway-mania--*` (4), `well-theres-your-problem--up-ns-merger`, `the-war-on-cars--final-book-tour-dispatches` | 28, 29 | Freight and rail history with no food in it |
+| `the-roundhouse--civil-war-railroads`, `the-roundhouse--canadian-pacific`, `railway-mania--*` (2), `well-theres-your-problem--up-ns-merger`, `the-war-on-cars--final-book-tour-dispatches` | 28, 29 | Freight and rail history with no food in it |
 | `criminal--125-acres`, `amicus-dahlia-lithwick--by-the-people-for-the-children`, `5-4-podcast--250-years-of-bad-decisions-scotus-the-civil-war-and-the-end-`, `lex-fridman-podcast--499-gary-gallagher-american-civil-war`, `99-percent-invisible--mosquito-hawks`, `the-ancients--how-slavery-built-the-roman-empire` | 20, 21, 22, 24 | American slavery, Reconstruction and Civil War history without food. Beats 21, 22 and 24 are already strong on a historian's own argument, so even a good row here would be depth |
 | `The Allusionist` (show, 8 items) | 16 | Right register, no episode on the word |
 
