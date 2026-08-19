@@ -437,8 +437,9 @@ What it actually buys, per surface:
 - **Web: real.** `sw.js` is already cache-first for the shell. Narration can join
   it and become genuinely offline, which converts the 450-plays/month egress
   ceiling into a per-listener-per-Foray cost instead of a per-play one. This is
-  the single biggest win available and it needs an `sw.js` cache entry, a
-  `foray-v5` bump (already `HUMAN-ACTIONS.md` #9) and nothing else.
+  the single biggest win available and what it needs is an `sw.js` **cache
+  entry**. The `foray-v5` bump this used to also list is **already done** —
+  #241 (`ccd3c64`) — so the cache entry is the whole remaining job.
 - **Native: not by service worker, at all.** Measured on the iOS Simulator,
   `navigator.serviceWorker` **does not exist** under `capacitor://localhost`
   (`hasServiceWorkerApi: false`). There is no SW to add a cache entry to. So the

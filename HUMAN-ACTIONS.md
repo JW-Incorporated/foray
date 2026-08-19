@@ -599,9 +599,15 @@ because `sw.js` is not in the auto-merge allowlist (`tools/ci/path-policy.mjs`).
 > ## UPDATE 2026-08-17 — the edit is written; what is left is the merge and one console check. ~~2 minutes~~ ~1 minute.
 >
 > **`sw.js` now reads `const CACHE = "foray-v5";`**, carried by the #233 PR
-> rather than as a change of its own. Steps 1 and 2 below are done. The merge
-> this item warns about is still yours — that PR touches `sw.js`, so
-> `path-policy` holds it and it needs the `founder-approved` label plus a click.
+> rather than as a change of its own. Steps 1 and 2 below are done.
+>
+> **AND THE MERGE HAPPENED, 2026-08-19.** This note used to end "the merge this
+> item warns about is still yours ... `founder-approved` plus a click". It is not
+> outstanding: the bump landed in **#241** (`ccd3c64`, *"Serve app.js, player/*.js
+> and data/*.json from one generation (#233)"*), and `git show main:sw.js`
+> confirms `foray-v5` on `main`. **Nothing about the bump is waiting on a
+> founder.** What remains is the `forayStorageHealth()` console check below,
+> which measures IndexedDB and which no test here can observe.
 >
 > **Read this before treating the item as closed, because the premise below was
 > only half right.** This item says a returning visitor "runs the PREVIOUS
@@ -634,8 +640,11 @@ the old code and some on the new is worth avoiding: the old code writes only to
 `localStorage`, the new code migrates it, and a crisp cutover means the migration
 runs once instead of racing itself.
 
-1. Open `sw.js` at the repo root.
-2. Line 7 reads:
+1. ~~Open `sw.js` at the repo root.~~ **Done — merged in #241 (`ccd3c64`).**
+   `sw.js` on `main` reads `const CACHE = "foray-v5";` today. Steps 1 and 2 are
+   history and are kept only so the diff below is legible. Cited by symbol
+   rather than line number, per #281: the constant is `CACHE`, not "line 7".
+2. It used to read:
 
    ```
    const CACHE = "foray-v4";

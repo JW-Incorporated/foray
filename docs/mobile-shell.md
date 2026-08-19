@@ -642,5 +642,7 @@ Filed as `HUMAN-ACTIONS.md` items with exact steps. In brief:
    `docs/android-shell-build.md` §5. **It is not settleable without a real phone
    off charger.**
 
-`sw.js` also still needs its `foray-v5` bump — already `HUMAN-ACTIONS.md` **#9**,
-from #204, and not re-raised here.
+`sw.js` has its `foray-v5` bump: it landed in **#241** (`ccd3c64`), not as a
+change of its own. `HUMAN-ACTIONS.md` **#9** stays open for the one thing the
+bump did not settle — the `forayStorageHealth()` console check after a deploy,
+which measures IndexedDB.
