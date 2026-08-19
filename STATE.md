@@ -88,7 +88,10 @@ docs/. Completed workstreams move to their plan doc's retro section.
   slice stopped being bounded". **`data/item-tags.json` is deliberately NOT trimmed** —
   a reviewer caught that `search-engine.js`'s `tagDF()` counts entries across the whole
   map against absolute thresholds, so trimming it re-ranks 176 query terms in the app
-  and not on the web. It stays a copy, so the bundle still grows ~4 KB a night: ~245
+  and not on the web. **Superseded in part by #275** (entry above): `tagDF` is a
+  fraction now, so that arithmetic divergence is gone and the surviving one is
+  sampling skew — 12 expansion buckets and 62 multipliers, not 66 and 176. The file is
+  still copied whole and the bytes are still not taken. It stays a copy, so the bundle still grows ~4 KB a night: ~245
   nights of headroom, not a year, and `docs/mobile-shell.md` §3.1 says what fixing it
   needs. Fetching the tail of the catalogue at runtime is still **#40**: it needs the
   `connect-src` widening `docs/mobile-shell.md` §2.3 declined to add in advance, and it
