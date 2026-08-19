@@ -177,6 +177,49 @@ cannot drift.
   to run them; one that ignores positionals would report suites as executed
   that never ran.
 
+## A green test is not evidence until you have broken it
+
+Running the right suites is not the same as testing anything. **Five separate
+agents shipped or nearly shipped a green test that pinned nothing**, and every
+one failed the same way: **the fixture or fake was more forgiving than the thing
+it stood for.**
+
+- **#269** — the Android fixture answered `running: true`, so the fake was the
+  only place the code worked. The plugin read the service's state in a way that
+  races its own `onStartCommand`, so the gate was false on *every* first start.
+- **#244** — the same shape again, for a service state.
+- **#271** — an invariant test certified the *shape* of a `WebViewListener` that
+  Capacitor's `Bridge.Builder.create()` replaces immediately after `load()`, so
+  `onPageLoaded` could never fire. The test asserted the structure of dead code.
+- **#216** — a guard's fixture carried six bar-clearers, so `sparse` was false
+  and the guard the fixture existed to pin was unreachable.
+- **#276** — `setPool` and `rotateOut` both reset the state that *causes* the
+  bug, so every test began in the one condition where the code is correct. The
+  defect appeared on the second render and no test rendered twice.
+
+So, for anything you add:
+
+1. **Name the one-line mutation that makes each test fail, and run it.** If you
+   cannot break it, it is not testing anything. Put the mutation in the test's
+   own comment so the next reader can re-run it.
+2. **Audit the harness, not only the test.** Ask what state your setup resets,
+   and whether the defect lives in that state. A fake that answers the way the
+   real thing cannot is the failure above, five times.
+3. **Assert on the raw result, not the truncated view.** Three collision
+   assertions in `tools/test-search.mjs` §6 were vacuous for weeks because the
+   offending item sat at raw index 13, behind a 10-pick truncation.
+4. **Say which suite covers which mechanism.** A mutation surviving one suite
+   is not proof of vacuity — #266's central mechanism survived two suites and
+   was pinned by a third — but an unnamed mechanism is worth challenging.
+5. **A test that cannot fail on today's data is not worthless.** #274's
+   "the anchor is the item the JOIN reads, not simply the first one" cannot fail
+   now and is the only thing between a future artwork-less episode and a failed
+   nightly. Write those deliberately, and say that is what they are.
+
+Related: a **default is not a setting and an open ticket is not a state.** Three
+agents and the coordinator called `path-policy` "report-only" by reading
+`governedCheck()`'s default and an open HUMAN-ACTIONS item, while
+`PATH_POLICY_ENFORCE=1` had been set since 2026-08-16. Read the live value.
 ## Product principles (supersede everything, including marketing findings)
 
 1. **Curiosity/learning first; anti-echo-chamber.** Discovery surfaces keep a
