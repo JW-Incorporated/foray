@@ -705,12 +705,42 @@ its reasoning.
 - **The native bundle's `webDir` is built by a committed, dependency-free script
   whose data list is DERIVED from `app.js`, not written down.**
   `tools/mobile/prepare-webdir.mjs`. `data/` holds ~62 MB of pipeline inputs and
-  the client fetches 2.1 MB of data (2.52 MB of bundle), so the bundle is curated and the cap (3 MB) **fails**
-  the build rather than warning. #36 listed the runtime files by hand and then
+  the client fetches ~2.3 MB of data, so the bundle is curated and the cap (3 MB)
+  **fails** the build rather than warning. #36 listed the runtime files by hand and then
   said to verify the list against the `fetchJson` calls; a list that must be
   manually verified is a list that will drift, so the script reads the calls. The
   matching risk — a regex that stops matching and emits a small, silent, valid
   bundle with no session document — is guarded by a floor on the derivation.
+- **The app does NOT ship the whole catalogue. It ships a bounded slice of it, and
+  the 3 MB cap was neither raised nor lowered** (2026-08-18). The bundle reached
+  **2.98 MB of the cap — 16 KB of headroom** — with `data/discover.json` growing
+  **~35 KB every night** and `data/item-tags.json` ~4 KB, so the next nightly refresh
+  would have failed `prepare-webdir.mjs` and the failure would have read as *the
+  mobile build breaking* rather than as the catalogue growing. Those two files are the
+  only bundled ones whose size tracks the **catalogue** rather than the **product**,
+  so `data/discover.json` is now derived: `BUNDLED_ITEMS_PER_SHOW` (3) items of every
+  show — its join anchor plus the newest of the rest — plus enough to leave every topic
+  represented — **622 of 1,534 items, 680 KB, a 1.96 MB bundle**. The shape is what matters: **O(shows × topics), not
+  O(episodes)**, and shows have been flat at 213 since 2026-07-13 while episodes went
+  764 → 1,534, so a year of nightlies adds zero bundle bytes. Trimming fields instead
+  was measured and rejected — every field but `episode_guid` (1.9 KB of 1.70 MB) has a
+  live reader, and the largest droppable one buys six nights. **Raising the cap was
+  rejected** because it silences the only alarm; **lowering it was rejected too**,
+  because `player/` grew 66 KB → 480 KB in fourteen days and a tight total cap would
+  then fire on ordinary work. Instead the alarms split by cause: 3 MB means "something
+  enormous got in that nobody chose", and a per-file budget (800 KB) means "the slice
+  stopped being bounded". **`data/item-tags.json` is deliberately NOT sliced**, and a
+  reviewer is why: `search-engine.js`'s `tagDF()` counts entries across the whole map
+  and compares the count against absolute thresholds, so trimming it moves 66 query
+  terms across the expansion threshold and 176 across the score multiplier — the app
+  would rank differently from the website with every guard green. It is copied whole,
+  asserted byte-identical, and so the bundle still grows ~4 KB a night: **~245 nights
+  of headroom, not a year.** Fixing that means normalising `tagDF`, which is a
+  search-quality decision for `tools/test-search.mjs` and its own PR. **The cost, measured:** a cold offline launch shows 622
+  episodes rather than 1,534 and search returns fewer picks per query — all 213 shows
+  and all 109 topics survive, and the Foray artwork and credit joins are asserted
+  identical to the website's. Fetching the tail at runtime remains **#40**.
+  `docs/mobile-shell.md` §3.
 - **The service worker does not register inside the shell.** Cache-first in front
   of local files buys nothing and is the "app won't update after a store release"
   bug. Gated on `window.Capacitor.isNativePlatform()` plus the

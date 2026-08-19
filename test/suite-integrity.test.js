@@ -229,9 +229,30 @@ const FLOORS = {
      tools/ — the root package.json staying dependency-free, index.html's CSP,
      app.js not registering a service worker in the shell, and the repo's ios/
      scaffold surviving. Nothing else in the repo checks any of those, so
-     deleting this suite would silently un-guard all four. */
-  "tools/mobile/prepare-webdir.test.mjs": 27,
-  "tools/mobile/shell-invariants.test.mjs": 44,
+     deleting this suite would silently un-guard all four.
+
+     THE FLOORS ROSE ON 2026-08-18, from 27 and 44, when the bundle stopped
+     carrying the whole catalogue. Twenty-four of `prepare-webdir`'s tests are the
+     bounded catalogue slice, and the three not to lose are the three a reader would
+     not guess at:
+
+       - the slice's show->artwork and show->collection-id joins are asserted
+         IDENTICAL to the full document's, through `player/foray-sources.js` itself,
+         because every count-based check passes when the slice is emitted in the wrong
+         order and only that one fails;
+       - "the anchor is the item the JOIN reads, not simply the first one" is the only
+         thing standing between a future artwork-less episode and a failed nightly
+         build, and it cannot fail on today's data;
+       - "REAL REPO: trimming item-tags to the bundled pool WOULD re-rank the app" is
+         the measurement behind a refusal. Trimming that file is a free-looking 174 KB
+         that silently moves 176 query terms' score multipliers in the app and not on
+         the web. Delete that test and the next person takes the 174 KB.
+
+     `shell-invariants` gained two, one of which pins the slice's per-file budget —
+     the same self-referential hole that `MAX_BYTES = 30 * 1024 * 1024` opened in the
+     size cap, closed in advance this time. */
+  "tools/mobile/prepare-webdir.test.mjs": 52,
+  "tools/mobile/shell-invariants.test.mjs": 46,
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody

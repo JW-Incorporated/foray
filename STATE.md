@@ -7,6 +7,41 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### mobile bundle — the catalogue ships as a bounded slice, and the cap stops being a date (2026-08-18, one PR, no follow-up)
+
+- **What:** `perf/bundle-discover-trim`. `prepare-webdir.mjs` reported **2.98 MB of
+  its 3.00 MB cap — 16 KB of headroom** — and `data/discover.json` grows ~35 KB every
+  night, so the next catalogue refresh would have failed the mobile build and the
+  failure would have read as the build breaking rather than as the catalogue growing.
+  The bundle now carries a **bounded slice**: `BUNDLED_ITEMS_PER_SHOW` (3) items of
+  each of the 213 shows — its join anchor plus the newest of the rest — plus enough to
+  keep every topic represented, and
+  **35 files, 1.96 MB** (was 2.98). O(shows × topics), not O(episodes), so a year of
+  nightlies adds nothing to that file.
+- **Not done, deliberately:** the cap was NOT raised and NOT lowered — 3 MB still
+  means "something enormous got in", and a new per-file budget (800 KB) means "the
+  slice stopped being bounded". **`data/item-tags.json` is deliberately NOT trimmed** —
+  a reviewer caught that `search-engine.js`'s `tagDF()` counts entries across the whole
+  map against absolute thresholds, so trimming it re-ranks 176 query terms in the app
+  and not on the web. It stays a copy, so the bundle still grows ~4 KB a night: ~245
+  nights of headroom, not a year, and `docs/mobile-shell.md` §3.1 says what fixing it
+  needs. Fetching the tail of the catalogue at runtime is still **#40**: it needs the
+  `connect-src` widening `docs/mobile-shell.md` §2.3 declined to add in advance, and it
+  does not fix the build break.
+- **Shared files:** `tools/mobile/prepare-webdir.mjs` (+ test),
+  `tools/mobile/shell-invariants.test.mjs`, `test/suite-integrity.test.js` (two
+  floors), `docs/mobile-shell.md` §0/§2.1/§3/§5, `docs/android-lock-screen.md` §10,
+  `docs/narrator-pipeline.md`, `docs/DECISIONS.md`, `HUMAN-ACTIONS.md`, this file.
+  **No change to `app.js`, `index.html`, the CSP, `sw.js` or anything the website
+  serves** — the web keeps fetching the whole document.
+- **Watch out — this PR touches NO `mobile/` file, so the usual "mobile/ waits for a
+  human" reasoning does not apply to it.** The whole change lives in `tools/`, `test/`
+  and `docs/`, all of which are on `ALLOWED_PREFIXES`. What holds it is one governed
+  path: `docs/DECISIONS.md`. `path-policy` is **ENFORCING** (`PATH_POLICY_ENFORCE=1`
+  since 2026-08-16, `HUMAN-ACTIONS.md` #1), so that check goes **RED** until a founder
+  applies `founder-approved`. It is deliberate: the entry records that the app no
+  longer ships the whole catalogue, which is worth a founder's eyes.
+
 ### search matcher — `grill` reaches `grilling`, and the third copy of the matcher dies (2026-08-17, one PR, founder-gated, no follow-up)
 
 - **What:** `fix/218-219-suffix-matcher`. #218 (widen the SUFFIX side of
@@ -951,10 +986,20 @@ docs/. Completed workstreams move to their plan doc's retro section.
   the specific failure mode that script's header exists to prevent.
 - **Heads-up — the bundle's data list is DERIVED from `app.js`'s `fetchJson`
   calls.** Add a `fetchJson("data/new.json")` and the next bundle carries it, no
-  edit needed. But the bundle is capped at **3 MB and today it is 2.52 MB** (30
-  files; `discover.json` alone is 1.63 MB). If you make the client fetch something
-  large, `prepare-webdir` **fails the build**. Do not raise the cap to make it
-  pass — that cap is what keeps the 16 MB `breadth-classification.json` out.
+  edit needed. But the bundle is capped at **3 MB and today it is 1.96 MB** (35
+  files). If you make the client fetch something large, `prepare-webdir` **fails the
+  build**. Do not raise the cap to make it pass — that cap is what keeps the 16 MB
+  `breadth-classification.json` out.
+- **Heads-up — `data/discover.json` is NOT copied into the bundle; a bounded SLICE of
+  it is.** The bundle hit 2.98 MB of the 3.00 MB cap on 2026-08-18 with
+  `discover.json` growing ~35 KB every night, so the next refresh would have failed the
+  mobile build. It now carries `BUNDLED_ITEMS_PER_SHOW` (3) items of each of the 213
+  shows plus enough to keep every topic — 622 of 1,534 items, 680 KB — which is
+  O(shows × topics) rather than O(episodes), so a year of nightlies adds nothing. If you
+  add a data file whose size tracks the CATALOGUE rather than the product, it needs a
+  `PROJECTED_DATA` entry too. **And do not trim `data/item-tags.json`** — it looks like
+  a free 174 KB and it silently re-ranks search in the app; `COPIED_WHOLE` and
+  `docs/mobile-shell.md` §3.1 explain why.
 - **Heads-up — `app.js` no longer registers the service worker unconditionally.**
   It asks `shouldRegisterServiceWorker(window)`: off inside the shell, on
   everywhere else. Gated on `window.Capacitor.isNativePlatform()` and the
