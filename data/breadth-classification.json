@@ -82897,13 +82897,928 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-19-f681e559",
       "classified_at": "2026-08-19T08:51:41.997Z"
+    },
+    "1896802448": {
+      "topics": [
+        "music/classical",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/classical",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Two classical musicians analyze specific compositions with live musical excerpts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896802538": {
+      "topics": [
+        "sports/soccer",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Soccer journalist covers stories from players and fans at all levels of the sport globally.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896805652": {
+      "topics": [
+        "news/politics",
+        "society",
+        "history/military-modern"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French-language analysis of terrorism, geopolitics, and conflicts grounded in academic research and historical inquiry.",
+      "display_title": "NARITAS",
+      "blurb": "Academic analysis of terrorism, geopolitics, conflicts, and international relations drawing on historical research and strategic perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896806714": {
+      "topics": [
+        "craft",
+        "education/courses"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Conversations with natural perfume artisans and educators covering materials, techniques, and craft storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896816074": {
+      "topics": [
+        "business/founders",
+        "psychology",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Leadership philosophy, decision-making, organizational dynamics, and human behavior in high-performance contexts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896816092": {
+      "topics": [
+        "comedy",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Satirical comedy masquerading as health ministry commentary, mixing absurd conspiracies with interviews and comedic reenactments.",
+      "display_title": "Good Science",
+      "blurb": "Satirical comedy podcast parodying health commentary through absurd conspiracies, expert interviews, and comedic reenactments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896817976": {
+      "topics": [
+        "philosophy",
+        "relationships",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language conversations on leadership with soul, purpose, relationships, and becoming human through vulnerability.",
+      "display_title": "Learning to be Human",
+      "blurb": "Spanish-language monologues and interviews on leadership, purpose, relationships, and personal growth through vulnerable conversation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896824528": {
+      "topics": [
+        "craft",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swedish-language podcast about handicraft, weaving, textiles, ceramics, and making by two experienced practitioners.",
+      "display_title": "Slöjdvardag",
+      "blurb": "Swedish handicraft podcast covering traditional making techniques including weaving, woodworking, and textile arts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896828590": {
+      "topics": [
+        "tv-film/animation",
+        "hobbies",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual podcast for nerd culture fans discussing animation, video games, TV shows, and pop culture hobbies.",
+      "display_title": "Nerds VIP",
+      "blurb": "Casual discussion podcast for nerds covering video games, TV shows, anime, movies, and pop culture hobbies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896833378": {
+      "topics": [
+        "psychology",
+        "medicine/neuroscience"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Psychologist explores rare and complex psychiatric conditions with clear clinical explanations.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896834416": {
+      "topics": [
+        "news/daily",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live daily talk show covering local North Texas news, policy, culture, and community voices.",
+      "display_title": "NTX Now",
+      "blurb": "Daily talk show from KERA News exploring local North Texas stories, policy, arts, and cultural issues with community leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896848336": {
+      "topics": [
+        "culture/books",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live literary discussion podcast analyzing classic and contemporary literature in depth.",
+      "display_title": "Get Lit",
+      "blurb": "Live literary analysis podcast exploring classic and contemporary works in detailed conversation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896854036": {
+      "topics": [
+        "adventure/exploration",
+        "travel",
+        "nature/ocean-science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "adventure/exploration",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Immersive audio documentary following an ancient sailing ship's voyage through Indonesian seas raising climate alarm.",
+      "display_title": "Hell & High Water",
+      "blurb": "Immersive audio documentary following an ancient sailing ship's voyage through Indonesian waters addressing climate crisis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896854186": {
+      "topics": [
+        "relationships",
+        "society",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Podcast advocating for marriage and femininity as countercultural; traditional relationship content.",
+      "display_title": "Good Wife with Savanna Stone",
+      "blurb": "Commentary on marriage and femininity from a traditional perspective for young women.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896854588": {
+      "topics": [
+        "business",
+        "business/careers",
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.75
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship podcast covering business growth, scaling, sales, marketing, and wealth creation strategies.",
+      "display_title": "ProfitForge Radio Podcast",
+      "blurb": "Business podcast for entrepreneurs covering growth strategies, sales, marketing, leadership, and scaling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896878342": {
+      "topics": [
+        "tv-film/reviews",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep-dive film reviews and comedic reenactments of horror movies with personal storytelling.",
+      "display_title": "Oh, the Horror! with Sam and Sarah",
+      "blurb": "Weekly horror film reviews with comedic banter, personal stories, and dramatic reenactments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896878558": {
+      "topics": [
+        "sports/soccer",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Swedish-language World Cup coverage with daily behind-the-scenes stories and analysis from sports journalists.",
+      "display_title": "Bank & Niva",
+      "blurb": "Swedish sports coverage of World Cup soccer with daily behind-the-scenes stories and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896878906": {
+      "topics": [
+        "fiction/comedy",
+        "comedy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish-language audio comedy drama following a lawyer-turned-flight attendant navigating anxiety and adventure.",
+      "display_title": "TUCÁN AIR",
+      "blurb": "Spanish-language comedic audio drama following a lawyer working as a flight attendant navigating workplace absurdity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896880262": {
+      "topics": [
+        "science/physics",
+        "math",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        },
+        {
+          "node": "math",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversation series on AI's impact on mathematics and proof, featuring researchers at the frontier of the shift.",
+      "display_title": "Begin Proof",
+      "blurb": "Long-form conversations with researchers exploring how AI systems are transforming mathematical proof and discovery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896884660": {
+      "topics": [
+        "sports/golf",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf instruction veterans discuss teaching, professional game, instruction industry, and golf technique with candor.",
+      "display_title": "No More Lies",
+      "blurb": "Golf instruction experts discuss teaching philosophy, professional game dynamics, and swing mechanics with candor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896884876": {
+      "topics": [
+        "sports/endurance",
+        "health/fitness",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.75
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast for aquatic professionals building swim schools and businesses, covering strategy and industry challenges.",
+      "display_title": "The Swimpreneur Diaries",
+      "blurb": "Podcast for swim professionals building schools and businesses, covering teaching philosophy and entrepreneurship.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896886718": {
+      "topics": [
+        "music",
+        "history",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Six-part audio documentary on the 1990s Tibetan Freedom Concerts and their cultural impact on activism and music.",
+      "display_title": "Freedom Needs a Soundtrack",
+      "blurb": "Audio documentary exploring the Tibetan Freedom Concerts of the 1990s and their role in activism and cultural memory.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896888476": {
+      "topics": [
+        "religion/islam"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Quranic recitation by classical Islamic scholar; devotional content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896893882": {
+      "topics": [
+        "music",
+        "music/theory-production"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music analysis exploring what influential artists and bands actually sound like through their work.",
+      "display_title": "Actually Sounds Like with Jim Lill",
+      "blurb": "Music analysis podcast exploring what influential artists and bands actually sound like in practice.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:56.760Z"
+    },
+    "1896899096": {
+      "topics": [
+        "education/self-improvement",
+        "business",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career, finance, and wellness podcast for people building careers in tech without traditional paths.",
+      "display_title": "Breach One Teach One",
+      "blurb": "Career, finance, and wellness podcast for building careers in cybersecurity and tech without traditional credentials.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896908186": {
+      "topics": [
+        "true-crime",
+        "society/law"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio documentary following capital defense lawyers in final weeks before a death row execution.",
+      "display_title": "The Last 12 Weeks",
+      "blurb": "Audio documentary following capital defense lawyers' final efforts to save a death row inmate's life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896908744": {
+      "topics": [
+        "nature/pets",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Specialized calming music designed for cats using species-appropriate high tones and purr-like rhythms.",
+      "display_title": "Cat Calming Music",
+      "blurb": "Soothing music designed for cats to ease anxiety, sleep, and stress during travel or separation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896917264": {
+      "topics": [
+        "aviation",
+        "aviation/accidents"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "aviation/accidents",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilot-focused podcast discussing aviation, crashes, cockpit experiences, and aircraft incidents.",
+      "display_title": "Runway 23",
+      "blurb": "Pilot-focused podcast discussing aviation incidents, cockpit culture, and historic aircraft accidents.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896918404": {
+      "topics": [
+        "aviation",
+        "engineering/disasters"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/disasters",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation-focused podcast exploring human elements of flight, pilot psychology, and aircraft maintenance.",
+      "display_title": "The flight deck",
+      "blurb": "Aviation podcast exploring pilot psychology, flight training, aircraft maintenance, and the emotional aspects of flying.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896921002": {
+      "topics": [
+        "science/physics",
+        "science",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep dives into quantum physics, consciousness, AI, and emerging technology with physicist and science journalist.",
+      "display_title": "Quantum Curiosities & Tech Revelations",
+      "blurb": "Physics and science podcast exploring quantum mechanics, AI, consciousness, and technology with expert guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896933128": {
+      "topics": [
+        "nature/pets",
+        "psychology",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast for reactive dog owners exploring behavior science, emotional safety, and realistic rehabilitation.",
+      "display_title": "Reactive Dog Training",
+      "blurb": "Podcast for reactive dog owners exploring behavior science, rehabilitation, and the emotional toll of complex dog behavior.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-19-c8380c46",
+      "classified_at": "2026-08-19T17:00:40.620Z"
     }
   },
-  "built_at": "2026-08-19T08:51:41.997Z",
+  "built_at": "2026-08-19T17:00:56.760Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-19-f681e559",
+    "last_batch_id": "fresh-2026-08-19-c8380c46",
     "last_batch_tier": 1
   }
 }
