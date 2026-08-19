@@ -13,6 +13,14 @@ code reference. **If you change the answer in a form, change it here in the same
 PR** — a published declaration that no longer matches the code is a public,
 binding, wrong statement.
 
+**How to read a code reference here.** They name a declared symbol —
+`app.js:toEventRow()`, `app.js:SB_ARCHETYPES`, `app.js:#pl-input` — not a line
+number. Line numbers were used until 2026-08-19 and 26 of the 27 in this file
+had gone stale without anything reporting it, because a stale line number still
+lands on a line. `test/legal-citations.test.js` now fails if a reference here
+names something the code does not declare, and fails if the code transmits an
+event type §A2 does not disclose. **No answer in this file changed with it.**
+
 Both stores define "collect" as **transmitted off the device**. Data that only
 ever sits in `localStorage` or IndexedDB is *not* collected under either
 definition. That is why §1 of the audit matters more than any other section: most
