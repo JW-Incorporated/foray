@@ -636,7 +636,8 @@ docs/. Completed workstreams move to their plan doc's retro section.
   (This bullet said "in a directory that auto-merges with no review window" until
   2026-08-18. That was never true of `mobile/` — it is not on `ALLOWED_PREFIXES`,
   so such a PR waits for a human. Corrected in six files; the decision is
-  unchanged, and `docs/android-native-code.md` §8 states the rule.) `mobile/.gitignore` now ignores `ios/` and `android/` in full,
+  unchanged, and `docs/android-native-code.md` §8 states the rule.)
+  `mobile/.gitignore` now ignores `ios/` and `android/` in full,
   which **reverses what its own comment used to say** — the reversal is argued in
   that file rather than done quietly. Regenerate with
   `npm install && npm run add:android`; nothing outside `mobile/package.json` and
