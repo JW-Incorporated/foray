@@ -472,13 +472,18 @@ test("a part with no snapshot behind it still holds its place, and links nowhere
 
      MUTATION 1: drop stubs from resolveParts — the row count falls to 2.
      MUTATION 2: remove the `apple_collection_id` guard in archivedRow — the row
-     links to `.../idundefined`, and this fails on that string. */
+     links to `.../idundefined`, and this fails on that string.
+     MUTATION 3: give the unnamed row a star (drop the `named ?` guard). toggleStar
+     has no snapshot to store for it, so the control would sit there doing nothing
+     at all — a silent no-op is worse than an absent button, and this fails. */
   const m = mount();
   const html = withArchivedPart(m, { extraStub: true });
   assert.strictEqual(rowCount(html), 3, "the unnameable part is still a part");
   assert.ok(html.includes("3 episodes"), "and the count must include it");
   assert.ok(html.includes("Part no longer in the catalogue"));
   assert.ok(!html.includes("idundefined"), "a part with no apple id must get no link at all");
+  assert.ok(!html.includes(`data-star="long-gone--episode"`),
+    "and no star either — there is no snapshot for toggleStar to store");
 });
 
 test("the page says what happened, once, and says nothing when nothing is missing", () => {
