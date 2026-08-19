@@ -653,6 +653,81 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
 const STRONG_RATIO = 0.5;
 const RICH_MIN = 6;
 
+/* The prefix of the ranking that ends at the LAST bar-clearing result. #216.
+   Returned as the candidate set for the narrow (sparse/single-show) branch of
+   classifyResults, in place of the bar-clearers themselves.
+
+   THE DEFECT, and it is a disagreement rather than a miscalculation. Ordering
+   is `b.matched - a.matched || b.sum - a.sum` (searchWithRelaxation): `matched`
+   -- how many of the query's concept groups an item hit at all -- dominates
+   absolutely. The bar is `results[0].sum * STRONG_RATIO`, applied to `sum` and
+   nothing else. So the two could disagree about which of two results was
+   better, and when they did, the narrow branch showed the worse one. Measured,
+   the issue's own example (#216, reproduced exactly by adding `music/jazz` to
+   sticky-notes--gershwin-rhapsody, which is PR #211's curation change and is
+   not on main -- so the defect is real but latent there):
+
+     query "the history of jazz"        bar = 9.300 * 0.5 = 4.650
+     raw0  matched=2  sum=9.300  gershwin-rhapsody          clears
+     raw1  matched=2  sum=4.275  john-williams-a-composers  BELOW BAR
+     raw2  matched=1  sum=5.400  smartless--sting           clears
+
+   raw1 matched BOTH query concepts and the ranking placed it second; raw2
+   matched one and was shown instead. The page lost the better result.
+
+   WHAT IS FIXED, stated as an invariant rather than as a patch to that case:
+   the candidate set is a PREFIX of the ranking. Nothing is dropped in favour
+   of a result the ranking places below it. The wide branch already had this
+   property trivially -- it passes the whole `results` array -- so after this
+   the two branches agree, and "better" has exactly one definition in this
+   module: the sort comparator.
+
+   Equivalently, and this is the useful way to read the blast radius: within a
+   `matched` tier the comparator already orders by `sum`, so every clearer in a
+   tier precedes every non-clearer in it. The prefix therefore admits exactly
+   the sub-bar results sitting in tiers ABOVE the lowest tier that clears at
+   all. Nothing below the last clearer is ever admitted.
+
+   THE BAR IS STILL RELATIVE AND STILL COUNTS THE SAME THINGS. This deliberately
+   does not touch the bar, and it does not touch what `strong` means anywhere
+   else in classifyResults -- the two-result honesty floor, `sparse`/`ok`, and
+   the single-show test all still count bar-CLEARERS, exactly as before. So the
+   status a query reports is bit-identical to before this change for every
+   possible input, and the neighbouring hazard the old comment records (raising
+   one item's score raises the bar and can evict a DIFFERENT item) can no longer
+   move a query between empty/sparse/ok at all. What it can still do is change
+   which items fill a sparse answer -- and there this change makes the eviction
+   fill the hole instead of leaving it, whenever the evicted result outranks
+   something still shown. An item ranked below every clearer is still evicted,
+   silently, and that is the honest remaining limit.
+   Because a lone clearer can only ever be results[0] (results[0] clears by
+   construction), a one-clearer query has a one-item prefix, so the floor cannot
+   be reached through this widening either.
+
+   THE TWO ALTERNATIVES THE ISSUE SUGGESTED WERE MEASURED AND BOTH LOSE.
+   A per-tier bar does not fix the issue's own example: tier matched=2 tops out
+   at 9.300, so its bar is still 4.650 and raw1 at 4.275 is still evicted, while
+   tier matched=1 gets a bar of 2.700 and admits weaker items than the one being
+   argued for. Admitting anything whose `matched` equals results[0].matched does
+   fix that example, but only because raw1 happens to sit in the top tier; it
+   leaves the identical defect one tier down untouched, and it admits top-tier
+   items with no lower bound on `sum` at all. Ranking on `sum` instead makes the
+   two agree the other way and by construction, which is the tidiest option on
+   paper, and it was rejected on measurement: it promotes single-signal matches
+   over multi-concept ones and turned "video games" pick 9 (an FFmpeg
+   video-codec episode, the query's one off-topic pick) into a top-3 result,
+   which the battery's own on-topic oracle fails.
+
+   Covered by test/search-tiering.test.js (the mechanism, on fixtures, in
+   milliseconds -- including the numbers above) and by tools/test-search.mjs §9
+   (the coupling to the real comparator over the live pool, which fixtures
+   cannot see). tools/measure-tiering.mjs prints the per-query before/after. */
+function strongPrefix(results, bar) {
+  let last = 0;
+  for (let k = 0; k < results.length; k++) if (results[k].sum >= bar) last = k;
+  return results.slice(0, last + 1);
+}
+
 /* ---------- diversity ----------
    Anti-echo-chamber (CLAUDE.md principle #1): a result shouldn't be
    dominated by the one or two biggest shows the catalog happens to carry
@@ -727,7 +802,11 @@ function classifyResults(results, { cap = 10, perShowCap = PER_SHOW_CAP, listene
   // what lets other shows' weaker-but-on-topic items break up an
   // echo-chamber top-10 (e.g. "startups and venture capital").
   const singleShow = strong.length >= 2 && strong.every((x) => x.i.show === strong[0].i.show);
-  const candidates = (sparse || singleShow) ? strong : results;
+  /* strongPrefix(), not `strong`: the narrow branch shows the ranking prefix
+     ending at the last bar-clearer, so it cannot skip a result it ranks above
+     one it keeps (#216). `strong` itself is untouched, so every status decision
+     above is unchanged -- see strongPrefix()'s comment for why that matters. */
+  const candidates = (sparse || singleShow) ? strongPrefix(results, bar) : results;
   const picks = diversify(candidates, { cap, perShowCap, listenedShows });
   if (picks.length < 2) return { status: "empty", picks: [] };
   return { status: sparse ? "sparse" : "ok", picks };
@@ -767,6 +846,7 @@ const SearchEngine = {
   STRONG_RATIO, RICH_MIN, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagDF, corpusDF, hitText, hitTag,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
+  strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,
 };
 
