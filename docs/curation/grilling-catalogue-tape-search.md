@@ -46,8 +46,9 @@ Measured, with word boundaries, over the whole pool: `barbacoa` **0**, `taino` *
 `soul-food` **0**, `twitty` **0**, `hog` **0**, `swine` **0**. `memphis` returns
 **one** item and it is a cycling travelogue; `kansas` returns **one** and it is an
 amusement-park story; `migration` returns **one** and it is about the settlement of
-Aotearoa. The last four terms were added specifically to try to break this finding
-rather than to confirm it, and they did not. §3 works through each beat.
+Aotearoa. **Five of those terms — `freedmen`, `antebellum`, `plantation`, `foodways`
+and `soul-food` — were chosen to try to break this finding rather than to confirm it**,
+and they did not. §3 works through each beat.
 
 Two rows are worth buying and neither is in Act IV: **Gastropod's refrigeration
 episode for beat 31**, which the ASR manifest already named and which turns out to
@@ -82,11 +83,23 @@ not in this catalogue at any priority, and no re-sort of the queue changes that.
 **The matcher is the shipped one, deliberately.** `hitText` and `hitTag` are
 imported from `search-engine.js` rather than reimplemented, so every count in this
 document is the same predicate the product ranks on after #270, and a term that
-would collide in a hand-rolled matcher collides here or nowhere. The engine's
-multi-token query path was also run and is not the instrument used for counts: its
-proper-noun AND gate returns zero for a query like `pit barbecue history` while
-`barbecue` alone returns six, which is engine behaviour and not a finding about
-barbecue.
+would collide in a hand-rolled matcher collides here or nowhere. **Two notes on method,
+because both bit during this pass.** `scoreMatch` lowercases its inputs before matching
+and the predicates do not do it for you, so a harness that skips that step reads
+`memphis`, `kansas`, `curing` and `texas` low — every count below is taken with the
+inputs lowercased as the engine lowercases them. And the engine's full query path —
+`interpretQuery` into `searchWithRelaxation` into `classifyResults` — **was not used to
+produce any count here**, because a ranked and tiered result list answers a different
+question than "which items contain this word". `barbecue` as a query returns six picks,
+which matches the six whole-word hits; multi-token queries fan out through concept
+expansion and are not a per-term instrument.
+
+**One whole-word hit is named nowhere else in this document, so it is named here.** The
+sixth `barbecue` item is `my-brother-my-brother-and-me--mbmbam-824-chaddy-not-daddy`,
+hook *"The McElroy brothers give absurd advice covering owls, barbecue, and time-travel
+lore."* It is tagged `comedy`, `absurdist` and `banter`, it is not a candidate for
+anything, and it is not scored in §2. It is recorded so that §2's table and §1's count
+can be reconciled by a reader who counts them.
 
 ### 1a. The substring trap, measured on this catalogue
 
@@ -196,9 +209,9 @@ etymology with no source"*.
 `barbacoa` **0 hits**. `taino` **0 hits**. The catalogue does hold the right
 register, and `data/catalog.json` describes it in almost the beat's own words:
 **The Allusionist**, eight items, is *"Helen Zaltzman on the strange histories tangled
-up inside ordinary words and phrases."* Its items are tagged `etymology`,
-`lexicography` and `dictionaries`, and one of them — *"225. Hues"*, hook
-*"Lexicographers spent decades failing to pin down how to define color names"* — is a
+up inside ordinary words and phrases."* Five of its eight items are tagged `etymology`,
+and one — *"225. Hues"*, hook *"Lexicographers spent decades failing to pin down how to
+define color names"*, the only item tagged `lexicography` and `dictionaries` — is a
 lexicography episode of exactly the shape beat 16 wants. **And there is no episode on
 this word, or on any food word's attestation.** **A lexicography show with no
 barbecue episode is not a candidate**, and there is nothing here to queue. Beat 16
@@ -213,9 +226,11 @@ are barred by the English-only ruling of 2026-08-16. Permanent narration beat.
 
 ### Beat 20 — the West African inheritance — **nothing, and the largest tempting row is the clearest reject**
 
-Two English sources have already been spent on this beat and coverage §5 calls it
-nearly closed. The catalogue adds nothing and removes nothing: `twitty` **0**,
-`maroon` **0**, and no African fire-cookery episode of any kind.
+**Three** English sources have already been spent on this beat: coverage §5's
+2026-08-18 revision records the verdict as standing *"on three spent English sources
+rather than two"*, and §9 is the section that calls the beat nearly closed. The
+catalogue adds nothing and removes nothing: `twitty` **0**, `maroon` **0**, and no
+African fire-cookery episode of any kind.
 
 **The one row a keyword pass would surface is `hardcore-history--blitz-human-resources`**
 — 339 minutes, hook *"Centuries of human bondage, economics, and violence in the
@@ -250,8 +265,11 @@ barbecue.**
 ### Beat 26 — Texas is four traditions — **nothing, and the one Texas barbecue row is the reject the beat names**
 
 `texas` returns **8** items and seven are place-name collisions of exactly the class
-`tools/test-search.mjs` calibrates against — an industrial disaster, three true-crime
-episodes, a death-row serial, a bikeable forest. The eighth is
+`tools/test-search.mjs` calibrates against — an industrial disaster, **four** true-crime
+episodes, a death-row serial and a bikeable forest. The true-crime four are
+`dateline--out-of-the-darkness`, `morbid--george-hassell-the-family-axeman`,
+`casefile--casefile-extra-greg-fleniken` and
+`wicked-words--maurice-chammah-the-last-twelve-weeks`. The eighth is
 `the-bbq-central-show--grant-pinkerton`, hook *"A Houston pitmaster on running one of
 Texas's most respected barbecue joints"*, tags `bbq`, `barbecue`, `pitmasters`,
 `texas`, `grilling`, `food`, `interview`.
@@ -331,11 +349,22 @@ own recommendation pool is on-brief"*.
 `data/catalog.json` describes the show as *"Long-running BBQ radio show with pitmasters
 and technique talk -- the answer to a barbecue request."* **"Pitmasters" is the first
 half of beat 3's own evidence line**, which asks for *"a pitmaster or a food scientist
-naming the mechanism"*. **"Technique talk" is the phrase coverage §7 used to reject three
-of this show's guests**, and beat 3's reject line is recipes and numbers with no
-reasoning. So the show is simultaneously the right place to look for this beat and the
-wrong place to look for any other, which is exactly why this row is scored against beat 3
-alone and why five of its siblings are stops.
+naming the mechanism"*. **And "technique talk" is the trouble.** Coverage §7 rejects
+three of this show's guests as *"technique, restaurant and personality material of the
+kind beats 26, 36 and 37 explicitly reject"* — that phrase is §7's, and "technique talk"
+is the catalogue's, and they are not the same sentence. Beat 3's own reject line is
+recipes and numbers with no reasoning. So the show is simultaneously the right place to
+look for this beat and the wrong place to look for any other, which is why this row is
+scored against beat 3 alone and five of its siblings are stops.
+
+**The disclosure that citation owes, stated rather than left to be found.** The three
+guests coverage §7 names are Jess Pryles, Grant Pinkerton and Steven Raichlen — so
+**this document's rank-2 pick is one of the three rows that citation rejects**, and §3
+above used the same citation to stop Pinkerton. The reason it does not stop Pryles is
+narrow and it is the whole argument: §7's sentence rejects those rows *for beats 26, 36
+and 37*, and beat 3 is the one beat in the spine that asks for technique **provided it
+comes with mechanism**. If the read shows technique without mechanism, §7's judgement
+was right about this row too and it becomes a stop.
 
 **Confidence: moderate, and here is the honest downside.** Myth-busting can deliver a
 beat's conclusion with none of its mechanism, which is precisely how SYSK's
@@ -438,12 +467,21 @@ transcripts on 293 episodes**, so there is nothing to read.
 
 ### Beats 34, 35, 36, 37, 39 — nothing
 
-`briquette` **0**, `charcoal` **0** — so beat 34's gas-versus-charcoal split and beat
-35's jar have no tape here. For beat 36, the two `competition`-tagged rows are
-`the-bbq-central-show--jess-pryles-is-not-here-to` and
-`the-bbq-central-show--pitmasters-contestants-connie-desousa-and-john`, and both are
-current contests rather than the circuit's founding, the mechanics of the box or the
-one-bite artefact; the beat rejects *"contest-day narrative with no argument"*. For
+`briquette` **0** and `charcoal` **0**, so beat 34's gas-versus-charcoal split has no
+tape here. Beat 35's jar fails on its own terms rather than on those: `sauce` reaches one
+item and it is an architecture episode, and `condiment`, `ketchup` and `bottled` reach
+none.
+
+For beat 36, **seven items carry the `competition` tag and three of them are BBQ
+Central** — `the-bbq-central-show--jess-pryles-is-not-here-to`,
+`the-bbq-central-show--pitmasters-contestants-connie-desousa-and-john` and
+`the-bbq-central-show--embedded-correspondents-july-2026`, the other four being three
+Business Wars episodes and one Masters of Scale. All three BBQ Central rows are current
+contests rather than the circuit's founding, the mechanics of the box or the one-bite
+artefact, and the beat rejects *"contest-day narrative with no argument"*. §7 stops the
+third of them on a different ground — that its hook describes its sibling episode rather
+than itself — and that stop is argued about beat 3; on beat 36 it fails here, with the
+other two. For
 beat 37, see §7's sardine entry, which is the most interesting rejection in this
 document.
 
@@ -492,8 +530,11 @@ reputation.
 Coverage §9's own recommendation, arrived at after a seven-episode pass moved nothing:
 **a row whose verdict is depth rather than rescue should be treated as "a stop, not a
 low priority"**, because priority ordering is the wrong instrument for expressing "do
-not buy this", and draining the tail of a correctly sorted queue is what cost 209
-minutes of compute. Applied honestly, that makes most of this catalogue a stop.
+not buy this", and draining the tail of a correctly sorted queue is what cost the seven
+episodes of the 2026-08-18 pass. **That cost is 209 minutes of *audio*, which is about
+7.4 CPU-hours at the 0.475x the manifest records as observed** — worth giving in both
+units, because conflating them is the error that manifest's own `cost_note` exists to
+prevent. Applied honestly, that makes most of this catalogue a stop.
 
 | row | beat considered | why it is a stop |
 |---|---|---|
@@ -609,11 +650,12 @@ records no such ruling**. One of those is wrong and the difference is four beats
 be worse than reporting. The manifest rows are annotated, not rewritten.
 
 **2. The BBQ Central Show's show-level exclusion is a workstream note, not a content
-rejection, and it now hides five scoreable rows.** The manifest excludes the show
+rejection, and it now hides eight scoreable rows.** The manifest excludes the show
 because it is *"already being transcribed by the American-arc workstream"* and notes
 that only one of its 1,858 episodes was on plot. `data/discover.json` now holds
-**eight** BBQ Central episodes, and §2 above scores five of them against specific
-beats — one of which is the best beat 3 candidate in the pool and one of which
+**eight** BBQ Central episodes, and §2 above scores **all eight** of them against
+specific beats — three as ranked rows and five as stops. One of the three is the best
+beat 3 candidate in the pool and one of them
 settles a pending spine amendment. This is precisely the correction the manifest
 itself made for Gastropod: *"Previously sat in excluded_by_instruction as 'already
 being transcribed', which is a workstream note, not a rejection."* Same mechanism,
