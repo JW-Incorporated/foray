@@ -319,10 +319,12 @@ function tagDF(term, ctx) {            // search-engine.js, as it was
 `interpretQuery` compared that count against **absolute** thresholds — over 60
 deleted a term from query expansion, over 25 cut its weight to 0.4× — and
 `scoreMatch` bucketed a score multiplier at 10 and 30. Cutting 1,561 entries to 649
-scales every df by ~0.42. Measured across the 1,366 terms `tagDF` can be called with
-(the concept vocabulary plus `ALIASES`): **66 terms change expansion bucket and 176
-change score multiplier.** `war` goes 72 → 24, so the website deletes it as too broad
-and the app gives it full weight. `ai` goes 94 → 38, deleted → 0.4×.
+scaled every df by ~0.42, and measured across the 1,366 terms `tagDF` could be called
+with (the concept vocabulary plus `ALIASES`) **66 terms changed expansion bucket and
+176 changed score multiplier**: `war` 72 → 24, so the website deleted it as too broad
+and the app gave it full weight; `ai` 94 → 38, deleted → 0.4×. Past tense throughout
+this paragraph on purpose — #275 changed the mechanism, and the subsection below has
+today's figures.
 
 So the app would have ranked search results differently from the website, on a phone,
 with every guard in `prepare-webdir.mjs` green — the exact *"it works on the website"*

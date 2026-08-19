@@ -309,9 +309,16 @@ test("a PROPORTIONAL subset of the tag map tiers identically, which is what an a
 
 /* ---------- the real repo, at 1x / 2x / 4x, with a witness ---------- */
 
-/* Every term tagDF can be called with: the concept vocabulary plus ALIASES (a
-   query token reaches tagDF as itself, and an alias is added as a term). Read
-   from data/, not hand-listed, so the coverage cannot silently shrink. */
+/* The vocabulary sweep: every concept term plus ALIASES, read from data/ rather
+   than hand-listed so it cannot silently shrink.
+   NOT EXHAUSTIVE, AND THE DIFF ITSELF PROVES IT. interpretQuery sets
+   `df: tagDF(tok, ctx)` for every typed content token, so ANY word a user types
+   reaches tagDF -- `cold`, which search-engine.js's ladder comment cites as one of
+   the two terms the four-cut collapse moves, is in neither the concept vocabulary
+   nor ALIASES. What that costs here is nothing, because the invariance below is a
+   property of the arithmetic and holds for every input rather than for a list; what
+   it would cost is a claim of the form "no term does X", which this suite does not
+   make. The list is a sample large enough for the WITNESS to be strong. */
 function realVocabulary() {
   const semantic = JSON.parse(fs.readFileSync(path.join(ROOT, "data/semantic-index.json"), "utf8"));
   const v = new Set();
@@ -327,7 +334,12 @@ function duplicated(tags, k) {
   for (let n = 0; n < k; n++) for (const [id, t] of Object.entries(tags)) out[n ? `${id}--grow${n}` : id] = t;
   return { tags: out };
 }
-/* The pre-#275 rule, kept here as the WITNESS and nowhere else in this suite.
+/* The pre-#275 rule, kept as the WITNESS and for nothing else. It appears twice:
+   here, and inline in the proportional-subset test above, which needs it before this
+   point in the file. Two copies of a rule that is DELIBERATELY DEAD are not the
+   hazard the live one was -- nothing reads them but an assertion about the past --
+   but the first version of this comment said "nowhere else in this suite" and that
+   was simply wrong, which is the kind of claim this file is about.
    Note what is NOT here: a local copy of the CURRENT rule. This suite re-derived
    `df > TOO_BROAD ? "drop" : df > COMMON ? "0.4x" : "full"` from the constants until
    review pointed out that reading the constants and rewriting the comparison is the

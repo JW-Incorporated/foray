@@ -126,6 +126,14 @@ const BROAD_DF_THRESHOLD = 0.10;
                              different claims -- but it is not the identity the
                              shared value looks like, and anybody retuning one cut
                              should decide about the other rather than inherit it.
+                             THE BOUNDARIES DISAGREE TOO, which is the sharpest form
+                             of the same point: `broad` is `corpusDF >= this` and
+                             expansionBucket is `tagDF > this`, so AT exactly 0.10
+                             the two consumers of one number answer oppositely. The
+                             strictness is inherited (`df > 60`) and is not worth
+                             changing for a value no term has ever held, but a
+                             shared constant with two boundary conventions is
+                             exactly the kind of thing this issue was.
      TAG_DF_COMMON    0.02   Bounded ABOVE by product quality and below by churn,
                              and the ceiling is a real measurement rather than a
                              preference: at 0.025 the battery goes red on
@@ -233,8 +241,7 @@ function branchOf(item) {
    IT WAS NOT A REPORTING BUG. `tagCount` drives expansion pruning in
    interpretQuery (via `tagDF` and `expansionBucket`): over TAG_DF_TOO_BROAD DELETES
    a term from the expansion and over TAG_DF_COMMON cuts its weight to 0.4x, so an
-   inflated
-   count silently removes vocabulary. It also sets `group.df`, which picks
+   inflated count silently removes vocabulary. It also sets `group.df`, which picks
    scoreMatch's per-group multiplier (see dfMultiplier). Two consumers, two sets
    of thresholds, both reading a number the ranker itself would never produce.
 

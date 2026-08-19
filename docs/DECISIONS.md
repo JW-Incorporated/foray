@@ -730,13 +730,24 @@ its reasoning.
   then fire on ordinary work. Instead the alarms split by cause: 3 MB means "something
   enormous got in that nobody chose", and a per-file budget (800 KB) means "the slice
   stopped being bounded". **`data/item-tags.json` is deliberately NOT sliced**, and a
-  reviewer is why: `search-engine.js`'s `tagDF()` counts entries across the whole map
-  and compares the count against absolute thresholds, so trimming it moves 66 query
+  reviewer is why: `search-engine.js`'s `tagDF()` counted entries across the whole map
+  and compared the count against absolute thresholds, so trimming it moved 66 query
   terms across the expansion threshold and 176 across the score multiplier — the app
   would rank differently from the website with every guard green. It is copied whole,
   asserted byte-identical, and so the bundle still grows ~4 KB a night: **~245 nights
   of headroom, not a year.** Fixing that means normalising `tagDF`, which is a
-  search-quality decision for `tools/test-search.mjs` and its own PR. **The cost, measured:** a cold offline launch shows 622
+  search-quality decision for `tools/test-search.mjs` and its own PR.
+  **Amended 2026-08-19 (#275), and the decision stands on a narrower reason.** That
+  normalisation landed: `tagDF` is a fraction of the map it walks, so the *arithmetic*
+  half of the divergence above is gone — `war` is 4.61% of the whole map and 3.70% of
+  the trimmed one, the same bucket, where as counts it was 72 → 24. **`item-tags.json`
+  is still copied whole,** because the bundled slice is three items per show and is
+  therefore skewed by topic, and the sampling half survives at **12 query terms and 62
+  multipliers** rather than 66 and 176 (`comedy` 10.70% → 8.47%: the website deletes it
+  from expansions, the app would keep it). The ~181 KB is still not taken; what would
+  take it is a precomputed df table beside the trimmed map, which is a bundle change
+  rather than a search-quality one. `docs/mobile-shell.md` §3.1 carries the numbers.
+  **The cost, measured:** a cold offline launch shows 622
   episodes rather than 1,534 and search returns fewer picks per query — all 213 shows
   and all 109 topics survive, and the Foray artwork and credit joins are asserted
   identical to the website's. Fetching the tail at runtime remains **#40**.

@@ -18,9 +18,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
   **52 terms crossed the expansion threshold and 125 the score multiplier**, with no
   code change. `tagDF` is now `tagCount / (size of the tag map)`, on a **three-cut
   ladder of fractions** — `TAG_DF_TOO_BROAD` 0.10 (= `BROAD_DF_THRESHOLD`, deliberately
-  the same number), `TAG_DF_COMMON` 0.02, `TAG_DF_RARE` 0.008 — and the multiplier
-  ternary is now one exported `dfMultiplier()` that the battery reads instead of
-  mirroring.
+  the same number), `TAG_DF_COMMON` 0.02, `TAG_DF_RARE` 0.008. Both threshold RULES are
+  now exported functions rather than inline ternaries — `dfMultiplier()` and
+  `expansionBucket()` — because the multiplier tiers were mirrored in
+  `tools/test-search.mjs` and the expansion buckets in
+  `tools/mobile/prepare-webdir.test.mjs`. **Two mirrors on `main`, found three ways**
+  (by the rule's shape, by every reader of `tagDF`/`.df` by name, and by walking
+  search-engine.js's exports); `app.js`, `player/` and `backend/` have no df reader at
+  all, and `mobile/www/` is a build artefact, not a tracked copy.
 - **The values are measured, not divided.** The today-equivalent fractions were run
   as a control in their exact four-cut form (60/1,561, 25/1,561, 10/1,561, 30/1,561):
   **bit-identical to `main`** — 0 status changes, 0 pick changes, 0 retrieval changes
@@ -31,7 +36,10 @@ docs/. Completed workstreams move to their plan doc's retro section.
   quality rather than taste: at 0.025 the battery goes red on "parenting" because
   `family` (2.50%) keeps full expansion weight and a hermit-crab kids-science episode
   reaches the top five.
-- **What it costs today: 0 status changes over 45 queries, 5 pick changes.** Two are
+- **What it costs today: 0 status changes over 45 queries, 5 pick changes.** "45
+  queries" throughout this entry means the 37 the battery exercises with default
+  options plus the ten #275 names, deduped — `tools/test-search.mjs` §10 covers the 37,
+  since those are the ones it already has interpretations for. Two of the five are
   pure reorderings ("train history", "rome"); "endurance running", "jazz" and "fiction
   podcast" swap items. `jazz` loses `sticky-notes--gershwin-rhapsody` from its top 10,
   which is the one change worth a founder's eye. All ten queries #275 names are green,
@@ -59,12 +67,18 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `test/search-df-scaling.test.js` (new), `test/search-matcher.test.js` (its `tagDF`
   assertions read `tagCount` now), `test/suite-integrity.test.js` (one floor),
   `tools/mobile/prepare-webdir.mjs` + `.test.mjs` (the refusal, re-measured),
-  `docs/mobile-shell.md` §3/§3.1, this file. **No `app.js`, no `data/`, no `mobile/`,
+  `tools/validate-semantic-index.mjs` (**GOVERNED**, one comment line: its two `tagDF`
+  call sites test `> 0`, which a fraction answers the same way a count did, but the
+  header claimed tagDF reads `ctx.discover`, which it never has),
+  `docs/DECISIONS.md` (**GOVERNED**, the 2026-08-17 mobile-bundle entry pointed forward
+  at this fix and stated the superseded 66/176 as current), `docs/mobile-shell.md`
+  §3/§3.1, this file. **No `app.js`, no `data/`, no `mobile/`,
   no `player/`** — and deliberately no write to `data/discover.json` or
   `data/item-tags.json`, which another session is reading.
-- **Watch out — `path-policy` goes RED, not flagged.** `tools/test-search.mjs` is a
-  DENIED path and `PATH_POLICY_ENFORCE=1` (since 2026-08-16), so the check fails until
-  a founder applies `founder-approved`. It does not block the merge — `backend` and
+- **Watch out — `path-policy` goes RED, not flagged.** THREE denied paths:
+  `tools/test-search.mjs`, `tools/validate-semantic-index.mjs` and `docs/DECISIONS.md`.
+  `PATH_POLICY_ENFORCE=1` (read live from `gh variable list`, set 2026-08-16), so the
+  check fails until a founder applies `founder-approved`. It does not block the merge — `backend` and
   `data-and-site` are the required checks — and the governed edit is not optional: §3
   of the battery mirrored `scoreMatch`'s df tiers, and a fraction against `10` would
   have left that mirror green while measuring nothing.
@@ -91,7 +105,8 @@ docs/. Completed workstreams move to their plan doc's retro section.
   and not on the web. **Superseded in part by #275** (entry above): `tagDF` is a
   fraction now, so that arithmetic divergence is gone and the surviving one is
   sampling skew — 12 expansion buckets and 62 multipliers, not 66 and 176. The file is
-  still copied whole and the bytes are still not taken. It stays a copy, so the bundle still grows ~4 KB a night: ~245
+  still copied whole and the bytes are still not taken.
+  It stays a copy, so the bundle still grows ~4 KB a night: ~245
   nights of headroom, not a year, and `docs/mobile-shell.md` §3.1 says what fixing it
   needs. Fetching the tail of the catalogue at runtime is still **#40**: it needs the
   `connect-src` widening `docs/mobile-shell.md` §2.3 declined to add in advance, and it
