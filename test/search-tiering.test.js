@@ -148,12 +148,18 @@ test("the strong bar stays relative: the same shape at a tenth of the scale tier
 test("fewer than two bar-clearing results is honestly empty", () => {
   /* The floor #216 must not lower. Only "a" clears a bar of 5, so the honest
      answer is nothing at all rather than a two-item list.
-     Note this floor cannot be reached through the widening even by accident: a
-     lone clearer can only ever be results[0], since results[0] clears by
-     construction, so a one-clearer query always has a one-item prefix.
+     The widening cannot reach this floor even by accident: a lone clearer can
+     only ever be results[0], since results[0] clears by construction, so a
+     one-clearer query always has a one-item prefix.
 
-     KILLED BY: `strong.length < 1`, and by strongPrefix returning all results
-     with the floor moved onto the prefix. */
+     KILLED BY: strongPrefix returning all results, which turns this into a
+     two-item answer built on one strong match.
+     NOT killed by lowering the guard itself to `strong.length < 1`, and that was
+     measured rather than assumed -- the mutation survives. It is an equivalent
+     mutation: by the paragraph above the prefix is one item, so diversify returns
+     one pick and classifyResults' closing `picks.length < 2` guard returns empty
+     regardless. Recorded here and beside the line in search-engine.js, because a
+     "KILLED BY" claim nobody checked is worse than no claim. */
   const out = SE.classifyResults([row("a", 1, 10), row("b", 1, 2)]);
   assert.equal(out.status, "empty");
   assert.deepEqual(out.picks, []);
