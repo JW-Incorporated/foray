@@ -113,14 +113,15 @@ any verdict uses it. A beat is **strong** only where all four hold:
 4. it is **cuttable** inside the 75–180 s band without double-booking a passage that
    another beat is already using.
 
-Test 2 is what caps this report at one strong beat. Of the eighteen transcripts read,
+Test 2 is what caps this report at one strong beat. Of the seventeen transcripts read,
 **fourteen are Stuff You Should Know or a home-improvement show's whiskey hour**, and
 those cannot reach strong however squarely they hit — the grilling report set that
-precedent deliberately and reversing it here would be reversing it silently. Four
+precedent deliberately and reversing it here would be reversing it silently. Three
 readable sources pass test 2: a chemist-brewer on Being an Engineer, two
-epidemiologists on This Podcast Will Kill You, a forest-health researcher on Odd
-Lots, and — on one narrow point — a building-materials specialist who turns out to
-know the cask trade.
+epidemiologists on This Podcast Will Kill You, and a forest-health researcher on Odd
+Lots. The whiskey hour is counted with the fourteen, and its one genuinely precise
+passage — a building-materials specialist who turns out to know the cask trade — is
+used only as a second segment on a beat that stays thin without it.
 
 **Whether a general-interest show of the SYSK register belongs in this Foray at all
 is a founder call, not mine**, and it is worth making explicitly, because it moves
@@ -670,3 +671,334 @@ distillate — and that sentence is committed to beat 42.
 source-blindness in the report: the beat the whole Foray is for is the beat no tape
 could supply, and an outliner who had read the catalogue first would never have written
 it.
+
+## 4. Act II — sugar that was already sweet (fan of families, beats 17–25)
+
+**No strong tape, one thin, eight empty.** The wine chain 17 to 21 is a chain inside
+the fan and four of its five beats are empty; the fan stops 22 to 25 are all four
+empty. This is the act where the catalogue's shape shows most plainly: it holds three
+beer shows and no wine show, so the family the spine gives five beats to has one
+supporting cut, and it is about the bottle rather than the wine.
+
+### Beat 17 — the grape as the ideal fermentable — **empty**
+
+**Nothing.** `winemaking`, `viticulture`, `brix`, `oechsle`, `chaptalisation` and
+`must` all return zero across every source read. The two wine-shaped rows in the
+catalogue are both rejected on subject, not on quality: SYSK How Wine Fraud Works
+(2,857 s) is counterfeiting and collecting from end to end — §6b names *"collecting
+and investment"* — and `the-rest-is-history--wine-civilisation` (4,543 s) is
+*"How wine built civilization — from Homer's Odyssey to Julius Caesar's conquests"*,
+which is a history of drinking rather than an account of ripeness setting alcohol.
+
+**What is missing.** Sugar accumulation and acid falling as sugar rises, potential
+alcohol calculated from must weight, the picking date as the winemaker's main control
+over final strength, and the honest separation of measurable terroir variables from
+marketing.
+
+### Beat 18 — red and white is a contact decision — **empty**
+
+**Nothing.** `maceration` returns one hit across the readable pool and it is in the
+amaro episode, about steeping botanicals in spirit. `skins`, `punchdown`, `pumpover`
+and `rosé` return zero. There is no tape in this catalogue about what happens in a
+fermenting vat of grapes.
+
+### Beat 19 — the decisions after the ferment — **empty**
+
+**Nothing.** `malolactic` 0, `lees` 0 in the wine sense, `sulphur`/`sulfur` 0 in the
+winemaking sense, `fining` 0, `filtration` 0 in the wine sense. §5 predicted this beat
+would be **over**-supplied on the grounds that the wine podcast world is large. The
+wine podcast world is large and none of it is in this catalogue: §11 counts 24 wine
+shows in `catalog-breadth.json`, none curated.
+
+### Beat 20 — sparkling wine as contained pressure — **thin**
+
+**Chosen:** SYSK How Champagne Works, band **1846.84 → 2017.12 (170.3 s)**. In on
+*"the towards the front of the neck, you now have one of the last steps called gourge
+mont or disgorgement"*; out on *"…then they put that final cork in place"* — the band's
+final cue trails into pouring, so the out-point wants trimming to that sentence at
+mint time.
+
+**Why it advances beat 20.** It is the most elaborate production sequence in the
+readable pool and it is the beat's own list, in the beat's own order: riddling as
+*"a pretty thankless job"* taking *"about four to six weeks"* with the bottle *"stored
+upside down"* and *"a little chalk mark on each one"*; disgorgement as *"it's just a
+thing of sediment … accumulated at the neck and you put it in an ice bath"*, contrasted
+with the older method where *"they would pop open a bottle, decant it, filter it, and
+they would pour it back"*; the CO2 doing the work — *"there's you know, carbon dioxide
+gas in there at this point and it forces that plug out"* — and the dosage as the
+sweetness dial, *"maybe a little brandy, little sugar, a little white wine back in."*
+**The pressure figure sits just outside the band**, at 2044.96 → 2078.20: *"If you want
+about five or six atmospheres of pressure or about I think sixty to seventy square or
+pounds per square inch of pressure in a bottle of wine."* Reaching it means running the
+cut to 2078.20, which is 231 s and over the 180 s band, so it is a trade: the sequence
+without the number inside the band, or the number with a  length.
+
+**Second, if a shorter cut is wanted:** **1594.08 → 1696.28 (102.2 s)**, the second
+fermentation itself — *"you're gonna start that second fermentation process by adding
+sugar and yeast. Then you drop the temperature on your cooler … well you can also do
+this in the tank. Like they're different methods, but that's called the shar Met
+method"* — which is the one place in the readable pool where the tank method is
+distinguished from the traditional one at all.
+
+**Why it is thin, and what is missing.** Register, and three gaps the beat names
+explicitly. There is no time on lees and no autolytic bready character: the episode
+gets as far as *"structure of yeast cells, and you want to get that out"* and stops.
+The ancestral single-fermentation method is absent. And the beat's stated strong signal
+— the enabling technologies named as English glass and cork *"with the monk credited as
+the tradition's own account rather than as fact"* — is inverted: the episode credits
+Dom Pérignon with *"the idea of using cork stoppers in thicker English type bottles"*
+and dates the disgorgement method to *"eighteen thirteen when the widow clicko came up
+with it."* Narration has to carry the correction, and beat 20's reject line already
+says so.
+
+### Beat 21 — phylloxera and the grafted vineyard — **empty**
+
+**Nothing.** `phylloxera` 0 and `rootstock` 0 in both catalogue pools and in every
+transcript read. The only adjacent material is inside beat 59's carrier, where the
+absinthe episode has the French wine industry joining the temperance movement — the
+downstream consequence the spine says beat 21 sets up — without the blight that caused
+it.
+
+### Beat 22 — cider, perry and the fruit wines — **empty**
+
+**Nothing.** `cider` returns 0 in discover and 2 in the archive, and both archive hits
+are Netflix's *Apple Cider Vinegar*. `keeving` 0, `perry` in the drink sense 0 across
+131 archive hits that are all people's surnames, `sorbitol` 0. `Cider Chat` exists,
+with 511 episodes, and it is in `catalog-breadth.json` uncurated — see §11.
+
+### Beat 23 — mead and the nitrogen problem — **empty**
+
+**Nothing**, and the near-miss is instructive. SYSK Honey: Nature's Wonder Sugar
+(3,245 s) is a full episode about the feedstock that contains no mead process at all.
+Its one mention is 2533.76 → 2552.68: *"mold in particular can cause honey to ferment
+slightly. Again, nothing wrong with that, It's totally fine. You basically just have a
+free little mini shot of mead right there in your honey."* Its account of honey's
+stability is antimicrobial rather than physical — *"it is acidic, it has antibacterial
+properties, so that means honey will last you a long long time"* — where beat 23's
+claim turns on water activity, which the episode never reaches even though it repeatedly
+describes dehydration.
+
+**What is missing.** Water activity as the reason undiluted honey is microbiologically
+stable, and then the whole beat: yeast-assimilable nitrogen, staggered nutrient
+additions, and the fusel harshness a starved ferment produces. `nitrogen` returns 19
+hits in the readable pool and every one is the Guinness widget.
+
+### Beat 24 — sap drinks that cannot be shipped — **empty**
+
+**Nothing.** `pulque` 0, `palm wine` 0, `aguamiel` 0, `toddy` 0, `tapping` 0 in this
+sense. §5 ranked this twelfth-hardest and expected partial coverage; there is none.
+
+### Beat 25 — the milk alcohols — **empty**
+
+**Nothing.** `kumis` 0, `airag` 0, `kefir` 0, `lactose` 0. §5 ranked this
+fourth-hardest and predicted the same outcome as barbecue's steppe beat, which came
+back empty too. The comparison holds: two Forays, two steppe beats, two empties, and in
+this catalogue there is not even travel-shaped material to reject.
+
+---
+
+## 5. Act III — sugar that had to be unlocked (fan of families, beats 26–35)
+
+**The only strong beat in the report is here, and so is the report's sharpest
+contrast.** One strong, two thin, seven empty. The beer chain 26 to 30 has the strong
+beat at its head, a thin beat at 27 that depends on 26's carrier, two empty beats in
+its middle, and a thin beat at 30. Everything outside the European beer lineage —
+sorghum, sake, the koji family, the chewed brews, and the industrial lager most of the
+world actually drinks — is empty.
+
+### Beat 26 — beer, the sequence in order — **strong**
+
+**Chosen:** `being-an-engineer` — S1E33 Beer, Kenya, & DIY Chemistry Experiments |
+Jorge de Freitas, band **385.59 → 485.34 (99.8 s)**. In on *"It's a very linear process
+that starts with sugar starts with extracting sugars from malt"*; out on *"…this yeast
+molecule that is converting sugars into alcohol and carbon dioxide."*
+
+**Why it advances beat 26.** The speaker is a chemist who spent two and a half years
+as a production brewer at two breweries, he is asked *"I know nothing about brewing or
+the brewing process, walk us through what that process is"*, and he answers with the
+sequence and its reasons rather than its steps — which is exactly what the beat asks
+for and refuses to accept a substitute for. The sequence: *"It's a very linear process
+that starts with … extracting sugars from malt, or barley, or malted barley … From
+there, you extract the sugar, you make work. So with the sugar water, the extraction is
+called wart, you boil it, you add flavoring which is where you would add your hops for
+bittering."* Then the beat's actual claim — that each step destroys the conditions the
+previous one required — arrives as the cold-side argument: *"it's not called beer until
+it's in the fermenter. And there's yeast on it … and that happens on the cold side, or
+what we would call cold side, anything on that side is susceptible to infection. And so
+there's a large need for sterilization and sanitation procedures in your vessels,
+because you're competing with wild bacteria and wild yeast that could potentially
+ferment the sugars."* The host's own reaction is the register check: *"I have never
+heard beer explained on such a scientific level."*
+
+**Why this is the report's one strong verdict.** It passes all four of §1a's tests: it
+was read; the speaker's expertise is in the thing claimed; it advances the claim rather
+than a clause; and at 99.8 s it sits mid-band and double-books nothing.
+
+**What it does not have, so narration knows.** Neither of beat 26's two named strong
+signals: the enzymes' fate is never stated, so the one-way nature of the mash
+temperature decision is missing, and the brewer is never asked which step he would
+change first if the beer came out wrong. Mash thickness and temperature, lautering and
+the grain bed as its own filter, hot and cold break, and pitching rate are all absent.
+A second segment at **538.31 → 585.74 (47.4 s)** covers cleaning chemistry — caustic
+then acid sanitiser, *"pasteurize it with heat and then sanitize it with some type of
+acid"* — and is **deliberately not taken**: the beat is carried, and adding to a
+carried beat is how a Foray starts bloating.
+
+**One caveat that travels with both spans from this episode.** The transcript's cues
+in this stretch run 21 to 68 seconds each, so cut points can only be placed at cue
+boundaries. Both bands above are cue-aligned. Sub-cue trimming would need the audio.
+
+### Beat 27 — hops, preservative then flavour — **thin, by dependency**
+
+**The mechanism exists and it is inside beat 26's carrier.** The same speaker gives
+beat 27's central chemistry in one sentence: *"Traditionally, like IPA or an India Pale
+Ale would have a lot of hops added to the start of the boil. Because there's a chemical
+conversion that happens there. There's a heat assisted isomerization of a specific
+compound and hops that go from non soluble to soluble, then once they're soluble, they
+can be adding bitterness to your to your beer."* That is alpha-acid isomerisation
+during the boil, which is the first half of the beat's trade, from someone who ran it.
+
+**And it cannot be cut separately.** The sentence sits in the middle of the single cue
+running 403.26 → 471.09, inside the span beat 26 takes. Splitting it out would require
+sub-cue timing this transcript does not provide, and double-cutting one passage across
+two beats would put the same voice making the same point twice. This is the same
+outcome barbecue's beat 2 reached against beat 15's carrier, and the same reasoning:
+**treat beat 27 as a narration beat with a dependency recorded**, and if the episode is
+ever re-transcribed with word timestamps, revisit this beat first.
+
+**The alternate, and why it is not used.** SYSK How Beer Works, 1525.68 → 1552.40
+(26.7 s), has the preservation-before-flavour ordering and the shipping story: *"they
+added a lot more hops because hot sex is a preservative. Thus India pale ale."* It is
+below the 30 s floor, the hosts disclaim it themselves in the next breath — *"that's
+the story I got. I'm gonna be really embarrassed"* — and beat 27's reject line is *"IPA
+origin folklore asserted without the shipping and hopping-rate evidence"*.
+
+**What is missing either way.** The other half of the trade: that the aromatic oils
+boil away while the bittering compounds form, and therefore why late, whirlpool and
+dry-hop additions exist. Also the antimicrobial action against Gram-positive bacteria
+specifically, the displacement of the earlier herb mixtures, and the 1516 statute
+described accurately — SYSK has the statute at 920.44 → 953.60 and describes it as
+*"the oldest non religious legal standard of food production and the oldest consumer
+protection law on the planet"*, which is the heritage boast the beat rejects, wrapped
+around an argument between the hosts about whether it names three ingredients or four.
+
+### Beat 28 — ale, lager and refrigeration — **empty**, and the one candidate is wrong
+
+**Nothing**, and this rejection is worth stating precisely because the spine's own
+revision note predicted the error. SYSK How Beer Works, 1590.20 → 1638.52, is the only
+account of the ale/lager split in the readable pool: *"If you are making a logger which
+in Germany, which in German is a verb meaning to store, you're going to it's gonna take
+a few months, and you're going to store this stuff. You're gonna let it ferment um at
+near freezing temperatures and it's gonna ferment at the bottom."*
+
+The spine's §8 records: *"Beat 28 had lager fermenting near freezing, which is the
+conditioning stage."* A reviewer removed that error from the spine, and the only
+available tape asserts it. The episode then explains lager's origin as a summer
+spoilage problem solved by cold caves, which is half of the beat's history, and never
+reaches refrigeration, Linde, 1873, or 1883.
+
+**What is missing.** The biology: two species rather than two techniques,
+*S. pastorianus* as a hybrid with *S. eubayanus* rather than a variety, the seven to
+thirteen degree working range and the near-freezing *conditioning* that follows it.
+Then the enabling conditions stated as jointly necessary and dated in the right order,
+which is the beat's strong signal and the thing that makes pale lager's global
+dominance explicable at all.
+
+**The identified fix.** `craft-beer-and-brewing-magazine-podcast--episode-497-todd-malloy-and-robin`
+(4,877 s), *"on brewing medal-winning lagers on a small pub system"*, is the
+catalogue's only lager-technique row. §10 ranks it fifth and states the risk: a
+brewpub-system interview may well be recipe and equipment talk rather than the two
+yeasts and the cold chain.
+
+### Beat 29 — the style map is a water map — **empty**
+
+**Nothing.** `burton`, `burtonisation`, `sulphate`/`sulfate`, `gypsum`, `carbonate`,
+`pilsen` and `mash ph` all return zero across every transcript read. SYSK's beer
+episode says `water` nine times and every one is an ingredient mention. This is the
+best "reason it yourself" beat in Act III, the direct analogue of the barbecue spine's
+fuel beat — which came back **strong** on its own catalogue — and here there is nothing
+at all.
+
+### Beat 30 — wild and mixed fermentation — **thin**
+
+**Chosen:** `being-an-engineer`, band **601.41 → 742.74 (141.3 s)**. In on *"Right and
+I'm saying two years from like a barrel aging program"*; out on *"…I'm sure breweries
+have to deal with that every day when they're managing these these extensive barrel
+programs."*
+
+**Why it advances beat 30.** It delivers two of the beat's named evidence items from a
+practitioner. The barrel as habitat rather than as flavour: *"you could put the same
+batch or the same lot of beer into 12 different barrels, and the environment in that
+barrel, and what I mean by environment, it could be the different concentration of
+yeast, bacteria, or anything that's in the wood in particular, could have a different
+effect on on your beer."* And then the beat's own stated strong signal, which is
+*"an honest account of the failure rate and of barrels that have to be dumped"*: *"if
+there's one that is just completely off, because maybe the chemistry was off, or maybe
+there was too much of a concentration of a specific bacteria that gives you an
+undesirable flavor. You would have to just throw that barrel away."*
+
+**Why it is thin.** It is not about the older branch. Beat 30's claim is that the wild
+and mixed traditions deliberately give back the control beats 26 to 29 spend
+themselves acquiring, and this is a modern brewery's barrel programme, where
+unpredictability is a cost being managed rather than a technique being chosen. Missing:
+the coolship and the seasonal restriction, the succession of organisms over months,
+*Brettanomyces* and what it metabolises, *Pediococcus* and *Lactobacillus*, and
+blending young and old beer to trigger a bottle refermentation. `lambic` returns 0 in
+both catalogue pools; SYSK's beer episode mentions it four times, at
+1772.44 → 1825.16, and gets the claim's core right — *"lambics are a type of
+spontaneously fermented brew … they're basically just leaving their stuff out to be
+exposed to wild yeast that grows in the area"* — before landing on *"I don't care for it
+a whole lot. It's kind of has a sour aftertaste"*, which is the tasting reaction the
+beat rejects.
+
+### Beat 31 — the sorghum and millet beers — **empty**, and the tempting row is the clearest stop
+
+**Nothing.** `sorghum` 0, `millet` 1 and it is Millet's *Angelus*, `burukutu` 0,
+`tella` 0, `kvass` 0.
+
+**And the catalogue contains exactly one West African grain row, which is why this beat
+needs its rejection written down.** `experimental-brewing--episode-207-fonio-fonio-what-the-heck-are-you-fonio`
+(3,900 s), hook *"An obscure West African grain gets the experimental-homebrewing
+treatment."* It is the only row in 1,534 items that touches African grain and beer at
+once, beat 31 is empty, and taking it would be precisely the move the governing rule
+forbids. Two homebrew authors experimenting with a novel grain is not a brewing
+tradition that is *"thick, unfiltered, still actively fermenting when it is drunk,
+deliberately soured by lactic bacteria"*; the beat's claim is about a design decision
+made across a continent, and §6b excludes home brewing as a how-to. **Stop, not a low
+priority.** It would move no beat and it would look like it had.
+
+### Beat 32 — sake — **empty**
+
+**Nothing, and the negative is unusually clean.** `sake` in the drink sense returns
+**zero** across 1,534 discover items and 73,719 archived episodes. All 25 archive hits
+are "for the sake of", four of them inside Stuff You Should Know itself. `koji`,
+`tōji`, `polishing ratio` and `milling` in this sense are all zero. A two-thousand-word
+process beat, one of §4's twelve at 2.0 %, with no tape of any kind.
+
+### Beat 33 — the koji family beyond sake — **empty**
+
+**Nothing.** `huangjiu` 0, `makgeolli` 0, `nuruk` 0, `qu` unmeasurable as a two-letter
+token but `rhizopus` 0 and `shaoxing` 0. Settled by the same absence as beat 8.
+
+### Beat 34 — chewed, sprouted and tuber brews — **empty**
+
+**Nothing.** `chicha` 0, `jora` 0, `cassava` 0, `masticat` 0. §5 ranked this
+thirteenth-hardest and suggested checking whether one candidate could serve both this
+beat and beat 9 without double-counting. There is no candidate to check.
+
+### Beat 35 — the industrial adjunct lager — **empty**, and its near-miss is an advocacy passage
+
+**Nothing.** The one adjunct passage in the readable pool is SYSK How Beer Works,
+2283.24 → 2319.68, and it is the prosecution rather than the engineering: *"they
+changed it in a really lazy, cost efficient way. Instead of malt, they used corn,
+syrup, high fruit toast corn syrup. Such a bad idea … So you had this really weird
+tasting chunky style beer."* Beat 35 asks for *"an even-handed account that states the
+engineering rationale rather than prosecuting it"* and rejects *"craft-versus-macro
+advocacy in either direction, and brand history."* This is both.
+
+**What is missing.** Adjunct rates and what maize and rice contribute beyond cost,
+cereal cooking, diastatic power as what caps the adjunct rate and purchased enzymes as
+what lifts the cap, and high-gravity fermentation with dilution afterwards —
+genuinely the most surprising piece of process in the act, and absent. `high gravity`
+and `deaerated` return zero; `gravity` appears once in the beer episode, defined
+incorrectly as *"gravity is how much alcohol is in your beer."*
