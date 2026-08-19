@@ -68,6 +68,15 @@
         true enough to assert in §3 for the 24 days between 040c9f6
         (2026-07-24) and the refresh that broke it.
 
+    10. Catalogue growth cannot retune the interpreter (#275): every query's
+        interpretation -- expansion terms, weights, broad flags, df multiplier
+        tier -- is identical against today's corpus and against the same corpus
+        duplicated. The document-frequency thresholds are fractions, so size alone
+        cannot move a term across one; before #275 they were absolute counts and
+        137 terms changed bucket at 2x. 4x, and the witness that the absolute rule
+        drifts, live in test/search-df-scaling.test.js for runtime reasons stated
+        there and below.
+
      9. Ordering and the strong bar agree on "better" (#216): results are
         ORDERED by `matched` then `sum` but the bar cuts on `sum` alone, so the
         two could disagree and classifyResults' narrow branch then showed the
@@ -843,6 +852,124 @@ for (const query of ["how bbq works", "the history of jazz"]) {
   check(`no sparse answer skips a result it ranks above one it shows (#216)`,
     skipping.length === 0,
     `${skipping.length} query/queries drop a better-ranked result while showing a worse one:\n      ${skipping.join("\n      ")}`);
+}
+
+/* ---------- 10. catalogue growth cannot retune the query interpreter (#275) ---------- */
+
+/* THE DEFECT #275 REPORTS IS DRIFT, WHICH NO SINGLE-CORPUS ASSERTION CAN SEE.
+   `tagDF` returned an absolute count and `interpretQuery` compared it against
+   absolute thresholds, so the same query got a different expansion and different
+   weights every night as the catalogue grew -- 52 terms across the expansion
+   threshold and 125 across the score multiplier over one month of nightlies, with
+   no code change. Every assertion in this file was green throughout, because every
+   one of them reads TODAY's corpus. So the instrument has to be two corpora.
+
+   THE SECOND CORPUS IS TODAY'S, DUPLICATED. Every item and every tag entry is
+   cloned under a suffixed id, which cannot change what the catalogue is ABOUT: the
+   share of the pool matching any term is exactly preserved. So every
+   interpretation must be identical, and under the pre-#275 rule none of them was.
+
+   ASSERTED ON THE INTERPRETATION, NOT ON `status` OR `picks`, and that is a
+   measured choice rather than a convenient one. Duplication doubles the number of
+   bar-clearing results, `RICH_MIN` is a COUNT of them, and `diversify`'s per-show
+   cap sees each show twice -- so sparse queries legitimately go "ok" and picks
+   legitimately reorder at 2x, on arithmetic that has nothing to do with document
+   frequency. Measured on this pool, 8 of the 46 queries move status at 2x with
+   every df bucket identical. Asserting status invariance here would be asserting
+   something false and blaming #275 for classifyResults; asserting the
+   interpretation is asserting exactly what #275 governs.
+
+   WHAT THIS COVERS THAT test/search-df-scaling.test.js CANNOT, which is the reason
+   to spend a governed-path edit on it: that suite walks the vocabulary term by
+   term against the tag map. This walks the REAL QUERIES through the real
+   `interpretQuery`, so it also covers `corpusDF`'s `broad` flag, the topic boosts,
+   the alias expansion and the concept-support logic -- the whole object the ranker
+   is handed. A term-level check cannot see a query whose interpretation changes
+   through an interaction between those.
+
+   ONE ctx PER CORPUS, deliberately: both memos are keyed on the ctx, so a shared
+   one makes every term free after the first query and this section costs a few
+   seconds rather than a second battery. */
+{
+  const suffixed = (k) => {
+    const items = [];
+    const tags = {};
+    for (let n = 0; n < k; n++) {
+      const sfx = n === 0 ? "" : `--grow${n}`;
+      for (const it of discover.items) items.push({ ...it, id: it.id + sfx });
+      for (const [id, t] of Object.entries(itemTags.tags)) tags[id + sfx] = t;
+    }
+    return { discover: { ...discover, items }, itemTags: { tags } };
+  };
+
+  /* The comparable shape of an interpretation: the tokens, whether each is broad,
+     the multiplier tier its df selects, and every expansion term with its weight.
+     Weights are rounded because they are products of literals -- 0.6 * 0.4 is not
+     exactly 0.24 -- and an equality on raw floats would fail on formatting rather
+     than on drift. */
+  const shapeOf = (interp) => JSON.stringify({
+    groups: interp.groups.map((g) => ({
+      token: g.token,
+      broad: g.broad,
+      mult: SE.dfMultiplier(g.df),
+      terms: [...g.terms].map(([t, i]) => [t, i.w.toFixed(6), i.source]).sort(),
+    })),
+    topics: [...interp.topicBoosts].sort(),
+    hasPrimary: interp.hasPrimary,
+    properNoun: interp.properNounQuery,
+    filters: interp.filters,
+  });
+
+  const baseCtx = freshCtx();
+  const base = new Map([...searched.keys()].map((q) => [q, shapeOf(SE.interpretQuery(q, baseCtx))]));
+
+  /* 2x AND NOT ALSO 4x, and the reason is runtime measured rather than guessed.
+     Both memos are O(corpus) per novel term, so a 4x pass costs this file another
+     three minutes on top of its ~110 seconds -- for a claim that is scale-free, so
+     the second doubling can only re-derive what the first one showed. 4x is
+     asserted in test/search-df-scaling.test.js, where it runs against a slice of
+     the tag map instead of the whole pool and costs seconds. */
+  const grown = suffixed(2);
+  const grownCtx = { semantic, itemTags: grown.itemTags, discover: grown.discover };
+  const drifted = [];
+  for (const [query, shape] of base) {
+    if (shapeOf(SE.interpretQuery(query, grownCtx)) !== shape) drifted.push(`"${query}"`);
+  }
+  check(`no query's interpretation changes when the catalogue is duplicated 2x (#275)`,
+    drifted.length === 0,
+    `${drifted.length} of ${base.size} queries interpret differently at twice the catalogue with its composition untouched: ${drifted.join(", ")} -- ` +
+    `a df threshold is reading an absolute count again, so search quality is drifting with catalogue size`);
+
+  /* THE LADDER IS REACHED, which is this section's guard against vacuity. Every
+     check above is trivially true on a corpus where no term is common enough to be
+     demoted, on a vocabulary that stopped expanding, and on a `tagDF` that returns
+     a constant -- so the exercised queries have to be shown to span the ladder
+     rather than sit in one tier of it. Free: every value here is already memoized
+     by the pass above.
+     The DRIFT witness -- that the pre-#275 absolute rule really does move buckets
+     under this same duplication, 137 expansion buckets and 206 multipliers at 2x
+     over the 1,366-term vocabulary -- deliberately lives in
+     test/search-df-scaling.test.js instead. It needs a full-vocabulary sweep at two
+     corpus sizes, which is two more minutes here and seconds there, and one witness
+     in the right place beats two in the wrong one. */
+  const tiers = new Set();
+  const demoted = [];
+  let broadest = 0;
+  for (const [query] of searched) {
+    for (const g of SE.interpretQuery(query, baseCtx).groups) {
+      tiers.add(SE.dfMultiplier(g.df));
+      broadest = Math.max(broadest, g.df);
+      for (const [t, info] of g.terms) {
+        if (SE.tagDF(t, baseCtx) > SE.TAG_DF_COMMON && info.w < 1) demoted.push(`${query}:${t}`);
+      }
+    }
+  }
+  check(`the queries here span all three df multiplier tiers, so 2x-invariance is not invariance in one tier`,
+    tiers.size === 3, `only reached ${[...tiers].join("/")} -- the ladder is not exercised, so the check above cannot fail`);
+  check(`at least one exercised query carries an expansion term the ladder actually demotes`,
+    demoted.length > 0,
+    `no term over TAG_DF_COMMON (${SE.TAG_DF_COMMON}) survives in any expansion; broadest token df is ${broadest.toFixed(4)} -- ` +
+    `nothing here crosses a threshold, so the invariance above is vacuous`);
 }
 
 /* ---------- --tiering: the per-query tiering table, not an assertion ---------- */

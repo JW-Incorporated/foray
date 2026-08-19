@@ -186,6 +186,16 @@ const FLOORS = {
      it — see the suite header for how the coverage divides against
      data-deletion and app-security. */
   "test/playlist-durability.test.js": 33,
+  /* The document-frequency SCALE (#275): tagCount vs tagDF, the three threshold
+     fractions, and the two invariances the fix buys -- growth and proportional
+     subsetting. Floored because what it guards is an ABSENCE OF DRIFT, which no
+     single-corpus assertion can see: the whole 120-check battery was green
+     throughout the month in which 52 terms silently crossed the expansion
+     threshold, and it would be green again the day somebody "simplified" tagDF
+     back to a count. Every test in there carries the mutation that kills it, and
+     the two real-repo ones carry a WITNESS that the absolute rule moves -- without
+     which they pass on a tagDF that returns a constant. */
+  "test/search-df-scaling.test.js": 10,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
