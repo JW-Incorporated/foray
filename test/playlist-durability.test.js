@@ -362,6 +362,44 @@ test("the item_ids mirror tracks items on every write, so an older app.js cannot
   assert.deepStrictEqual(saved.item_ids, parts.map((p) => p.id));
 });
 
+test("items is authoritative: a mirror that disagrees is repaired, not believed", () => {
+  /* WHY THIS TEST EXISTS: a mutation round proved it had to. Reverting
+     renderPlaylists to `p.item_ids.length` killed nothing, because the mirror is
+     kept in step and the two numbers are equal — which is fine, but only as long
+     as SOMETHING pins which of them is the source of truth. This does: a store
+     whose mirror claims five parts for two is corrected to two, in storage, and
+     both views print two.
+
+     MUTATION 1: drop the mirror-disagreement branch from hydratePlaylistParts. The
+     stale mirror survives the read and this fails on the persisted value — and
+     with it, `p.item_ids.length` becomes a number no test can distinguish.
+     MUTATION 2: make resolveParts read `item_ids` in preference to `items`. Both
+     the count and the row count go to five (six tests fail).
+
+     AND THE SURVIVOR THIS TEST EXISTS TO JUSTIFY: reverting renderPlaylists to
+     `p.item_ids.length` still kills nothing, and that is now correct rather than
+     untested. Hydration repairs the mirror before either view reads it, so
+     `p.item_ids.length === resolveParts(p).length` is an invariant — enforced by
+     MUTATION 1 above. Both views are pointed at `resolveParts` anyway, because one
+     source of truth is cheaper to keep right than two that happen to agree. */
+  const m = mount();
+  const items = setPool(m, [poolItem(1), poolItem(2)]);
+  m.ctx.fullPool();
+  const parts = items.map((it) => m.ctx.playlistPart(it));
+  m.store.set("cp_playlists", JSON.stringify([{
+    id: "q1", title: "T", items: parts,
+    item_ids: [...parts.map((x) => x.id), "ghost-a", "ghost-b", "ghost-c"],
+    created: "2026-08-18T00:00:00.000Z", last_played_at: null, sparse: false,
+  }]));
+  const [p] = m.ctx.playlists();
+  assert.deepStrictEqual([...p.item_ids], parts.map((x) => x.id), "the mirror must be corrected");
+  assert.deepStrictEqual([...m.playlistsRaw()[0].item_ids], parts.map((x) => x.id), "and the correction persisted");
+  m.ctx.renderPlaylists();
+  assert.ok(m.view().includes("2 parts"), `the list must count items: ${/\d+ parts/.exec(m.view())}`);
+  m.ctx.renderPlaylistDetail("q1");
+  assert.strictEqual(rowCount(m.view()), 2);
+});
+
 test("savePlaylists still caps the store at 50 playlists", () => {
   /* Unchanged behaviour, floored here because per-playlist growth multiplies
      against it — the cap is now load-bearing for storage, not just for the list.
@@ -735,8 +773,17 @@ test("today's subject queue renders through the same one path as a saved playlis
      are always live; what this pins is that the two shapes did not diverge, which
      is how the detail view would grow a second, untested branch.
 
-     MUTATION: leave subjectQueueById returning `item_ids` only. resolveParts sees
-     no `items`, every part becomes an unnameable stub, and this fails. */
+     MUTATION: drop `isSubject: true`. The queue grows a "remove this playlist"
+     button for something that was never saved, and this fails.
+
+     AND ONE MUTATION THAT DELIBERATELY SURVIVES, recorded because a reviewer will
+     try it: reverting subjectQueueById to `item_ids` only changes nothing here.
+     resolveParts falls back to `item_ids` when there is no `items`, and every id in
+     a live queue is in the pool, so all of them resolve `live` and the render is
+     identical. That fallback is the same one that keeps a pre-#276 playlist
+     renderable, and it is asserted where it matters — the migration tests and the
+     no-catalogue test. `items` is used here so the detail view has ONE branch, not
+     because the other would break this page. */
   const m = mount();
   const items = setPool(m, [poolItem(1), poolItem(2)]);
   m.ctx.fullPool();

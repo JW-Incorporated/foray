@@ -714,6 +714,16 @@ function hydratePlaylistParts(p) {
   } else {
     p.items = spine;
   }
+  /* `items` is authoritative and `item_ids` is derived, so a disagreement between
+     them is REPAIRED here rather than merely ignored. It cannot arise from a store
+     this version wrote — withMirror() sees every write — but the mirror exists for
+     the benefit of an older `app.js` counting from it, and a mirror that is only
+     right when nothing has gone wrong is not worth the 47 B a part it costs. */
+  const mirror = Array.isArray(p.item_ids) ? p.item_ids : null;
+  if (!changed && (!mirror || mirror.length !== p.items.length
+      || p.items.some((part, i) => mirror[i] !== part.id))) {
+    changed = true;
+  }
   if (changed) p.item_ids = p.items.map(part => part.id);
   return changed;
 }
