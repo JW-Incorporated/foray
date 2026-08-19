@@ -46,10 +46,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
-/* CRLF normalised on the way in. This repo is developed on Windows and both
-   legal documents are committed CRLF, so a `\n\n` in a block regex below would
-   silently match nothing and every derived inventory would come back empty —
-   green, and testing air. See .gitattributes for the same trap one layer down. */
+/* CRLF normalised on the way in, and it is load-bearing rather than tidy. Both
+   legal documents are committed CRLF (this repo is developed on Windows), so the
+   `\n\n` in `sentTypesInPolicy()`'s block regex matches nothing without this and
+   the Sent table comes back as "could not be located".
+
+   MUTATION: delete the `.replace()`. Ran it — the §2 inventory test goes red.
+   The count test below survives it, because its regex is single-line; that is
+   the honest blast radius, not the wider one I predicted.
+
+   See .gitattributes for the same trap one layer down. */
 const read = (rel) =>
   fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 
@@ -207,7 +213,9 @@ function resolveAnchor(citedPath, anchor) {
 
 test("no legal document cites code by line number", () => {
   /* MUTATION THAT KILLS THIS: put `app.js:220` back anywhere in either
-     document. Ran it — red, naming the document and the line.
+     document. Ran it — red here, and red in the next test too, because a line
+     number does not resolve as an anchor either. Two gates, deliberately: this
+     one names the FORM so the reason is legible.
 
      This is the direction that had no gate at all. Line numbers are not wrong
      because they are imprecise; they are wrong because they stay RESOLVABLE
@@ -224,14 +232,20 @@ test("no legal document cites code by line number", () => {
 });
 
 test("every anchored citation resolves to a declaration in the file it names", () => {
-  /* MUTATION THAT KILLS THIS: rename `toEventRow` to `toEventRow2` in app.js
-     (the declaration only — its four callers keep the old name and would fail
-     at runtime, which is the point: this suite goes red on the rename alone).
-     Ran it — red, `app.js declares no function toEventRow`, cited from six
-     places across both documents.
+  /* MUTATIONS THAT KILL THIS — one per anchor sub-form, all four run:
 
-     Also ran the reverse: change a citation to `app.js:toEventRowX()` with the
-     source untouched. Red. Both directions, like the key inventory. */
+       rename the DECLARATION `async function trySyncEvents()` to
+         `trySyncEvents2()` and leave all FOUR call sites spelled the old way.
+         Red. This is the mutation that proves the resolver is not vacuous: a
+         forgiving regex would find `trySyncEvents();` four times over and call
+         the citation resolved. `)` followed by `{` is what excludes them.
+       rename `function toEventRow(e, userId)` to `toEventRow2`. Red from six
+         citations across both documents.
+       rename the constant `SB_ARCHETYPES` to `SB_ARCHETYPE_SET`. Red.
+       rename the element id `fy-sheet-note` to `fy-sheet-remark`. Red.
+
+     And the reverse direction: change a citation to `app.js:toEventRowX()` with
+     the source untouched. Red. Both ways, like the `cp_` key inventory. */
   const bad = [];
   for (const s of allSpans()) {
     const m = ANCHORED_RE.exec(s.span);
