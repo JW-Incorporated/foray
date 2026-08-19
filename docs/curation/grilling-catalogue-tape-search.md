@@ -42,10 +42,12 @@ sentence's initial capital when it sits inside a sentence of ours.
 
 Measured, with word boundaries, over the whole pool: `barbacoa` **0**, `taino` **0**,
 `carolina` **0**, `stockyard` **0**, `juneteenth` **0**, `emancipation` **0**,
-`twitty` **0**, `hog` **0**, `swine` **0**. `memphis` returns **one** item and it is
-a cycling travelogue; `kansas` returns **one** and it is an amusement-park story;
-`migration` returns **one** and it is about the settlement of Aotearoa. §3 works
-through each beat.
+`freedmen` **0**, `antebellum` **0**, `plantation` **0**, `foodways` **0**,
+`soul-food` **0**, `twitty` **0**, `hog` **0**, `swine` **0**. `memphis` returns
+**one** item and it is a cycling travelogue; `kansas` returns **one** and it is an
+amusement-park story; `migration` returns **one** and it is about the settlement of
+Aotearoa. The last four terms were added specifically to try to break this finding
+rather than to confirm it, and they did not. §3 works through each beat.
 
 Two rows are worth buying and neither is in Act IV: **Gastropod's refrigeration
 episode for beat 31**, which the ASR manifest already named and which turns out to
