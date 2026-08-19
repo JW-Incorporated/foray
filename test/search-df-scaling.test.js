@@ -107,6 +107,12 @@ test("an empty or absent tag map is 0, not NaN or Infinity", () => {
      over the network, so the empty case is reachable in the product rather than
      theoretical.
 
+     THIS IS A CAN'T-FAIL-TODAY TEST AND IT IS WRITTEN DELIBERATELY (CLAUDE.md
+     "A green test is not evidence"): the shipped map is never empty, so nothing in
+     the product exercises this path, and it is the only thing standing between a
+     failed fetch and a search that silently keeps every broad term at full weight.
+     It does fail on the mutation below, which is the property that matters.
+
      KILLED BY: `return tagCount(term, ctx) / ctx._dfTotal` without the guard. */
   for (const ctx of [ctxOf({ tags: {} }), ctxOf({}), {}]) {
     const df = SE.tagDF("jazz", ctx);
