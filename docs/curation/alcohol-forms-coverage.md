@@ -196,12 +196,12 @@ The only liberty taken is the ordinary one of lowering a quoted sentence's initi
 capital when it sits inside a sentence of ours.
 
 **And that rule was checked mechanically rather than asserted, because the first draft
-broke it eighteen times.** All **202** italic quotations in this document were extracted
+broke it eighteen times.** All **204** italic quotations in this document were extracted
 programmatically and matched back against the transcripts, the spine, the length rules,
 #226 and the data files, word for word with punctuation and case ignored. Eighteen
 failed, and every one failed the same way: a dropped *um*, a dropped doubled word — the
 transcripts are full of *"it's it's"* and *"they're they're"* — or a full stop where the
-source has a comma. All eighteen are now the source's words. **202 of 202 verify.** The
+source has a comma. All eighteen are now the source's words. **204 of 204 verify.** The
 check has to account for one property of these files that is easy to miss: SYSK's cues
 *overlap*, each one repeating the tail of the last, so a naive flatten duplicates words
 and a correct quotation fails to match. Two of the eighteen were caused by reading a
