@@ -166,6 +166,19 @@ const FLOORS = {
      both silently break a whole class of query. Every test in there was
      mutation-checked, with the killing mutation named in the test. */
   "test/search-tiering.test.js": 11,
+  /* Saved playlists must not decay (#276). Floored with ZERO SLACK, like
+     data-deletion above and for the same reason: what it guards is a set of
+     decisions each one line from its opposite, on a failure that is invisible on
+     the day it is introduced. `.filter(Boolean)` back in the row mapping, a
+     `filter` in the migration instead of a stub, one more field in
+     PLAYLIST_PART_FIELDS — none of those breaks a render, and the listener who
+     notices is weeks away and cannot tell an aged-out playlist from a badly built
+     one. Two tests are also the only place the REAL builder is run against the
+     REAL catalogue and then has the pool taken away underneath it, which is the
+     only form the reproduction can take. Every test names the mutation that kills
+     it — see the suite header for how the coverage divides against
+     data-deletion and app-security. */
+  "test/playlist-durability.test.js": 33,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there
