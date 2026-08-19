@@ -704,19 +704,40 @@ const RICH_MIN = 6;
    construction), a one-clearer query has a one-item prefix, so the floor cannot
    be reached through this widening either.
 
-   THE TWO ALTERNATIVES THE ISSUE SUGGESTED WERE MEASURED AND BOTH LOSE.
-   A per-tier bar does not fix the issue's own example: tier matched=2 tops out
-   at 9.300, so its bar is still 4.650 and raw1 at 4.275 is still evicted, while
-   tier matched=1 gets a bar of 2.700 and admits weaker items than the one being
-   argued for. Admitting anything whose `matched` equals results[0].matched does
-   fix that example, but only because raw1 happens to sit in the top tier; it
-   leaves the identical defect one tier down untouched, and it admits top-tier
-   items with no lower bound on `sum` at all. Ranking on `sum` instead makes the
-   two agree the other way and by construction, which is the tidiest option on
-   paper, and it was rejected on measurement: it promotes single-signal matches
-   over multi-concept ones and turned "video games" pick 9 (an FFmpeg
-   video-codec episode, the query's one off-topic pick) into a top-3 result,
-   which the battery's own on-topic oracle fails.
+   THE THREE ALTERNATIVES WERE MEASURED, over all 38 queries the battery
+   exercises, on main's pool and again on the witness pool above. All three lose,
+   and each loses differently:
+
+     a per-`matched`-tier bar (#216's first suggestion) DOES NOT FIX THE ISSUE'S
+     OWN EXAMPLE. Tier matched=2 tops out at 9.300, so its bar is still 4.650 and
+     raw1 at 4.275 is still evicted -- the witness stays at 2 picks. Meanwhile
+     tier matched=1 gets a bar of 2.700 and "stock market" goes sparse -> ok on
+     47 sub-bar results.
+
+     admitting anything whose `matched` equals results[0].matched (#216's second
+     suggestion) does fix the witness, but only because raw1 happens to sit in
+     the top tier; it leaves the identical defect one tier down untouched, and it
+     admits top-tier results with no lower bound on `sum` at all. Measured, that
+     is not theoretical: on a single-token query every retrieved item is in the
+     top tier, so "how bbq works" goes from 0 off-topic picks of 8 to 7 of 10 and
+     "grill" from 1 of 8 to 7 of 10 -- Serial, Dateline, Morbid, Casefile and the
+     Texas City disaster, which is precisely the place-name leak the sparse
+     comment below exists to describe.
+
+     ranking on `sum` so that both agree the other way is the tidiest option on
+     paper -- prefix closure then holds by construction rather than by rule -- and
+     it does not fix the witness either. It makes the two agree by DROPPING raw1
+     consistently (sum order is 9.300, 5.400, 4.275, so the evicted result is
+     last and the prefix is closed trivially), which answers #216 by deciding the
+     multi-concept match was never better. It also costs precision, because
+     `matched` was doing real work: "video games" moves an FFmpeg video-codec
+     episode from pick 9 to pick 1 and gains a Google-search episode, and "world
+     war 2" gains two World Cup episodes. Five queries change picks.
+
+   The reading that won, then: `matched` stays primary and the bar follows it,
+   because the alternative that demotes `matched` measurably promotes
+   single-signal matches over multi-concept ones on a several-word query, which
+   is the opposite of what a several-word query asks for.
 
    Covered by test/search-tiering.test.js (the mechanism, on fixtures, in
    milliseconds -- including the numbers above) and by tools/test-search.mjs §9
