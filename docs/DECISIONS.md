@@ -718,9 +718,9 @@ its reasoning.
   would have failed `prepare-webdir.mjs` and the failure would have read as *the
   mobile build breaking* rather than as the catalogue growing. Those two files are the
   only bundled ones whose size tracks the **catalogue** rather than the **product**,
-  so they are now derived: the newest `BUNDLED_ITEMS_PER_SHOW` (3) items of every
-  show, plus enough to leave every topic represented — **622 of 1,534 items, 680 KB,
-  a 1.78 MB bundle**. The shape is what matters: **O(shows × topics), not
+  so `data/discover.json` is now derived: the newest `BUNDLED_ITEMS_PER_SHOW` (3)
+  items of every show, plus enough to leave every topic represented — **622 of 1,534
+  items, 680 KB, a 1.96 MB bundle**. The shape is what matters: **O(shows × topics), not
   O(episodes)**, and shows have been flat at 213 since 2026-07-13 while episodes went
   764 → 1,534, so a year of nightlies adds zero bundle bytes. Trimming fields instead
   was measured and rejected — every field but `episode_guid` (1.9 KB of 1.70 MB) has a
@@ -728,8 +728,15 @@ its reasoning.
   rejected** because it silences the only alarm; **lowering it was rejected too**,
   because `player/` grew 66 KB → 480 KB in fourteen days and a tight total cap would
   then fire on ordinary work. Instead the alarms split by cause: 3 MB means "something
-  enormous got in that nobody chose", and per-file budgets (800 KB / 160 KB) mean "the
-  slice stopped being bounded". **The cost, measured:** a cold offline launch shows 622
+  enormous got in that nobody chose", and a per-file budget (800 KB) means "the slice
+  stopped being bounded". **`data/item-tags.json` is deliberately NOT sliced**, and a
+  reviewer is why: `search-engine.js`'s `tagDF()` counts entries across the whole map
+  and compares the count against absolute thresholds, so trimming it moves 66 query
+  terms across the expansion threshold and 176 across the score multiplier — the app
+  would rank differently from the website with every guard green. It is copied whole,
+  asserted byte-identical, and so the bundle still grows ~4 KB a night: **~245 nights
+  of headroom, not a year.** Fixing that means normalising `tagDF`, which is a
+  search-quality decision for `tools/test-search.mjs` and its own PR. **The cost, measured:** a cold offline launch shows 622
   episodes rather than 1,534 and search returns fewer picks per query — all 213 shows
   and all 109 topics survive, and the Foray artwork and credit joins are asserted
   identical to the website's. Fetching the tail at runtime remains **#40**.

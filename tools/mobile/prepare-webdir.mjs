@@ -59,7 +59,7 @@
  *   - `*.test.js` under `player/`. Test code is not shipped to devices.
  *   - Everything else in `data/`. The pipeline inputs are not client data.
  *
- * THE TWO FILES THAT ARE COPIED IN PART, AND WHY THAT IS NOT A FORK EITHER
+ * THE ONE FILE THAT IS COPIED IN PART, AND WHY THAT IS NOT A FORK EITHER
  * `data/discover.json` and `data/item-tags.json` are the only two bundled files
  * whose size is a function of the CATALOGUE rather than of the product, and the
  * nightly refresh grows them. Measured over 2026-07-19..08-18, `discover.json`
@@ -68,12 +68,16 @@
  * human ever decides to cross; it is a date. It was going to fire on the next
  * refresh and it was going to look like the mobile build breaking.
  *
- * So the bundle stopped carrying the catalogue and started carrying a BOUNDED
+ * So the bundle stopped carrying the whole CATALOGUE and started carrying a BOUNDED
  * SLICE of it: the newest `BUNDLED_ITEMS_PER_SHOW` items of every show, plus
  * whatever else it takes to keep every topic represented (`discoverSlice`). The
  * shape of that number is what matters — it is O(shows x topics), NOT O(episodes)
  * — because shows have been flat at 213 since 2026-07-13 while episodes went 764
- * -> 1534. A year of nightlies adds 8,000 episodes and ZERO bundle bytes.
+ * -> 1534. A year of nightlies adds 8,000 episodes and ZERO bundle bytes to it.
+ *
+ * `item-tags.json` is COPIED WHOLE and that is a deliberate, measured refusal, not
+ * an oversight — see the § above `PROJECTED_DATA`. Trimming it is what makes the app
+ * rank search results differently from the website.
  *
  * This is not the fork the header warns about, for the same reason the injected
  * script tag is not: there is one copy of the selection rule, it lives here, it
@@ -88,13 +92,20 @@
  * WHAT THE SLICE MUST NOT SILENTLY BREAK, and this is the guard that matters
  * most in the new code: `player/foray-sources.js` joins a Foray's segments onto
  * `discover.json` BY SHOW NAME to find lock-screen artwork (#27) and the
- * publisher credit link. Both joins take the first item per show in document
- * order. Drop the wrong item and a car head unit shows the app icon instead of
- * the publisher's artwork, weeks later, on a device, with the build green — the
- * same failure shape as a missed script tag. So the slice always keeps each
- * show's first item in document order, emits in document order, and
- * `assertDiscoverSliceComplete` re-runs the REAL `artworkUrlsByShow` and
- * `collectionIdsByShow` over both documents and demands identical maps.
+ * publisher credit link. Drop the wrong item and a car head unit shows the app
+ * icon instead of the publisher's artwork, weeks later, on a device, with the
+ * build green — the same failure shape as a missed script tag.
+ *
+ * The obvious rule, "keep each show's first item", is WRONG, and today's data
+ * hides it: both joins skip an item carrying no artwork (or no valid collection
+ * id) and take the next one that does, so the item they read is the first USABLE
+ * one. All 1,534 items have both today, so the two rules agree — and the day one
+ * artwork-less episode arrived, the nightly build would have failed, blaming the
+ * slice. So the anchor is instead the shortest document-order prefix of each show
+ * that the REAL join functions cannot tell from the whole show; the slice emits in
+ * document order; and `assertDiscoverSliceComplete` re-runs the REAL
+ * `artworkUrlsByShow` and `collectionIdsByShow` over both documents and demands
+ * identical maps.
  *
  * USAGE
  *   node tools/mobile/prepare-webdir.mjs               # writes mobile/www
@@ -458,10 +469,33 @@ export function discoverSlice(doc, { perShow = BUNDLED_ITEMS_PER_SHOW } = {}) {
   });
 
   const keep = new Set();
-  for (const idxs of byShow.values()) {
-    keep.add(idxs[0]); // the join anchor — property 1
-    const rest = idxs.slice(1).sort((a, b) => releasedAt(items[b]) - releasedAt(items[a]));
-    for (const i of rest.slice(0, perShow - 1)) keep.add(i);
+  const artSource = artworkUrlsByShow(doc);
+  const cidSource = collectionIdsByShow(doc);
+  for (const [show, idxs] of byShow) {
+    /* THE JOIN ANCHOR — property 1, and it is ASKED FOR rather than assumed.
+       The obvious rule is "keep each show's first item", and it is wrong: both
+       joins skip an item that carries no artwork (or no valid collection id) and
+       take the next one that does, so the item the join actually reads is the
+       first USABLE one, not the first one. Today every item in the catalogue has
+       both, so the two rules agree and the difference is invisible — which is
+       exactly why it would have surfaced as the nightly build failing on the day
+       one artwork-less episode arrived, with a message blaming the slice.
+
+       So the anchor is the shortest document-order prefix of this show that the
+       REAL join functions cannot tell from the whole show. Normally that is one
+       item; per-show independence in both functions is what makes it terminate,
+       and keeping the whole show is the worst case. */
+    const prefix = [];
+    for (const i of idxs) {
+      prefix.push(items[i]);
+      keep.add(i);
+      const doc_ = { items: prefix };
+      const artDone = !artSource.has(show) || artworkUrlsByShow(doc_).get(show) === artSource.get(show);
+      const cidDone = !cidSource.has(show) || collectionIdsByShow(doc_).get(show) === cidSource.get(show);
+      if (artDone && cidDone) break;
+    }
+    const rest = idxs.filter((i) => !keep.has(i)).sort((a, b) => releasedAt(items[b]) - releasedAt(items[a]));
+    for (const i of rest.slice(0, Math.max(0, perShow - prefix.length))) keep.add(i);
   }
 
   /* Property 2, as a top-up rather than a separate pass over the whole taxonomy:
@@ -492,12 +526,6 @@ export function discoverSlice(doc, { perShow = BUNDLED_ITEMS_PER_SHOW } = {}) {
   };
 }
 
-function sameSet(a, b) {
-  if (a.size !== b.size) return false;
-  for (const v of a) if (!b.has(v)) return false;
-  return true;
-}
-
 function sameMap(a, b) {
   if (a.size !== b.size) return false;
   for (const [k, v] of a) if (b.get(k) !== v) return false;
@@ -524,6 +552,18 @@ export function assertDiscoverSliceComplete(source, slice) {
   const items = slice?.items;
   if (!Array.isArray(items) || items.length === 0) {
     throw new WebDirError(`the bundled discover slice is empty. See discoverSlice's guard.`);
+  }
+  /* Every check below asks "did the slice LOSE anything", which a completely
+     unsliced document passes. So bound it from the other side too. Deliberately
+     `>` and not `>=`: a document small enough that the slice is the whole thing
+     is legitimate (it is what every fixture in the test suite looks like), and
+     the REAL document is asserted to actually shrink in `shell-invariants`. */
+  if (items.length > (source?.items?.length ?? 0)) {
+    throw new WebDirError(
+      `the discover slice has ${items.length} items and the source has ` +
+        `${source?.items?.length ?? 0}. A slice cannot be larger than what it is a slice of, ` +
+        `so this is not the document it claims to be derived from.`
+    );
   }
   const showsOf = (d) =>
     new Set((d?.items ?? []).map((i) => i?.show).filter((s) => typeof s === "string"));
@@ -571,77 +611,45 @@ export function assertDiscoverSliceComplete(source, slice) {
   return true;
 }
 
-/** Every id the bundled pool can contain: the session document's episodes plus the
- *  sliced catalogue. This is exactly the key set `app.js`'s `fullPool()` walks, and
- *  it is what `data/item-tags.json` is trimmed against — a tag entry for an id no
- *  bundled screen can show is dead weight, provably, because `search-engine.js`
- *  only ever looks tags up by an item it is already scoring. */
-export function bundledPoolIds(slicedDiscover, sessionDoc) {
-  const ids = new Set();
-  for (const id of Object.keys(sessionDoc?.episodes ?? {})) ids.add(id);
-  for (const item of slicedDiscover?.items ?? []) {
-    if (typeof item?.id === "string" && item.id !== "") ids.add(item.id);
-  }
-  if (ids.size === 0) {
-    throw new WebDirError(
-      `the bundled pool has no ids at all, so every item-tags entry would be dropped and ` +
-        `search would quietly lose its tag layer. Either data/session.json has no episodes ` +
-        `or the discover slice collapsed.`
-    );
-  }
-  return ids;
-}
-
-/** The bundled subset of `data/item-tags.json`: the tags of the bundled pool, and
- *  nothing else. Second-largest catalogue-proportional file (295 KB, +4 KB a
- *  night); after this it is a function of the slice, so it stops growing too. */
-export function itemTagsSlice(doc, keepIds) {
-  const tags = doc?.tags;
-  if (!tags || typeof tags !== "object" || Object.keys(tags).length === 0) {
-    throw new WebDirError(
-      `data/item-tags.json has no non-empty "tags" object. Refusing to write an empty tag ` +
-        `layer: search would still work, score differently, and report nothing wrong.`
-    );
-  }
-  const kept = {};
-  for (const [id, value] of Object.entries(tags)) if (keepIds.has(id)) kept[id] = value;
-  const { tags: _dropped, ...rest } = doc;
-  return { ...rest, bundled_from: { entries: Object.keys(tags).length, kept: Object.keys(kept).length }, tags: kept };
-}
-
-/** The tag slice must lose exactly the entries whose items are not bundled — no
- *  fewer (a bundled item without its tags scores differently in the app than on the
- *  web) and no more (an entry for an absent item is the dead weight this removes). */
-export function assertItemTagsSliceComplete(source, slice, keepIds) {
-  const src = source?.tags ?? {};
-  const out = slice?.tags ?? {};
-  const expected = Object.keys(src).filter((id) => keepIds.has(id));
-  const lost = expected.filter((id) => !(id in out));
-  if (lost.length) {
-    throw new WebDirError(
-      `the item-tags slice dropped ${lost.length} bundled item(s), starting with ` +
-        `${JSON.stringify(lost.slice(0, 3))}. Those items are in the app's pool, so they would ` +
-        `be searchable with a thinner vocabulary than the same query gets on the web.`
-    );
-  }
-  const stowaways = Object.keys(out).filter((id) => !keepIds.has(id));
-  if (stowaways.length) {
-    throw new WebDirError(
-      `the item-tags slice kept ${stowaways.length} entr(y/ies) for items the bundle does not ` +
-        `carry, starting with ${JSON.stringify(stowaways.slice(0, 3))}. That is the weight this ` +
-        `projection exists to remove, so keeping it means the trim did not run.`
-    );
-  }
-  if (Object.keys(out).length === 0) {
-    throw new WebDirError(`the item-tags slice is empty. See itemTagsSlice's guard.`);
-  }
-  return true;
-}
+/* The one that is NOT sliced, and why, because "it is only tags" was the wrong
+ * answer and a reviewer caught it.
+ *
+ * `data/item-tags.json` is the OTHER catalogue-proportional file: 295 KB, ~4 KB a
+ * night, second only to `discover.json`. Trimming it to the bundled pool takes it to
+ * 121 KB and looks completely safe — `search-engine.js` only ever looks a tag list
+ * up by an item it is already scoring, so an entry for an absent item is dead weight.
+ *
+ * IT IS NOT DEAD WEIGHT. `search-engine.js`'s `tagDF()` walks `Object.values()` of
+ * the whole map and returns an ABSOLUTE count, which `interpretQuery` compares
+ * against absolute thresholds — `df > 60` deletes a term from query expansion,
+ * `df > 25` cuts its weight to 0.4x — and `scoreMatch` buckets a multiplier on at
+ * 10 and 30. Cutting 1,561 entries to 649 scales every df by ~0.42. Measured over
+ * the 1,366 terms `tagDF` can be called with (the concept vocabulary plus ALIASES):
+ * **66 terms change expansion bucket and 176 change score multiplier.** `war` goes
+ * 72 -> 24, so the website deletes it as too broad and the app gives it full weight;
+ * `ai` goes 94 -> 38, deleted -> 0.4x. The app would rank differently from the
+ * website, on a phone, with every guard in this file green. That is the exact
+ * "it works on the website" failure the header warns about, bought for 174 KB.
+ *
+ * So it is copied whole, and `prepare-webdir.test.mjs` asserts byte-identity to keep
+ * it that way. WHAT THAT COSTS, stated rather than buried: the file is still
+ * O(episodes), so the bundle still grows ~4 KB a night. From 1.96 MB that is about
+ * 245 nights of headroom under the 3 MB cap, not a year.
+ *
+ * WHAT IT WOULD TAKE TO FIX PROPERLY, which is deliberately not this change:
+ * `tagDF`'s thresholds are absolute, so they already drift on the WEB as the
+ * catalogue grows — one month of nightlies (878 -> 1,561 entries) moved 52 terms
+ * across the expansion threshold and 125 across the score multiplier, with no app
+ * involved. Normalising it, or shipping a precomputed corpus df, is a search-quality
+ * change that belongs with `tools/test-search.mjs` (GOVERNED) and a founder-visible
+ * decision, not inside a bundle-size PR.
 
 /**
- * Which bundled data files are written as a slice rather than copied, in the order
- * they must be built — `data/item-tags.json` needs the discover slice's ids, so
- * the order is a dependency and not a list.
+ * Which bundled data files are written as a slice rather than copied.
+ *
+ * A LIST OF ONE, and it stays a list because the next file whose size tracks the
+ * catalogue rather than the product belongs here — with its own budget, which is
+ * what makes a new entry hard to add carelessly.
  *
  * `maxBytes` is a PER-FILE budget and the tighter of this file's two alarms. It
  * answers a different question from `MAX_BYTES`: not "did something enormous get
@@ -649,9 +657,8 @@ export function assertItemTagsSliceComplete(source, slice, keepIds) {
  * shows (each costs `perShow` items, ~3.4 KB at 3) and items getting individually
  * fatter, and both are deliberate changes somebody should hear about.
  *
- * Today's slices are 680 KB and 123 KB, so the budgets below sit ~15-30% above
- * them: about 35 more shows, or a 17% rise in the average item. Not a year of
- * silence.
+ * Today's slice is 680 KB, so the budget sits ~17% above it: about 35 more shows, or
+ * a 17% rise in the average item. Not a year of silence.
  */
 export const PROJECTED_DATA = [
   {
@@ -660,13 +667,13 @@ export const PROJECTED_DATA = [
     project: (source, ctx) => discoverSlice(source, { perShow: ctx.perShow }),
     verify: (source, written) => assertDiscoverSliceComplete(source, written),
   },
-  {
-    rel: "data/item-tags.json",
-    maxBytes: 160 * 1024,
-    project: (source, ctx) => itemTagsSlice(source, ctx.poolIds()),
-    verify: (source, written, ctx) => assertItemTagsSliceComplete(source, written, ctx.poolIds()),
-  },
 ];
+
+/** Bundled files that must arrive BYTE-IDENTICAL, asserted rather than assumed.
+ *  Everything not in `PROJECTED_DATA` is copied, so this list adds nothing mechanical
+ *  — what it adds is a failing test for the one file somebody will reasonably try to
+ *  trim next, with the reason attached. See the § above `PROJECTED_DATA`. */
+export const COPIED_WHOLE = ["data/item-tags.json"];
 
 /** Exactly how a slice is serialised, in one place, because the bytes are measured
  *  against a budget and compared across runs. Two spaces and a trailing newline is
@@ -675,25 +682,20 @@ export function serializeSlice(json) {
   return `${JSON.stringify(json, null, 2)}\n`;
 }
 
-/**
- * Build every slice, with the assertions that prove each one, and hand back the
- * JSON to write.
- *
- * The context is built as it goes and `poolIds` is a FUNCTION rather than a value,
- * so a spec that reads it before the discover slice exists throws instead of
- * quietly seeing an empty set — which would trim `item-tags.json` to nothing and
- * look like a great result.
- */
-export function projectData(
-  root = REPO_ROOT,
-  /* `specs` is injectable for ONE reason: the ordering guard below is unreachable
-     otherwise, and an unreachable guard is the shape this file keeps warning about.
-     `prepare` never passes it, so production is always PROJECTED_DATA. */
-  { perShow = BUNDLED_ITEMS_PER_SHOW, plan = null, specs = PROJECTED_DATA } = {}
-) {
+/** The size a slice will be ON DISK. `String.length` is UTF-16 code units and the
+ *  budget is enforced against `fs.statSync().size`, which is UTF-8 bytes — 130 bytes
+ *  apart today and further with every non-ASCII episode title, so a dry run could
+ *  report "under budget" for a build that then failed it. */
+export function sliceBytes(json) {
+  return Buffer.byteLength(serializeSlice(json), "utf8");
+}
+
+/** Build every slice, with the assertions that prove each one, and hand back the
+ *  JSON to write. */
+export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW, plan = null } = {}) {
   const read = (rel) => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
   if (plan) {
-    const absent = specs.filter((p) => !plan.includes(p.rel)).map((p) => p.rel);
+    const absent = PROJECTED_DATA.filter((p) => !plan.includes(p.rel)).map((p) => p.rel);
     if (absent.length) {
       throw new Error(
         `PROJECTED_DATA describes ${absent.join(", ")}, but app.js no longer fetches ` +
@@ -703,26 +705,11 @@ export function projectData(
     }
   }
 
-  let slicedDiscover = null;
-  const ctx = {
-    perShow,
-    poolIds: () => {
-      if (!slicedDiscover) {
-        throw new Error(
-          `a projection asked for the bundled pool ids before the discover slice was built. ` +
-            `PROJECTED_DATA is ordered by dependency; keep data/discover.json first.`
-        );
-      }
-      return bundledPoolIds(slicedDiscover, read("data/session.json"));
-    },
-  };
-
   const out = new Map();
-  for (const spec of specs) {
+  for (const spec of PROJECTED_DATA) {
     const source = read(spec.rel);
-    const written = spec.project(source, ctx);
-    if (spec.rel === "data/discover.json") slicedDiscover = written;
-    spec.verify(source, written, ctx);
+    const written = spec.project(source, { perShow });
+    spec.verify(source, written);
     out.set(spec.rel, written);
   }
   return out;
@@ -752,14 +739,25 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
           `BUNDLED_ITEMS_PER_SHOW, or raise this budget deliberately and say what it now guards.`
       );
     }
-    spec.verify(JSON.parse(fs.readFileSync(path.join(root, spec.rel), "utf8")), JSON.parse(fs.readFileSync(abs, "utf8")), {
-      perShow: BUNDLED_ITEMS_PER_SHOW,
-      poolIds: () =>
-        bundledPoolIds(
-          JSON.parse(fs.readFileSync(path.join(absOut, "data", "discover.json"), "utf8")),
-          JSON.parse(fs.readFileSync(path.join(absOut, "data", "session.json"), "utf8"))
-        ),
-    });
+    spec.verify(
+      JSON.parse(fs.readFileSync(path.join(root, spec.rel), "utf8")),
+      JSON.parse(fs.readFileSync(abs, "utf8"))
+    );
+  }
+  /* The file that is deliberately NOT sliced, asserted on the bytes that ship. See
+     the § above PROJECTED_DATA: trimming this one silently re-ranks search in the app
+     because `tagDF` counts entries and compares against absolute thresholds. */
+  for (const rel of COPIED_WHOLE) {
+    const a = fs.readFileSync(path.join(root, rel));
+    const b = fs.readFileSync(path.join(absOut, rel));
+    if (!a.equals(b)) {
+      throw new Error(
+        `the bundled ${rel} is not byte-identical to the source. It must be copied whole: ` +
+          `search-engine.js's tagDF() counts entries across the WHOLE map and compares the ` +
+          `count against absolute thresholds, so a trimmed map re-ranks 176 terms in the app ` +
+          `and not on the website. See the comment above PROJECTED_DATA.`
+      );
+    }
   }
   return true;
 }
@@ -903,7 +901,7 @@ if (isMain) {
       for (const [rel, json] of projectData(REPO_ROOT, { plan })) {
         const spec = PROJECTED_DATA.find((p) => p.rel === rel);
         console.log(
-          `  ${rel}  ${fmt(serializeSlice(json).length).padStart(9)} of ${fmt(spec.maxBytes)}` +
+          `  ${rel}  ${fmt(sliceBytes(json)).padStart(9)} of ${fmt(spec.maxBytes)}` +
             `   ${JSON.stringify(json.bundled_from)}`
         );
       }

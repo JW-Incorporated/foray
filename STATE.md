@@ -15,13 +15,18 @@ docs/. Completed workstreams move to their plan doc's retro section.
   failure would have read as the build breaking rather than as the catalogue growing.
   The bundle now carries a **bounded slice**: the newest `BUNDLED_ITEMS_PER_SHOW` (3)
   items of each of the 213 shows, plus enough to keep every topic represented, and
-  `data/item-tags.json` trimmed to that pool. **35 files, 1.78 MB.** O(shows × topics),
-  not O(episodes), so a year of nightlies adds nothing.
+  **35 files, 1.96 MB** (was 2.98). O(shows × topics), not O(episodes), so a year of
+  nightlies adds nothing to that file.
 - **Not done, deliberately:** the cap was NOT raised and NOT lowered — 3 MB still
-  means "something enormous got in", and new per-file budgets (800 KB / 160 KB) mean
-  "the slice stopped being bounded". Fetching the tail of the catalogue at runtime is
-  still **#40**: it needs the `connect-src` widening `docs/mobile-shell.md` §2.3
-  declined to add in advance, and it does not fix the build break.
+  means "something enormous got in", and a new per-file budget (800 KB) means "the
+  slice stopped being bounded". **`data/item-tags.json` is deliberately NOT trimmed** —
+  a reviewer caught that `search-engine.js`'s `tagDF()` counts entries across the whole
+  map against absolute thresholds, so trimming it re-ranks 176 query terms in the app
+  and not on the web. It stays a copy, so the bundle still grows ~4 KB a night: ~245
+  nights of headroom, not a year, and `docs/mobile-shell.md` §3.1 says what fixing it
+  needs. Fetching the tail of the catalogue at runtime is still **#40**: it needs the
+  `connect-src` widening `docs/mobile-shell.md` §2.3 declined to add in advance, and it
+  does not fix the build break.
 - **Shared files:** `tools/mobile/prepare-webdir.mjs` (+ test),
   `tools/mobile/shell-invariants.test.mjs`, `test/suite-integrity.test.js` (two
   floors), `docs/mobile-shell.md` §0/§2.1/§3/§5, `docs/android-lock-screen.md` §10,
@@ -975,19 +980,20 @@ docs/. Completed workstreams move to their plan doc's retro section.
   the specific failure mode that script's header exists to prevent.
 - **Heads-up — the bundle's data list is DERIVED from `app.js`'s `fetchJson`
   calls.** Add a `fetchJson("data/new.json")` and the next bundle carries it, no
-  edit needed. But the bundle is capped at **3 MB and today it is 1.78 MB** (35
+  edit needed. But the bundle is capped at **3 MB and today it is 1.96 MB** (35
   files). If you make the client fetch something large, `prepare-webdir` **fails the
   build**. Do not raise the cap to make it pass — that cap is what keeps the 16 MB
   `breadth-classification.json` out.
-- **Heads-up — `data/discover.json` and `data/item-tags.json` are NOT copied into
-  the bundle; a bounded SLICE of them is.** The bundle hit 2.98 MB of the 3.00 MB cap
-  on 2026-08-18 with `discover.json` growing ~35 KB every night, so the next refresh
-  would have failed the mobile build. It now carries the newest
-  `BUNDLED_ITEMS_PER_SHOW` (3) items of each of the 213 shows plus enough to keep
-  every topic — 622 of 1,534 items, 680 KB — which is O(shows × topics) rather than
-  O(episodes), so a year of nightlies adds nothing. If you add a data file whose size
-  tracks the CATALOGUE rather than the product, it needs a `PROJECTED_DATA` entry too.
-  `docs/mobile-shell.md` §3.
+- **Heads-up — `data/discover.json` is NOT copied into the bundle; a bounded SLICE of
+  it is.** The bundle hit 2.98 MB of the 3.00 MB cap on 2026-08-18 with
+  `discover.json` growing ~35 KB every night, so the next refresh would have failed the
+  mobile build. It now carries the newest `BUNDLED_ITEMS_PER_SHOW` (3) items of each of
+  the 213 shows plus enough to keep every topic — 622 of 1,534 items, 680 KB — which is
+  O(shows × topics) rather than O(episodes), so a year of nightlies adds nothing. If you
+  add a data file whose size tracks the CATALOGUE rather than the product, it needs a
+  `PROJECTED_DATA` entry too. **And do not trim `data/item-tags.json`** — it looks like
+  a free 174 KB and it silently re-ranks search in the app; `COPIED_WHOLE` and
+  `docs/mobile-shell.md` §3.1 explain why.
 - **Heads-up — `app.js` no longer registers the service worker unconditionally.**
   It asks `shouldRegisterServiceWorker(window)`: off inside the shell, on
   everywhere else. Gated on `window.Capacitor.isNativePlatform()` and the

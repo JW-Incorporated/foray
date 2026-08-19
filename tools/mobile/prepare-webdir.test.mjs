@@ -37,10 +37,10 @@ import {
   MIN_DERIVED_DATA_FILES, runtimeDataFiles, playerFiles, buildPlan, prepare,
   SHELL_ONLY_FILES, shellOnlyPlan, shellScriptTags, injectShellScripts,
   assertShellScriptsPresent, WebDirError,
-  BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, discoverSlice, assertDiscoverSliceComplete,
-  bundledPoolIds, itemTagsSlice, assertItemTagsSliceComplete, serializeSlice,
-  assertSlicesOnDisk, projectData,
+  BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, COPIED_WHOLE, discoverSlice,
+  assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
 } from "./prepare-webdir.mjs";
+import { createRequire } from "node:module";
 
 /* The production join, imported the same way prepare-webdir.mjs imports it, so the
    slice's central promise is asserted against the code the app runs. */
@@ -255,11 +255,12 @@ test("REAL REPO: REPO_ROOT resolves to the repo, not to tools/mobile", () => {
 /* WHAT THESE ARE DEFENDING, in order of how quietly it fails:
  *
  *   a. THE ARTWORK AND CREDIT JOINS. `player/foray-sources.js` maps show -> artwork
- *      (#27's lock screen) and show -> Apple collection id by taking the FIRST item
- *      per show in document order. Every count-based check below passes if the slice
- *      is emitted in recency order instead; the join checks are the only ones that
- *      do not, and the cost of missing it is a car head unit showing the app icon
- *      weeks later with the build green.
+ *      (#27's lock screen) and show -> Apple collection id, and reads the first
+ *      USABLE item per show in document order — not the first item, a distinction
+ *      today's data hides and one test below is entirely about. Every count-based
+ *      check here passes if the slice is emitted in recency order instead; the join
+ *      checks are the only ones that do not, and the cost of missing it is a car head
+ *      unit showing the app icon weeks later with the build green.
  *   b. AN EMPTY SLICE. This whole change makes the bundle SMALLER, so "smaller than
  *      expected" is not a signal any longer. A renamed `items` key has to be a hard
  *      error, or it is a blank home screen that passes every budget.
@@ -427,6 +428,48 @@ test("assertDiscoverSliceComplete is a real guard and not decoration", () => {
   assert.throws(() => assertDiscoverSliceComplete(discover, { items: [] }), WebDirError);
 });
 
+test("the anchor is the item the JOIN reads, not simply the first one", () => {
+  /* FOUND BY ASKING WHETHER "keep each show's first item" WAS ACTUALLY SUFFICIENT,
+     and it was not. Both joins SKIP an item with no artwork (or no valid collection
+     id) and take the next one that has some, so the item they read is the first
+     USABLE one. Today every one of the catalogue's 1,534 items carries both, so the
+     two rules agree and the bug is invisible — it would have appeared as the nightly
+     build failing, blaming the slice, on the day one artwork-less episode arrived.
+
+     Note what the wrong rule does here: it does not lose the show, or the topic, or
+     go over budget. It silently attaches episode c's artwork to a show the website
+     shows episode b's for. */
+  const doc = {
+    version: 1,
+    items: [
+      { id: "a", show: "S", artwork_url: "", apple_collection_id: null, release_date: "2026-01-01", topics: ["t/x"] },
+      { id: "b", show: "S", artwork_url: "https://art/1.png", apple_collection_id: 11, release_date: "2026-01-02", topics: ["t/x"] },
+      { id: "c", show: "S", artwork_url: "https://art/2.png", apple_collection_id: 22, release_date: "2026-01-03", topics: ["t/x"] },
+    ],
+  };
+  assert.equal(artworkUrlsByShow(doc).get("S"), "https://art/1.png");
+
+  const slice = discoverSlice(doc, { perShow: 2 });
+  assert.equal(assertDiscoverSliceComplete(doc, slice), true);
+  assert.equal(artworkUrlsByShow(slice).get("S"), "https://art/1.png");
+  assert.equal(collectionIdsByShow(slice).get("S"), 11);
+  assert.ok(slice.items.some((i) => i.id === "b"), "the item both joins read was dropped");
+
+  /* A show with NO usable artwork anywhere contributes no entry to the map, so the
+     anchor must not go hunting through the whole show for one. */
+  const none = {
+    items: [
+      { id: "p", show: "T", artwork_url: "", apple_collection_id: null, release_date: "2026-01-01", topics: ["t/y"] },
+      { id: "q", show: "T", artwork_url: "", apple_collection_id: null, release_date: "2026-01-02", topics: ["t/y"] },
+      { id: "r", show: "T", artwork_url: "", apple_collection_id: null, release_date: "2026-01-03", topics: ["t/y"] },
+    ],
+  };
+  const thin = discoverSlice(none, { perShow: 1 });
+  assert.equal(artworkUrlsByShow(none).size, 0);
+  assert.equal(thin.items.length, 1, "an unjoinable show should still cost one item, not three");
+  assert.equal(assertDiscoverSliceComplete(none, thin), true);
+});
+
 test("the artwork the app would show is the artwork the website shows", () => {
   /* Asserted through the REAL production functions rather than by re-deriving the
      rule here, which is why they are imported into prepare-webdir.mjs at all. A
@@ -440,47 +483,70 @@ test("the artwork the app would show is the artwork the website shows", () => {
   assert.notDeepEqual([...artworkUrlsByShow(wrong)], [...artworkUrlsByShow(discover)]);
 });
 
-test("item-tags is trimmed to the bundled pool, and the session's own episodes are in it", () => {
-  const cat = makeCatalogue({ shows: 4, episodes: 5 });
-  const slice = discoverSlice(cat.discover, { perShow: 2 });
-  const ids = bundledPoolIds(slice, cat.session);
-  /* THE MUTATION THIS KILLS: building the pool from the discover slice alone. The
-     session document's episodes are in `app.js`'s `fullPool()` and have tags, and
-     they are not in discover.json at all — so dropping them costs the search layer
-     its vocabulary for exactly the items the home screen is most likely to show. */
-  assert.ok(ids.has("session-a") && ids.has("session-b"), "the session's episodes are not in the pool");
-  const trimmed = itemTagsSlice(cat.itemTags, ids);
-  assert.equal(assertItemTagsSliceComplete(cat.itemTags, trimmed, ids), true);
-  assert.ok("tag-session-a" in trimmed.tags === false);
-  assert.deepEqual(trimmed.tags["session-a"], ["tag-session-a"]);
-  assert.equal(Object.keys(trimmed.tags).length, slice.items.length + 2);
-  assert.ok(Object.keys(trimmed.tags).length < Object.keys(cat.itemTags.tags).length, "nothing was trimmed");
-  assert.equal(trimmed.bundled_from.entries, Object.keys(cat.itemTags.tags).length);
+test("data/item-tags.json is COPIED WHOLE, and the bundle proves it byte for byte", () => {
+  /* THE FINDING THAT REVERTED HALF OF THIS CHANGE, kept as a test so nobody has to
+     rediscover it. Trimming item-tags.json to the bundled pool takes it from 295 KB
+     to 121 KB and looks obviously safe: search only ever looks a tag list up by an
+     item it is already scoring.
+
+     But `search-engine.js`'s `tagDF()` walks Object.values() of the WHOLE map and
+     returns an ABSOLUTE count, and `interpretQuery` compares that count against
+     absolute thresholds — over 60 deletes a term from query expansion, over 25 cuts
+     its weight to 0.4x — while `scoreMatch` buckets a multiplier at 10 and 30.
+     Cutting 1,561 entries to 649 scales every df by ~0.42: measured across the 1,366
+     terms tagDF can be called with, 66 change expansion bucket and 176 change score
+     multiplier. `war` goes 72 -> 24, so the website deletes it as too broad and the
+     app gives it full weight. The app would rank differently from the website, on a
+     phone, with every guard in prepare-webdir.mjs green.
+
+     So it is copied, and the copy is asserted on the bytes. THE MUTATION THIS KILLS
+     is somebody adding it back to PROJECTED_DATA — which is a reasonable-looking
+     174 KB saving. */
+  const fake = makeFakeRepo({ catalogue: makeCatalogue({ shows: 4, episodes: 6 }) });
+  prepare({ root: fake, out: "www", perShow: 2 });
+  for (const rel of COPIED_WHOLE) {
+    assert.deepEqual(
+      fs.readFileSync(path.join(fake, "www", rel)),
+      fs.readFileSync(path.join(fake, rel)),
+      `${rel} is not byte-identical in the bundle`
+    );
+  }
+  assert.ok(COPIED_WHOLE.includes("data/item-tags.json"));
+  /* And it is not in PROJECTED_DATA, which is the list that would trim it. */
+  assert.equal(PROJECTED_DATA.some((sp) => COPIED_WHOLE.includes(sp.rel)), false);
 });
 
-test("assertItemTagsSliceComplete refuses a lost bundled item and a stowaway alike", () => {
-  const cat = makeCatalogue({ shows: 3, episodes: 4 });
-  const slice = discoverSlice(cat.discover, { perShow: 2 });
-  const ids = bundledPoolIds(slice, cat.session);
-  const good = itemTagsSlice(cat.itemTags, ids);
+test("REAL REPO: trimming item-tags to the bundled pool WOULD re-rank the app", () => {
+  /* The measurement behind the test above, executed rather than quoted, so the
+     refusal cannot quietly stop being true. If a future change normalises `tagDF`
+     — the honest fix, and a search-quality decision that belongs with
+     tools/test-search.mjs — this test is what should fail, and then trimming
+     item-tags becomes correct and the ~174 KB is there to take. */
+  const require_ = createRequire(import.meta.url);
+  const SE = require_(path.join(ROOT, "search-engine.js"));
+  const read = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+  const itemTags = read("data/item-tags.json");
+  const session = read("data/session.json");
+  const slice = discoverSlice(read("data/discover.json"));
 
-  const lost = { tags: { ...good.tags } };
-  delete lost.tags[slice.items[0].id];
-  assert.throws(
-    () => assertItemTagsSliceComplete(cat.itemTags, lost, ids),
-    (e) => e instanceof WebDirError && /dropped 1 bundled item/.test(e.message)
-  );
-  assert.throws(
-    () => assertItemTagsSliceComplete(cat.itemTags, cat.itemTags, ids),
-    (e) => e instanceof WebDirError && /the trim did not run/.test(e.message)
-  );
-  assert.throws(() => assertItemTagsSliceComplete(cat.itemTags, { tags: {} }, ids), WebDirError);
-  assert.throws(() => itemTagsSlice({ version: 1 }, ids), /no non-empty "tags" object/);
-});
+  const pool = new Set([...Object.keys(session.episodes ?? {}), ...slice.items.map((i) => i.id)]);
+  const trimmed = { tags: {} };
+  for (const [id, tags] of Object.entries(itemTags.tags)) if (pool.has(id)) trimmed.tags[id] = tags;
+  assert.ok(Object.keys(trimmed.tags).length < Object.keys(itemTags.tags).length * 0.6);
 
-test("an empty pool is a hard error rather than a silently emptied tag layer", () => {
-  assert.throws(() => bundledPoolIds({ items: [] }, {}), /no ids at all/);
-  assert.throws(() => bundledPoolIds({ items: [{ id: 42 }] }, { episodes: {} }), WebDirError);
+  const terms = new Set();
+  for (const c of Object.values(read("data/semantic-index.json").concepts ?? {})) {
+    for (const t of c.terms ?? []) terms.add(t);
+  }
+  const bucket = (df) => (df > 60 ? "delete" : df > 25 ? "0.4x" : "full");
+  const moved = [...terms].filter(
+    (t) => bucket(SE.tagDF(t, { itemTags })) !== bucket(SE.tagDF(t, { itemTags: trimmed }))
+  );
+  assert.ok(
+    moved.length > 20,
+    `only ${moved.length} terms change expansion bucket — tagDF may have been normalised, in ` +
+      `which case trimming data/item-tags.json is now safe and worth ~174 KB. See COPIED_WHOLE.`
+  );
 });
 
 test("prepare WRITES the slice rather than copying the file", () => {
@@ -502,16 +568,15 @@ test("prepare WRITES the slice rather than copying the file", () => {
   );
   assert.equal(assertDiscoverSliceComplete(source("data/discover.json"), bundled), true);
 
+  /* Every bundled item can still be searched with its own tags, and so can every
+     item that is NOT bundled — the tag map is copied whole on purpose. */
   const tags = read("data/item-tags.json");
-  assert.ok(
-    Object.keys(tags.tags).length < Object.keys(source("data/item-tags.json").tags).length,
-    "item-tags.json was copied whole"
-  );
-  /* Every bundled item can still be searched with its own tags. */
-  for (const item of bundled.items) assert.ok(item.id in tags.tags, `${item.id} lost its tags`);
+  for (const item of source("data/discover.json").items) {
+    assert.ok(item.id in tags.tags, `${item.id} lost its tags`);
+  }
 
-  /* The COPIED files are untouched — this is a slice of two files, not a rewrite of
-     the data directory. */
+  /* The COPIED files are untouched — this slices one file, it does not rewrite the
+     data directory. */
   assert.equal(
     fs.readFileSync(path.join(fake, "www", "data", "taxonomy.json"), "utf8"),
     fs.readFileSync(path.join(fake, "data", "taxonomy.json"), "utf8")
@@ -566,30 +631,36 @@ test("a sliced file that app.js no longer fetches is a hard error, not a dead ru
   );
 });
 
-test("PROJECTED_DATA is ordered by dependency, and reading it out of order throws", () => {
-  /* item-tags is trimmed against the discover slice's ids. If the specs were
-     reordered, `poolIds` would be asked for before the slice exists — and an empty
-     id set would trim EVERY tag entry and look like an excellent result. */
-  assert.deepEqual(PROJECTED_DATA.map((p) => p.rel), ["data/discover.json", "data/item-tags.json"]);
+test("every PROJECTED_DATA entry carries a projection, a verification and a budget", () => {
+  /* A spec with no `verify` would slice silently, and a spec with no `maxBytes` would
+     have `undefined` compared against with `>`, which is false — a budget that can
+     never fail. Both are one careless entry away the next time this list grows. */
+  assert.deepEqual(PROJECTED_DATA.map((p) => p.rel), ["data/discover.json"]);
   for (const spec of PROJECTED_DATA) {
     assert.equal(typeof spec.project, "function", `${spec.rel} has no projection`);
     assert.equal(typeof spec.verify, "function", `${spec.rel} has no verification`);
-    assert.ok(spec.maxBytes > 0, `${spec.rel} has no budget`);
+    assert.equal(typeof spec.maxBytes, "number", `${spec.rel} has no budget`);
+    assert.ok(spec.maxBytes > 0, `${spec.rel}'s budget is not a positive number of bytes`);
   }
-  /* And the guard is REACHED, not merely written: run the real projections in the
-     wrong order against a real fixture. A first mutation run showed the previous
-     version of this test — which threw its own error out of a stub — passing with
-     the guard deleted. */
   const fake = makeFakeRepo();
-  assert.throws(
-    () => projectData(fake, { specs: [...PROJECTED_DATA].reverse() }),
-    (e) =>
-      /asked for the bundled pool ids before the discover slice was built/.test(e.message) &&
-      /keep data\/discover\.json first/.test(e.message)
-  );
-  /* The right order works on the same fixture, so the throw above is about ordering
-     and not about the fixture. */
-  assert.equal(projectData(fake).size, 2);
+  assert.equal(projectData(fake).size, PROJECTED_DATA.length);
+});
+
+test("the reported slice size is the size on disk, not a UTF-16 character count", () => {
+  /* `--list` prints a size and the build enforces one. They came from
+     `String.length` and `fs.statSync().size` respectively — UTF-16 code units against
+     UTF-8 bytes — which differed by 130 bytes on today's catalogue and grows with
+     every non-ASCII episode title. A dry run could report "under budget" for a build
+     that then failed it. */
+  const doc = { version: 1, items: [{ id: "a", show: "S", title: "Café — naïve 日本", topics: [] }] };
+  assert.ok(sliceBytes(doc) > serializeSlice(doc).length, "the fixture has no multi-byte characters");
+
+  const fake = makeFakeRepo();
+  const r = prepare({ root: fake, out: "www" });
+  for (const spec of PROJECTED_DATA) {
+    const onDisk = r.files.find((f) => f.rel === spec.rel).bytes;
+    assert.equal(onDisk, sliceBytes(projectData(fake).get(spec.rel)), `${spec.rel} is mis-measured`);
+  }
 });
 
 /* ─────────────────── the real repo: the slice, and the year ──────────────── */
@@ -675,7 +746,10 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
       assert.ok(by(spec.rel) > spec.maxBytes * 0.25, `${spec.rel}'s budget is far too loose to be a signal`);
     }
     assert.ok(by("data/discover.json") < 900 * 1024, "the sliced discover.json is not the size this change claims");
-    /* The bundle really shrank, and by roughly the amount the PR says. */
+    /* The bundle really shrank, and by roughly the amount the PR says: 2.98 MB -> 1.96
+       MB. The headroom floor is the one number a reader should be able to trust here,
+       because `data/item-tags.json` is copied whole and still grows ~4 KB a night —
+       see COPIED_WHOLE for why, and expect this to be the test that notices. */
     assert.ok(r.total < 2.2 * 1024 * 1024, `the bundle is ${(r.total / 1024 / 1024).toFixed(2)} MB`);
     assert.ok(MAX_BYTES - r.total > 900 * 1024, "there is less than 900 KB of headroom left under the cap");
     /* And the re-read guard really ran against the bytes on disk. */

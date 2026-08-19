@@ -81,7 +81,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   MAX_BYTES, MIN_DERIVED_DATA_FILES, PROJECTED_DATA, BUNDLED_ITEMS_PER_SHOW,
-  discoverSlice, assertDiscoverSliceComplete, serializeSlice,
+  discoverSlice, assertDiscoverSliceComplete, sliceBytes,
 } from "./prepare-webdir.mjs";
 import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sources.js";
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
@@ -349,24 +349,18 @@ test("the derivation floor is pinned at 6 files", () => {
   assert.equal(MIN_DERIVED_DATA_FILES, 6);
 });
 
-test("the sliced files' per-file budgets are pinned at 800 KB and 160 KB", () => {
+test("the sliced file's per-file budget is pinned at 800 KB", () => {
   /* THE THIRD INSTANCE OF THE SAME SELF-REFERENTIAL SHAPE, added with the budgets
      themselves rather than after somebody defeated them. `prepare-webdir` only fails
      when a slice EXCEEDS its own `maxBytes`, so raising `maxBytes` satisfies both
      sides of the comparison — the identical hole that `MAX_BYTES = 30 * 1024 * 1024`
      opened in the size cap.
 
-     These two numbers are the tight alarm for the catalogue slice having stopped
-     being bounded, which the 3 MB cap is now far too loose to notice: the whole
-     bundle is 1.78 MB. Raising one is a decision, and it should cost an edit here
-     and a sentence about what the new number guards. */
-  assert.deepEqual(
-    PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]),
-    [
-      ["data/discover.json", 800 * 1024],
-      ["data/item-tags.json", 160 * 1024],
-    ]
-  );
+     This number is the tight alarm for the catalogue slice having stopped being
+     bounded, which the 3 MB cap is now too loose to notice quickly: the whole bundle
+     is 1.96 MB. Raising it is a decision, and it should cost an edit here and a
+     sentence about what the new number guards. */
+  assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [["data/discover.json", 800 * 1024]]);
   /* And the knob is a small integer, not a number large enough to make the slice the
      whole catalogue again. */
   assert.ok(Number.isInteger(BUNDLED_ITEMS_PER_SHOW) && BUNDLED_ITEMS_PER_SHOW >= 1);
@@ -396,7 +390,7 @@ test("the bundled catalogue slice keeps every show, and both of the Foray joins"
   /* And it is inside its budget with the headroom the budget claims, measured on the
      bytes the slice would be written as. */
   const budget = PROJECTED_DATA.find((p) => p.rel === "data/discover.json").maxBytes;
-  const bytes = serializeSlice(slice).length;
+  const bytes = sliceBytes(slice);
   assert.ok(bytes < budget, `the real slice is ${(bytes / 1024).toFixed(1)} KB, over its budget`);
   assert.ok(bytes > budget * 0.5, "the budget is loose enough that it would not notice a doubling");
 });

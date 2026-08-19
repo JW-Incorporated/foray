@@ -8,7 +8,7 @@ Foray ships as a **Capacitor shell around the real web player**. The app loads t
 same `index.html`, `app.js`, `styles.css` and `player/` the website serves —
 copied at build time, never forked — plus the `data/*.json` the client actually
 fetches. That data was **2.1 MB** of a 2.5 MB bundle when this was written and had
-reached 2.3 MB of 2.98 MB by 2026-08-18; it is **0.97 MB of a 1.78 MB bundle** since
+reached 2.3 MB of 2.98 MB by 2026-08-18; it is **1.15 MB of a 1.96 MB bundle** since
 the catalogue became a bounded slice rather than a copy (§3).
 
 ## 0. Status — what exists and what does not
@@ -21,7 +21,7 @@ than deleted.
 | | State |
 |---|---|
 | `mobile/` project, config, ignore rules | **Committed** |
-| `tools/mobile/prepare-webdir.mjs` (the `webDir` build) | **Committed and run.** 35 files, **1.78 MB** of a 3.00 MB cap. It reached 2.98 MB of 3.00 on 2026-08-18 and would have failed on the next nightly refresh; two catalogue-shaped data files are now a bounded slice rather than a copy (§3) |
+| `tools/mobile/prepare-webdir.mjs` (the `webDir` build) | **Committed and run.** 35 files, **1.96 MB** of a 3.00 MB cap. It reached 2.98 MB of 3.00 on 2026-08-18 and would have failed on the next nightly refresh; `data/discover.json` is now a bounded slice rather than a copy (§3) |
 | The four architecture changes (§2) | **Committed**, each with a test |
 | `mobile/node_modules` | **Installed.** `#36 said all seven @capacitor/* packages resolve to 8.5.0` — **that was never true of an install.** Core, CLI, `android` and `ios` are 8.5.0; the four plugins are 8.1.1 / 8.0.1 / 8.0.2 / 8.0.3. `mobile/package-lock.json` is now committed |
 | `mobile/android/` | **Generated and BUILT** — debug and unsigned release APKs, on Windows. Issue #37, `docs/android-shell-build.md` |
@@ -267,15 +267,69 @@ copied — see `tools/mobile/prepare-webdir.mjs`'s `discoverSlice`:
 | | Source | Bundled | Rule |
 |---|---|---|---|
 | `data/discover.json` | 1.70 MB, 1,534 items | **680 KB, 622 items** | the newest `BUNDLED_ITEMS_PER_SHOW` (3) items of every show, plus enough to leave every topic represented |
-| `data/item-tags.json` | 295 KB, 1,561 entries | **121 KB, 649 entries** | the tags of the bundled pool — the slice plus `session.json`'s own episodes |
+| `data/item-tags.json` | 295 KB, 1,561 entries | **copied whole** | trimming it to the bundled pool re-ranks search in the app and not on the web — see below |
 
-**35 files, 1.78 MB of 3.00 MB.** The shape of that selection is the whole point:
+**35 files, 1.96 MB of 3.00 MB.** The shape of that selection is the whole point:
 it is **O(shows × topics)**, not O(episodes). Shows have been flat at **213 since
 2026-07-13** while episodes went 764 → 1,534, because the nightly refresh adds
 episodes to shows already in the catalogue. **A year of nightlies is ~8,000 more
 episodes and zero bundle bytes** — a claim executed as a test, not asserted:
 *"REAL REPO: a year of nightly refreshes adds no bundle bytes"* synthesises the
 year and slices it (the same year copied whole would be a 9.6 MB file).
+
+### 3.1 `item-tags.json` is copied whole, and that is the most interesting thing here
+
+The first version of this change trimmed `data/item-tags.json` to the bundled pool
+too — 295 KB to 121 KB, and the whole bundle to 1.78 MB. **It was wrong, a reviewer
+caught it, and it is reverted.** Recorded at length because the reasoning is a trap
+anybody would fall into twice.
+
+The argument for trimming was that `search-engine.js` only ever looks a tag list up
+*by an item it is already scoring*, so an entry for an item the bundle does not carry
+is dead weight. That is true of every use of the tag map except one:
+
+```js
+function tagDF(term, ctx) {            // search-engine.js
+  const tagsMap = ctx.itemTags?.tags || {};
+  let n = 0;
+  for (const tags of Object.values(tagsMap)) {   // the WHOLE map
+    if (tags.some(tag => hitTag(tag, term))) n++;
+  }
+  return n;                                       // an ABSOLUTE count
+}
+```
+
+`interpretQuery` compares that count against **absolute** thresholds — over 60
+deletes a term from query expansion, over 25 cuts its weight to 0.4× — and
+`scoreMatch` buckets a score multiplier at 10 and 30. Cutting 1,561 entries to 649
+scales every df by ~0.42. Measured across the 1,366 terms `tagDF` can be called with
+(the concept vocabulary plus `ALIASES`): **66 terms change expansion bucket and 176
+change score multiplier.** `war` goes 72 → 24, so the website deletes it as too broad
+and the app gives it full weight. `ai` goes 94 → 38, deleted → 0.4×.
+
+So the app would have ranked search results differently from the website, on a phone,
+with every guard in `prepare-webdir.mjs` green — the exact *"it works on the website"*
+failure that file's header is about, bought for 174 KB. `COPIED_WHOLE` now asserts
+byte-identity in the bundle, and a real-repo test re-runs the measurement so the
+refusal cannot quietly stop being true.
+
+**What it costs, stated plainly: `item-tags.json` is still O(episodes), so the bundle
+still grows ~4 KB a night.** From 1.96 MB that is about **245 nights** of headroom
+under the 3 MB cap, not a year. The catalogue half of the problem is solved
+permanently; this half is deferred, and the cap will say so loudly and in time.
+
+**A separate finding worth an issue, which is why this is not fixed here.** Those
+thresholds are absolute, so they already drift **on the web** as the catalogue grows:
+one month of nightlies (878 → 1,561 entries) moved **52 terms across the expansion
+threshold and 125 across the score multiplier**, with no app involved. Whatever the
+right answer is — normalise `tagDF` to a fraction like `corpusDF` already is, or ship
+a precomputed corpus df — it is a **search-quality** change that belongs with
+`tools/test-search.mjs` (governed) and a founder-visible decision, not smuggled into a
+bundle-size PR. When it lands, trimming `item-tags.json` becomes correct and the
+174 KB is there to take; the real-repo test above is written to fail at that moment
+and say so.
+
+### 3.2 The rest of the arithmetic
 
 **Trimming fields was measured and rejected as the primary mechanism.** Per item,
 `discover.json` spends its bytes on `audio_url` 279 KB, `artwork_url` 246 KB,
@@ -292,8 +346,8 @@ thinner ones**: each item it does carry is byte-identical to the website's.
 **The two caps now answer different questions, and neither was raised.** `MAX_BYTES`
 stays at 3 MB and still throws: it means *"something enormous got in that nobody
 chose"*, which is what #36 asked for. It is far too loose to notice the slice
-drifting, so `PROJECTED_DATA` carries a **per-file budget** — 800 KB and 160 KB,
-~15–30% above today's slices — meaning *"the slice stopped being bounded"*. Lowering
+drifting, so `PROJECTED_DATA` carries a **per-file budget** — 800 KB, ~17% above
+today's slice — meaning *"the slice stopped being bounded"*. Lowering
 `MAX_BYTES` instead was considered and rejected: the non-catalogue half of the
 bundle grew from 66 KB to 480 KB of `player/` in the fourteen days to 2026-08-18, so
 a tight total cap would fire on ordinary work inside a month, which is the noise
@@ -303,13 +357,22 @@ this repo on 2026-08-17.
 
 **What the slice must not break, and how that is guarded.** `player/foray-sources.js`
 joins a Foray's segments onto `discover.json` **by show name** to find lock-screen
-artwork (#27) and the publisher credit link, and both joins take the first item per
-show **in document order**. So the slice always keeps each show's first item and
-emits in document order, and `assertDiscoverSliceComplete` re-runs the **real**
-`artworkUrlsByShow` and `collectionIdsByShow` over both documents and demands
-identical maps. Every count-based check passes if the slice is emitted in recency
-order; that one does not. Without it, a car head unit would show the app icon
+artwork (#27) and the publisher credit link. `assertDiscoverSliceComplete` re-runs
+the **real** `artworkUrlsByShow` and `collectionIdsByShow` over both documents and
+demands identical maps. Every count-based check passes if the slice is emitted in
+recency order; that one does not. Without it, a car head unit would show the app icon
 instead of the publisher's artwork, weeks later, on a device, with the build green.
+
+The rule that satisfies it is worth stating, because the obvious version is wrong
+and **today's data hides that**. Both joins **skip** an item carrying no artwork (or
+no valid collection id) and take the next one that does, so the item they read is the
+first *usable* one, not the first one. All 1,534 items have both today, so "keep each
+show's first item" and "keep the item the join reads" agree — and on the day one
+artwork-less episode arrived, the nightly build would have failed and blamed the
+slice. So the anchor is the **shortest document-order prefix of each show that the
+real join functions cannot tell from the whole show** (normally one item; per-show
+independence in both functions is what makes it terminate). Costs nothing today: the
+slice is the same 622 items either way.
 
 **Not fetched, by design, for now.** Nothing in the shell re-fetches data from the
 network. `sw.js`'s network-first-for-data policy does not apply, because the
@@ -388,7 +451,7 @@ Honest accounting of #36's acceptance criteria:
 
 | Criterion | State |
 |---|---|
-| `prepare-webdir.mjs` produces a `webDir` under 3 MB, fails above it | **Met.** 35 files, 1.78 MB; both directions tested, and the per-file slice budgets tested in both directions too (§3) |
+| `prepare-webdir.mjs` produces a `webDir` under 3 MB, fails above it | **Met.** 35 files, 1.96 MB; both directions tested, and the per-file slice budget tested in both directions too (§3) |
 | Service worker off in the shell, on in the web | **Met**, four executed tests |
 | App ID and the `ios/` decision recorded | **Met** — §1 here, and the app id is pinned by a test |
 | Web deploy byte-for-byte unaffected | **Met in shape.** `index.html` gained one CSP token — a widening to same-origin. Nothing else the Action serves changed |
