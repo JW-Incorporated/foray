@@ -15,11 +15,13 @@ binding, wrong statement.
 
 **How to read a code reference here.** They name a declared symbol —
 `app.js:toEventRow()`, `app.js:SB_ARCHETYPES`, `app.js:#pl-input` — not a line
-number. Line numbers were used until 2026-08-19 and 26 of the 27 in this file
-had gone stale without anything reporting it, because a stale line number still
-lands on a line. `test/legal-citations.test.js` now fails if a reference here
-names something the code does not declare, and fails if the code transmits an
-event type §A2 does not disclose. **No answer in this file changed with it.**
+number. Line numbers were used until 2026-08-19: there were 27 across this file
+and `privacy-policy.md`, 23 of them here, and 26 of the 27 had gone stale without
+anything reporting it, because a stale line number still lands on a line.
+`test/legal-citations.test.js` now fails if a reference here names something the
+code does not declare, if the set of event types the client transmits stops
+matching `privacy-policy.md` §2, or if either document's event-type totals stop
+matching the code. **No answer in this file changed with it.**
 
 Both stores define "collect" as **transmitted off the device**. Data that only
 ever sits in `localStorage` or IndexedDB is *not* collected under either
@@ -319,8 +321,10 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
   any bundled third-party SDK on Apple's "commonly used SDK" list.
   **The web client bundles no third-party SDK** — no `@supabase/supabase-js`; the
   Supabase calls are raw `fetch` precisely to satisfy the strict CSP
-  (`app.js:sbAuth()` is the whole client, and `package.json` declares no
-  dependencies and no build step). So no SDK manifest is inherited **today**.
+  (every request is a hand-written `fetch`: `app.js:sbAuth()` for auth,
+  `app.js:trySyncEvents()` for the event insert, `app.js:sbDeleteOwnRows()` for
+  the deletion — and `package.json` declares no dependencies and no build
+  step). So no SDK manifest is inherited **today**.
   - > TODO(founder): if the native shell ever adds the Supabase Swift SDK or any
     Capacitor plugin, each needs its own manifest entry. `docs/marketing/05-legal-risk-memo.md`
     flagged a Supabase-SDK manifest as a checklist item; that item is **not

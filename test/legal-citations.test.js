@@ -25,9 +25,13 @@
  * WHICH SUITE COVERS WHICH MECHANISM (CLAUDE.md § A green test is not evidence)
  *   §1 here  the citation grammar and its resolution. Nothing else in the repo
  *            reads these documents as anything but prose.
- *   §2 here  the transmitted-event inventory. `backend` has suites over the
- *            events TABLE; none of them can see what the client chooses to send,
- *            and none reads the declaration that promises it.
+ *   §2 here  the event-type inventory, in three parts: which types transmit,
+ *            which stay local, and both documents' totals. `backend` has suites
+ *            over the events TABLE; none of them can see what the client chooses
+ *            to send, and none reads the declaration that promises it.
+ *            §2 is EXECUTED, not parsed — see `toEventRowFn()` for why, and for
+ *            the three undisclosed-transmission mutations that survived the
+ *            version of it that read source text.
  *   §3 here  the cache bucket name in the documents. `test/sw-generation.test.js`
  *            pins the name inside `sw.js` (it asserts the literal `foray-v5`),
  *            which is why the code was right and the documents were three
@@ -44,6 +48,7 @@ const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const ROOT = path.join(__dirname, "..");
 /* CRLF normalised on the way in, and it is load-bearing rather than tidy. Both
@@ -95,9 +100,17 @@ const allSpans = () => DOCS.flatMap(codeSpans);
 /* Basename index over the repo, so `sessionBuilder.ts` resolves without the
    document having to spell out `backend/src/curation/`. It is not a loophole: a
    renamed file has no basename anywhere, so the citation still fails. */
+/* Build output belongs here as much as `node_modules` does, and review found it
+   missing: `tools/web/prepare-dist.mjs` writes `dist/`, Vercel writes `.vercel/`,
+   the backend writes `backend/output/`. None of it is committed, so the "is this
+   basename unique in the repo?" question would have been answered partly from
+   whatever a developer happened to have built locally — a suite that goes red on
+   one machine and green in CI, for a reason that has nothing to do with the
+   documents. */
 const SKIP_DIRS = new Set([
   "node_modules", ".git", "audio-cache", "data-local", ".claude", "build",
   "DerivedData", "Pods", ".gradle", ".idea",
+  "dist", ".vercel", "output", "coverage", ".next", ".turbo",
 ]);
 
 let byBasename = null;
@@ -393,44 +406,97 @@ test("the load-bearing list is not carrying an entry nobody cites", () => {
 
 /* ================= 2. the transmitted-event inventory ======================== */
 
-/** The event types `toEventRow` turns into a row — i.e. the ones that leave the
-    device. Derived from the shipped switch, never listed here: a typed list
-    would rot exactly the way the line numbers did. */
-function transmittedTypes() {
+/**
+ * Every event type the app records, derived from the two functions that emit.
+ *
+ * `logEvent()` in app.js is the sink; `player/` reaches it through the
+ * `window.forayLogEvent` bridge app.js installs, which is why both files are
+ * scanned. 16 + 2 = the 18 both documents quote.
+ */
+function allEventTypes() {
+  /* `[A-Za-z0-9_]+`, not `[a-z_]+`. The narrow class was the same bug review found
+     in the `case`-label scan, reintroduced one function over: `logEvent("thumbs_v2")`
+     matched nothing, so a 19th type with a digit in its name was invisible to the
+     totals. Caught by the orphan cross-check below rather than here, which is
+     defence in depth working — and still the wrong test reporting it. */
+  const out = new Set();
+  for (const [rel, re] of [
+    ["app.js", /logEvent\("([A-Za-z0-9_]+)"/g],
+    ["player/client.js", /forayLogEvent\("([A-Za-z0-9_]+)"/g],
+  ]) {
+    for (const m of codeOnly(read(rel)).matchAll(re)) out.add(m[1]);
+  }
+  return [...out].sort();
+}
+
+/**
+ * `toEventRow`, EXECUTED — not parsed.
+ *
+ * WHY THIS IS RUN RATHER THAN READ, AND IT IS THE WHOLE POINT OF THIS SECTION.
+ * The first version classified each `switch` arm by looking for `return row(` in
+ * its text, and review broke it three ways, each a sixth transmitted type going
+ * undisclosed with all ten tests green:
+ *
+ *   - `case "thumbs_v2":` — the label scan was `/^([a-z_]+)":/`, so any label
+ *     with a digit or a capital was silently skipped by a bare `continue`.
+ *   - `case "bookmarked":` falling through to `case "saved":` — the arm's own
+ *     text contains no `return row(` at all.
+ *   - `case "player_pref": { const r = row(…); return r; }` — an indirect
+ *     return the regex cannot see.
+ *
+ * Every one of those is a control-flow fact, and a regex over source text is the
+ * wrong instrument for a control-flow fact. So the real function is evaluated and
+ * CALLED, once per event type, and a type is transmitted if it produces a row.
+ * Fall-through, indirection and label spelling all stop being special cases.
+ *
+ * `test/data-deletion.test.js` does the same thing with `DD_COVERS` for the same
+ * reason: a copy in the test lets the shipped thing drift.
+ */
+function toEventRowFn() {
   const src = read("app.js");
-  const body = /function toEventRow\([\s\S]*?\n\}/.exec(src);
-  assert.ok(body, "toEventRow could not be located in app.js");
-  /* PREMISE GUARDS on the extraction, because both ways it can go wrong are
-     silent. The regex stops at the first `}` in column 0, so a `toEventRow`
-     wrapped in a block would under-capture and this function would report FEWER
-     transmitted types than exist — which is the direction that lets undisclosed
-     collection through. Over-capture would pull in `case` labels from another
-     switch entirely. Neither is detectable from the returned list, so assert the
-     shape instead: the arm every non-transmitted type falls to must be inside,
-     and no second function declaration may be. */
-  assert.match(
-    body[0], /default:\s*\n?\s*return null/,
-    "toEventRow's `default: return null` arm is not inside the extracted body — " +
-      "the extraction under-captured, and every type below the cut would be " +
-      "counted as local-only"
-  );
+  const archetypes = /const SB_ARCHETYPES = new Set\(\[[^\]]*\]\);/.exec(src);
+  const fn = /function toEventRow\([\s\S]*?\n\}/.exec(src);
+  assert.ok(archetypes, "SB_ARCHETYPES could not be located in app.js");
+  assert.ok(fn, "toEventRow could not be located in app.js");
+  /* A premise guard that survives what the text scan could not: if the extraction
+     under-captured, the function will not even parse, and if it over-captured it
+     would pull in a second declaration. Either way this throws rather than
+     quietly reporting fewer transmitted types. */
   assert.ok(
-    !/\n(?:async )?function /.test(body[0]),
-    "the extraction ran past the end of toEventRow and into another function, so " +
-      "`case` labels from an unrelated switch may be counted as transmitted"
+    !/\n(?:async )?function /.test(fn[0]),
+    "the toEventRow extraction ran into another function"
   );
-  /* Split on the case labels themselves, so each arm is examined for whether it
-     reaches `row(` — `thumbs` has an early `return null` guard AND returns a
-     row, and only the second fact makes it transmitted. */
-  const arms = body[0].split(/case\s+"/).slice(1);
+  return vm.runInNewContext(`${archetypes[0]}\n${fn[0]}\ntoEventRow`);
+}
+
+/** A payload generous enough to satisfy every arm's guards, so "transmitted"
+    means "this type can produce a row", not "this fixture happened to". */
+const FAT_PAYLOAD = {
+  episode_id: "ep-1", episode_slug: "ep-1", topics: ["food"],
+  app: "Apple Podcasts", context: "continue",
+  node_id: "food", direction: "up", reasons: ["Bad audio quality"],
+  note: "a note", segment_id: "seg-1", foray_id: "g-1",
+  session_id: "sess-1", seconds: 12, duration: 100,
+};
+
+/** The event types that actually leave the device, by observation. */
+function transmittedTypes() {
+  const toEventRow = toEventRowFn();
   const out = [];
-  for (const arm of arms) {
-    const name = /^([a-z_]+)":/.exec(arm);
-    if (!name) continue;
-    const upToNext = arm.split(/\n\s*(?:case\s+"|default:)/)[0];
-    if (/return\s+row\(/.test(upToNext)) out.push(name[1]);
+  for (const type of allEventTypes()) {
+    const row = toEventRow(
+      { ts: "2026-08-19T00:00:00Z", type, builder: "b", payload: FAT_PAYLOAD },
+      "uid-1"
+    );
+    if (row !== null && row !== undefined) out.push(type);
   }
   return out.sort();
+}
+
+/** Every `case` label the switch actually has, however it is spelled. */
+function caseLabelsInSource() {
+  const fn = /function toEventRow\([\s\S]*?\n\}/.exec(read("app.js"))[0];
+  return [...new Set([...fn.matchAll(/case\s+"([^"]+)"/g)].map((m) => m[1]))].sort();
 }
 
 /** The `Sent` table in policy §2 — the document's own inventory of the same set. */
@@ -462,21 +528,107 @@ test("the event types that leave the device are exactly the ones policy §2 list
   );
 });
 
-test("data-safety's \"exactly N of 18\" is the number the code produces", () => {
-  /* The same fact in the other document, which states it as a count in prose
-     rather than as a table — so the count is what there is to pin, and it is the
-     sentence a store reviewer reads first.
+test("no case label is a type nothing in the app ever logs", () => {
+  /* The cross-check that closes the label-spelling hole from the other side. The
+     classifier above calls `toEventRow` once per type it found by scanning the two
+     emitters — so a `case` for a type NOTHING logs would never be tried, and a
+     type the emitter scan missed would never be classified. Either way the two
+     lists must agree.
 
-     MUTATION THAT KILLS THIS: the same added `case` above. Ran it — red,
-     "declares 5 transmitted types, the code produces 6". */
-  const n = transmittedTypes().length;
-  const doc = read("docs/legal/data-safety.md");
-  const claim = /\*\*Exactly (\d+) of (\d+) event types are transmitted\*\*/.exec(doc);
-  assert.ok(claim, "data-safety's transmitted-count sentence could not be located");
-  assert.strictEqual(
-    Number(claim[1]), n,
-    `docs/legal/data-safety.md declares ${claim[1]} transmitted types, the ` +
-      `code produces ${n}`
+     MUTATION THAT KILLS THIS: add `case "thumbs_v2": return row("thumbs_v2", {});`
+     to `toEventRow` without adding a `logEvent("thumbs_v2", …)` anywhere. Ran it
+     — red. Under the regex classifier this was green, and `thumbs_v2` was a
+     transmitted type carrying free text that neither document mentioned. */
+  const labels = caseLabelsInSource();
+  const types = allEventTypes();
+  const orphans = labels.filter((l) => !types.includes(l));
+  assert.deepStrictEqual(
+    orphans, [],
+    "toEventRow has a `case` for these, and nothing in app.js or " +
+      "player/client.js logs them — so either they are dead, or the emitter scan " +
+      "that decides what gets classified is missing an emit path:\n" +
+      orphans.join("\n")
+  );
+});
+
+test("both documents' event-type totals are the numbers the code produces", () => {
+  /* Both totals, in both documents, against both derived sets. Review found the
+     original version captured `(\d+) of (\d+)` and asserted only the first, so
+     the 18 was decoration and policy §2's "Thirteen of the eighteen" was checked
+     by nothing at all — a 19th local-only type would have left both documents
+     claiming 18 and 13, green.
+
+     MUTATIONS THAT KILL THIS, both run and both red:
+       add `logEvent("shared", {})` anywhere in app.js — a 19th type, so the
+         totals become 19 and 14 and both documents are wrong.
+       add a sixth transmitted `case` — 5 becomes 6 and 13 becomes 12. */
+  const total = allEventTypes().length;
+  const sent = transmittedTypes().length;
+  const local = total - sent;
+
+  const ds = read("docs/legal/data-safety.md");
+  const dsClaim = /\*\*Exactly (\d+) of (\d+) event types are transmitted\*\*/.exec(ds);
+  assert.ok(dsClaim, "data-safety's transmitted-count sentence could not be located");
+  assert.deepStrictEqual(
+    [Number(dsClaim[1]), Number(dsClaim[2])], [sent, total],
+    `docs/legal/data-safety.md declares "${dsClaim[1]} of ${dsClaim[2]}"; the ` +
+      `code produces ${sent} of ${total}`
+  );
+
+  /* The policy spells its numbers as words, because it is written for a listener
+     rather than for a form. */
+  const WORDS = {
+    five: 5, six: 6, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
+    seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+  };
+  const pp = read("docs/legal/privacy-policy.md");
+  const ppClaim = /\*\*([A-Za-z]+) of the ([a-z]+) event types the app\s+records never leave the device\.\*\*/
+    .exec(pp);
+  assert.ok(ppClaim, "policy §2's local-only-count sentence could not be located");
+  const said = [WORDS[ppClaim[1].toLowerCase()], WORDS[ppClaim[2].toLowerCase()]];
+  assert.ok(
+    said[0] !== undefined && said[1] !== undefined,
+    `policy §2 spells a number this test cannot read: "${ppClaim[1]} of the ${ppClaim[2]}"`
+  );
+  assert.deepStrictEqual(
+    said, [local, total],
+    `docs/legal/privacy-policy.md §2 says "${ppClaim[1]} of the ${ppClaim[2]}"; ` +
+      `the code produces ${local} of ${total}`
+  );
+});
+
+test("policy §2's \"Not sent\" list is exactly the local-only set", () => {
+  /* Type granularity, not a count, and now BOTH directions.
+
+     MUTATIONS THAT KILL THIS, both run:
+       add `logEvent("shared", {})` to app.js — red, `shared` is recorded and the
+         list never says it stays on the device.
+       make `player_pref` transmit — red, because it is still listed as not sent
+         while the code sends it. That second direction was missing at first: a
+         type MOVING from local-only to transmitted was caught only incidentally,
+         by the Sent table not listing it.
+
+     The possessive strip is the reason this can be an equality rather than a
+     subset. The paragraph reads "`saved`'s counterpart `unsaved`", so `saved` — a
+     transmitted type — appears inside the not-sent list as a piece of English
+     grammar. A list item is never followed by `'s`, so dropping possessive
+     occurrences separates the grammar from the inventory without an exception
+     list naming `saved`, which would rot the moment the sentence was reworded. */
+  const transmitted = new Set(transmittedTypes());
+  const localOnly = allEventTypes().filter((t) => !transmitted.has(t)).sort();
+  const pp = read("docs/legal/privacy-policy.md");
+  const block = /\*\*Not sent — recorded only on your device:\*\*([\s\S]*?)\n\n/.exec(pp);
+  assert.ok(block, "policy §2's \"Not sent\" paragraph could not be located");
+  const prose = block[1].replace(/`([A-Za-z0-9_]+)`'s/g, "$1's");
+  const named = [...new Set(
+    [...prose.matchAll(/`([A-Za-z0-9_]+)`/g)].map((m) => m[1])
+  )].sort();
+  assert.deepStrictEqual(
+    named, localOnly,
+    "policy §2's \"Not sent\" list and the code disagree. A type in the code and " +
+      "not in the list is undisclosed recording; a type in the list that the code " +
+      `now sends is a false statement.\n  code: ${localOnly.join(", ")}\n` +
+      `  doc:  ${named.join(", ")}`
   );
 });
 

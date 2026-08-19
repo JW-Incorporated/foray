@@ -152,7 +152,7 @@ const FLOORS = {
      also the suite most tempting to delete, because it is the only one that goes
      red for a reason in a `.md` file — the 27 line numbers it replaced went stale
      precisely because correcting them was somebody's optional courtesy. */
-  "test/legal-citations.test.js": 10,
+  "test/legal-citations.test.js": 12,
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~110-second
