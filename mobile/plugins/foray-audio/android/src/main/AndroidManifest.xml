@@ -14,13 +14,20 @@
   (docs/research/mp1-background-audio.md §5.3). A Foray is 45 to 90 minutes; a
   service type with a timeout would not survive one.
 
-  POST_NOTIFICATIONS IS DELIBERATELY NOT DECLARED. A foreground service still runs
-  when the notification permission is denied — the notification is simply not
-  shown — so the process-importance and audio-focus properties this service exists
-  for do not depend on it. Asking for the permission means a runtime prompt and UI
-  to explain it, and the notification is only worth showing once it carries
-  metadata and transport controls, which is #27's Android half. Stated here so the
-  omission reads as a decision instead of an oversight.
+  POST_NOTIFICATIONS IS NOW DECLARED, AND #244 WAS RIGHT NOT TO. Its argument was
+  that a foreground service runs whether or not its notification is shown, so the
+  process-importance and audio-focus properties the service existed for did not
+  depend on the permission — and that "the notification is only worth showing once
+  it carries metadata and transport controls, which is #27's Android half."
+
+  This is that half. The transport controls ARE the notification, and from Android
+  13 (API 33) a notification the user has not permitted is not shown, so a denied
+  permission is now the difference between a lock screen with controls and one
+  without. The runtime request is `ForayAudioPlugin.requestNotifications`, asked
+  once by the web half after the first accepted start — a `play()`, in the
+  foreground, one press after the reason for it. Nothing here prompts on launch and
+  a denial costs only the notification: the service still runs and the audio still
+  plays.
 
   `stopWithTask="true"` because the audio this service exists to protect lives in
   the WebView, and the WebView dies with the task. Swiping the app away with the
@@ -33,6 +40,7 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application>
         <service

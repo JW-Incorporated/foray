@@ -1080,6 +1080,13 @@ iOS is probably unaffected — it injects via a mechanism that runs outside the 
 
 One iOS finding that does bear on your step 6, though: `navigator.serviceWorker` **does not exist at all** on `capacitor://localhost`, so the "app silently starts caching itself" half of the risk is impossible on iOS by construction. On Android the shell origin is `https://localhost`, where the API does exist — so that half of the concern is Android-specific too, and real.
 
+**Note added by #27's Android half (2026-08-18) — the same 45 minutes now answers four more questions, so read this before you do step 5.** `docs/android-lock-screen.md` §8.1 has the full list; the short version is that while you have that console open, these cost seconds each and every one of them is currently **unverified**:
+
+- **`navigator.mediaSession.forayPolyfill`** → `true` means our stand-in for the switched-off API installed. If instead you get a `mediaSession` object with **no** `forayPolyfill` property, then **this WebView ships the real MediaSession API** and MP1 §5.4's central Android claim is wrong — which would be the most valuable thing anyone has found on this hardware. Say so loudly.
+- **`window.ForayMediaSession.peek()`** → the exact payload the lock screen was last told. Compare it with what the screen actually shows.
+- **`await Capacitor.nativePromise("ForayAudio", "state", {})`** → `running`, `sessionActive`, `notificationsEnabled`, `notificationPermission`. "The lock screen is blank" has at least three causes and only one of them is a bug in the code; those four fields tell them apart.
+- **Then lock the phone and press each button** — play, pause, next, previous, the scrubber. Nothing about any of that has ever been observed. Also say whether a notification permission prompt appeared on your first play, because that is the one user-visible change in that branch and a founder may want it moved.
+
 **Status:** OPEN
 
 ---

@@ -117,6 +117,19 @@ export const SHELL_ONLY_FILES = [
     dest: "foray-audio-shell.js",
     module: true,
   },
+  /* #27's Android half. ORDER MATTERS ONLY ONE WAY: both are module scripts in the
+     head, so both run before `player/client.js` in the body — which is the ordering
+     that matters, because `client.js` reads `navigator.mediaSession` once, at init,
+     and the polyfill has to be there by then. Between these two it does not matter,
+     and it deliberately must not: `foray-media-session.js` looks
+     `window.ForayAudioShell` up lazily on every call rather than capturing it, so
+     neither file may assume the other has run. The shell is listed first only because
+     it is the one that existed first. */
+  {
+    src: "mobile/plugins/foray-audio/web/foray-media-session.js",
+    dest: "foray-media-session.js",
+    module: true,
+  },
 ];
 
 /** The `<script>` tags the bundle's `index.html` needs for `SHELL_ONLY_FILES`.

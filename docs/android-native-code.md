@@ -36,6 +36,7 @@ MP1 §1 keep the same table for the same reason.
 | Claim | How |
 |---|---|
 | A local Capacitor plugin at `mobile/plugins/foray-audio/` is discovered and wired into the generated project | **Executed.** `cap add android` reports `Found 5 Capacitor plugins for android: foray-audio@0.1.0`, and the generated Gradle files name it. §3.1 |
+| Anything about the lock screen, the Media3 session or the transport controls added since | **See `docs/android-lock-screen.md` §0**, which keeps its own table. Nothing there is measured on a device either |
 | Both APKs still build, with sizes and wall clock | **Executed on this machine.** §4 |
 | The `<service>` and both `FOREGROUND_SERVICE*` permissions reach the app's merged manifest | **Executed** — read out of `app/build/intermediates/merged_manifest/…/AndroidManifest.xml` after `assembleDebug`. §4.2 |
 | The web half's state machine — start on first play, stop after a settle window, survive a seam, self-correct a refused play | **Executed, against fakes.** 57 tests in Node (53 `test()` declarations, two of them looped into six runs), 23 mutations, 23 caught. §5.3. **No WebView ran.** |
@@ -472,6 +473,26 @@ more on the page than in nobody's memory.
 ## 6. What is NOT done, and what is not known
 
 ### 6.1 Deliberately left for #27's Android half
+
+> **BUILT SINCE, 2026-08-18 — `docs/android-lock-screen.md`.** The first two bullets
+> are done and the section is left standing because its *reasoning* is what that change
+> was built against. Two corrections to it, both worth reading:
+>
+> - **The `Player` adapter is a `SimpleBasePlayer` and this service did NOT become a
+>   `MediaSessionService`.** Media3's service subclass owns the foreground lifecycle,
+>   keyed to `player.isPlaying` — which is precisely the lifetime §3.4 argued out
+>   between a 20 s floor and a 30 s ceiling. Handing a reviewed mechanism to a library
+>   nothing here can execute was the wrong trade with no device.
+> - **The service's lifetime DID change**, in the one way §3.4 predicted: it now lives
+>   as long as **the transport can act on something** — playing or paused — rather than
+>   as long as **audio is sounding**, because the `MediaSession` lives here and a pause
+>   must not take the controls away 25 s later. That is fewer `startForegroundService`
+>   calls, not more. (It said "a Foray is loaded" first, which held the service open
+>   through a FINISHED Foray behind a notification with no buttons on it. That was a
+>   blocking review finding — `docs/android-lock-screen.md` §5.5.)
+>
+> Everything in §6.2, §6.3 and §6.4 still holds, and **nothing about it has been
+> executed on a device or an emulator** either.
 
 - **Lock-screen and steering-wheel metadata and transport controls.** The
   notification says "Playback active" with a platform `ic_media_play` icon and no
