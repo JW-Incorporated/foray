@@ -474,16 +474,24 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
      "nba" carries no duration/format modifier, and never takes a relaxation
      branch for the same reason.)
      Restricted to STRONG-signal items, and the floor is DERIVED, not hard-coded,
-     because scoreMatch's df multiplier is itself a function of catalog size:
-     `best * (df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75)`, where df is tagDF("nba")
-     -- exactly the quantity the nightly grows. At 1.35 a tag hit is 3.375,
-     topics 4.05, title 2.7, all clear of minScore 2. But at df=11 the
-     multiplier drops to 1 and a title-only item scores EXACTLY 2.000, which the
-     strict `sum > minScore` gate rejects -- so a hard-coded field list would
-     start false-reding on pure catalog growth and blame "a scoring regression".
-     That is the failure this whole case exists to eliminate, so the field list
-     is filtered by the tier actually in force. Fields sum, so a single field is
-     a floor on the score, never a ceiling.
+     because scoreMatch's df multiplier is a function of the query token's own
+     document frequency: `best * dfMultiplier(group.df)`, where `group.df` is
+     tagDF("nba"). At 1.35 a tag hit is 3.375, topics 4.05, title 2.7, all clear
+     of minScore 2. But one tier down the multiplier drops to 1 and a title-only
+     item scores EXACTLY 2.000, which the strict `sum > minScore` gate rejects --
+     so a hard-coded field list would start false-reding on catalogue change and
+     blame "a scoring regression". That is the failure this whole case exists to
+     eliminate, so the field list is filtered by the tier actually in force.
+     Fields sum, so a single field is a floor on the score, never a ceiling.
+     THE TIERS ARE READ FROM THE ENGINE, NOT MIRRORED HERE, as of #275. This was
+     an inline `df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75` -- a fourth-copy-of-the-
+     matcher (#249) one level up, an oracle reimplementing its subject. #275
+     normalised `tagDF` to a FRACTION of the tag map, and the mirror would have
+     survived that silently: every fraction is <= 10, so every term would have
+     been reported at 1.35, `strongFields` would have kept all three fields, and
+     the check would have gone quietly wrong in the false-RED direction the
+     paragraph above is about. `SE.dfMultiplier` cannot drift from scoreMatch
+     because scoreMatch calls it.
      Deliberately excluded at every tier: show-only (1.0, which never clears the
      1.2 per-group threshold, so it is not retrievable by design) and hook-only
      (2.025, which clears minScore by 1.25% and would become a false red the day
@@ -498,10 +506,7 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
      deliberately refuses to assert. It earns its place in one specific state:
      when `covered` is wrong and purity is vacuous, it is the only thing left
      asserting anything at all about this query. */
-  const dfMult = (() => {
-    const df = interp.groups[0]?.df ?? 0;
-    return df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75;
-  })();
+  const dfMult = SE.dfMultiplier(interp.groups[0]?.df ?? 0);
   const strongFields = [[2.5, taggedLeague], [3, topicsHit], [2, titleHit]]
     .filter(([weight]) => weight * dfMult > 2);
   const stronglySignalled = pool.filter((i) => strongFields.some(([, hit]) => hit(i)));

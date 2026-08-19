@@ -392,9 +392,9 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
     `Three copies existed and two drifted looser than the ranker (#211, #219) -- import them.`);
 });
 
-/* ---------- #249: tagDF counts through the shared matcher ---------- */
+/* ---------- #249: tagCount counts through the shared matcher ---------- */
 
-test("tagDF counts tags through hitTag, not a loose substring (#249)", () => {
+test("tagCount counts tags through hitTag, not a loose substring (#249)", () => {
   /* THE FOURTH COPY. `tagDF` inlined the pre-#211 loose predicate as an anonymous
      arrow -- `tag.includes(term)` on the long branch, no collision guard, and no
      plural on the short branch -- inside search-engine.js itself, where the
@@ -405,8 +405,13 @@ test("tagDF counts tags through hitTag, not a loose substring (#249)", () => {
      predicate that disagrees with hitTag on these tags, named or anonymous.
      Synthetic ctx on purpose -- no data dependency, so a nightly refresh cannot
      flip it. The tag shapes are the real ones from #249's report: `ship` was
-     counted at 155 and DELETED from expansions (df > 60) on a tally made of
-     `relationships` and `championship` substring hits, against a true count of 6. */
+     counted at 155 and DELETED from expansions on a tally made of `relationships`
+     and `championship` substring hits, against a true count of 6.
+     READS `tagCount`, WHICH IS WHERE #275 LEFT THE COUNT. `tagDF` is now that
+     count over the size of the tag map, so these expected values would each grow
+     a denominator and this test would be about normalisation rather than about
+     the matcher. The count is the mechanism #249 is about, so the count is what
+     this reads; the fraction is pinned in test/search-df-scaling.test.js. */
   const SE = require(path.join(ROOT, "search-engine.js"));
   const ctx = {
     itemTags: { tags: {
@@ -424,7 +429,7 @@ test("tagDF counts tags through hitTag, not a loose substring (#249)", () => {
      allowance at all, which is the other half of the same defect. The loose
      predicate scores this same fixture 5 -- every one of the five items -- so it
      fails here by 3. */
-  assert.equal(SE.tagDF("ship", ctx), 2);
+  assert.equal(SE.tagCount("ship", ctx), 2);
 
   /* The short branch, where the loose predicate had no plural allowance at all.
      `car` is 3 chars: exact tag, hyphen segment, or their plurals. */
@@ -434,7 +439,7 @@ test("tagDF counts tags through hitTag, not a loose substring (#249)", () => {
       e: ["carbon"], f: ["nascar"],
     } },
   };
-  assert.equal(SE.tagDF("car", shortCtx), 4);
+  assert.equal(SE.tagCount("car", shortCtx), 4);
 
   /* And the sense lock reaches tagDF too, since tagDF is now a hitTag consumer:
      `training` tags must not inflate the railway term's count. */
@@ -443,19 +448,19 @@ test("tagDF counts tags through hitTag, not a loose substring (#249)", () => {
       a: ["trains", "railway"], b: ["training"], c: ["strength-training"], d: ["train"],
     } },
   };
-  assert.equal(SE.tagDF("train", trainCtx), 2);
+  assert.equal(SE.tagCount("train", trainCtx), 2);
 });
 
-test("tagDF memoizes per ctx without leaking between ctxs (#249)", () => {
-  /* The memo is keyed by term on the ctx object, and tagDF is the only writer.
+test("tagCount memoizes per ctx without leaking between ctxs (#249)", () => {
+  /* The memo is keyed by term on the ctx object, and tagCount is the only writer.
      Two ctxs with different data must not share an answer -- a cache keyed
      globally would make the count depend on which query ran first. */
   const SE = require(path.join(ROOT, "search-engine.js"));
   const one = { itemTags: { tags: { a: ["ship"] } } };
   const two = { itemTags: { tags: { a: ["ship"], b: ["ships"] } } };
-  assert.equal(SE.tagDF("ship", one), 1);
-  assert.equal(SE.tagDF("ship", two), 2);
-  assert.equal(SE.tagDF("ship", one), 1);
+  assert.equal(SE.tagCount("ship", one), 1);
+  assert.equal(SE.tagCount("ship", two), 2);
+  assert.equal(SE.tagCount("ship", one), 1);
 });
 
 test("the matcher is actually exported, so sharing it is possible at all", () => {

@@ -52,21 +52,93 @@ const ALIASES = {
    over it (history 23.0%, science 18.6%). Tunable — see tools/test-search.mjs. */
 const BROAD_DF_THRESHOLD = 0.10;
 
-/* PLACEHOLDER PROSE -- rewritten once the values are measured. */
-const DF_DROP_THRESHOLD = 0.10;
-const DF_DEMOTE_THRESHOLD = 0.025;
-const DF_BOOST_THRESHOLD = 0.008;
-const DF_PENALTY_THRESHOLD = 0.02;
+/* THE TAG-DF LADDER: three fractions of the tag map (see tagDF), read by the two
+   consumers that care how common a term is. #275.
+
+   THESE WERE FOUR ABSOLUTE COUNTS -- `df > 60` dropped a term from a query
+   expansion, `df > 25` cut its weight to 0.4x, and scoreMatch bucketed its
+   multiplier at 10 and 30 -- while BROAD_DF_THRESHOLD directly above was already a
+   fraction. Half of this module's df logic was therefore scale-free and half was
+   not, so the scale-bound half retuned itself every night as the catalogue grew:
+   `df > 60` meant "in more than 6.8% of the tag map" at 878 entries and "more than
+   3.8%" at 1,561, and over five real nightly snapshots (2026-07-19 -> 2026-08-18)
+   52 terms crossed the expansion threshold and 125 the multiplier with no code
+   change. Duplicating today's map -- which cannot change what the catalogue is
+   ABOUT -- moved 137 and 206 at 2x, 284 and 494 at 4x. All of that is denominator.
+
+   FOUR CUTS BECAME THREE, and the collapse is measured rather than tidy: the
+   expansion's lower cut was 25 and the multiplier's upper cut was 30 -- 1.60% and
+   1.92% of the map, within 20% of each other, with nothing in this file ever
+   explaining the difference. They answer the same question ("is this term common
+   enough to stop trusting on its own"), so they are one number now. If a
+   measurement ever distinguishes them, splitting is one line plus a reason.
+
+   HOW THE VALUES WERE PICKED, and NOT by dividing 60 and 25 by today's item count
+   -- today's count is arbitrary, and enshrining it is how the absolute thresholds
+   happened in the first place. Each cut is the most STABLE fraction inside the
+   window search quality allows: "stable" is the number of vocabulary terms that
+   cross it across the five nightly snapshots, "allowed" is tools/test-search.mjs.
+   The today-equivalent fractions (0.0384 / 0.016 / 0.0064 / 0.0192) were run as a
+   control and are behaviour-identical to the absolute rule -- 120 passed, 0 failed,
+   not one pick changed -- which is what shows the normalisation itself is not what
+   moves results. They were then rejected as VALUES: they sit in the densest part of
+   the df distribution and still drift 32 expansion buckets over the same five
+   snapshots, against 13 for the ladder below.
+
+     TAG_DF_TOO_BROAD 0.10   The catalogue's genre markers and nothing else:
+                             history 19.5%, storytelling 15.2%, science 12.9%,
+                             comedy 10.7%. Measured, the whole 1,366-term
+                             vocabulary has NO term between 8% and 10% -- the one
+                             empty band in the distribution -- so this cut is the
+                             most stable available anywhere: 1 crossing over the
+                             five snapshots against 15 for `df > 60`. It is also
+                             deliberately the SAME NUMBER as BROAD_DF_THRESHOLD,
+                             which is not a coincidence to tidy away: a token too
+                             common to anchor a query is too common to expand INTO,
+                             and having those two answers disagree by an accident of
+                             tuning is the shape of this whole issue. The
+                             populations differ -- corpusDF reads prose as well as
+                             tags and runs a few points higher (history 24.3%,
+                             comedy 12.5%) -- so this is one scale honestly shared,
+                             not one measurement used twice.
+     TAG_DF_COMMON    0.02   Bounded ABOVE by product quality and below by churn,
+                             and the ceiling is a real measurement rather than a
+                             preference: at 0.025 the battery goes red on
+                             "parenting", because `family` sits at 2.50% and keeps
+                             full expansion weight, which puts a kids-science
+                             episode about hermit crabs in the top five. 0.02 is
+                             the stability optimum under that ceiling -- 17
+                             crossings against 33 at 0.016 and 40 for `df > 25`.
+     TAG_DF_RARE      0.008  The local minimum of crossings in the region a boost
+                             tier can sit at all: 57 at 0.008 against 70 at both
+                             0.0064 (today-equivalent) and 0.010, and 91 for
+                             `df <= 10`. The low end of the distribution is dense
+                             -- 904 terms under 0.2% -- so no cut down here is as
+                             quiet as the two above, and saying so is better than
+                             implying otherwise.
+
+   WHAT REMAINING MOVEMENT MEANS, because "13 terms still move" invites the wrong
+   reading. Under duplication a fraction cannot move at all, so every crossing left
+   in the real series is the corpus genuinely becoming more or less ABOUT that term
+   -- `crime` 2.2% -> 4.2% over the month is a true-crime wave in the catalogue, and
+   responding to it is the point. The absolute rule mixed that signal with pure
+   denominator drift and could not tell you which was which. Tunable, and the
+   instruments are tools/test-search.mjs and test/search-df-scaling.test.js. */
+const TAG_DF_TOO_BROAD = 0.10;
+const TAG_DF_COMMON = 0.02;
+const TAG_DF_RARE = 0.008;
 
 /* scoreMatch's per-group multiplier, as a function of the query token's tagDF.
    A NAMED EXPORTED FUNCTION rather than an inline ternary, because
    tools/test-search.mjs §3 had to know the tiers to know which fields can clear
    `minScore` on their own, and it MIRRORED them -- a fourth-copy-of-the-matcher
    shape (#249) one level up, and one that #275 would have broken silently: the
-   mirror compared a fraction against 10 and 30 and every term would have landed
-   in the same tier. An oracle may not reimplement its subject. */
+   mirror compared a fraction against 10 and 30, every fraction is under 10, so
+   every term would have been reported in the top tier and the copy would have
+   stayed green while measuring nothing. An oracle may not reimplement its
+   subject. */
 function dfMultiplier(df) {
-  return df <= DF_BOOST_THRESHOLD ? 1.35 : df <= DF_PENALTY_THRESHOLD ? 1 : 0.75;
+  return df <= TAG_DF_RARE ? 1.35 : df <= TAG_DF_COMMON ? 1 : 0.75;
 }
 
 function tokenize(q) {
@@ -103,8 +175,8 @@ function branchOf(item) {
    the original.
 
    IT WAS NOT A REPORTING BUG. `tagCount` drives expansion pruning in
-   interpretQuery (via `tagDF`): over DF_DROP_THRESHOLD DELETES a term from the
-   expansion and over DF_DEMOTE_THRESHOLD cuts its weight to 0.4x, so an inflated
+   interpretQuery (via `tagDF`): over TAG_DF_TOO_BROAD DELETES a term from the
+   expansion and over TAG_DF_COMMON cuts its weight to 0.4x, so an inflated
    count silently removes vocabulary. It also sets `group.df`, which picks
    scoreMatch's per-group multiplier (see dfMultiplier). Two consumers, two sets
    of thresholds, both reading a number the ranker itself would never produce.
@@ -279,8 +351,8 @@ function interpretQuery(q, ctx) {
     for (const [t, info] of [...terms]) {
       if (info.w >= 1) continue;
       const df = tagDF(t, ctx);
-      if (df > DF_DROP_THRESHOLD) terms.delete(t);
-      else if (df > DF_DEMOTE_THRESHOLD) terms.set(t, { ...info, w: info.w * 0.4 });
+      if (df > TAG_DF_TOO_BROAD) terms.delete(t);
+      else if (df > TAG_DF_COMMON) terms.set(t, { ...info, w: info.w * 0.4 });
     }
 
     return {
@@ -1002,7 +1074,7 @@ function prettyConceptLabel(id) {
 
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
-  DF_DROP_THRESHOLD, DF_DEMOTE_THRESHOLD, DF_BOOST_THRESHOLD, DF_PENALTY_THRESHOLD,
+  TAG_DF_TOO_BROAD, TAG_DF_COMMON, TAG_DF_RARE,
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagCount, tagDF, dfMultiplier, corpusDF, hitText, hitTag,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
