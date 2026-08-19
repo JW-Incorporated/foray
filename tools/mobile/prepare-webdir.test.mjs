@@ -39,7 +39,7 @@ import {
   assertShellScriptsPresent, WebDirError,
   BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, discoverSlice, assertDiscoverSliceComplete,
   bundledPoolIds, itemTagsSlice, assertItemTagsSliceComplete, serializeSlice,
-  assertSlicesOnDisk,
+  assertSlicesOnDisk, projectData,
 } from "./prepare-webdir.mjs";
 
 /* The production join, imported the same way prepare-webdir.mjs imports it, so the
@@ -408,7 +408,22 @@ test("assertDiscoverSliceComplete is a real guard and not decoration", () => {
     () => assertDiscoverSliceComplete(discover, reordered),
     (e) => e instanceof WebDirError && /artworkUrlsByShow/.test(e.message)
   );
-  /* 4. and an empty slice, which is the shape a broken projection produces */
+  /* 4. THE COLLECTION-ID JOIN ON ITS OWN. Deleting only this check survived a first
+        mutation run: every case above trips the ARTWORK check first, which throws, so
+        the credit-link check was never reached by any test. So this slice keeps the
+        artwork maps identical and moves only the collection id — which is the real
+        shape of the failure too, since an id and an artwork URL come from different
+        halves of the refresh pipeline. */
+  const cidOnly = {
+    ...good,
+    items: good.items.map((it, i) => (i === 0 ? { ...it, apple_collection_id: 999999 } : it)),
+  };
+  assert.deepEqual([...artworkUrlsByShow(cidOnly)], [...artworkUrlsByShow(discover)]);
+  assert.throws(
+    () => assertDiscoverSliceComplete(discover, cidOnly),
+    (e) => e instanceof WebDirError && /collectionIdsByShow/.test(e.message) && /Apple search link/.test(e.message)
+  );
+  /* 5. and an empty slice, which is the shape a broken projection produces */
   assert.throws(() => assertDiscoverSliceComplete(discover, { items: [] }), WebDirError);
 });
 
@@ -561,13 +576,20 @@ test("PROJECTED_DATA is ordered by dependency, and reading it out of order throw
     assert.equal(typeof spec.verify, "function", `${spec.rel} has no verification`);
     assert.ok(spec.maxBytes > 0, `${spec.rel} has no budget`);
   }
+  /* And the guard is REACHED, not merely written: run the real projections in the
+     wrong order against a real fixture. A first mutation run showed the previous
+     version of this test — which threw its own error out of a stub — passing with
+     the guard deleted. */
   const fake = makeFakeRepo();
-  const bad = { ...PROJECTED_DATA[1], project: (src, ctx) => ctx.poolIds() };
   assert.throws(
-    () => bad.project({ tags: { a: [] } }, { poolIds: () => { throw new Error("before the discover slice was built"); } }),
-    /before the discover slice was built/
+    () => projectData(fake, { specs: [...PROJECTED_DATA].reverse() }),
+    (e) =>
+      /asked for the bundled pool ids before the discover slice was built/.test(e.message) &&
+      /keep data\/discover\.json first/.test(e.message)
   );
-  assert.ok(fs.existsSync(path.join(fake, "data", "item-tags.json")));
+  /* The right order works on the same fixture, so the throw above is about ordering
+     and not about the fixture. */
+  assert.equal(projectData(fake).size, 2);
 });
 
 /* ─────────────────── the real repo: the slice, and the year ──────────────── */

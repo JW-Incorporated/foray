@@ -684,10 +684,16 @@ export function serializeSlice(json) {
  * quietly seeing an empty set — which would trim `item-tags.json` to nothing and
  * look like a great result.
  */
-export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW, plan = null } = {}) {
+export function projectData(
+  root = REPO_ROOT,
+  /* `specs` is injectable for ONE reason: the ordering guard below is unreachable
+     otherwise, and an unreachable guard is the shape this file keeps warning about.
+     `prepare` never passes it, so production is always PROJECTED_DATA. */
+  { perShow = BUNDLED_ITEMS_PER_SHOW, plan = null, specs = PROJECTED_DATA } = {}
+) {
   const read = (rel) => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
   if (plan) {
-    const absent = PROJECTED_DATA.filter((p) => !plan.includes(p.rel)).map((p) => p.rel);
+    const absent = specs.filter((p) => !plan.includes(p.rel)).map((p) => p.rel);
     if (absent.length) {
       throw new Error(
         `PROJECTED_DATA describes ${absent.join(", ")}, but app.js no longer fetches ` +
@@ -712,7 +718,7 @@ export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW
   };
 
   const out = new Map();
-  for (const spec of PROJECTED_DATA) {
+  for (const spec of specs) {
     const source = read(spec.rel);
     const written = spec.project(source, ctx);
     if (spec.rel === "data/discover.json") slicedDiscover = written;
