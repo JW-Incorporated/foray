@@ -199,15 +199,21 @@ test("strongPrefix is exported and is the shortest prefix holding every clearer"
   assert.ok(prefix[prefix.length - 1].sum >= bar, "the prefix ends at a clearer");
 });
 
-test("strongPrefix is total: a single result, and an all-clearing list", () => {
-  /* Boundaries, because the loop's `last = 0` seed is doing real work. A single
-     result is its own prefix; a list where everything clears is returned whole
-     (no truncation), which is the common case on a rich query.
+test("strongPrefix is total and never empty, even against a bar nothing clears", () => {
+  /* A list where everything clears is returned whole -- the common case on a rich
+     query, and the claim that the prefix does not truncate a good result set.
+     The third assertion is the one that needs explaining. classifyResults always
+     passes a bar that results[0] clears, so from its side the loop's `last = 0`
+     seed is unobservable and seeding `last = -1` is an EQUIVALENT MUTATION: it
+     survives every test that goes through classifyResults, which is how it was
+     caught -- by mutation, not by reading. Pinned here from outside that
+     guarantee, on a bar nothing clears, because "never returns an empty
+     candidate set" is a contract worth having whether or not today's only caller
+     can violate its precondition.
 
-     KILLED BY: seeding `last = -1` and returning `slice(0, last + 1)` -- an
-     empty array for a one-item list, which classifyResults would then read as
-     zero candidates. */
-  assert.deepEqual(SE.strongPrefix([row("a", 1, 4)], 2), [row("a", 1, 4)]);
+     KILLED BY: seeding `last = -1`, which returns [] for the third case. */
   const all = [row("a", 1, 10), row("b", 1, 9), row("c", 1, 8)];
   assert.deepEqual(SE.strongPrefix(all, 5), all);
+  assert.deepEqual(SE.strongPrefix(all, 9.5), [all[0]]);
+  assert.deepEqual(SE.strongPrefix(all, 99), [all[0]]);
 });

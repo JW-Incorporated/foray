@@ -743,10 +743,18 @@ const RICH_MIN = 6;
    milliseconds -- including the numbers above) and by tools/test-search.mjs §9
    (the coupling to the real comparator over the live pool, which fixtures
    cannot see). `node tools/test-search.mjs --tiering` prints the per-query
-   table these numbers came from. */
+   table these numbers came from.
+
+   TOTAL, AND NEVER EMPTY. `last` seeds at 0 and the scan starts at 1 because
+   results[0] clears its own bar by construction (bar is a fraction of its score),
+   so index 0 needs no test. That is also the contract: the top-ranked result is
+   always showable. Seeding at -1 instead is an EQUIVALENT MUTATION from
+   classifyResults' side -- no reachable input distinguishes it, since something
+   always clears -- so it is pinned from the other side, on a bar nothing clears
+   at all, in test/search-tiering.test.js. Without that the mutation survives. */
 function strongPrefix(results, bar) {
   let last = 0;
-  for (let k = 0; k < results.length; k++) if (results[k].sum >= bar) last = k;
+  for (let k = 1; k < results.length; k++) if (results[k].sum >= bar) last = k;
   return results.slice(0, last + 1);
 }
 
@@ -803,6 +811,14 @@ function classifyResults(results, { cap = 10, perShowCap = PER_SHOW_CAP, listene
   if (!results.length) return { status: "empty", picks: [] };
   const bar = results[0].sum * STRONG_RATIO;
   const strong = results.filter(x => x.sum >= bar);
+  /* The honesty floor, and it is REDUNDANT WITH THE `picks.length < 2` GUARD at
+     the bottom -- deliberately, and worth saying so because it reads like dead
+     code. A single clearer can only ever be results[0] (results[0] clears by
+     construction), so strongPrefix returns one candidate, diversify returns one
+     pick, and the guard below returns empty anyway. Lowering this to `< 1` is an
+     equivalent mutation and survives the suites; it is kept because it states
+     the rule where a reader looks for it, and because it stops the work rather
+     than undoing it. Do not "simplify" it away expecting a test to object. */
   if (strong.length < 2) return { status: "empty", picks: [] };
   const sparse = strong.length < RICH_MIN;
   // Sparse: the answer stops at the last strong match -- never pad toward
