@@ -33,8 +33,13 @@ docs/. Completed workstreams move to their plan doc's retro section.
   `docs/narrator-pipeline.md`, `docs/DECISIONS.md`, `HUMAN-ACTIONS.md`, this file.
   **No change to `app.js`, `index.html`, the CSP, `sw.js` or anything the website
   serves** — the web keeps fetching the whole document.
-- **Watch out:** `mobile/` is NOT on `ALLOWED_PREFIXES`, so `path-policy` reports
-  CLEAN while auto-merge declines to act. This PR waits for a human.
+- **Watch out — this PR touches NO `mobile/` file, so the usual "mobile/ waits for a
+  human" reasoning does not apply to it.** The whole change lives in `tools/`, `test/`
+  and `docs/`, all of which are on `ALLOWED_PREFIXES`. What holds it is one governed
+  path: `docs/DECISIONS.md`. `path-policy` is **ENFORCING** (`PATH_POLICY_ENFORCE=1`
+  since 2026-08-16, `HUMAN-ACTIONS.md` #1), so that check goes **RED** until a founder
+  applies `founder-approved`. It is deliberate: the entry records that the app no
+  longer ships the whole catalogue, which is worth a founder's eyes.
 
 ### search matcher — `grill` reaches `grilling`, and the third copy of the matcher dies (2026-08-17, one PR, founder-gated, no follow-up)
 
