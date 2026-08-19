@@ -14219,6 +14219,269 @@
       "technology",
       "mental-health",
       "storytelling"
+    ],
+    "cider-chat--495-cider-barrels-speak-b-tonnage": [
+      "cider",
+      "fermentation",
+      "barrel-aging",
+      "winemaking",
+      "malolactic",
+      "oak",
+      "food-science",
+      "chemistry",
+      "craft"
+    ],
+    "cider-chat--489-natural-cider-production-seminar-cidercon": [
+      "cider",
+      "fermentation",
+      "natural-wine",
+      "wild-fermentation",
+      "orchard",
+      "food-science",
+      "chemistry",
+      "craft"
+    ],
+    "cider-chat--497-beginner-cider-makers-q-a": [
+      "cider",
+      "fermentation",
+      "yeast",
+      "homebrewing",
+      "food-science",
+      "temperature-control",
+      "craft",
+      "small-business"
+    ],
+    "cider-chat--how-cider-is-made-lessons-from": [
+      "cider",
+      "fermentation",
+      "orchard",
+      "apple",
+      "food-science",
+      "food-history",
+      "craft"
+    ],
+    "inside-winemaking--209-andrea-card-francis-ford-coppola": [
+      "wine",
+      "winemaking",
+      "fermentation",
+      "sparkling-wine",
+      "blending",
+      "food-science",
+      "napa",
+      "craft"
+    ],
+    "inside-winemaking--218-the-barrel-management-episode": [
+      "wine",
+      "winemaking",
+      "barrel-aging",
+      "oak",
+      "cellar-work",
+      "food-science",
+      "craft",
+      "craftsmanship"
+    ],
+    "inside-winemaking--211-heat-and-cold-stabilization-of": [
+      "wine",
+      "winemaking",
+      "chemistry",
+      "food-science",
+      "stabilization",
+      "protein",
+      "craft"
+    ],
+    "inside-winemaking--205-rich-descenzo-ets-labs": [
+      "wine",
+      "winemaking",
+      "microbiology",
+      "yeast",
+      "brettanomyces",
+      "fermentation",
+      "food-science",
+      "chemistry"
+    ],
+    "basic-brewing-radio--04-09-26-deconstructing-partigyles": [
+      "beer",
+      "brewing",
+      "homebrewing",
+      "beer-history",
+      "malt",
+      "food-history",
+      "craft"
+    ],
+    "basic-brewing-radio--02-12-26-cask-beer-care": [
+      "beer",
+      "brewing",
+      "cask-ale",
+      "carbonation",
+      "homebrewing",
+      "craft-beer",
+      "craft"
+    ],
+    "basic-brewing-radio--12-04-25-brewing-wild-and": [
+      "beer",
+      "brewing",
+      "homebrewing",
+      "wild-fermentation",
+      "yeast",
+      "fermentation",
+      "craft"
+    ],
+    "basic-brewing-radio--01-15-26-rhubarb-wine": [
+      "wine",
+      "fermentation",
+      "homebrewing",
+      "country-wine",
+      "fruit",
+      "tasting",
+      "craft"
+    ],
+    "whiskycast--making-single-malt-whisky-on-scotland": [
+      "whisky",
+      "distilling",
+      "scotch",
+      "single-malt",
+      "maturation",
+      "craft",
+      "family-business"
+    ],
+    "whiskycast--glengoyne-mizunara-oak-scotch-with-a": [
+      "whisky",
+      "distilling",
+      "scotch",
+      "oak",
+      "maturation",
+      "cask",
+      "tasting",
+      "craft"
+    ],
+    "whiskycast--from-bloody-butcher-to-bruce-s": [
+      "whiskey",
+      "bourbon",
+      "distilling",
+      "grain",
+      "agriculture",
+      "corn",
+      "craft",
+      "family-business"
+    ],
+    "whiskycast--distilling-the-artisan-way": [
+      "whiskey",
+      "bourbon",
+      "distilling",
+      "mash-bill",
+      "rye",
+      "craft",
+      "small-business"
+    ],
+    "bourbon-pursuit--571-how-dinner-table-conversations-change": [
+      "whiskey",
+      "bourbon",
+      "distilling",
+      "kentucky",
+      "family-business",
+      "whiskey-history",
+      "craft"
+    ],
+    "bourbon-pursuit--578-from-blackberry-to-running-distillery": [
+      "whiskey",
+      "bourbon",
+      "distilling",
+      "operations",
+      "career-change",
+      "small-business",
+      "craft"
+    ],
+    "bourbon-pursuit--576-betting-the-farm-on-frey": [
+      "whiskey",
+      "bourbon",
+      "distilling",
+      "agriculture",
+      "grain",
+      "farming",
+      "craft",
+      "family-business"
+    ],
+    "bourbon-pursuit--579-proof-points-battle-from-kentucky": [
+      "whiskey",
+      "bourbon",
+      "tasting",
+      "proof",
+      "whiskey-culture",
+      "kentucky",
+      "craft"
+    ],
+    "ill-drink-to-that-wine-talk--504-is-cory-empting-writing-the": [
+      "wine",
+      "winemaking",
+      "napa",
+      "cabernet",
+      "viticulture",
+      "craft",
+      "career"
+    ],
+    "ill-drink-to-that-wine-talk--502-matt-dees-likes-how-grapevines": [
+      "wine",
+      "winemaking",
+      "viticulture",
+      "soil-science",
+      "grapes",
+      "plant-science",
+      "craft"
+    ],
+    "ill-drink-to-that-wine-talk--500-richard-sanford-and-the-hot": [
+      "wine",
+      "winemaking",
+      "viticulture",
+      "pinot-noir",
+      "california",
+      "wine-history",
+      "craft"
+    ],
+    "ill-drink-to-that-wine-talk--495-steve-doerner-and-the-burgundian": [
+      "wine",
+      "winemaking",
+      "biochemistry",
+      "pinot-noir",
+      "fermentation",
+      "oregon",
+      "craft"
+    ],
+    "spirits-and-distilling--45-john-angus-explores-the-science": [
+      "spirits",
+      "distilling",
+      "chemistry",
+      "flavour-chemistry",
+      "analytical-chemistry",
+      "food-science",
+      "craft"
+    ],
+    "spirits-and-distilling--39-jarrad-huckshold-of-the-cask": [
+      "spirits",
+      "whiskey",
+      "distilling",
+      "maturation",
+      "cask",
+      "blending",
+      "winemaking",
+      "craft"
+    ],
+    "spirits-and-distilling--34-brent-looby-of-desert-door": [
+      "spirits",
+      "distilling",
+      "sotol",
+      "agave",
+      "texas",
+      "terroir",
+      "craft"
+    ],
+    "spirits-and-distilling--25-gian-nelson-of-jano-spirits": [
+      "spirits",
+      "distilling",
+      "agave",
+      "california",
+      "agriculture",
+      "terroir",
+      "craft"
     ]
   }
 }

@@ -1,12 +1,26 @@
 {
-  "built_at": "2026-07-26T19:31:25.921Z",
+  "built_at": "2026-08-19T16:05:06.346Z",
   "shows": {
+    "75092679": {
+      "show": "Basic Brewing Radio",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-08-19T16:05:01.758Z"
+    },
     "91689834": {
       "show": "Planetary Radio: Space Exploration, Astronomy and Science",
       "dai": true,
       "reason": "host:omny-us.pdn.tritondigital.com",
       "resolved_host": "omny-us.pdn.tritondigital.com",
       "checked_at": "2026-07-26T19:22:24.136Z"
+    },
+    "93465727": {
+      "show": "WhiskyCast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-08-19T16:05:02.737Z"
     },
     "121493645": {
       "show": "Engines of Our Ingenuity",
@@ -239,6 +253,13 @@
       "resolved_host": "dcs-cached.megaphone.fm",
       "checked_at": "2026-07-26T19:27:55.503Z"
     },
+    "538210866": {
+      "show": "I'll Drink to That! Wine Talk",
+      "dai": true,
+      "reason": "host:content.production.cdn.art19.com",
+      "resolved_host": "content.production.cdn.art19.com",
+      "checked_at": "2026-08-19T16:05:05.012Z"
+    },
     "539359582": {
       "show": "Go Creative Show",
       "dai": false,
@@ -343,6 +364,13 @@
       "reason": "host:stitcher2.acast.com",
       "resolved_host": "stitcher2.acast.com",
       "checked_at": "2026-07-26T19:27:35.179Z"
+    },
+    "906249753": {
+      "show": "Inside Winemaking - the art and science of growing grapes and crafting wine",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "content.libsyn.com",
+      "checked_at": "2026-08-19T16:05:00.829Z"
     },
     "908005404": {
       "show": "The Maritime History Podcast",
@@ -456,6 +484,13 @@
       "resolved_host": "dcs-spotify.megaphone.fm",
       "checked_at": "2026-07-26T19:25:57.456Z"
     },
+    "975392298": {
+      "show": "Bourbon Pursuit",
+      "dai": true,
+      "reason": "host:dcs-cached.megaphone.fm",
+      "resolved_host": "dcs-cached.megaphone.fm",
+      "checked_at": "2026-08-19T16:05:03.600Z"
+    },
     "978052928": {
       "show": "Lore",
       "dai": false,
@@ -539,6 +574,13 @@
       "reason": "host:dcs-cached.megaphone.fm",
       "resolved_host": "dcs-cached.megaphone.fm",
       "checked_at": "2026-07-26T19:23:25.885Z"
+    },
+    "1054230417": {
+      "show": "Cider Chat",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "delivery-edge.libsyn.com",
+      "checked_at": "2026-08-19T16:04:59.564Z"
     },
     "1056200096": {
       "show": "Odd Lots",
@@ -1456,6 +1498,13 @@
       "reason": "host:content.production.cdn.art19.com",
       "resolved_host": "content.production.cdn.art19.com",
       "checked_at": "2026-07-26T19:26:28.093Z"
+    },
+    "1734460262": {
+      "show": "Spirits & Distilling Podcast",
+      "dai": false,
+      "reason": "unknown",
+      "resolved_host": "media24.fireside.fm",
+      "checked_at": "2026-08-19T16:05:06.103Z"
     },
     "1745548847": {
       "show": "Lab to Market Leadership",

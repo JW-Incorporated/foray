@@ -7,6 +7,19 @@ spine — which, in this subject, is almost nowhere.
 
 **Status:** proposed. This is a coverage report, not a playlist.
 
+> **SUPERSEDED IN PART — read `alcohol-forms-coverage-2.md` for the current counts.**
+> §11.1 of this document recommended a catalogue action rather than a purchase. #279
+> took it: seven of the drinks shows named there are now in `data/catalog.json`, and
+> the re-score against the enlarged pool reads **2 strong / 21 thin / 40 empty**, not
+> the 1 / 15 / 47 below. **The counts in this document are deliberately left as they
+> were** — they are the baseline the re-score is measured against, and editing them
+> would destroy the comparison. Everything else here still holds: the gate in §1a is
+> the gate coverage-2 reuses, the substring and sense-collision findings in §2b–§2c are
+> unchanged, and §3–§8's entries remain the record for the 56 beats #279 did not move.
+> Two numbers here are now stale and coverage-2 §10 says so: `in_curated` in
+> `data/catalog-breadth.json` still reads `false` for those seven shows, so §11.1's
+> *"exactly one is curated"* is stale by seven.
+
 **Measured at `main` = `8d2636c`.** `data/discover.json` is being changed by a
 concurrent mobile-bundle pass, so every count taken over it is stated against that
 commit: 1,534 items, `built_at` 2026-08-18T11:43:23.489Z, 1,770,685 bytes.

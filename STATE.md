@@ -34,6 +34,65 @@ docs/. Completed workstreams move to their plan doc's retro section.
   alcohol assembly work against the 63-beat spine until HUMAN-ACTIONS #22 is
   answered.
 
+### seven drinks shows are curated, and the alcohol spine goes 1/15/47 -> 2/21/40 (2026-08-19, one PR, auto-mergeable, no follow-up)
+
+- **What:** `feat/drinks-curation`. #279 (rescoped by the founder on the issue — the
+  original body proposed importing all 443 drinks-shaped breadth rows and the
+  arithmetic in his correcting comment shows that would have been 2,095 KB against an
+  800 KB per-file budget). Seven shows into `data/catalog.json` (213 -> 220), 28
+  beat-serving episodes into `data/discover.json`, then a re-score of
+  `alcohol-forms-spine.md`'s 63 beats reusing #278's gate. New document:
+  `docs/curation/alcohol-forms-coverage-2.md`. #278's counts are deliberately NOT
+  edited — they are the baseline.
+- **The result is uneven and that is the finding.** Beat 19 goes empty -> **strong**
+  (the first strong beat outside beer); 4, 5, 10, 15, 17, 22 go empty -> thin.
+  **Act I still has no strong tape** (0/3/13 -> 0/7/9) and **Acts IV, V and VI did not
+  move at all**, because WhiskyCast + Bourbon Pursuit + Spirits & Distilling publish
+  **zero transcripts across 2,431 episodes** and #278's gate requires a passage to be
+  READ. Of 4,652 episodes across the seven, **33 carry a transcript and 31 of those are
+  Cider Chat**. Cider Chat is also the first NON-DAI drinks source the project has had,
+  so every span in the re-score is playable today rather than blocked on the locate step.
+- **Bundle: 681.3 -> 703.9 KB of 800.0, 3.23 KB per show measured against the 3.20
+  projected.** The budget was NOT raised. Headroom 37 -> ~29 shows. The topic top-up did
+  not fire despite `food/drinks` being a new topic, because all 28 items carry it and
+  the per-show pass covered it; a block spread over several new topics would cost more.
+- **tag-DF re-checked both ways (#275's question and #274's refusal).** Growth: **0
+  expansion buckets move**, 3 multipliers move across `TAG_DF_RARE` (`fermentation`,
+  `food-history`, `craft-beer`). Sampling: the slice-vs-whole divergence goes **14 -> 13**
+  expansion buckets, 68 -> 71 multipliers; **no term enters, `family` leaves, and no
+  drinks term is in the set at any threshold.** `item-tags.json` stays `COPIED_WHOLE`.
+  Note `main` measures **14/68, not the 12/62** `prepare-webdir.test.mjs` records — that
+  drift is nightlies, not this change, and the test's own comment predicted it.
+- **New tool:** `tools/refresh/backfill-show.mjs` (+ suite, + floor). `scan.mjs` reads
+  the newest **10** items inside a **48-hour** window, so it structurally cannot reach a
+  show added today. The backfill emits `scan.mjs`'s exact pending shape and hands off to
+  the unchanged `resolve.mjs` -> `merge.mjs`. **`--newest` defaults to 25 to match
+  `resolve.mjs`'s `limit=25` lookup**, `--match` filters inside that window, and zero
+  matches is an error rather than an empty run. 17 mutations run against the suite; the
+  one that came back green found dead code in the script (a `guid` ternary copied out of
+  `scan.mjs` that `text()` already handles — `scan.mjs` still has it).
+- **`classify-dai.mjs` is not optional after adding shows.** `merge.mjs` stamps
+  `dai_suspected` from a per-show cache and answers `false` for a show it has never
+  seen, so 8 of the 28 items (art19, Megaphone) were wrong until it ran. Documented in
+  `tools/refresh/README.md`.
+- **Shared files:** `data/catalog.json`, `data/discover.json`, `data/item-tags.json`,
+  `data/dai-classification.json`, `data/topic-coverage-report.json` (regenerated —
+  `wine-cocktails` and `coffee` move absent -> deep), `docs/curation/alcohol-forms-coverage.md`
+  (a supersession banner only; its counts are untouched), `docs/curation/alcohol-forms-coverage-2.md`
+  (new), `tools/refresh/backfill-show.mjs` + `.test.mjs` (new), `tools/refresh/README.md`,
+  `test/suite-integrity.test.js` (one floor), this file. **No `search-engine.js`, no
+  `app.js`, no `player/`, no `mobile/`, no `data/catalog-breadth.json`, no spine edit.**
+- **Watch out — `data/catalog-breadth.json`'s `in_curated` is now stale-false for these
+  seven and is deliberately left alone.** The field is written only by
+  `harvest-catalog.mjs` and read by no code; the file is one 12 MB line, so seven
+  booleans would produce an unreviewable whole-file diff. `alcohol-forms-coverage-2.md`
+  §10 records it. Same for `data/transcript-availability.json`, which still indexes 213
+  shows — the §2 measurement was taken with `--catalog`/`--out` into scratch and not
+  committed, because a partial index is worse than a stale one.
+- **`path-policy`: CLEAN, auto-merge ARMED.** All 10 changed files are on
+  `ALLOWED_PREFIXES` and none on `DENIED_PREFIXES` (verified with
+  `path-policy check --enforce`, exit 0, and `decide`). So there is no review window
+  after push — the reviewer pass ran in the FOREGROUND before it.
 
 ### search df thresholds are fractions, so query expansion stops drifting every night (2026-08-19, one PR, founder-gated, no follow-up)
 

@@ -24,6 +24,7 @@ scan.mjs ──▶ fresh-pending.json ──▶ resolve.mjs ──▶ resolved.j
 | `dai.mjs` | — | DAI host classification (not a stage) |
 | `classify-dai.mjs` | ✅ | **One-shot, not nightly.** Classifies shows, stamps `dai_suspected` |
 | `backfill-audio.mjs` | ✅ | **One-shot, not nightly.** Backfills audio onto pre-#21 items |
+| `backfill-show.mjs` | ✅ | **One-shot, not nightly.** Emits a pending file for a NEWLY CURATED show |
 
 ## Audio provenance (issue #21)
 
@@ -95,10 +96,54 @@ real justification — a test enforces it, because an unexplained entry is one
 nobody can safely remove later. After editing, run `--reclassify`; re-resolving
 213 shows over the network to apply a one-line change would be absurd.
 
-Current state: **139 of 213 shows are DAI**, leaving **326 items eligible for
-precise seeking**.
+Current state: **141 of 220 shows are DAI**, leaving **501 items eligible for
+precise seeking**. Re-run `--reclassify` after adding shows to
+`data/catalog.json`: `merge.mjs` reads this cache and stamps `false` for a show
+it has never seen, so seven shows added in #279 landed 28 items with
+`dai_suspected: false` and two of them (art19, Megaphone) were wrong until
+`classify-dai.mjs` ran.
 
-### Backfilling
+### Adding a newly curated show's episodes
+
+`scan.mjs` cannot do this. It reads the newest **10** items of each feed inside a
+**48-hour** window — correct for a nightly, useless for a show added today whose
+whole back catalogue is older and deeper than both limits.
+
+```bash
+node tools/refresh/backfill-show.mjs --show cider-chat --dry-run
+node tools/refresh/backfill-show.mjs --show cider-chat --match 495 --match 489
+node tools/refresh/backfill-show.mjs --show cider-chat --show whiskycast --newest 40
+```
+
+It emits the **same shape** `scan.mjs` emits, so the rest of the pipeline is
+reused unchanged:
+
+```bash
+PENDING_PATH=data-local/backfill-pending.json \
+  RESOLVED_PATH=data-local/resolved.json node tools/refresh/resolve.mjs
+# agent authors data-local/edits.json from resolved.json
+node tools/refresh/merge.mjs
+node tools/refresh/classify-dai.mjs        # <- do not skip this, see above
+```
+
+Three things about it that are easy to get wrong:
+
+- **`--newest` defaults to 25 to match `resolve.mjs`'s `limit=25` lookup**, not to
+  the feed. Rows deeper than the iTunes window resolve to no trackId and are
+  dropped, correctly — the trackId is the only trustworthy duplicate guard.
+  Measured 2026-08-19: Cider Chat at `limit=25` reaches 2026-01-21, at `limit=200`
+  it reaches 2022-03-23.
+- **`--match` filters INSIDE the `--newest` window, never past it**, so a match
+  cannot produce rows the resolve step can only drop.
+- **Zero matches is an error, not an empty run.** A typo'd `show_id` and a feed
+  with nothing to backfill must never look the same to the operator.
+
+It writes `data-local/backfill-pending.json`, **not** `fresh-pending.json`, and it
+never reads or writes `refresh-state.json` — stamping the nightly's seen-guid
+state with episodes nobody has merged is how a backfill would silently cost you
+the next night's real episodes.
+
+### Backfilling audio
 
 ```bash
 node tools/refresh/backfill-audio.mjs --dry-run     # report only

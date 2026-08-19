@@ -348,6 +348,14 @@ const FLOORS = {
   "tools/mobile/ios-ci.test.mjs": 89,
   "tools/mobile/ios-workflow.test.mjs": 34,
   "tools/mobile/probe/install-probe.test.mjs": 39,
+  /* The one-shot that gets a newly curated show's back catalogue into the pipeline
+     (#279). The floor matters because the whole script exists to make one silent
+     failure impossible — a backfill that reports success while emitting nothing, or
+     emitting rows `resolve.mjs` can only drop — and the tests that pin that are the
+     easiest ones in the repo for a later session to find inconvenient. Seventeen
+     mutations were run against this suite; the one that came back green found dead
+     code in the script rather than a hole in the tests. */
+  "tools/refresh/backfill-show.test.mjs": 18,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,
