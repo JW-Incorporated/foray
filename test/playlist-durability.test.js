@@ -1059,6 +1059,14 @@ test("A CORRUPT STORE COSTS ONE ROW, NOT THE WHOLE APP", () => {
   setPool(m, [poolItem(1)]);
   m.ctx.fullPool();
 
+  /* A store holding something that is not a list at all. `lsGet` hands back
+     whatever parsed, so without the guard `all.filter` throws and every view that
+     calls playlists() goes blank. */
+  m.store.set("cp_playlists", JSON.stringify({ q1: { id: "q1" } }));
+  assert.deepStrictEqual([...m.ctx.playlists()], [], "a non-array store must read as empty, not throw");
+  m.ctx.renderPlaylists();
+  assert.ok(m.view().includes("No playlists yet"), "and the view must still render");
+
   m.store.set("cp_playlists", JSON.stringify([
     null,
     { id: "q1", title: "T", items: [null, { id: "show-1--episode-1", title: "Episode 1 of something" }] },
