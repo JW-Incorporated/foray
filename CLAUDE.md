@@ -49,16 +49,31 @@ outcomes**, not code line-by-line. Full role split: `docs/roles.md`.
 6. **Codify repetition.** If a procedural task recurs, write it as a committed
    script/command/test instead of re-doing it by hand (see `tools/refresh/` —
    this is exactly why the nightly pipeline was consolidated out of `data-local`).
-7. **On auto-merge paths, review before PUSH — not before merge.** A PR that
-   touches only `data/`, `docs/`, `player/`, `tools/`, `test/`, `app.js`,
-   `styles.css` or `search-engine.js` has auto-merge enabled and lands the
-   moment checks go green (`.github/workflows/automerge-nightly.yml`), so there
-   is no window in which to review it. Do the reviewer pass — subagent or your
-   own re-read — before `git push`. PR #147 (corpus scraper infra) merged before
+7. **On auto-merge paths, review before PUSH — not before merge.** A PR whose
+   changed files are **all** on `ALLOWED_PREFIXES` in `tools/ci/path-policy.mjs`
+   — `data/`, `docs/`, `player/`, `tools/`, `test/`, `backend/test/`, `app.js`,
+   `styles.css`, `search-engine.js`, `STATE.md`, `HUMAN-ACTIONS.md` — **and none of
+   them on `DENIED_PREFIXES`**, which is tested first and wins (so `docs/adr/` and
+   `tools/ci/` are governed despite `docs/` and `tools/` being allowed), has
+   auto-merge enabled and lands the moment checks go green
+   (`.github/workflows/automerge-nightly.yml`), so there is no window in which to
+   review it. Do the reviewer pass — subagent or your own re-read — before
+   `git push`. PR #147 (corpus scraper infra) merged before
    its planned review could start; that review then found a must-fix chunker bug
    which cost a follow-up PR. The `hold` label stops auto-merge on one PR — but
    only once that label exists in the repo, and as of 2026-08-12 it does not, so
    `gh label create hold` first, or simply don't push until the review is done.
+
+   **A NOTE ON THE TWO WORDS, because conflating them has cost real time.**
+   "Ungoverned" and "auto-mergeable" are **different sets**. A path on neither the
+   allow-list above nor `DENIED_PREFIXES` is *unlisted*: `path-policy` reports **CLEAN**
+   (nothing to approve, no founder label needed) **and** auto-merge declines to
+   act, so the PR waits for a human. `mobile/` is the live example — six files in
+   this repo asserted that it auto-merges and it never has, which is why #244 and
+   #271 both needed a human to press merge. The decision is also **per-PR and
+   all-or-nothing**: one unlisted file makes the whole PR wait, so there is no
+   "the `docs/` half lands and the rest waits". `docs/android-native-code.md` §8
+   has the full rule.
 
 ## Never babysit your own PR  (KEEP VERBATIM — starter-kit invariant)
 

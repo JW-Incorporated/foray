@@ -28,8 +28,16 @@ www/
 #     is not in the repo and the workflow does not want it to be.
 #   - Android. Issue #37 built `mobile/android/` on Windows and got both APKs
 #     (`docs/android-shell-build.md`). Committing it was rejected for the same
-#     reason: ~100 generated files, no reviewer, and this directory AUTO-MERGES
-#     with no post-merge review window.
+#     reason: ~100 generated files, no reviewer, in a tree `cap add` rewrites on
+#     every sync.
+#
+#     THIS USED TO READ "and this directory AUTO-MERGES with no post-merge review
+#     window", which was false: `mobile/` is not in `ALLOWED_PREFIXES`
+#     (`tools/ci/path-policy.mjs`), so a PR touching it is never armed for
+#     auto-merge and waits for a human. Corrected 2026-08-18; the DECISION is
+#     unchanged, because the unreviewable-diff argument carries it alone. See
+#     `docs/android-native-code.md` §8 for the rule, and why "ungoverned" and
+#     "auto-mergeable" are different sets.
 #
 # So the generate step must be reproducible from `mobile/package.json` alone, and
 # it is: `npm install && npm run add:android` (or `add:ios`) needs nothing that is
@@ -113,10 +121,11 @@ DerivedData/
 # FOUND BY A FAILURE, not by foresight. `git add -A` tried to stage this tree and
 # died with *"Filename too long"* on
 # `plugins/foray-audio/android/build/.transforms/<hash>/transformed/bundleLibRuntimeToDirRelease/…/PlaybackKeepAliveService.dex`.
-# A shorter hash would have committed several hundred build artefacts into a
-# directory that AUTO-MERGES with no post-merge review window. `shell-invariants.test.mjs`
-# now asserts this is ignored, in the same test that asserts the plugin's SOURCES
-# are not.
+# A shorter hash would have committed several hundred build artefacts into a diff
+# nobody reads file-by-file. (Said "a directory that AUTO-MERGES with no post-merge
+# review window" until 2026-08-18 — see the correction above; the hazard is the same
+# either way.) `shell-invariants.test.mjs` now asserts this is ignored, in the same
+# test that asserts the plugin's SOURCES are not.
 plugins/*/android/build/
 plugins/*/android/.gradle/
 plugins/*/android/.cxx/

@@ -632,8 +632,12 @@ docs/. Completed workstreams move to their plan doc's retro section.
   half and the FGS are one job, not two.** Now `docs/mobile-shell.md` §6 item 5.
 - **`mobile/android/` is NOT committed, same call as `mobile/ios/`, and now for a
   second reason.** #213 generates iOS *in the job*; ~100 generated files with no
-  reviewer in a directory that **auto-merges with no review window** is the
-  Android reason. `mobile/.gitignore` now ignores `ios/` and `android/` in full,
+  reviewer, in a tree `cap add` rewrites on every sync, is the Android reason.
+  (This bullet said "in a directory that auto-merges with no review window" until
+  2026-08-18. That was never true of `mobile/` — it is not on `ALLOWED_PREFIXES`,
+  so such a PR waits for a human. Corrected in six files; the decision is
+  unchanged, and `docs/android-native-code.md` §8 states the rule.)
+  `mobile/.gitignore` now ignores `ios/` and `android/` in full,
   which **reverses what its own comment used to say** — the reversal is argued in
   that file rather than done quietly. Regenerate with
   `npm install && npm run add:android`; nothing outside `mobile/package.json` and
