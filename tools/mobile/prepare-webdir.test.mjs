@@ -530,15 +530,20 @@ test("data/item-tags.json is COPIED WHOLE, and the bundle proves it byte for byt
      to 121 KB and looks obviously safe: search only ever looks a tag list up by an
      item it is already scoring.
 
-     But `search-engine.js`'s `tagDF()` walks Object.values() of the WHOLE map and
-     returns an ABSOLUTE count, and `interpretQuery` compares that count against
-     absolute thresholds — over 60 deletes a term from query expansion, over 25 cuts
-     its weight to 0.4x — while `scoreMatch` buckets a multiplier at 10 and 30.
-     Cutting 1,561 entries to 649 scales every df by ~0.42: measured across the 1,366
-     terms tagDF can be called with, 66 change expansion bucket and 176 change score
-     multiplier. `war` goes 72 -> 24, so the website deletes it as too broad and the
-     app gives it full weight. The app would rank differently from the website, on a
-     phone, with every guard in prepare-webdir.mjs green.
+     But `search-engine.js`'s `tagDF()` walks Object.values() of the WHOLE map, so
+     cutting 1,561 entries to 649 changes what every threshold in the query
+     interpreter sees. It used to change it by ARITHMETIC: `tagDF` returned an
+     absolute count against absolute thresholds (over 60 deleted a term from query
+     expansion, over 25 cut its weight to 0.4x, and `scoreMatch` bucketed a
+     multiplier at 10 and 30), so the trim scaled every df by ~0.42 and 66 of the
+     1,366 terms changed expansion bucket — `war` 72 -> 24, deleted as too broad on
+     the website and at full weight in the app.
+     #275 fixed that half: `tagDF` is a fraction of the map it walked, so a trim
+     scales numerator and denominator together. What survives is SAMPLING — the slice
+     is three items per show, stratified by show and skewed by topic — and it is
+     still 12 expansion buckets and 62 multipliers. The app would rank differently
+     from the website, on a phone, with every guard in prepare-webdir.mjs green. The
+     test below measures both numbers so the refusal cannot rot into a quotation.
 
      So it is copied, and the copy is asserted on the bytes. THE MUTATION THIS KILLS
      is somebody adding it back to PROJECTED_DATA — which is a reasonable-looking
@@ -570,12 +575,45 @@ test("data/item-tags.json is COPIED WHOLE, and the bundle proves it byte for byt
   );
 });
 
-test("REAL REPO: trimming item-tags to the bundled pool WOULD re-rank the app", () => {
+test("REAL REPO: trimming item-tags STILL re-ranks the app, on sampling now rather than arithmetic (#275)", () => {
   /* The measurement behind the test above, executed rather than quoted, so the
-     refusal cannot quietly stop being true. If a future change normalises `tagDF`
-     — issue #275, the honest fix, and a search-quality decision that belongs with
-     tools/test-search.mjs — this test is what should fail, and then trimming
-     item-tags becomes correct and the ~174 KB is there to take. */
+     refusal cannot quietly stop being true. #275 landed and this test changed
+     shape — which is what it was written to do — but the refusal survived, and the
+     reason is worth having in one place because the obvious reading of #275 is
+     that it made the trim free.
+
+     WHAT #275 FIXED. `tagDF` was an absolute count against absolute thresholds, so
+     trimming 1,561 entries to 649 divided every df by ~2.4 and 66 terms changed
+     expansion bucket on that arithmetic alone — `war` 72 → 24, deleted from the
+     expansion on the web and at full weight on the phone. `tagDF` is now a fraction
+     of the map it walked, so a trim scales numerator and denominator together and
+     that whole class of divergence is gone. `war` is 4.61% of the whole map and
+     3.70% of the trimmed one: same bucket, no divergence at all.
+
+     WHAT IS LEFT, AND WHY IT IS STILL A NO. The bundled slice is not a
+     representative sample of the catalogue — it is three items per show plus every
+     session episode, so it is stratified by SHOW and therefore skewed by TOPIC.
+     Measured: 12 terms still change expansion bucket and 62 change score
+     multiplier, because their share of the slice genuinely differs from their share
+     of the catalogue. `comedy` is 10.70% of the whole map and 8.47% of the slice, so
+     the website deletes it from expansions as too broad and the app would keep it at
+     0.4x; `world-war` is 2.95% and 1.69%, demoted on the web and full weight on the
+     phone. That is a smaller and better-understood divergence than the one #274
+     found — sampling rather than arithmetic, 12 terms rather than 66 — but it is the
+     same failure in kind, and ~181 KB does not buy it.
+
+     WHAT WOULD BUY IT, named so the next attempt starts here rather than at the
+     beginning: ship the trimmed map PLUS a precomputed df table (term → count, and
+     the map size), which is the second option #275 itself lists and is now the
+     cheap one — the fraction is already the quantity search reads, so the sidecar
+     is ~1,400 numbers and the app and the website would agree EXACTLY rather than
+     approximately. That recovers most of the ~181 KB and is a bundle change, not a
+     search-quality one.
+
+     THIS TEST GOES RED THE DAY THE TRIM BECOMES SAFE, deliberately, exactly as its
+     previous version did. `moved > 0` is the refusal; the ratio assertion under it
+     is the part that fails if somebody reverts `tagDF` to a count, because then
+     the two rules agree again and the improvement disappears. */
   const require_ = createRequire(import.meta.url);
   const SE = require_(path.join(ROOT, "search-engine.js"));
   const read = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
@@ -588,19 +626,50 @@ test("REAL REPO: trimming item-tags to the bundled pool WOULD re-rank the app", 
   for (const [id, tags] of Object.entries(itemTags.tags)) if (pool.has(id)) trimmed.tags[id] = tags;
   assert.ok(Object.keys(trimmed.tags).length < Object.keys(itemTags.tags).length * 0.6);
 
+  /* The vocabulary tagDF can be called with: concept terms plus ALIASES, since a
+     typed token reaches tagDF as itself and an alias is added as a term. */
   const terms = new Set();
   for (const c of Object.values(read("data/semantic-index.json").concepts ?? {})) {
     for (const t of c.terms ?? []) terms.add(t);
   }
-  const bucket = (df) => (df > 60 ? "delete" : df > 25 ? "0.4x" : "full");
-  const moved = [...terms].filter(
-    (t) => bucket(SE.tagDF(t, { itemTags })) !== bucket(SE.tagDF(t, { itemTags: trimmed }))
+  for (const [k, vs] of Object.entries(SE.ALIASES)) { terms.add(k); vs.forEach((v) => terms.add(v)); }
+
+  const whole = { itemTags }, part = { itemTags: trimmed };
+  /* READ FROM THE ENGINE, not mirrored. This was an inline
+     `df > 60 ? "delete" : df > 25 ? "0.4x" : "full"`, which #275 would have left
+     comparing a fraction against 60 — every term "full", zero moved, and the
+     assertion below would have gone red claiming the trim was safe when nothing of
+     the kind had been measured. */
+  const bucket = (df) => (df > SE.TAG_DF_TOO_BROAD ? "delete" : df > SE.TAG_DF_COMMON ? "0.4x" : "full");
+  const moved = [...terms].filter((t) => bucket(SE.tagDF(t, whole)) !== bucket(SE.tagDF(t, part)));
+  const movedMultiplier = [...terms].filter(
+    (t) => SE.dfMultiplier(SE.tagDF(t, whole)) !== SE.dfMultiplier(SE.tagDF(t, part))
+  );
+  /* The pre-#275 rule, on the same two maps. This is the only place in
+     tools/mobile/ that still knows what it was, and it is here to be beaten. */
+  const absolute = (n) => (n > 60 ? "delete" : n > 25 ? "0.4x" : "full");
+  const movedAbsolute = [...terms].filter((t) => absolute(SE.tagCount(t, whole)) !== absolute(SE.tagCount(t, part)));
+
+  assert.ok(
+    moved.length > 0,
+    `no term changes expansion bucket on the trim — the divergence COPIED_WHOLE ` +
+      `refuses has gone, so trimming data/item-tags.json is now correct and worth ~181 KB. ` +
+      `Move it into PROJECTED_DATA and delete this test. See COPIED_WHOLE.`
   );
   assert.ok(
-    moved.length > 20,
-    `only ${moved.length} terms change expansion bucket — tagDF may have been normalised, in ` +
-      `which case trimming data/item-tags.json is now safe and worth ~174 KB. See COPIED_WHOLE.`
+    moved.length * 3 < movedAbsolute.length,
+    `the trim moves ${moved.length} expansion buckets against ${movedAbsolute.length} under the pre-#275 ` +
+      `absolute rule — normalising tagDF was supposed to remove the arithmetic half of this divergence, ` +
+      `so if the two now agree, tagDF is probably reading a count again`
   );
+  /* #274's headline example, named because it is the one the docs quote: the term
+     whose 72 → 20 made the app and the website disagree is no longer a divergence
+     at all. Asserted rather than narrated, so the claim cannot rot. */
+  assert.equal(bucket(SE.tagDF("war", whole)), bucket(SE.tagDF("war", part)));
+  assert.notEqual(absolute(SE.tagCount("war", whole)), absolute(SE.tagCount("war", part)));
+  /* And the multipliers, which are the larger half of what is left. Reported in the
+     message rather than bounded, because the honest claim is "still nonzero". */
+  assert.ok(movedMultiplier.length > 0, `no term changes score multiplier either (${movedMultiplier.length}) — see above, the trim may be safe`);
 });
 
 test("prepare WRITES the slice rather than copying the file", () => {

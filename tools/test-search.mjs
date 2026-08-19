@@ -925,7 +925,7 @@ for (const query of ["how bbq works", "the history of jazz"]) {
 
   /* 2x AND NOT ALSO 4x, and the reason is runtime measured rather than guessed.
      Both memos are O(corpus) per novel term, so a 4x pass costs this file another
-     three minutes on top of its ~110 seconds -- for a claim that is scale-free, so
+     three minutes on top of its ~170 seconds -- for a claim that is scale-free, so
      the second doubling can only re-derive what the first one showed. 4x is
      asserted in test/search-df-scaling.test.js, where it runs against a slice of
      the tag map instead of the whole pool and costs seconds. */

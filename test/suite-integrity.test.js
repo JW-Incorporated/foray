@@ -155,7 +155,7 @@ const FLOORS = {
   "test/legal-citations.test.js": 12,
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
-     and reintroduces a documented collision flood that only the ~110-second
+     and reintroduces a documented collision flood that only the ~170-second
      battery would notice, and only if a catalogue item happens to carry the
      colliding word that day. Deleting the reimplementation scan re-opens the
      drift that produced THREE copies of hitText/hitTag, two of them looser than

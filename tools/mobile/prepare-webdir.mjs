@@ -664,29 +664,41 @@ export function assertDiscoverSliceComplete(source, slice) {
  * up by an item it is already scoring, so an entry for an absent item is dead weight.
  *
  * IT IS NOT DEAD WEIGHT. `search-engine.js`'s `tagDF()` walks `Object.values()` of
- * the whole map and returns an ABSOLUTE count, which `interpretQuery` compares
- * against absolute thresholds — `df > 60` deletes a term from query expansion,
- * `df > 25` cuts its weight to 0.4x — and `scoreMatch` buckets a multiplier on at
- * 10 and 30. Cutting 1,561 entries to 649 scales every df by ~0.42. Measured over
- * the 1,366 terms `tagDF` can be called with (the concept vocabulary plus ALIASES):
- * **66 terms change expansion bucket and 176 change score multiplier.** `war` goes
- * 72 -> 24, so the website deletes it as too broad and the app gives it full weight;
- * `ai` goes 94 -> 38, deleted -> 0.4x. The app would rank differently from the
- * website, on a phone, with every guard in this file green. That is the exact
- * "it works on the website" failure the header warns about, bought for 174 KB.
+ * the whole map, so the SIZE and the COMPOSITION of the map are inputs to every
+ * threshold in the query interpreter, not just a lookup table keyed by item.
+ *
+ * WHEN THIS WAS WRITTEN THE PROBLEM WAS ARITHMETIC. `tagDF` returned an absolute
+ * count and `interpretQuery` compared it against absolute thresholds — `df > 60`
+ * deleted a term from query expansion, `df > 25` cut its weight to 0.4x — while
+ * `scoreMatch` bucketed a multiplier at 10 and 30. Cutting 1,561 entries to 649
+ * scaled every df by ~0.42, and over the 1,366 terms `tagDF` can be called with
+ * (the concept vocabulary plus ALIASES) **66 changed expansion bucket and 176
+ * changed score multiplier**: `war` 72 -> 24, deleted as too broad on the website
+ * and at full weight in the app; `ai` 94 -> 38, deleted -> 0.4x.
+ *
+ * #275 FIXED THAT HALF, AND THE REFUSAL STANDS ANYWAY — which is the part worth
+ * reading, because the obvious reading of #275 is that it made this free. `tagDF` is
+ * now a FRACTION of the map it walked, so a trim scales numerator and denominator
+ * together and the whole arithmetic class of divergence is gone: `war` is 4.61% of
+ * the whole map and 3.70% of the trimmed one, same bucket. What is left is SAMPLING.
+ * The slice is three items per show plus every session episode — stratified by SHOW,
+ * therefore skewed by TOPIC — so **12 terms still change expansion bucket and 62
+ * change score multiplier**: `comedy` 10.70% -> 8.47% (the website deletes it, the
+ * app would keep it at 0.4x), `world-war` 2.95% -> 1.69%. Smaller, better understood,
+ * and the same failure in kind, bought for ~181 KB.
  *
  * So it is copied whole, and `prepare-webdir.test.mjs` asserts byte-identity to keep
  * it that way. WHAT THAT COSTS, stated rather than buried: the file is still
  * O(episodes), so the bundle still grows ~4 KB a night. From 1.96 MB that is about
  * 245 nights of headroom under the 3 MB cap, not a year.
  *
- * WHAT IT WOULD TAKE TO FIX PROPERLY, filed as #275 and deliberately not this change:
- * `tagDF`'s thresholds are absolute, so they already drift on the WEB as the
- * catalogue grows — one month of nightlies (878 -> 1,561 entries) moved 52 terms
- * across the expansion threshold and 125 across the score multiplier, with no app
- * involved. Normalising it, or shipping a precomputed corpus df, is a search-quality
- * change that belongs with `tools/test-search.mjs` (GOVERNED) and a founder-visible
- * decision, not inside a bundle-size PR.
+ * WHAT WOULD ACTUALLY BUY THE ~181 KB, named so the next attempt starts here: ship
+ * the trimmed map PLUS a precomputed df table (term -> count, and the map size).
+ * That is the second option #275 lists, and #275 is what makes it cheap — the
+ * fraction is already the quantity search reads, so the sidecar is ~1,400 numbers
+ * and the app and the website agree EXACTLY rather than approximately. It is a
+ * bundle change, not a search-quality one, so unlike #275 it belongs in a PR like
+ * this one.
 
 /**
  * Which bundled data files are written as a slice rather than copied.
@@ -792,16 +804,18 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
   }
   /* The file that is deliberately NOT sliced, asserted on the bytes that ship. See
      the § above PROJECTED_DATA: trimming this one silently re-ranks search in the app
-     because `tagDF` counts entries and compares against absolute thresholds. */
+     because `tagDF` reads the whole map: its SIZE is the denominator of every
+     document-frequency threshold in the query interpreter, and after #275 its
+     COMPOSITION is what a trim would change. */
   for (const rel of COPIED_WHOLE) {
     const a = fs.readFileSync(path.join(root, rel));
     const b = fs.readFileSync(path.join(absOut, rel));
     if (!a.equals(b)) {
       throw new Error(
         `the bundled ${rel} is not byte-identical to the source. It must be copied whole: ` +
-          `search-engine.js's tagDF() counts entries across the WHOLE map and compares the ` +
-          `count against absolute thresholds, so a trimmed map re-ranks 176 terms in the app ` +
-          `and not on the website. See the comment above PROJECTED_DATA.`
+          `search-engine.js's tagDF() reads the WHOLE map, so a trimmed one re-ranks 12 query ` +
+          `expansions and 62 score multipliers in the app and not on the website — sampling ` +
+          `skew since #275, arithmetic before it. See the comment above PROJECTED_DATA.`
       );
     }
   }

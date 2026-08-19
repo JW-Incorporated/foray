@@ -268,7 +268,7 @@ than copied; `item-tags.json` could not be, for the reason §3.1 measures — se
 | | Source | Bundled | Rule |
 |---|---|---|---|
 | `data/discover.json` | 1.70 MB, 1,534 items | **680 KB, 622 items** | `BUNDLED_ITEMS_PER_SHOW` (3) items of every show — its join anchor plus the newest of the rest — plus enough to leave every topic represented |
-| `data/item-tags.json` | 302 KB, 1,561 entries | **copied whole** | trimming it to the bundled pool re-ranks search in the app and not on the web — see §3.1 |
+| `data/item-tags.json` | 302 KB, 1,561 entries | **copied whole** | trimming it to the bundled pool re-ranks search in the app and not on the web — still true after #275, for a smaller reason; see §3.1 |
 
 **35 files, 1.96 MB of 3.00 MB.** The shape of that selection is the whole point:
 it is **O(shows × topics)**, not O(episodes). Shows have been flat at **213 since
@@ -306,7 +306,7 @@ The argument for trimming was that `search-engine.js` only ever looks a tag list
 is dead weight. That is true of every use of the tag map except one:
 
 ```js
-function tagDF(term, ctx) {            // search-engine.js
+function tagDF(term, ctx) {            // search-engine.js, as it was
   const tagsMap = ctx.itemTags?.tags || {};
   let n = 0;
   for (const tags of Object.values(tagsMap)) {   // the WHOLE map
@@ -316,9 +316,9 @@ function tagDF(term, ctx) {            // search-engine.js
 }
 ```
 
-`interpretQuery` compares that count against **absolute** thresholds — over 60
-deletes a term from query expansion, over 25 cuts its weight to 0.4× — and
-`scoreMatch` buckets a score multiplier at 10 and 30. Cutting 1,561 entries to 649
+`interpretQuery` compared that count against **absolute** thresholds — over 60
+deleted a term from query expansion, over 25 cut its weight to 0.4× — and
+`scoreMatch` bucketed a score multiplier at 10 and 30. Cutting 1,561 entries to 649
 scales every df by ~0.42. Measured across the 1,366 terms `tagDF` can be called with
 (the concept vocabulary plus `ALIASES`): **66 terms change expansion bucket and 176
 change score multiplier.** `war` goes 72 → 24, so the website deletes it as too broad
@@ -335,16 +335,39 @@ still grows ~4 KB a night.** From 1.96 MB that is about **245 nights** of headro
 under the 3 MB cap, not a year. The catalogue half of the problem is solved
 permanently; this half is deferred, and the cap will say so loudly and in time.
 
-**A separate finding, filed as #275, which is why this is not fixed here.** Those
-thresholds are absolute, so they already drift **on the web** as the catalogue grows:
-one month of nightlies (878 → 1,561 entries) moved **52 terms across the expansion
-threshold and 125 across the score multiplier**, with no app involved. Whatever the
-right answer is — normalise `tagDF` to a fraction like `corpusDF` already is, or ship
-a precomputed corpus df — it is a **search-quality** change that belongs with
-`tools/test-search.mjs` (governed) and a founder-visible decision, not smuggled into a
-bundle-size PR. When it lands, trimming `item-tags.json` becomes correct and the
-174 KB is there to take; the real-repo test above is written to fail at that moment
-and say so.
+#### #275 landed, and the refusal survived it — for a smaller reason
+
+The paragraph this replaces predicted the opposite, so it is worth being exact about
+what changed. #275 was the separate finding filed from here: those thresholds were
+absolute, so they drifted **on the web** as the catalogue grew — one month of
+nightlies (878 → 1,561 entries) moved **52 terms across the expansion threshold and
+125 across the score multiplier**, with no app involved. It is fixed: `tagDF` is now a
+fraction of the map it walked, on the three-cut ladder in `search-engine.js`
+(`TAG_DF_TOO_BROAD` / `TAG_DF_COMMON` / `TAG_DF_RARE`), and duplicating the catalogue
+now moves nothing at all where it used to move 137 expansion buckets at 2×.
+
+That removes the **arithmetic** half of the divergence above, completely. A trim
+scales numerator and denominator together, so `war` is 4.61% of the whole map and
+3.70% of the trimmed one — the same bucket, no divergence.
+
+**What survives is sampling, and it is still a no.** The bundled slice is three items
+per show plus every session episode: stratified by *show*, and therefore skewed by
+*topic*. Re-measured on the same two maps, **12 terms still change expansion bucket
+and 62 change score multiplier** — `comedy` 10.70% → 8.47%, which the website deletes
+from expansions as too broad and the app would keep at 0.4×; `world-war` 2.95% →
+1.69%, demoted on the web and full weight on the phone. Twelve is not sixty-six, and
+"skewed sample" is a better-understood failure than "every df divided by 2.4", but it
+is the same failure in kind and **~181 KB does not buy it**. The real-repo test now
+measures both numbers and goes red if either the refusal stops being true *or* the
+improvement disappears.
+
+**What would actually buy the ~181 KB**, named so the next attempt starts here: ship
+the trimmed map **plus a precomputed df table** (term → count, and the map size). That
+is the second option #275 itself listed, and #275 is what makes it cheap — the
+fraction is already the quantity search reads, so the sidecar is ~1,400 numbers and
+the app and the website would agree *exactly* rather than approximately. It is a
+bundle change, not a search-quality one, so unlike #275 it belongs in a PR like this
+one.
 
 ### 3.2 The rest of the arithmetic
 

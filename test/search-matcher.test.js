@@ -14,7 +14,7 @@
  *
  * So the semantics get asserted directly, on strings, with no data dependency:
  * these tests cannot be flipped by a nightly refresh, and they fail in
- * milliseconds rather than in the battery's ~110 seconds.
+ * milliseconds rather than in the battery's ~170 seconds.
  *
  * THE INVARIANT THAT MATTERS MOST is the asymmetry. Widening the SUFFIX side is
  * what #218 asked for. The PREFIX side is load-bearing: it is the only thing
