@@ -532,10 +532,16 @@ more on the page than in nobody's memory.
   audible `<audio>` element, so iOS's whole requirement is the `UIBackgroundModes`
   key `tools/mobile/inject-background-audio.mjs` already writes. Native iOS code
   here would have nothing to do.
-- **A CI job.** `.github/` is governed and needs a founder label. The shape is in
-  `docs/android-shell-build.md` §3.3 and is unchanged by this: `ubuntu-latest`, no
-  emulator, `setup-java` at 21. It would prove §4 keeps holding and **cannot** prove
-  anything in §6.
+- **A CI job. ADDED SINCE, by #245, and never run.**
+  `.github/workflows/android-build.yml`: `ubuntu-latest`, no emulator,
+  `setup-java` at 21, both APKs uploaded. It proves §4 keeps holding and **cannot**
+  prove anything in §6 — a build is not a launch. Two of its assertions exist
+  because of this document: §4.2's merged-manifest read is now a step rather than a
+  thing done once by hand, and the `cap sync` wiring this file's whole argument
+  rests on (`mobile/android/` is not committed, so nothing else can check it) is
+  checked in both `capacitor.settings.gradle` and `app/capacitor.build.gradle`.
+  See `docs/android-shell-build.md` §3. *(This item said the job was not added and
+  pointed at a "§3.3" that has never existed; corrected 2026-08-19.)*
 
 ### 6.2 The open question this change does not settle
 

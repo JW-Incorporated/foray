@@ -204,10 +204,12 @@ that answer it rather than by a third copy of the argument:** §1.2b is the reci
 that turns the archaeology into a rebuild, and §3's Android CI job is what makes
 the local toolchain non-load-bearing in the first place.
 
-*(This paragraph pointed at "§3.3" until #245. There has never been a §3.3 — the
-CI job is item 3 of §3's numbered list. Corrected rather than quietly deleted,
-because a dangling cross-reference in the one section that tells you where to look
-when the build has stopped working is worth a sentence.)*
+*(This paragraph pointed at "§3.3" until #245, and so did `docs/android-lock-screen.md`
+§10 and `docs/android-native-code.md` §6.1 — **three files, one phantom section**.
+There has never been a §3.3; the CI job is item 3 of §3's numbered list. All three
+are corrected, and all three also claimed the job was "not added", which stopped
+being true in the same change. Fixing one and leaving two is how a repo ends up with
+six files asserting that `mobile/` auto-merges — see `mobile/.gitignore`.)*
 
 ### 1.2b Rebuilding the toolchain from nothing — #245
 
@@ -296,10 +298,15 @@ echo 'sdk.dir=C:/Users/<you>/AppData/Local/android-build/sdk' > mobile/android/l
 export JAVA_HOME="C:/Users/<you>/AppData/Local/android-build/jdk21/jdk-21.0.12+8"
 ```
 
-**What a rebuild costs.** ~330 MB of JDK and ~1.1 GB of SDK to download, and then
-the first `assembleDebug` is a cold Gradle cache — 15 to 18 minutes on this machine
-(§1.1, §1.2a and #245's own run all landed in that band). That is the number this
-section exists to replace: an afternoon of working out what MP1 had downloaded.
+**What a rebuild costs.** **327 MB of JDK and 770 MB of SDK** — both measured, in
+§1.2a, as the size of the copy that was made, and the SDK figure is a *superset* of
+what this recipe installs because that copy also carries `android-34` and
+build-tools 34/35, which step 3 says to skip. Download sizes are smaller again
+(these are unpacked). Then the first `assembleDebug` is a cold Gradle cache:
+**15 m 48 s** here (§1.2b below), **18 m 03 s** in §1.1, and **9 m 38 s** in §1.2a
+on a warm dependency cache — so budget 15 to 20 minutes from truly cold. That is
+the number this section exists to replace: an afternoon of working out what MP1 had
+downloaded.
 
 #### The durable toolchain re-verified, 2026-08-19
 
@@ -315,7 +322,7 @@ half of that claim should be re-checked rather than assumed to still hold:
 | `app-release-unsigned.apk` | **5,578,480 bytes** |
 | `:app:lintVitalRelease` | **Ran and passed** — and so did `:foray-audio:lintVitalAnalyzeRelease` |
 
-**Both APKs are SMALLER than `docs/android-lock-screen.md` §7's figures**
+**Both APKs are SMALLER than `docs/android-lock-screen.md` §6.1's figures**
 (7,345,746 and 5,788,240) by 245,064 and 209,760 bytes, and the cause is not this
 branch: **#274 trimmed the bundled catalogue slice.** `prepare-webdir` now reports
 **2.00 MB of the 3.00 MB cap**, against 2.92 MB when the lock-screen figures were

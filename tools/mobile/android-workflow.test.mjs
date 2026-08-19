@@ -73,6 +73,22 @@ function stepCode(nameFragment) {
   return s === null ? null : code(s);
 }
 
+/** How many of a step's checks can actually FAIL THE JOB.
+ *
+ *  A SECOND MUTATION ROUND — a reviewer's, not the author's — killed three more
+ *  assertions that pinned a command's TEXT while saying they pinned its effect.
+ *  Appending `|| true` to the `':foray-audio'` grep, or replacing the `javac`
+ *  check's `|| { …; exit 1; }` with `|| true`, left every test green under a name
+ *  that claimed the check was "ASSERTED". A grep whose result is discarded is a
+ *  comment with a subprocess.
+ *
+ *  So the tests below count `exit 1` inside a step and compare it to the number of
+ *  checks that step is supposed to have. Crude, and it is the property that
+ *  matters: the count drops the moment a check stops being able to fail. */
+function failureClauses(stepSrc) {
+  return (stepSrc.match(/exit 1/g) ?? []).length;
+}
+
 /* ────────────────────────── shape and trigger set ────────────────────────── */
 
 test("the workflow exists and its top-level keys are the expected five", () => {
@@ -200,7 +216,15 @@ test("the JDK is 21, and the major is ASSERTED in the job rather than only reque
   const setupJava = step(WF, "actions/setup-java");
   assert.ok(setupJava, "no actions/setup-java step");
   assert.match(setupJava, /java-version: 21\b/);
-  assert.match(WF, /javac -version.*\n.*javac 21\\\./s, "the job must verify the JDK major itself");
+  /* THE FAILURE CLAUSE, not the grep. Replacing `|| { …; exit 1; }` with `|| true`
+     left this test green under the word "ASSERTED" in its own name. */
+  const tc = stepCode("Toolchain versions");
+  assert.ok(tc, "no toolchain step");
+  assert.match(
+    tc,
+    /javac -version 2>&1 \| grep -qE '\^javac 21\\\.' \\\n\s*\|\| \{[^}]*exit 1; \}/,
+    "the JDK major must be checked by the job AND fail it — a discarded grep is a comment"
+  );
   assert.equal(
     /java-version: (?!21\b)/.test(YML),
     false,
@@ -216,7 +240,44 @@ test("the SDK platform and build-tools are pinned, not left to the runner image"
      at the install step with a clear message, not deep inside Gradle. */
   assert.match(WF, /SDK_PLATFORM: platforms;android-36/);
   assert.match(WF, /SDK_BUILD_TOOLS: build-tools;36\.0\.0/);
-  assert.match(WF, /sdkmanager/, "the pinned packages must actually be installed");
+  /* THE INSTALL COMMAND, AND THE STEP IT LIVES IN. A first draft asserted only
+     `/sdkmanager/` against the whole file — which the HEADER satisfies, since the
+     header argues that `sdkmanager` is why no third-party action is needed. Deleting
+     the install line, and even deleting the entire SDK step including the
+     `ANDROID_HOME` export, left all 26 tests green. Declaring the two versions in
+     `env:` and never installing them is the failure this test is named for. */
+  const s = stepCode("The Android SDK");
+  assert.ok(s, "no step installs the pinned SDK packages");
+  assert.match(
+    s,
+    /"\$SDKMANAGER" --install "\$SDK_PLATFORM" "\$SDK_BUILD_TOOLS"/,
+    "the two pinned env values must be what is actually installed"
+  );
+  assert.match(s, /--licenses/, "an unaccepted licence stops every Gradle build");
+  assert.match(s, /ANDROID_HOME=\$SDK/, "the resolved SDK root must be exported for Gradle");
+});
+
+test("the dependency install is `npm ci`, against the committed lockfile", () => {
+  /* MUTATION: change `npm ci` back to `npm install` -> fails.
+     ADDED BY A REVIEW, AND IT CAUGHT A REAL DEFECT. The first draft of this job ran
+     `npm install` under a comment asserting there was no committed lockfile —
+     copied from `ios-build.yml`, where that was true when written. But
+     `mobile/package-lock.json` IS committed, and `docs/android-shell-build.md` §1.3
+     says it was committed *for this exact purpose*: #213's iOS job named the missing
+     lockfile as "the first thing that would make this job non-reproducible".
+     §1.2a's proof build ran `npm ci`. A job whose entire argument is that the build
+     does not depend on one machine, floating its dependency versions while that
+     machine pins them, is measuring something other than what it claims. Nothing
+     pinned the fix until this test, so it could have drifted straight back. */
+  const s = stepCode("Install the shell's dependencies");
+  assert.ok(s, "no dependency install step");
+  assert.match(s, /npm ci /, "the committed lockfile must be honoured");
+  assert.equal(
+    /npm install/.test(YML),
+    false,
+    "`npm install` floats versions the local build pins — the lockfile is committed (docs §1.3)"
+  );
+  assert.match(s, /npm ls --depth=0/, "the resolved tree must still be recorded");
 });
 
 test("every action is GitHub's own, pinned to a major", () => {
@@ -291,10 +352,19 @@ test("the job asserts our own native code survived the regeneration", () => {
     /grep -q "foray-audio" app\/capacitor\.build\.gradle/,
     "the app dependency line must be asserted too — an included module that is not a dependency ships nothing"
   );
+  /* THREE CHECKS, THREE FAILURE CLAUSES. Appending `|| true` to the settings grep
+     — the check this file calls its highest-value assertion — left the suite green
+     when the test only required two `exit 1`s. Counting them against the three
+     checks the step is documented to make is what notices. */
   assert.equal(
-    (s.match(/exit 1/g) ?? []).length >= 2,
-    true,
-    "each check must FAIL the job, not merely print"
+    failureClauses(s),
+    3,
+    "all three checks (settings include, app dependency, sources on disk) must be able to fail the job"
+  );
+  assert.match(
+    s,
+    /test -d \.\.\/plugins\/foray-audio\/android\/src\/main\/java/,
+    "the plugin's Java sources must be asserted present in the checkout"
   );
 });
 
@@ -308,14 +378,25 @@ test("the merged manifest is checked for the service, its type and both permissi
      minute Foray depends on (docs/research/mp1-background-audio.md §5.3). */
   const s = stepCode("library manifest merged");
   assert.ok(s, "no step reads the merged manifest");
-  for (const needle of [
-    "com.jwincorporated.foray.audio.PlaybackKeepAliveService",
-    'android:foregroundServiceType="mediaPlayback"',
-    "android.permission.FOREGROUND_SERVICE",
-    "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-  ]) {
+  /* QUOTED, BECAUSE ONE OF THESE IS A PREFIX OF ANOTHER. `FOREGROUND_SERVICE` is a
+     substring of `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, so an unquoted `includes`
+     check for the base permission was satisfied by its neighbour: deleting the base
+     permission from the workflow left all 26 tests green while the job stopped
+     checking a permission whose absence is a runtime crash. The workflow lists each
+     needle in single quotes, so quoting the expectation makes the four distinct. */
+  const needles = [
+    "'com.jwincorporated.foray.audio.PlaybackKeepAliveService'",
+    "'android:foregroundServiceType=\"mediaPlayback\"'",
+    "'android.permission.FOREGROUND_SERVICE'",
+    "'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'",
+  ];
+  for (const needle of needles) {
     assert.ok(s.includes(needle), `the merged-manifest check does not look for ${needle}`);
   }
+  /* And the list stays exactly four entries long, so a fifth cannot be smuggled in
+     and a deletion cannot be masked by a rewording. */
+  const listed = (s.match(/^\s+'[^']+' \\$/gm) ?? []).length;
+  assert.equal(listed, needles.length - 1, `expected ${needles.length - 1} continued needle lines, saw ${listed}`);
   /* And the two halves inside the APK itself, the same pair §4.2 read by hand. */
   assert.match(s, /grep -qF 'assets\/public\/foray-audio-shell\.js'/);
   assert.match(s, /grep -qF 'com\.jwincorporated\.foray\.audio\.ForayAudioPlugin'/);
@@ -458,7 +539,18 @@ test("the header says what the job cannot prove, not only what it can", () => {
      hazard with a green tick attached. */
   const p = prose(WF);
   assert.match(p, /WHAT IT CANNOT PROVE/);
-  assert.match(p, /emulator/i, "the header must say why an emulator is not the answer");
+  /* THE REASON, NOT THE WORD. `/emulator/i` alone survived deleting the sentence
+     that carries the argument, because the word appears in three other places in
+     this file. The load-bearing fact is the MEASUREMENT: MP1 §6.2 spent ~75 minutes
+     across three cold API-36 boots without reaching a usable framework, which is
+     why "just add an emulator" is not the answer to what this job cannot prove. A
+     future session that deletes that citation will reach for one. */
+  assert.match(
+    p,
+    /~75 minutes/,
+    "the header must carry MP1 §6.2's measured cost, not just the word `emulator`"
+  );
+  assert.match(p, /A DEVICE IS WHAT SETTLES|A device is what settles/);
 });
 
 test("the runner context is not used where GitHub does not provide it", () => {

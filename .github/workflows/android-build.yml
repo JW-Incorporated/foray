@@ -121,10 +121,19 @@ permissions:
 jobs:
   android-shell:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 40 m 26 s IS THE MEASUREMENT, NOT ~30. `docs/android-shell-build.md` §1.2b:
+    # 15 m 48 s debug + 24 m 38 s release on this machine, both from cold. A first
+    # draft set 45 by quoting §1.1's older pair (18:03 + 10:48) as "~30 minutes
+    # combined", leaving 11% of headroom over a number a cold dependency cache and
+    # a smaller runner can beat.
+    timeout-minutes: 75
     env:
-      APP_ID: com.jwincorporated.foray
-      ANDROID_DIR: mobile/android
+      # NO `APP_ID` AND NO `ANDROID_DIR`. Both were copied from `ios-build.yml`,
+      # where both are read; nothing in this job ever read either, and an env var
+      # nothing reads is a second place for a value to be wrong. The app id lives in
+      # the manifest needles that assert it, and `mobile/android` in the
+      # `working-directory:` keys that use it.
+      #
       # The Android SDK platform and build-tools this project builds against.
       # `docs/android-shell-build.md` §1.2 records both as read off the local
       # build; `compileSdkVersion`/`targetSdkVersion` are 36, set by Capacitor's
@@ -143,6 +152,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
+          # 22, matching `ios-build.yml`, while `docs/android-shell-build.md` §1.2
+          # records the local build on Node **24.15.0**. Said out loud rather than
+          # left as a silent disagreement: Node here runs `cap add` and the webDir
+          # copy, neither version-sensitive, and nothing asserts the major. If a
+          # future Capacitor needs 24, both workflows move together.
           node-version: 22
 
       - uses: actions/setup-java@v4
@@ -190,8 +204,26 @@ jobs:
             exit 1
           fi
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-          SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
-          test -x "$SDKMANAGER" || { echo "no sdkmanager at $SDKMANAGER"; exit 1; }
+          # FOUND, NOT PATH-ASSUMED — the same rule the merged-manifest step below
+          # argues for, applied here because it is the same class of assumption.
+          # `cmdline-tools/latest` is a convention, not a guarantee: a runner image
+          # may carry a VERSIONED `cmdline-tools/<rev>` instead, and this machine's
+          # own copy is revision 12.0 sitting in a directory named `latest`
+          # (`docs/android-shell-build.md` §1.2b). Three candidates, in order of
+          # confidence, and a message that names all three on a miss.
+          SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(ls "$SDK"/cmdline-tools/latest/bin/sdkmanager 2>/dev/null | tail -1 || true)
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
+          fi
+          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+            echo "no sdkmanager on PATH, at $SDK/cmdline-tools/latest/bin/, or under $SDK/cmdline-tools/*/bin/"
+            ls -la "$SDK/cmdline-tools" 2>/dev/null || echo "(no $SDK/cmdline-tools at all)"
+            exit 1
+          fi
+          echo "sdkmanager: $SDKMANAGER"
           # Licences first. Without an accepted licence every Gradle build stops,
           # and it stops with a message about licences rather than about this step
           # — the same trap `docs/android-shell-build.md` §1.2a records for the
@@ -207,16 +239,24 @@ jobs:
 
       - name: Install the shell's dependencies
         # `mobile/` carries its own package.json precisely so the repo root stays
-        # dependency-free (#209 §2.4). There is no committed lockfile, so this is
-        # `npm install`, not `npm ci` — and that is the first thing that would
-        # make this job non-reproducible, so it prints the resolved versions.
-        # `foray-audio` in that list is not a third-party package: it is
+        # dependency-free (#209 §2.4).
+        #
+        # `npm ci`, NOT `npm install`, AND THAT IS THE WHOLE POINT OF THIS JOB.
+        # `mobile/package-lock.json` IS committed (`docs/android-shell-build.md`
+        # §1.3 — it was committed for exactly this reason), so CI installs the
+        # same tree §1.2a's proof build installed. This step said `npm install` in
+        # its first draft, under a comment asserting there was no lockfile — copied
+        # from `ios-build.yml`, where that comment was true when written and is not
+        # any more. A reproducibility job that floats its own dependency versions
+        # while the local build pins them is measuring the wrong thing.
+        #
+        # `foray-audio` in the printed list is not a third-party package: it is
         # `file:plugins/foray-audio`, this repo's own native code, and npm linking
         # it is what makes Capacitor's CLI discover the plugin at all.
         working-directory: mobile
         run: |
           set -euo pipefail
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npm ls --depth=0 | tee "$ART/mobile-deps.txt"
 
       - name: Build the webDir and generate the Android project
@@ -232,6 +272,11 @@ jobs:
           find android -maxdepth 4 -not -path '*/public/*' -not -path '*/build/*' \
             | sort | tee "$ART/android-tree.txt"
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          # Capacitor's template ships `gradlew` executable, but a mode that did not
+          # survive some future copy step would fail with "Permission denied" and
+          # look like a Gradle problem. HERE rather than inside the first build step,
+          # so reordering or skipping one build cannot leave the other unable to run.
+          chmod +x android/gradlew
 
       - name: Record the generated versions (drift is visible, not fatal)
         # READ, NOT ASSERTED, and that is a deliberate choice. Gradle 8.14.3, AGP
@@ -281,16 +326,15 @@ jobs:
         working-directory: mobile/android
         run: |
           set -euo pipefail
-          # Capacitor's template ships `gradlew` executable, but a mode that does
-          # not survive some future copy step would fail here with "Permission
-          # denied" and look like a Gradle problem. One idempotent line.
-          chmod +x ./gradlew
           if ! ./gradlew assembleDebug --no-daemon --console=plain \
               > "$ART/gradle-assembleDebug.log" 2>&1; then
             echo "::group::assembleDebug tail"; tail -300 "$ART/gradle-assembleDebug.log"; echo "::endgroup::"
             exit 1
           fi
-          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-assembleDebug.log" | tail -1
+          # `|| true`: the VERDICT is gradlew's exit code, checked above. This line
+          # only echoes it for a human, and a Gradle release that reworded its
+          # summary would otherwise turn a successful build red.
+          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-assembleDebug.log" | tail -1 || true
           APK=app/build/outputs/apk/debug/app-debug.apk
           test -f "$APK"
           SIZE=$(stat -c%s "$APK")
@@ -311,7 +355,12 @@ jobs:
         working-directory: mobile/android
         run: |
           set -euo pipefail
-          MERGED=$(find app/build/intermediates/merged_manifest -name AndroidManifest.xml | head -1)
+          # `2>/dev/null || true` SO THE BRANCH BELOW CAN ACTUALLY RUN. Under
+          # `set -euo pipefail` a `find` over a directory that does not exist aborts
+          # the step — which is precisely the AGP-layout-moved case the diagnostic
+          # exists for, so the useful message was dead code and the step would have
+          # died on find's raw "No such file or directory" instead.
+          MERGED=$(find app/build/intermediates/merged_manifest -name AndroidManifest.xml 2>/dev/null | head -1 || true)
           if [ -z "$MERGED" ]; then
             echo "no merged manifest under app/build/intermediates/merged_manifest — AGP's layout moved"
             find app/build/intermediates -maxdepth 2 -type d | sort
@@ -357,7 +406,10 @@ jobs:
             echo "::group::assembleRelease tail"; tail -300 "$ART/gradle-assembleRelease.log"; echo "::endgroup::"
             exit 1
           fi
-          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-assembleRelease.log" | tail -1
+          # `|| true`: the VERDICT is gradlew's exit code, checked above. This line
+          # only echoes it for a human, and a Gradle release that reworded its
+          # summary would otherwise turn a successful build red.
+          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-assembleRelease.log" | tail -1 || true
           # A GREEN RELEASE BUILD THAT SKIPPED LINT PROVES LESS THAN IT LOOKS.
           # `lintVitalRelease` is a task, so it can be excluded on the command
           # line, switched off by a `lint { checkReleaseBuilds false }` block a

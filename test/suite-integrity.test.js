@@ -463,7 +463,7 @@ const FLOORS = {
      failure in a file whose fixture is the thing it tests, which is the most
      forgiving fixture there is. Raise this number when the suite grows; do not
      lower it. */
-  "tools/mobile/android-workflow.test.mjs": 26,
+  "tools/mobile/android-workflow.test.mjs": 27,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   /* The nightly watchdog (#290). ZERO SLACK, for the reason media-session and
