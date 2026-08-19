@@ -806,7 +806,12 @@ for (const query of ["how bbq works", "the history of jazz"]) {
        backfill returns all of it when it fits under the cap -- so a sparse
        answer that is not exactly the prefix is the #216 defect, visible on the
        page. Gated on `picks.length < 10` because at the cap the truncation is
-       doing the cutting and prefix-closure is not the claim. */
+       doing the cutting and prefix-closure is not the claim.
+       The single-show branch takes the same path with status "ok" and is NOT
+       covered here, deliberately: the only way to tell it apart from the wide
+       branch out here is to recompute classifyResults' own condition, and a
+       mirror of an engine predicate in this file is the defect §3 and §6 both
+       record. The fixture suite covers that branch by construction instead. */
     if (status === "sparse" && picks.length < 10) {
       const missing = prefix.filter((x) => !picks.some((p) => p.i.id === x.i.id));
       if (missing.length) skipping.push(`"${query}" (${picks.length} picks): ${missing.map((x) => `${x.i.id} m${x.matched}/${x.sum.toFixed(3)}`).join(", ")}`);

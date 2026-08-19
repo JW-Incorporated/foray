@@ -784,10 +784,16 @@ function classifyResults(results, { cap = 10, perShowCap = PER_SHOW_CAP, listene
   const strong = results.filter(x => x.sum >= bar);
   if (strong.length < 2) return { status: "empty", picks: [] };
   const sparse = strong.length < RICH_MIN;
-  // Sparse: only the strong matches make the cut -- never pad toward `cap`
-  // with sub-bar results just to look like a fuller playlist. Diversity is
-  // applied to whichever candidate set would have been sliced, so it can
-  // reorder within "strong"/"results" but never reach outside either.
+  // Sparse: the answer stops at the last strong match -- never pad toward
+  // `cap` with sub-bar results just to look like a fuller playlist. That
+  // used to read "only the strong matches make the cut", and #216 is the
+  // difference: the cut-off is where the ranking runs out of strong matches,
+  // not which individual results cleared the bar, so a result the ranking
+  // places ABOVE one being shown is shown too even if its own `sum` is under
+  // the bar. Nothing below the last strong match is ever admitted, so this
+  // still cannot pad. See strongPrefix() above. Diversity is applied to
+  // whichever candidate set would have been sliced, so it can reorder within
+  // that set but never reach outside it.
   //
   // Single-show strong set: same strong-only rule even when the count
   // clears RICH_MIN. When every bar-clearing match comes from ONE show,
