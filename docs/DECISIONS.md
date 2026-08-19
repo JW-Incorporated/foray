@@ -711,6 +711,29 @@ its reasoning.
   manually verified is a list that will drift, so the script reads the calls. The
   matching risk — a regex that stops matching and emits a small, silent, valid
   bundle with no session document — is guarded by a floor on the derivation.
+- **The app does NOT ship the whole catalogue. It ships a bounded slice of it, and
+  the 3 MB cap was neither raised nor lowered** (2026-08-18). The bundle reached
+  **2.98 MB of the cap — 16 KB of headroom** — with `data/discover.json` growing
+  **~35 KB every night** and `data/item-tags.json` ~4 KB, so the next nightly refresh
+  would have failed `prepare-webdir.mjs` and the failure would have read as *the
+  mobile build breaking* rather than as the catalogue growing. Those two files are the
+  only bundled ones whose size tracks the **catalogue** rather than the **product**,
+  so they are now derived: the newest `BUNDLED_ITEMS_PER_SHOW` (3) items of every
+  show, plus enough to leave every topic represented — **622 of 1,534 items, 680 KB,
+  a 1.78 MB bundle**. The shape is what matters: **O(shows × topics), not
+  O(episodes)**, and shows have been flat at 213 since 2026-07-13 while episodes went
+  764 → 1,534, so a year of nightlies adds zero bundle bytes. Trimming fields instead
+  was measured and rejected — every field but `episode_guid` (1.9 KB of 1.70 MB) has a
+  live reader, and the largest droppable one buys six nights. **Raising the cap was
+  rejected** because it silences the only alarm; **lowering it was rejected too**,
+  because `player/` grew 66 KB → 480 KB in fourteen days and a tight total cap would
+  then fire on ordinary work. Instead the alarms split by cause: 3 MB means "something
+  enormous got in that nobody chose", and per-file budgets (800 KB / 160 KB) mean "the
+  slice stopped being bounded". **The cost, measured:** a cold offline launch shows 622
+  episodes rather than 1,534 and search returns fewer picks per query — all 213 shows
+  and all 109 topics survive, and the Foray artwork and credit joins are asserted
+  identical to the website's. Fetching the tail at runtime remains **#40**.
+  `docs/mobile-shell.md` §3.
 - **The service worker does not register inside the shell.** Cache-first in front
   of local files buys nothing and is the "app won't update after a store release"
   bug. Gated on `window.Capacitor.isNativePlatform()` plus the
