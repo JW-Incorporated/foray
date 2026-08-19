@@ -155,6 +155,17 @@ const FLOORS = {
      the ranker they claimed to describe. Every test in there was
      mutation-checked — see the suite header. */
   "test/search-matcher.test.js": 22,
+  /* The rich/sparse/empty tiering and the ranking prefix the narrow branch shows
+     (#216). Floored because the battery cannot stand in for it: the disagreement
+     it pins only reaches the page on a sparse or single-show query, and no query
+     on main's pool is currently both, so every test in there would read as
+     redundant to someone measuring the battery alone. Two of them are the only
+     places anything asserts that the strong bar stays RELATIVE and that a
+     prefix-admitted result does not count toward RICH_MIN -- an absolute bar and
+     a candidate-counted `sparse` are both one line, both pass the battery, and
+     both silently break a whole class of query. Every test in there was
+     mutation-checked, with the killing mutation named in the test. */
+  "test/search-tiering.test.js": 9,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just
      renders the wrong program's reading of today's document. Every test in there

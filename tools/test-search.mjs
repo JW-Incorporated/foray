@@ -68,8 +68,19 @@
         true enough to assert in §3 for the 24 days between 040c9f6
         (2026-07-24) and the refresh that broke it.
 
-   Usage: node tools/test-search.mjs
-   Exit code 0 = all pass, 1 = at least one failure (readable report to stdout). */
+     9. Ordering and the strong bar agree on "better" (#216): results are
+        ORDERED by `matched` then `sum` but the bar cuts on `sum` alone, so the
+        two could disagree and classifyResults' narrow branch then showed the
+        worse of two results. Asserted as a coupling -- the ranking must be
+        monotone in the key the bar cuts, the prefix must hold every bar-clearer
+        and end at one, and no sparse answer may skip a result it ranks above one
+        it shows. The witness lives in test/search-tiering.test.js; see §9 for
+        why the two suites split that way.
+
+   Usage: node tools/test-search.mjs [--tiering]
+   Exit code 0 = all pass, 1 = at least one failure (readable report to stdout).
+   --tiering also prints the per-query tiering table (bar, bar-clearers, prefix,
+   picks, and the #216 inversions) after the assertions have run. */
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -122,12 +133,25 @@ function freshCtx() {
   return { semantic, itemTags, discover };
 }
 
+/* Every query this file searches with DEFAULT options, and what it got back.
+   §9 and the --tiering report both read this instead of carrying a second list
+   of queries: a hand-maintained list would drift the day someone adds a case
+   above and forgets, and a §9 that silently stops covering a query is the
+   "green because it asserts nothing" failure this file keeps recording. It also
+   costs no extra searches -- §9 grades the runs that already happened.
+   Keyed on the query, DEFAULT OPTIONS ONLY: §5's listened-history run passes
+   `listenedShows` and would otherwise overwrite the plain run with a
+   deliberately re-ranked one. */
+const searched = new Map();
+
 function search(query, opts) {
   const ctx = freshCtx();
   const interp = SE.interpretQuery(query, ctx);
   const { results } = SE.searchWithRelaxation(pool, interp, 2, itemTags, () => 0.5);
   const { status, picks } = SE.classifyResults(results, opts);
-  return { status, picks, interp, results };
+  const out = { status, picks, interp, results };
+  if (opts === undefined) searched.set(query, out);
+  return out;
 }
 
 /* True if item's tags/title/show/hook/topics contain `needle`.
@@ -717,6 +741,129 @@ for (const query of ["how bbq works", "the history of jazz"]) {
   const primaryPresent = interp.groups.some((g) => !g.broad);
   check(`"${query}" has a primary (non-broad) token`, primaryPresent,
     `all groups broad: ${JSON.stringify(broadOnly)}`);
+}
+
+/* ---------- 9. ordering and the strong bar agree on "better" (#216) ---------- */
+
+/* #216: results were ORDERED by `matched` (desc, then `sum`) and CUT by a bar on
+   `sum` alone, so the two could disagree about which of two results was better,
+   and classifyResults' narrow branch then showed the worse one. search-engine.js
+   now hands that branch `strongPrefix()` -- the prefix of the ranking ending at
+   the last bar-clearer.
+   THREE CLAIMS, AGGREGATED RATHER THAN PER-QUERY, because 3 x ~35 queries of
+   near-identical output would bury the readable report this file exists to
+   produce. Each names its offenders in the failure detail.
+   WHAT THIS COVERS THAT test/search-tiering.test.js CANNOT, which is the reason
+   to spend a governed-path edit on it: the fixtures over there are hand-sorted,
+   so they assume the comparator instead of reading it. `strongPrefix` is only a
+   meaningful cut if `results` really is ordered the way it presumes -- claim (a)
+   is that coupling, over the live pool, and it is the one thing that goes red if
+   searchWithRelaxation's sort changes without classifyResults changing with it.
+   Conversely the WITNESS lives over there, not here: the disagreement only
+   reaches the page on a sparse or single-show query, and on this pool today no
+   query is both sparse and inverted -- so claim (c) is green on main by latency,
+   not by argument, and saying so is better than implying it has teeth it does
+   not have yet. The inversion IS live, on five "ok" queries where the wide
+   branch passes the whole result array through and the bar filters nothing:
+   "nuclear fusion energy" (15 results ranked above a shown one while scoring
+   below the bar), "true crime cold case" (13), "plane crashes", "video games",
+   "train history" (1 each). Run `--tiering` to see them. */
+{
+  const misordered = [];
+  const barViolations = [];
+  const skipping = [];
+  for (const [query, { status, picks, results }] of searched) {
+    if (!results.length) continue;
+
+    /* (a) THE COUPLING. classifyResults' prefix is only a cut in the ranking if
+       the ranking is monotone non-increasing in (matched, sum). Asserted on the
+       raw `results` array -- untruncated, and computed before any relative bar
+       exists -- for the reason §3 and §6 both give for reading it. */
+    for (let k = 1; k < results.length; k++) {
+      const prev = results[k - 1], cur = results[k];
+      if (prev.matched < cur.matched || (prev.matched === cur.matched && prev.sum < cur.sum)) {
+        misordered.push(`"${query}" at raw index ${k}: ${prev.i.id} (m${prev.matched}/${prev.sum.toFixed(3)}) ranked above ${cur.i.id} (m${cur.matched}/${cur.sum.toFixed(3)})`);
+        break;
+      }
+    }
+
+    /* (b) THE PREFIX IS WELL-FORMED: it is contiguous from the top, it holds
+       every bar-clearer, and it ENDS at one. Those three together pin it
+       uniquely, so this fails on an amnesty (`results.slice()`, which stops
+       ending at a clearer) as well as on a regression to the filter (which stops
+       being contiguous once anything sub-bar ranks above a clearer). */
+    const bar = results[0].sum * SE.STRONG_RATIO;
+    const prefix = SE.strongPrefix(results, bar);
+    const contiguous = prefix.every((x, k) => x === results[k]);
+    const holdsAll = results.every((x, k) => x.sum < bar || k < prefix.length);
+    const endsStrong = prefix[prefix.length - 1].sum >= bar;
+    if (!contiguous || !holdsAll || !endsStrong) {
+      barViolations.push(`"${query}": prefix of ${prefix.length}/${results.length}${contiguous ? "" : ", NOT contiguous"}${holdsAll ? "" : ", drops a bar-clearer"}${endsStrong ? "" : ", does not end at a bar-clearer"}`);
+    }
+
+    /* (c) END TO END, on the branch where the bar actually selects what is shown.
+       A "sparse" answer is drawn from the narrow branch, and diversify()'s
+       backfill returns all of it when it fits under the cap -- so a sparse
+       answer that is not exactly the prefix is the #216 defect, visible on the
+       page. Gated on `picks.length < 10` because at the cap the truncation is
+       doing the cutting and prefix-closure is not the claim. */
+    if (status === "sparse" && picks.length < 10) {
+      const missing = prefix.filter((x) => !picks.some((p) => p.i.id === x.i.id));
+      if (missing.length) skipping.push(`"${query}" (${picks.length} picks): ${missing.map((x) => `${x.i.id} m${x.matched}/${x.sum.toFixed(3)}`).join(", ")}`);
+    }
+  }
+
+  check(`every query's ranking is monotone in (matched, sum), which is what makes the strong bar a cut in it`,
+    misordered.length === 0,
+    `${misordered.length} query/queries are ordered differently from what classifyResults assumes -- if searchWithRelaxation's comparator changed, strongPrefix is no longer a prefix of the ranking anyone sees:\n      ${misordered.join("\n      ")}`);
+
+  check(`every query's strong prefix is contiguous, holds every bar-clearer, and ends at one`,
+    barViolations.length === 0,
+    `${barViolations.length} query/queries:\n      ${barViolations.join("\n      ")}`);
+
+  check(`no sparse answer skips a result it ranks above one it shows (#216)`,
+    skipping.length === 0,
+    `${skipping.length} query/queries drop a better-ranked result while showing a worse one:\n      ${skipping.join("\n      ")}`);
+}
+
+/* ---------- --tiering: the per-query tiering table, not an assertion ---------- */
+
+/* `node tools/test-search.mjs --tiering` runs the whole battery and THEN prints
+   this. Deliberately not a short-circuit mode: a flag that skipped the
+   assertions and exited 0 would be a way to get a green-looking run out of this
+   file, which is the one thing it must never offer.
+   It exists because #216 was CAUSED by local reasoning. PR #211 improved one
+   show's topics, which raised that query's top score, which raised the relative
+   bar, which evicted a DIFFERENT episode -- and the PR shipped describing a
+   state its own change did not produce. The bar is relative, so the unit of
+   measurement for any scoring or tagging change is the whole pool per query,
+   never the item you are thinking about. This prints that unit. */
+if (process.argv.includes("--tiering")) {
+  const rows = [...searched].map(([query, { status, picks, results }]) => {
+    if (!results.length) return { query, status, line: "no results" };
+    const bar = results[0].sum * SE.STRONG_RATIO;
+    const clearers = results.filter((x) => x.sum >= bar).length;
+    const prefix = SE.strongPrefix(results, bar);
+    /* Results the bar rejects that the ranking nonetheless places above a
+       result it accepts -- the #216 inversion, per query. */
+    const inverted = prefix.filter((x) => x.sum < bar);
+    return {
+      query, status,
+      line: `${status.padEnd(7)} raw ${String(results.length).padStart(3)}  bar ${bar.toFixed(3).padStart(7)}  clearers ${String(clearers).padStart(3)}  prefix ${String(prefix.length).padStart(3)}  picks ${String(picks.length).padStart(2)}  inverted ${String(inverted.length).padStart(2)}`,
+      inverted,
+    };
+  });
+  console.log("\n---------- tiering, per query, over the whole fullPool() ----------");
+  console.log("`inverted` = results the bar rejects that the ranking places above one it accepts (#216).\n");
+  for (const r of rows) console.log("  " + r.query.padEnd(32) + r.line);
+  console.log("\n  inversions in detail:");
+  const any = rows.filter((r) => r.inverted?.length);
+  if (!any.length) console.log("    none on this pool");
+  for (const r of any) {
+    console.log(`    "${r.query}"`);
+    for (const x of r.inverted) console.log(`      m${x.matched} sum ${x.sum.toFixed(3)}  ${x.i.id}`);
+  }
+  console.log("");
 }
 
 /* ---------- report ---------- */

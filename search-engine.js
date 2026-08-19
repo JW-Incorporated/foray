@@ -721,7 +721,8 @@ const RICH_MIN = 6;
    Covered by test/search-tiering.test.js (the mechanism, on fixtures, in
    milliseconds -- including the numbers above) and by tools/test-search.mjs §9
    (the coupling to the real comparator over the live pool, which fixtures
-   cannot see). tools/measure-tiering.mjs prints the per-query before/after. */
+   cannot see). `node tools/test-search.mjs --tiering` prints the per-query
+   table these numbers came from. */
 function strongPrefix(results, bar) {
   let last = 0;
   for (let k = 0; k < results.length; k++) if (results[k].sum >= bar) last = k;
