@@ -158,17 +158,25 @@ test("a single-show answer keeps the bar-clearers, so the per-show cap cannot pr
      test the branch had no coverage anywhere, in either suite. That gap is what
      let the regression above go green.
 
-     KILLED BY: dropping the `!singleShow` guard, which puts "texas" at index 1. */
+     FOUR CLEARERS, NOT SIX, AND THAT IS THE WHOLE TEST. The first version of this
+     fixture had six, which is RICH_MIN, so `sparse` was false, so `widen` was
+     false whatever the single-show guard said -- and the mutation that deletes
+     that guard SURVIVED. The guard is only reachable when a query is sparse AND
+     single-show, which is the state "how bbq works" was in before the catalogue
+     grew, so the fixture has to be in it too. Caught by re-running the mutation
+     round after the fix rather than by reading the fix.
+
+     KILLED BY: dropping the `!singleShow` guard, which puts "texas" at index 1,
+     above three strong episodes of the show being searched for. */
   const results = [
     row("bbq1", 2, 10, "bbqcentral"),
     row("texas", 2, 4.0, "casefile"),
     row("bbq2", 1, 6, "bbqcentral"), row("bbq3", 1, 5.8, "bbqcentral"),
-    row("bbq4", 1, 5.6, "bbqcentral"), row("bbq5", 1, 5.4, "bbqcentral"),
-    row("bbq6", 1, 5.2, "bbqcentral"),
+    row("bbq4", 1, 5.4, "bbqcentral"),
   ];
   const out = SE.classifyResults(results);
-  assert.equal(out.status, "ok");
-  assert.deepEqual(ids(out), ["bbq1", "bbq2", "bbq3", "bbq4", "bbq5", "bbq6"]);
+  assert.equal(out.status, "sparse");
+  assert.deepEqual(ids(out), ["bbq1", "bbq2", "bbq3", "bbq4"]);
 });
 
 test("the strong bar stays relative: the same shape at a tenth of the scale tiers the same", () => {
