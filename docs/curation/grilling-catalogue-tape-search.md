@@ -132,11 +132,21 @@ nutrition holding is **56 items** across `food/cooking-science` (16),
 `food/fermentation` (17) and `health/nutrition` (23), and most of that is brewing,
 supplements and diet science. The `food-history` tag reaches **12 items**.
 
-**Every item in the catalogue whose subject touches fire, barbecue or food history is
-in this table.** Eight of the seventeen are one show and four are another, which is most
-of what is wrong here. §7 adds the adjacent rows a keyword pass surfaces — the rail
-history, the Reconstruction legal history — which are on the Foray's territory without
-being on its subject.
+**Every item whose subject reaches a beat of this spine closely enough to be worth
+scoring is in this table.** Eight of the seventeen are one show and four are another,
+which is most of what is wrong here. §7 adds the adjacent rows a keyword pass surfaces —
+the rail history, the Reconstruction legal history — which are on the Foray's territory
+without being on its subject.
+
+**Seven of the twelve `food-history` items are absent from the table, and naming them is
+what makes the table auditable.** They are `the-rest-is-history--wine-civilisation`,
+`gastropod--what-the-shell-lobster`, `fermup--100-bill-shurtleff`,
+`gastropod--beer-and-writing`, `gastropod--avocado`, `gastropod--absinthe` and
+`stuff-you-should-know--beans-and-rice-feeds-the-world`. Wine, lobster, tofu, beer,
+avocados, absinthe and the beans-and-rice staple complex reach no beat of a barbecue
+spine at all — not fire, not smoke, not surplus, not the pit, not the American act —
+so they were not scored against one. That is §6b of the spine doing its job: adjacency
+to food and history is not relevance.
 
 | id | show | length | first beat considered | verdict |
 |---|---|---|---|---|
