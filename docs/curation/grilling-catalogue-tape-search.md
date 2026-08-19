@@ -498,6 +498,11 @@ the 25 % target needs five and the catalogue holds two. The 22-beat plan's nine
 chain-link cuts are not bought back by anything found here — including **beat 29**,
 the one beat the spine explicitly forbids cutting, which stays cut.
 
+**The table reproduces the cut plan's own figure where the two overlap**, which is the
+check worth having: at five closures it lands on 79.3 minutes and 23.5 %, which is
+§3a's published result to the digit. The rows above and below it are the same
+arithmetic run at m values §3a did not publish.
+
 **Three caveats, all pointing the same way.** The 180 s per closure is the cut plan's
 own generous assumption at the top of the tape band; at the 75 s floor a closure buys
 less than half as much. Both closures are moderate-confidence, not certainties, and a
@@ -578,3 +583,41 @@ the row's approximate 2,940 s. The row stays in `identified_not_yet_measured` wi
 `blocked_by` changed from `needs-asr` to `needs-ad-probes`, because
 `dai_suspected: true` with `audio_bytes: null` means the byte method cannot size its
 pad and ADR-0008 requires two decode-and-compare probes of the same episode first.
+
+---
+
+## 11. What changed in `grilling-asr-manifest.json`, so the two files can be checked against each other
+
+**The headline is not the new rows. It is that the queue was already empty.** All nine
+episodes that ever carried a priority have now been transcribed — two on 2026-08-17 and
+seven on 2026-08-18 — so `queued_episodes` is **0** and there is no ASR work left in
+that file at all. That is why this pass searched the catalogue instead of re-sorting the
+work order, and it is the checkable version of "the manifest is exhausted".
+
+- **`revision_2026_08_18`** and **`stop_convention`** are new, and the second one is the
+  previous round's recommendation turned into a field: `stop: true` with
+  `blocked_by: "stop"` means do not buy this row, and `blocked_by: "spent"` means it has
+  already been bought. **All twenty-four rows in `episodes` now carry `stop: true`**, nine
+  as spent and fifteen as barred, beatless or superseded.
+- **Each of the nine spent rows gained an `outcome`** recording what it actually moved.
+  Eight of the nine moved nothing, and each one's `outcome` says so in the terms its own
+  `why_this_priority` used, so the queue's cost can be read against what it bought:
+  **19,344 s of audio, about 11 CPU-hours at the observed rate, five beats, all from one
+  episode.**
+- **`totals`** is recomputed, with `by_priority` kept and marked superseded rather than
+  deleted, per the scorecard convention the coverage report uses.
+- **`identified_not_yet_measured` gained three rows and one was sharpened.** The three
+  are the BBQ Central candidates; the sharpened one is Gastropod's refrigeration episode,
+  which keeps its place in that block because **nothing here measured anything** — the
+  rule is "measure, then promote to a real row", no audio was fetched and no probe was
+  run. Its metadata is marked `metadata_source: "data/discover.json … not a feed fetch"`
+  for the same reason, and its `blocked_by` moved from `needs-asr` to `needs-ad-probes`
+  because the ad work now demonstrably comes first.
+- **`catalogue_search_2026_08_18`** is new and carries the machine-readable residue: the
+  pool, the instrument, the measured substring trap, the Act IV zero counts, the sixteen
+  stops with reasons, the three leads that are deliberately not rows, and the three
+  discrepancies of §10 left as found.
+- **Nothing was deleted.** No row left the manifest, no episode left
+  `data/discover.json`, and the two paragraphs this document disagrees with — the SYSK
+  register ruling and the BBQ Central workstream exclusion — are annotated rather than
+  rewritten.
