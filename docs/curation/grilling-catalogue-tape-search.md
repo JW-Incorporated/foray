@@ -191,10 +191,13 @@ explicitly rejecting the 'barbe à queue' story"*, and rejects *"assertion of ei
 etymology with no source"*.
 
 `barbacoa` **0 hits**. `taino` **0 hits**. The catalogue does hold the right
-register — **The Allusionist**, eight items, tagged `etymology`, `lexicography`,
-`dictionaries`, including *"225. Hues"*, whose hook is *"Lexicographers spent
-decades failing to pin down how to define color names"* — and it holds no episode
-on this word or on any food word's attestation. **A lexicography show with no
+register, and `data/catalog.json` describes it in almost the beat's own words:
+**The Allusionist**, eight items, is *"Helen Zaltzman on the strange histories tangled
+up inside ordinary words and phrases."* Its items are tagged `etymology`,
+`lexicography` and `dictionaries`, and one of them — *"225. Hues"*, hook
+*"Lexicographers spent decades failing to pin down how to define color names"* — is a
+lexicography episode of exactly the shape beat 16 wants. **And there is no episode on
+this word, or on any food word's attestation.** **A lexicography show with no
 barbecue episode is not a candidate**, and there is nothing here to queue. Beat 16
 stays the Carry that coverage §10e already found **writable with no new citation**,
 which is why it is the cheapest of Act IV's holes to leave open.
@@ -320,6 +323,16 @@ barbecue is normally a claim about *why* something works, so the register is the
 causal one the beat asks for. `grilling-beat-cut-plan.md` §3b reached the same row from
 the other direction, naming beat 3 as *"the only empty beat for which this project's
 own recommendation pool is on-brief"*.
+
+**The show-level note cuts both ways and is worth quoting rather than summarising.**
+`data/catalog.json` describes the show as *"Long-running BBQ radio show with pitmasters
+and technique talk -- the answer to a barbecue request."* **"Pitmasters" is the first
+half of beat 3's own evidence line**, which asks for *"a pitmaster or a food scientist
+naming the mechanism"*. **"Technique talk" is the phrase coverage §7 used to reject three
+of this show's guests**, and beat 3's reject line is recipes and numbers with no
+reasoning. So the show is simultaneously the right place to look for this beat and the
+wrong place to look for any other, which is exactly why this row is scored against beat 3
+alone and why five of its siblings are stops.
 
 **Confidence: moderate, and here is the honest downside.** Myth-busting can deliver a
 beat's conclusion with none of its mechanism, which is precisely how SYSK's
