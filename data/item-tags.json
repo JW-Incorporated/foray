@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-18T11:43:23.489Z",
+  "built_at": "2026-08-19T11:43:46.428Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -13478,6 +13478,248 @@
       "relationships",
       "culture",
       "society"
+    ],
+    "cbc-ideas--david-bowie-took-his-own-death": [
+      "music",
+      "death",
+      "legacy",
+      "album",
+      "biography",
+      "music-history"
+    ],
+    "stuff-you-should-know--isn-t-it-ironic-dontcha-think": [
+      "language",
+      "linguistics",
+      "definitions",
+      "stuff-you-should-know",
+      "culture",
+      "semantics"
+    ],
+    "mrs-bulletin-materials-news--new-insights-lead-to-control-of": [
+      "materials-science",
+      "semiconductors",
+      "heat-transfer",
+      "physics",
+      "interview",
+      "research",
+      "science",
+      "technical"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3402": [
+      "physics",
+      "history-of-technology",
+      "engineering-history",
+      "science-history",
+      "measurement",
+      "history"
+    ],
+    "wood-talk--shove-a-kregger-in-the-hole": [
+      "woodworking",
+      "hand-tools",
+      "craftsmanship",
+      "diy",
+      "furniture-making",
+      "craft"
+    ],
+    "good-hang-amy-poehler--keke-palmer": [
+      "comedy",
+      "interview",
+      "celebrity",
+      "actors",
+      "podcasting",
+      "talk-show"
+    ],
+    "gastropod--so-hot-right-now-why-we": [
+      "food-science",
+      "chemistry",
+      "food",
+      "cooking",
+      "science",
+      "flavor"
+    ],
+    "the-bbq-central-show--bbq-university-hosted-by-man-on": [
+      "bbq",
+      "grilling",
+      "barbecue",
+      "food",
+      "cooking",
+      "interview"
+    ],
+    "99-percent-invisible--the-bone-wars": [
+      "paleontology",
+      "dinosaurs",
+      "history",
+      "rivalry",
+      "science-history",
+      "fossils"
+    ],
+    "ologies-with-alie-ward--mephitology-skunks-with-jerry-dragoo": [
+      "zoology",
+      "animal-behavior",
+      "biology",
+      "wildlife-biology",
+      "science",
+      "animals"
+    ],
+    "spycast--what-it-takes-to-run-the": [
+      "espionage",
+      "cia",
+      "intelligence",
+      "national-security",
+      "interview",
+      "history"
+    ],
+    "software-engineering-daily--how-llms-are-reshaping-recommendation-systems": [
+      "llms",
+      "artificial-intelligence",
+      "machine-learning",
+      "software",
+      "computing",
+      "technical"
+    ],
+    "freakonomics-radio--meet-warren-zanes-the-author-and": [
+      "music",
+      "biography",
+      "interview",
+      "music-history",
+      "authors",
+      "rock"
+    ],
+    "f1-beyond-the-grid--legends-damon-hill-from-humiliation-to": [
+      "formula-1",
+      "racing",
+      "motorsport",
+      "f1-history",
+      "interview",
+      "sports-history"
+    ],
+    "the-race-f1-podcast--driver-market-moves-cadillac-s-shock": [
+      "formula-1",
+      "racing",
+      "motorsport",
+      "grand-prix",
+      "preview",
+      "sports"
+    ],
+    "energy-gang--america-s-new-gas-boom-can": [
+      "energy",
+      "energy-demand",
+      "energy-security",
+      "grid",
+      "data-centers",
+      "policy"
+    ],
+    "business-wars--warby-parker-vs-luxottica-getting-vertical": [
+      "business-history",
+      "business",
+      "startups",
+      "retail",
+      "competition",
+      "brands"
+    ],
+    "masters-of-scale--what-the-jobs-report-isn-t": [
+      "business",
+      "ai-adoption",
+      "labor-markets",
+      "interview",
+      "entrepreneurship",
+      "ai"
+    ],
+    "unauthorized-history-pacific-war--empire-of-ashes-truman-hirohito-and": [
+      "world-war-2",
+      "pacific-theater",
+      "military-history",
+      "interview",
+      "history",
+      "pacific-war"
+    ],
+    "history-of-wwii-podcast--episode-647-here-comes-chesty-puller": [
+      "world-war-2",
+      "pacific-theater",
+      "military-history",
+      "marines",
+      "guadalcanal",
+      "history"
+    ],
+    "tiny-matters--giant-viruses-how-these-amoeba-infecting": [
+      "virology",
+      "virus",
+      "microbiology",
+      "science",
+      "biology",
+      "microbes"
+    ],
+    "weather-geeks--holding-fast-in-heavy-seas": [
+      "weather",
+      "ocean",
+      "climate",
+      "meteorology",
+      "interview",
+      "earth-science"
+    ],
+    "shipwrecks-and-sea-dogs--lost-without-a-trace-the-marine": [
+      "shipwrecks",
+      "maritime",
+      "maritime-history",
+      "disappearance",
+      "mystery",
+      "1960s"
+    ],
+    "ten-percent-happier--you-can-stop-fixing-yourself-buddhist": [
+      "buddhism",
+      "meditation",
+      "mental-health",
+      "boundaries",
+      "mindfulness",
+      "therapy"
+    ],
+    "happier-gretchen-rubin--ep-600-600-episodes-of-happier": [
+      "happiness",
+      "self-improvement",
+      "habits",
+      "listener-stories",
+      "milestone",
+      "productivity"
+    ],
+    "handsome--jake-johnson-asks-about-special-human": [
+      "comedy",
+      "friendship",
+      "relationships",
+      "banter",
+      "hang",
+      "podcasting"
+    ],
+    "dateline--the-house": [
+      "true-crime",
+      "murder",
+      "murder-investigation",
+      "fbi",
+      "crime",
+      "investigation"
+    ],
+    "circle-round--summer-camp-crocus-pocus": [
+      "folktale",
+      "kids",
+      "stories-for-kids",
+      "kindness",
+      "fairy-tales",
+      "storytelling"
+    ],
+    "dissect--crowning-tyler-the-creator-s-best": [
+      "hip-hop",
+      "music-analysis",
+      "tyler-the-creator",
+      "music",
+      "album",
+      "songs"
+    ],
+    "broken-record--interpol-s-daniel-kessler": [
+      "music",
+      "interview",
+      "indie-rock",
+      "guitar",
+      "songwriting",
+      "indie"
     ]
   }
 }
