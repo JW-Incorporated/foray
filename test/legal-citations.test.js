@@ -188,6 +188,17 @@ function declaresBinding(src, name) {
 
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&");
 
+/* A control-flow keyword is not a declaration, and `declaresFunction` cannot tell
+   the difference: `if (!store) {` satisfies "identifier, parens, brace" perfectly.
+   Verified before adding this — `app.js:if()`, `app.js:for()`, `app.js:switch()`
+   and `app.js:catch()` all resolved. No document would cite them, and that is not
+   the standard: a resolver looser than the thing it stands for is the failure
+   CLAUDE.md lists five times, so it is closed rather than left to good manners. */
+const RESERVED = new Set([
+  "if", "for", "while", "do", "switch", "case", "catch", "try", "finally",
+  "else", "return", "function", "class", "new", "typeof", "await", "with",
+]);
+
 /** `#dom-id` — an element this file creates. */
 function declaresElement(src, id) {
   return new RegExp(`id=["']${escape(id)}["']`).test(src);
@@ -209,11 +220,17 @@ function resolveAnchor(citedPath, anchor) {
   }
   const fn = new RegExp(`^(${IDENT})\\(\\)$`).exec(anchor);
   if (fn) {
+    if (RESERVED.has(fn[1])) {
+      return { ok: false, why: `"${fn[1]}" is a keyword, not a declaration` };
+    }
     return declaresFunction(src, fn[1])
       ? { ok: true }
       : { ok: false, why: `${rel} declares no function ${fn[1]}` };
   }
   if (new RegExp(`^${IDENT}$`).test(anchor)) {
+    if (RESERVED.has(anchor)) {
+      return { ok: false, why: `"${anchor}" is a keyword, not a declaration` };
+    }
     return declaresBinding(src, anchor)
       ? { ok: true }
       : { ok: false, why: `${rel} declares no binding ${anchor}` };
@@ -288,32 +305,90 @@ test("every bare file a legal document names exists", () => {
   assert.deepStrictEqual(missing, [], "cited files that do not exist:\n" + missing.join("\n"));
 });
 
-test("the citations actually cover the claims — a floor on how many there are", () => {
-  /* A guard on the guard above, which is vacuously green if the citations are
-     simply deleted.
+/**
+ * The anchors that carry a data claim — the ones that make an answer checkable
+ * rather than merely asserted.
+ *
+ * WHY THIS IS A SET AND NOT A COUNT. It was a count first: "at least 33 anchored
+ * citations". That went vacuous within the hour, and by my own hand — adding a
+ * three-sentence note to data-safety's header brought three more citations with
+ * it, the total went 33 -> 36, and the mutation that deletes a citation started
+ * passing with 35. A floor measures the wrong thing: it cannot tell a citation
+ * added to a header from the one deleted off the `nudgeTopics` claim.
+ *
+ * So each entry below is a claim a store reviewer can audit, and every one must
+ * be cited SOMEWHERE in the two documents. Occurrence counts are deliberately
+ * not pinned — `toEventRow()` is cited ten times because ten answers rest on it,
+ * and that number should be free to move.
+ *
+ * Adding a row here is how a new auditable claim gets protected. Removing one is
+ * the deliberate act: it says the documents no longer need to prove that answer.
+ */
+const LOAD_BEARING = [
+  // what leaves the device, and how
+  "app.js:toEventRow()",
+  "app.js:trySyncEvents()",
+  "app.js:SB_URL",
+  "app.js:sbAuth()",
+  "app.js:ensureAnonSession()",
+  // the fields whose narrowness the documents claim
+  "app.js:SB_ARCHETYPES",
+  "app.js:bindPickLogging()",
+  "app.js:FB_CHIPS",
+  "app.js:bindFeedback()",
+  "app.js:#fy-sheet-note",
+  "app.js:#pl-input",
+  // the answers that turn on local-only storage
+  "app.js:profileId()",
+  "app.js:storageBackend()",
+  "player/durable-store.js:_recordHealth()",
+  "player/position-store.js:save()",
+  // purpose, deletion, and the first-load sync caveat
+  "app.js:nudgeTopics()",
+  "app.js:deleteMyData()",
+  "app.js:init()",
+  // the third parties
+  "player/html-audio-backend.js:load()",
+  "backend/src/enrich/AnthropicEnricher.ts:buildWhyLinePrompt()",
+];
 
-     The arithmetic behind the two floors: 27 `app.js:NNN` line numbers went in;
-     26 were re-anchored and one was removed (`app.js:664`, the first of the four
-     `trySyncEvents()` call-site numbers, which a store reviewer cannot use), and
-     `app.js:deleteMyData()` replaced A7's prose "`app.js` § delete my data" — so
-     27 out as well. The remaining 6 anchored citations are the non-`app.js` line
-     numbers converted in the same pass.
+test("every load-bearing claim still carries a citation", () => {
+  /* A guard on the resolution tests above, which are vacuously green if the
+     citations are simply deleted — an uncited claim resolves perfectly.
 
-     MUTATION THAT KILLS THIS: delete any single anchored citation. Ran it — red.
-
-     Deliberately a floor, not an equality: adding a citation is always fine. */
-  const anchored = allSpans().filter((s) => ANCHORED_RE.test(s.span));
-  const appJs = anchored.filter((s) => s.span.startsWith("app.js:"));
-  assert.ok(
-    anchored.length >= 33,
-    `only ${anchored.length} anchored citations remain, and the floor is 33 — ` +
-      "the documents are auditable because they cite the code, and a citation " +
-      "deleted is a claim nobody can check"
+     MUTATION THAT KILLS THIS: delete any one citation, e.g. replace
+     "(`app.js:nudgeTopics()`)" in A3's Personalization bullet with "(the
+     interest weights)". Ran it — red, naming the anchor. Ran it against the
+     count-floor version this replaced: GREEN, which is why it was replaced. */
+  const cited = new Set(
+    allSpans().filter((s) => ANCHORED_RE.test(s.span)).map((s) => s.span)
   );
-  assert.ok(
-    appJs.length >= 27,
-    `only ${appJs.length} app.js citations remain, and the floor is 27`
+  const uncited = LOAD_BEARING.filter((a) => !cited.has(a));
+  assert.deepStrictEqual(
+    uncited, [],
+    "these claims are no longer backed by a citation in either document, so " +
+      "nothing a reviewer reads points at the code that makes them true:\n" +
+      uncited.join("\n")
   );
+});
+
+test("the load-bearing list is not carrying an entry nobody cites", () => {
+  /* The other direction on the list itself, so it cannot rot into a wish. Every
+     entry must be a real citation AND resolve — which the resolution test already
+     covers for whatever is in the documents, but not for an entry here that was
+     never added to them.
+
+     MUTATION THAT KILLS THIS: add "app.js:neverCited()" to LOAD_BEARING. Ran it
+     — red from the test above, which is the same signal: the list and the
+     documents must agree. This test adds the reason WHY, by resolving each. */
+  const bad = [];
+  for (const a of LOAD_BEARING) {
+    const m = ANCHORED_RE.exec(a);
+    if (!m) { bad.push(`${a} — not a well-formed citation`); continue; }
+    const r = resolveAnchor(m[1], m[2]);
+    if (!r.ok) bad.push(`${a} — ${r.why}`);
+  }
+  assert.deepStrictEqual(bad, [], "LOAD_BEARING entries that do not resolve:\n" + bad.join("\n"));
 });
 
 /* ================= 2. the transmitted-event inventory ======================== */
@@ -325,6 +400,25 @@ function transmittedTypes() {
   const src = read("app.js");
   const body = /function toEventRow\([\s\S]*?\n\}/.exec(src);
   assert.ok(body, "toEventRow could not be located in app.js");
+  /* PREMISE GUARDS on the extraction, because both ways it can go wrong are
+     silent. The regex stops at the first `}` in column 0, so a `toEventRow`
+     wrapped in a block would under-capture and this function would report FEWER
+     transmitted types than exist — which is the direction that lets undisclosed
+     collection through. Over-capture would pull in `case` labels from another
+     switch entirely. Neither is detectable from the returned list, so assert the
+     shape instead: the arm every non-transmitted type falls to must be inside,
+     and no second function declaration may be. */
+  assert.match(
+    body[0], /default:\s*\n?\s*return null/,
+    "toEventRow's `default: return null` arm is not inside the extracted body — " +
+      "the extraction under-captured, and every type below the cut would be " +
+      "counted as local-only"
+  );
+  assert.ok(
+    !/\n(?:async )?function /.test(body[0]),
+    "the extraction ran past the end of toEventRow and into another function, so " +
+      "`case` labels from an unrelated switch may be counted as transmitted"
+  );
   /* Split on the case labels themselves, so each arm is examined for whether it
      reaches `row(` — `thumbs` has an early `return null` guard AND returns a
      row, and only the second fact makes it transmitted. */
