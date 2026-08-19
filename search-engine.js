@@ -9,9 +9,11 @@
    under the strict CSP with no build step, and is also require()-able from
    Node (tools/test-search.mjs) for the search-quality battery.
 
-   ctx shape: { semantic, itemTags, discover, _dfMemo?, _corpusDfMemo? }
-   (the two memo maps are created lazily and cached on the ctx object the
-   caller passes in — callers should reuse one ctx per session/run). */
+   ctx shape: { semantic, itemTags, discover, _dfMemo?, _corpusDfMemo?, _dfTotal? }
+   (the two memo maps and the cached tag-map size are created lazily on the ctx
+   object the caller passes in — callers should reuse one ctx per session/run, and
+   must NOT swap `itemTags` on a ctx that has already been used, since all three
+   caches describe the corpus that was there when they were filled). */
 
 /* ---------- stopwords / generic words / aliases ---------- */
 
@@ -49,8 +51,159 @@ const ALIASES = {
    Calibrated against the live catalog (984 items, 2026-07-24):
    regression-anchor tokens sit well under this (energy 7.0%, fusion 4.8%,
    startups 5.5%); the words that caused off-topic top results sit well
-   over it (history 23.0%, science 18.6%). Tunable — see tools/test-search.mjs. */
+   over it (history 23.0%, science 18.6%). Those two figures are from that 2026-07-24
+   snapshot; on 2026-08-18's 1,534 items the same words read 24.3% and 19.4%, and the
+   ladder below quotes the newer ones -- the same quantity measured twice, not two
+   quantities. Tunable — see tools/test-search.mjs.
+   SHARES ITS VALUE WITH TAG_DF_TOO_BROAD below, deliberately, and the two are NOT
+   the same measurement: this one reads corpusDF (title/hook/topics/tags over the
+   discover pool) and that one reads tagDF (tags only, over the tag map). See there
+   for the argument and for the asymmetry it leaves. */
 const BROAD_DF_THRESHOLD = 0.10;
+
+/* THE TAG-DF LADDER: three fractions of the tag map (see tagDF), read by the two
+   consumers that care how common a term is. #275.
+
+   THESE WERE FOUR ABSOLUTE COUNTS -- `df > 60` dropped a term from a query
+   expansion, `df > 25` cut its weight to 0.4x, and scoreMatch bucketed its
+   multiplier at 10 and 30 -- while BROAD_DF_THRESHOLD directly above was already a
+   fraction. Half of this module's df logic was therefore scale-free and half was
+   not, so the scale-bound half retuned itself every night as the catalogue grew:
+   `df > 60` meant "in more than 6.8% of the tag map" at 878 entries and "more than
+   3.8%" at 1,561, and over five real nightly snapshots (2026-07-19 -> 2026-08-18)
+   52 terms crossed the expansion threshold and 125 the multiplier with no code
+   change. Duplicating today's map -- which cannot change what the catalogue is
+   ABOUT -- moved 137 and 206 at 2x, 284 and 494 at 4x. All of that is denominator.
+
+   FOUR CUTS BECAME THREE, and the collapse is measured rather than tidy: the
+   expansion's lower cut was 25 and the multiplier's upper cut was 30 -- 1.60% and
+   1.92% of the map, within 20% of each other, with nothing in this file ever
+   explaining the difference. They answer the same question ("is this term common
+   enough to stop trusting on its own"), so they are one number now.
+   WHAT THE COLLAPSE COSTS, measured rather than waved at, because at the WRONG
+   values it is not free: held at the today-equivalent fractions it moves two
+   queries, since `racing` (26 of 1,561) and `cold` (30) sit between the two old
+   cuts and lose the 1.0 multiplier for 0.75. At the values below it costs nothing
+   at all -- TAG_DF_COMMON 0.02 is above both 25/1,561 and 30/1,561, so both terms
+   are on the same side of it as they were of 30. If a measurement ever
+   distinguishes the two cuts again, splitting is one line plus a reason.
+
+   HOW THE VALUES WERE PICKED, and NOT by dividing 60 and 25 by today's item count
+   -- today's count is arbitrary, and enshrining it is how the absolute thresholds
+   happened in the first place. Each cut is the most STABLE fraction inside the
+   window search quality allows: "stable" is the number of vocabulary terms that
+   cross it across the five nightly snapshots, "allowed" is tools/test-search.mjs.
+   The today-equivalent fractions were first run as a CONTROL, in their exact
+   four-cut form (60/1,561, 25/1,561, 10/1,561, 30/1,561): over 45 queries -- the 37
+   the battery exercises plus the ten the issue names -- that is bit-identical to the
+   absolute rule -- 0 status changes, 0 pick changes, 0 retrieval-set changes -- and
+   the battery is green. That is the useful thing it establishes: the normalisation
+   itself moves NOTHING, so everything the ladder below changes is the values, and
+   the two can be argued separately. They were then rejected as values, because they
+   sit in the densest part of the df distribution and still drift 32 expansion
+   buckets over the same five snapshots, against 12 for the ladder below.
+
+     TAG_DF_TOO_BROAD 0.10   The catalogue's genre markers and nothing else:
+                             history 19.5%, storytelling 15.2%, science 12.9%,
+                             comedy 10.7%. Measured, the whole 1,366-term
+                             vocabulary has NO term between 8% and 10% -- the one
+                             empty band in the distribution -- so this cut is the
+                             most stable available anywhere: 1 crossing over the
+                             five snapshots against 15 for `df > 60`. It is also
+                             deliberately the SAME NUMBER as BROAD_DF_THRESHOLD:
+                             a token too common to anchor a query is too common to
+                             expand INTO, and having those two answers disagree by
+                             an accident of tuning is the shape of this whole issue.
+                             ONE SCALE SHARED, NOT ONE MEASUREMENT, and the
+                             difference has a visible consequence rather than being
+                             a caveat. corpusDF reads prose as well as tags and runs
+                             a few points higher, so at a shared number the
+                             expansion cut is systematically LOOSER than the anchor
+                             cut. `engineering` is the live example: corpusDF 12.3%
+                             makes it `broad` as a typed token, tagDF 6.3% leaves it
+                             in expansions at 0.4x. That is coherent -- "cannot
+                             anchor a query alone" and "may still contribute" are
+                             different claims -- but it is not the identity the
+                             shared value looks like, and anybody retuning one cut
+                             should decide about the other rather than inherit it.
+                             THE BOUNDARIES DISAGREE TOO, which is the sharpest form
+                             of the same point: `broad` is `corpusDF >= this` and
+                             expansionBucket is `tagDF > this`, so AT exactly 0.10
+                             the two consumers of one number answer oppositely. The
+                             strictness is inherited (`df > 60`) and is not worth
+                             changing for a value no term has ever held, but a
+                             shared constant with two boundary conventions is
+                             exactly the kind of thing this issue was.
+     TAG_DF_COMMON    0.02   Bounded ABOVE by product quality and below by churn,
+                             and the ceiling is a real measurement rather than a
+                             preference: at 0.025 the battery goes red on
+                             "parenting", because `family` sits at 2.50% and keeps
+                             full expansion weight, which puts a kids-science
+                             episode about hermit crabs in the top five. 0.02 is
+                             the stability optimum under that ceiling -- 17
+                             crossings against 33 at 0.016 and 40 for `df > 25`.
+     TAG_DF_RARE      0.008  The local minimum of crossings in the region a boost
+                             tier can sit at all: 57 at 0.008 against 70 at both
+                             0.0064 (today-equivalent) and 0.010, and 91 for
+                             `df <= 10`. The low end of the distribution is dense
+                             -- 904 terms under 0.2% -- so no cut down here is as
+                             quiet as the two above, and saying so is better than
+                             implying otherwise.
+
+   WHAT THE VALUES CHANGE TODAY, which the stability figures above do NOT say and a
+   future reader will want first. Against main, on 2026-08-18's data: 33 terms change
+   expansion bucket and 43 change multiplier. 16 stop being DROPPED, and they are the
+   broadest terms in the vocabulary below the genre markers -- health 6.9%, engineer
+   6.3%, engineering 6.3%, ai 6.0%, music 5.6%, business 5.5%, narrative 5.3%,
+   psychology 5.1%, banter 4.9%, war 4.6%, startup(s) 4.3%, crime 4.2%, self 4.0%,
+   military 4.0%, true-crime 4.0% -- so they now enter expansions at 0.4x where the
+   3.84% effective cut deleted them. 17 stop being DEMOTED, all between 1.6% and
+   2.0% (nutrition, space, stories, philosophy, racing, kids ...), because the demote
+   cut moved 1.60% -> 2.00%.
+   END TO END that is small and it was checked rather than assumed: over 45 queries
+   (the 37 the battery exercises plus the ten the issue names) 0 statuses change and
+   5 pick lists do, three of them swapping items and two reordering. The one worth a
+   human's eye is a bare `jazz` losing sticky-notes--gershwin-rhapsody from its top
+   ten; "the history of jazz", the query the issue names, does not move.
+
+   WHAT REMAINING DRIFT MEANS, because "12 terms still move" invites the wrong
+   reading. Under duplication a fraction cannot move at all, so every crossing left
+   in the real series is the corpus genuinely becoming more or less ABOUT that term
+   -- `crime` 2.2% -> 4.2% over the month is a true-crime wave in the catalogue, and
+   responding to it is the point. The absolute rule mixed that signal with pure
+   denominator drift and could not tell you which was which. Tunable, and the
+   instruments are tools/test-search.mjs and test/search-df-scaling.test.js. */
+const TAG_DF_TOO_BROAD = 0.10;
+const TAG_DF_COMMON = 0.02;
+const TAG_DF_RARE = 0.008;
+
+/* scoreMatch's per-group multiplier, as a function of the query token's tagDF.
+   A NAMED EXPORTED FUNCTION rather than an inline ternary, because
+   tools/test-search.mjs §3 had to know the tiers to know which fields can clear
+   `minScore` on their own, and it MIRRORED them -- a fourth-copy-of-the-matcher
+   shape (#249) one level up, and one that #275 would have broken silently: the
+   mirror compared a fraction against 10 and 30, every fraction is under 10, so
+   every term would have been reported in the top tier and the copy would have
+   stayed green while measuring nothing. An oracle may not reimplement its
+   subject. */
+function dfMultiplier(df) {
+  return df <= TAG_DF_RARE ? 1.35 : df <= TAG_DF_COMMON ? 1 : 0.75;
+}
+
+/* Which of the three things interpretQuery does to an expansion term, as a function
+   of the term's tagDF: "drop" it, keep it at "0.4x" weight, or keep it at "full".
+   EXPORTED AND SHARED FOR THE SAME REASON dfMultiplier IS, and review caught that
+   the first version of #275 had fixed only half the problem. The df TIERS stopped
+   being mirrored, but this RULE was then re-derived in three places --
+   test/search-df-scaling.test.js, tools/mobile/prepare-webdir.test.mjs and
+   tools/test-search.mjs -- each reading the constants from here and then rewriting
+   the comparison. That is the #249 shape again: swap the two branches below and all
+   three oracles would agree with each other while disagreeing with the ranker.
+   Naming the rule once means an oracle can only be wrong by disagreeing with the
+   engine, which is the thing a test is for. */
+function expansionBucket(df) {
+  return df > TAG_DF_TOO_BROAD ? "drop" : df > TAG_DF_COMMON ? "0.4x" : "full";
+}
 
 function tokenize(q) {
   return q.toLowerCase().split(/[^a-z0-9]+/)
@@ -65,6 +218,12 @@ function branchOf(item) {
 }
 
 /* How many tagged items carry `term` as a tag, THROUGH THE SHARED MATCHER.
+   An ABSOLUTE count. Two callers: `tagDF` below, which divides it by the size of
+   the map -- see there for why every THRESHOLD reads the fraction and never this --
+   and suggestAdjacentTopics, which ranks coverage and wants a count of items.
+   Exported because it is what test/search-matcher.test.js pins the matcher-sharing
+   on: a count is the quantity that mechanism is about, and normalising it would only
+   add a denominator to every expected value.
    #249. This inlined the pre-#211 loose predicate as an anonymous arrow:
 
      tags.some(tag => term.length < 4
@@ -79,12 +238,12 @@ function branchOf(item) {
    invisible to it. The scan was green with the copy sitting in the same module as
    the original.
 
-   IT WAS NOT A REPORTING BUG. `tagDF` drives expansion pruning in
-   interpretQuery: `df > 60` DELETES a term from the expansion and `df > 25` cuts
-   its weight to 0.4x, so an inflated count silently removes vocabulary. It also
-   sets `group.df`, which picks scoreMatch's per-group multiplier
-   (<=10 -> 1.35, <=30 -> 1, else 0.75). Two consumers, two sets of thresholds,
-   both reading a number the ranker itself would never produce.
+   IT WAS NOT A REPORTING BUG. `tagCount` drives expansion pruning in
+   interpretQuery (via `tagDF` and `expansionBucket`): over TAG_DF_TOO_BROAD DELETES
+   a term from the expansion and over TAG_DF_COMMON cuts its weight to 0.4x, so an
+   inflated count silently removes vocabulary. It also sets `group.df`, which picks
+   scoreMatch's per-group multiplier (see dfMultiplier). Two consumers, two sets
+   of thresholds, both reading a number the ranker itself would never produce.
 
    Measured over the whole vocabulary (1,364 terms against 1,540 tagged items,
    2026-08-17): 102 terms change count, 94 narrower and 8 wider, 10,035 -> 8,665
@@ -115,10 +274,11 @@ function branchOf(item) {
    visible here, not this change's own effect.
 
    FORWARD REFERENCE, and it is safe: `hitTag` is a `const` arrow declared below.
-   `tagDF` is only ever called from query time (interpretQuery / suggestAdjacent-
-   Topics), long after module evaluation, so the binding is initialized. Do not
-   move a CALL to tagDF to module scope. */
-function tagDF(term, ctx) {
+   `tagCount` is only ever called from query time (tagDF, via interpretQuery, and
+   suggestAdjacentTopics), long after module evaluation, so the binding is
+   initialized. Do not move a CALL to tagCount -- or to tagDF, which is one line
+   over it -- to module scope. */
+function tagCount(term, ctx) {
   if (!ctx._dfMemo) ctx._dfMemo = new Map();
   if (ctx._dfMemo.has(term)) return ctx._dfMemo.get(term);
   const tagsMap = ctx.itemTags?.tags || {};
@@ -128,6 +288,53 @@ function tagDF(term, ctx) {
   }
   ctx._dfMemo.set(term, n);
   return n;
+}
+
+/* Fraction of the TAG MAP (0..1) whose tag list carries `term`, through the same
+   matcher. #275.
+
+   THIS USED TO BE THE ABSOLUTE COUNT, and every threshold reading it was an
+   absolute count too -- `df > 60`, `df > 25`, and scoreMatch's buckets at 10 and
+   30 -- while `corpusDF` ten lines down was already a fraction. So half of this
+   module's document-frequency logic was scale-free and half was not, which means
+   the scale-bound half silently retuned itself every night as the catalogue grew.
+   `df > 60` meant "in more than 6.8% of the tag map" at 878 entries and "more
+   than 3.8%" at 1,561. Measured over the whole vocabulary (1,366 terms) against
+   five real nightly snapshots, 878 -> 1,561 entries, 2026-07-19 -> 2026-08-18: 52
+   terms changed expansion bucket and 125 changed score multiplier, with no code
+   change and nobody deciding anything.
+
+   THE DENOMINATOR IS THE TAG MAP, NOT THE POOL, and that is the load-bearing
+   choice rather than a detail. `corpusDF` divides by `discover.items.length`
+   because it counts items; this counts ENTRIES IN THE TAG MAP, so the fraction it
+   reports is a fraction of the population it actually scanned. Two consequences:
+
+     it is the only denominator under which SUBSETTING THE MAP can be safe at all.
+     #274 wanted to ship the app a tag map trimmed to the items the app bundles
+     (1,561 entries -> 649, ~181 KB). Under an absolute count that scales every df
+     by ~0.42 and the app ranks differently from the website: `war` 72 -> 24,
+     deleted from the expansion on the web and at full weight on the phone.
+     Dividing by the map's own size cancels that scaling EXACTLY, so the question
+     stops being arithmetic and becomes sampling: a PROPORTIONAL subset reports
+     identical fractions (0 terms move -- pinned on fixtures in
+     test/search-df-scaling.test.js), and a skewed one does not. #274's real slice
+     is skewed, being three items per show, and it still moves 12 expansion buckets
+     and 62 multipliers -- down from 66 and 176. So the file is STILL copied whole;
+     tools/mobile/prepare-webdir.test.mjs owns that measurement and that refusal.
+     Do not read this paragraph as "the trim is now safe".
+
+     it is NOT interchangeable with the pool size, so do not "tidy" it into one.
+     `discover.items` and the searched pool are different sets from the tag map
+     (app.js searches session.episodes + discover.items; the map is keyed by
+     whatever the tagger has reached), and dividing by a set this function never
+     walked would reintroduce exactly the two-denominators problem #275 is about.
+
+   Memoized on the same `_dfMemo` as `tagCount` via that function, plus one cached
+   map size -- `Object.keys().length` is O(entries) and query time calls this once
+   per expansion term. */
+function tagDF(term, ctx) {
+  if (ctx._dfTotal === undefined) ctx._dfTotal = Object.keys(ctx.itemTags?.tags || {}).length;
+  return ctx._dfTotal ? tagCount(term, ctx) / ctx._dfTotal : 0;
 }
 
 function itemWordSet(item, tagsMap) {
@@ -212,9 +419,9 @@ function interpretQuery(q, ctx) {
 
     for (const [t, info] of [...terms]) {
       if (info.w >= 1) continue;
-      const df = tagDF(t, ctx);
-      if (df > 60) terms.delete(t);
-      else if (df > 25) terms.set(t, { ...info, w: info.w * 0.4 });
+      const bucket = expansionBucket(tagDF(t, ctx));
+      if (bucket === "drop") terms.delete(t);
+      else if (bucket === "0.4x") terms.set(t, { ...info, w: info.w * 0.4 });
     }
 
     return {
@@ -552,7 +759,7 @@ function scoreMatch(item, interp, itemTags) {
       matchedGroups++;
       if (!group.broad) primaryMatched++;
     }
-    sum += best * (group.df <= 10 ? 1.35 : group.df <= 30 ? 1 : 0.75);
+    sum += best * dfMultiplier(group.df);
   }
   for (const tb of interp.topicBoosts) {
     if ((item.topics || []).includes(tb)) sum += 2;
@@ -900,9 +1107,16 @@ function classifyResults(results, { cap = DEFAULT_CAP, perShowCap = PER_SHOW_CAP
 
 /* Deterministic "here's what's actually covered nearby" suggestions for the
    honest-empty state -- concepts related to the query's own concept(s),
-   kept only if they have real catalog coverage (tagDF > 0 on at least one
+   kept only if they have real catalog coverage (tagCount > 0 on at least one
    term). No LLM, no fabrication: an uncovered related concept is silently
-   dropped rather than suggested. */
+   dropped rather than suggested.
+   READS `tagCount`, NOT `tagDF`, and #275 is where that stopped being the same
+   thing. `coverage` is a sum used only to rank suggestions against each other and
+   to test `> 0`, so a common denominator cancels out of both and the fraction
+   would be an identical ordering expressed in worse units -- but it is a COUNT of
+   items that this is honest about ("real catalog coverage"), and a threshold is
+   the one thing it must never grow into. If a future change wants "covered
+   enough", that is a fraction and belongs with the constants at the top. */
 function suggestAdjacentTopics(interp, ctx) {
   const concepts = ctx.semantic?.concepts || {};
   const seen = new Set();
@@ -915,7 +1129,7 @@ function suggestAdjacentTopics(interp, ctx) {
         seen.add(rid);
         const rc = concepts[rid];
         if (!rc) continue;
-        const coverage = (rc.terms || []).reduce((n, t) => n + tagDF(t, ctx), 0);
+        const coverage = (rc.terms || []).reduce((n, t) => n + tagCount(t, ctx), 0);
         if (coverage > 0) suggestions.push({ id: rid, label: prettyConceptLabel(rid), coverage });
       }
     }
@@ -929,8 +1143,9 @@ function prettyConceptLabel(id) {
 
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
+  TAG_DF_TOO_BROAD, TAG_DF_COMMON, TAG_DF_RARE,
   STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
-  tokenize, branchOf, tagDF, corpusDF, hitText, hitTag,
+  tokenize, branchOf, tagCount, tagDF, dfMultiplier, expansionBucket, corpusDF, hitText, hitTag,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
   strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,

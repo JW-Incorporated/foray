@@ -76,6 +76,19 @@
         and end at one, and no sparse answer may skip a result it ranks above one
         it shows. The witness lives in test/search-tiering.test.js; see §9 for
         why the two suites split that way.
+        (Two sections are numbered 9. That is pre-existing and left alone rather
+        than renumbered: "§9" is cited by number from search-engine.js twice and
+        from test/search-tiering.test.js twice, and silently moving what it points
+        at is worse than a visible duplicate.)
+
+    10. Catalogue growth cannot retune the interpreter (#275): every query's
+        interpretation -- expansion terms, weights, broad flags, df multiplier
+        tier -- is identical against today's corpus and against the same corpus
+        duplicated. The document-frequency thresholds are fractions, so size alone
+        cannot move a term across one; before #275 they were absolute counts and
+        137 terms changed bucket at 2x. 4x, and the witness that the absolute rule
+        drifts, live in test/search-df-scaling.test.js for the runtime reasons
+        stated there and in §10.
 
    Usage: node tools/test-search.mjs [--tiering]
    Exit code 0 = all pass, 1 = at least one failure (readable report to stdout).
@@ -474,16 +487,24 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
      "nba" carries no duration/format modifier, and never takes a relaxation
      branch for the same reason.)
      Restricted to STRONG-signal items, and the floor is DERIVED, not hard-coded,
-     because scoreMatch's df multiplier is itself a function of catalog size:
-     `best * (df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75)`, where df is tagDF("nba")
-     -- exactly the quantity the nightly grows. At 1.35 a tag hit is 3.375,
-     topics 4.05, title 2.7, all clear of minScore 2. But at df=11 the
-     multiplier drops to 1 and a title-only item scores EXACTLY 2.000, which the
-     strict `sum > minScore` gate rejects -- so a hard-coded field list would
-     start false-reding on pure catalog growth and blame "a scoring regression".
-     That is the failure this whole case exists to eliminate, so the field list
-     is filtered by the tier actually in force. Fields sum, so a single field is
-     a floor on the score, never a ceiling.
+     because scoreMatch's df multiplier is a function of the query token's own
+     document frequency: `best * dfMultiplier(group.df)`, where `group.df` is
+     tagDF("nba"). At 1.35 a tag hit is 3.375, topics 4.05, title 2.7, all clear
+     of minScore 2. But one tier down the multiplier drops to 1 and a title-only
+     item scores EXACTLY 2.000, which the strict `sum > minScore` gate rejects --
+     so a hard-coded field list would start false-reding on catalogue change and
+     blame "a scoring regression". That is the failure this whole case exists to
+     eliminate, so the field list is filtered by the tier actually in force.
+     Fields sum, so a single field is a floor on the score, never a ceiling.
+     THE TIERS ARE READ FROM THE ENGINE, NOT MIRRORED HERE, as of #275. This was
+     an inline `df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75` -- a fourth-copy-of-the-
+     matcher (#249) one level up, an oracle reimplementing its subject. #275
+     normalised `tagDF` to a FRACTION of the tag map, and the mirror would have
+     survived that silently: every fraction is <= 10, so every term would have
+     been reported at 1.35, `strongFields` would have kept all three fields, and
+     the check would have gone quietly wrong in the false-RED direction the
+     paragraph above is about. `SE.dfMultiplier` cannot drift from scoreMatch
+     because scoreMatch calls it.
      Deliberately excluded at every tier: show-only (1.0, which never clears the
      1.2 per-group threshold, so it is not retrievable by design) and hook-only
      (2.025, which clears minScore by 1.25% and would become a false red the day
@@ -498,10 +519,7 @@ for (const query of ["the lakers", "warriors", "basketball"]) {
      deliberately refuses to assert. It earns its place in one specific state:
      when `covered` is wrong and purity is vacuous, it is the only thing left
      asserting anything at all about this query. */
-  const dfMult = (() => {
-    const df = interp.groups[0]?.df ?? 0;
-    return df <= 10 ? 1.35 : df <= 30 ? 1 : 0.75;
-  })();
+  const dfMult = SE.dfMultiplier(interp.groups[0]?.df ?? 0);
   const strongFields = [[2.5, taggedLeague], [3, topicsHit], [2, titleHit]]
     .filter(([weight]) => weight * dfMult > 2);
   const stronglySignalled = pool.filter((i) => strongFields.some(([, hit]) => hit(i)));
@@ -838,6 +856,130 @@ for (const query of ["how bbq works", "the history of jazz"]) {
   check(`no sparse answer skips a result it ranks above one it shows (#216)`,
     skipping.length === 0,
     `${skipping.length} query/queries drop a better-ranked result while showing a worse one:\n      ${skipping.join("\n      ")}`);
+}
+
+/* ---------- 10. catalogue growth cannot retune the query interpreter (#275) ---------- */
+
+/* THE DEFECT #275 REPORTS IS DRIFT, WHICH NO SINGLE-CORPUS ASSERTION CAN SEE.
+   `tagDF` returned an absolute count and `interpretQuery` compared it against
+   absolute thresholds, so the same query got a different expansion and different
+   weights every night as the catalogue grew -- 52 terms across the expansion
+   threshold and 125 across the score multiplier over one month of nightlies, with
+   no code change. Every assertion in this file was green throughout, because every
+   one of them reads TODAY's corpus. So the instrument has to be two corpora.
+
+   THE SECOND CORPUS IS TODAY'S, DUPLICATED. Every item and every tag entry is
+   cloned under a suffixed id, which cannot change what the catalogue is ABOUT: the
+   share of the pool matching any term is exactly preserved. So every
+   interpretation must be identical, and under the pre-#275 rule none of them was.
+
+   ASSERTED ON THE INTERPRETATION, NOT ON `status` OR `picks`, and that is a
+   measured choice rather than a convenient one. Duplication doubles the number of
+   bar-clearing results, `RICH_MIN` is a COUNT of them, and `diversify`'s per-show
+   cap sees each show twice -- so sparse queries legitimately go "ok" and picks
+   legitimately reorder at 2x, on arithmetic that has nothing to do with document
+   frequency. Measured on this pool, 5 of the 37 queries move status at 2x with
+   every df bucket identical. Asserting status invariance here would be asserting
+   something false and blaming #275 for classifyResults; asserting the
+   interpretation is asserting exactly what #275 governs.
+
+   WHAT THIS COVERS THAT test/search-df-scaling.test.js CANNOT, which is the reason
+   to spend a governed-path edit on it: that suite walks the vocabulary term by
+   term against the tag map. This walks the REAL QUERIES through the real
+   `interpretQuery`, so it also covers `corpusDF`'s `broad` flag, the topic boosts,
+   the alias expansion and the concept-support logic -- the whole object the ranker
+   is handed. A term-level check cannot see a query whose interpretation changes
+   through an interaction between those.
+
+   ONE ctx PER CORPUS, deliberately: both memos are keyed on the ctx, so a shared
+   one makes every term free after the first query and this section costs a few
+   seconds rather than a second battery. */
+{
+  const suffixed = (k) => {
+    const items = [];
+    const tags = {};
+    for (let n = 0; n < k; n++) {
+      const sfx = n === 0 ? "" : `--grow${n}`;
+      for (const it of discover.items) items.push({ ...it, id: it.id + sfx });
+      for (const [id, t] of Object.entries(itemTags.tags)) tags[id + sfx] = t;
+    }
+    return { discover: { ...discover, items }, itemTags: { tags } };
+  };
+
+  /* The comparable shape of an interpretation: the tokens, whether each is broad,
+     the multiplier tier its df selects, and every expansion term with its weight.
+     Weights are rounded because they are products of literals -- 0.6 * 0.4 is not
+     exactly 0.24 -- and an equality on raw floats would fail on formatting rather
+     than on drift. */
+  const shapeOf = (interp) => JSON.stringify({
+    groups: interp.groups.map((g) => ({
+      token: g.token,
+      broad: g.broad,
+      mult: SE.dfMultiplier(g.df),
+      terms: [...g.terms].map(([t, i]) => [t, i.w.toFixed(6), i.source]).sort(),
+    })),
+    topics: [...interp.topicBoosts].sort(),
+    hasPrimary: interp.hasPrimary,
+    properNoun: interp.properNounQuery,
+    filters: interp.filters,
+  });
+
+  const baseCtx = freshCtx();
+  const base = new Map([...searched.keys()].map((q) => [q, shapeOf(SE.interpretQuery(q, baseCtx))]));
+
+  /* 2x AND NOT ALSO 4x, and the reason is runtime measured rather than guessed.
+     Both memos are O(corpus) per novel term, so a 4x pass costs this file another
+     three minutes on top of its ~170 seconds -- for a claim that is scale-free, so
+     the second doubling can only re-derive what the first one showed. 4x is
+     asserted in test/search-df-scaling.test.js, where it runs against a slice of
+     the tag map instead of the whole pool and costs seconds. */
+  const grown = suffixed(2);
+  const grownCtx = { semantic, itemTags: grown.itemTags, discover: grown.discover };
+  const drifted = [];
+  for (const [query, shape] of base) {
+    if (shapeOf(SE.interpretQuery(query, grownCtx)) !== shape) drifted.push(`"${query}"`);
+  }
+  check(`no query's interpretation changes when the catalogue is duplicated 2x (#275)`,
+    drifted.length === 0,
+    `${drifted.length} of ${base.size} queries interpret differently at twice the catalogue with its composition untouched: ${drifted.join(", ")} -- ` +
+    `a df threshold is reading an absolute count again, so search quality is drifting with catalogue size`);
+
+  /* THE LADDER IS REACHED, which is this section's guard against vacuity. Every
+     check above is trivially true on a corpus where no term is common enough to be
+     demoted, on a vocabulary that stopped expanding, and on a `tagDF` that returns
+     a constant -- so the exercised queries have to be shown to span the ladder
+     rather than sit in one tier of it. Free: every value here is already memoized
+     by the pass above.
+     The DRIFT witness -- that the pre-#275 absolute rule really does move buckets
+     under this same duplication, 137 expansion buckets and 206 multipliers at 2x
+     over the 1,366-term vocabulary -- deliberately lives in
+     test/search-df-scaling.test.js instead. It needs a full-vocabulary sweep at two
+     corpus sizes, which is two more minutes here and seconds there, and one witness
+     in the right place beats two in the wrong one. */
+  const tiers = new Set();
+  const demoted = [];
+  let broadest = 0;
+  for (const [query] of searched) {
+    for (const g of SE.interpretQuery(query, baseCtx).groups) {
+      tiers.add(SE.dfMultiplier(g.df));
+      broadest = Math.max(broadest, g.df);
+      /* SE.expansionBucket, not `> SE.TAG_DF_COMMON` re-derived here. Reading the
+         constant and rewriting the comparison is what #275's own review found in
+         three places, this one included -- the rule is exported for the same reason
+         dfMultiplier is. The `info.w < 1` clause the first version carried is gone
+         as redundant: interpretQuery's prune loop only ever reaches terms with
+         `w < 1`, so a term that survived in the "0.4x" bucket was demoted there. */
+      for (const [t] of g.terms) {
+        if (SE.expansionBucket(SE.tagDF(t, baseCtx)) === "0.4x") demoted.push(`${query}:${t}`);
+      }
+    }
+  }
+  check(`the queries here span all three df multiplier tiers, so 2x-invariance is not invariance in one tier`,
+    tiers.size === 3, `only reached ${[...tiers].join("/")} -- the ladder is not exercised, so the check above cannot fail`);
+  check(`at least one exercised query carries an expansion term the ladder actually demotes`,
+    demoted.length > 0,
+    `no term over TAG_DF_COMMON (${SE.TAG_DF_COMMON}) survives in any expansion; broadest token df is ${broadest.toFixed(4)} -- ` +
+    `nothing here crosses a threshold, so the invariance above is vacuous`);
 }
 
 /* ---------- --tiering: the per-query tiering table, not an assertion ---------- */
