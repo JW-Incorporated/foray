@@ -126,7 +126,7 @@ const BROAD_DF_THRESHOLD = 0.10;
                              quiet as the two above, and saying so is better than
                              implying otherwise.
 
-   WHAT REMAINING MOVEMENT MEANS, because "13 terms still move" invites the wrong
+   WHAT REMAINING MOVEMENT MEANS, because "12 terms still move" invites the wrong
    reading. Under duplication a fraction cannot move at all, so every crossing left
    in the real series is the corpus genuinely becoming more or less ABOUT that term
    -- `crime` 2.2% -> 4.2% over the month is a true-crime wave in the catalogue, and
@@ -163,12 +163,12 @@ function branchOf(item) {
 }
 
 /* How many tagged items carry `term` as a tag, THROUGH THE SHARED MATCHER.
-   An ABSOLUTE count, and the only caller that wants one is `tagDF` below, which
-   divides it by the size of the map -- see there for why every THRESHOLD reads
-   the fraction and never this. Exported because it is what
-   test/search-matcher.test.js pins the matcher-sharing on: a count is the
-   quantity that mechanism is about, and normalising it would only add a
-   denominator to every expected value.
+   An ABSOLUTE count. Two callers: `tagDF` below, which divides it by the size of
+   the map -- see there for why every THRESHOLD reads the fraction and never this --
+   and suggestAdjacentTopics, which ranks coverage and wants a count of items.
+   Exported because it is what test/search-matcher.test.js pins the matcher-sharing
+   on: a count is the quantity that mechanism is about, and normalising it would only
+   add a denominator to every expected value.
    #249. This inlined the pre-#211 loose predicate as an anonymous arrow:
 
      tags.some(tag => term.length < 4
