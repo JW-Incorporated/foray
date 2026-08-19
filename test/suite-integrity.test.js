@@ -220,7 +220,7 @@ const FLOORS = {
      scaffold surviving. Nothing else in the repo checks any of those, so
      deleting this suite would silently un-guard all four. */
   "tools/mobile/prepare-webdir.test.mjs": 27,
-  "tools/mobile/shell-invariants.test.mjs": 35,
+  "tools/mobile/shell-invariants.test.mjs": 38,
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody
@@ -235,7 +235,15 @@ const FLOORS = {
      RELEASE_EVENTS and ACQUIRE_EVENTS lists, so they expand into six runs. The floor is
      the static count, because a regex over source is what this file measures. Raise it
      when the suite grows. */
-  "tools/mobile/foray-audio-shell.test.mjs": 53,
+  "tools/mobile/foray-audio-shell.test.mjs": 66,
+  /* #27's Android half: the `navigator.mediaSession` polyfill that feeds a native
+     Media3 session and routes transport presses back into the page
+     (docs/android-lock-screen.md). The floor matters here for the reason that doc's
+     §8 gives: nothing in it has run on a device, so this suite against fakes is the
+     only thing standing between a lock screen that works and one that silently says
+     the wrong episode. Section 7 of that doc maps each mechanism to the mutation that
+     kills it, which is where to look before concluding these are vacuous. */
+  "tools/mobile/foray-media-session.test.mjs": 57,
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
      deletion unusually attractive to a future session that finds them

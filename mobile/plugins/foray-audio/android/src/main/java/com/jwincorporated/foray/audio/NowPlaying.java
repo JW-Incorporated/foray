@@ -122,6 +122,26 @@ final class NowPlaying {
     }
 
     /**
+     * May the OS offer transport controls?
+     *
+     * <p>Loaded AND not finished, and the second half is a decision rather than a
+     * detail. {@code player/media-session.js} §4 reports the web spec's {@code "none"}
+     * for a finished Foray on purpose — <i>"a car display offering a play button that
+     * does nothing is worse than no display at all"</i> — and in a browser that clears
+     * the transport while leaving the metadata visible. Declaring
+     * {@code COMMAND_PLAY_PAUSE} in {@link #ENDED} would put that button back on the
+     * lock screen, which is the browser behaviour and the Android behaviour
+     * disagreeing about the same state.
+     *
+     * <p>Read by BOTH {@code WebViewPlayer}'s command set and the notification's
+     * buttons, so the media panel and the shade cannot end up offering different
+     * things.
+     */
+    boolean acceptsTransport() {
+        return state == PLAYING || state == PAUSED;
+    }
+
+    /**
      * Parse one {@code setNowPlaying} payload.
      *
      * <p>TOTAL, and that is the point: every branch has a defined answer for

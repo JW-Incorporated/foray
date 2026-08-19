@@ -226,7 +226,9 @@ final class WebViewPlayer extends SimpleBasePlayer {
                teardown would do nothing without this. `handleRelease` has nothing to
                release, which is why a controller reaching it is harmless. */
             .add(Player.COMMAND_RELEASE);
-        if (!np.isLoaded()) return commands.build();
+        /* NOT `isLoaded()`, and the difference is one state: a FINISHED Foray is loaded
+           and offers nothing. See `NowPlaying.acceptsTransport`. */
+        if (!np.acceptsTransport()) return commands.build();
 
         /* ONE COMMAND FOR BOTH, because Media3 has one: `COMMAND_PLAY_PAUSE` governs
            `play()` and `pause()` together. The page installs both handlers or neither,

@@ -411,7 +411,13 @@ public class PlaybackKeepAliveService extends Service {
         int prevIndex = -1;
         int playIndex = -1;
         int nextIndex = -1;
-        if (np.hasPrevious) {
+        /* `acceptsTransport()`, NOT `isLoaded()`, and it is the same rule
+           `WebViewPlayer`'s command set uses — deliberately read from the same method so
+           the media panel and the shade cannot offer different things. A FINISHED Foray
+           keeps its title and loses its buttons, which is exactly what
+           `player/media-session.js` §4's `"none"` does in a browser. */
+        boolean transport = np.acceptsTransport();
+        if (transport && np.hasPrevious) {
             notification.addAction(
                 android.R.drawable.ic_media_previous,
                 getString(R.string.foray_action_previous),
@@ -419,7 +425,7 @@ public class PlaybackKeepAliveService extends Service {
             );
             prevIndex = index++;
         }
-        if (np.canPlay || np.canPause) {
+        if (transport && (np.canPlay || np.canPause)) {
             boolean playing = np.state == NowPlaying.PLAYING;
             notification.addAction(
                 playing ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play,
@@ -428,7 +434,7 @@ public class PlaybackKeepAliveService extends Service {
             );
             playIndex = index++;
         }
-        if (np.hasNext) {
+        if (transport && np.hasNext) {
             notification.addAction(
                 android.R.drawable.ic_media_next,
                 getString(R.string.foray_action_next),
@@ -436,7 +442,7 @@ public class PlaybackKeepAliveService extends Service {
             );
             nextIndex = index++;
         }
-        if (np.canStop) {
+        if (transport && np.canStop) {
             notification.addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
                 getString(R.string.foray_action_stop),
