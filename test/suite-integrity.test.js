@@ -447,6 +447,24 @@ const FLOORS = {
      politeness gate, partial chains, and the single authorship of the `reason`
      sentence that `--reclassify` would otherwise respell offline. */
   "tools/refresh/dai.test.mjs": 20,
+  /* Android on a runner (#245). ZERO SLACK, deliberately, and for a reason the iOS
+     entry above does not have. Two of these 26 tests are the ONLY thing in the repo
+     that notices if the Android job stops checking that `cap sync` still wires
+     `foray-audio` into the generated project and that its library manifest still
+     merges — and `mobile/android/` is not committed, so there is no file any other
+     test can read to check either one. If those checks leave the workflow, the
+     `mediaPlayback` foreground service and the Media3 lock screen drop out of the
+     APK and every build in this repo still reports green.
+
+     ALL 26 WERE MUTATION-TESTED, 36 mutations, none surviving — and three of them
+     were VACUOUS on the first round, each because the assertion matched the
+     workflow's own comment or an error message instead of the check (see the file's
+     `stepCode()` header). That is the CLAUDE.md § "A green test is not evidence"
+     failure in a file whose fixture is the thing it tests, which is the most
+     forgiving fixture there is. Raise this number when the suite grows; do not
+     lower it. */
+  "tools/mobile/android-workflow.test.mjs": 26,
+  "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   /* The nightly watchdog (#290). ZERO SLACK, for the reason media-session and
      data-deletion are floored that way: what this suite holds down is a set of

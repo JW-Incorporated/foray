@@ -18,6 +18,12 @@
  * indentation; everything else is a targeted assertion on the text with a
  * message that says what it is protecting. A YAML parser would be better and is
  * not worth a root dependency.
+ *
+ * THE READING HELPERS NOW LIVE IN `workflow-yaml.mjs`, moved there by #245 when
+ * `android-workflow.test.mjs` needed the same four functions. Each of them was
+ * fixed for a real defect and the comments recording those defects moved with
+ * them; a hand-copied second version would have lost them. Nothing about what
+ * this suite asserts changed in that move.
  */
 
 import test from "node:test";
@@ -25,80 +31,18 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { topLevelKeys, block, prose, step, invocationsOf } from "./workflow-yaml.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const WORKFLOW_REL = ".github/workflows/ios-build.yml";
 const WF = fs.readFileSync(path.join(ROOT, WORKFLOW_REL), "utf8");
 const CI = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
 
-/** Top-level (column-0) keys of a YAML document, in order. Safe because a block
- *  scalar's content must be indented deeper than its key, so nothing inside a
- *  `run: |` can sit at column 0. */
-function topLevelKeys(src) {
-  return src
-    .split(/\r?\n/)
-    .filter((l) => /^[A-Za-z_][\w-]*:/.test(l))
-    .map((l) => l.slice(0, l.indexOf(":")));
-}
-
-/** The lines of one block, by its owning key's indentation.
- *
- *  COMMENTS AND BLANKS ARE SKIPPED RATHER THAN RETURNED, and that was a real
- *  defect: an earlier version pushed them, so a *comment* inside `on:` that
- *  happened to mention `"mobile/**"` satisfied the path-filter assertion below —
- *  and that block does carry comments explaining the filter. A test that a
- *  comment can satisfy is not a test. Scanning still continues through them, so a
- *  blank line does not end the block. */
-function block(src, key, indent = 0) {
-  const lines = src.split(/\r?\n/);
-  const pad = " ".repeat(indent);
-  const start = lines.findIndex((l) => l.startsWith(`${pad}${key}:`));
-  if (start < 0) return null;
-  const out = [];
-  for (let i = start + 1; i < lines.length; i++) {
-    if (lines[i].trim() === "" || lines[i].trimStart().startsWith("#")) continue;
-    const lead = lines[i].length - lines[i].trimStart().length;
-    if (lead <= indent) break;
-    out.push(lines[i]);
-  }
-  return out.join("\n");
-}
-
-/** Every comment line in the file, unwrapped into one string.
- *
- *  Assertions about the header's PROSE have to read it this way: a claim like
- *  "minutes of wall clock per run" is wrapped across two `#` lines at 80 columns,
- *  so a naive regex over the raw file fails the moment someone reflows a
- *  paragraph — which is a documentation edit, not a behaviour change, and should
- *  not turn a suite red. */
-function prose(src) {
-  return src
-    .split(/\r?\n/)
-    .filter((l) => l.trimStart().startsWith("#"))
-    .map((l) => l.trimStart().replace(/^#+\s?/, ""))
-    .join(" ")
-    .replace(/\s+/g, " ");
-}
-
-/** One step's YAML, by its `name:`. Used to assert per-step properties that a
- *  whole-file regex cannot see (a `continue-on-error` on the wrong step, say). */
-function step(src, nameFragment) {
-  const chunks = src.split(/\n(?= {6}- (?:name|uses):)/);
-  return chunks.find((c) => c.includes(nameFragment)) ?? null;
-}
-
-/** Every `xcodebuild` COMMAND in the workflow, as one line each.
- *
- *  Backslash continuations are joined first, and the match is anchored on
- *  `xcodebuild` as a command rather than as a substring — the first version of
- *  this helper matched the filename `xcodebuild-simulator.log` and then asserted
- *  that a log path disabled code signing. */
+/** Every `xcodebuild` COMMAND in the workflow, as one line each. The generic
+ *  half — and the comment about the log-filename defect that shaped it — is
+ *  `invocationsOf` in `workflow-yaml.mjs`. */
 function xcodebuildInvocations(src) {
-  return src
-    .replace(/\\\r?\n\s*/g, " ")
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => /(^|[;&|]\s*|^if\s+!\s+)xcodebuild\s/.test(l));
+  return invocationsOf(src, "xcodebuild");
 }
 
 /* ────────────────────────── shape and trigger set ────────────────────────── */

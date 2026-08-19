@@ -1,0 +1,444 @@
+# Build the Android shell on a Linux runner, so the build stops depending on one
+# machine's directory.
+#
+# Issue #245, option 3. Reads on from #37 (`docs/android-shell-build.md`, the
+# build), #244 (`docs/android-native-code.md`, the first committed native code)
+# and #27 (`docs/android-lock-screen.md`, the Media3 session inside it).
+#
+# ── WHY THIS EXISTS, AND IT IS NOT "CI FOR COMPLETENESS" ─────────────────────
+#
+# Every Android APK this project has ever produced was built on ONE Windows
+# machine, against a JDK and an SDK that lived in `%TEMP%\mp1-android\` — a
+# directory Windows is entitled to delete on its own schedule. #245 moved the
+# toolchain to `%LOCALAPPDATA%\android-build\` (`docs/android-shell-build.md`
+# §1.2a) and that removed the *scheduled* destruction, not the dependency: the
+# toolchain is still one undeclared directory on one machine, and NOTHING IN THE
+# REPO REFERENCES IT, so no test can notice it is gone. The failure mode is a
+# machine that could build the product yesterday and cannot today, reporting a
+# missing SDK rather than anything that points at the cause.
+#
+# This job is the part that actually fixes that. Once the build runs here, the
+# local toolchain is a convenience rather than a single point of failure, and a
+# `%LOCALAPPDATA%` wipe costs a rebuild of a developer's comfort instead of the
+# ability to ship the Android half of the product.
+#
+# ── FOUR THINGS ONLY A RUNNER CAN CHECK, and each is a live silent failure ────
+#
+#   1. THAT THE BUILD IS REPRODUCIBLE AT ALL, on a machine that has never seen
+#      this project. `docs/android-shell-build.md` §1.2 records versions; it
+#      cannot record the twenty things a working machine has that a fresh one
+#      does not. A green run here is the first evidence that the recorded
+#      versions are the whole recipe.
+#   2. THAT OUR OWN NATIVE CODE IS STILL WIRED IN. `mobile/android/` is NOT
+#      committed (`mobile/.gitignore`), so `cap sync` re-derives the plugin
+#      include lines from `mobile/package.json` on every generation. If that
+#      derivation ever stops happening, `mobile/plugins/foray-audio/` — the
+#      `mediaPlayback` foreground service and the Media3 lock-screen session —
+#      drops out of the APK and BOTH APKs STILL BUILD, green, with the feature
+#      silently gone. There is no committed file a unit test could read to catch
+#      it. The "plugin survived regeneration" step below is the only place in
+#      this repo where that mechanism is checked.
+#   3. THAT THE LIBRARY MANIFEST STILL MERGES. Same shape, worse symptom: a
+#      `<service>` that fails to merge builds silently and throws at runtime
+#      (`docs/android-native-code.md` §4.2). The merged manifest is build output,
+#      so only a build can read it.
+#   4. THAT `lintVitalRelease` STILL PASSES. It is the lint pass that can fail a
+#      release build on its own, and it has only ever run on the one machine.
+#
+# ── WHAT IT CANNOT PROVE, said here rather than discovered later ─────────────
+#
+# A BUILD IS NOT A LAUNCH. `docs/android-shell-build.md` §2 concludes our strict
+# CSP does not block Capacitor's injected Android bridge, and §3 says plainly
+# that the conclusion is INFERRED FROM SOURCE with nothing executed in a WebView.
+# This job does not change that by one inch: it compiles the app, it never runs
+# it. Neither the CSP verdict (§2/§3), nor `navigator.mediaSession`'s absence
+# (§4), nor whether the foreground service keeps audio alive, nor whether the
+# lock screen renders, is touched by anything below.
+#
+# AND WE DELIBERATELY DO NOT REACH FOR AN EMULATOR TO CLOSE THAT GAP.
+# `docs/research/mp1-background-audio.md` §6.2 already paid ~75 minutes to
+# establish that an emulator produces nothing here, and §6.4 is the rest of that
+# argument. A device is what settles §2, and `docs/android-shell-build.md` §3
+# lists the ~5-minute phone-over-USB procedure that does it.
+#
+# ── COST, because the iOS job's header makes the same argument ───────────────
+#
+# `ubuntu-latest` bills at 1x, not the 10x a macOS runner does, and while this
+# repo is public GitHub-hosted minutes are free outright. That is why this job
+# can afford BOTH configurations (debug and release) where `ios-build.yml` had to
+# argue for each one. It is still path-filtered and still has no `push` or
+# `schedule` trigger: a merge re-running a job that already ran on the PR buys
+# nothing, and the sister project spent a build freeze suspecting exhausted
+# Actions minutes (#1641 there). Infrequency is a design constraint even when the
+# runner is free.
+#
+# NOT A REQUIRED CHECK, and the job name is chosen so it cannot become one by
+# accident — `protect-main` matches required contexts BY NAME (`backend`,
+# `data-and-site`, `path-policy`). A 20-minute Gradle build gating every nightly
+# content PR would be a self-inflicted wound.
+#
+# ── NO THIRD-PARTY ACTIONS, which is a deviation worth naming ────────────────
+#
+# `docs/android-shell-build.md` §3 sketched this job with
+# `android-actions/setup-android`. It is not used. Every action here is
+# `actions/*` — GitHub's own — because a third-party action runs arbitrary code
+# with the job's token on every run, and the only thing that one buys us is a
+# wrapper around `sdkmanager`, which is three lines below. `actions/setup-java`
+# is first-party and does the half that actually matters (the JDK).
+#
+# THE JDK IS PINNED TO A MAJOR, NOT TO A PATCH, and that is on purpose. The local
+# build uses Microsoft OpenJDK 21.0.12+8; asking a runner for that exact build
+# would turn its eventual removal from the image into a red build for no reason.
+# The load-bearing fact is the MAJOR: Capacitor 8 requires JDK 21, and JDK 17
+# dies at `:capacitor-android:compileDebugJavaWithJavac` with
+# `invalid source release: 21` (`docs/android-shell-build.md` §1.2). 21 is
+# asserted; the resolved patch version is printed into the summary so drift is
+# visible without being fatal.
+
+name: android-build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    # Narrow on purpose — see the cost note above. `.github/workflows/android-build.yml`
+    # is in the list so a change to this file is exercised by the PR that makes it,
+    # which is the only way a CI-only change can be reviewed against real output.
+    paths:
+      - "mobile/**"
+      - "tools/mobile/**"
+      - "index.html"
+      - "app.js"
+      - "player/**"
+      - ".github/workflows/android-build.yml"
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  android-shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP_ID: com.jwincorporated.foray
+      ANDROID_DIR: mobile/android
+      # The Android SDK platform and build-tools this project builds against.
+      # `docs/android-shell-build.md` §1.2 records both as read off the local
+      # build; `compileSdkVersion`/`targetSdkVersion` are 36, set by Capacitor's
+      # own `variables.gradle`, so 36 here is not an independent choice.
+      SDK_PLATFORM: platforms;android-36
+      SDK_BUILD_TOOLS: build-tools;36.0.0
+      # DELIBERATELY NOT `${{ runner.temp }}` HERE. The `runner` context is not
+      # available in a job-level `env:` block (GitHub allows
+      # github/needs/strategy/matrix/vars/secrets/inputs there and nothing else)
+      # and an unavailable context is a workflow-COMPILE error, not an empty
+      # string — the job would never start. $ART is set from $RUNNER_TEMP in the
+      # first step instead, exactly as `ios-build.yml` does it.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Toolchain versions (the first thing to read when this breaks)
+        # EVERY VERSION THIS BUILD DEPENDS ON, in one file, before anything is
+        # generated. `docs/android-shell-build.md` §1.2 exists because these are
+        # the part that rots, and the whole argument for this job is that the
+        # recipe should not live only on one machine.
+        run: |
+          set -euo pipefail
+          echo "ART=$RUNNER_TEMP/android-ci" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/android-ci"
+          {
+            echo "runner: $(uname -srm)"
+            java -version 2>&1
+            javac -version 2>&1
+            echo "JAVA_HOME=$JAVA_HOME"
+            node --version
+            npm --version
+          } | tee "$RUNNER_TEMP/android-ci/toolchain.txt"
+          # The JDK MAJOR is load-bearing (see the header) so it is asserted, not
+          # merely printed: `setup-java` resolving to anything but 21 must be a
+          # red build here rather than an `invalid source release: 21` 200 lines
+          # into a Gradle log.
+          javac -version 2>&1 | grep -qE '^javac 21\.' \
+            || { echo "javac is not 21 — Capacitor 8 will fail at compileDebugJavaWithJavac"; exit 1; }
+
+      - name: The Android SDK, from the image plus exactly what we pin
+        # The runner image ships an SDK and sets $ANDROID_HOME. What it does NOT
+        # promise is WHICH platform and build-tools versions are in it, and that
+        # promise is the one this project needs — so the two pinned packages are
+        # installed explicitly. `sdkmanager` is a no-op for anything already
+        # present, so this costs seconds on a hit and is the difference between a
+        # build and a failure on a miss.
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+            echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
+            echo "The image changed; this job needs the SDK installed explicitly."
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER" || { echo "no sdkmanager at $SDKMANAGER"; exit 1; }
+          # Licences first. Without an accepted licence every Gradle build stops,
+          # and it stops with a message about licences rather than about this step
+          # — the same trap `docs/android-shell-build.md` §1.2a records for the
+          # local copy, where `licenses` had to be copied deliberately.
+          yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS"
+          "$SDKMANAGER" --list_installed | tee "$ART/sdk-installed.txt"
+          # `local.properties` is gitignored on purpose — it carries a
+          # machine-absolute `sdk.dir` — so the runner writes its own, exactly as
+          # every developer machine does. It is written AFTER `cap add android`
+          # in the step order below; here we only record where it will point.
+          echo "sdk.dir=$SDK" | tee "$ART/local-properties.txt"
+
+      - name: Install the shell's dependencies
+        # `mobile/` carries its own package.json precisely so the repo root stays
+        # dependency-free (#209 §2.4). There is no committed lockfile, so this is
+        # `npm install`, not `npm ci` — and that is the first thing that would
+        # make this job non-reproducible, so it prints the resolved versions.
+        # `foray-audio` in that list is not a third-party package: it is
+        # `file:plugins/foray-audio`, this repo's own native code, and npm linking
+        # it is what makes Capacitor's CLI discover the plugin at all.
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm ls --depth=0 | tee "$ART/mobile-deps.txt"
+
+      - name: Build the webDir and generate the Android project
+        # `npm run add:android` is the committed script (prepare:webdir &&
+        # cap add android), used rather than re-spelling the commands so this
+        # workflow cannot drift from what a human is told to run.
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm run add:android 2>&1 | tee "$ART/cap-add-android.log"
+          # `-not -path '*/public/*'` because that subtree is the copied webDir —
+          # hundreds of files, none of them a decision.
+          find android -maxdepth 4 -not -path '*/public/*' -not -path '*/build/*' \
+            | sort | tee "$ART/android-tree.txt"
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+      - name: Record the generated versions (drift is visible, not fatal)
+        # READ, NOT ASSERTED, and that is a deliberate choice. Gradle 8.14.3, AGP
+        # 8.13.0, minSdk 24, compileSdk/targetSdk 36 are all Capacitor 8.5.0
+        # TEMPLATE OUTPUT (`docs/android-shell-build.md` §1.2), and `mobile/package.json`
+        # floats on `^8.0.0`. Asserting them would turn a Capacitor patch release
+        # into a red build on a change nobody made; printing them puts the drift in
+        # front of whoever reads the run. The versions that ARE asserted are the
+        # ones a wrong value silently breaks: the JDK major, above, and the plugin
+        # wiring, below.
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          {
+            grep -E '^distributionUrl' gradle/wrapper/gradle-wrapper.properties
+            grep -E "com\.android\.tools\.build:gradle" build.gradle || true
+            cat variables.gradle
+          } | tee "$ART/generated-versions.txt"
+
+      - name: Our own native code survived the regeneration
+        # THE HIGHEST-VALUE ASSERTION IN THIS JOB, and the only place in the repo
+        # where this mechanism is checked. `mobile/android/` is not committed, so
+        # the include/implementation lines for `foray-audio` are re-derived by
+        # `cap sync` from `mobile/package.json` on every generation
+        # (docs/android-native-code.md). If that ever stops working, the
+        # `mediaPlayback` foreground service and the Media3 lock-screen session
+        # leave the APK and EVERY BUILD BELOW STILL GOES GREEN — a feature deleted
+        # by a green run. No unit test can see it: there is no committed file to
+        # read.
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          cat capacitor.settings.gradle | tee "$ART/capacitor.settings.gradle.txt"
+          grep -q "':foray-audio'" capacitor.settings.gradle \
+            || { echo "cap sync did not include ':foray-audio' — the foreground service is NOT in this build"; exit 1; }
+          grep -q "foray-audio" app/capacitor.build.gradle \
+            || { echo "':foray-audio' is not an app dependency — the module is included but not linked"; exit 1; }
+          test -d ../plugins/foray-audio/android/src/main/java \
+            || { echo "the plugin's Java sources are missing from the checkout — see mobile/.gitignore's anchoring note"; exit 1; }
+
+      - name: assembleDebug
+        # The primary verdict, and the artefact a founder can actually install.
+        # `--no-daemon` because a runner is a single-shot machine and a daemon
+        # only adds a process to reap; `--console=plain` because the task lines
+        # are read by the next step and Gradle's rich console rewrites them.
+        id: debug
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          # Capacitor's template ships `gradlew` executable, but a mode that does
+          # not survive some future copy step would fail here with "Permission
+          # denied" and look like a Gradle problem. One idempotent line.
+          chmod +x ./gradlew
+          if ! ./gradlew assembleDebug --no-daemon --console=plain \
+              > "$ART/gradle-assembleDebug.log" 2>&1; then
+            echo "::group::assembleDebug tail"; tail -300 "$ART/gradle-assembleDebug.log"; echo "::endgroup::"
+            exit 1
+          fi
+          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-assembleDebug.log" | tail -1
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          SIZE=$(stat -c%s "$APK")
+          echo "debug_apk_bytes=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "app-debug.apk $SIZE bytes" | tee "$ART/apk-sizes.txt"
+          cp "$APK" "$ART/app-debug.apk"
+
+      - name: The library manifest merged, and the service is really in there
+        # `docs/android-native-code.md` §4.2: a library manifest that fails to
+        # merge BUILDS SILENTLY and throws at runtime. This is build output, so
+        # only a build can read it — and until this job existed it had been read
+        # exactly once, by hand, on one machine.
+        #
+        # THE MANIFEST IS FOUND, NOT PATH-ASSUMED. The intermediates layout
+        # (`merged_manifest/debug/processDebugMainManifest/…`) is an AGP internal
+        # and has moved between AGP versions; hardcoding it would make an AGP bump
+        # look like a merge failure.
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          MERGED=$(find app/build/intermediates/merged_manifest -name AndroidManifest.xml | head -1)
+          if [ -z "$MERGED" ]; then
+            echo "no merged manifest under app/build/intermediates/merged_manifest — AGP's layout moved"
+            find app/build/intermediates -maxdepth 2 -type d | sort
+            exit 1
+          fi
+          cp "$MERGED" "$ART/AndroidManifest-merged.xml"
+          # THE FOUR THINGS THAT MAKE THE SERVICE LEGAL, each with its own failure.
+          # `foregroundServiceType="mediaPlayback"` is required from API 34, and it
+          # is the one type with no runtime prerequisite and NO TIMEOUT — a Foray
+          # runs 45 to 90 minutes, so a timed-out type would not survive one
+          # (docs/research/mp1-background-audio.md §5.3).
+          for needle in \
+            'com.jwincorporated.foray.audio.PlaybackKeepAliveService' \
+            'android:foregroundServiceType="mediaPlayback"' \
+            'android.permission.FOREGROUND_SERVICE' \
+            'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'
+          do
+            grep -qF "$needle" "$ART/AndroidManifest-merged.xml" \
+              || { echo "the merged manifest is missing: $needle"; exit 1; }
+          done
+          echo "merged manifest carries the service, its type and both permissions"
+          # And the two halves inside the APK, the same pair §4.2 read by hand.
+          unzip -l "$ART/app-debug.apk" | tee "$ART/apk-listing.txt" > /dev/null
+          grep -qF 'assets/public/foray-audio-shell.js' "$ART/apk-listing.txt" \
+            || { echo "the plugin's WEB half is not in the APK"; exit 1; }
+          unzip -p "$ART/app-debug.apk" assets/capacitor.plugins.json | tee "$ART/capacitor.plugins.json"
+          grep -qF 'com.jwincorporated.foray.audio.ForayAudioPlugin' "$ART/capacitor.plugins.json" \
+            || { echo "Capacitor did not register ForayAudioPlugin — the @CapacitorPlugin annotation was not found"; exit 1; }
+
+      - name: assembleRelease, which is how lintVitalRelease gets run
+        # The release configuration is a different compile (R8, resource
+        # shrinking, and `lintVitalRelease` — the lint pass that can fail a
+        # release build on its own). UNSIGNED, and that is the correct final
+        # artefact here: there is no keystore in this repo and no Play account, so
+        # signing is a founder action (HUMAN-ACTIONS.md). Nothing in this job
+        # reads a secret, which is what keeps it runnable on any fork.
+        id: release
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          if ! ./gradlew assembleRelease --no-daemon --console=plain \
+              > "$ART/gradle-assembleRelease.log" 2>&1; then
+            echo "::group::assembleRelease tail"; tail -300 "$ART/gradle-assembleRelease.log"; echo "::endgroup::"
+            exit 1
+          fi
+          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-assembleRelease.log" | tail -1
+          # A GREEN RELEASE BUILD THAT SKIPPED LINT PROVES LESS THAN IT LOOKS.
+          # `lintVitalRelease` is a task, so it can be excluded on the command
+          # line, switched off by a `lint { checkReleaseBuilds false }` block a
+          # future Capacitor template adds, or renamed by an AGP change — and in
+          # all three cases `assembleRelease` still prints BUILD SUCCESSFUL. So the
+          # task is asserted to have RUN, which is two checks rather than one:
+          # present in the task list, and not SKIPPED / NO-SOURCE. (UP-TO-DATE and
+          # FROM-CACHE are accepted: those mean it ran and its verdict is being
+          # reused, which is Gradle working, not lint being bypassed.)
+          LINTLINE=$(grep -E '^> Task :app:lintVitalRelease( |$)' "$ART/gradle-assembleRelease.log" | tail -1 || true)
+          if [ -z "$LINTLINE" ]; then
+            echo "assembleRelease did not run :app:lintVitalRelease — the release lint gate is not actually running"
+            grep -E '^> Task .*[Ll]int' "$ART/gradle-assembleRelease.log" || echo "(no lint task ran at all)"
+            exit 1
+          fi
+          echo "$LINTLINE"
+          case "$LINTLINE" in
+            *SKIPPED*|*NO-SOURCE*) echo "lintVitalRelease was registered but did not execute: $LINTLINE"; exit 1 ;;
+          esac
+          APK=app/build/outputs/apk/release/app-release-unsigned.apk
+          test -f "$APK"
+          SIZE=$(stat -c%s "$APK")
+          echo "release_apk_bytes=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "app-release-unsigned.apk $SIZE bytes" | tee -a "$ART/apk-sizes.txt"
+          cp "$APK" "$ART/app-release-unsigned.apk"
+
+      - name: What this run established
+        # LAST, so it can see every outcome it describes, and `if: always()` so a
+        # failed build still gets a summary — the log of a failed build is the
+        # most useful thing in the run and a run with no summary reads as "fine".
+        if: always()
+        env:
+          DEBUG_OUTCOME: ${{ steps.debug.outcome }}
+          RELEASE_OUTCOME: ${{ steps.release.outcome }}
+          DEBUG_BYTES: ${{ steps.debug.outputs.debug_apk_bytes }}
+          RELEASE_BYTES: ${{ steps.release.outputs.release_apk_bytes }}
+        run: |
+          set -euo pipefail
+          # `if: always()` means this can run even when the very first step failed
+          # and $ART was never exported, so it re-derives rather than dying on an
+          # unbound variable and leaving no report at all.
+          ART="${ART:-$RUNNER_TEMP/android-ci}"
+          mkdir -p "$ART"
+          {
+            echo "## Android shell build"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| \`assembleDebug\` | **${DEBUG_OUTCOME:-not reached}** |"
+            echo "| \`app-debug.apk\` | ${DEBUG_BYTES:-—} bytes |"
+            echo "| \`assembleRelease\` (incl. \`lintVitalRelease\`) | **${RELEASE_OUTCOME:-not reached}** |"
+            echo "| \`app-release-unsigned.apk\` | ${RELEASE_BYTES:-—} bytes |"
+            echo
+            echo "**A build is not a launch.** Nothing here executes the app, so"
+            echo "\`docs/android-shell-build.md\` §2 (the CSP verdict), §4"
+            echo "(\`navigator.mediaSession\`) and the foreground service's runtime"
+            echo "behaviour are exactly as unproven after a green run as before it."
+            echo "A phone over USB is what settles them — §3."
+            echo
+            if [ -f "$ART/toolchain.txt" ]; then
+              echo "<details><summary>Toolchain</summary>"; echo
+              echo '```'; cat "$ART/toolchain.txt"; echo '```'
+              echo; echo "</details>"
+            fi
+            if [ -f "$ART/generated-versions.txt" ]; then
+              echo "<details><summary>Versions Capacitor generated (read, not asserted)</summary>"; echo
+              echo '```'; cat "$ART/generated-versions.txt"; echo '```'
+              echo; echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload everything this run learned
+        # Always: a failed build's Gradle log is the most useful thing in the run.
+        # THE APKs ARE HERE ON PURPOSE and it is not merely tidiness — this is the
+        # only way to get an installable Foray APK without the one Windows machine
+        # #245 is about. `adb install app-debug.apk` from a downloaded artifact is
+        # the ~5-minute device check `docs/android-shell-build.md` §3 asks for.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-shell-evidence
+          path: ${{ runner.temp }}/android-ci
+          if-no-files-found: warn
+          retention-days: 14
