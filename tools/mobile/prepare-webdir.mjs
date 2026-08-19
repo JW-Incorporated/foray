@@ -699,6 +699,7 @@ export function assertDiscoverSliceComplete(source, slice) {
  * and the app and the website agree EXACTLY rather than approximately. It is a
  * bundle change, not a search-quality one, so unlike #275 it belongs in a PR like
  * this one.
+ */
 
 /**
  * Which bundled data files are written as a slice rather than copied.

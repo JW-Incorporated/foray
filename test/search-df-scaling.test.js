@@ -144,6 +144,18 @@ test("the three tag-df thresholds are ordered fractions and the top one IS BROAD
      anchor a query is too common to expand into -- and the two drifting apart
      again by an accident of tuning is the shape of this issue.
 
+     WHAT THE PINNED IDENTITY DOES NOT CLAIM: that the two cuts are interchangeable.
+     They read different populations (corpusDF over the discover pool, tagDF over the
+     tag map) and corpusDF runs a few points higher, so at a shared value the
+     expansion cut is looser than the anchor cut -- `engineering` is `broad` as a
+     token at 12.3% corpusDF and survives expansions at 6.3% tagDF. The assertion
+     forbids the two DRIFTING APART SILENTLY, not splitting them: splitting is
+     legitimate, and it means editing this line and saying why in search-engine.js.
+     WHAT NOTHING HERE PINS, said plainly because this suite reads every threshold
+     back from the engine: the VALUES. Retuning TAG_DF_COMMON to 0.05 passes all ten
+     tests in this file. The ceiling on that cut is a product judgement and its guard
+     is tools/test-search.mjs's "parenting" case, which is where a value belongs.
+
      KILLED BY: restoring any of 60 / 25 / 30 / 10; by swapping TAG_DF_COMMON and
      TAG_DF_TOO_BROAD; and by retuning TAG_DF_TOO_BROAD away from
      BROAD_DF_THRESHOLD without saying so. */
@@ -204,10 +216,12 @@ test("interpretQuery drops, demotes or keeps an expansion term by FRACTION of th
      map so every threshold is crossable with entries to spare. Full weight for a
      concept's own term is 0.6 (see addTerm) and the demotion is 0.4x of that.
 
-     KILLED BY: `df > 60` / `df > 25`. The map is deliberately big enough that a
-     COUNT can reach 60 too, so this is not passing merely because the absolute
-     rule is unreachable -- restore it and 21 hits of 200 stops dropping and 5 of
-     200 stops demoting, both red. */
+     KILLED BY: `df > 60` / `df > 25`, and the direction is worth stating exactly,
+     because "the absolute rule is simply unreachable here" would be a weak reason and
+     it is not the reason. On a 200-entry map the absolute rule UNDER-reacts: 21 hits
+     is 10.5% of the map and must drop, but 21 is not over 60, so the term comes back
+     at full weight and the first assertion goes red on a value, not on an absence.
+     Same for 5 of 200 against `> 25`. Restoring either threshold fails here. */
   const { TAG_DF_TOO_BROAD: broad, TAG_DF_COMMON: common } = SE;
   const above = (f) => Math.floor(f * 200) + 1;
   const below = (f) => Math.max(0, Math.ceil(f * 200) - 1);
@@ -218,6 +232,24 @@ test("interpretQuery drops, demotes or keeps an expansion term by FRACTION of th
   assert.ok(Math.abs(demoted.w - 0.6 * 0.4) < 1e-9, `expected 0.4x of 0.6, got ${demoted.w}`);
   const kept = expansionWeight(200, below(common));
   assert.ok(Math.abs(kept.w - 0.6) < 1e-9, `expected full 0.6, got ${kept.w}`);
+
+  /* THE BOUNDARIES THEMSELVES, and they were unpinned until a mutation round asked.
+     Both cuts are strict (`>`), inherited from `df > 60` / `df > 25`, and no real term
+     sits at exactly 0.02 or 0.10 of the live map -- that needs counts of 31.22 and
+     156.1 -- so `>` -> `>=` changed nothing measurable and survived all ten tests
+     here AND the 123-check battery. A threshold whose boundary no test can see is a
+     threshold with a free variable in it.
+     The fixture is 200 entries so both cuts land on whole numbers: 4/200 is exactly
+     TAG_DF_COMMON and 20/200 is exactly TAG_DF_TOO_BROAD. AT the cut is the LOWER
+     bucket, on both.
+
+     KILLED BY: `df >= TAG_DF_COMMON` (the first assertion) and
+     `df >= TAG_DF_TOO_BROAD` (the second). */
+  assert.ok(Math.abs(expansionWeight(200, Math.round(common * 200)).w - 0.6) < 1e-9,
+    "a term exactly AT TAG_DF_COMMON keeps full weight -- the cut is strict");
+  const atBroad = expansionWeight(200, Math.round(broad * 200));
+  assert.ok(atBroad, "a term exactly AT TAG_DF_TOO_BROAD stays in the expansion -- the cut is strict");
+  assert.ok(Math.abs(atBroad.w - 0.6 * 0.4) < 1e-9, `a term exactly at TAG_DF_TOO_BROAD is demoted, not dropped: got ${atBroad.w}`);
 });
 
 test("the same COMPOSITION at a different size lands in the same bucket", () => {
@@ -283,8 +315,12 @@ function duplicated(tags, k) {
   for (let n = 0; n < k; n++) for (const [id, t] of Object.entries(tags)) out[n ? `${id}--grow${n}` : id] = t;
   return { tags: out };
 }
-const expansionBucket = (df) => (df > SE.TAG_DF_TOO_BROAD ? "drop" : df > SE.TAG_DF_COMMON ? "0.4x" : "full");
-/* The pre-#275 rule, kept here as the WITNESS and nowhere else in this suite. */
+/* The pre-#275 rule, kept here as the WITNESS and nowhere else in this suite.
+   Note what is NOT here: a local copy of the CURRENT rule. This suite re-derived
+   `df > TOO_BROAD ? "drop" : df > COMMON ? "0.4x" : "full"` from the constants until
+   review pointed out that reading the constants and rewriting the comparison is the
+   #249 shape one level up -- swap the two branches in interpretQuery and a local copy
+   would agree with the mistake. It calls SE.expansionBucket now. */
 const absoluteBucket = (n) => (n > 60 ? "drop" : n > 25 ? "0.4x" : "full");
 const absoluteMultiplier = (n) => (n <= 10 ? 1.35 : n <= 30 ? 1 : 0.75);
 
@@ -331,7 +367,7 @@ test("REAL REPO: growing the catalogue without changing it moves no bucket, and 
   const base = { itemTags: duplicated(slice, 1) };
   const baseline = new Map(terms.map((t) => {
     const df = SE.tagDF(t, base);
-    return [t, [expansionBucket(df), SE.dfMultiplier(df), SE.tagCount(t, base)]];
+    return [t, [SE.expansionBucket(df), SE.dfMultiplier(df), SE.tagCount(t, base)]];
   }));
   assert.ok([...baseline.values()].some(([b]) => b !== "full"), "no term in the slice is even common enough to be demoted");
 
@@ -344,7 +380,7 @@ test("REAL REPO: growing the catalogue without changing it moves no bucket, and 
       const df = SE.tagDF(t, grown);
       const n = SE.tagCount(t, grown);
       const [wasBucket, wasMult, baseN] = baseline.get(t);
-      if (expansionBucket(df) !== wasBucket) movedExp.push(t);
+      if (SE.expansionBucket(df) !== wasBucket) movedExp.push(t);
       if (SE.dfMultiplier(df) !== wasMult) movedMul.push(t);
       if (absoluteBucket(baseN) !== absoluteBucket(n)) wasExp.push(t);
       if (absoluteMultiplier(baseN) !== absoluteMultiplier(n)) wasMul.push(t);

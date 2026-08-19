@@ -36,7 +36,12 @@ const concepts = semantic.concepts || {};
 const modifiers = semantic.modifiers || {};
 const taxonomyIds = new Set(taxonomy.nodes.map((n) => n.id));
 
-/* corpusDF/tagDF should see the same corpus the live client actually
+/* corpusDF should see the same corpus the live client actually
+   searches -- tagDF reads ctx.itemTags and never ctx.discover (#275), so only
+   corpusDF is why this is built from fullPool() rather than discover.items alone.
+   The two tagDF call sites here test `> 0`, which a fraction answers the same way a
+   count did. Original note kept below because the pool-building reason still holds:
+   corpusDF should see the same corpus the live client actually
    searches -- app.js's fullPool() is session.episodes + discover.items,
    not discover.items alone (see tools/test-search.mjs for the same note). */
 const sessionAsItems = Object.entries(session.episodes).map(([id, ep]) => ({

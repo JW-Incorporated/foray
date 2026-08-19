@@ -192,9 +192,16 @@ const FLOORS = {
      single-corpus assertion can see: the whole 120-check battery was green
      throughout the month in which 52 terms silently crossed the expansion
      threshold, and it would be green again the day somebody "simplified" tagDF
-     back to a count. Every test in there carries the mutation that kills it, and
-     the two real-repo ones carry a WITNESS that the absolute rule moves -- without
-     which they pass on a tagDF that returns a constant. */
+     back to a count. Every test in there carries the mutation that kills it, and the
+     growth and subset tests each carry a WITNESS that the absolute rule moves --
+     without which they pass on a tagDF that returns a constant. (Only the growth one
+     is real-repo; the subset one is a fixture, because the real slice is topically
+     skewed and its measurement belongs with the refusal to trim, in
+     tools/mobile/prepare-webdir.test.mjs.)
+     WHAT THIS FLOOR DOES NOT PROTECT, so it is not read as more than it is: the
+     VALUES. That suite reads every threshold back from search-engine.js, so retuning
+     one passes it. The ceiling on TAG_DF_COMMON is a product judgement guarded by
+     tools/test-search.mjs's "parenting" case. */
   "test/search-df-scaling.test.js": 10,
   /* One generation per page load (#233). Floored because the thing it guards is
      invisible in the product: a mismatched code/data pair renders, it just

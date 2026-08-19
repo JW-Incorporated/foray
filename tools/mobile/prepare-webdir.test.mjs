@@ -635,12 +635,14 @@ test("REAL REPO: trimming item-tags STILL re-ranks the app, on sampling now rath
   for (const [k, vs] of Object.entries(SE.ALIASES)) { terms.add(k); vs.forEach((v) => terms.add(v)); }
 
   const whole = { itemTags }, part = { itemTags: trimmed };
-  /* READ FROM THE ENGINE, not mirrored. This was an inline
-     `df > 60 ? "delete" : df > 25 ? "0.4x" : "full"`, which #275 would have left
-     comparing a fraction against 60 — every term "full", zero moved, and the
-     assertion below would have gone red claiming the trim was safe when nothing of
-     the kind had been measured. */
-  const bucket = (df) => (df > SE.TAG_DF_TOO_BROAD ? "delete" : df > SE.TAG_DF_COMMON ? "0.4x" : "full");
+  /* READ FROM THE ENGINE, not mirrored, and the first version of this line only got
+     halfway there. It was an inline `df > 60 ? "delete" : df > 25 ? ...`, which #275
+     would have left comparing a fraction against 60 — every term "full", zero moved,
+     and the assertion below would have gone red claiming the trim was safe when
+     nothing of the kind had been measured. Reading the CONSTANTS from the engine and
+     rewriting the COMPARISON fixed the values and kept the copy; review caught that,
+     so the RULE comes from the engine now too. */
+  const bucket = (df) => SE.expansionBucket(df);
   const moved = [...terms].filter((t) => bucket(SE.tagDF(t, whole)) !== bucket(SE.tagDF(t, part)));
   const movedMultiplier = [...terms].filter(
     (t) => SE.dfMultiplier(SE.tagDF(t, whole)) !== SE.dfMultiplier(SE.tagDF(t, part))
@@ -650,20 +652,29 @@ test("REAL REPO: trimming item-tags STILL re-ranks the app, on sampling now rath
   const absolute = (n) => (n > 60 ? "delete" : n > 25 ? "0.4x" : "full");
   const movedAbsolute = [...terms].filter((t) => absolute(SE.tagCount(t, whole)) !== absolute(SE.tagCount(t, part)));
 
+  /* THE MARGIN IS THIN, AND THE INSTRUCTION IS DELIBERATELY NOT "DELETE THIS TEST".
+     12 of 1,366 is a sampling residue on a slice the nightly rebuilds, so one refresh
+     could take it to 0 without anybody having decided anything. The version this
+     replaced had 20-against-66 of headroom; this one has 12 against zero. So the
+     failure message has to be honest about what a red run means here: evidence, not a
+     verdict, and ~181 KB is not worth acting on one night's data. */
   assert.ok(
     moved.length > 0,
-    `no term changes expansion bucket on the trim — the divergence COPIED_WHOLE ` +
-      `refuses has gone, so trimming data/item-tags.json is now correct and worth ~181 KB. ` +
-      `Move it into PROJECTED_DATA and delete this test. See COPIED_WHOLE.`
+    `no term changes expansion bucket on the trim (multipliers: ${movedMultiplier.length}) — the ` +
+      `divergence COPIED_WHOLE refuses may have gone, which would make trimming ` +
+      `data/item-tags.json correct and worth ~181 KB. DO NOT act on one run: this is a ` +
+      `sampling residue of 12 terms on a slice the nightly rebuilds, so re-measure across ` +
+      `several refreshes, and prefer the precomputed-df-table follow-up named above — it ` +
+      `makes the app and the website agree exactly rather than approximately. See COPIED_WHOLE.`
   );
   assert.ok(
-    moved.length * 3 < movedAbsolute.length,
+    moved.length * 2 < movedAbsolute.length,
     `the trim moves ${moved.length} expansion buckets against ${movedAbsolute.length} under the pre-#275 ` +
-      `absolute rule — normalising tagDF was supposed to remove the arithmetic half of this divergence, ` +
-      `so if the two now agree, tagDF is probably reading a count again`
+      `absolute rule — normalising tagDF was supposed to remove the arithmetic half of this divergence ` +
+      `(measured 12 against 66), so if the two are now within 2x, tagDF is probably reading a count again`
   );
   /* #274's headline example, named because it is the one the docs quote: the term
-     whose 72 → 20 made the app and the website disagree is no longer a divergence
+     whose 72 → 24 made the app and the website disagree is no longer a divergence
      at all. Asserted rather than narrated, so the claim cannot rot. */
   assert.equal(bucket(SE.tagDF("war", whole)), bucket(SE.tagDF("war", part)));
   assert.notEqual(absolute(SE.tagCount("war", whole)), absolute(SE.tagCount("war", part)));

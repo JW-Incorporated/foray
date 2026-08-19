@@ -366,7 +366,7 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
      do not read the tick below as coverage of this file. #249 deliberately did NOT
      widen the scan to chase anonymous or differently-named copies: the predicate
      has no stable syntax to match, so any regex would be a guess that reads as a
-     guarantee. What guards it instead is the BEHAVIOURAL pair of tagDF tests
+     guarantee. What guards it instead is the BEHAVIOURAL pair of tagCount tests
      below, which compare counts against hitTag on synthetic tags and fail for any
      disagreeing predicate regardless of how it is spelled or whether it is named.
      search-engine.js therefore stays exempt from this scan, on the grounds that
@@ -441,7 +441,7 @@ test("tagCount counts tags through hitTag, not a loose substring (#249)", () => 
   };
   assert.equal(SE.tagCount("car", shortCtx), 4);
 
-  /* And the sense lock reaches tagDF too, since tagDF is now a hitTag consumer:
+  /* And the sense lock reaches tagCount too, since tagCount is a hitTag consumer:
      `training` tags must not inflate the railway term's count. */
   const trainCtx = {
     itemTags: { tags: {
