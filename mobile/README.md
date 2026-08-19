@@ -16,8 +16,15 @@ on macOS and is proven to by #213's `ios-build` workflow, which generates the
 project in the job rather than checking it out.
 
 The reason not to commit them is no longer "nobody has compiled these": it is ~100
-generated files with no reviewer, in a directory that auto-merges with no
-post-merge review window. `mobile/.gitignore` carries the full argument.
+generated files with no reviewer, in a tree `cap add` rewrites — so every future
+diff would ask a reviewer to tell a handful of hand-written files from the whole
+generated tree. `mobile/.gitignore` carries the full argument.
+
+**This paragraph used to end "in a directory that auto-merges with no post-merge
+review window", and that was never true of `mobile/`** — it is not in
+`ALLOWED_PREFIXES`, so a PR touching it waits for a human rather than landing on
+green. See `docs/android-native-code.md` §8. The reason changed; the decision did
+not.
 
 ## Why this is its own directory
 

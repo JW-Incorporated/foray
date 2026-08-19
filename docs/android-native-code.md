@@ -11,10 +11,28 @@ build). Reads on from `docs/android-shell-build.md` and
 full.
 
 #37 was right to reject committing the generated platform — ~100 generated files
-with no reviewer, in a directory that **auto-merges with no post-merge review
-window** — and it made the same call for `mobile/ios/`. That decision is about
-*generated output*, and it had a consequence nobody chose: **Android needs
+with no reviewer — and it made the same call for `mobile/ios/`. That decision is
+about *generated output*, and it had a consequence nobody chose: **Android needs
 hand-written native code and had no home for it.**
+
+> **A PREMISE CORRECTED, 2026-08-18, AND THE VERDICT IS UNCHANGED.** This
+> paragraph used to justify that call partly on `mobile/` being *"a directory that
+> auto-merges with no post-merge review window"*. **That is false, and it was
+> false when it was written.** `mobile/` is not in `ALLOWED_PREFIXES`, so a PR
+> touching it is never armed for auto-merge — #271's own
+> `automerge-decision` run logged *"auto-merge was enabled and has been turned OFF"*
+> and its `merged_by` was a human account with `auto_merge: null`.
+>
+> **The decision does not depend on the merge path and never did.** The surviving
+> argument is the stronger one and it is §2.1(a)'s: the native code would sit
+> inside a tree `cap add` regenerates, so a reviewer would have to tell four
+> hand-written files from **2,619** generated ones, on every diff, forever. A
+> directory nobody can read is a directory nobody notices a change in. Committing
+> the generated platform is still the wrong call.
+>
+> Recorded rather than quietly rewritten, because this is **a wrong reason
+> attached to a right decision — the kind that persists longest, because nothing
+> it produces ever looks broken.** §8 states the actual rule.
 
 Two things make that native code non-optional, and neither is a preference:
 
@@ -68,7 +86,7 @@ Against the four requirements:
 
 **(a) Commit `mobile/android/`.** Rejected again, and for a reason that is now
 stronger than #37's rather than weaker. #37's objection was unreviewability: ~100
-generated files, auto-merging. That still holds. What this change adds is that
+generated files, no reviewer. That still holds. What this change adds is that
 committing the platform would *not even solve the problem well*: the native code
 would sit inside a tree `cap add` regenerates, so every reviewer would have to tell
 our four hand-written files apart from 2,619 generated ones, on every diff, forever.
@@ -562,6 +580,57 @@ change adds two instruments worth using —
 should show the service with `foregroundServiceType=mediaPlayback`. `HUMAN-ACTIONS.md`'s
 Android device pass is the right home for that list.
 
+## 8. The merge rule this document twice got wrong, stated once
+
+Written out because six files in this repo asserted the wrong version of it, and
+because the two words involved name **different sets**.
+
+**`tools/ci/path-policy.mjs` is the authority.** `ALLOWED_PREFIXES` is:
+
+```
+data/  docs/  player/  tools/  test/  backend/test/
+app.js  styles.css  search-engine.js  STATE.md  HUMAN-ACTIONS.md
+```
+
+- **Governed** means *on `DENIED_PREFIXES`* — `.github/`, `.claude/`, `CLAUDE.md`,
+  `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`,
+  `docs/agents/routine-invariants.md`, `backend/src/`, `tools/ci/`,
+  `tools/test-search.mjs`, `tools/validate-semantic-index.mjs`. A PR touching one
+  is reported **UNAPPROVED** by the `path-policy` check and wants a
+  `founder-approved` label — **report-only** until the repo variable
+  `PATH_POLICY_ENFORCE` is set, which `HUMAN-ACTIONS.md` #1 is still open on, and
+  `formatGovernedCheck()` says out loud that an agent with write access can apply
+  that label, so it is a record and not a lock.
+- **`DENIED_PREFIXES` IS TESTED FIRST AND WINS.** `pathPolicy()` checks denied,
+  `continue`s on a hit, and only then consults the allow-list — so `docs/adr/` and
+  `tools/ci/` are governed even though `docs/` and `tools/` are allowlisted. Any
+  sentence of the form "a PR touching only `docs/` is armed" is wrong for that
+  reason.
+- **Auto-mergeable** means *every changed file is on `ALLOWED_PREFIXES` and none is
+  on `DENIED_PREFIXES`*.
+- **A path on neither list is `unlisted`.** `path-policy` reports **CLEAN** — it is
+  not governed, and nothing needs approving — and `automergeDecision()` returns
+  `UNLISTED_PATH` with `needsFounder: true`, so **it waits for a human.**
+
+**So "ungoverned" and "auto-mergeable" are different sets, and `mobile/` is in the
+gap between them.** That gap is the whole reason this was got wrong: a `CLEAN`
+path-policy check reads like permission to land, and it is not.
+
+**And the decision is per-PR, all-or-nothing.** `automergeDecision()` arms only
+when *"All N changed file(s) are allowlisted"*; its one-line `reason` names the
+first unlisted file and its `findings` list accumulates **every** blocker, which
+the module's own comment says was the point of replacing the bash that exited on
+the first one. So there is no such thing as the `docs/` half of a PR merging while
+the `mobile/` half waits. One unlisted file makes the whole PR wait, which is
+exactly what happened to #271 and to #244 before it.
+
+**What follows for an agent working here.** A PR touching `mobile/` will not land
+on its own, so say in the PR body that it needs a human and stop — do not poll for
+it (CLAUDE.md's "Never babysit your own PR"). And the review discipline does not
+relax: a PR whose files are all allowlisted **and none of them denied** is armed and
+lands the moment checks go green, so the reviewer pass belongs before `git push`,
+not before merge.
+
 ## 7. Two gitignore failures, and they are the same failure twice
 
 `mobile/.gitignore` said `android/`, with no leading slash. **An unanchored gitignore
@@ -594,8 +663,12 @@ error: open("mobile/plugins/foray-audio/android/build/.transforms/2118c5f6…/
 ```
 
 **A shorter transform hash would have committed several hundred build artefacts into
-a directory that auto-merges with no review window.** Windows' path limit is the only
-reason that did not happen, which is not a control. `plugins/*/android/build/`,
+a directory nobody reviews file-by-file.** (This sentence used to say "a directory
+that auto-merges with no review window", which is the corrected premise in §0 —
+`mobile/` is not auto-mergeable. The hazard is unchanged: several hundred build
+artefacts in a diff nobody reads closely is the same accident either way.) Windows'
+path limit is the only reason that did not happen, which is not a control.
+`plugins/*/android/build/`,
 `.gradle/`, `.cxx/` and `local.properties` are now ignored, and the same
 `check-ignore` test asserts all four — in the same test that asserts the plugin's
 **sources** are not ignored, so the two halves cannot drift apart.

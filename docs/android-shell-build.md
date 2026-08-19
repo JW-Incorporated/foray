@@ -251,9 +251,18 @@ Same call as iOS, and now for a second independent reason.
 - **iOS.** #213 builds the shell on a macOS runner by running `npm run add:ios`
   *in the job*. `mobile/ios/` is not in the repo and that workflow does not want
   it to be.
-- **Android.** ~100 generated files, no reviewer, in a directory that
-  **auto-merges with no post-merge review window**. The build being reachable
-  here removes the "unverifiable" objection but not the unreviewable one.
+- **Android.** ~100 generated files, no reviewer. The build being reachable here
+  removes the "unverifiable" objection but not the unreviewable one — and that
+  objection is what carries the decision, which is why the decision survives the
+  correction below.
+
+  > **PREMISE CORRECTED, 2026-08-18.** This bullet used to add that `mobile/` is
+  > *"a directory that auto-merges with no post-merge review window"*. It is not:
+  > `mobile/` is absent from `ALLOWED_PREFIXES` in `tools/ci/path-policy.mjs`, so a
+  > PR touching it is never armed and waits for a human — `docs/android-native-code.md`
+  > §8 states the rule and why "ungoverned" and "auto-mergeable" are different sets.
+  > **The verdict is unchanged**: ~100 unreviewable generated files in a tree
+  > `cap add` rewrites is reason enough on its own, and always was.
 
 `mobile/.gitignore` now ignores `ios/` and `android/` in full, which **reverses
 what its own comment used to say** (it argued Capacitor's guidance is to commit
