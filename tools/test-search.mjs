@@ -68,15 +68,6 @@
         true enough to assert in §3 for the 24 days between 040c9f6
         (2026-07-24) and the refresh that broke it.
 
-    10. Catalogue growth cannot retune the interpreter (#275): every query's
-        interpretation -- expansion terms, weights, broad flags, df multiplier
-        tier -- is identical against today's corpus and against the same corpus
-        duplicated. The document-frequency thresholds are fractions, so size alone
-        cannot move a term across one; before #275 they were absolute counts and
-        137 terms changed bucket at 2x. 4x, and the witness that the absolute rule
-        drifts, live in test/search-df-scaling.test.js for runtime reasons stated
-        there and below.
-
      9. Ordering and the strong bar agree on "better" (#216): results are
         ORDERED by `matched` then `sum` but the bar cuts on `sum` alone, so the
         two could disagree and classifyResults' narrow branch then showed the
@@ -85,6 +76,19 @@
         and end at one, and no sparse answer may skip a result it ranks above one
         it shows. The witness lives in test/search-tiering.test.js; see §9 for
         why the two suites split that way.
+        (Two sections are numbered 9. That is pre-existing and left alone rather
+        than renumbered, because §9 is referred to by number from
+        search-engine.js, test/search-tiering.test.js and test/suite-integrity
+        .test.js, and silently moving what "§9" means is worse than a duplicate.)
+
+    10. Catalogue growth cannot retune the interpreter (#275): every query's
+        interpretation -- expansion terms, weights, broad flags, df multiplier
+        tier -- is identical against today's corpus and against the same corpus
+        duplicated. The document-frequency thresholds are fractions, so size alone
+        cannot move a term across one; before #275 they were absolute counts and
+        137 terms changed bucket at 2x. 4x, and the witness that the absolute rule
+        drifts, live in test/search-df-scaling.test.js for the runtime reasons
+        stated there and in §10.
 
    Usage: node tools/test-search.mjs [--tiering]
    Exit code 0 = all pass, 1 = at least one failure (readable report to stdout).
