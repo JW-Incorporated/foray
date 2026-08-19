@@ -573,7 +573,7 @@ test("data/item-tags.json is COPIED WHOLE, and the bundle proves it byte for byt
 test("REAL REPO: trimming item-tags to the bundled pool WOULD re-rank the app", () => {
   /* The measurement behind the test above, executed rather than quoted, so the
      refusal cannot quietly stop being true. If a future change normalises `tagDF`
-     — the honest fix, and a search-quality decision that belongs with
+     — issue #275, the honest fix, and a search-quality decision that belongs with
      tools/test-search.mjs — this test is what should fail, and then trimming
      item-tags becomes correct and the ~174 KB is there to take. */
   const require_ = createRequire(import.meta.url);

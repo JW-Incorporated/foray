@@ -335,7 +335,7 @@ still grows ~4 KB a night.** From 1.96 MB that is about **245 nights** of headro
 under the 3 MB cap, not a year. The catalogue half of the problem is solved
 permanently; this half is deferred, and the cap will say so loudly and in time.
 
-**A separate finding worth an issue, which is why this is not fixed here.** Those
+**A separate finding, filed as #275, which is why this is not fixed here.** Those
 thresholds are absolute, so they already drift **on the web** as the catalogue grows:
 one month of nightlies (878 → 1,561 entries) moved **52 terms across the expansion
 threshold and 125 across the score multiplier**, with no app involved. Whatever the

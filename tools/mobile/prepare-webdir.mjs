@@ -680,7 +680,7 @@ export function assertDiscoverSliceComplete(source, slice) {
  * O(episodes), so the bundle still grows ~4 KB a night. From 1.96 MB that is about
  * 245 nights of headroom under the 3 MB cap, not a year.
  *
- * WHAT IT WOULD TAKE TO FIX PROPERLY, which is deliberately not this change:
+ * WHAT IT WOULD TAKE TO FIX PROPERLY, filed as #275 and deliberately not this change:
  * `tagDF`'s thresholds are absolute, so they already drift on the WEB as the
  * catalogue grows — one month of nightlies (878 -> 1,561 entries) moved 52 terms
  * across the expansion threshold and 125 across the score multiplier, with no app
