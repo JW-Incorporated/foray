@@ -1,0 +1,216 @@
+{
+  "schema": "narration-beat/1",
+  "beat_id": "beat-08",
+  "level": 3,
+  "foray_id": "alcohol-forms-1",
+  "thread_id": "T2-sugar-unlock",
+  "spine_beat": 8,
+  "spine_heading": "East Asia's answer was to hire a mould, and it reaches strengths malting cannot",
+  "coverage_verdict": "empty",
+  "mode": "carry",
+  "provenance": "carry-by-default",
+  "share_pct": 1.6,
+  "heard_audio": null,
+  "rejection_reason": null,
+  "establishes": [
+    "mould-route-secretes-enzymes",
+    "aspergillus-oryzae-is-domesticated",
+    "parallel-conversion-and-fermentation",
+    "sake-exceeds-the-simple-mash-ceiling"
+  ],
+  "assumes": [
+    "conversion-step-required-for-starch",
+    "malting-is-germinate-then-arrest",
+    "grain-supplies-its-own-amylase",
+    "fermentation-ceiling-14-to-16"
+  ],
+  "numeric_facts": ["C8.5:undiluted sake 18-20 pct", "C8.5:diluted to 14-16 pct"],
+  "sentences": [
+    { "text": "East Asia answered the same question by hiring an organism.", "licence": "head", "claims": [] },
+    { "text": "The koji traditions grow a mould on cooked grain instead of germinating it, and let the mould do the cutting.", "licence": "claim", "claims": ["C8.1"] },
+    { "text": "In Japan that mould is Aspergillus oryzae, and it secretes amylases straight into the rice.", "licence": "claim", "claims": ["C8.2"] },
+    { "text": "How it got that way is argued, and the argument is about what the genome shows.", "licence": "claim", "claims": ["C8.3"] },
+    { "text": "One reading is an Aspergillus flavus that mutated and stopped making aflatoxins.", "licence": "claim", "claims": ["C8.3"] },
+    { "text": "The genes are still there.", "licence": "claim", "claims": ["C8.3"] },
+    { "text": "They no longer work, which is a different thing from being gone.", "licence": "claim", "claims": ["C8.3"] },
+    { "text": "The next part changes the arithmetic.", "licence": "head", "claims": [] },
+    { "text": "The mould keeps converting starch while the yeast is already fermenting the sugar it has released.", "licence": "claim", "claims": ["C8.4"] },
+    { "text": "Conversion and fermentation run at the same time, so the sugar never arrives all at once.", "licence": "claim", "claims": ["C8.4"] },
+    { "text": "Brewers call it multiple parallel fermentation.", "licence": "claim", "claims": ["C8.4"] },
+    { "text": "Undiluted sake reaches eighteen to twenty per cent alcohol, above where a single mash can get.", "licence": "claim", "claims": ["C8.5"] },
+    { "text": "Most of it is diluted back to fourteen or sixteen before bottling.", "licence": "claim", "claims": ["C8.5"] },
+    { "text": "The gradual arrival of the sugar is the whole reason the strength goes higher.", "licence": "claim", "claims": ["C8.6"] }
+  ],
+  "claims": [
+    {
+      "claim_id": "C8.1",
+      "text": "Aspergillus oryzae is one of the koji moulds used for food fermentation, and it is grown on rice to saccharify it for sake brewing.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-a-oryzae",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Aspergillus oryzae",
+          "url": "https://en.wikipedia.org/wiki/Aspergillus_oryzae",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Aspergillus_oryzae&oldid=1346955834",
+          "revision": "1346955834",
+          "retrieved": "2026-08-19",
+          "quote": "It is one of the different koji molds used for food fermentation."
+        },
+        {
+          "source_id": "wp-a-oryzae",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Aspergillus oryzae",
+          "url": "https://en.wikipedia.org/wiki/Aspergillus_oryzae",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Aspergillus_oryzae&oldid=1346955834",
+          "revision": "1346955834",
+          "retrieved": "2026-08-19",
+          "quote": "oryzae strains are important in rice saccharification for sake brewing: Growth: rapid mycelial growth on and into the rice kernels Enzymes: strong secretion of amylases (α-amylase and glucoamylase); some carboxypeptidase; low tyrosinase"
+        }
+      ]
+    },
+    {
+      "claim_id": "C8.2",
+      "text": "Aspergillus oryzae strains used for sake grow mycelium on and into the rice kernels and strongly secrete amylases — alpha-amylase and glucoamylase.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-a-oryzae",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Aspergillus oryzae",
+          "url": "https://en.wikipedia.org/wiki/Aspergillus_oryzae",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Aspergillus_oryzae&oldid=1346955834",
+          "revision": "1346955834",
+          "retrieved": "2026-08-19",
+          "quote": "oryzae strains are important in rice saccharification for sake brewing: Growth: rapid mycelial growth on and into the rice kernels Enzymes: strong secretion of amylases (α-amylase and glucoamylase); some carboxypeptidase; low tyrosinase"
+        }
+      ]
+    },
+    {
+      "claim_id": "C8.3",
+      "text": "Genomic analysis has led some scholars to believe A. oryzae arose from an Aspergillus flavus that mutated and ceased to produce aflatoxins; the two fungi share the aflatoxin biosynthesis gene cluster, and that cluster is non-functional in A. oryzae.",
+      "tier": "2",
+      "tier_reason": "contested — the source itself says 'has led some scholars to believe', so the script must not flatten it into a settled fact",
+      "support": "quoted",
+      "corroboration": [
+        {
+          "source_id": "jof-2025-abgc",
+          "kind": "primary",
+          "publication": "Journal of Fungi",
+          "work": "Distinction Between Aspergillus oryzae and Aflatoxigenic Aspergillus flavus by Rapid PCR Method Based on the Comparative Sequence Analysis of the Aflatoxin Biosynthesis Gene Cluster",
+          "url": "https://doi.org/10.3390/jof12010010",
+          "pinned_url": "https://doi.org/10.3390/jof12010010",
+          "revision": "10.3390/jof12010010",
+          "retrieved": "2026-08-19",
+          "quote": "Aspergillus oryzae and Aspergillus flavus are closely related species within the Aspergillus section Flavi, sharing approximately 99.5% genomic similarity. Despite this similarity, they differ markedly in their ability to produce aflatoxin, a carcinogenic mycotoxin synthesized by the aflatoxin biosynthesis gene cluster (ABGC). The analysis revealed that A. oryzae exhibits distinct large-scale or locus-specific deletions in the ABGC compared to other related species."
+        }
+      ],
+      "sources": [
+        {
+          "source_id": "wp-a-oryzae",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Aspergillus oryzae",
+          "url": "https://en.wikipedia.org/wiki/Aspergillus_oryzae",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Aspergillus_oryzae&oldid=1346955834",
+          "revision": "1346955834",
+          "retrieved": "2026-08-19",
+          "quote": "Genomic analysis has led some scholars to believe that the Japanese domesticated the Aspergillus flavus that had mutated and ceased to produce toxic aflatoxins, giving rise to A."
+        },
+        {
+          "source_id": "wp-a-oryzae",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Aspergillus oryzae",
+          "url": "https://en.wikipedia.org/wiki/Aspergillus_oryzae",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Aspergillus_oryzae&oldid=1346955834",
+          "revision": "1346955834",
+          "retrieved": "2026-08-19",
+          "quote": "While the two fungi share the same cluster of genes that encode for aflatoxin synthesis, this gene cluster is non-functional in A."
+        }
+      ]
+    },
+    {
+      "claim_id": "C8.4",
+      "text": "In sake brewing, saccharification by A. oryzae and fermentation by yeast occur simultaneously; the process is called Multiple Parallel Fermentation, and starch is converted into glucose followed by immediate conversion into alcohol.",
+      "tier": "1",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-sake",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Sake",
+          "url": "https://en.wikipedia.org/wiki/Sake",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Sake&oldid=1364012541",
+          "revision": "1364012541",
+          "retrieved": "2026-08-19",
+          "quote": "This process is called Multiple Parallel Fermentation. The multiple parallel fermentation process of sake brewing, where starch is converted into glucose followed by immediate conversion into alcohol, is unique to it."
+        },
+        {
+          "source_id": "wp-sake",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Sake",
+          "url": "https://en.wikipedia.org/wiki/Sake",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Sake&oldid=1364012541",
+          "revision": "1364012541",
+          "retrieved": "2026-08-19",
+          "quote": "oryzae) and fermentation (via yeast) occur simultaneously in sake brewing (see \"Fermentation\" below)."
+        }
+      ]
+    },
+    {
+      "claim_id": "C8.5",
+      "text": "Undiluted sake contains 18–20% ABV, and most sake is diluted with water after brewing to lower the alcohol content from 18 to 20% down to 14–16%.",
+      "tier": "2",
+      "tier_reason": "quantitative — two ABV figures the listener is expected to retain, and both are load-bearing against the 14–16% fermentation ceiling established upstream",
+      "support": "quoted",
+      "sources": [
+        {
+          "source_id": "wp-sake",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Sake",
+          "url": "https://en.wikipedia.org/wiki/Sake",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Sake&oldid=1364012541",
+          "revision": "1364012541",
+          "retrieved": "2026-08-19",
+          "quote": "The typical alcohol content also differs between sake, wine, and beer; while most beer contains 3–9% ABV and wine generally contains 9–16% ABV, undiluted sake contains 18–20% ABV (although this is typically lowered somewhat by diluting with water prior to bottling)."
+        },
+        {
+          "source_id": "wp-sake",
+          "kind": "tertiary",
+          "publication": "Wikipedia",
+          "work": "Sake",
+          "url": "https://en.wikipedia.org/wiki/Sake",
+          "pinned_url": "https://en.wikipedia.org/w/index.php?title=Sake&oldid=1364012541",
+          "revision": "1364012541",
+          "retrieved": "2026-08-19",
+          "quote": "Most sake is diluted with water after brewing to lower the alcohol content from 18 to 20% down to 14–16%, but genshu is not."
+        }
+      ]
+    },
+    {
+      "claim_id": "C8.6",
+      "text": "Because conversion runs in parallel with fermentation, the sugar concentration stays low while the ethanol rises, which is why the mould route reaches a higher strength than a mash that presents all its sugar at once.",
+      "tier": "1",
+      "support": "inference",
+      "inferred_from": ["C8.4", "C8.5"],
+      "reasoning": "C8.4 gives simultaneity; C8.5 gives the higher achievable strength. The causal link between them is stated in neither span. Recorded as an inference, and it is the one editorial move in this beat: if the level-2 reviewer wants the causal claim spoken as sourced, it needs a span that makes the link, and none was found."
+    },
+    {
+      "claim_id": "C8.7",
+      "text": "Japanese koji uses a single organism while Chinese and Korean starters are mixed cultures carrying yeasts and lactic bacteria along with the moulds.",
+      "tier": "1",
+      "support": "blocked",
+      "spoken": false,
+      "block_reason": "The spine's beat 8 asks for this distinction by name. Four fetches (Wikipedia: Aspergillus oryzae, Sake; Crossref for the aflatoxin gene-cluster literature) produced no span stating it. It is not spoken and not asserted. Closing it needs one fetched span on qu/nuruk starter composition — the Journal of Fungi paper at C8.3 mentions nuruk isolates and is the nearest lead."
+    }
+  ]
+}

@@ -1282,6 +1282,68 @@ Two notes on the block above, both worth knowing:
   node tools/ci/pr-triage.mjs waiting --write
   ```
 
+### 22. Rule on the alcohol Foray's product mode, and on three narration rules that collide
+
+**[BLOCKING]** for any alcohol narration beyond the one built thread —
+**~25 min of reading plus four decisions.** Everything below is set out with the
+arithmetic in `docs/curation/narration-architecture.md`; §10a is the one that
+matters and §13 is the list. Nothing has been generated and nothing has been
+voiced, so all four are free to decide either way today.
+
+**1. The product mode for alcohol.** The catalogue cannot fund this Foray as a
+tape-led product. Measured, from `docs/curation/alcohol-forms-coverage.md`'s own
+figures: 1 strong / 15 thin / 47 empty beats, 27.9 minutes of tape at the most
+generous reading, and Act I — the education that was asked for — with no strong
+tape at all. At the 25 % narration target the Foray is **179 seconds over before
+a single empty beat is carried**; at the 35 % ceiling it funds **two** carried
+beats of forty-seven, and Act I needs thirteen. Written in full it is **72.9 %
+narrator**, against a 40 % line that `narration-craft.md` calls "an essay with
+clips. Not a Foray." Three options, and the recommendation is B:
+
+  - **A.** Ship a tape-led alcohol Foray: ~18 beats of 63, ~43 minutes, legal
+    under every rule — **and with no Act I**, so it does not answer the request.
+  - **B.** Declare a second product mode: narration-led, ~70 % narrator, tape as
+    evidence rather than substance, a name that is not "Foray", and the editorial
+    gate in `docs/curation/narration-architecture.md` §§5-7 as the price of
+    admission.
+  - **C.** Do not ship alcohol yet. Note that the coverage report says
+    transcription cannot fix it — its whole queue would move six beats.
+
+**Worked if:** one of A, B or C is written into `docs/DECISIONS.md` with a date.
+That file is on `DENIED_PREFIXES`, so the entry needs a separate PR carrying the
+`founder-approved` label; it was deliberately not added to the narration PR,
+which would have lost that PR its auto-merge.
+
+**2. Is a two-ended range one number or two?** `narration-craft.md` §5d allows
+one number per sentence and three per narration item. Four sentences in the built
+thread carry a range — *"between sixty-three and seventy degrees Celsius"*,
+*"eighteen to twenty per cent"*. The architecture doc reads a range as **one**
+numeric expression, on §5d's own stated reasoning that "a spoken number cannot be
+re-read". If that reading is wrong, beat 7's core claim — the mash-temperature
+dial — cannot be spoken at all. **Worked if:** one line in
+`docs/curation/narration-craft.md` §5d saying which.
+
+**3. The numbers cap against a quantitative act.** Separately from #2: the cap of
+three numeric facts per narration item is written for an 8-second transition and
+binds hardest on exactly the beats the alcohol spine designed to be quantitative.
+It already cost the built thread one sourced, pinned, relevant fact. Beats 4 and
+5 merge under another rule and carry five numeric facts between them, so **no
+arrangement of them satisfies the cap.** The proposal is to restate it as a
+density rule — one numeric fact per sentence, and one per twenty seconds of item,
+minimum three. **Worked if:** the cap in §5d is either restated or confirmed
+as-is with the consequence accepted.
+
+**4. Two more, both in `docs/curation/narration-architecture.md` §13.** Whether
+§2e's two-consecutive-narration-item cap bends for a chain (Act I has eight
+consecutive empty beats and no assembly that §4c permits), and whether "U5
+evidence-class attribution" — *"the reading rests on the genome rather than on any
+record"* — is an acceptable substitute for the on-air source naming that the
+never-read-references ruling removed. The second is the one that decides whether
+a narration beat is honest, because it is now the only thing a listener hears
+about where a claim came from.
+
+**Status:** OPEN
+
 ---
 
 ## DONE

@@ -7,6 +7,34 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### Narration architecture + one audited thread (#247) — `feat/narration-architecture`
+
+- **What:** the three-level narration design the founder proposed (dots →
+  threads → beats), the parent-checks-child review contract, the two-tier source
+  rule with fetch-and-verify, and **one** Act I thread of the alcohol spine
+  carried all the way down to sourced spans. Design:
+  `docs/curation/narration-architecture.md`.
+- **Branch prefix:** `feat/narration-architecture` — PR only, never main.
+- **Owned directories:** `docs/curation/narration/` (new),
+  `docs/curation/narration-architecture.md` (new), `tools/foray/check-narration.mjs`
+  and its suite (new).
+- **Shared files it touches, deliberately and minimally:**
+  `docs/curation/narration-craft.md` (R3 and §5f rewritten under the founder's
+  never-read-references ruling of 2026-08-19, plus §§0/3d/3f/5e/6a/7a/8c/9 brought
+  into line), `test/suite-integrity.test.js` (the mandatory floor for the new
+  suite).
+- **Explicitly out of scope:** `data/forays.json` (no narration item is authored —
+  the hand-off mapping is specified, not performed), the player's references
+  surface, TTS and `tools/narrate/`, the other 59 beats of the alcohol spine, and
+  `docs/DECISIONS.md` (the product-mode ruling is filed as HUMAN-ACTIONS #22
+  instead, because `docs/DECISIONS.md` is governed and would cost this PR its
+  auto-merge).
+- **Live finding another session should know:** the alcohol Foray is **not
+  fundable as a tape-led product** (72.9 % narrator written in full). Do not plan
+  alcohol assembly work against the 63-beat spine until HUMAN-ACTIONS #22 is
+  answered.
+
+
 ### search df thresholds are fractions, so query expansion stops drifting every night (2026-08-19, one PR, founder-gated, no follow-up)
 
 - **What:** `fix/275-relative-tagdf`. #275. `search-engine.js`'s `tagDF()` returned an

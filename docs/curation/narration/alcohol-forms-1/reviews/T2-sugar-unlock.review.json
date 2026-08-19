@@ -1,0 +1,173 @@
+{
+  "schema": "narration-review/1",
+  "reviewer_level": 2,
+  "reviews": "T2-sugar-unlock",
+  "children": ["beat-06", "beat-07", "beat-08", "beat-09"],
+  "reviewed_on": "2026-08-19",
+  "verdict": "accept-with-recorded-defects",
+  "note": "This is the level N+1 review contract executed once, by hand, so the contract in narration-architecture.md §5 is a description of something that has run rather than a description of something proposed. Every finding below is a defect a level-3 agent could not have seen, which is the test of whether the contract earns its cost.",
+
+  "per_child": [
+    {
+      "beat_id": "beat-06",
+      "R1_licences": "18 sentences: 1 head, 16 claim, 1 signpost. No unlicensed sentence.",
+      "R2_substitution": "pass. Swapping the proper nouns leaves a script about a fork between free sugar and stored starch, which is beat 6 and no other beat in the spine. The nine named feedstocks are the beat's own evidence vocabulary.",
+      "R4": "n/a — no adjacent tape.",
+      "R5": "pass. No speakers named, so no implied exchange.",
+      "R6": "1,237 chars, 72.8 s, inside the Carry band 765-1870. Mean 12.33 words, max 21, min 3. One numeric fact.",
+      "accepted": true
+    },
+    {
+      "beat_id": "beat-07",
+      "R1_licences": "17 sentences: 1 head, 16 claim. No unlicensed sentence.",
+      "R2_substitution": "pass. The mash-temperature dial with its two bands cannot be relocated to any other beat of this spine.",
+      "R4": "n/a",
+      "R5": "pass",
+      "R6": "1,238 chars, 72.8 s. Mean 12.00 words — exactly on §5d's floor, so one word shorter turns the gate red. Max 20, min 3. Two numeric facts.",
+      "accepted": true
+    },
+    {
+      "beat_id": "beat-08",
+      "R1_licences": "14 sentences: 2 head, 12 claim. The second head ('The next part changes the arithmetic.') is a sacrificial head mid-item under §3h, admitted because the item pivots from taxonomy to consequence. Its first draft opened with 'Now', which §5c bans outright — see second_round.",
+      "R2_substitution": "pass. Parallel conversion and the 18-to-20 figure belong to this beat alone.",
+      "R4": "n/a",
+      "R5": "pass",
+      "R6": "1,030 chars, 60.6 s. Mean 12.57 words, max 20, min 5. Two numeric facts.",
+      "accepted": true
+    },
+    {
+      "beat_id": "beat-09",
+      "R1_licences": "14 sentences: 1 head, 12 claim, 1 signpost.",
+      "R2_substitution": "pass. Saliva and the agave oven are this beat's mechanisms and appear nowhere else in the thread.",
+      "R4": "n/a",
+      "R5": "pass",
+      "R6": "930 chars, 54.7 s. Mean 12.29 words, max 19, min 5. Zero numeric facts.",
+      "accepted": true
+    }
+  ],
+
+  "repetition_across_siblings": [
+    {
+      "finding": "clean",
+      "key": "conversion-step-required-for-starch",
+      "detail": "Established once, at beat-06 (C6.3). Beats 7, 8 and 9 all need it and all three list it in `assumes` rather than in `establishes`. A level-3 agent writing beat 8 in isolation would have had to define what an amylase is in order to say the mould secretes them — the single highest-probability duplication in this thread — and the establishes/assumes split is what prevents it."
+    },
+    {
+      "finding": "clean",
+      "key": "starch-is-a-glucose-polymer",
+      "detail": "Only beat-06 establishes it. beat-09 assumes it in order to say cassava root is very starchy."
+    },
+    {
+      "finding": "repaired",
+      "key": "grain-supplies-its-own-amylase",
+      "detail": "beat-08's draft opened by contrasting the mould route with malting in three sentences that restated beat-07's mechanism. Cut to one clause ('instead of germinating it'), because the contrast is the parent's job to make once, not the child's job to make again."
+    }
+  ],
+
+  "contradiction_across_siblings": [
+    {
+      "severity": "must-fix, fixed",
+      "detail": "The spine's beat 6 sentence lists apples among the feedstocks offering free sugar. The fetched span at Wikipedia:Wine (oldid 1369157660) says: 'Most fruits other than grapes lack sufficient fermentable sugars, are overly acidic, and do not have enough nutrients for yeast, necessitating winemaker intervention.' The spine's own beat 22 agrees — cider is 'the same operation on a fruit that resists it'. So a beat-6 script naming apples alongside grapes would license an inference beat 22 exists to retract. Apples removed from beat-06 and recorded in the thread's out_of_scope with the reason. This is a source contradicting a spine sentence, and it is only visible to a reviewer holding both the span and the downstream beat."
+    },
+    {
+      "severity": "forward-liability, hedged",
+      "detail": "Milk is on the free-sugar side of the fork and belongs there — lactose is a sugar, not a starch. But S. cerevisiae fails to grow on lactose (Wikipedia:Saccharomyces cerevisiae, oldid 1369045673), and the spine's beat 25 exists because the milk alcohols needed a different yeast. Left in beat-06 with an eight-word hedge ('though its sugar is one most brewing yeast cannot grow on') rather than dropped, because the fork classification is correct and only the downstream consequence is unusual."
+    }
+  ],
+
+  "assumed_knowledge_with_no_establisher": [
+    {
+      "severity": "open dependency",
+      "key": "fermentation-is-yeast-metabolism",
+      "assumed_by": "beat-06",
+      "detail": "Start criterion S1. beat-02 is not written. Recorded rather than assumed: beat-06's second sentence takes it as given."
+    },
+    {
+      "severity": "open dependency, load-bearing",
+      "key": "fermentation-ceiling-14-to-16",
+      "assumed_by": "beat-08",
+      "detail": "Start criterion S2. beat-05 is not written. beat-08's line 'above where a single mash can get' is unintelligible without it, and the coverage report calls beat 5 'the most expensive empty beat in the report'. If beat-05 is dropped or shortened, beat-08 must be re-reviewed — which is a dependency the level-3 agent for beat 8 has no way to know about."
+    },
+    {
+      "severity": "clean",
+      "key": "ethanol-and-co2-are-the-products",
+      "assumed_by": "beat-06",
+      "detail": "Named in assumes; beat-02's territory."
+    }
+  ],
+
+  "sourcing_findings": [
+    {
+      "kind": "unsourced-specificity-narrowed",
+      "where": "beat-07",
+      "detail": "The spine's beat 7 claim is that a sprouting seed 'manufactures alpha-amylase and mobilises the beta-amylase already stored in the resting grain'. The fetched spans support two weaker facts: beta-amylase is present in an inactive form prior to germination (Wikipedia:β-Amylase, oldid 1353198068), and the enzymes produced during germination are what break the starch down (Wikipedia:Malting, oldid 1367553472). Neither span assigns the manufacture to alpha-amylase specifically. The script therefore says 'Germination wakes that one and produces the enzymes that will break the grain's starch down' and does not divide the labour by enzyme. This is the mechanism doing the work it exists to do: a plausible, probably-true, textbook-shaped detail that no fetched span states was not spoken."
+    },
+    {
+      "kind": "dropped-for-want-of-a-span",
+      "where": "beat-07",
+      "detail": "The kiln's colour range — pale through chocolate to black — is asked for by the spine and is in no fetched span. Cut. The script says 'Flavour and colour arrive in the kiln instead, through the Maillard reaction' and stops."
+    },
+    {
+      "kind": "dropped-for-want-of-a-span",
+      "where": "beat-07",
+      "detail": "Steeping moisture, which the Malting span gives as rising from around 12% to between 40 and 45%, was in the draft and is cut — not for sourcing (the span is good) but because the §5d numbers cap has room for three numeric facts per item and the two temperature bands are worth more."
+    },
+    {
+      "kind": "blocked",
+      "where": "beat-08",
+      "claim_id": "C8.7",
+      "detail": "Japanese single-organism koji versus Chinese and Korean mixed starters. Asked for by name in the spine. No span found. Not spoken."
+    },
+    {
+      "kind": "blocked",
+      "where": "beat-09",
+      "claim_id": "C9.6",
+      "detail": "Bought exogenous enzymes and acid hydrolysis, the spine's third route. No span found across six fetches. Not spoken, and the consequence propagates: beat-06 speaks 'four ways' rather than five, and beat-09's own heading in the spine says 'three more ways' where the script delivers two. The spine's own line licenses this — 'Any one of the three advances the beat; two is strong' — but the mismatch between the spine heading and the shipped beat is recorded here rather than left for a reader to notice."
+    },
+    {
+      "kind": "cut-by-a-craft-rule-not-by-sourcing",
+      "where": "beat-07",
+      "claim_id": "C7.7",
+      "detail": "Alpha-amylase denaturing above 78 °C is sourced, pinned, relevant and unspoken, because item T2-A already holds three numeric facts. Kept in the record with spoken:false so the loss is visible and so a later split can spend it."
+    }
+  ],
+
+  "flow_and_connection": {
+    "opening": "beat-06's head sentence ('Start with what a yeast can actually eat.') is a step back into mechanism from beat-05's ceiling. It reads as a new question rather than as a continuation, which is correct: the fork is a new question.",
+    "internal_seams": "Two, both inside merged items, both carried by the child scripts without a seam sentence. See the thread's seam_note fields.",
+    "item_seam": "T2-A to T2-B is a narration-to-narration seam. §2e requires the second item to be shorter and it is (115.4 s against 145.6 s). It is also the seam where §3h's sacrificial head matters most, because there is no voice change to mark it — beat-08's head sentence is doing that work.",
+    "closing": "beat-09's signpost ('The first question is now closed.') hands to thread T3. It deliberately does not say 'the first of four questions', because the four-questions frame is beat 16's to hand over and saying it here would spend beat 16's payoff four beats early."
+  },
+
+  "second_round": {
+    "note": "The per_child and cross-sibling findings above are the level-2 contract executed once. A separate reviewer pass, run in the foreground before push per CLAUDE.md workflow rule 7, found seven further defects the level-2 pass had missed. They are recorded here rather than folded silently into the artifacts, because a review record that only lists what it caught is not evidence about the reviewer.",
+    "missed_and_then_caught": [
+      "beat-06 asked the listener a rhetorical question ('Did the raw material offer its sugar already free...?'). §5c licenses one only where the tape answers immediately, and this thread has no tape. Restated as an assertion, and the gate now rejects the pattern mechanically.",
+      "beat-06 generalised a span about GRAPE skins to all fruit ('Crushed fruit will ferment on its own'). This is the same overreach the contract struck apples for, one sentence later — so C2 caught the spine's version of the error and missed its own. Narrowed to 'Crushed grapes'.",
+      "beat-08 opened a sentence with 'Now', which is on §5c's banned-opener list verbatim, and the flow review defended that sentence under §3h without noticing.",
+      "beat-08's U5 sentence ('Genomic work reads it as...') flattened a claim its own tier_reason calls contested. §5e requires the weakest form the evidence supports, so the right form is U3 with the axis named. Rewritten, and the exemplar promoted into narration-craft §5e was changed with it.",
+      "beat-09 asserted transmission ('The same method reached Japan') where the span records parallel occurrence. Rewritten to 'Japan had a chewed sake of its own.'",
+      "beat-09 inherited its spans' passive voice against §5d's active-voice rule. The spans are passive; the script does not have to be.",
+      "C6.5's stored quote was a splice — the sentence-splitter that produced it dropped 'germinated).' between the two halves, which is exactly what §7a of the architecture doc forbids. Restored to the contiguous span. The gate cannot detect this and says so."
+    ],
+    "what_this_says_about_the_contract": "Four of the seven are §5c/§5d register rules, which the level-2 contract does not cover at all — it checks relations between beats, and these are properties of one sentence. Two are the SAME class of error the contract caught elsewhere (over-generalising a span), which is the more troubling finding: a reviewer that catches an instance is not thereby catching the class. Five of the seven are now enforced mechanically by check-narration.mjs, which is the only durable fix."
+  },
+
+  "escalated_to_level_1": [
+    {
+      "id": "ESC-1",
+      "severity": "blocking for the act",
+      "finding": "Beats 4 through 11 are eight consecutive empty beats in the coverage report. This thread is beats 6-9, and merged it is exactly two narration items, which is §2e's consecutive cap. There is no arrangement of beats 4-11 that satisfies the cap: at the 180 s hard max, eight carried beats is a minimum of four consecutive narration items. No decision available inside this thread changes that. Act I therefore cannot be assembled as written, and the choice is a level-1 or founder choice, not a thread choice."
+    },
+    {
+      "id": "ESC-2",
+      "severity": "blocking for the Foray",
+      "finding": "This thread has 0 s of tape and 261.0 s of narration. Its local narration share is 100%. The ratio rules in narration-craft.md §4 are whole-Foray rules and cannot be satisfied or violated by one thread, so the thread cannot self-certify — the arithmetic has to be done at level 1 against the whole coverage report. Done there: it does not close. See narration-architecture.md §10."
+    },
+    {
+      "id": "ESC-3",
+      "severity": "recommendation",
+      "finding": "The §5d numbers cap (three per narration item) is written for a transition and binds hardest on exactly the beats the spine designed to be quantitative. It cost this thread one sourced fact. A merge of beats 4 and 5 — both empty, both adjacent, one carrying three dates and the other two ABV figures — cannot satisfy the cap at all. Recommend a density form of the rule; see narration-architecture.md §9."
+    }
+  ]
+}

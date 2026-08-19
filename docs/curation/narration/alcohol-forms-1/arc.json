@@ -1,0 +1,81 @@
+{
+  "schema": "narration-arc/1",
+  "foray_id": "alcohol-forms-1",
+  "level": 1,
+  "spine_doc": "docs/curation/alcohol-forms-spine.md",
+  "coverage_doc": "docs/curation/alcohol-forms-coverage.md",
+  "beats_total": 63,
+  "notes": "Level 1 is the dots to connect: six of them, one per act, each a sentence that could be true or false. A dot is not a beat and is never spoken. Its job is to be the thing every thread beneath it has to serve, and the thing the level-1 reviewer checks the threads against. Only thread T2-sugar-unlock is built out — see docs/curation/narration-architecture.md for why one thread and not sixty-three beats.",
+  "dots": [
+    {
+      "dot_id": "D1",
+      "dot": "Every alcoholic drink is the same molecule in water, so the whole subject is production rather than substance.",
+      "act": 1,
+      "beats": [1, 16],
+      "threads": [
+        "T1-molecule-and-ceiling",
+        "T2-sugar-unlock",
+        "T3-what-the-producer-controls",
+        "T4-the-key"
+      ],
+      "built": ["T2-sugar-unlock"]
+    },
+    {
+      "dot_id": "D2",
+      "dot": "Where the raw material already offers free sugar, a drink can happen with almost no invented technology.",
+      "act": 2,
+      "beats": [17, 25],
+      "threads": ["T5-wine-chain", "T6-free-sugar-fan"],
+      "built": []
+    },
+    {
+      "dot_id": "D3",
+      "dot": "Where the sugar is locked in starch, someone had to invent a conversion step, and that step is behind most of the world's drinking.",
+      "act": 3,
+      "beats": [26, 35],
+      "threads": ["T7-beer-chain", "T8-koji-chain", "T9-locked-sugar-fan"],
+      "built": []
+    },
+    {
+      "dot_id": "D4",
+      "dot": "One machine put every drink above the fermentation ceiling, and it was applied to everything already met.",
+      "act": 4,
+      "beats": [36, 51],
+      "threads": ["T10-the-still", "T11-whisky-chain", "T12-spirits-fan"],
+      "built": []
+    },
+    {
+      "dot_id": "D5",
+      "dot": "Some categories are not a fermentation at all but an addition made to one.",
+      "act": 5,
+      "beats": [52, 60],
+      "threads": ["T13-fortification-chain", "T14-addition-fan"],
+      "built": []
+    },
+    {
+      "dot_id": "D6",
+      "dot": "A large part of the taxonomy the listener now holds is statute rather than chemistry.",
+      "act": 6,
+      "beats": [61, 63],
+      "threads": ["T15-law-and-coda"],
+      "built": []
+    }
+  ],
+  "thread_order": [
+    "T1-molecule-and-ceiling",
+    "T2-sugar-unlock",
+    "T3-what-the-producer-controls",
+    "T4-the-key",
+    "T5-wine-chain",
+    "T6-free-sugar-fan",
+    "T7-beer-chain",
+    "T8-koji-chain",
+    "T9-locked-sugar-fan",
+    "T10-the-still",
+    "T11-whisky-chain",
+    "T12-spirits-fan",
+    "T13-fortification-chain",
+    "T14-addition-fan",
+    "T15-law-and-coda"
+  ]
+}
