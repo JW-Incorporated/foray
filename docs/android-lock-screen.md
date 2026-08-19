@@ -22,12 +22,14 @@ paying for.
 | Both APKs build, with sizes and wall clock | **Executed on this machine.** §6 |
 | The `MediaSession`, both `<service>` attributes and all three permissions reach the app's **merged** manifest | **Executed** — read out of `app/build/intermediates/merged_manifest/…` after `assembleDebug`. §6.2 |
 | Media3 1.11.0 is the current release, and what it drags in | **Executed** — `maven-metadata.xml` and the resolved POM/module metadata, plus the dependency report from the build. §3 |
-| The state machine: what the lock screen is told, when, and what a press does to the page | **Executed, against fakes.** 376 tests in `tools/mobile/`, 25 mutations, 25 caught. §7. **No WebView ran.** |
+| The state machine: what the lock screen is told, when, and what a press does to the page | **Executed, against fakes.** 401 tests in `tools/mobile/` and all 62 repo suites; 42 mutations, 41 caught with the survivor explained. §7. **No WebView ran.** |
 | `SimpleBasePlayer` upgrades a `long` position into an extrapolating supplier | **Read from source** — `SimpleBasePlayer.java`'s `State` constructor, from the 1.11.0 sources jar. §4.3 |
 | `MediaStyle.setShowCancelButton` and `setCancelButtonIntent` are no-ops | **Read from source**, and found because the compiler emitted a deprecation note. §5.2 |
 | `navigator.mediaSession` is absent in Android WebView | **INFERRED** (source-derived), unchanged from MP1 §5.4 and `docs/android-shell-build.md` §4. **Nothing was executed in a WebView.** This is the premise of the whole change and it is still not measured |
 | That anything renders on a lock screen, that a Bluetooth button reaches the page, that the notification appears at all | **NEITHER MEASURED NOR INFERRED — UNVERIFIED.** §8 |
 | Whether the system media panel needs `POST_NOTIFICATIONS` granted | **INFERRED**, and weakly. §5.3 |
+| A foreground service's notification cannot be user-dismissed below API 34 | **DOCUMENTATION-DERIVED.** An earlier draft asserted the opposite as mechanism; §5.5 finding 3 |
+| That `onPageLoaded` fires for same-document (fragment) navigation | **DOCUMENTATION-DERIVED**, from `WebViewClient.onPageFinished`'s contract plus Capacitor's `BridgeWebViewClient`. Not executed — and the fix does not depend on it being true, because the recovery in the web half covers the case either way. §5.5 finding 2 |
 
 **No emulator was attempted.** MP1 §6.2 spent ~75 minutes across three cold boots
 and reached nothing usable; §6.4 explains why an emulator would have been necessary
@@ -180,6 +182,19 @@ design is that the page owns the only one.
 | scrub (`seekto`) | `seekto` with a `seekTime` → `foraySeek` | on the **Foray's** clock |
 | stop | `stop` → `stopAndClose()` | load-bearing, not decorative — §5.1 |
 
+**A finished Foray offers none of the first six**, and that is the faithful mirror of
+`player/media-session.js` §4: it reports the spec's `"none"` for a finished Foray on
+purpose, because *"a car display offering a play button that does nothing is worse than
+no display at all"*, and in a browser that clears the transport while leaving the
+metadata visible. `NowPlaying.acceptsTransport()` is the one rule, read by both the
+`Player`'s command set and the notification's buttons, so the media panel and the shade
+cannot end up offering different things.
+
+**`stop` is the exception, and it has to be.** It is offered whenever anything is
+loaded, ended included. Gating it on `acceptsTransport()` too — which the first version
+of this change did — leaves an ongoing foreground-service notification with **no
+buttons on it at all** in the state every session ends in. §5.5.
+
 ### 4.2 Next and previous are segments, and that is the real question
 
 **Argued, not assumed.** A Foray is an authored running order, so "next" could
@@ -280,9 +295,11 @@ is the in-page scrubber's own path.
 
 ## 5. What changed in #244's service, and why
 
-### 5.1 The service's lifetime is now "a Foray is loaded", not "audio is sounding"
+### 5.1 The service's lifetime is now "the transport can act on something"
 
-**This is the one behavioural change to #244 and the one to review hardest.**
+**This is the one behavioural change to #244 and the one to review hardest.** It also
+took two goes: the first version of this section said *"a Foray is loaded"*, and that
+was a blocking review finding — §5.5.
 
 #244 stops the service 25 s after the last element goes silent. That is correct for a
 keep-alive and **wrong for a session**, because the `MediaSession` and the
@@ -290,12 +307,15 @@ notification live in the service: pause from the lock screen, wait 25 seconds, a
 the buttons you paused with are gone, with no way to resume without unlocking the
 phone and finding the app.
 
-So the rule becomes:
+So the rule is `isTransportable` — **playing or paused, and nothing else** — spelled
+the same way on both sides of the bridge (`NowPlaying.acceptsTransport()` natively):
 
 | The page says | What happens |
 |---|---|
-| loaded and silent — paused, or mid-seam | the settle window fires and **does nothing**. Session, notification and controls stay up |
-| **not** loaded | stop **at once**, no window |
+| **playing** | the service runs |
+| **paused** | the settle window fires and **does nothing**. Session, notification and controls stay up. This is the case the whole change exists for |
+| **ended** — the Foray finished | not transportable, so the service stops. There are no buttons to keep alive: a finished Foray offers no transport at all (§4.1), and holding a foreground service behind a button-less notification is what §5.5's first finding was |
+| **idle** — the player was closed | stop **at once**, no window |
 
 **The signal is not a guess.** `player/client.js` calls `media.release()` from
 `stopAndClose` and nowhere else, and `release()` nulls the session's metadata. The
@@ -311,10 +331,20 @@ refuses.
 
 **What it costs, stated plainly:** an ongoing notification can outlive interest. A
 listener who pauses mid-Foray and walks away keeps it until they stop the player.
-That is why `stop` is exposed as a transport control **and** wired to the
-notification's swipe (`setDeleteIntent`), and why `setOngoing` tracks whether audio is
-actually sounding: a paused Foray's notification is dismissible, and dismissing it
-closes the player rather than orphaning a service.
+There are two exits, and **only one of them exists on most Android versions**:
+
+- **The stop button.** Always present whenever a notification is (it is deliberately
+  *not* gated on the transport being usable — §4.1), routed to the page's
+  `stopAndClose`, which clears the metadata, which stops the service. This is the exit.
+- **Swiping the notification away**, wired to the same `stop` through
+  `setDeleteIntent`. **This only works from Android 14.** The platform ORs
+  `FLAG_FOREGROUND_SERVICE`/`FLAG_NO_CLEAR` onto a foreground service's notification
+  and user dismissal of one arrived in API 34; minSdk here is 24, so on API 24–33 the
+  delete intent can never fire. An earlier draft of this section stated the swipe as
+  the mechanism, which was an inference dressed as a fact — §5.5.
+
+`setOngoing` still tracks whether audio is sounding. It is correct from API 34 on and
+inert below, and it is not load-bearing either way.
 
 **The fallback is the old behaviour.** `mediaLoaded` starts false and only
 `setMediaLoaded` moves it, so if the polyfill never installs — a WebView that ships
@@ -405,6 +435,88 @@ Two mechanisms, and the **order** between them is the interesting part:
   waits. Rate-limiting the identity too would leave a car display showing the
   previous publisher's name for up to a second at the one moment it changed, which is
   a seam.
+- **A trailing timer, so a refused write is deferred rather than dropped.** Added by
+  §5.5: while *playing*, the next write repairs a dropped one within a second, but a
+  scrub while *paused* has no next write, and Media3 only extrapolates while playing.
+
+**And the notification is repainted on a third, coarser gate**, because none of the
+above helps it: the service compares `visibleKey` — everything on the notification a
+listener can see, and nothing else — so 1 Hz of position reports produce one repaint
+per actual change instead of one per report.
+
+### 5.5 Two review passes, and the three findings that were blocking
+
+Recorded at this length because the pattern behind them is the point, and it is the
+same one `docs/android-native-code.md` §5.4 named: **a fake written from the same
+mental model as the code cannot falsify that model.** Every one of these was green
+across 376 tests and 25 caught mutations.
+
+**1. A finished Foray left a foreground service nothing could stop.** `ENDED` counted
+as "loaded", so the shell's settle window fired and did nothing — while
+`acceptsTransport()` was false, so every notification action was skipped **including
+stop**. Play a Foray to the end and you had an indefinite foreground service behind a
+notification with no buttons, exitable only by unlocking the phone and closing the
+player. **Every session ends in that state**, and §5.1's whole trade rests on stop
+being the one-press exit. Two independent fixes: the service's lifetime is now keyed
+to `isTransportable`, so it stops on its own when a Foray ends; and stop is no longer
+gated on the transport, so it exists wherever a notification does.
+
+**2. `onPageLoaded` fires for fragment navigations, and this app routes entirely by
+hash.** The page-load listener (§5.1's last paragraph) was written on the reasoning
+that a fresh page has nothing playing — true of a document load, and Android WebView
+dispatches `onPageFinished` for *same-document* navigation too, which Capacitor turns
+into `onPageLoaded`. So: a Foray is playing, the listener opens the drawer and taps a
+playlist, and the service is torn down and the session released **while the page and
+its JS live on**, still holding `wanted` and `startAccepted` true — so
+`ensureStarted`'s short-circuit meant no later `play()`, not one of the 20–30 remaining
+seams, ever re-asked. Unprotected playback and a blank lock screen for the rest of the
+Foray, silently. Two independent fixes again, because the first is a heuristic about
+somebody else's callback: the listener compares the document URL, **and** the shell now
+recovers on its own — `noteServiceRunning`, fed by `setNowPlaying`'s existing 1 Hz
+answer, so it costs no new bridge traffic and also covers a service killed under memory
+pressure (`START_NOT_STICKY` means nothing restarts it) and a `startForeground` that
+failed after the start was accepted.
+
+**3. `setOngoing(false)` does not make a foreground-service notification
+dismissible below API 34** — and this section had stated the swipe as the mechanism.
+That is an inference reading as a fact, on the one surface #27 exists for, which is
+exactly the failure this repo keeps paying for. Corrected in §5.1.
+
+**And six smaller ones, each real:**
+
+- **The permission prompt sat in the serialised bridge queue.** `callAndRecord`
+  orders `start` against `stop`; `requestNotifications` resolves only when a human
+  answers a dialog. So a `stop` issued while the dialog was up waited on the user, and
+  if the Activity were torn down under it the chain would never advance again — no
+  start or stop for the rest of the session. It goes out on its own chain now.
+- **A rate-limited position write was dropped, not deferred.** Scrub from the lock
+  screen *while paused*: the identity is unchanged, the write lands inside the
+  interval, and nothing re-arms — paused means no further `timeupdate` and Media3 only
+  extrapolates while playing, so the playhead would stick at the pre-seek position
+  until playback resumed. There is a trailing timer now.
+- **A rejected write was still recorded as sent.** Same shape, same "only visible
+  while paused" reason: `flush` commits `lastIdentity` before dispatch, so a failed
+  write left the lock screen frozen with no later write to repair it. A rejection now
+  tears up the record.
+- **`identityKey` joined its fields with nothing**, so `{title:"ab", artist:"c"}` and
+  `{title:"a", artist:"bc"}` hashed equal — a real shape at a seam, where the title and
+  the show change together. Worse, the source had acquired a **literal control byte**
+  where that separator should have been, which is a byte no reviewer can see; it is
+  `String.fromCharCode(31)` now, with the reason written next to it.
+- **The notification was re-posted on every 1 Hz position write** — ~3,600 identical
+  notifications an hour, each rebuilding six `PendingIntent`s, for a display carrying
+  no playhead. §5.4 argued the bridge rate down from 4 Hz and then spent it here.
+- **`sessionActive` was a plain boolean across overlapping instances**, so a restart
+  had the old instance reporting "no session" while the new one was live — on the field
+  §8.1 tells a device pass to trust. It is an identity now, like the hub's listener and
+  sink.
+
+**One more found by my own reviewer and not by either human pass:** `durationMs` was
+clamped for sign but not magnitude, and `WebViewPlayer` multiplies it by 1000 — so
+`Long.MAX_VALUE` from an absurd payload wraps **negative**, and
+`setDurationUs` rejects a negative duration by throwing on the main thread inside
+`getState()`. That is the exact crash class the clamps were written to prevent,
+arriving through the clamp.
 
 ## 6. Both APKs still build
 
@@ -452,9 +564,10 @@ the most obvious way to do that by accident. Cost: one wasted build.
 
 ## 7. The tests, and which suite covers which mechanism
 
-**376 tests in `tools/mobile/`, all green. 25 mutations attempted, 25 caught.** Three
-suites, and the point of this table is that a reviewer who wants to check my tests are
-not vacuous knows exactly where to look.
+**401 tests in `tools/mobile/`, all green; all 62 suites in `tools/ci/run-suites.mjs`
+green. 42 mutations attempted, 41 caught, and the one survivor is explained below
+rather than papered over.** Three suites, and the point of this table is that a
+reviewer who wants to check my tests are not vacuous knows exactly where to look.
 
 | Mechanism | Suite | A mutation that kills it | Tests that fail |
 |---|---|---|---|
@@ -480,6 +593,23 @@ not vacuous knows exactly where to look.
 | Every native transport action is routable | same | `"nextTrack"` for `"nexttrack"` | 1 |
 | `POST_NOTIFICATIONS` declared and aliased | same | delete the declaration | 1 |
 | Media3 pinned exactly, and to the right artefacts | same | `1.+`, or add `media3-exoplayer` | 1 each |
+| **§5.5's fixes**, each pinned separately | | | |
+| `isTransportable` is playing-or-paused | `foray-media-session.test.mjs` §6 | back to "anything but idle" | 1 |
+| A refused position write is deferred | same, §4 | drop it | 3 |
+| One trailing timer, not one per repaint | same, §4 | drop the guard | 1 |
+| A rejected write tears up the record | same, §9 | keep `lastIdentity` | 1 |
+| `uninstall` forgets what it sent | same, §9 | keep the dedupe state | 1 |
+| Native's answer reaches the shell | same, §9 | never forward it | 1 |
+| `identityKey`'s fields cannot run together | same, §4 | `join("")` | 2 |
+| A lost service is noticed, and re-asked for | `foray-audio-shell.test.mjs` §12 | delete the recovery | 2 |
+| …and a start that has not landed is not a death | same, §12 | delete the `sawServiceRunning` guard | 3 |
+| …and a fresh start does not inherit a confirmation | same, §12 | delete the reset at dispatch | 1 |
+| The prompt is off the serialised queue | `shell-invariants.test.mjs` | put it back | 1 |
+| Stop is not gated on the transport | same | gate it | 1 |
+| The page-load listener compares the document | same | stop unconditionally | 1 |
+| The notification repaint is gated, and not on the playhead | same | ungate it / include `positionMs` | 1 each |
+| The session owner is identity-checked | same | clear it unconditionally | 1 |
+| Milliseconds are clamped at both ends | same | drop the magnitude clamp | 1 |
 
 **Two mutations survived a first pass, and both were real test gaps rather than dead
 code.** They are named because "a surviving mutant is not always a missing test" cuts
@@ -501,6 +631,29 @@ an unrelated failure: "a loaded Foray survives the settle window" asserted that 
 stop was dispatched against a fake timer that had **never been fired** — the clock's
 `advance()` moves `now` and `fireAll()` runs callbacks, and only the first was
 called. It would have passed with `mediaLoaded` deleted from the codebase entirely.
+
+**Two more survived the second pass, and both were real gaps rather than dead code:**
+
+1. **The `identityKey` separator.** The suite only ever changed one field at a time,
+   and a single-field change differs under any separator. The collision needs two
+   fields moving in opposite directions, which is the shape a seam actually has.
+2. **The reset of `sawServiceRunning` at a start's dispatch.** The obvious test for it
+   was vacuous, because `requestStop` clears the same flag — so every stop-then-start
+   sequence was covered by that instead, and deleting the line changed nothing
+   observable. The path that needs it is a start Android **refused** followed by a
+   retry, with no stop in between. That test exists now, and the alternative — deleting
+   a guard because a mutation survived — would have been the wrong call in the one place
+   where getting it wrong means a background `startForegroundService`.
+
+**THE ONE SURVIVOR I AM KEEPING, and where to look before concluding a test is
+vacuous.** Swapping `callAndRecord`'s whitelist (`method === "start" || method ===
+"stop"`) back to the old blacklist (`method !== "state"`) is a mutation **no test
+catches**, and that is currently correct: the blacklist was wrong only while
+`requestNotifications` was in that queue, and §5.5 took it out. `start`, `stop` and
+`state` are the only methods left, so the two spellings agree on all three. It is kept
+as a whitelist because the next method added should have to opt *in* to clearing the
+start gate, and because getting that wrong is silent — the reasoning is written at the
+call site so nobody has to rediscover it.
 
 ## 8. What is NOT known, stated as plainly as possible
 
@@ -538,7 +691,14 @@ against fakes. #244 set that standard and it is the right one.
 4. `await Capacitor.nativePromise("ForayAudio", "state", {})` → `running`,
    `sessionActive`, `notificationsEnabled`, `notificationPermission`. **"The lock
    screen is blank" has at least three causes and only one of them is a bug in this
-   code**, and those four fields tell them apart.
+   code**, and those four fields tell them apart. `notificationPermission` is
+   Capacitor's own word and there are **four** of them — `granted`, `denied`, `prompt`
+   and `prompt-with-rationale` — not three; a comment here used to promise three.
+4b. `window.ForayAudioShell.inspect()` → `sawServiceRunning` and `startAccepted`
+   together. `startAccepted: true` with `sawServiceRunning: false` for more than a
+   moment means native never confirmed the service came up; `startAccepted: false`
+   while a Foray is playing means the recovery in §5.5 finding 2 fired, and the next
+   seam should re-start it.
 5. `adb shell dumpsys media_session` → whether the platform sees our session at all,
    and `adb shell dumpsys activity services com.jwincorporated.foray` → whether the
    service is `foregroundServiceType=mediaPlayback`.
@@ -572,3 +732,15 @@ to a module with an open issue on it (#224), so it is named here rather than don
 | Both APKs | **Built.** §6 |
 | Anything observed on a device or an emulator | **No.** §8 |
 | An Android CI job | **Not added** — `.github/` is governed. The shape is in `docs/android-shell-build.md` §3.3 |
+| The bundle's size headroom | **2.97 MB of the 3.00 MB cap**, up from 2.92 before this change (~36 KB of it is `foray-media-session.js`). `prepare-webdir.mjs` fails the build past the cap, so **the next `discover.json` growth is what breaks it**, not this. Worth a decision before it is a surprise |
+
+### 10.1 One thing to notice about the release APK
+
+`minifyEnabled false` in both the generated app and this plugin's module, which is
+Capacitor 8.5.0's template default and unchanged here. So the release APK carries
+**unshrunk Guava** — the largest thing Media3 brought with it (§3) — and enabling R8
+would very likely reclaim most of the growth in §6.1. It is not done in this change
+because turning shrinking on for the first time is its own piece of work with its own
+failure mode (a `@Keep`-shaped bug that only appears in release, on a device nothing
+here can reach), and because the APK is unsigned and unshippable either way until a
+founder action. Named so the size number is not mistaken for a floor.

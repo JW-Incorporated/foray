@@ -484,9 +484,12 @@ more on the page than in nobody's memory.
 >   between a 20 s floor and a 30 s ceiling. Handing a reviewed mechanism to a library
 >   nothing here can execute was the wrong trade with no device.
 > - **The service's lifetime DID change**, in the one way §3.4 predicted: it now lives
->   as long as **a Foray is loaded** rather than as long as **audio is sounding**,
->   because the `MediaSession` lives here and a pause must not take the controls away
->   25 s later. That is fewer `startForegroundService` calls, not more.
+>   as long as **the transport can act on something** — playing or paused — rather than
+>   as long as **audio is sounding**, because the `MediaSession` lives here and a pause
+>   must not take the controls away 25 s later. That is fewer `startForegroundService`
+>   calls, not more. (It said "a Foray is loaded" first, which held the service open
+>   through a FINISHED Foray behind a notification with no buttons on it. That was a
+>   blocking review finding — `docs/android-lock-screen.md` §5.5.)
 >
 > Everything in §6.2, §6.3 and §6.4 still holds, and **nothing about it has been
 > executed on a device or an emulator** either.
