@@ -462,6 +462,17 @@ button.star.on { color: var(--gold); }
 }
 .q-num.next { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+/* A saved part the catalogue no longer carries (#276). It stays in place and
+   keeps its number — the count above it has to stay true — and reads as
+   secondary rather than broken: it is still a real episode, just not one Foray
+   can play in the app today. Dashed border rather than a colour, so the
+   distinction survives without depending on hue alone. */
+.ep-row.gone {
+  border-style: dashed;
+  box-shadow: none;
+}
+.ep-row.gone .t { color: var(--text-dim); font-weight: 600; }
+
 button.danger {
   margin-top: 12px;
   background: none;
