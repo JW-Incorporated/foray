@@ -5,9 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
-import android.webkit.WebView;
 
-import androidx.annotation.Nullable;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
@@ -15,7 +13,6 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
-import com.getcapacitor.WebViewListener;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
@@ -117,81 +114,6 @@ public class ForayAudioPlugin extends Plugin {
         };
         NowPlayingHub.setSink(sink);
 
-        /* A RELOADED PAGE MUST NOT INHERIT A RUNNING SERVICE, and this hole predates
-           #27 — it is only worth closing now because #27 widens it. Under #244 a reload
-           mid-playback left the service up until the settle window in a page that no
-           longer existed, which is 25 s; now the service lives as long as a Foray is
-           "loaded", and the new page's `mediaLoaded` starts false with `wanted` false
-           too, so nothing in JS is in a position to stop it at all.
-
-           A fresh page has nothing playing by definition, and it will re-ask on its
-           first `play()` — from the foreground, since a page load means the app is
-           visible, so the restart is one Android cannot refuse. Stopping a service that
-           is not running is a no-op, which is what makes this safe on the FIRST load
-           too. */
-        try {
-            bridge.addWebViewListener(new WebViewListener() {
-                @Override
-                public void onPageLoaded(WebView webView) {
-                    onDocumentMaybeChanged(webView);
-                }
-            });
-        } catch (Exception e) {
-            Log.w(TAG, "could not register the page-load listener", e);
-        }
-    }
-
-    /**
-     * The last loaded URL with its fragment removed, so a hash route can be told from a
-     * real document load.
-     */
-    @Nullable
-    private String lastDocumentUrl;
-
-    /**
-     * Stop the service only when a NEW DOCUMENT loaded — never on a hash route.
-     *
-     * <p><b>A REVIEW PASS CAUGHT THIS AS A HIGH-SEVERITY BUG AND IT WOULD HAVE BEEN
-     * BAD.</b> The first version stopped the service on every {@code onPageLoaded}, on
-     * the reasoning that a fresh page has nothing playing. <b>This app routes entirely
-     * by URL fragment</b> — {@code app.js} sets {@code location.hash} and listens for
-     * {@code hashchange} — and Android WebView dispatches
-     * {@code WebViewClient.onPageFinished} for same-document fragment navigations,
-     * which is exactly what Capacitor's {@code BridgeWebViewClient} turns into
-     * {@code onPageLoaded}.
-     *
-     * <p>So: a Foray is playing, the listener opens the drawer and taps a playlist, and
-     * the service is torn down and the {@code MediaSession} released <b>while the page
-     * and its JS live on</b>. The web half still holds {@code wanted} and
-     * {@code startAccepted} true, so {@code ensureStarted}'s short-circuit means no
-     * later {@code play()} — not one of the 20-30 remaining seams — ever re-asks. The
-     * process loses its importance protection and its audio-focus exemption, and the
-     * lock screen stays blank, for the rest of the Foray, silently.
-     *
-     * <p>Two independent fixes, because one of them is a heuristic about somebody
-     * else's callback: this method compares the document URL, <b>and</b> the web half
-     * now recovers on its own if the service disappears underneath it
-     * ({@code noteServiceRunning} in {@code foray-audio-shell.js}).
-     */
-    private void onDocumentMaybeChanged(@Nullable WebView webView) {
-        try {
-            String url = webView == null ? null : webView.getUrl();
-            String document = url == null ? null : stripFragment(url);
-            /* A null URL means we cannot tell, and the safe answer is to do NOTHING:
-               a missed stop leaves a service the settle window or `stopWithTask` will
-               deal with, while a wrong stop is the failure above. */
-            if (document == null) return;
-            boolean changed = !document.equals(lastDocumentUrl);
-            lastDocumentUrl = document;
-            if (changed) stopServiceQuietly();
-        } catch (Exception e) {
-            Log.w(TAG, "could not decide whether the document changed", e);
-        }
-    }
-
-    private static String stripFragment(String url) {
-        int at = url.indexOf('#');
-        return at < 0 ? url : url.substring(0, at);
     }
 
     @PluginMethod
@@ -323,6 +245,67 @@ public class ForayAudioPlugin extends Plugin {
            running yet, because nothing has played. */
         result.put("running", PlaybackKeepAliveService.isRunning());
         result.put("sessionActive", PlaybackKeepAliveService.isSessionActive());
+        call.resolve(result);
+    }
+
+    /**
+     * A new document has loaded: forget the last one and stop any service it left.
+     *
+     * <h3>Why this is a plugin method and not a native page hook</h3>
+     *
+     * <p><b>Because the native page hook does not work, and a review pass proved it by
+     * reading Capacitor's own source.</b> The first version of this registered a
+     * {@code WebViewListener} from {@code load()} — and in Capacitor 8.5.0
+     * {@code Bridge}'s constructor calls {@code registerAllPlugins()} (which is where
+     * {@code load()} runs), and then {@code Bridge.Builder.create()} calls
+     * {@code bridge.setWebViewListeners(webViewListeners)}, which <b>replaces the whole
+     * list</b> with the Builder's own. So the listener was silently discarded and
+     * {@code onPageLoaded} could never fire — dead code that the documentation claimed
+     * as one of two fixes, and that a source-scanning test happily asserted the shape
+     * of. Registering a listener that way needs {@code Bridge.Builder} in
+     * {@code MainActivity}, which belongs to the generated project this plugin must not
+     * reach into.
+     *
+     * <p>So the page announces itself instead, from {@code foray-audio-shell.js}'s
+     * install — which runs exactly once per document, by construction, and which a Node
+     * test can actually drive.
+     *
+     * <h3>What it fixes</h3>
+     *
+     * <p><b>A reloaded page must not inherit a running service.</b> The hole predates
+     * #27 and #27 widens it: under #244 a reload mid-playback left the service up until
+     * the settle window (25 s) in a page that no longer existed, and now the service
+     * lives as long as the transport is usable, while the new page starts with
+     * {@code wanted} and {@code mediaLoaded} both false — so nothing in JS is in a
+     * position to stop it at all.
+     *
+     * <p>It also clears {@link NowPlayingHub}, which a second review finding named: the
+     * hub is a process singleton that nothing clears in normal operation, so after a
+     * reload the new page's first {@code play()} would build a session and a
+     * notification from the PREVIOUS document's title, with a
+     * {@code playWhenReady} playhead extrapolating forward, until its first
+     * {@code setNowPlaying} landed.
+     *
+     * <p>Safe on a first load, which is what makes it safe at all: stopping a service
+     * that is not running is a no-op, and clearing a hub that is already empty is too.
+     */
+    @PluginMethod
+    public void newDocument(PluginCall call) {
+        JSObject result = new JSObject();
+        /* Read BEFORE, like `stop`'s `wasRunning`, and for the same reason: `stopService`
+           is asynchronous, so a post-call read is a race. This one is also the only
+           evidence a device pass has that a reload ever leaked a service. */
+        result.put("wasRunning", PlaybackKeepAliveService.isRunning());
+        try {
+            NowPlayingHub.set(NowPlaying.EMPTY);
+            stopServiceQuietly();
+            result.put("ok", true);
+            result.put("reason", "");
+        } catch (Exception e) {
+            Log.w(TAG, "could not reset for a new document", e);
+            result.put("ok", false);
+            result.put("reason", e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
         call.resolve(result);
     }
 

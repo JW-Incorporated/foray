@@ -29,7 +29,8 @@ paying for.
 | That anything renders on a lock screen, that a Bluetooth button reaches the page, that the notification appears at all | **NEITHER MEASURED NOR INFERRED — UNVERIFIED.** §8 |
 | Whether the system media panel needs `POST_NOTIFICATIONS` granted | **INFERRED**, and weakly. §5.3 |
 | A foreground service's notification cannot be user-dismissed below API 34 | **DOCUMENTATION-DERIVED.** An earlier draft asserted the opposite as mechanism; §5.5 finding 3 |
-| That `onPageLoaded` fires for same-document (fragment) navigation | **DOCUMENTATION-DERIVED**, from `WebViewClient.onPageFinished`'s contract plus Capacitor's `BridgeWebViewClient`. Not executed — and the fix does not depend on it being true, because the recovery in the web half covers the case either way. §5.5 finding 2 |
+| That `onPageLoaded` fires for same-document (fragment) navigation | **DOCUMENTATION-DERIVED**, and now moot: the native listener it applied to has been removed, because it could never fire. §5.5 finding 2 |
+| That a `WebViewListener` added from a plugin's `load()` is discarded | **READ FROM SOURCE** — `Bridge.java`'s constructor calling `registerAllPlugins()`, then `Bridge.Builder.create()` calling `setWebViewListeners(...)` with the Builder's own list. Not executed, and it does not need to be: the mechanism was replaced rather than patched. §5.5 finding 2 |
 
 **No emulator was attempted.** MP1 §6.2 spent ~75 minutes across three cold boots
 and reached nothing usable; §6.4 explains why an emulator would have been necessary
@@ -462,20 +463,43 @@ to `isTransportable`, so it stops on its own when a Foray ends; and stop is no l
 gated on the transport, so it exists wherever a notification does.
 
 **2. `onPageLoaded` fires for fragment navigations, and this app routes entirely by
-hash.** The page-load listener (§5.1's last paragraph) was written on the reasoning
-that a fresh page has nothing playing — true of a document load, and Android WebView
-dispatches `onPageFinished` for *same-document* navigation too, which Capacitor turns
-into `onPageLoaded`. So: a Foray is playing, the listener opens the drawer and taps a
+hash.** A native page-load listener was written on the reasoning that a fresh page has
+nothing playing — true of a document load, and Android WebView dispatches
+`onPageFinished` for *same-document* navigation too, which Capacitor turns into
+`onPageLoaded`. So: a Foray is playing, the listener opens the drawer and taps a
 playlist, and the service is torn down and the session released **while the page and
 its JS live on**, still holding `wanted` and `startAccepted` true — so
 `ensureStarted`'s short-circuit meant no later `play()`, not one of the 20–30 remaining
 seams, ever re-asked. Unprotected playback and a blank lock screen for the rest of the
-Foray, silently. Two independent fixes again, because the first is a heuristic about
-somebody else's callback: the listener compares the document URL, **and** the shell now
-recovers on its own — `noteServiceRunning`, fed by `setNowPlaying`'s existing 1 Hz
-answer, so it costs no new bridge traffic and also covers a service killed under memory
-pressure (`START_NOT_STICKY` means nothing restarts it) and a `startForeground` that
-failed after the start was accepted.
+Foray, silently.
+
+**And the first fix for it was dead code, which a third pass caught by reading
+Capacitor's source rather than mine.** The listener was registered from the plugin's
+`load()` with `bridge.addWebViewListener(...)` — and in Capacitor 8.5.0 `Bridge`'s
+constructor calls `registerAllPlugins()`, which is where `load()` runs, and then
+`Bridge.Builder.create()` calls `bridge.setWebViewListeners(...)`, which **replaces the
+whole list** with the Builder's own. `onPageLoaded` could therefore never fire. Nothing
+threw, nothing logged, and the invariant test asserted the *shape* of code that never
+ran — which is the sharpest example in this branch of exactly what a source-scanning
+test is worth. Registering a listener that way needs `Bridge.Builder` in
+`MainActivity`, which is in the generated project this plugin must not reach into.
+
+**So the page announces itself instead**, and the mechanism is now one a Node test can
+drive end to end: `foray-audio-shell.js`'s auto-install calls `newDocument()`, which
+runs exactly once per document by construction, and native stops any leaked service
+**and clears `NowPlayingHub`** (see the sixth small finding below). What remains
+source-asserted is one line of wiring in a block guarded on `window`, which Node cannot
+execute — and that is stated rather than glossed.
+
+**Plus the independent fix, which is the one that does not depend on a heuristic about
+somebody else's callback:** the shell now recovers on its own. `noteServiceRunning` is
+fed by `setNowPlaying`'s existing 1 Hz answer, so it costs no new bridge traffic, and it
+covers a service killed under memory pressure (`START_NOT_STICKY` means nothing restarts
+it) and a `startForeground` that failed after the start was accepted. **It re-asks
+immediately when audio is flowing** rather than waiting for a `play()` — a third-pass
+finding: while paused the polyfill sends no writes at all, so a death is not noticed
+until after the resume `play()` has already short-circuited, and single-episode playback
+has exactly one `play()` in it because `episodeMediaSurface` has no `next`.
 
 **3. `setOngoing(false)` does not make a foreground-service notification
 dismissible below API 34** — and this section had stated the swipe as the mechanism.
@@ -510,6 +534,17 @@ exactly the failure this repo keeps paying for. Corrected in §5.1.
   had the old instance reporting "no session" while the new one was live — on the field
   §8.1 tells a device pass to trust. It is an identity now, like the hub's listener and
   sink.
+- **`NowPlayingHub.current` was never cleared across a document change**, so after a
+  reload the new page's first `play()` built a session and a notification from the
+  *previous* document's title, with a `playWhenReady` playhead extrapolating forward,
+  until its first `setNowPlaying` landed. `newDocument` clears it.
+- **`build.gradle`'s comment argued for a pinned Media3 version and the code did a
+  `hasProperty` lookup anyway** — so a future `variables.gradle` entry would silently
+  move the version of the module that owns the lock screen, and `-Pmedia3Version=…` on
+  the command line would fail the build with `MissingPropertyException` instead of
+  honouring the override. It is a plain assignment now, and the appcompat line above it
+  keeps the lookup on purpose, because that value really does exist in the generated
+  project.
 
 **One more found by my own reviewer and not by either human pass:** `durationMs` was
 clamped for sign but not magnitude, and `WebViewPlayer` multiplies it by 1000 — so
@@ -603,8 +638,8 @@ finishes.** That is how the run in §6.1 was done.
 
 ## 7. The tests, and which suite covers which mechanism
 
-**401 tests in `tools/mobile/`, all green; all 62 suites in `tools/ci/run-suites.mjs`
-green. 42 mutations attempted, 41 caught, and the one survivor is explained below
+**409 tests in `tools/mobile/`, all green; all 62 suites in `tools/ci/run-suites.mjs`
+green. 51 mutations attempted, 50 caught, and the one survivor is explained below
 rather than papered over.** Three suites, and the point of this table is that a
 reviewer who wants to check my tests are not vacuous knows exactly where to look.
 
@@ -649,6 +684,15 @@ reviewer who wants to check my tests are not vacuous knows exactly where to look
 | The notification repaint is gated, and not on the playhead | same | ungate it / include `positionMs` | 1 each |
 | The session owner is identity-checked | same | clear it unconditionally | 1 |
 | Milliseconds are clamped at both ends | same | drop the magnitude clamp | 1 |
+| **A third pass's fixes** | | | |
+| A lost service is re-asked for at once while audio flows | `foray-audio-shell.test.mjs` §12 | delete the immediate `ensureStarted` | 2 |
+| …and NOT while nothing is playing | same, §12 | make it unconditional | 1 |
+| …and a refused re-ask does not loop | same, §12 | (covered by the two above) | — |
+| A document announces itself once, and only after install | same, §13 | delete either guard | 1 each |
+| `newDocument` is wired at install | `shell-invariants.test.mjs` | delete the call | 1 |
+| `newDocument` clears the hub and stops the service | same | delete either | 1 each |
+| No `WebViewListener` is registered from `load()` | same | register one | 1 |
+| Media3 is a plain pin, not a lookup | same | restore the `hasProperty` dance | 1 |
 
 **Two mutations survived a first pass, and both were real test gaps rather than dead
 code.** They are named because "a surviving mutant is not always a missing test" cuts
@@ -683,6 +727,14 @@ called. It would have passed with `mediaLoaded` deleted from the codebase entire
    retry, with no stop in between. That test exists now, and the alternative — deleting
    a guard because a mutation survived — would have been the wrong call in the one place
    where getting it wrong means a background `startForegroundService`.
+
+**And two more in the third pass, one of each kind.** Removing `documentAnnounced`
+survived, because `callAndRecord`'s `inFlight` dedupe already collapses two identical
+outstanding requests — so calling `newDocument()` twice in a row proved nothing, and the
+test had to drain between the calls for the flag to be load-bearing. And a mutation that
+merely inserted the words `WebViewListener` in a *comment* survived, correctly: the
+invariant strips comments before scanning, which is the behaviour you want and a
+reminder that a surviving mutant is sometimes a bad mutation.
 
 **THE ONE SURVIVOR I AM KEEPING, and where to look before concluding a test is
 vacuous.** Swapping `callAndRecord`'s whitelist (`method === "start" || method ===
@@ -765,7 +817,8 @@ to a module with an open issue on it (#224), so it is named here rather than don
 | Artwork | URI on the session; **no bitmap loaded** for the notification, by decision. §2.1 |
 | `navigator.mediaSession` polyfill | **Built**, and inert if the engine ever ships the real one |
 | Media3 | `media3-session` + `media3-common` **1.11.0**, in both APKs. §3 |
-| The foreground service's lifetime | **Changed**: "a Foray is loaded", not "audio is sounding". §5.1 |
+| The foreground service's lifetime | **Changed**: "the transport can act on something" — playing or paused — not "audio is sounding". §5.1 |
+| A reloaded page inheriting a service | **Closed from the page**, because the native page hook Capacitor offers cannot be reached from a plugin. §5.5 finding 2 |
 | `POST_NOTIFICATIONS` | **Declared, and asked for once** on the first accepted start. §5.3 |
 | Audio focus | **Still not requested**, deliberately. §4.3 |
 | Both APKs | **Built.** §6 |

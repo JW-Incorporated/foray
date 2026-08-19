@@ -88,8 +88,18 @@ ext {
 
        1.11.0, read from Google's Maven `maven-metadata.xml` as the current `<release>`
        on 2026-08-18 — not from memory, because the wrong Media3 version is a build
-       failure with a resolution error rather than anything about media. */
-    media3Version = project.hasProperty('media3Version') ? rootProject.ext.media3Version : '1.11.0'
+       failure with a resolution error rather than anything about media.
+
+       AND IT IS A PLAIN ASSIGNMENT, because the first version of this WAS the
+       `hasProperty` dance the paragraph above argues against — a review pass pointed out
+       that the comment and the code disagreed. Two things wrong with the dance here: a
+       future `variables.gradle` entry would silently move the Media3 version of the
+       module that owns the lock screen, and `-Pmedia3Version=1.9.0` on the command line
+       makes `hasProperty` true while `rootProject.ext.media3Version` does not exist, so
+       an override fails with `MissingPropertyException` instead of working. The appcompat
+       line above keeps the dance on purpose: that value DOES exist in the generated
+       project, and tracking it is the point. */
+    media3Version = '1.11.0'
 }
 
 apply plugin: 'com.android.library'

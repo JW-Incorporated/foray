@@ -235,7 +235,7 @@ const FLOORS = {
      RELEASE_EVENTS and ACQUIRE_EVENTS lists, so they expand into six runs. The floor is
      the static count, because a regex over source is what this file measures. Raise it
      when the suite grows. */
-  "tools/mobile/foray-audio-shell.test.mjs": 76,
+  "tools/mobile/foray-audio-shell.test.mjs": 83,
   /* #27's Android half: the `navigator.mediaSession` polyfill that feeds a native
      Media3 session and routes transport presses back into the page
      (docs/android-lock-screen.md). The floor matters here for the reason that doc's

@@ -1088,8 +1088,13 @@ test("the plugin's Gradle dependencies are androidx only, and each is named in t
   /* A FIXED VERSION, not a range. `1.+` or `latest.release` makes the lock screen's
      behaviour a function of the day the APK was built, which is the one property a
      media surface must not have. */
-  const media3 = /media3Version = [^\r\n]*?: '([^']+)'/.exec(gradle);
-  assert.ok(media3, "the Media3 version is no longer declared as a single ext property");
+  /* A PLAIN ASSIGNMENT, not a `hasProperty` lookup, and a review pass is why: the
+     comment above it argued for a pin while the code inherited whatever the generated
+     project might one day declare, and `-Pmedia3Version=…` on the command line made
+     `hasProperty` true while the ext property did not exist, failing the build instead of
+     honouring the override. */
+  const media3 = /media3Version = '([^']+)'/.exec(gradle);
+  assert.ok(media3, "the Media3 version is no longer a single pinned ext property");
   assert.match(media3[1], /^\d+\.\d+\.\d+$/, "the Media3 version must be exact, not a range: " + media3[1]);
   for (const c of coords.filter((x) => x.startsWith("androidx.media3:"))) {
     assert.ok(
@@ -1246,24 +1251,46 @@ test("THE STOP BUTTON IS NOT GATED ON acceptsTransport()", () => {
   assert.match(stopGuard[1], /np\.isLoaded\(\)/, "stop should be offered whenever anything is loaded");
 });
 
-test("the page-load listener compares the document, so a hash route is not a stop", () => {
-  /* THE OTHER HIGH-SEVERITY FINDING. This app routes entirely by URL fragment and
-     Android WebView fires `onPageFinished` for same-document navigations, so an
-     unconditional stop here tears the service down when the listener opens the drawer
-     mid-Foray — with the page still alive and its gate still saying it holds a service,
-     so nothing ever re-starts it. */
+test("A NEW DOCUMENT IS ANNOUNCED FROM THE PAGE, NOT FROM A NATIVE PAGE HOOK", () => {
+  /* THIS TEST USED TO ASSERT THE DEAD MECHANISM, which is the sharpest illustration in
+     this branch of what a source-scanning test is worth. It checked that the plugin's
+     `WebViewListener.onPageLoaded` compared the document URL rather than stopping
+     unconditionally — and it passed, over a listener Capacitor SILENTLY DISCARDS:
+     `Bridge`'s constructor runs `registerAllPlugins()` (where `load()` runs) and then
+     `Bridge.Builder.create()` calls `setWebViewListeners(...)`, replacing the list with
+     the Builder's own. So `onPageLoaded` could never fire, and this test asserted the
+     shape of code that never ran.
+
+     The page announces itself now — `foray-audio-shell.js`'s auto-install calls
+     `newDocument()` — which is a path the Node suite drives end to end (§13 there). What
+     is left for this test is the one line the suite cannot reach: the wiring in the
+     auto-install block, which is guarded on `window` and so never executes in Node. */
   const plugin = stripJavaComments(fs.readFileSync(
     path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
     "utf8"
   ));
-  const body = /public void onPageLoaded\(WebView webView\) \{([\s\S]*?)\}/.exec(plugin);
-  assert.ok(body, "the WebViewListener no longer overrides onPageLoaded");
   assert.ok(
-    !/stopServiceQuietly\(\)/.test(body[1]),
-    "onPageLoaded stops the service unconditionally; a fragment navigation would trigger it"
+    !/WebViewListener/.test(plugin),
+    "the plugin registers a WebViewListener again; Capacitor replaces that list after load() and it can never fire"
   );
-  assert.match(plugin, /private static String stripFragment\(String url\)/);
-  assert.match(plugin, /lastDocumentUrl/, "nothing remembers the last document, so nothing can compare it");
+  assert.match(
+    plugin,
+    /public void newDocument\(PluginCall call\)/,
+    "there is no newDocument method for the page to announce itself to"
+  );
+  /* And it must clear the hub as well as stop the service, or the next play builds a
+     session from the PREVIOUS document's title. */
+  const body = /public void newDocument\(PluginCall call\) \{([\s\S]*?)call\.resolve\(result\);/.exec(plugin);
+  assert.ok(body, "could not read newDocument's body");
+  assert.match(body[1], /NowPlayingHub\.set\(NowPlaying\.EMPTY\)/, "newDocument leaves the hub stale");
+  assert.match(body[1], /stopServiceQuietly\(\)/, "newDocument does not stop a leaked service");
+
+  const shellSrc = fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-audio-shell.js"), "utf8");
+  assert.match(
+    shellSrc,
+    /shell\.newDocument\(\);/,
+    "nothing calls newDocument() at install, so the reloaded-page hole is open again"
+  );
 });
 
 test("the notification repaint is gated on what the notification SAYS", () => {

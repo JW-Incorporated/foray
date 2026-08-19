@@ -1843,10 +1843,19 @@ test("noteServiceRunning does nothing when we do not hold a service", async () =
   assert.deepEqual(methods(capacitor), [], "the recovery started or stopped something on its own");
 });
 
-test("noteServiceRunning NEVER starts the service itself", async () => {
-  /* It can be called while the app is backgrounded — the reports that feed it come from
-     a 1 Hz write during playback — and a background `startForegroundService` is the one
-     call Android 12+ refuses. Recovery is "let the next play re-ask", never "ask now". */
+test("A LOST SERVICE IS RE-ASKED FOR AT ONCE WHILE AUDIO IS FLOWING", async () => {
+  /* THIS TEST ASSERTED THE OPPOSITE UNTIL A REVIEW PASS, and the opposite was wrong for
+     two reasons it named. Waiting for "the next `play()`" is not good enough: while
+     PAUSED the polyfill sends no writes at all, so a death is not noticed until after the
+     resume `play()` has already short-circuited on the still-true gate; and
+     `episodeMediaSurface` has no `next`, so a single episode contains exactly ONE
+     `play()` and the next one never comes. The process would then run unprotected with a
+     blank lock screen for the rest of the item.
+
+     Asking here can be refused, because this can run while the app is backgrounded and
+     Android 12+ refuses a background `startForegroundService`. That is still the right
+     trade: a refusal costs a log line and leaves us where we already were, while not
+     asking guarantees the failure. */
   const { shell, proto, capacitor } = setup();
   shell.install();
   const el = makeElement(proto);
@@ -1855,7 +1864,71 @@ test("noteServiceRunning NEVER starts the service itself", async () => {
   shell.noteServiceRunning(true);
   shell.noteServiceRunning(false);
   await flush();
-  assert.deepEqual(methods(capacitor), ["start"], "the recovery issued a start of its own");
+  assert.deepEqual(
+    methods(capacitor), ["start", "start"],
+    "a service that died under live audio was not re-asked for"
+  );
+  assert.equal(shell.inspect().startAccepted, true);
+});
+
+test("but NOT when nothing is playing — there is nothing to protect", async () => {
+  /* The other half, and the one that keeps the above from being "always start": a death
+     noticed while silent must not put a foreground service back up behind nothing. The
+     next `play()` is the right moment for that one, and it is a moment that exists,
+     because a play is what made the service interesting in the first place. */
+  const { shell, proto, capacitor } = setup({ settleMs: 1000 });
+  shell.install();
+  shell.setMediaLoaded(true);
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  shell.noteServiceRunning(true);
+  el.paused = true;
+  el.emit("pause");
+  await flush();
+
+  shell.noteServiceRunning(false);
+  await flush();
+  assert.deepEqual(methods(capacitor), ["start"], "a start was issued with nothing playing");
+  assert.equal(shell.inspect().startAccepted, false, "the gate should still have been cleared");
+});
+
+test("a refused re-ask does not loop", async () => {
+  /* At most one attempt per confirmed death: a refused start leaves `startAccepted`
+     false, and the recovery's own guard needs it true. Without that, a 1 Hz stream of
+     `running: false` would be a 1 Hz stream of refused background starts. */
+  /* THE FIRST START MUST SUCCEED and the RE-ASK must be the refused one, which is the
+     shape a device would actually have: the service came up while the app was in the
+     foreground, then died, and the retry is issued from the background. A fixture that
+     refuses every start never reaches the recovery at all — its guard needs
+     `startAccepted` true — so it would pass this test without exercising it. */
+  let starts = 0;
+  const { shell, proto, capacitor } = setup({
+    bridge: {
+      results: {
+        start: () => {
+          starts += 1;
+          return Promise.resolve(starts === 1
+            ? { started: true, alreadyRunning: false, reason: "" }
+            : { started: false, reason: "ForegroundServiceStartNotAllowedException" });
+        },
+      },
+    },
+  });
+  shell.install();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  shell.noteServiceRunning(true);
+  for (let i = 0; i < 5; i++) {
+    shell.noteServiceRunning(false);
+    await flush();
+  }
+  assert.deepEqual(
+    methods(capacitor), ["start", "start"],
+    "the recovery kept re-issuing starts after a refusal"
+  );
+  assert.equal(shell.inspect().startAccepted, false);
 });
 
 test("noteServiceRunning after uninstall does nothing", async () => {
@@ -2032,4 +2105,78 @@ test("A CONFIRMED SERVICE DOES NOT VOUCH FOR THE NEXT START", async () => {
     methods(capacitor), ["start", "stop", "start"],
     "a redundant start was issued"
   );
+});
+
+
+/* ------------------------------------- 13. #27: announcing a freshly loaded document
+
+   A reloaded page cannot stop a service the previous document left running: `wanted` and
+   `mediaLoaded` both start false, and `requestStop` refuses to act without `wanted`. The
+   first attempt at this was native — a `WebViewListener` registered from the plugin's
+   `load()` — and a review pass proved from Capacitor 8.5.0's own source that
+   `Bridge.Builder.create()` REPLACES the listener list immediately after `load()` runs,
+   so it could never fire. The page announces itself instead, which is both reachable and
+   testable. */
+
+test("newDocument tells native to reset, once", async () => {
+  const { shell, capacitor } = setup();
+  shell.install();
+  shell.newDocument();
+  /* DRAINED BETWEEN THE TWO CALLS, and a mutation is why. `callAndRecord`'s `inFlight`
+     dedupe already collapses two identical requests that are outstanding at once, so
+     calling twice in a row proves nothing about `documentAnnounced` — the flag only
+     earns its keep once the first call has SETTLED. Deleting it left the first version
+     of this test green. */
+  await flush();
+  shell.newDocument();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["newDocument"], "a document announced itself twice");
+});
+
+test("A PLAY IMMEDIATELY AFTER A RELOAD STOPS THE OLD SERVICE FIRST", async () => {
+  /* The ordering that matters, and the reason this goes through the serialised queue: if
+     the `start` landed first, native would stop the service this page had just started. */
+  const { shell, proto, capacitor } = setup();
+  shell.install();
+  shell.newDocument();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["newDocument", "start"]);
+});
+
+test("a previous document's leaked service is logged, because it is a finding", async () => {
+  const { shell, logs } = setup({
+    bridge: { results: { newDocument: { ok: true, wasRunning: true, reason: "" } } },
+  });
+  shell.install();
+  shell.newDocument();
+  await flush();
+  assert.match(logs.map((l) => l.m).join(" "), /previous document had left the foreground service running/);
+});
+
+test("newDocument before install does nothing", async () => {
+  const { shell, capacitor } = setup();
+  shell.newDocument();
+  await flush();
+  assert.deepEqual(methods(capacitor), []);
+  assert.equal(shell.inspect().documentAnnounced, false);
+});
+
+test("a newDocument that FAILS does not clear the start gate", async () => {
+  /* Same whitelist rule as `state` and `requestNotifications`: this call is about a
+     PREVIOUS document, so its failure says nothing about whether we hold a service. */
+  const { shell, proto, capacitor } = setup({
+    bridge: { results: { newDocument: () => Promise.reject(new Error("no context")) } },
+  });
+  shell.install();
+  shell.newDocument();
+  const el = makeElement(proto);
+  el.play();
+  await flush();
+  assert.equal(shell.inspect().startAccepted, true);
+  const second = makeElement(proto);
+  second.play();
+  await flush();
+  assert.deepEqual(methods(capacitor), ["newDocument", "start"], "a failed reset caused a redundant start");
 });

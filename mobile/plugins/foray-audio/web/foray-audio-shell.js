@@ -247,6 +247,9 @@ export function createForayAudioShell(env) {
    * flag is what keeps this recovery from becoming it.
    */
   let sawServiceRunning = false;
+  /** Has this document announced itself to native? Once per document is the whole
+   *  policy — see `newDocument`. */
+  let documentAnnounced = false;
   /** Serialises bridge calls, so a `stop` and the `start` behind it cannot land out
    *  of order. See `callAndRecord`. */
   let queue = Promise.resolve();
@@ -374,6 +377,33 @@ export function createForayAudioShell(env) {
    * here, deliberately: this can be called while the app is backgrounded, and a
    * background `startForegroundService` is the call Android 12+ refuses.
    */
+  /**
+   * Announce a freshly loaded document to native, once.
+   *
+   * Called by the auto-install block below, right after `install()`. It stops a service
+   * a PREVIOUS document left running and clears native's stale now-playing state —
+   * neither of which this page could otherwise reach, because `wanted` and
+   * `mediaLoaded` both start false and `requestStop` refuses to act without `wanted`.
+   *
+   * THROUGH THE SERIALISED QUEUE, which is the one ordering that matters here: if the
+   * listener presses play immediately, the `start` must land AFTER this stop, or the
+   * page's own service is the one that gets torn down.
+   */
+  function newDocument() {
+    if (!installed) return;
+    if (documentAnnounced) return;
+    documentAnnounced = true;
+    callAndRecord("newDocument", function (result) {
+      if (result.wasRunning) {
+        /* Worth a line: it means a previous document leaked a foreground service, which
+           is the failure this call exists to clean up after. A device pass seeing this
+           has found a reload path worth naming. */
+        log("foray-audio: a previous document had left the foreground service running");
+      }
+      lastReason = result.reason || "";
+    });
+  }
+
   function noteServiceRunning(running) {
     if (!installed) return;
     if (running) {
@@ -388,7 +418,20 @@ export function createForayAudioShell(env) {
     if (!sawServiceRunning) return;
     sawServiceRunning = false;
     startAccepted = false;
-    log("foray-audio: the foreground service went away underneath us; the next play will re-start it");
+    log("foray-audio: the foreground service went away underneath us");
+    /* AND RE-ASK NOW IF AUDIO IS ACTUALLY FLOWING, rather than waiting for a `play()`.
+       A review pass found that waiting is not good enough twice over: while PAUSED the
+       polyfill sends no writes at all, so a death is not noticed until after the resume
+       `play()` has already short-circuited; and `episodeMediaSurface` has no `next`, so
+       a single episode has exactly one `play()` in it and the next one never comes.
+
+       Asking here can be refused — this may run while the app is backgrounded, and
+       Android 12+ refuses a background `startForegroundService`. That is the right trade
+       anyway: a refusal costs a log line and leaves us exactly where we already were,
+       while not asking guarantees unprotected playback for the rest of the item. And it
+       cannot loop: a refused start leaves `startAccepted` false, and the guard above
+       needs it true, so this fires at most once per confirmed death. */
+    if (activeCount() > 0) ensureStarted();
   }
 
   function ensureStarted() {
@@ -812,6 +855,7 @@ export function createForayAudioShell(env) {
       startAccepted,
       lastKnownRunning,
       lastReason,
+      documentAnnounced,
       stopPending: stopTimer !== null,
       settleMs,
       mediaLoaded,
@@ -821,7 +865,7 @@ export function createForayAudioShell(env) {
     };
   }
 
-  return { install, uninstall, inspect, refresh, setMediaLoaded, noteServiceRunning };
+  return { install, uninstall, inspect, refresh, setMediaLoaded, noteServiceRunning, newDocument };
 }
 
 /* ------------------------------------------------------------- auto-install */
@@ -848,6 +892,12 @@ if (typeof window !== "undefined") {
        device pass is the reader. */
     window.ForayAudioShell = shell;
     shell.install();
+    /* AFTER install, because `newDocument` refuses to act before it. This is the one
+       line that closes the reloaded-page hole, and it is here rather than inside
+       `install()` so that the suite's thirty exact-call-sequence tests are about the
+       service and not about this. `shell-invariants.test.mjs` asserts the call exists,
+       since a deleted line here fails nothing else. */
+    shell.newDocument();
   } catch (e) {
     /* A shell that cannot install must not take the page down with it. */
     if (typeof console !== "undefined" && console.warn) console.warn("foray-audio: install failed", e);
