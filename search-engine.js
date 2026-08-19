@@ -70,20 +70,29 @@ const BROAD_DF_THRESHOLD = 0.10;
    expansion's lower cut was 25 and the multiplier's upper cut was 30 -- 1.60% and
    1.92% of the map, within 20% of each other, with nothing in this file ever
    explaining the difference. They answer the same question ("is this term common
-   enough to stop trusting on its own"), so they are one number now. If a
-   measurement ever distinguishes them, splitting is one line plus a reason.
+   enough to stop trusting on its own"), so they are one number now.
+   WHAT THE COLLAPSE COSTS, measured rather than waved at, because at the WRONG
+   values it is not free: held at the today-equivalent fractions it moves two
+   queries, since `racing` (26 of 1,561) and `cold` (30) sit between the two old
+   cuts and lose the 1.0 multiplier for 0.75. At the values below it costs nothing
+   at all -- TAG_DF_COMMON 0.02 is above both 25/1,561 and 30/1,561, so both terms
+   are on the same side of it as they were of 30. If a measurement ever
+   distinguishes the two cuts again, splitting is one line plus a reason.
 
    HOW THE VALUES WERE PICKED, and NOT by dividing 60 and 25 by today's item count
    -- today's count is arbitrary, and enshrining it is how the absolute thresholds
    happened in the first place. Each cut is the most STABLE fraction inside the
    window search quality allows: "stable" is the number of vocabulary terms that
    cross it across the five nightly snapshots, "allowed" is tools/test-search.mjs.
-   The today-equivalent fractions (0.0384 / 0.016 / 0.0064 / 0.0192) were run as a
-   control and are behaviour-identical to the absolute rule -- 120 passed, 0 failed,
-   not one pick changed -- which is what shows the normalisation itself is not what
-   moves results. They were then rejected as VALUES: they sit in the densest part of
-   the df distribution and still drift 32 expansion buckets over the same five
-   snapshots, against 13 for the ladder below.
+   The today-equivalent fractions were first run as a CONTROL, in their exact
+   four-cut form (60/1,561, 25/1,561, 10/1,561, 30/1,561): over the 45 queries the
+   battery exercises plus the ten the issue names, that is bit-identical to the
+   absolute rule -- 0 status changes, 0 pick changes, 0 retrieval-set changes -- and
+   the battery is green. That is the useful thing it establishes: the normalisation
+   itself moves NOTHING, so everything the ladder below changes is the values, and
+   the two can be argued separately. They were then rejected as values, because they
+   sit in the densest part of the df distribution and still drift 32 expansion
+   buckets over the same five snapshots, against 12 for the ladder below.
 
      TAG_DF_TOO_BROAD 0.10   The catalogue's genre markers and nothing else:
                              history 19.5%, storytelling 15.2%, science 12.9%,

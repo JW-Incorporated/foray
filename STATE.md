@@ -7,6 +7,71 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### search df thresholds are fractions, so query expansion stops drifting every night (2026-08-19, one PR, founder-gated, no follow-up)
+
+- **What:** `fix/275-relative-tagdf`. #275. `search-engine.js`'s `tagDF()` returned an
+  **absolute count** and `interpretQuery` compared it against absolute thresholds
+  (`df > 60` deleted a term from a query expansion, `df > 25` cut its weight to 0.4x)
+  while `scoreMatch` bucketed a multiplier at 10 and 30 — and `corpusDF`, ten lines
+  away, was already a fraction. So the catalogue retuned search every night: measured
+  over five real nightly snapshots (878 → 1,561 tag entries, 2026-07-19 → 08-18)
+  **52 terms crossed the expansion threshold and 125 the score multiplier**, with no
+  code change. `tagDF` is now `tagCount / (size of the tag map)`, on a **three-cut
+  ladder of fractions** — `TAG_DF_TOO_BROAD` 0.10 (= `BROAD_DF_THRESHOLD`, deliberately
+  the same number), `TAG_DF_COMMON` 0.02, `TAG_DF_RARE` 0.008 — and the multiplier
+  ternary is now one exported `dfMultiplier()` that the battery reads instead of
+  mirroring.
+- **The values are measured, not divided.** The today-equivalent fractions were run
+  as a control in their exact four-cut form (60/1,561, 25/1,561, 10/1,561, 30/1,561):
+  **bit-identical to `main`** — 0 status changes, 0 pick changes, 0 retrieval changes
+  over 45 queries — which is what shows the normalisation itself moves nothing, so
+  everything the ladder changes is the *values*. Then rejected as values: they sit in
+  the densest part of the df distribution and still drift 32 buckets over the same
+  five snapshots against 12 for the ladder. `TAG_DF_COMMON` is capped by product
+  quality rather than taste: at 0.025 the battery goes red on "parenting" because
+  `family` (2.50%) keeps full expansion weight and a hermit-crab kids-science episode
+  reaches the top five.
+- **What it costs today: 0 status changes over 45 queries, 5 pick changes.** Two are
+  pure reorderings ("train history", "rome"); "endurance running", "jazz" and "fiction
+  podcast" swap items. `jazz` loses `sticky-notes--gershwin-rhapsody` from its top 10,
+  which is the one change worth a founder's eye. All ten queries #275 names are green,
+  and 8 queries retrieve MORE (`war` 74 → 78 raw, `video games` 60 → 104) because terms
+  that were deleted as too broad now enter expansions at 0.4x.
+- **Growth, which is the point:** duplicating today's catalogue 2x moved **35 of 45
+  query interpretations** before and **0** after; over the real nightly series the
+  interpretation churn halves (76 changes over 30 queries → 38 over 21), and what is
+  left is the corpus genuinely becoming more about a term (`crime` 2.2% → 4.2%).
+- **Honest limit, and it is NOT df:** query STATUS is still not invariant under
+  growth, because `RICH_MIN` counts bar-clearing results — duplicate the corpus and a
+  sparse query goes "ok". 5 queries do that at 2x with every df bucket identical. That
+  belongs to `classifyResults`, is not fixed here, and is why the new assertions read
+  the interpretation rather than the status.
+- **`data/item-tags.json` is still copied whole and the ~181 KB is still NOT taken.**
+  #275 removes the ARITHMETIC divergence #274 feared (`war` 72 → 24 as counts, but
+  4.61% → 3.70% as fractions: same bucket). What survives is SAMPLING — the bundled
+  slice is 3 items per show, stratified by show and skewed by topic — so **12 terms
+  still change expansion bucket and 62 the multiplier**, down from 66 and 176.
+  `comedy` 10.70% → 8.47% is the sharp one: the website deletes it, the app would keep
+  it. The follow-up that would buy the bytes is named in `docs/mobile-shell.md` §3.1:
+  ship the trimmed map plus a precomputed df table (~1,400 numbers), which is a bundle
+  change, not a search-quality one.
+- **Shared files:** `search-engine.js`, `tools/test-search.mjs` (**GOVERNED**),
+  `test/search-df-scaling.test.js` (new), `test/search-matcher.test.js` (its `tagDF`
+  assertions read `tagCount` now), `test/suite-integrity.test.js` (one floor),
+  `tools/mobile/prepare-webdir.mjs` + `.test.mjs` (the refusal, re-measured),
+  `docs/mobile-shell.md` §3/§3.1, this file. **No `app.js`, no `data/`, no `mobile/`,
+  no `player/`** — and deliberately no write to `data/discover.json` or
+  `data/item-tags.json`, which another session is reading.
+- **Watch out — `path-policy` goes RED, not flagged.** `tools/test-search.mjs` is a
+  DENIED path and `PATH_POLICY_ENFORCE=1` (since 2026-08-16), so the check fails until
+  a founder applies `founder-approved`. It does not block the merge — `backend` and
+  `data-and-site` are the required checks — and the governed edit is not optional: §3
+  of the battery mirrored `scoreMatch`'s df tiers, and a fraction against `10` would
+  have left that mirror green while measuring nothing.
+- **The battery is slower: ~110s → ~170s.** §10 re-interprets every query against a
+  2x-duplicated pool. 4x and the whole-vocabulary drift witness live in
+  `test/search-df-scaling.test.js` instead, where they cost seconds.
+
 ### mobile bundle — the catalogue ships as a bounded slice, and the cap stops being a date (2026-08-18, one PR, no follow-up)
 
 - **What:** `perf/bundle-discover-trim`. `prepare-webdir.mjs` reported **2.98 MB of
