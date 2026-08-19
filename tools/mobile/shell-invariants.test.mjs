@@ -44,8 +44,9 @@
  * the likelier accident than any deletion — fails a third.
  *
  * Where a value is pinned literally (the app id, the size cap, the derivation
- * floor), that is deliberate friction: those are decisions, and changing one
- * should require editing a test and saying why.
+ * floor, the catalogue slice's per-file budgets), that is deliberate friction:
+ * those are decisions, and changing one should require editing a test and saying
+ * why.
  *
  * AN ADVERSARIAL PASS ON 2026-08-17 DEFEATED SIX OF THESE IN ONE EDIT EACH, and
  * every one of those holes is now closed by a named test. Read that list before
@@ -78,7 +79,11 @@ import vm from "node:vm";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { MAX_BYTES, MIN_DERIVED_DATA_FILES } from "./prepare-webdir.mjs";
+import {
+  MAX_BYTES, MIN_DERIVED_DATA_FILES, PROJECTED_DATA, BUNDLED_ITEMS_PER_SHOW,
+  discoverSlice, assertDiscoverSliceComplete, serializeSlice,
+} from "./prepare-webdir.mjs";
+import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sources.js";
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS,
@@ -342,6 +347,58 @@ test("the derivation floor is pinned at 6 files", () => {
      MIN_DERIVED_DATA_FILES files are derived, so lowering it to 1 would let a
      bundle with one data file build and pass. app.js fetches 9 today. */
   assert.equal(MIN_DERIVED_DATA_FILES, 6);
+});
+
+test("the sliced files' per-file budgets are pinned at 800 KB and 160 KB", () => {
+  /* THE THIRD INSTANCE OF THE SAME SELF-REFERENTIAL SHAPE, added with the budgets
+     themselves rather than after somebody defeated them. `prepare-webdir` only fails
+     when a slice EXCEEDS its own `maxBytes`, so raising `maxBytes` satisfies both
+     sides of the comparison — the identical hole that `MAX_BYTES = 30 * 1024 * 1024`
+     opened in the size cap.
+
+     These two numbers are the tight alarm for the catalogue slice having stopped
+     being bounded, which the 3 MB cap is now far too loose to notice: the whole
+     bundle is 1.78 MB. Raising one is a decision, and it should cost an edit here
+     and a sentence about what the new number guards. */
+  assert.deepEqual(
+    PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]),
+    [
+      ["data/discover.json", 800 * 1024],
+      ["data/item-tags.json", 160 * 1024],
+    ]
+  );
+  /* And the knob is a small integer, not a number large enough to make the slice the
+     whole catalogue again. */
+  assert.ok(Number.isInteger(BUNDLED_ITEMS_PER_SHOW) && BUNDLED_ITEMS_PER_SHOW >= 1);
+  assert.ok(BUNDLED_ITEMS_PER_SHOW <= 6, "a per-show cap this high is not a bounded slice any more");
+});
+
+test("the bundled catalogue slice keeps every show, and both of the Foray joins", () => {
+  /* DELIBERATELY A SECOND, INDEPENDENT SUITE for this one mechanism.
+     `prepare-webdir.test.mjs` covers it in detail against a fixture; this asserts it
+     against TODAY'S REAL `data/discover.json`, from the file that owns the shell's
+     invariants, because it is the property whose failure is invisible: a Foray's
+     lock-screen artwork (#27) and its publisher credit link are joined onto
+     `discover.json` by show name, and both take the first item per show in document
+     order. A slice that drops or reorders that item still has every show, every
+     topic, and a passing size budget. */
+  const source = readJson(path.join(ROOT, "data", "discover.json"));
+  const slice = discoverSlice(source);
+
+  assert.ok(source.items.length > slice.items.length, "the slice is not slicing the real document");
+  assert.equal(assertDiscoverSliceComplete(source, slice), true);
+  /* Re-asserted here directly rather than only through that call, so deleting the
+     join checks inside `assertDiscoverSliceComplete` fails in two suites. */
+  assert.deepEqual([...artworkUrlsByShow(slice)], [...artworkUrlsByShow(source)]);
+  assert.deepEqual([...collectionIdsByShow(slice)], [...collectionIdsByShow(source)]);
+  assert.ok(artworkUrlsByShow(slice).size > 0, "the real document yielded no artwork at all");
+
+  /* And it is inside its budget with the headroom the budget claims, measured on the
+     bytes the slice would be written as. */
+  const budget = PROJECTED_DATA.find((p) => p.rel === "data/discover.json").maxBytes;
+  const bytes = serializeSlice(slice).length;
+  assert.ok(bytes < budget, `the real slice is ${(bytes / 1024).toFixed(1)} KB, over its budget`);
+  assert.ok(bytes > budget * 0.5, "the budget is loose enough that it would not notice a doubling");
 });
 
 /* ─────────── 3. the service worker: off in the shell, on in the web ──────── */
