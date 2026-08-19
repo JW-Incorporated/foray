@@ -878,7 +878,7 @@ for (const query of ["how bbq works", "the history of jazz"]) {
    bar-clearing results, `RICH_MIN` is a COUNT of them, and `diversify`'s per-show
    cap sees each show twice -- so sparse queries legitimately go "ok" and picks
    legitimately reorder at 2x, on arithmetic that has nothing to do with document
-   frequency. Measured on this pool, 8 of the 46 queries move status at 2x with
+   frequency. Measured on this pool, 5 of the 37 queries move status at 2x with
    every df bucket identical. Asserting status invariance here would be asserting
    something false and blaming #275 for classifyResults; asserting the
    interpretation is asserting exactly what #275 governs.
@@ -963,8 +963,14 @@ for (const query of ["how bbq works", "the history of jazz"]) {
     for (const g of SE.interpretQuery(query, baseCtx).groups) {
       tiers.add(SE.dfMultiplier(g.df));
       broadest = Math.max(broadest, g.df);
-      for (const [t, info] of g.terms) {
-        if (SE.tagDF(t, baseCtx) > SE.TAG_DF_COMMON && info.w < 1) demoted.push(`${query}:${t}`);
+      /* SE.expansionBucket, not `> SE.TAG_DF_COMMON` re-derived here. Reading the
+         constant and rewriting the comparison is what #275's own review found in
+         three places, this one included -- the rule is exported for the same reason
+         dfMultiplier is. The `info.w < 1` clause the first version carried is gone
+         as redundant: interpretQuery's prune loop only ever reaches terms with
+         `w < 1`, so a term that survived in the "0.4x" bucket was demoted there. */
+      for (const [t] of g.terms) {
+        if (SE.expansionBucket(SE.tagDF(t, baseCtx)) === "0.4x") demoted.push(`${query}:${t}`);
       }
     }
   }

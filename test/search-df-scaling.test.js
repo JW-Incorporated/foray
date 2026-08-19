@@ -263,8 +263,14 @@ test("the same COMPOSITION at a different size lands in the same bucket", () => 
      that differ only in size. 30 of 200 and 300 of 2,000 are the same corpus; the
      pre-#275 rule called the first "full weight" and the second "dropped".
 
-     KILLED BY: any absolute threshold -- `df > 60` splits the 0.2 pair and
-     `df > 25` splits the 0.05 pair, which is the defect in two lines. */
+     KILLED BY: the pre-#275 rule, and it takes BOTH of its lines, which is worth
+     stating rather than implying. Restoring `df > 60` / `df > 25` alone leaves this
+     green -- every df here is a fraction under 0.2, so both cuts pass everything at
+     full weight and the pairs still agree. It is the COUNT plus the absolute cut that
+     splits them: substitute `absoluteBucket(tagCount(...))` (defined below, for the
+     real-repo witness) and 30-of-200 against 300-of-2,000 disagree. A "KILLED BY"
+     that names two mutations where one is required is the overclaim this file exists
+     to avoid, so: the mutation is the revert, not either half of it. */
   for (const share of [0.005, 0.02, 0.05, 0.2]) {
     const small = expansionWeight(200, Math.round(share * 200));
     const large = expansionWeight(2000, Math.round(share * 2000));
@@ -359,10 +365,15 @@ test("REAL REPO: growing the catalogue without changing it moves no bucket, and 
      constant -- three ways this repo has already gone green while asserting
      nothing.
 
-     KILLED BY: restoring any absolute threshold in interpretQuery or
-     dfMultiplier; `tagDF` returning `tagCount` undivided; and dividing by anything
-     that is not the size of the map being walked (a constant, or
-     `discover.items.length`, which this duplication does not move at all). */
+     KILLED BY, and split by WHICH assertion kills it, because the two halves of this
+     test catch different things and conflating them is how the first version of this
+     comment overclaimed:
+       the invariance assertions -- restoring any absolute threshold in
+         interpretQuery or dfMultiplier, and dividing by any CONSTANT other than 1.
+       the denominator assertions above -- `tagDF` returning `tagCount` undivided,
+         and dividing by `discover.items.length` (which is `|| 1` here, so it reduces
+         to the undivided case). Neither of those is caught by invariance, measured,
+         for the reason the paragraph above the loop gives. */
   const itemTags = JSON.parse(fs.readFileSync(path.join(ROOT, "data/item-tags.json"), "utf8"));
   const terms = realVocabulary();
   const all = Object.entries(itemTags.tags);
@@ -376,6 +387,26 @@ test("REAL REPO: growing the catalogue without changing it moves no bucket, and 
     return [t, [SE.expansionBucket(df), SE.dfMultiplier(df), SE.tagCount(t, base)]];
   }));
   assert.ok([...baseline.values()].some(([b]) => b !== "full"), "no term in the slice is even common enough to be demoted");
+
+  /* THE DENOMINATOR, PINNED HERE AND NOT ONLY IN THE UNIT TEST AT THE TOP OF THIS
+     FILE, because a mutation round found that INVARIANCE IS THE WRONG INSTRUMENT for
+     the most obvious mutation of all. Make `tagDF` return the undivided count again
+     and this test still passes: on a raw count `expansionBucket` answers "drop" for
+     every n >= 1 and "full" only at 0, `dfMultiplier` answers 1.35 only at 0, and
+     both of those are invariant under duplication BY CONSTRUCTION -- so movedExp and
+     movedMul stay empty while the witnesses below still fire, and the flagship test
+     of this change goes green on the defect it exists to catch. Measured, at 2x:
+     movedExp 0, movedMul 0, witnesses 60 and 142.
+     So the fraction is asserted directly, on the same corpus, for every term the
+     slice actually covers. That is what turns the KILLED BY below into a claim about
+     this test rather than about the file. */
+  const sliceSize = Object.keys(slice).length;
+  const covered = terms.filter((t) => SE.tagCount(t, base) > 0);
+  assert.ok(covered.length > 50, `only ${covered.length} vocabulary terms appear in the slice at all`);
+  for (const t of covered) {
+    assert.equal(SE.tagDF(t, base), SE.tagCount(t, base) / sliceSize,
+      `tagDF("${t}") is not its tagCount over the ${sliceSize} entries of the map it walked`);
+  }
 
   for (const k of [2, 4]) {
     const grown = { itemTags: duplicated(slice, k) };
