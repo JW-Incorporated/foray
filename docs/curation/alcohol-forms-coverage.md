@@ -85,8 +85,9 @@ Four consequences that shaped the work.
 - **A beat is covered by one strong segment.** §4a of the spine derives a cut budget of at
   most 75 segments for a 150-minute Foray and rules that *"a second segment on a beat is
   legitimate; a pile is not"*; the sharper framing — that hunting for more per beat is
-  itself what manufactures fill pressure — is `grilling-history-coverage.md` §1's. Each beat below records the best
-  candidate and, where one exists, a credible alternate. **Exactly one beat in this
+  itself what manufactures fill pressure — is `grilling-history-coverage.md`
+  §1's. Each beat below records the best candidate and, where one exists, a credible
+  alternate. **Exactly one beat in this
   report carries two segments** — beat 14, which is one of the twelve beats §4a
   nominates for a second — and it carries two because the two halves advance
   different parts of one claim.
@@ -158,7 +159,7 @@ figures are all conditional.
 **The readable pool is much larger than the recommendation pool, and it is the one
 that mattered.** Searching `transcript-availability.json` rather than
 `discover.json` is what found every candidate in this report except one. Nine shows
-have a drinks-shaped episode with a transcript; four turned out to be usable. Of the
+have a drinks-shaped episode with a transcript; five turned out to be usable. Of the
 recommendation pool's twenty-one on-plot items, **twenty have no publisher transcript at
 all** — Craft Beer & Brewing 0 of 497, Experimental Brewing 0 of 386, FermUp 0 of 100,
 Gastropod 0 of 293, The Rest Is History 0 of 713. The exception is the twenty-first,
@@ -202,19 +203,30 @@ The only liberty taken is the ordinary one of lowering a quoted sentence's initi
 capital when it sits inside a sentence of ours.
 
 **And that rule was checked mechanically rather than asserted, because the first draft
-broke it eighteen times.** Every quotation in this document was extracted
-programmatically — the rule is any italic span opening with a quotation mark, which is how
-every source quotation here is set — and matched back against the transcripts, the spine,
-the length rules, #226 and the data files, word for word with punctuation and case ignored.
-The count is deliberately not quoted as a total, because the total changes whenever a
-sentence is edited and a stale total is worse than none. Eighteen
-failed, and every one failed the same way: a dropped *um*, a dropped doubled word — the
-transcripts are full of *"it's it's"* and *"they're they're"* — or a full stop where the
-source has a comma. All eighteen are now the source's words. **The check now reports zero unverified.** The
-check has to account for one property of these files that is easy to miss: SYSK's cues
-*overlap*, each one repeating the tail of the last, so a naive flatten duplicates words
-and a correct quotation fails to match. Two of the eighteen were caused by reading a
-duplicated phrase as the speaker saying it twice.
+found eighteen mismatches.** Every quotation in this document was extracted
+programmatically — the rule is any italic span opening with a quotation mark, which is
+how every *source* quotation here is set, as against the plain double quotes this
+document uses for its own terms and for the founder's blockquote — and matched back
+against the transcripts, the spine, the length rules, #226 and the data files, word for
+word with punctuation and case ignored. The count is deliberately not quoted as a total,
+because the total changes whenever a sentence is edited and a stale total is worse than
+none. Eighteen failed, and every one failed the same way: a dropped *um*, a dropped
+doubled word — the transcripts are full of *"it's it's"* and *"they're they're"* — or a
+full stop where the source has a comma. All eighteen are now the source's words.
+**Fifteen were genuine omissions and three were cue-boundary repeats the first fix
+wrongly deleted and has since restored. **The check now reports zero unverified against
+the transcripts as they are literally written.** **One property of these files decides
+how three of the quotations below are set, and it is smaller than an early draft of this
+paragraph claimed.** SYSK's cues do **not** generally overlap in time — eleven of the
+thirteen files have fewer than three time-overlapping cue pairs — but **52 of 9,326 cue
+pairs repeat one or more words across the boundary**, the last words of one cue
+reappearing as the first words of the next. That produces an apparent stutter which may
+be the speaker's or may be the cue split's, and the text alone cannot tell you which.
+**The rule applied is to reproduce it**, because removing it is a repair and this
+document does not repair: beat 13 reads *"these these impurities"*, beat 57 *"redistill
+it with the with the herbs"*, and beat 12 *"reheated and heated and heated"*. A first
+pass at this check removed all three, which is why the count below distinguishes the two
+kinds of failure.
 
 ### 2b. The matcher, the substring trap, and the vocabulary sweep
 
@@ -257,7 +269,7 @@ holding by more than the whole of its real food and drink holding.
 **`still` is the harder case and it deserves its own line, because it is the term a
 distillation search most wants.** Word boundaries reduce 24 naive hits to 20, and
 **all 20 are the adverb**: "why it still matters", "what waterlogged textiles can
-still tell us", "why Airtable's sale is still a win". There is no fix for this inside
+still tell us", "VCs explain why it's still a win". There is no fix for this inside
 the matcher, because the adverb *is* the word — the only defence is reading, and the
 20 were read. The distilling sense appears zero times.
 
@@ -306,8 +318,8 @@ count.
 
 - **Two beats, one inseparable passage.** The chemist-brewer's 100-second walkthrough
   contains both beat 26's fixed sequence and beat 27's alpha-acid isomerisation, and
-  the transcript's cue granularity in that stretch is 21 to 68 seconds, so the hops
-  sentence cannot be timed out of the middle of it. Beat 26 takes the passage; **beat
+  the cue carrying the hops sentence is 67.8 seconds long, so it cannot be timed out of
+  the middle of it. Beat 26 takes the passage; **beat
   27 is thin by dependency**, which is the same outcome barbecue's beat 2 reached
   against beat 15's carrier.
 - **A hit that is evidence for a region.** The amaro episode is evidence for
@@ -354,10 +366,10 @@ count.
 | SYSK — Kombucha: Fizzy Goodness | 2,822 s | ditto | **Nothing** — §6a's dropped low-alcohol ferments |
 
 **A note on that Length column, since it mixes two conventions.** The four non-SYSK rows
-take `duration_sec` from `transcript-availability.json`; the thirteen SYSK rows take the
-end of the transcript's last cue, which runs 5 to 47 s short of the declared duration. Both
-are stated as the source gives them and neither is used for arithmetic — §9d's figures come
-from cue timestamps only.
+take `duration_sec` from `transcript-availability.json`; the thirteen SYSK rows take the end
+of the transcript's last cue, which lands between 0.5 s past the declared duration and 8.8 s
+short of it. Both are stated as the source gives them and neither is used for arithmetic —
+§9d's figures come from cue timestamps only.
 
 **Seventeen transcripts, six of which moved nothing at all.** That ratio is the
 finding rather than a disappointment: it is what a general-listening catalogue looks
@@ -472,16 +484,17 @@ might have been domesticated over twelve thousand years ago."* At 26 s it is bel
 hard floor, and the beat needs the other half — that domestication became *repeatable*
 once the organism could be isolated.
 
-**What is missing.** Pasteur, Hansen, 1883, pure culture as what changed production
-from something that happened to something that could be repeated, and the species
+**What is missing.** Pasteur, Hansen, 1883, pure culture as what changed production from
+something that happened to something that could be repeated, and the species
 distinctions the beat asks for by name — `cerevisiae`, `pastorianus` as a hybrid,
-`Brettanomyces`, the lactose-fermenting yeasts beat 25 needs. `pasteur` returns eleven hits
-across the readable pool and **not one is the man**: five in the honey episode and four in
-the kombucha episode about pasteurising, one in the Guinness episode about pasteurised beer
-and one in the brewing episode about pasteurising a fermenter. `saccharomyces` returns **zero** across every source
-read and every catalogue pool.
+`Brettanomyces`, the lactose-fermenting yeasts beat 25 needs. `pasteur` returns eleven
+hits across the readable pool and **not one is the man**: five in the honey episode and
+four in the kombucha episode about pasteurising, one in the Guinness episode about
+pasteurised beer and one in the brewing episode about pasteurising a fermenter.
+`saccharomyces` returns **zero** across every source read and every catalogue pool.
 
-**The identified fix.** `craft-beer-and-brewing-magazine-podcast--495-fermenting-expressive-hoppy-beers-with`
+**The identified fix.**
+`craft-beer-and-brewing-magazine-podcast--495-fermenting-expressive-hoppy-beers-with`
 (3,913 s), *"How historic brewing yeasts and modern hop chemistry shape today's
 expressive hoppy beers"*, recorded in partnership with White Labs. §10 ranks it third.
 
@@ -619,7 +632,7 @@ trim the in-point carefully.
 
 **Nothing**, and this is the clearest rejection in the report. SYSK How Moonshine
 Works, 814.64 → 840.60, is the only passage in the readable pool about the hazard, and
-it is beat 13's claim inverted: *"And these impurities are called congeners, right,
+it is beat 13's claim inverted: *"these these impurities are called congeners, right,
 And what those are, it's it's just to catch all name for any impurity that's a complex
 compound, like a polyphenol um or histamine, you know, those things that give you
 allergic reactions. These can easily end up in your batch. And this is why people often
@@ -683,7 +696,7 @@ distilled three times and put into barrels at eighty proof"*. Bourbon has no
 triple-distillation rule and its maximum barrel entry strength is 125 proof, not 80. An
 earlier draft of this entry proposed a band opening at 302.64 and claimed to start *after*
 that sentence; it did not — the error sits six seconds inside it, and beat 39 cites the
-same passage as a rejected candidate at 302.64 → 320.00. The band now opens at the next
+same passage as a rejected candidate at 302.64 → 321.40. The band now opens at the next
 sentence, which costs 19 s and keeps the cut in the target band at 77.2 s.
 
 ### Beat 15 — refusing to mature, and other vessels — **empty**
@@ -744,8 +757,10 @@ marketing.
 
 ### Beat 18 — red and white is a contact decision — **empty**
 
-**Nothing.** `maceration` returns one hit across the readable pool and it is in the
-amaro episode, about steeping botanicals in spirit. `skins`, `punchdown`, `pumpover`
+**Nothing.** The `macerat*` family returns one hit across the readable pool and it is
+*"macerated fruit"* in the pharmacology episode at 390.28 — the amaro episode's own
+maceration passage says *"mass rating"*, which the matcher cannot reach and beat 57 quotes
+as the garble it is. `skins`, `punchdown`, `pumpover`
 and `rosé` return zero. There is no tape in this catalogue about what happens in a
 fermenting vat of grapes.
 
@@ -830,7 +845,7 @@ describes dehydration.
 stable, and then the whole beat: yeast-assimilable nitrogen, staggered nutrient
 additions, and the fusel harshness a starved ferment produces. `nitrogen` returns **20**
 hits in the readable pool, nineteen of them the Guinness widget. The twentieth is the one
-nitrogen sentence in the pool that is about a ferment, in the kombucha episode at 1887.20:
+nitrogen sentence in the pool that is about a ferment, in the kombucha episode at 1891.56:
 the culture uses caffeine and *"convert it into nitrogen, which they use for all sorts of
 stuff during the fermentation project process."* It is rejected because the beat's claim is
 that honey has almost none and the maker must add it, and because kombucha is §6a's dropped
@@ -839,18 +854,18 @@ pool and it is worth naming rather than absorbing into a total.
 
 ### Beat 24 — sap drinks that cannot be shipped — **empty**
 
-**Nothing cuttable.** `pulque`, `palm wine` and `aguamiel` return 0 across both catalogue
-pools, and `toddy`'s three archive hits are all hot toddies in Christmas specials. There is exactly one naming in a read transcript, in the
-world-survey passage at `this-podcast-will-kill-you` 3943.32 → 3950.68: *"In Mexico
-people made pulke from the fermented sap of the agave plant."* That is one clause of a
-sixty-seven-second list of local ferments — Orkney barley, Tasmanian gum sap, Victorian
-honey and gum, African banana beer and palm wine, Mexican pulque, Southeast Asian
-cassava — whose whole content is that the drinks existed. **The list is considered and
-rejected at four beats — 24, 34, 51 and 63 — for the same reason each time: it names
-the drinks and never says how any of them is made.** Beat 24's claim is about the
-few-hour timeline and the impossibility of shipping, and neither is in it. §5 ranked
-this beat twelfth-hardest and expected partial coverage; a name in a list is less than
-that.
+**Nothing cuttable.** `pulque`, `palm wine` and `aguamiel` return 0 across both
+catalogue pools, and `toddy`'s three archive hits are all hot toddies in Christmas
+specials. There is exactly one naming in a read transcript, in the world-survey passage
+at `this-podcast-will-kill-you` 3943.32 → 3950.68: *"In Mexico people made pulke from
+the fermented sap of the agave plant."* That is one clause of a sixty-seven-second list
+of local ferments — Orkney barley, Tasmanian gum sap, Victorian honey and gum, African
+banana beer and palm wine, Mexican pulque, Southeast Asian cassava — whose whole content
+is that the drinks existed. **The list is considered and rejected at four beats — 24,
+34, 51 and 63 — for the same reason each time: it names the drinks and never says how
+any of them is made.** Beat 24's claim is about the few-hour timeline and the
+impossibility of shipping, and neither is in it. §5 ranked this beat twelfth-hardest and
+expected partial coverage; a name in a list is less than that.
 
 ### Beat 25 — the milk alcohols — **empty**
 
@@ -908,9 +923,10 @@ then acid sanitiser, *"pasteurize it with heat and then sanitize it with some ty
 acid"* — and is **deliberately not taken**: the beat is carried, and adding to a
 carried beat is how a Foray starts bloating.
 
-**One caveat that travels with both spans from this episode.** The transcript's cues
-in this stretch run 21 to 68 seconds each, so cut points can only be placed at cue
-boundaries. Both bands above are cue-aligned. Sub-cue trimming would need the audio.
+**One caveat that travels with both spans from this episode.** The transcript's cues in
+this stretch are 21.2, 67.8, 12.9 and 8.6 seconds long, so cut points can only be placed
+at cue boundaries and the coarsest gap in the band is more than a minute wide. Both
+bands above are cue-aligned. Sub-cue trimming would need the audio.
 
 ### Beat 27 — hops, preservative then flavour — **thin, by dependency**
 
@@ -1021,15 +1037,16 @@ beat rejects.
 `tella` 0, `kvass` 0.
 
 **And the catalogue contains exactly one West African grain row, which is why this beat
-needs its rejection written down.** `experimental-brewing--episode-207-fonio-fonio-what-the-heck-are-you-fonio`
-(3,900 s), hook *"An obscure West African grain gets the experimental-homebrewing
-treatment."* It is the only row in 1,534 items that touches African grain and beer at
-once, beat 31 is empty, and taking it would be precisely the move the governing rule
-forbids. Two homebrew authors experimenting with a novel grain is not a brewing
-tradition that is *"thick, unfiltered, still actively fermenting when it is drunk,
-deliberately soured by lactic bacteria"*; the beat's claim is about a design decision
-made across a continent, and §6b excludes home brewing as a how-to. **Stop, not a low
-priority.** It would move no beat and it would look like it had.
+needs its rejection written down.**
+`experimental-brewing--episode-207-fonio-fonio-what-the-heck-are-you-fonio` (3,900 s),
+hook *"An obscure West African grain gets the experimental-homebrewing treatment."* It
+is the only row in 1,534 items that touches African grain and beer at once, beat 31 is
+empty, and taking it would be precisely the move the governing rule forbids. Two
+homebrew authors experimenting with a novel grain is not a brewing tradition that is
+*"thick, unfiltered, still actively fermenting when it is drunk, deliberately soured by
+lactic bacteria"*; the beat's claim is about a design decision made across a continent,
+and §6b excludes home brewing as a how-to. **Stop, not a low priority.** It would move
+no beat and it would look like it had.
 
 ### Beat 32 — sake — **empty**
 
@@ -1093,8 +1110,8 @@ rests on a thirteen-minute Short Stuff. §9c takes that up.
 **Chosen:** `this-podcast-will-kill-you` Ep 85, band **4448.80 → 4548.76 (100.0 s)**.
 In on *"I'm excited for this. Distillation is a fairly old concept with fairly old
 technology"*; out on *"…rum would also be added to water barrels on boats"* — the tail
-drifts into naval ration colour, so the out-point wants pulling back to *"far superior
-to wine or beer for long distance travel"* at about 4540.
+drifts into naval ration colour, so the out-point wants pulling back to 4545.48, the end of
+the cue carrying *"far superior to wine or beer for long distance travel"*.
 
 **Why it advances beat 36.** It is the beat's claim with the beat's own hedging
 discipline. The antiquity and the geographic spread: *"Experimental distillation was
@@ -1194,13 +1211,14 @@ going to arrive at basically the same base neutral spirit"* at about 605, which 
 sentence the beat wants and a better out-point than the band's tail.
 
 **Why it advances beat 41.** The beat's central claim is that the feedstock is rectified
-out by design, and this states it twice and lists the feedstocks: *"because you're step you're
-starting out with such a ridiculously high proof um alcohol like neutral alcohol. You can
-use basically an old shoe to make that that neutral grain spirit. It's gonna taste
-virtually the same as neutral grain spirit made from a neutral spirit made from barley or
-from way, or from potatoes or grapes. It just is the the alcoholic essence of those things."* For a beat the spine
-calls *"the most useful single debunk available in the whole subject"*, that is the debunk,
-from the one episode in the catalogue that had reason to make it.
+out by design, and this states it twice and lists the feedstocks: *"because you're step
+you're starting out with such a ridiculously high proof um alcohol like neutral alcohol.
+You can use basically an old shoe to make that that neutral grain spirit. It's gonna
+taste virtually the same as neutral grain spirit made from a neutral spirit made from
+barley or from way, or from potatoes or grapes. It just is the the alcoholic essence of
+those things."* For a beat the spine calls *"the most useful single debunk available in
+the whole subject"*, that is the debunk, from the one episode in the catalogue that had
+reason to make it.
 
 **Why it is thin.** Register, and then the absence of the legal half, which is what
 turns the claim from an assertion into a production fact: neither the EU nor the US
@@ -1225,9 +1243,10 @@ rises"*; and the combination — *"they use the steeping method for most of the 
 and then they use the vapor method for I think like Douglas fur and bay Laurel leaves."*
 
 **Second, and not counted toward §9d's total:** **954.96 → 1031.16 (76.2 s)**, which is
-the legal half and the category's real boundary: *"distilled London dry gin"* against *"flavored vodkas which
-you could literally put any flavor into this neutral spirit and call it gin. Distill gin
-means it went through that process like we described before the break."*
+the legal half and the category's real boundary: *"distilled London dry gin"* against
+*"flavored vodkas which you could literally put any flavor into this neutral spirit and
+call it gin. Distill gin means it went through that process like we described before the
+break."*
 
 **What is missing.** Juniper as the single legal requirement is implied by the whole
 episode and never stated as the rule. Genever is present but as taste rather than as a
@@ -1267,11 +1286,11 @@ molasses was worthless, and it is committed to another beat in any case.
 across both catalogue pools, and `tequila` returns 16 archive hits of which fifteen are
 comedy or chat-show mentions and one is a Founder's Story interview about building an
 agave-spirits brand in Jalisco — brand history, which §6b excludes, and the closest this
-catalogue comes to the largest beat in Act IV. `agave` appears exactly once in a read transcript, inside
-beat 24's world-survey list, as the plant pulque comes from. Nothing anywhere describes
-cooking a piña. §5 predicted this beat would be
-over-supplied because agave is currently fashionable. It is one of the emptiest beats in
-the document, and it is one of §4's twelve at 2.0 %.
+catalogue comes to the largest beat in Act IV. `agave` appears exactly once in a read
+transcript, inside beat 24's world-survey list, as the plant pulque comes from. Nothing
+anywhere describes cooking a piña. §5 predicted this beat would be over-supplied because
+agave is currently fashionable. It is one of the emptiest beats in the document, and it
+is one of §4's twelve at 2.0 %.
 
 ### Beat 45 — brandy, and shipping wine dry — **empty**
 
@@ -1345,7 +1364,8 @@ abundant.
 
 **Nothing.** `fortified` returns 7 hits across the readable pool — five in the amaro
 episode, one in the absinthe episode and one in the kombucha episode — and every one is
-the word used as a category label. None explains the mechanism. `residual sugar` 0, `mutage` 0, `grape spirit` 0.
+the word used as a category label. None explains the mechanism. `residual sugar` 0,
+`mutage` 0, `grape spirit` 0.
 
 **This is the most structurally expensive empty beat in Act V.** The spine calls it *"the
 most economical explanatory beat in the whole Foray"* — one mechanism, four famous
@@ -1355,9 +1375,14 @@ ceiling is never opened and never closed.
 
 ### Beat 53 — port: early spirit, a race, two ages — **empty**
 
-**Nothing readable, and one identified source that this report is the first to name.**
+**Nothing readable, and two identified sources, one of which this report is the first to
+name.**
 `port` returns 136 naive hits, 2 in discover and 52 in the archive after word boundaries,
-and **50 of the 52 are seaports, airports and reports** — but two are the drink, and both
+and **50 of the 52 are the harbour** — mostly seaports, but also Port Arthur, Port
+Moresby, New Port Richey, a ship's sally port and the surnames Port and Whitney Port, which
+is §2c's names-wearing-drink-words class again. Note what the matcher does *not* do here:
+`\bport(?:s|es|ing)?` cannot reach "airport" or "report", so none of the 52 is one. Two are
+the drink, and both
 are The Rest Is History: **289: Drink** (3,360 s), which §10a ranks, and **12 Days: Port
 wine and Darwin sets sail** (1,800 s), hook *"How the English's fondness for Portuguese
 fortified wine began"*. The second is an episode about port's history against an empty
@@ -1401,18 +1426,21 @@ cocktails. It is very wormwood forward."* That is two of the four layers, with t
 wine, its legal proportion and the fortification step all absent, and it is framed as a
 cocktail ingredient, which the beat rejects by name. Beat 56's claim is the *stacking*,
 and nothing here stacks. `artemisia` 0 and `quinquina` 0; `americano` returns **1** archive
-hit and it is a Spanish-language true-crime episode title, not the aromatised wine.
+hit, in the Spanish-language description of a true-crime episode — *el sueño americano*, not
+the aromatised wine.
 
 ### Beat 57 — liqueurs and how flavour is captured — **thin**
 
-**Chosen:** SYSK That's Amaro!, band **393.88 → 470.00 (76.1 s)**. In on *"to make a
+**Chosen:** SYSK That's Amaro!, band **393.88 → 475.08 (81.2 s)**. In on *"to make a
 marrow is actually very easy"*; out on *"…most Italian amorrow is or amari is grappa,
-yes, or wine."*
+yes, or wine."* The out-point is 475.08 rather than 470.00 because 470.00 is where the cue
+carrying the last eight words of that anchor *begins* — the same off-by-one-cue error beat
+61 records, found by the same review.
 
 **Why it advances beat 57.** It is the only passage in the readable pool that treats
 extraction as the variable: *"you just soak some some bittering agents and herbs,
 whatever your proprietary blend is. You let it soak for a little while. Sometimes you
-might redistill it with the herbs and botanicals in it, but a lot of people just
+might redistill it with the with the herbs and botanicals in it, but a lot of people just
 let it sit for a while … and then I think that's called mass rating or infusing … and
 then you add a little sugar after you filter out the solids, and then you let it age for
 several years."* Maceration against redistillation, plus the sugar, plus the base spirit
@@ -1460,20 +1488,21 @@ than as a preserved theory of digestion.
 
 ### Beat 59 — the anise family and a wrong ban — **thin**
 
-**Chosen:** SYSK The Myth of Absinthe, band **2334.52 → 2450.48 (116.0 s)**. In on
+**Chosen:** SYSK The Myth of Absinthe, band **2334.52 → 2453.20 (118.7 s)**. In on
 *"But for the most part, if you wanted to get absinthe, it was very, very difficult"*;
 out on *"…you can't import something labeled absinthe or any bottle that you know, shows
-like people tripping."*
+like people tripping."* As at beats 57 and 61, the out-point is the *end* of the cue that
+carries the anchor's tail rather than its start.
 
 **Why it advances beat 59.** It is the beat's myth-correction, made as a correction: the
 syndrome named, then withdrawn — *"Absinthe is um this UH syndrome, which was the
 collection of maladies everything from m hallucination, sleeplessness, tremors,
-convulsions, madness from drinking absinthe. And in retrospect historians say this didn't exist. Like
-what this person was describing was excessive alcohol use, like all this stuff you can get
-from drinking way too much high proof alcohol"* — with the mechanism of the panic named
-explicitly: *"there was an accompanying made up syndrome to to give like a veneer of
-science to the moral panic."* It closes with a number, the modern *"through jone free …
-less than ten parts per million"* limit.
+convulsions, madness from drinking absinthe. And in retrospect historians say this
+didn't exist. Like what this person was describing was excessive alcohol use, like all
+this stuff you can get from drinking way too much high proof alcohol"* — with the
+mechanism of the panic named explicitly: *"there was an accompanying made up syndrome to
+to give like a veneer of science to the moral panic."* It closes with a number, the
+modern *"through jone free … less than ten parts per million"* limit.
 
 **Second, and it is the half the spine cares most about:** **2021.40 → 2071.24 (49.8 s)**,
 the wine industry's role in the bans, which is beat 59's own claim that they tracked
@@ -1505,7 +1534,8 @@ osmosis` 0, `vacuum distillation` 0, `ready-to-drink` 0.
 food"*, is the only low-alcohol row in the catalogue and beat 60's second half is about
 low alcohol. But brewing a beer to a low strength and *removing* ethanol from a finished
 drink are different operations with different physics, and the beat's claim is about the
-second — *"a fifth question the four cannot answer"*. Brewing to 3 % is question two. **Stop.**
+second — *"a fifth question the four cannot answer"*. Brewing to 3 % is question two.
+**Stop.**
 
 ---
 
@@ -1719,17 +1749,20 @@ That is the number to quote if only one is quoted. **One minute and forty second
 tape that meets the gate, across sixty-three beats**, and it cannot be played until the
 locate step exists.
 
-**B. Everything admitted, thin tier included — 16 segments, 1,664.3 s, 27.7 minutes.**
+**B. Everything admitted, thin tier included — 16 segments, 1,672.1 s, 27.9 minutes.**
 Sixteen rather than fifteen because beat 14 takes two segments and beat 27 takes none.
 This is a **ceiling**, not a plan: it assumes the founder admits the SYSK register, which
 §9a says would be eleven of these sixteen, and it assumes the locate step exists.
 
-**B′. The same set with the out-points trimmed as the beat entries recommend — 1,622.8 s,
-27.1 minutes.** Three bands trail into material their beats reject: beat 36's into naval
+**B′. The same set with the out-points trimmed as the beat entries recommend — 1,635.5 s,
+27.3 minutes.** Three bands trail into material their beats reject: beat 36's into naval
 rations, beat 41's into a Bombay Sapphire aside, beat 43's into bagasse. Trimmed at the
-nearest cue boundary in each case — 4540.64, 606.16 and 985.08, giving 91.8 s, 107.7 s and
-45.3 s — that costs 8.12 + 15.04 + 18.32 = **41.5 s**, and it is the honest figure for what
-a careful assembly would actually keep.
+first cue boundary that does not cut an anchor in half — 4545.48, 606.16 and 985.08, giving
+96.7 s, 107.7 s and 45.3 s — that costs 3.28 + 15.04 + 18.32 = **36.6 s**. Beat 36's trim is
+the smallest of the three and the least satisfying: 4545.48 is the end of the cue carrying
+*"or beer for long distance travel"*, so it pulls in the four words that start the next
+clause, and the alternative — 4540.64 — ends the cut mid-sentence on "wine". There is no
+clean boundary at that anchor's end, and saying so is better than picking one silently.
 
 **A further 430.4 s across six alternates is specified in §3 to §8 and deliberately not
 counted** — beat 3's exploding bottles, beat 20's second fermentation, beat 26's cleaning
@@ -1749,14 +1782,16 @@ empty beats, which is about 108 minutes of narration.
 - **D1, the cut budget: passes with room.** Sixteen segments over any plausible runtime
   is 3.6 starts per rolling 600 s at 45 minutes and 1.8 at 90. The spine's §4a was
   written expecting the cut budget to bind. It is nowhere near binding.
-- **D3, the whole-Foray mean ≥ 90 s: passes at 104.0 s.**
-- **D5, the whole-Foray IQR ≥ 45 s: fails, at 36.6 s.** Under the interpolated
-  convention Q1 is 81.0 and Q3 117.7; under the exclusive convention 79.8 and 119.4, for
-  an IQR of 39.6. **Both are below the 45 s floor**, which matters because
-  `segment-length-rules.md` §10 records the quartile convention as unresolved and this
-  finding does not depend on resolving it. Fifteen of the sixteen spans sit inside the
-  75–180 s band and eleven of them between 82 and 142 s, so the set is too uniform to
-  ship as it stands.
+- **D3, the whole-Foray mean ≥ 90 s: passes at 104.5 s.**
+- **D5, the whole-Foray IQR ≥ 45 s: fails under every quartile convention.** The
+  interpolated one gives Q1 82.0 and Q3 119.7 for an IQR of **37.7**; splitting at the
+  median gives 81.8 and 120.7 for **39.0**; the spreadsheet-exclusive one, which is the most
+  generous of the three, gives 81.5 and 121.7 for **40.3**. **All three are below the 45 s
+  floor**, which matters because `segment-length-rules.md` §10 records the quartile
+  convention as unresolved — the finding does not depend on resolving it, and the widest
+  reading still misses by nearly five seconds. Fifteen of the sixteen spans sit inside the
+  75–180 s band and eleven of them between 82 and 142 s, so the set is too uniform to ship
+  as it stands.
 - **The fix is the one the spine's §4a already names**, and it is now needed for a
   different reason than the one §4a anticipated: a share is a per-beat allowance and
   never a per-segment target, so assembly has to break uniformity deliberately. With
@@ -1774,19 +1809,21 @@ scored §5.
 
 **The single most important thing about this queue is how short it is.** Barbecue's
 report ended with a nine-item list of actions; this one has **five rows worth buying**
-and then a wall. That is not a sorting problem, it is the catalogue. `data/discover.json`
-holds **21** rows whose subject reaches an alcohol beat closely enough to score — ten
-Craft Beer & Brewing, four Experimental Brewing, three FermUp, two Gastropod, one Rest Is
-History and the whiskey hour. **Twenty of the twenty-one have no publisher transcript**;
-the whiskey hour is the exception and has already produced beat 14's second segment. Of
-the other twenty, four are ranked below, one is conditional, one is recorded as uncertain
-and **the remaining fourteen are stops** for reasons ASR cannot change. §11 is where the actual recommendation lives.
+and then a wall. That is not a sorting problem, it is the catalogue.
+`data/discover.json` holds **21** rows whose subject reaches an alcohol beat closely
+enough to score — ten Craft Beer & Brewing, four Experimental Brewing, three FermUp, two
+Gastropod, one Rest Is History and the whiskey hour. **Twenty of the twenty-one have no
+publisher transcript**; the whiskey hour is the exception and has already produced beat
+14's second segment. Of the other twenty, four are ranked below, one is conditional, one
+is recorded as uncertain and **the remaining fourteen are stops** for reasons ASR cannot
+change. §11 is where the actual recommendation lives.
 
 **A note on cost, because it is the same for every row.** None of the five has a
-publisher transcript of any kind, so each is a full local ASR job. Craft Beer & Brewing, Experimental
-Brewing and FermUp are all `dai_suspected: false`, so cuts from them would be **playable
-immediately** rather than blocked on the locate step — which is a real advantage over
-every source that produced a verdict in this report, and it should weigh in the ranking.
+publisher transcript of any kind, so each is a full local ASR job. Craft Beer & Brewing,
+Experimental Brewing and FermUp are all `dai_suspected: false`, so cuts from them would
+be **playable immediately** rather than blocked on the locate step — which is a real
+advantage over every source that produced a verdict in this report, and it should weigh
+in the ranking.
 
 ### 10a. Worth buying, in value order
 
@@ -1826,32 +1863,31 @@ propagation, which is beat 4's second half.
 genetics and no consequence — which is beat 4's reject line verbatim.
 
 **4. `The Rest Is History — 289: Drink` (3,360 s, DAI, no transcript) and its sibling
-`12 Days: Port wine and Darwin sets sail` (1,800 s).** Description: *"Tom and Dominic are joined by author and alcohol
-historian Henry Jeffreys to discuss some Christmassy tipples, from sherry to port,
-champagne to clairet."* Target: the **fortification chain, 52 to 55**, all four empty,
-and it is the **only identified source in either pool that names sherry and port as
-drinks rather than as a surname and a harbour**. A named alcohol historian is the right
-register for beat 52's mechanism and beat 54's *flor*.
-**One cost, and one correction to an earlier draft of this section.** The Rest Is History
-**is** in `data/catalog.json` and in `data/transcript-availability.json`, which is where
-the 713 comes from; only these two *episodes* are absent from `data/discover.json`. So this
-is an episode-and-ASR action, not the catalogue action §11 recommends, and an earlier draft
-of this row said the opposite. The real cost is that the show ships **zero** transcripts
-across 713 episodes, so both are ASR from scratch.
+`12 Days: Port wine and Darwin sets sail` (1,800 s).** Description: *"Tom and Dominic
+are joined by author and alcohol historian Henry Jeffreys to discuss some Christmassy
+tipples, from sherry to port, champagne to clairet."* Target: the **fortification chain,
+52 to 55**, all four empty, and it is the **only identified source in either pool that
+names sherry and port as drinks rather than as a surname and a harbour**. A named
+alcohol historian is the right register for beat 52's mechanism and beat 54's *flor*.
+**One cost, and one correction to an earlier draft of this section.** The Rest Is
+History **is** in `data/catalog.json` and in `data/transcript-availability.json`, which
+is where the 713 comes from; `data/discover.json` holds sixteen of its episodes and
+**neither of these two is among them**. So this is an episode-and-ASR action, not the
+catalogue action §11 recommends, and an earlier draft of this row said the opposite. The
+real cost is that the show ships **zero** transcripts across 713 episodes, so both are
+ASR from scratch.
 
-**The port-wine episode is the better of the two for beat 53 and the worse bet overall.**
-At 1,800 s it is half the length and its hook is squarely on subject — *"How the English's
-fondness for Portuguese fortified wine began"* — but it is a two-subject Christmas
-"12 Days" episode whose other half is Darwin and the Beagle, and beat 53's claim is about
-extraction against a clock rather than about how a trade began. Buy it second, after 289,
-and only if 289 lands.
-**Falsifiable hypothesis:** an alcohol historian asked about sherry says what the *flor*
-is.
-**How it fails, and the risk is high:** it is a Christmas special about what to drink,
-the format is two hosts and a guest riffing on tipples, and the same episode's second
-half is *"why certain drinks revealed your political leanings"* — which is §6b drinking
-culture. Rank 4 rather than 1 because the expected value is high and the variance is
-higher.
+**The port-wine episode is the better of the two for beat 53 and the worse bet
+overall.** At 1,800 s it is half the length and its hook is squarely on subject — *"How
+the English's fondness for Portuguese fortified wine began"* — but it is a two-subject
+Christmas "12 Days" episode whose other half is Darwin and the Beagle, and beat 53's
+claim is about extraction against a clock rather than about how a trade began. Buy it
+second, after 289, and only if 289 lands. **Falsifiable hypothesis:** an alcohol
+historian asked about sherry says what the *flor* is. **How 289 fails, and the risk is
+high:** it is a Christmas special about what to drink, its format is two hosts and a
+guest riffing on tipples, and its own second half is *"why certain drinks revealed your
+political leanings"* — which is §6b drinking culture. Rank 4 rather than 1 because the
+expected value is high and the variance is higher.
 
 **5. `craft-beer-and-brewing-magazine-podcast--episode-497-todd-malloy-and-robin`
 (4,877 s, non-DAI).** *"on brewing medal-winning lagers on a small pub system."* Target:
@@ -1873,19 +1909,19 @@ is depth rather than rescue, which is the thing barbecue's §9 says to stop doin
 **A sixth row is genuinely uncertain and is recorded as such rather than ranked.**
 `craft-beer-and-brewing-magazine-podcast--mike-stein-and-pete-jones-of-lost-lagers-look-back-at-americ`
 (4,485 s), *"Two brewers look back at 250 years of American beer history."* It could
-serve **beat 35**, since historical-lager revivalists have to reconstruct pre-Prohibition
-adjunct rates and that is beat 35's own subject, or it could be era-and-brand nostalgia,
-which §6b excludes. I cannot separate those two readings from the metadata and I am not
-willing to rank a row I cannot state a hypothesis for. If the top five are bought, buy
-this sixth and score it; if only three are bought, leave it.
+serve **beat 35**, since historical-lager revivalists have to reconstruct
+pre-Prohibition adjunct rates and that is beat 35's own subject, or it could be
+era-and-brand nostalgia, which §6b excludes. I cannot separate those two readings from
+the metadata and I am not willing to rank a row I cannot state a hypothesis for. If the
+top five are bought, buy this sixth and score it; if only three are bought, leave it.
 
 ### 10b. Stops, not low priorities
 
-Barbecue's last ASR round transcribed seven episodes and moved no beat, and the lesson its
-§9 drew is that *"priority ordering is the wrong instrument for expressing "do not buy
-this.""* — a row whose value is depth rather than rescue should be a stop, because
-*"draining the tail of a correctly-sorted queue is what produced a seven-episode pass that
-moved nothing."* So these are **stops**. Each is on the Foray's subject and each
+Barbecue's last ASR round transcribed seven episodes and moved no beat, and its §9 draws the lesson
+that *"priority ordering is the wrong instrument for expressing 'do not buy this'"*: a row
+whose value is depth rather than rescue should be a stop, because *"draining the tail of a
+correctly-sorted queue is what produced a seven-episode pass that moved nothing."* So these
+are **stops**. Each is on the Foray's subject and each
 would move no beat.
 
 | Row | Length | Scored against | Why it is a stop |
@@ -1959,7 +1995,7 @@ plainly does.
 **2. The Odd Lots white-oak episode is good tape that no beat in the spine can hold, and
 that is a spine gap rather than a rejection.** Its subject is that a hundred-year-growth
 single species with an eighty-dollar-an-acre regeneration cost and a projected 70 % supply
-decline is a hard constraint on an entire spirits category. Beat 14 takes 96 s of its
+decline is a hard constraint on an entire spirits category. Beat 14 takes 77 s of its
 cooperage mechanism, and the constraint itself — the thing the episode is actually about —
 has nowhere to go. §6a of the spine records dropping a cooperage beat and says explicitly
 that *"a reviewer might reasonably reverse it: the sherry-cask supply chain in particular
