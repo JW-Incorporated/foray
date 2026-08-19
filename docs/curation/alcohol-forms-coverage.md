@@ -679,6 +679,8 @@ source-blindness in the report: the beat the whole Foray is for is the beat no t
 could supply, and an outliner who had read the catalogue first would never have written
 it.
 
+---
+
 ## 4. Act II — sugar that was already sweet (fan of families, beats 17–25)
 
 **No strong tape, one thin, eight empty.** The wine chain 17 to 21 is a chain inside
