@@ -529,17 +529,50 @@ cordova-android **14.0.1**, `androidx.webkit` **1.14.0** — unchanged from
 and no `variables.gradle` edit was needed**. The toolchain is the durable copy from
 `docs/android-shell-build.md` §1.2a, not `%TEMP%`.
 
-<!-- BUILD-NUMBERS -->
+| | Result | APK | vs #244 | Wall clock |
+|---|---|---|---|---|
+| `./gradlew assembleDebug` | **BUILD SUCCESSFUL** | `app-debug.apk`, **7,345,186 bytes** | +2,319,399 B | 16 m 35 s for the pair, from `clean`, 497 of 559 tasks executed |
+| `./gradlew assembleRelease` | **BUILD SUCCESSFUL** | `app-release-unsigned.apk`, **5,787,664 bytes** (571 entries, 15,423,345 B uncompressed) | +1,897,259 B | as above — both were built in one invocation |
+
+**The "vs #244" column is Media3 and Guava, and it is the honest cost of this
+change.** #244 recorded 5,025,787 and 3,890,405; the baseline build in
+`docs/android-shell-build.md` §1.2a — this branch's own source before any of it, on the
+copied toolchain — measured **5,053,504**, so **+2,291,682 bytes of debug APK is
+attributable here** and the remaining ~28 KB is `data/` growth. §10.1 is why that
+number is not a floor: nothing is minified.
+
+**Three builds, and saying so precisely because the alternative is a quiet rounding.**
+The baseline above, then two that were **thrown away** (§6.3), then this one — from
+`clean`, with the tree frozen and committed first, and nothing else touching it. The
+numbers above are that last run's.
 
 ### 6.2 The part a build alone does prove
 
-Read out of build output rather than assumed:
+Read out of build output rather than assumed — and quoted here rather than pointed at,
+because a review pass found this section pointing at a table that had not been filled
+in:
 
-- **The manifest merge landed**, including the new permission. See §6.1's table.
-- **Media3 is in the APK**, and only the parts asked for.
-- **Both halves of the web side are in the bundle**:
-  `assets/public/foray-audio-shell.js` and `assets/public/foray-media-session.js`,
-  with both `<script type="module">` tags in the bundle's `index.html`.
+- **The manifest merge landed.** From
+  `app/build/intermediates/merged_manifest/debug/processDebugMainManifest/AndroidManifest.xml`:
+
+  ```xml
+  <service
+      android:name="com.jwincorporated.foray.audio.PlaybackKeepAliveService"
+      android:description="@string/foray_playback_service_description"
+      android:exported="false"
+      android:foregroundServiceType="mediaPlayback"
+      android:stopWithTask="true" />
+  ```
+
+  and all three of `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and
+  **`POST_NOTIFICATIONS`** are present. A library manifest that failed to merge builds
+  silently and throws at runtime, and the new permission is the one that would have.
+- **Both halves of the web side are in the APK**:
+  `assets/public/foray-audio-shell.js` (42,973 B) and
+  `assets/public/foray-media-session.js` (44,249 B), with both
+  `<script type="module">` tags in the bundle's `index.html`, and
+  `assets/capacitor.plugins.json` naming
+  `com.jwincorporated.foray.audio.ForayAudioPlugin`.
 - **`lintVitalRelease` passed**, including `:foray-audio:lintVitalAnalyzeRelease`, so
   the new module's sources were analysed rather than skipped — which matters more than
   usual here, because `SimpleBasePlayer` and `MediaStyleNotificationHelper` are
@@ -547,20 +580,26 @@ Read out of build output rather than assumed:
   `@OptIn(markerClass = UnstableApi.class)` annotations on `WebViewPlayer` and
   `PlaybackKeepAliveService` are what satisfy it.
 
-### 6.3 A build I threw away, recorded because it was my mistake
+### 6.3 Two builds I threw away, recorded because both were my mistake
 
 The first `assembleDebug assembleRelease` pair was launched in the background and
 then, while it ran, **the mutation harness rewrote four of its input files 25 times**
 — `PlaybackKeepAliveService.java`, `WebViewPlayer.java`, the manifest and
 `build.gradle` — restoring each one immediately, but with no way to know what Gradle
-had read and when. **It was killed and rerun with nothing else touching the tree**,
-and only the clean run's numbers are above.
+had read and when. It reported `BUILD SUCCESSFUL in 24 m 33 s` and **that result means
+nothing**, so it was discarded.
+
+**And then I did it again**, which is why this section is plural. The replacement was
+launched, and a few minutes later a faithfulness gap turned up (a finished Foray was
+being offered a play button) and I edited two of the same Java files to fix it. That
+build was killed at ~25 minutes.
 
 This is #37's own lesson in a new costume: it recorded *"do not run `cap sync` while
-Gradle is running"* after a concurrent `cap update` produced a
-`NoSuchFileException` that looked like a Gradle state-tracking bug. The general form
-is **do not mutate a build's inputs while it reads them**, and a mutation harness is
-the most obvious way to do that by accident. Cost: one wasted build.
+Gradle is running"* after a concurrent `cap update` produced a `NoSuchFileException`
+that looked like a Gradle state-tracking bug. The general form is **do not mutate a
+build's inputs while it reads them**, and the specific discipline that would have saved
+~50 minutes is: **freeze and commit the tree, then build, and do nothing else until it
+finishes.** That is how the run in §6.1 was done.
 
 ## 7. The tests, and which suite covers which mechanism
 
