@@ -653,6 +653,120 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
 const STRONG_RATIO = 0.5;
 const RICH_MIN = 6;
 
+/* How many picks a playlist shows. Was an inline `cap = 10` default in both
+   diversify() and classifyResults(); named and exported because #216 made it
+   load-bearing in a third place -- the sparse widening is only safe while it
+   fits on one page (see classifyResults) -- and because tools/test-search.mjs
+   §9 has to know where truncation starts to know which queries its claim
+   applies to. A literal 10 in the battery would either start failing or,
+   worse, silently stop asserting the day this moved. */
+const DEFAULT_CAP = 10;
+
+/* The prefix of the ranking that ends at the LAST bar-clearing result. #216.
+   Returned as the candidate set for the narrow (sparse/single-show) branch of
+   classifyResults, in place of the bar-clearers themselves.
+
+   THE DEFECT, and it is a disagreement rather than a miscalculation. Ordering
+   is `b.matched - a.matched || b.sum - a.sum` (searchWithRelaxation): `matched`
+   -- how many of the query's concept groups an item hit at all -- dominates
+   absolutely. The bar is `results[0].sum * STRONG_RATIO`, applied to `sum` and
+   nothing else. So the two could disagree about which of two results was
+   better, and when they did, the narrow branch showed the worse one. Measured,
+   the issue's own example (#216, reproduced exactly by adding `music/jazz` to
+   sticky-notes--gershwin-rhapsody, which is PR #211's curation change and is
+   not on main -- so the defect is real but latent there):
+
+     query "the history of jazz"        bar = 9.300 * 0.5 = 4.650
+     raw0  matched=2  sum=9.300  gershwin-rhapsody          clears
+     raw1  matched=2  sum=4.275  john-williams-a-composers  BELOW BAR
+     raw2  matched=1  sum=5.400  smartless--sting           clears
+
+   raw1 matched BOTH query concepts and the ranking placed it second; raw2
+   matched one and was shown instead. The page lost the better result.
+
+   WHAT IS FIXED, stated as an invariant rather than as a patch to that case:
+   the candidate set is a PREFIX of the ranking. Nothing is dropped in favour
+   of a result the ranking places below it. The wide branch already had this
+   property trivially -- it passes the whole `results` array -- so after this
+   the two branches agree, and "better" has exactly one definition in this
+   module: the sort comparator.
+
+   Equivalently, and this is the useful way to read the blast radius: within a
+   `matched` tier the comparator already orders by `sum`, so every clearer in a
+   tier precedes every non-clearer in it. The prefix therefore admits exactly
+   the sub-bar results sitting in tiers ABOVE the lowest tier that clears at
+   all. Nothing below the last clearer is ever admitted.
+
+   THE BAR IS STILL RELATIVE AND STILL COUNTS THE SAME THINGS. This deliberately
+   does not touch the bar, and it does not touch what `strong` means anywhere
+   else in classifyResults -- the two-result honesty floor, `sparse`/`ok`, and
+   the single-show test all still count bar-CLEARERS, exactly as before. So the
+   status a query reports is bit-identical to before this change for every
+   possible input, and the neighbouring hazard the old comment records (raising
+   one item's score raises the bar and can evict a DIFFERENT item) can no longer
+   move a query between empty/sparse/ok at all. What it can still do is change
+   which items fill a sparse answer -- and there this change makes the eviction
+   fill the hole instead of leaving it, whenever the evicted result outranks
+   something still shown. An item ranked below every clearer is still evicted,
+   silently, and that is the honest remaining limit.
+   Because a lone clearer can only ever be results[0] (results[0] clears by
+   construction), a one-clearer query has a one-item prefix, so the floor cannot
+   be reached through this widening either.
+
+   THE THREE ALTERNATIVES WERE MEASURED, over all 38 queries the battery
+   exercises, on main's pool and again on the witness pool above. All three lose,
+   and each loses differently:
+
+     a per-`matched`-tier bar (#216's first suggestion) DOES NOT FIX THE ISSUE'S
+     OWN EXAMPLE. Tier matched=2 tops out at 9.300, so its bar is still 4.650 and
+     raw1 at 4.275 is still evicted -- the witness stays at 2 picks. Meanwhile
+     tier matched=1 gets a bar of 2.700 and "stock market" goes sparse -> ok on
+     47 sub-bar results.
+
+     admitting anything whose `matched` equals results[0].matched (#216's second
+     suggestion) does fix the witness, but only because raw1 happens to sit in
+     the top tier; it leaves the identical defect one tier down untouched, and it
+     admits top-tier results with no lower bound on `sum` at all. Measured, that
+     is not theoretical: on a single-token query every retrieved item is in the
+     top tier, so "how bbq works" goes from 0 off-topic picks of 8 to 7 of 10 and
+     "grill" from 1 of 8 to 7 of 10 -- Serial, Dateline, Morbid, Casefile and the
+     Texas City disaster, which is precisely the place-name leak the sparse
+     comment below exists to describe.
+
+     ranking on `sum` so that both agree the other way is the tidiest option on
+     paper -- prefix closure then holds by construction rather than by rule -- and
+     it does not fix the witness either. It makes the two agree by DROPPING raw1
+     consistently (sum order is 9.300, 5.400, 4.275, so the evicted result is
+     last and the prefix is closed trivially), which answers #216 by deciding the
+     multi-concept match was never better. It also costs precision, because
+     `matched` was doing real work: "video games" moves an FFmpeg video-codec
+     episode from pick 9 to pick 1 and gains a Google-search episode, and "world
+     war 2" gains two World Cup episodes. Five queries change picks.
+
+   The reading that won, then: `matched` stays primary and the bar follows it,
+   because the alternative that demotes `matched` measurably promotes
+   single-signal matches over multi-concept ones on a several-word query, which
+   is the opposite of what a several-word query asks for.
+
+   Covered by test/search-tiering.test.js (the mechanism, on fixtures, in
+   milliseconds -- including the numbers above) and by tools/test-search.mjs §9
+   (the coupling to the real comparator over the live pool, which fixtures
+   cannot see). `node tools/test-search.mjs --tiering` prints the per-query
+   table these numbers came from.
+
+   TOTAL, AND NEVER EMPTY. `last` seeds at 0 and the scan starts at 1 because
+   results[0] clears its own bar by construction (bar is a fraction of its score),
+   so index 0 needs no test. That is also the contract: the top-ranked result is
+   always showable. Seeding at -1 instead is an EQUIVALENT MUTATION from
+   classifyResults' side -- no reachable input distinguishes it, since something
+   always clears -- so it is pinned from the other side, on a bar nothing clears
+   at all, in test/search-tiering.test.js. Without that the mutation survives. */
+function strongPrefix(results, bar) {
+  let last = 0;
+  for (let k = 1; k < results.length; k++) if (results[k].sum >= bar) last = k;
+  return results.slice(0, last + 1);
+}
+
 /* ---------- diversity ----------
    Anti-echo-chamber (CLAUDE.md principle #1): a result shouldn't be
    dominated by the one or two biggest shows the catalog happens to carry
@@ -662,7 +776,13 @@ const RICH_MIN = 6;
    classifyResults' rich/sparse/empty tiering above is computed BEFORE this
    runs, on pure relevance) -- diversify() only re-ranks/selects WITHIN an
    already-qualified candidate set. It can reorder or defer a candidate; it
-   can never introduce one that didn't already pass the relevance bar. */
+   can never introduce one classifyResults did not hand it.
+   That last sentence used to read "one that didn't already pass the relevance
+   bar", and #216 made it false: on a sparse answer the candidate set is now a
+   prefix of the ranking, which can include a result whose own `sum` is under
+   the bar because the ranking places it above one that cleared. The set is
+   still authoritative and still built on pure relevance; it is just no longer
+   the same thing as "cleared the bar". See strongPrefix(). */
 const PER_SHOW_CAP = 2;
 const LISTENED_PENALTY = 0.85; // 15% gentle down-weight, not exclusion
 
@@ -676,7 +796,7 @@ const LISTENED_PENALTY = 0.85; // 15% gentle down-weight, not exclusion
    "smartless") result. That backfill is what keeps this honest: capping
    bbq's 4 same-show episodes down to 2 and calling it "sparse" would be
    exactly the padding-vs-honesty problem this whole engine exists to avoid. */
-function diversify(candidates, { cap = 10, perShowCap = PER_SHOW_CAP, listenedShows = new Set() } = {}) {
+function diversify(candidates, { cap = DEFAULT_CAP, perShowCap = PER_SHOW_CAP, listenedShows = new Set() } = {}) {
   const ranked = candidates
     .map((c, idx) => ({ c, idx, adjusted: c.sum * (listenedShows.has(c.i.show) ? LISTENED_PENALTY : 1) }))
     .sort((a, b) => (b.c.matched - a.c.matched) || (b.adjusted - a.adjusted) || (a.idx - b.idx));
@@ -702,16 +822,31 @@ function diversify(candidates, { cap = 10, perShowCap = PER_SHOW_CAP, listenedSh
   return picked;
 }
 
-function classifyResults(results, { cap = 10, perShowCap = PER_SHOW_CAP, listenedShows = new Set() } = {}) {
+function classifyResults(results, { cap = DEFAULT_CAP, perShowCap = PER_SHOW_CAP, listenedShows = new Set() } = {}) {
   if (!results.length) return { status: "empty", picks: [] };
   const bar = results[0].sum * STRONG_RATIO;
   const strong = results.filter(x => x.sum >= bar);
+  /* The honesty floor, and it is REDUNDANT WITH THE `picks.length < 2` GUARD at
+     the bottom -- deliberately, and worth saying so because it reads like dead
+     code. A single clearer can only ever be results[0] (results[0] clears by
+     construction), so strongPrefix returns one candidate, diversify returns one
+     pick, and the guard below returns empty anyway. Lowering this to `< 1` is an
+     equivalent mutation and survives the suites; it is kept because it states
+     the rule where a reader looks for it, and because it stops the work rather
+     than undoing it. Do not "simplify" it away expecting a test to object. */
   if (strong.length < 2) return { status: "empty", picks: [] };
   const sparse = strong.length < RICH_MIN;
-  // Sparse: only the strong matches make the cut -- never pad toward `cap`
-  // with sub-bar results just to look like a fuller playlist. Diversity is
-  // applied to whichever candidate set would have been sliced, so it can
-  // reorder within "strong"/"results" but never reach outside either.
+  // Sparse: the answer stops at the last strong match -- never pad toward
+  // `cap` with sub-bar results just to look like a fuller playlist. That
+  // used to read "only the strong matches make the cut", and #216 is the
+  // difference: the cut-off is where the ranking runs out of strong matches,
+  // not which individual results cleared the bar, so a result the ranking
+  // places ABOVE one being shown is shown too even if its own `sum` is under
+  // the bar. That is a widening, and it is bounded in the two ways the
+  // `candidates` comment below sets out -- unbounded, it really would pad, and
+  // review caught it doing so. Diversity is applied to whichever candidate set
+  // would have been sliced, so it can reorder within that set but never reach
+  // outside it.
   //
   // Single-show strong set: same strong-only rule even when the count
   // clears RICH_MIN. When every bar-clearing match comes from ONE show,
@@ -727,7 +862,37 @@ function classifyResults(results, { cap = 10, perShowCap = PER_SHOW_CAP, listene
   // what lets other shows' weaker-but-on-topic items break up an
   // echo-chamber top-10 (e.g. "startups and venture capital").
   const singleShow = strong.length >= 2 && strong.every((x) => x.i.show === strong[0].i.show);
-  const candidates = (sparse || singleShow) ? strong : results;
+  /* THE PREFIX REPLACES `strong` FOR A SPARSE ANSWER ONLY, AND ONLY WHEN IT FITS
+     ON THE PAGE (#216). Both guards were found by review, both are behavioural
+     rather than stylistic, and each has a fixture in
+     test/search-tiering.test.js.
+
+     `!singleShow`. The single-show half of this branch exists because the
+     per-show cap DEFERS a show's own episodes, so any cross-show result in the
+     candidate set gets promoted over them -- that is the "Texas" leak the
+     paragraph above dates to 2026-07-30. Widening to the prefix hands it exactly
+     the sub-bar cross-show results it was built to exclude: measured on fixtures,
+     one bbq show's six strong episodes plus one sub-bar true-crime result in a
+     higher `matched` tier put the true-crime result at rank 2. #216's ordering
+     argument does not beat a measured product ruling on the branch that ruling
+     was made for, so single-show answers keep the bar-clearers.
+
+     `prefix.length <= cap`. diversify() truncates at `cap`, and the prefix is
+     unbounded, so a long prefix does not merely widen the answer -- it can push a
+     genuine bar-clearer off the end. Measured: one top-tier result, twelve
+     sub-bar results in the tier below it, and one clearer under those returns a
+     "sparse" status over ten picks, nine of them sub-bar, with the second real
+     strong match gone. That is both the padding this branch forbids and a fresh
+     instance of #216 itself. Past a page the hole-filling has become padding, so
+     the honest set is the clearers again.
+
+     Note what is NOT guarded, because it does not need to be: the prefix can only
+     add results that outrank a clearer, never results below the last one, so
+     inside a page it cannot pad toward `cap` with anything the ranking places
+     worse than what is already shown. */
+  const prefix = strongPrefix(results, bar);
+  const widen = sparse && !singleShow && prefix.length <= cap;
+  const candidates = widen ? prefix : (sparse || singleShow) ? strong : results;
   const picks = diversify(candidates, { cap, perShowCap, listenedShows });
   if (picks.length < 2) return { status: "empty", picks: [] };
   return { status: sparse ? "sparse" : "ok", picks };
@@ -764,9 +929,10 @@ function prettyConceptLabel(id) {
 
 const SearchEngine = {
   STOPWORDS, GENERIC_WORDS, ALIASES, BROAD_DF_THRESHOLD,
-  STRONG_RATIO, RICH_MIN, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
+  STRONG_RATIO, RICH_MIN, DEFAULT_CAP, PER_SHOW_CAP, LISTENED_PENALTY, SENSE_LOCKED_STEMS,
   tokenize, branchOf, tagDF, corpusDF, hitText, hitTag,
   interpretQuery, passesFilters, scoreMatch, searchWithRelaxation, classifyResults, diversify,
+  strongPrefix,
   suggestAdjacentTopics, prettyConceptLabel,
 };
 
