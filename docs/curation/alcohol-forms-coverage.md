@@ -93,10 +93,10 @@ Four consequences that shaped the work.
   to have a partial supporting cut available. Every thin verdict below states what is
   missing so that stage 4's narration can supply it.
 - **Empty is a result.** Forty-seven times below, the answer is nothing, and in
-  nineteen of those cases the spine's §5 predicted it. §9c scores the predictions.
-- **Label, never exclude.** Nothing is dropped from the catalogue. §10c lists every
-  rejection with its reason, and several rejections are good episodes a playlist
-  should keep — the Odd Lots white-oak episode most of all.
+  fourteen of those cases the spine's §5 predicted it. §9c scores the predictions.
+- **Label, never exclude.** Nothing is dropped from the catalogue. §10b lists every
+  stop with its reason, and several are good episodes a playlist should keep — the Odd
+  Lots white-oak episode most of all.
 
 ### 1a. What "strong" was allowed to mean, because it decides the headline number
 
@@ -138,7 +138,7 @@ strong under either ruling.
 |---|---|---|
 | Segments in `data/segments.json` on drink subjects | **0** of 69 | n/a — there is no alcohol tape in the pool |
 | `data/segment-sources.json` | 19 sources, **0** on drink | n/a |
-| `data/discover.json` | 1,534 items; **20** reach a beat closely enough to score | Only where a transcript can be read — and none of the 20 can be |
+| `data/discover.json` | 1,534 items; **21** reach a beat closely enough to score | Only where a transcript can be read — and none of the 21 can be |
 | `data/catalog.json` | 213 shows; **3** on drink or fermentation | show-level register only |
 | `data/transcript-availability.json` | 213 shows, 8,191 episode rows (its own summary counts 8,012 with a transcript) | **Yes** — this is the readable pool, and it is where every verdict that moved came from |
 | `data/episode-archive.json.gz` | 98 shows, 73,719 episodes with descriptions | Title and description only; two rows worth buying |
@@ -158,7 +158,7 @@ figures are all conditional.
 that mattered.** Searching `transcript-availability.json` rather than
 `discover.json` is what found every candidate in this report except one. Nine shows
 have a drinks-shaped episode with a transcript; four turned out to be usable. The
-recommendation pool's twenty on-plot items, by contrast, have **zero** publisher
+recommendation pool's twenty-one on-plot items, by contrast, have **zero** publisher
 transcripts between them — Craft Beer & Brewing 0 of 497, Experimental Brewing 0 of
 386, FermUp 0 of 100, Gastropod 0 of 293, The Rest Is History 0 of 713. Every one of
 them is an ASR purchase, which is what §10 is a queue of.
@@ -1504,3 +1504,454 @@ rejected because the other half is missing entirely. There is no molecule and no
 organism in it, so it is a list of feedstocks rather than the shared mechanism, and beat
 63's evidence line asks for *"a speaker articulating the shared mechanism across families
 rather than within one."* A coda that lists is the thing a coda must not be.
+
+---
+
+## 9. Summary
+
+### 9a. Counts
+
+| Verdict | Beats | Which |
+|---|---|---|
+| **Strong** | **1** | 26 |
+| **Thin** | **15** | 3, 12, 14, 20, 27, 30, 36, 39, 41, 42, 43, 57, 58, 59, 61 |
+| **Empty** | **47** | 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 28, 29, 31, 32, 33, 34, 35, 37, 38, 40, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 60, 62, 63 |
+
+1 + 15 + 47 = 63, and every beat has a heading in §3 to §8 so the three lists can be
+checked against the document rather than against each other.
+
+**By act:**
+
+| Act | Beats | Structure | Strong | Thin | Empty |
+|---|---|---|---|---|---|
+| I — one molecule, four questions | 1–16 | **chain** | 0 | 3 | **13** |
+| II — sugar already sweet | 17–25 | fan, chain inside wine | 0 | 1 | 8 |
+| III — sugar unlocked | 26–35 | fan, chains inside beer and koji | **1** | 2 | 7 |
+| IV — concentration | 36–51 | chain link, then fan | 0 | 5 | **11** |
+| V — made by addition | 52–60 | chain link, chain, fan | 0 | 3 | 6 |
+| VI — the rules and the coda | 61–63 | chain | 0 | 1 | 2 |
+
+**Weighted by the spine's own share column, which is the more honest measure than a
+beat count:** the strong beat is **2.0 %** of intended runtime, the fifteen thin beats
+are **25.8 %**, and the forty-seven empty beats are **72.2 %**. The shares sum to
+100.0, which is the check that the three groups partition the spine.
+
+**Two sensitivities on those counts, and they point the same way.**
+
+- **The SYSK register decides eleven of the fifteen thin verdicts.** Beats 3, 12, 20,
+  39, 41, 42, 43, 57, 58, 59 and 61 rest entirely on Stuff You Should Know. If the
+  founder rules that register out, the report reads **1 strong / 4 thin / 58 empty**
+  and the thin tier's share falls from 25.8 % to 8.9 %. The four survivors are 14, 27,
+  30 and 36.
+- **Nothing here is playable today.** Every source is DAI-suspected, so all sixteen
+  spans are authorable-and-unplayable under `ADR-0008` until the locate step exists.
+  The counts above are what could be *authored*, not what a listener could hear.
+
+### 9b. Where the holes fall — chain versus fan
+
+This is the part of the report that matters most, and it is worse than the spine's
+worst case. The spine's §2a graded holes into three kinds and concluded that Act I is
+the most dangerous place for one and the small family stops the safest. Both halves are
+now measured, and the holes fell in the dangerous place.
+
+**Of the 47 empty beats, 30 are chain beats and 17 are fan stops.** Nine of the fifteen
+thin beats are chain beats too, so **39 of the spine's 40 chain beats have no strong
+tape** — the exception is beat 26.
+
+| Chain segment | Beats | Result |
+|---|---|---|
+| Act I, the derivation | 1–16 | **13 empty, 3 thin, 0 strong** |
+| the wine chain | 17–21 | 4 empty, 1 thin |
+| the beer chain | 26–30 | **1 strong**, 2 thin, 2 empty |
+| the koji chain | 32–33 | 2 empty |
+| the distillation chain link | 36 | thin |
+| the whisky chain | 37–40 | 3 empty, 1 thin |
+| the fortification chain link | 52 | empty |
+| the fortification chain | 53–55 | **3 empty** |
+| Act VI, the landing | 61–63 | 1 thin, 2 empty |
+
+Four things follow, and the first is the one that decides whether this Foray is
+buildable.
+
+- **Act I is a broken derivation from end to end.** Not one of its sixteen beats has
+  strong tape, and the three that have anything at all are about a nitrogen widget, a
+  continuous still and an oak tree. The spine's §2a says a hole here *"reads as a broken
+  explanation"* and carries the highest cost in the document; there is no hole here to
+  cost, because there is no floor. **This is the finding that cannot be worked around by
+  transcription**, since §10's entire queue would close at most three of the thirteen.
+- **The fortification chain is four for four empty**, and it takes beat 5 with it. Beat 5
+  enumerates four routes past the alcohol ceiling and beat 52 is the last of them to be
+  demonstrated; with 5, 52, 53, 54 and 55 all empty, the Foray opens an enumeration in
+  Act I and never closes it anywhere. Sherry's *flor* — which the spine calls the best
+  single case study in the document for question four — has no tape of any kind.
+- **The one strong beat is a chain beat, which is the only piece of luck in the
+  report.** Beat 26 is the head of the beer chain and the worked example the founder's
+  *"walk me through the production process"* most directly asks for. If exactly one beat
+  in sixty-three were going to come back strong, this is close to the best one it could
+  have been.
+- **The fan is not the problem, and that inverts the usual complaint.** Seventeen empty
+  fan stops would be a tolerable Foray if the chain held — the spine says a missing
+  family stop *"reads as a change of subject"* and costs little once narration announces
+  the boundary. Here the fan's empties are the cheap ones and the chain's are the
+  expensive ones, which is exactly the distribution the spine hoped to avoid.
+
+### 9c. How §5's predictions did
+
+§5 recorded its predictions so this report could check them, and it did unusually well
+in one direction and badly in the other.
+
+**Likely-narration predictions: 15 of 15 correct.** §5's fifteen numbered items name
+sixteen beats — 16, 9, 51, 25, 5, 50, 31, 62, 11 and 12 as one item, 47, 3, 24, 34, 15
+and 63 — and every one of the sixteen came back empty or thin, which for a narration
+prediction is the same answer. **Fourteen are empty and two are thin (3 and 12), and not
+one was falsified.** Barbecue's equivalent
+scorecard was 11 of 13, so this is a better result on a longer list, and the reason is
+worth stating: §5 reasoned from what English-language podcasting covers at mechanism
+depth, and that reasoning is sound in both catalogues.
+
+**Over-supply predictions: 0 of 5 correct, and this is where the spine was most wrong.**
+
+| §5 predicted over-supplied | Actual |
+|---|---|
+| beats 37–40, whisky — *"the place this Foray will bloat first"* | **3 empty, 1 thin.** One 13-minute Short Stuff |
+| beat 42 gin, beats 57–59 liqueurs, amari, absinthe | **4 thin**, from two episodes. The best-served cluster, and two episodes deep |
+| beat 20 champagne, beat 19 winemaking choices | **20 thin on one episode, 19 empty** |
+| beat 30 wild fermentation, beat 44 agave | **30 thin, 44 empty.** `agave` returns 0 |
+| beat 36 the origin of distillation | **thin**, and it declined to name an inventor |
+
+**The lesson is the same one barbecue's report reached, and it now has two data
+points.** §5's reasoning about the *medium* was right and its reasoning about the *pool*
+was wrong, because **the pool is not English-language podcasting** — it is 213 curated
+shows plus a 1,534-item recommendation set, and neither was built for this subject. The
+fill pressure the spine was designed to resist does not exist as tape. There is no
+gin-and-absinthe bloat to defend against; there are two episodes.
+
+**And the drift attractors behaved exactly as §5 said they would, which is the one place
+the over-supply prediction did hold.** §5 named prohibition and temperance first, health
+second, cocktails third. All three are present and all three are the *only* abundant
+adjacent material: SYSK's Prohibition and Whiskey Runners episodes, Huberman's and This
+Podcast Will Kill You's alcohol-and-health hours, and the martini and bar material inside
+three of the episodes that did produce cuts. **Nothing from any of them entered a beat.**
+The one place it came close is beat 56, where twenty `vermouth` hits turn out to be seven
+parts martini service.
+
+### 9d. An honest projected runtime, from the strong beats alone
+
+**A. The strong beat alone — 1 segment, 99.8 s, 1.7 minutes.**
+
+| Beat | Segment | Seconds |
+|---|---|---|
+| 26 | `being-an-engineer` 385.59 → 485.34 | 99.8 |
+| | **1 segment** | **99.8 s — 1.7 min** |
+
+That is the number to quote if only one is quoted. **One minute and forty seconds of
+tape that meets the gate, across sixty-three beats**, and it cannot be played until the
+locate step exists.
+
+**B. Everything admitted, thin tier included — 16 segments, 1,679.6 s, 28.0 minutes.**
+Sixteen rather than fifteen because beat 14 takes two segments and beat 27 takes none.
+This is a **ceiling**, not a plan: it assumes the founder admits the SYSK register, which
+§9a says would be eleven of these sixteen, and it assumes the locate step exists.
+
+**B′. The same set with the out-points trimmed as the beat entries recommend — 1,636.0 s,
+27.3 minutes.** Three bands trail into material their beats reject: beat 36's into naval
+rations, beat 41's into a Bombay Sapphire aside, beat 43's into bagasse. Trimming them
+costs 43.6 s and is the honest figure for what a careful assembly would actually keep.
+
+**A further 430.4 s across six alternates is specified in §3 to §8 and deliberately not
+counted** — beat 3's exploding bottles, beat 20's second fermentation, beat 26's cleaning
+chemistry, beat 36's medical lineage, beat 42's legal categories, beat 59's wine trade.
+Some of them are better tape than the primaries they support. They are excluded because
+counting a beat's alternate toward runtime is how a coverage report starts arguing for a
+longer Foray than it can justify.
+
+**None of these is a runtime for the Foray.** Sixty-two of the sixty-three beats are
+narration beats — the 47 empty plus the 15 thin, since §1 defines a thin beat as a
+narration beat with a partial supporting cut — and narration length is stage 4's to
+estimate. For scale: at the spine's own 150-minute reference, 72.2 % of the runtime is
+empty beats, which is about 108 minutes of narration.
+
+**What the length rules say about set B, because it is not automatically legal.**
+
+- **D1, the cut budget: passes with room.** Sixteen segments over any plausible runtime
+  is 3.6 starts per rolling 600 s at 45 minutes and 1.8 at 90. The spine's §4a was
+  written expecting the cut budget to bind. It is nowhere near binding.
+- **D3, the whole-Foray mean ≥ 90 s: passes at 105.0 s.**
+- **D5, the whole-Foray IQR ≥ 45 s: fails, at 31.1 s.** Under the interpolated
+  convention Q1 is 86.5 and Q3 117.7; under the exclusive convention 85.1 and 119.4, for
+  an IQR of 34.2. **Both are below the 45 s floor**, which matters because
+  `segment-length-rules.md` §10 records the quartile convention as unresolved and this
+  finding does not depend on resolving it. Fifteen of the sixteen spans sit inside the
+  75–180 s band and thirteen of them between 82 and 142 s, so the set is too uniform to
+  ship as it stands.
+- **The fix is the one the spine's §4a already names**, and it is now needed for a
+  different reason than the one §4a anticipated: a share is a per-beat allowance and
+  never a per-segment target, so assembly has to break uniformity deliberately. With
+  sixteen segments and sixty-two narration beats, the variety will have to come from the
+  narration lengths rather than from the tape, which is a fact stage 4 should have before
+  it starts.
+
+---
+
+## 10. The ranked ASR proposal, and the stops
+
+Not decisions — this report does not own them. Ordered by how many beats each row would
+move, with the hypothesis stated falsifiably so the next pass can score it the way §9c
+scored §5.
+
+**The single most important thing about this queue is how short it is.** Barbecue's
+report ended with a nine-item list of actions; this one has **five rows worth buying**
+and then a wall. That is not a sorting problem, it is the catalogue. `data/discover.json`
+holds **21** rows whose subject reaches an alcohol beat closely enough to score — ten
+Craft Beer & Brewing, four Experimental Brewing, three FermUp, two Gastropod, one Rest Is
+History and the whiskey hour — **none of them has a publisher transcript**, one of them
+has already produced this report's only non-SYSK segment, four are ranked below, one is
+recorded as uncertain and **the remaining fifteen are stops** for reasons ASR cannot
+change. §11 is where the actual recommendation lives.
+
+**A note on cost, because it is the same for every row.** None of the five has a
+publisher transcript, so each is a full local ASR job. Craft Beer & Brewing, Experimental
+Brewing and FermUp are all `dai_suspected: false`, so cuts from them would be **playable
+immediately** rather than blocked on the locate step — which is a real advantage over
+every source that produced a verdict in this report, and it should weigh in the ranking.
+
+### 10a. Worth buying, in value order
+
+**1. `fermup--93-researching-fermentation` (2,807 s, non-DAI, no transcript).** Hook:
+*"A researcher explains what actually happens, chemically, when food ferments."*
+Target: **beat 2**, and possibly **beat 10**. Both are empty Act I chain beats and beat 2
+is the foundation the whole spine rests on — §1 of the spine calls it *"the shared
+chemistry the whole through-line rests on"*. This is the only row in 1,534 items whose
+description promises the register beat 2 requires, and at 47 minutes it is the shortest
+purchase in the queue.
+**Falsifiable hypothesis:** the episode states the pathway or the yield ratio out loud.
+**How it fails:** a researcher talking about *food* fermentation — kraut, miso, koji as a
+culinary ingredient — never reaches ethanol stoichiometry, and beat 8's reject line
+already names that failure mode. FermUp's two neighbouring rows are Sandor Katz and a
+tofu-and-miso historian, which is evidence for the culinary reading.
+
+**2. `craft-beer-and-brewing-magazine-podcast--brewing-scientists-shellhammer-chenot-older-hops`
+(4,397 s, non-DAI).** *"Brewing scientists test what warehouse-aged hops can still do two
+to four years after harvest."* Target: **beat 27**, which is currently thin only by
+dependency on beat 26's carrier and would be the cheapest chain upgrade in the report.
+Two named brewing scientists is the strongest register in the whole recommendation pool.
+**Falsifiable hypothesis:** alpha acids, their isomerisation and the aroma-oil trade are
+discussed as chemistry, since ageing hops *is* alpha-acid and oil degradation.
+**How it fails:** it is a study-results interview about shelf life and stays on
+measurement rather than on why bitterness and aroma are bought at opposite ends of the
+kettle.
+
+**3. `craft-beer-and-brewing-magazine-podcast--495-fermenting-expressive-hoppy-beers-with`
+(3,913 s, non-DAI).** *"How historic brewing yeasts and modern hop chemistry shape
+today's expressive hoppy beers"*, in partnership with White Labs. Target: **beat 4**
+(domesticated yeast and pure culture, empty) and **beat 10** (esters and the temperature
+lever, empty). A yeast-laboratory collaboration is where strain selection as a production
+decision would be discussed if it is discussed anywhere in this catalogue.
+**Falsifiable hypothesis:** "historic brewing yeasts" means strain provenance and
+propagation, which is beat 4's second half.
+**How it fails:** dry yeast as a *product* recommendation for homebrewers, with no
+genetics and no consequence — which is beat 4's reject line verbatim.
+
+**4. `The Rest Is History — 289: Drink` (3,360 s, DAI, no transcript, and not in the
+curated catalogue).** Description: *"Tom and Dominic are joined by author and alcohol
+historian Henry Jeffreys to discuss some Christmassy tipples, from sherry to port,
+champagne to clairet."* Target: the **fortification chain, 52 to 55**, all four empty,
+and it is the **only identified source in either pool that names sherry and port as
+drinks rather than as a surname and a harbour**. A named alcohol historian is the right
+register for beat 52's mechanism and beat 54's *flor*.
+**Two costs before it is bought.** It is in `episode-archive.json.gz` and not in
+`data/discover.json` or `data/catalog.json`, so acquiring it is a catalogue action first;
+and The Rest Is History ships **zero** transcripts across 713 episodes, so it is ASR from
+scratch.
+**Falsifiable hypothesis:** an alcohol historian asked about sherry says what the *flor*
+is.
+**How it fails, and the risk is high:** it is a Christmas special about what to drink,
+the format is two hosts and a guest riffing on tipples, and the same episode's second
+half is *"why certain drinks revealed your political leanings"* — which is §6b drinking
+culture. Rank 4 rather than 1 because the expected value is high and the variance is
+higher.
+
+**5. `craft-beer-and-brewing-magazine-podcast--episode-497-todd-malloy-and-robin`
+(4,877 s, non-DAI).** *"on brewing medal-winning lagers on a small pub system."* Target:
+**beat 28**, an empty beer-chain beat whose only candidate is factually wrong.
+**Falsifiable hypothesis:** brewers committed to lager discuss the cold chain, because on
+a small system lagering time is the binding constraint on tank turnover.
+**How it fails:** it is a brewpub-economics and recipe interview and the yeast is a
+purchased input nobody discusses. Ranked last of the five for that reason.
+
+**One conditional row, on the barbecue report's pattern of a "conditional second shot".**
+`craft-beer-and-brewing-magazine-podcast--jake-watt-wet-hop` (4,998 s), *"Jake Watt's
+gold-medal wet-hop IPAs change recipe every year, chasing a moving target"*, with hot-
+and cold-side technique in the title. It targets the **aroma half of beat 27** that rank 2
+may well not deliver, since ageing hops is a bitterness-and-degradation subject and
+wet-hopping is an aroma one. **Buy it only if rank 2 lands and beat 27 still lacks the
+other end of the kettle.** Two rows bought against one thin beat before the first is read
+is depth rather than rescue, which is the thing barbecue's §9 says to stop doing.
+
+**A sixth row is genuinely uncertain and is recorded as such rather than ranked.**
+`craft-beer-and-brewing-magazine-podcast--mike-stein-and-pete-jones-of-lost-lagers-look-back-at-americ`
+(4,485 s), *"Two brewers look back at 250 years of American beer history."* It could
+serve **beat 35**, since historical-lager revivalists have to reconstruct pre-Prohibition
+adjunct rates and that is beat 35's own subject, or it could be era-and-brand nostalgia,
+which §6b excludes. I cannot separate those two readings from the metadata and I am not
+willing to rank a row I cannot state a hypothesis for. If the top five are bought, buy
+this sixth and score it; if only three are bought, leave it.
+
+### 10b. Stops, not low priorities
+
+Barbecue's manifest predicted eight wasted transcriptions and was right every time, and
+the lesson its §9 drew is that *"priority ordering is the wrong instrument for expressing
+'do not buy this'"*. So these are **stops**. Each is on the Foray's subject and each
+would move no beat.
+
+| Row | Length | Scored against | Why it is a stop |
+|---|---|---|---|
+| `experimental-brewing--episode-207-fonio-fonio-what-the-heck-are-you-fonio` | 3,900 s | 31 | The only West African grain row in the catalogue, against an empty beat, and it is two homebrew authors experimenting with a novel grain. §6b excludes home brewing as a how-to and beat 31's claim is a continent's design decision. **The most tempting stop in the list** |
+| `gastropod--absinthe` | 2,714 s | 59 | Depth on a beat that is already thin, and Gastropod ships zero transcripts across 293 episodes. Barbecue's §9 lesson applies exactly: a row whose value is depth rather than rescue is a stop |
+| `the-rest-is-history--wine-civilisation` | 4,543 s | 17–21 | *"How wine built civilization — from Homer's Odyssey to Julius Caesar's conquests"*, plus the Judgement of Paris. Ancient history and a tasting. No production claim in the five wine beats it would be scored against |
+| `gastropod--beer-and-writing` | 3,358 s | 26 | Mesopotamian cuneiform and beer. Beat 26 is a process sequence; this is the archaeology beat §6a already dropped |
+| `craft-beer-and-brewing--the-post-s-nick-tedeschi-brews-flavorful-low-abv-beers-for-g` | 3,914 s | 60 | Brewing *to* a low strength is question two; beat 60's claim is *removing* ethanol from a finished drink. Different operation, different physics. See §7 |
+| `craft-beer-and-brewing--496-tonya-cornett-and-ian-larkin` | 4,618 s | 30, 35 | Collaboration and business across three breweries. §6b excludes the industry as a business |
+| `craft-beer-and-brewing--494-patrick-raasch` | 4,586 s | 10, 26 | Medal-winning hop-forward beers and left-field culinary ingredients. Recipe and style |
+| `craft-beer-and-brewing--498-andrew-sabatine` | 4,504 s | 28, 29 | Lagers and West Coast IPA without abandoning hazy fruited beers. Style positioning |
+| `craft-beer-and-brewing--wynn-whisenhunt-of-wondrous` | 4,368 s | 26, 29 | *"why doing less often makes for noticeably better beer"* — a philosophy interview |
+| `experimental-brewing--episode-210-bob-and-denny-take-belgium-part-2` | 3,540 s | 30 | Belgian brewing tradition, part two of two, by homebrew authors. Beat 30 is already thin and lambic microbiology is not what a travel-and-tradition episode delivers |
+| `experimental-brewing--episode-203-27-years-of-experience-in-norcal` | 3,803 s | 26 | A career retrospective |
+| `experimental-brewing--episode-211-8211-homebrewcon-8211-asheville` | unknown | — | Live reflections from a homebrew convention. Also the only on-plot row in the pool with a null duration |
+| `around-the-house-eric-g--From Mold to Whiskey` (3,642 s) and `Cleaning Tile and Grout and talking Whiskey` (2,383 s) | — | 14 | The other two whiskey-hour rows. The one already read gave 88 s on cask finishing out of 1,493 s; these are home-improvement episodes with a whiskey tail |
+| `fermup--101-sandor-katz` | 1,410 s | 2, 10 | Fermentation's best-known evangelist on technique during a residency. Kraut and koji as food, and at 23 minutes the shortest on-plot row in the pool |
+| `fermup--100-bill-shurtleff` | 1,784 s | 2, 8 | The definitive tofu-and-miso reference author. Soy fermentation, and beat 8's reject line names koji-as-culinary-ingredient specifically |
+| `this-podcast-will-kill-you` Ep 210 Histoplasmosis, Ep 188 Candida | 4,727 / 4,637 s | 4 | Both are `yeast` title hits and both are fungal pathogens. Beat 4 needs *Saccharomyces* |
+| `odd-lots` — the two $200-a-barrel oil rows | 2,195 / 2,925 s | 14 | `barrel` title hits, and the barrels are oil |
+
+**And one whole class of stop, stated once rather than fifteen times.** Every SYSK row in
+§2d marked *"Nothing"*, plus the five left unread on §6b grounds, is a stop for the
+purposes of this Foray and stays in the catalogue for playlists. The Prohibition episode
+in particular is a good episode about a real subject that is not this one.
+
+---
+
+## 11. Where the spine, not the tape, is the problem — and the one action that would change everything
+
+Four findings that are not sourcing outcomes. Recording them rather than quietly
+reshaping the spine, per the brief. **The spine is untouched by this pass.**
+
+**1. The recommendation is a catalogue action, not a transcription action, and this is
+the report's most useful output after the counts.** §10's five purchases would, at
+absolute best, move beats 2, 4, 10, 27, 28 and the fortification chain — and four of
+those six are single hypotheses that could each fail. Meanwhile the material this Foray
+needs demonstrably exists and is not in the catalogue. `data/catalog-breadth.json` holds
+**81** drinks-shaped shows of which **exactly one is curated** (Craft Beer & Brewing),
+and 37 of the 81 sit in Apple's Food genre:
+
+| Show | Episodes | Beats it plausibly reaches |
+|---|---|---|
+| `I'll Drink to That! Wine Talk` | 504 | 17, 18, 19, 21, 52, 54 — a long-form winemaker interview show |
+| `Inside Winemaking - the art and science of growing grapes and crafting wine` | 222 | 17, 18, 19 — the title is beat 17's own framing |
+| `Cider Chat` | 511 | **22**, the only identified source for it anywhere |
+| `Basic Brewing Radio` | 975 | 7, 26, 29, 30 |
+| `The Brewing Network Presents \| Brew Strong` | 361 | 7, 10, 26, 28, 29 — a technique-only format |
+| `Good Beer Hunting` | 743 | 30, 35 |
+| `Bourbon Pursuit` | 1,191 | 14, 37, 38, 39, 61, 62 |
+| `Spirits & Distilling Podcast` | 47 | **11, 12, 13** — the three Act I distillation beats |
+| `Got Somme : Master Sommelier's Wine Podcast` | 150 | 17, 18, 19, 52, 54 |
+| `Wine for Normal People` | 94 | 17, 18, 20, 52 |
+
+`data/catalog-breadth-intl.json.gz` adds **257** more, including English-language rows
+that reach beats nothing above does — `One Nation Under Whisky` (382 episodes),
+`The Distillery Nation Podcast` (141), `UK Wine Show` (860), `Interpreting Wine` (602),
+`Hop Forward: Getting You Ahead in the Brewing and Beer Business` (211).
+
+**None of this is scoreable at beat level today**, because the breadth files carry
+show-level metadata with no episode lists, so the table above is a set of hypotheses
+rather than findings, and it is deliberately labelled as such. But the shape of the
+answer is not in doubt: **this Foray is a curation problem before it is a sourcing
+problem.** Adding five to ten of these shows to `data/catalog.json`, then running a
+stage-2 pass against their episode lists, is the action with by far the highest expected
+value in this document — and it is the action barbecue could not take, because barbecue's
+equivalent search had already established that the tape does not exist anywhere. Here it
+plainly does.
+
+**2. The Odd Lots white-oak episode is good tape that no beat in the spine can hold, and
+that is a spine gap rather than a rejection.** Its subject is that a hundred-year-growth
+single species with an eighty-dollar-an-acre regeneration cost and a projected 70 % supply
+decline is a hard constraint on an entire spirits category. Beat 14 takes 96 s of its
+cooperage mechanism, and the constraint itself — the thing the episode is actually about —
+has nowhere to go. §6a of the spine records dropping a cooperage beat and says explicitly
+that *"a reviewer might reasonably reverse it: the sherry-cask supply chain in particular
+is a hard economic constraint on whisky production, and if it is sourced it belongs inside
+beat 14 as evidence rather than as a beat about equipment."* **It is now sourced, and it
+does not fit inside beat 14, because beat 14's claim is a mechanism and this is an
+economy.** Recommended amendment: extend beat 14's claim to name cask supply as a
+production constraint, or restore the cooperage beat. Either is a founder-or-reviewer
+call, not mine.
+
+**3. Beat 27 should be re-scored the moment a word-timestamped transcript of the
+Being an Engineer episode exists.** This is the one place in the report where a verdict
+turns on transcript granularity rather than on content. The alpha-acid isomerisation
+sentence is real, correct and inside a 68-second cue that beat 26 needs. A local ASR pass
+with word timestamps on an episode that already has a publisher transcript sounds
+redundant and is not: it would probably move beat 27 from thin to strong for the cost of
+one job, and it is the cheapest beat upgrade available anywhere in this document. It is
+not in §10's ranked list because it is not a new source.
+
+**4. The catalogue's food and drink holding should be recorded as a known gap rather than
+rediscovered.** `docs/curation/catalogue-broadening.md` §3 and `search-coverage-gaps.md`
+are the natural homes. The two numbers worth writing down are that **56 items across
+`food/cooking-science`, `food/fermentation` and `health/nutrition`** is the entire food and
+drink holding of a 1,534-item pool, and that its drink half is **21 rows**: fourteen on beer
+and brewing, three on food fermentation, one on beer and cuneiform, one on absinthe, one on
+ancient wine and one home-improvement whiskey hour. Two Forays have now been commissioned
+against a catalogue that cannot serve either of them, and the third will be too unless the
+gap is written down where a commissioning agent will read it.
+
+---
+
+## 12. Can this catalogue support this subject
+
+**No, and the honest answer is not close.**
+
+Stated as plainly as the brief asks for: **one beat in sixty-three has tape that meets the
+gate, and it runs for a hundred seconds.** Everything else is a narration beat. The
+subject the founder asked for — *"what are all of them, walk me through the production
+process for each"* — is a taxonomy-and-mechanism request, and this catalogue holds
+essentially no production mechanism for any drink except beer, and for beer it holds one
+usable answer from a chemist who no longer works in the industry.
+
+Three things make that verdict firmer than a count.
+
+- **It is not a search failure.** Forty-two hand-picked technical terms, twenty-one of them
+  chosen to try to break the finding, return zero across 75,253 items and episodes. The
+  substring trap was measured and eliminated, the sense collisions were read rather than
+  counted, and the seventeen readable transcripts were read end to end rather than
+  keyword-scanned. Widening the net further would produce more of §10b's stops, and
+  widening the net until something fits is the mechanism #226 exists to stop.
+- **It is not fixable by transcription.** §10's whole queue, if every hypothesis in it
+  landed, would move six beats. Act I would still be eleven or twelve beats empty out of
+  sixteen, and Act I is the education.
+- **The failure is in the chain, not the fan.** Thirty of the forty-seven empty beats are
+  chain beats. A Foray with seventeen missing family stops is a Foray with a short fan; a
+  Foray with a missing derivation is a different product wearing this one's title.
+
+**What can be built today, and it is worth saying because it is not nothing.** The spine's
+§4c already anticipates this shape: *"The correct response to bad sourcing is narration on
+the empty beats, or a shorter Foray with the beat count intact."* With sixteen authorable
+segments and sixty-two narration beats, `alcohol-forms-1` is buildable **as a
+narration-led programme with tape as illustration** — which is a real product and an honest
+one, and the tape it has would land in the right places: the sequence of brewing, the
+column still, the cask, the champagne bottle, the gin botanicals, the bitter barks, the
+absinthe panic. What is not available is the thing the spine's §4c warns against
+substituting: *"the short version is a substantively different product and should be
+commissioned as one — not used as the fallback if sourcing goes badly."*
+
+**So the decision this report exists to inform has three options and they should be named
+as three.** Commission the narration-led version knowingly. Or spend the catalogue action
+in §11 and re-run stage 2 against a pool that has wine, spirits and cider in it. Or shelve
+`alcohol-forms-1` and put the sourcing effort somewhere it earns more — noting that
+barbecue's twelve empty chain beats and this Foray's forty-seven are the same finding about
+the same catalogue, arrived at from two different subjects.
+
+**Whichever is chosen, the spine was worth writing first.** Beat 16 is the beat this Foray
+exists to deliver and no tape in the catalogue could have supplied it. An outliner who had
+read the catalogue before writing would have produced a spine about beer, absinthe and
+bourbon with a chapter on prohibition, and it would have looked fully sourced.
