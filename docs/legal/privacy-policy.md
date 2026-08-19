@@ -60,9 +60,10 @@ migrate it. (`player/durable-store.js`, `player/idb-tier.js`.)
 Two honest qualifications to "two places". The diagnostic record
 `cp_storage_health` is deliberately **never** written to IndexedDB — a failing
 durable write is exactly what it records, so queueing it there could make the
-diagnostic the outage (`player/durable-store.js:636–643`). And until the player
-module has loaded, writes go to plain `localStorage` only; if that module fails
-to load, they stay there for the session (`app.js:78–96`).
+diagnostic the outage (`player/durable-store.js:_recordHealth()` mirrors the
+record into the synchronous tiers only). And until the player module has loaded,
+writes go to plain `localStorage` only; if that module fails to load, they stay
+there for the session (`app.js:storageBackend()`).
 
 **Two of these keys are diagnostics rather than your data**, and neither is
 transmitted. `cp_storage_health` records storage failures. `cp_diag` records how
@@ -99,7 +100,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
 | `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, and when the app went to the background and for how long. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the drawer's **Playback diagnostics** shows it and lets you copy or clear it |
 
-The web app also keeps a Cache Storage bucket named `foray-v4` holding the app
+The web app also keeps a Cache Storage bucket named `foray-v5` holding the app
 shell and the catalogue JSON files, so the app renders in a dead zone (`sw.js`).
 **It never caches podcast audio**, because the service worker ignores every
 request that is not to our own origin.
@@ -111,8 +112,8 @@ database (Supabase — see §3). **Thirteen of the eighteen event types the app
 records never leave the device.** The buffer is trimmed to the most recent 5,000
 entries.
 
-**Sent** (`toEventRow`, `app.js:220–256`). Every row carries your anonymous
-account id and a timestamp:
+**Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
+and a timestamp:
 
 | Event | Fields sent |
 |---|---|
@@ -124,7 +125,7 @@ account id and a timestamp:
 
 **Not sent — recorded only on your device:** `play_started`, `position` (your play
 position; stored about every 15 seconds, recorded as an event at most once a
-minute per episode — `player/position-store.js:66–75`), `foray_play`,
+minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
 `unsaved`, `playlist_built`, `playlist_removed`, `player_pref`, `family_mode`,
 `refreshed_all`, `storage_fault`.
@@ -134,13 +135,14 @@ rather say so than let the field names imply more collection than happens:
 
 - The **`app` label is a hardcoded constant.** It reads a `data-app` attribute
   that nothing in the app ever sets, so it is always the literal string
-  `"Apple Podcasts"` (`app.js:652`). It does **not** report which podcast app you
-  actually use, and your stored preference (`cp_player`) is never transmitted.
+  `"Apple Podcasts"` (`app.js:bindPickLogging()`). It does **not** report which
+  podcast app you actually use, and your stored preference (`cp_player`) is never
+  transmitted.
 - The **context label** is filtered against a five-value allowlist
-  (`app.js:214`), but the only values the app ever produces are `continue` — you
-  resumed something — or a subject/playlist label that the filter discards. So in
-  practice this field is `"continue"` or empty. It does not reveal which
-  recommendation archetype you were shown.
+  (`app.js:SB_ARCHETYPES`), but the only values the app ever produces are
+  `continue` — you resumed something — or a subject/playlist label that the
+  filter discards. So in practice this field is `"continue"` or empty. It does
+  not reveal which recommendation archetype you were shown.
 
 Two things worth calling out plainly, because a generic policy would hide them:
 
@@ -195,7 +197,7 @@ ways.**
 Product principle 3 says we never rehost, proxy or transform episode audio. The
 app honours that literally: it sets an `<audio>` element's `src` to the
 publisher's own enclosure URL and plays it
-(`player/html-audio-backend.js:410`). There is no Foray server in the path.
+(`player/html-audio-backend.js:load()`). There is no Foray server in the path.
 
 The upside is real: **we cannot build a listening profile out of your audio
 requests, because they never touch us.** The corresponding disclosure is equally
@@ -285,7 +287,7 @@ catalogue are bundled, so this does not apply there.
 ## 5. What Foray does not do
 
 Verified by reading the client, not by assertion. The app's Content Security
-Policy (`index.html:13`) is the structural reason most of this list is not merely
+Policy (`index.html`) is the structural reason most of this list is not merely
 a promise: **`connect-src` names only two origins** — the app's own, and our
 Supabase project — so any data-sending request of the kind an API call, an
 analytics beacon or a crash report needs is blocked by the browser unless the
@@ -384,7 +386,7 @@ browser's settings for the Foray origin (web), or by deleting the app (iOS /
 Android). It removes the local copies but **not** the server rows, for the reason
 in the paragraph above.
 
-The `foray-v4` Cache Storage bucket is not touched by the button: it holds the
+The `foray-v5` Cache Storage bucket is not touched by the button: it holds the
 app shell and the catalogue files (§1), which are the same for every listener and
 say nothing about you.
 
