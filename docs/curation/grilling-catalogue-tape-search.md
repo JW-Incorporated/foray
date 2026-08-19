@@ -21,14 +21,15 @@ labelled and left in the catalogue — **label, never exclude**. Nothing here is
 dropped from `data/discover.json`, and several of the rejections below are good
 episodes that a playlist should keep.
 
-**A note on the quotations, because one of them is load-bearing twice over.** Every
-title, hook and tag quoted below was checked back against `data/discover.json` and
-`data/item-tags.json` programmatically, and every quotation from the spine, the
-coverage report and the cut plan was checked back against those files the same way.
-Nothing is repaired, normalised or tidied: where a hook is ungrammatical or a title
-carries three exclamation marks, it is reproduced as the data holds it. The only
-liberty taken is the ordinary one of lowering a quoted sentence's initial capital when
-it sits inside a sentence of ours.
+**A note on the quotations, because several of them are load-bearing.** Every title,
+hook, tag and show-level editorial note quoted below was checked back against
+`data/discover.json`, `data/item-tags.json` and `data/catalog.json` programmatically,
+and every quotation from the spine, the coverage report, the cut plan and the sourcing
+document was checked back against those files the same way. **Nothing is repaired,
+normalised or tidied**: where a title carries a doubled exclamation mark or an editorial
+note carries a double hyphen where this document would set an em-dash, it is reproduced
+as the data holds it. The only liberty taken is the ordinary one of lowering a quoted
+sentence's initial capital when it sits inside a sentence of ours.
 
 ---
 
