@@ -341,3 +341,332 @@ grounds: `Short Stuff: Cleveland's Infamous 10-Cent Beer Night`, `The Guinness B
 of Records` and `SYSK Live: How Bars Work`.
 
 ---
+
+## 3. Act I — one molecule, four questions (chain, beats 1–16)
+
+The act the founder's request is actually for, and the act the spine predicted would
+be thinnest. It is thinner than that. **Sixteen consecutive chain beats, no strong
+tape, three thin, thirteen empty**, and the three thin ones are 3, 12 and 14 — the
+gas, the column and the cask — which are the three most equipment-shaped beats in the
+act. Everything that is chemistry rather than hardware is empty.
+
+The spine's §2a says a hole here is "a broken explanation" and carries the highest
+cost in the document. On this catalogue Act I is not holed, it is absent, and stage 4
+should plan for it as sixteen narration beats with three supporting cuts rather than
+as an act with gaps.
+
+### Beat 1 — many alcohols, we drink one — **empty**
+
+**Nothing.** The nearest candidate is `this-podcast-will-kill-you` Ep 85 at
+536.92 → 561.56, which states the distinction and stops: *"Ethanol is the form of
+alcohol that we drink. It's the form that's used for recreational purposes. So when
+we say alcohol, that's what we're talking about in this context."* That is the beat's
+first clause as a definition, with no second alcohol in it.
+
+**Why the rest of the episode does not rescue it, and why that is worth recording.**
+The episode says "alcohol dehydrogenase" thirteen times and it is never once about
+methanol. It is about hepatic metabolism, acetaldehyde, the `ALDH` variant and the
+flushing response, tolerance and upregulation, and the ten-million-year-old `ADH4`
+mutation shared with chimpanzees, gorillas, fruit bats and koalas. **That is §6a's
+dropped beat, at forty minutes' length** — the pharmacology beat the spine cut with
+the note that it "is also the most dangerous available filler after prohibition,
+because it would slot in beside beat 1 without looking wrong." The prediction is
+exactly right, the tape exists, and it is not this beat. `methanol` appears once in
+6,568 seconds, inside a sentence about Prohibition-era regulatory oversight.
+
+**What is missing.** All of it: the hydroxyl group, ethanol against methanol against
+isopropanol, one enzyme acting on all three, formaldehyde and formic acid as the
+mechanism by which methanol blinds, and the 40/60/trace proportion the beat wants
+stated plainly.
+
+### Beat 2 — fermentation as yeast metabolism — **empty**
+
+**Nothing**, and the near-miss is the exact thing the beat's reject line names. The
+chemist-brewer on Being an Engineer says at 476.76 → 485.34: *"you have this living
+organism, this yeast molecule that is converting sugars into alcohol and carbon
+dioxide."* Beat 2 rejects *"'yeast turns sugar into alcohol' with no mechanism and no
+numbers — that is a label, not this beat"*, and this is that sentence with "molecule"
+in place of "organism" as a bonus error. The passage is also inside beat 26's carrier.
+
+**What is missing.** The stoichiometry — one glucose to two ethanol and two CO2 — the
+51 % theoretical yield and the 46 to 48 % real one, glycolysis through pyruvate and
+acetaldehyde, and gravity or Brix used as a working instrument. No transcript in the
+readable pool contains any of it: `glycolysis`, `pyruvate` and `brix` are zero across
+every source read.
+
+**The identified fix.** `fermup--93-researching-fermentation` (2,807 s), hook *"A
+researcher explains what actually happens, chemically, when food ferments."* It is
+§10's top-ranked purchase and the only row in the catalogue whose description promises
+this beat.
+
+### Beat 3 — the other product is a gas — **thin**
+
+**Chosen:** `stuff-you-should-know` — Short Stuff: The Guinness Widget, band
+**313.16 → 395.48 (82.3 s)**. In on *"glass right after this. All right, So where we
+left off"*; out around *"…it forms smaller bubbles and more stable bump bubbles."*
+
+**Why it advances beat 3.** It is the one place in the readable pool where dissolved
+gas is treated as a variable a producer chooses rather than a property a drink has:
+nitrogen *"doesn't replace the CEO two. It's a mixture of the carbon dioxide and
+nitrogen, but nitrogen isn't absorbed into the beer like carbon dioxide is. So it has
+the same pressure of just a regular beer, but it has a lot less CO two, and so it's
+not as physy"*, and nitrogen *"forms smaller bubbles and more stable bubbles"*. That
+is the third of beat 3's three moves — inject the gas afterwards — with a real
+solubility argument attached.
+
+**Second, and it is the better half of the pair for the beat's history:** SYSK How
+Champagne Works, **812.16 → 857.48 (45.3 s)**, which is beat 3's containment problem
+stated as the historical constraint: *"bottles were very frequently explode, and
+sellers were very dangerous places to be because one one of these stoppers came out,
+it shoot across the room, hit another bottle, and that bottle stop would come out and
+all of a sudden you have a chain reaction of these wooden stoppers like flying at your
+head"*, resolved with *"cork stoppers in thicker English type bottles which could
+withstand the pressure."* At 45 s it is a short supporting cut, above the 30 s floor
+and below the band. **It carries a defect**: the passage attributes both the cork and
+the English glass to Dom Pérignon, which is the tradition's own account asserted as
+fact, and beat 3's reject line is *"champagne romance"*. If it is used, narration has
+to correct it in the same breath.
+
+**What is missing.** The CO2 accounting that ties the gas to beat 2's equation, the
+five-or-six-atmosphere figure in a fermentation rather than a finished-bottle context,
+and any account of what dissolved CO2 does to perceived acidity and aroma delivery.
+
+### Beat 4 — yeast as a domesticated organism — **empty**
+
+**Nothing.** The nearest candidate is `this-podcast-will-kill-you` at
+3246.68 → 3272.84 (26 s), which contains the domestication clause and nothing else:
+*"it's thought that some strains of yeast associated with wine and sake production
+might have been domesticated over twelve thousand years ago."* At 26 s it is below the
+hard floor, and the beat needs the other half — that domestication became *repeatable*
+once the organism could be isolated.
+
+**What is missing.** Pasteur, Hansen, 1883, pure culture as what changed production
+from something that happened to something that could be repeated, and the species
+distinctions the beat asks for by name — `cerevisiae`, `pastorianus` as a hybrid,
+`Brettanomyces`, the lactose-fermenting yeasts beat 25 needs. `pasteur` returns five
+hits in the honey episode, all about pasteurising honey, and one in the Guinness
+episode about pasteurised beer. `saccharomyces` returns **zero** across every source
+read and every catalogue pool.
+
+**The identified fix.** `craft-beer-and-brewing-magazine-podcast--495-fermenting-expressive-hoppy-beers-with`
+(3,913 s), *"How historic brewing yeasts and modern hop chemistry shape today's
+expressive hoppy beers"*, recorded in partnership with White Labs. §10 ranks it third.
+
+### Beat 5 — the ABV ceiling — **empty**
+
+**Nothing**, and §5 of the spine ranked this fifth-hardest on the reasoning that
+practitioners *"talk around it constantly … without ever naming the constant"*. That
+is precisely what happened. `this-podcast-will-kill-you` at 4607.20 → 4646.36 gives
+the strengths without the cause: *"Historically, beer and wine averaged maybe two to
+four percent or six to twelve percent, respectively … But distilled spirits, like they
+can be incredibly alcoholic … the range was typically twenty percent to one hundred
+percent."* Two numbers on either side of a ceiling that is never mentioned.
+
+**What is missing.** The whole claim: that ethanol is toxic to the organism making it,
+that fermentations stall between 14 and 16 % whatever sugar remains, and the four
+routes past it. `tolerance` appears five times in that episode and every one is human
+tolerance. Nothing in the readable pool mentions freeze concentration, and nothing
+mentions sake's staged ferment.
+
+**This is the most expensive empty beat in the report.** Beat 5 is what makes Act IV a
+consequence rather than a new topic, and §4 of the spine marks it as load-bearing and
+small. It is narration, and the narration has to be right.
+
+### Beat 6 — free sugar versus locked starch — **empty**
+
+**Nothing.** The chemist-brewer's *"extracting sugars from malt, or barley, or malted
+barley, barley being the grain, multi being the process of converting and roasting the
+raw form of the grain into a processable form of the grain"* implies the lock without
+stating the fork, and it is inside beat 26's carrier in any case. Nothing in the
+readable pool contrasts a free-sugar feedstock with a locked one.
+
+**What is missing.** The fork itself, which is what Acts II and III are organised on:
+monosaccharides and disaccharides against starch as a polymer, why yeast lacks the
+enzymes, and the accident framing — that damaged fruit ferments itself and a barley
+field does not. Also missing is the agave third case beat 44 depends on; `agave`
+returns 0 everywhere.
+
+### Beat 7 — malting — **empty**, and the one candidate is wrong on the mechanism
+
+**Nothing usable.** SYSK How Beer Works at 1387.68 → 1422.92 describes malting as
+*"malted barley or malted grain, which is like dried and cracked and um heated so that
+the sugars start to come out a little more. Um. I guess caramelized is another way to
+put it."* Malting is enzymatic, not caramelising: the sugars do not "come out", they
+are made by amylases the grain manufactures. The passage is beat 7's subject with beat
+7's mechanism replaced by a wrong one, and beat 7's reject line is *"brewery-tour
+narration of steps with no mechanism"*.
+
+**What is missing.** Alpha- and beta-amylase and the fact that one dies at the
+temperature the other prefers, the kiln as the flavour and colour step, diastatic
+power, and above all the mash-temperature dial explained causally and used to predict
+a finished drink. `amylase` returns **zero** across every source read; `diastatic`
+returns zero across both catalogue pools.
+
+### Beat 8 — koji and the mould route — **empty**
+
+**Nothing, and nothing in this catalogue could change it.** `koji` 0, `aspergillus` 0,
+`nuruk` 0, `makgeolli` 0, `huangjiu` 0. The word `mold` returns three hits in the
+honey episode, all about mould spoiling honey, and one in the beer episode. There is no
+East Asian brewing material in the catalogue in any form, which also settles beats 32,
+33, 47 and 48.
+
+### Beat 9 — saliva, heat and bought enzymes — **empty**
+
+**Nothing.** §5 ranked this second-hardest and the reasoning holds: three narrow
+mechanisms with no natural interview home. `saliva` and `salivary` return zero across
+every source read; `enzyme` returns eleven hits in the pharmacology episode, all about
+human enzymes, and four in the honey episode, all about bee enzymes.
+
+### Beat 10 — the flavour is in the by-products — **empty**
+
+**Nothing.** The closest the readable pool comes is inside beat 30's carrier, where the
+brewer says a barrel's resident organisms *"could have a different effect on on your
+beer"* and can give *"an undesirable flavor"* — flavour from an organism rather than
+from the ferment's conditions, and committed to another beat.
+
+**What is missing.** Named compounds and their causes: isoamyl acetate and banana,
+4-vinyl guaiacol and clove, diacetyl and what conditioning does to it, fusel alcohols
+and temperature. `ester`, `diacetyl`, `fusel` and `phenol` return **zero** across every
+source read. This is the beat that lets a listener predict flavour from process for the
+rest of the Foray, and there is no tape for it at all.
+
+### Beat 11 — distillation concentrates, and stops — **empty**, and this is §5's predicted near-miss
+
+**Nothing**, and the two candidates both assert the picture the beat exists to correct.
+SYSK How Moonshine Works, 543.52 → 565.84: *"the alcohol evaporates, pressure builds
+up, and the alcohol steam is forced through an arm which is a caparm"*, then a tour of
+the thump keg and the worm. SYSK's gin episode, 1886.56 → 1894.12: *"you boil your mash
+uh and the alcohol boil that off."*
+
+Beat 11 asks for *"a correction of the 'the alcohol boils off first' picture, since
+that picture is wrong in a way that matters"* and rejects *"still tours"*. The catalogue
+offers the wrong picture twice and a still tour once. §5 predicted this beat would
+attract *"plenty of near-tape … which is the most dangerous kind of near-miss because
+it will look like a hit."* It is the prediction this pass confirms most cleanly, and the
+verdict is empty rather than thin because the near-tape is not partial — it is
+opposite.
+
+**What is missing.** Vapour composition rather than one liquid boiling and the other
+not; the azeotrope, its approximate composition and what has to be done to pass it; and
+freeze concentration as the contrast. `azeotrope` returns 0 in both catalogue pools and
+0 in every transcript read.
+
+### Beat 12 — pot versus column — **thin**
+
+**Chosen:** SYSK Everything You Ever Wanted to Know About Gin, band
+**1870.40 → 1985.72 (115.3 s)**. In on *"Flash forward to the eighteen hundreds
+eighteen thirty and the invention of the continuous still came about"*; out on *"…which
+meant that you could produce chin with a much purer gin. That eventually evolved into
+London dry gin."*
+
+**Why it advances beat 12.** All three of the beat's parts are in one span. The batch
+limitation: *"a traditional copper pot still, which means that you you can do one thing
+at a time … but then you gotta start all over again"*, with the consequence that
+*"your a b V is going to be pretty low."* The stages mechanism, loosely but
+recognisably: *"these continuous skills or coffee stills after the man who invented
+them, it's like the spirit rises through increasingly higher up stages and it's
+reheated and heated and heated, and so it becomes pure and pure the higher up it
+goes."* And the economic consequence, which the beat calls plain: *"because you could
+get pure alcohol um to use as the base spirit for gin, you had less of a funky, foul,
+nasty taste that you needed to cover up with stuff like Botanicals or sugar or
+turpentine."*
+
+**Why it is thin and not strong.** Register first — two hosts working from an article.
+Then the attribution: the beat asks for *"dates and attribution for the column with the
+patents named"* and this gives one date and one name, Coffey, where the spine's own
+account runs Adam and Bérard in 1801 and 1806, Cellier-Blumenthal's 1813 patent, then
+Stein in 1826 and Coffey in 1830. Treating 1830 and Coffey as *the* invention is the
+tidy version the spine's §8 corrected in the other direction. Also missing: reflux, the
+lyne arm, plates as repeated condensation and re-evaporation stated as such, and hybrid
+stills. The same span also contains beat 11's rejected sentence, which is a reason to
+trim the in-point carefully.
+
+### Beat 13 — cuts, methanol and the folklore — **empty**, and the only tape says the opposite
+
+**Nothing**, and this is the clearest rejection in the report. SYSK How Moonshine
+Works, 814.64 → 840.60, is the only passage in the readable pool about the hazard, and
+it is beat 13's claim inverted: *"these these impurities are called congeners, right,
+And what those are, it's it's just to catch all name for any impurity that's a complex
+compound, like a polyphenol um or histamine, you know, those things that give you
+allergic reactions. These can easily end up in your batch. And this is why people often
+die from drinking moonshine."*
+
+Beat 13's claim is that distillation *redistributes* methanol rather than removing it,
+that the amount depends on the feedstock's pectin, and that *"the mass poisonings that
+make the news are almost always industrial methanol added to a drink rather than a
+badly run still."* The tape says people die from congeners in home-distilled spirit.
+That is not a partial version of the beat, it is the folklore, and admitting it would
+forfeit exactly the credibility §3 of the spine says Act I spends its runtime earning.
+
+**What is missing.** The run profile and what comes over when, pectin methylesterase as
+the origin of methanol in fruit washes, the legal limits per litre of pure alcohol for
+stone-fruit spirits, and the ethanol-as-antidote mechanism. Beat 46 depends on all of
+it, and beat 46 is empty too.
+
+### Beat 14 — maturation is four processes — **thin**, on two segments, and neither is the four
+
+**Chosen:** `odd-lots` — The White Oak Shortage That Could Ruin the Bourbon Industry,
+band **302.64 → 398.80 (96.2 s)**. In on *"Yeah, so this is where it gets really fun"*;
+out on *"…the barrels are expensive and very good."*
+
+**Why it advances beat 14.** A forest-health researcher gives the physical reason the
+species is not interchangeable, which is a real mechanism and one the beat's evidence
+list asks for: *"wood fibers are just like long straws, and if you put liquids in those
+straws, you can actually drink through straw the straws … But if you try to use white
+oak as a straw, it doesn't work because white oak has these little Bubbles in the wood
+that just develop after the tree is done using those straws to move water up and down
+the tree, and so those bubbles prevent liquid from escaping from the barrel itself."*
+He then names the three woods that can hold a long-aged spirit — *"There's French yoak,
+Hungarian oak, and white oak"* — and *"quircus elbow"* for *Quercus alba*, and closes
+the first-fill question: *"you can only use that barrel once. After they use the bourbon
+barrel, they usually sell it off to other, you know, liquor distillers because the
+barrels are expensive and very good."*
+
+**Second segment:** `around-the-house-eric-g` — The Whiskey Hour, band
+**557.91 → 646.09 (88.2 s)**. In on *"It Scotland, the Scotch whiskey industry wouldn't
+exist if it weren't for the American bourbon industry"*; out on *"…expand our horizons
+in the whiskey business."* This is the other half of the previous-contents variable, and
+it is unexpectedly precise for a home-improvement show: ex-bourbon casks shipped
+overseas because they cannot be reused domestically, then *"Oloroso sherry casks and PX
+sherry casks and rum casks and you name it to add what's called a finishing cask. So it
+spends 12 years in ex bourbon, then it goes for another two years in ex Caribbean rum
+cask. And it picks up all of those flavors and nuances."* Beat 14 is one of §4a's twelve
+two-segment beats and these two advance different parts of one claim, which is the
+condition §4a sets. **It is the only two-segment beat in this report.**
+
+**Why the beat is still thin.** Neither segment contains any of the four processes.
+There is no extraction chemistry — `vanillin`, `lactone` and `tannin` return zero across
+both — no oxidation through the staves, no subtractive role for char, and no evaporative
+loss. The beat's own strong signal is *"the subtractive role of char stated explicitly,
+because it is the one usually left out"*, and it is left out here too. Also absent:
+surface-area-to-volume as the driver of speed, and the honest statement that maturation
+has an optimum after which it degrades.
+
+**One error travels with the first segment.** The same speaker introduces bourbon as
+*"fifty one percent corn that's distilled three times and put into barrels at eighty
+proof"*. Bourbon has no triple-distillation rule and its maximum barrel entry strength
+is 125 proof. The band proposed above starts after that sentence, deliberately, and
+anyone re-cutting this episode should keep it out.
+
+### Beat 15 — refusing to mature, and other vessels — **empty**
+
+**Nothing.** §5 ranked this fourteenth-hardest on the grounds that it needs a producer
+arguing against wood, "a real position but a quiet one". In this catalogue it is a
+silent one: `stainless` returns one hit, inside beat 30's carrier and about cleaning a
+fermenter, and `qvevri`, `tinaja`, `amphora` and `concrete` return zero. The
+whiskey-hour episode argues the opposite position at length.
+
+### Beat 16 — the classification key — **empty by design**
+
+**Nothing, correctly.** §5 ranked this first-hardest and called it *"designed as
+narration … the most important beat in the Foray and almost certainly the least
+sourceable."* Confirmed. Nothing in the readable pool classifies drinks by process
+across families. The two candidates that come closest to cross-family talk are the
+pharmacology episode, which classifies by strength, and the gin episode, which does
+make beat 42's point that gin is a flavoured neutral spirit rather than a grain
+distillate — and that sentence is committed to beat 42.
+
+**This is a good outcome rather than a bad one**, and it is the cleanest vindication of
+source-blindness in the report: the beat the whole Foray is for is the beat no tape
+could supply, and an outliner who had read the catalogue first would never have written
+it.
