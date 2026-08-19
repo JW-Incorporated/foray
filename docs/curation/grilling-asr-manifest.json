@@ -1,9 +1,25 @@
 {
   "version": 1,
   "generated_at": "2026-08-17",
+  "revised_at": "2026-08-18",
   "subject": "Foray #1 — grilling & world barbecue",
   "purpose": "Prioritised ASR work order, re-sorted against the 40-beat spine (docs/curation/grilling-history-spine.md) on 2026-08-17. Priority 1 is the material that would move a CHAIN beat off empty, Act IV first. That ordering is the whole point: 19 of the 24 empty beats are in chains and 5 are in the fan, and a hole in a chain reads to a listener as a missing link while a hole in a fan reads as a change of subject. So a fan hole is cheap and a chain hole is not, and CPU should be spent accordingly. Rows that buy an already-strong beat, that buy no beat at all, or that are unusable under the English-only ruling carry `priority: null` and a `blocked_by` reason. They are kept, never pruned.",
+  "revision_2026_08_18": {
+    "entry_point": "docs/curation/grilling-catalogue-tape-search.md",
+    "what_changed": "Two things, and the first is the one a reader should hold on to. (1) EVERY ROW THAT CARRIED A PRIORITY HAS NOW BEEN TRANSCRIBED. All nine queued episodes were spent across the 2026-08-17 and 2026-08-18 passes, so this work order contains no remaining ASR work at all and `queued_episodes` is 0. (2) The search therefore moved off this manifest and onto data/discover.json's 1,534 items, and the result is recorded in `catalogue_search_2026_08_18` below.",
+    "the_headline": "Act IV cannot be closed from the catalogue. None of its seven empty chain beats — 16, 17, 20, 25, 26, 28, 29 — has any candidate in data/discover.json, because the catalogue holds no American barbecue history of any kind. That is a buy-or-make finding, not a keep-transcribing one.",
+    "what_the_nine_bought": "Nine episodes and about 5.4 hours of audio moved five beats, all of them from one episode (The Grill Coach). The other eight moved none. Every judgement this manifest recorded in advance held, which is why the recommendation below is about stops rather than about sort order.",
+    "the_rule_now_applied": "A row this manifest judges would not move a beat carries `stop: true` and `blocked_by: \"stop\"`, not a low priority. That is grilling-history-coverage.md §9's own recommendation, arrived at after a seven-episode pass that moved nothing: 'a row whose `beat_verdict` is `strong` or whose `why_this_priority` says depth rather than rescue should be treated as a stop, not a low priority — the manifest already contains the judgement, and priority ordering is the wrong instrument for expressing \"do not buy this.\"'"
+  },
+  "stop_convention": {
+    "stop: true": "Do not buy this row. It is kept, never pruned, and the reason is stated in `stop_reason`. A stop is not a rejection of the episode as listening — see `label_never_exclude`.",
+    "blocked_by: \"spent\"": "Already transcribed. `outcome` records what it moved, which for eight of the nine is nothing.",
+    "blocked_by: \"stop\"": "Never transcribed and should not be. The row failed a specific beat's own reject line, and `stop_reason` names the beat and the line.",
+    "priority: null": "Carries no claim on CPU. Counted over `episodes` by `blocked_by`: EIGHT for the english-only ruling, six because no beat in the spine covers them, one as superseded by a re-release, and nine as spent — 24, which is the whole array and matches `totals.unqueued_breakdown`. Note that TEN rows are non-English (5 es, 2 ko, 2 zh-Hant, 1 pt-BR) and only eight of them are barred BY the language ruling: the two rows that fail first are the two CHURRASCO rows — Paladar Distinto and The Meat Nerds — because the spine has no beat for churrasco, so they are barred by subject before language is reached. Ten is the language count, eight is the block count, and an earlier draft of this field added the two together.",
+    "label_never_exclude": "Nothing here is removed from data/discover.json or from any playlist. A stop says an episode does not advance a beat of THIS Foray; several of the stops below are good recommendations for other subjects and are wanted as such."
+  },
   "companions": [
+    "docs/curation/grilling-catalogue-tape-search.md — the 2026-08-18 catalogue search: what data/discover.json holds, what it does not, and the four rows worth buying",
     "docs/curation/catalogue-broadening.md — where the new sources came from, and which traditions stayed unsourceable",
     "docs/curation/grilling-foray-passages.md — the 8 passages that already exist (8:21)",
     "docs/curation/grilling-foray-sourcing.md — the original sourcing pass"
@@ -28,22 +44,25 @@
   "excluded_by_instruction": [
     "The BBQ Central Show — already being transcribed by the American-arc workstream. Note that data/transcript-availability.json records 1,858 episodes on that feed of which 12 carry a <podcast:transcript> tag, and only one is on plot: the Moss BBQ School episode already segmented.",
     "The British Food History Podcast — already being transcribed. Separately, and more decisively: of the 13 bfh-* segments in the pool, exactly one survived stage 2's beat-level gate and only as an alternate. This is the drift the founder named. Nothing here is queued for this Foray.",
-    "Stuff You Should Know — A Lip-Smacking Look at Barbecue. Ships a timed transcript and needs no ASR, and is EXCLUDED on the register rather than on availability: two hosts working from an article, no guest, no sourced expertise, and it contains the line that barbecue 'kind of transcends race and class' twenty seconds after its Jim Crow passage — which is the harmony version beat 23 exists to reject. Admitting a source the narrative refutes is the failure #226 was opened to fix. This returns beats 7, 19, 24 and 30 to empty and to narration."
+    "Stuff You Should Know — A Lip-Smacking Look at Barbecue. Ships a timed transcript and needs no ASR, and is EXCLUDED on the register rather than on availability: two hosts working from an article, no guest, no sourced expertise, and it contains the line that barbecue 'kind of transcends race and class' twenty seconds after its Jim Crow passage — which is the harmony version beat 23 exists to reject. Admitting a source the narrative refutes is the failure #226 was opened to fix. This returns beats 7, 19, 24 and 30 to empty and to narration.",
+    "NOTE ADDED 2026-08-18, and it applies to the first entry above rather than replacing it. The BBQ Central Show's exclusion is a WORKSTREAM note — 'already being transcribed' — and not a content rejection, and data/discover.json now holds eight of its episodes rather than the one this entry knew about. Three of the eight are ranked candidates in `identified_not_yet_measured` and five are stops in `catalogue_search_2026_08_18.rows_marked_stop`. This is the same correction this file already made for Gastropod; see `catalogue_search_2026_08_18.discrepancies_found_and_left_as_found`."
   ],
   "read_this_before_spending_cpu": {
+    "queue_is_empty": "READ THIS FIRST. Every row in `episodes` is now a stop: all nine that ever carried a priority have been transcribed and the other fifteen are barred, beatless or superseded. There is no ASR work left in this file. The rows worth buying next are in `identified_not_yet_measured`, they came from data/discover.json rather than from here, and every one of them needs ad probes before it needs CPU.",
     "language_gate": "SETTLED, not open. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) with the narrator ruling: non-English tape is not shipped, and the narrator describes those traditions in English instead. Ten of the 24 rows here are non-English and are therefore unqueued with `blocked_by: english-only-ruling` — 3.43 h of audio that no longer has a claim on CPU. An earlier draft of the coverage report and catalogue-broadening.md §3 both still frame this as unresolved; they are wrong and reconciling them would stop the next agent re-deciding it.",
     "unfillable_slots": "braai (beat 13) and Filipino lechon have no source at any budget after a 4.71M-feed search. The mangal/kebab root of beat 9 has one candidate and it fails the CONTENT gate, which neither ad measurement nor ASR fixes. Beat 8 (the steppe) has no source found and none proven absent. Tandoor (beat 10) is NO LONGER in this list: ADR-0008 removed the ad gate the earlier verdict rested on. See catalogue-broadening.md §4, whose §0 summary still calls tandoor unsourceable and is stale.",
     "spend_this_first": "Reading beats transcribing. Two of the four identified Act IV sources may already ship transcripts. Reading SYSK's is what produced four verdict changes in stage 2 for one fetch — and then the founder ruled the register out, which is itself the argument for reading before spending: the cheap check is what tells you whether the expensive one is worth it."
   },
   "totals": {
     "episodes_in_manifest": 24,
-    "queued_episodes": 9,
-    "queued_audio_seconds": 19344,
-    "queued_audio_hours": 5.37,
-    "unqueued_episodes": 15,
-    "unqueued_audio_seconds": 17022,
-    "unqueued_audio_hours": 4.73,
+    "queued_episodes": 0,
+    "queued_audio_seconds": 0,
+    "queued_audio_hours": 0,
+    "unqueued_episodes": 24,
+    "unqueued_audio_seconds": 36366,
+    "unqueued_audio_hours": 10.1,
     "unqueued_breakdown": {
+      "spent": 9,
       "english-only-ruling": 8,
       "no-beat-in-spine": 6,
       "superseded-by-the-re-release": 1
@@ -69,14 +88,17 @@
         "audio_hours": 2.42,
         "cpu_hours_at_1.1x": 2.66,
         "cpu_hours_at_0.475x_observed": 5.1
-      }
+      },
+      "_note": "SUPERSEDED 2026-08-18. Describes the queue as it stood before every row in it was transcribed. Kept for provenance so the cost of the pass can be read against what it bought."
     },
-    "cost_note": "The rate that matters is the observed one. tools/transcribe measured 1.33x for base.en and the live whisper queue is running at 0.475x because of contention, so an hour of audio is about 2.1 CPU-hours in practice, not 1.1. The point of the re-sort is that it makes the queue much shorter as well as better ordered: ten non-English rows and four no-beat rows leave the queue entirely, and priority 1 is now three episodes rather than eight.",
-    "what_priority_1_costs_and_buys": "Two measured rows here total 6,772 s (1.88 h, about 4.0 CPU-hours observed), and the third (Gastropod, ~49 min) is in identified_not_yet_measured pending a probe. For that, up to seven chain beats move off empty — 18, 20, 21, 22, 38 and 31, plus beat 2 — against the OLD priority 1, which was 3.43 h of audio and moved none."
+    "cost_note": "The rate that matters is the observed one. tools/transcribe measured 1.33x for base.en and the live whisper queue is running at 0.475x because of contention, so an hour of audio is about 2.1 CPU-hours in practice, not 1.1. The point of the re-sort is that it makes the queue much shorter as well as better ordered: ten non-English rows and four no-beat rows leave the queue entirely, and priority 1 is now three episodes rather than eight. SUPERSEDED as a plan on 2026-08-18: the queue it describes has been fully drained.",
+    "what_priority_1_costs_and_buys": "SUPERSEDED 2026-08-18, and the forecast below is wrong in one specific and important way: BEAT 20 DID NOT MOVE. It is still one of Act IV's seven open holes — the Goucher episode bought for it contained none of the fourteen fire terms, and the jerk episode was already in the pool, already cut, and already carrying beat 15 at its two-segment maximum. What the nine queued rows actually bought is five beats (18, 21, 22, 24 and 38), all from The Grill Coach; see each row's `outcome`. Kept for provenance rather than corrected, per the scorecard convention. ORIGINAL TEXT: Two measured rows here total 6,772 s (1.88 h, about 4.0 CPU-hours observed), and the third (Gastropod, ~49 min) is in identified_not_yet_measured pending a probe. For that, up to seven chain beats move off empty — 18, 20, 21, 22, 38 and 31, plus beat 2 — against the OLD priority 1, which was 3.43 h of audio and moved none.",
+    "queue_state_2026_08_18": "EMPTY. All nine rows that ever carried a priority have been transcribed — two on 2026-08-17 and seven on 2026-08-18 — and the remaining fifteen are barred, beatless or superseded. There is no row in `episodes` left to buy. The four rows worth buying next are in `identified_not_yet_measured` and came from data/discover.json, not from here.",
+    "what_the_whole_queue_bought": "Five beats, all from one episode. 19,344 s of queued audio (5.37 h, about 11 CPU-hours at the observed 0.475x) produced six segments on beats 18, 21, 22, 24 and 38, and eight of the nine episodes produced none. The four questions the eight retired — beat 14's 'probably under-cut', beat 2's 'blocked on timings', beat 12's 'probably would not fill it' and beat 3's mechanism — are worth having and are not beats."
   },
   "episodes": [
     {
-      "priority": 1,
+      "priority": null,
       "arc_slot": "american-birth-westward",
       "tradition": null,
       "show": "The Grill Coach",
@@ -103,10 +125,15 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "all five empty",
-      "buys": "The largest single move available. Described as covering indigenous roots, the shift to what we now call barbecue, the African American contribution, and the present — beats 18, 20, 21, 22 and 38. Beat 21 is the load-bearing beat of the whole spine and beats 20/21/22/38 are the authorship weight the spine calls the honest 12 %. Measured ad-free at ratio 1.0, so it needs ASR and nothing else: no probes, no locate step. Adrian Miller is named in the spine itself as the archetype of the register wanted."
+      "buys": "The largest single move available. Described as covering indigenous roots, the shift to what we now call barbecue, the African American contribution, and the present — beats 18, 20, 21, 22 and 38. Beat 21 is the load-bearing beat of the whole spine and beats 20/21/22/38 are the authorship weight the spine calls the honest 12 %. Measured ad-free at ratio 1.0, so it needs ASR and nothing else: no probes, no locate step. Adrian Miller is named in the spine itself as the archetype of the register wanted.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-17",
+      "outcome": "MOVED FIVE BEATS — 18, 21, 22 and 38 from empty to strong, and 24 from thin to strong. Six segments authored, zero rejected, zero flagged. The single most valuable row this manifest ever held, and it sat at priority 3 until the spine re-sort found it.",
+      "stop_reason": "Spent and fully mined. Beats 18, 21, 22, 24 and 38 are strong on it and M4's 25 % concentration cap already refuses to admit all six of its segments to one Foray, so more of this episode buys held-back tape rather than a longer Foray."
     },
     {
-      "priority": 1,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "jerk / Caribbean",
       "show": "The Moreish Podcast",
@@ -132,10 +159,15 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "20 empty, 2 thin, 15 strong",
-      "buys": "The best unread candidate for beat 20, the West African inheritance — the beat the spine added in revision specifically so that authorship does not rest on hours worked. Goucher's work is on African and Caribbean transmission, which is the exact register beat 20 asks for and the thing none of the Act IV sources reaches back across the Atlantic to cover. Likely also gives beat 2 a mechanism cut and beat 15 more depth."
+      "buys": "The best unread candidate for beat 20, the West African inheritance — the beat the spine added in revision specifically so that authorship does not rest on hours worked. Goucher's work is on African and Caribbean transmission, which is the exact register beat 20 asks for and the thing none of the Act IV sources reaches back across the Atlantic to cover. Likely also gives beat 2 a mechanism cut and beat 15 more depth.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-17",
+      "outcome": "MOVED NOTHING. Read end to end; zero occurrences of all fourteen fire and technique terms in 6,920 words. See grilling-history-coverage.md §5, beat 20.",
+      "stop_reason": "Spent on beat 20 and the negative is clean. The beat's problem is subject matter, not availability: a Caribbean food-history show is not where West African fire technique in the American South lives."
     },
     {
-      "priority": 2,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "jerk (Jamaica)",
       "show": "The Moreish Podcast",
@@ -160,10 +192,15 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "2 thin, 15 strong",
-      "buys": "Beat 15 is already carried by two cuts from this episode, so this is not depth for its own sake: the episode's publisher transcript is UNTIMED, which is precisely why beat 2's preservation passage cannot be cut separately from beat 15's carrier today. A timed transcript would let beat 2 have its own cut instead of double-booking one passage across two beats — moving a chain beat in Act I from thin toward carried."
+      "buys": "Beat 15 is already carried by two cuts from this episode, so this is not depth for its own sake: the episode's publisher transcript is UNTIMED, which is precisely why beat 2's preservation passage cannot be cut separately from beat 15's carrier today. A timed transcript would let beat 2 have its own cut instead of double-booking one passage across two beats — moving a chain beat in Act I from thin toward carried.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-18",
+      "outcome": "MOVED NOTHING, and it is the one row in the batch with a specific falsifiable hypothesis, which this pass falsified. It was bought because 'a timed transcript would let beat 2 have its own cut instead of double-booking one passage across two beats'. The timings arrived and timings were never the blocker: every usable preservation sentence sits inside the two cuts that already exist, and the mechanism beat 2 is actually about is absent from the episode at every timestamp.",
+      "stop_reason": "Spent. Already in the pool as `moreish-jerk-jamaica`, already cut twice, and already beat 15's carrier at the two-segment maximum. The stated purchase for beat 2 does not complete."
     },
     {
-      "priority": 2,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "asado (Argentina)",
       "show": "BBQ RADIO NETWORK",
@@ -189,10 +226,15 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "5 strong but blocked, 14 strong, 21 empty",
-      "buys": "Two specific things, not general depth. (1) Beat 5 is currently narration NOT for want of tape but because M3 forbids it: its cut sits at 1437 s and beat 14's sit at 700 s and 1205 s, so in spine order they would play backwards. A beat-14 cut from after 1437 s would let both beats play. (2) The asador as a recognised social office is nowhere in the existing eight cuts, and it is the contrast beat 21 needs — the same job honoured here and coerced there. 2,414 s of an English-speaking asador, local ASR gone, demonstrably under-cut."
+      "buys": "Two specific things, not general depth. (1) Beat 5 is currently narration NOT for want of tape but because M3 forbids it: its cut sits at 1437 s and beat 14's sit at 700 s and 1205 s, so in spine order they would play backwards. A beat-14 cut from after 1437 s would let both beats play. (2) The asador as a recognised social office is nowhere in the existing eight cuts, and it is the contrast beat 21 needs — the same job honoured here and coerced there. 2,414 s of an English-speaking asador, local ASR gone, demonstrably under-cut.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-18",
+      "outcome": "MOVED NOTHING, and retired an open question worth having: beat 14 is NOT under-cut. The eight existing cuts took the beat, the asador-as-social-office material is not in the tape at all, and 13 cuts' 26 anchor phrases re-verified at 0.00 s drift.",
+      "stop_reason": "Spent. Already in the pool as `bbqrn-argentina-open-fire` with eight cuts carrying beats 5, 14 and 6's weaker candidate. The interstitial tape is mailbag, biography and product."
     },
     {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "fire-origins",
       "tradition": null,
       "show": "Origin Stories",
@@ -216,10 +258,15 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "strong, and the only over-supplied beat in the report",
-      "buys": "Depth on the one beat that already has more tape than it can use. Beat 1 has three strong candidates and is deliberately capped at two. Nothing here moves a beat off empty; the local ASR is gone, so this is a restoration job, not a coverage job."
+      "buys": "Depth on the one beat that already has more tape than it can use. Beat 1 has three strong candidates and is deliberately capped at two. Nothing here moves a beat off empty; the local ASR is gone, so this is a restoration job, not a coverage job.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-18",
+      "outcome": "MOVED NOTHING, as predicted. Beat 1 is the report's only correct over-supply prediction and the two-segment cap held against more good beat 1 material.",
+      "stop_reason": "Spent. Already in the pool as `origin-stories-cooking-human` with three cuts, one held as an alternate. Everything after 1,027 s is a sponsor-funded bonus segment on modern nutrition and is off-spine besides."
     },
     {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "pre-modern-hearth",
       "tradition": null,
       "show": "Eat This Podcast",
@@ -243,10 +290,15 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "strong",
-      "buys": "A pre-ceramic counterpoint to beat 1, which is already carried. Boiling in pots is not a fire-and-smoke claim, and the spine's §6b excludes general culinary history from being a beat at all."
+      "buys": "A pre-ceramic counterpoint to beat 1, which is already carried. Boiling in pots is not a fire-and-smoke claim, and the spine's §6b excludes general culinary history from being a beat at all.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-18",
+      "outcome": "MOVED NOTHING, on a clean zero of all fourteen terms. Predicted to fail and it failed, which closes the question rather than leaving it open.",
+      "stop_reason": "Spent. Its subject is pots — boiling, dairy fats, aquatic biomarkers — which is the technology beat 1's fire argument is contrasted against, not an instance of it."
     },
     {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "jerk / Caribbean",
       "show": "The Moreish Podcast",
@@ -270,10 +322,15 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "thin",
-      "buys": "Possible beat-2 material — salt and preservation — but the beat wants the mechanism (water activity, the pellicle, phenols and organic acids) and a spirituality episode is not known to contain it. Speculative; behind the two Moreish rows above."
+      "buys": "Possible beat-2 material — salt and preservation — but the beat wants the mechanism (water activity, the pellicle, phenols and organic acids) and a spirituality episode is not known to contain it. Speculative; behind the two Moreish rows above.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-18",
+      "outcome": "MOVED NOTHING, and this row's own priority note called it right in advance: '55:44 for material only tangentially about fire.' It turned out to contain no fire vocabulary at all in 8,010 words.",
+      "stop_reason": "Spent. It is 56 minutes on salt as commodity, labour and spiritual identity, and there is no salt beat in the spine. Beat 2's subject is smoke specifically — see grilling-history-coverage.md §8's recommended §6b addition, 'preservation without fire'."
     },
     {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "Korean BBQ",
       "show": "Heritage Food Stories",
@@ -297,10 +354,15 @@
       ],
       "beat_structure": "fan",
       "beat_verdict": "empty",
-      "buys": "Little, and this is a demotion from priority 1 on the merits. It is the only English candidate for beat 12, but on its stated subject it does not advance the beat: the erasure of a national cuisine under colonisation is a different claim from table-top grilling, the diner as cook, and the recent economics of pork belly. Transcribing it would probably not fill beat 12."
+      "buys": "Little, and this is a demotion from priority 1 on the merits. It is the only English candidate for beat 12, but on its stated subject it does not advance the beat: the erasure of a national cuisine under colonisation is a different claim from table-top grilling, the diner as cook, and the recent economics of pork belly. Transcribing it would probably not fill beat 12.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-18",
+      "outcome": "MOVED NOTHING, and the coverage report's prediction held exactly. The entire Korean-grill content is 7.5 seconds inside a closing list of dishes, which is below the 30 s floor and carries no history, no economics and no diner-as-cook mechanism.",
+      "stop_reason": "Spent. Its 'best minutes-per-slot ratio of any English row' argument was the one case where the priority note pointed the wrong way and the beat entry pointed the right way. Beat 12 stays empty by ruling and is a permanent narration beat."
     },
     {
-      "priority": 3,
+      "priority": null,
       "arc_slot": "world-traditions",
       "tradition": "jerk / Caribbean",
       "show": "The Moreish Podcast",
@@ -323,7 +385,12 @@
       ],
       "beat_structure": "fan",
       "beat_verdict": "strong",
-      "buys": "Depth on a beat already carried by two cuts. No empty beat moves."
+      "buys": "Depth on a beat already carried by two cuts. No empty beat moves.",
+      "blocked_by": "spent",
+      "stop": true,
+      "transcribed_on": "2026-08-18",
+      "outcome": "MOVED NOTHING, as this row's own note predicted: 'Depth on a slot priority 1 already opens.' Zero occurrences of jerk, barbecue, barbacoa, smoke or pit in an episode titled More Than Jerk Chicken.",
+      "stop_reason": "Spent. It is a national food-history survey, which grilling-history-coverage.md §8 recommends naming in the spine's never-a-beat list as its own shape: it reads as on-topic because it names a tradition the fan contains, and keyword matching cannot tell a survey from an argument."
     },
     {
       "priority": null,
@@ -350,7 +417,9 @@
       "beat_structure": "chain",
       "beat_verdict": "strong",
       "blocked_by": "superseded-by-the-re-release",
-      "buys": "Nothing the re-release does not buy with more room to cut. The old order already said to prefer the re-release; this records it as unqueued rather than as a third-tier row."
+      "buys": "Nothing the re-release does not buy with more room to cut. The old order already said to prefer the re-release; this records it as unqueued rather than as a third-tier row.",
+      "stop": true,
+      "stop_reason": "Superseded by the re-release row, which is the version already in the pool."
     },
     {
       "priority": null,
@@ -376,7 +445,9 @@
       "beat_structure": "none",
       "beat_verdict": "no beat exists",
       "blocked_by": "no-beat-in-spine",
-      "buys": "Nothing in this Foray. The spine has no Santa Maria beat — the American regional coverage stops at the four styles the founder named (Texas, the Carolinas, Kansas City, Memphis). This was priority 1 in the old order, which is the clearest single symptom of a queue sorted against the six arc slots rather than against the spine. Kept in the catalogue for playlists."
+      "buys": "Nothing in this Foray. The spine has no Santa Maria beat — the American regional coverage stops at the four styles the founder named (Texas, the Carolinas, Kansas City, Memphis). This was priority 1 in the old order, which is the clearest single symptom of a queue sorted against the six arc slots rather than against the spine. Kept in the catalogue for playlists.",
+      "stop": true,
+      "stop_reason": "No beat in the 40-beat spine covers its subject. Adding one because tape exists is the reasoning #226 exists to forbid."
     },
     {
       "priority": null,
@@ -402,7 +473,9 @@
       "spine_beats": [],
       "beat_structure": "none",
       "beat_verdict": "empty",
-      "buys": "Brazilian churrasco is not a stop in the spine's fan — the eight stops are the steppe, the skewer family, the tandoor, yakitori, Korea, the braai, the asado and jerk — and §6b does not list it among the honest omissions either. Non-English as well, so it is blocked twice over. Kept for playlists."
+      "buys": "Brazilian churrasco is not a stop in the spine's fan — the eight stops are the steppe, the skewer family, the tandoor, yakitori, Korea, the braai, the asado and jerk — and §6b does not list it among the honest omissions either. Non-English as well, so it is blocked twice over. Kept for playlists.",
+      "stop": true,
+      "stop_reason": "No beat in the 40-beat spine covers its subject. Adding one because tape exists is the reasoning #226 exists to forbid."
     },
     {
       "priority": null,
@@ -430,7 +503,9 @@
       ],
       "beat_structure": "fan",
       "beat_verdict": "empty",
-      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude.",
+      "stop": true,
+      "stop_reason": "Barred as tape by the English-only ruling (Wyatt, 2026-08-16), which is settled rather than pending. No ASR budget changes it; the narrator describes the tradition in English instead."
     },
     {
       "priority": null,
@@ -460,7 +535,9 @@
       ],
       "beat_structure": "fan",
       "beat_verdict": "empty",
-      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude.",
+      "stop": true,
+      "stop_reason": "Barred as tape by the English-only ruling (Wyatt, 2026-08-16), which is settled rather than pending. No ASR budget changes it; the narrator describes the tradition in English instead."
     },
     {
       "priority": null,
@@ -485,7 +562,9 @@
       "beat_structure": "none",
       "beat_verdict": "no beat exists",
       "blocked_by": "no-beat-in-spine",
-      "buys": "Nothing. Indentured-labour crossover in Caribbean food is a real subject and not a beat in this spine. Kept for playlists."
+      "buys": "Nothing. Indentured-labour crossover in Caribbean food is a real subject and not a beat in this spine. Kept for playlists.",
+      "stop": true,
+      "stop_reason": "No beat in the 40-beat spine covers its subject. Adding one because tape exists is the reasoning #226 exists to forbid."
     },
     {
       "priority": null,
@@ -512,7 +591,9 @@
       "spine_beats": [],
       "beat_structure": "none",
       "beat_verdict": "empty",
-      "buys": "Churrasco has no beat, and this is Mandarin. Blocked twice over. Kept for playlists."
+      "buys": "Churrasco has no beat, and this is Mandarin. Blocked twice over. Kept for playlists.",
+      "stop": true,
+      "stop_reason": "No beat in the 40-beat spine covers its subject. Adding one because tape exists is the reasoning #226 exists to forbid."
     },
     {
       "priority": null,
@@ -540,7 +621,9 @@
       ],
       "beat_structure": "fan",
       "beat_verdict": "empty",
-      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude.",
+      "stop": true,
+      "stop_reason": "Barred as tape by the English-only ruling (Wyatt, 2026-08-16), which is settled rather than pending. No ASR budget changes it; the narrator describes the tradition in English instead."
     },
     {
       "priority": null,
@@ -567,7 +650,9 @@
       ],
       "beat_structure": "fan",
       "beat_verdict": "empty",
-      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude.",
+      "stop": true,
+      "stop_reason": "Barred as tape by the English-only ruling (Wyatt, 2026-08-16), which is settled rather than pending. No ASR budget changes it; the narrator describes the tradition in English instead."
     },
     {
       "priority": null,
@@ -592,7 +677,9 @@
       "beat_structure": "none",
       "beat_verdict": "no beat exists",
       "blocked_by": "no-beat-in-spine",
-      "buys": "Nothing in this Foray, for the same reason as the other Santa Maria row. Kept for playlists."
+      "buys": "Nothing in this Foray, for the same reason as the other Santa Maria row. Kept for playlists.",
+      "stop": true,
+      "stop_reason": "No beat in the 40-beat spine covers its subject. Adding one because tape exists is the reasoning #226 exists to forbid."
     },
     {
       "priority": null,
@@ -617,7 +704,9 @@
       "beat_structure": "none",
       "beat_verdict": "no beat exists",
       "blocked_by": "no-beat-in-spine",
-      "buys": "Nothing. Kept for playlists."
+      "buys": "Nothing. Kept for playlists.",
+      "stop": true,
+      "stop_reason": "No beat in the 40-beat spine covers its subject. Adding one because tape exists is the reasoning #226 exists to forbid."
     },
     {
       "priority": null,
@@ -645,7 +734,9 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "empty",
-      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude.",
+      "stop": true,
+      "stop_reason": "Barred as tape by the English-only ruling (Wyatt, 2026-08-16), which is settled rather than pending. No ASR budget changes it; the narrator describes the tradition in English instead."
     },
     {
       "priority": null,
@@ -672,7 +763,9 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "empty",
-      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude.",
+      "stop": true,
+      "stop_reason": "Barred as tape by the English-only ruling (Wyatt, 2026-08-16), which is settled rather than pending. No ASR budget changes it; the narrator describes the tradition in English instead."
     },
     {
       "priority": null,
@@ -699,7 +792,9 @@
       ],
       "beat_structure": "chain",
       "beat_verdict": "empty",
-      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude.",
+      "stop": true,
+      "stop_reason": "Barred as tape by the English-only ruling (Wyatt, 2026-08-16), which is settled rather than pending. No ASR budget changes it; the narrator describes the tradition in English instead."
     },
     {
       "priority": null,
@@ -726,7 +821,9 @@
       ],
       "beat_structure": "fan",
       "beat_verdict": "empty",
-      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude."
+      "buys": "Unusable in this Foray. docs/DECISIONS.md records the English-only ruling (Wyatt, 2026-08-16) together with the narrator ruling: a non-Anglophone tradition is DESCRIBED in English rather than shipped as non-English tape. This is decided, not pending, so no amount of ASR or ad budget changes it and the beat is a permanent narration beat for this Foray. The row stays here because rejected material stays in the catalogue — label, never exclude.",
+      "stop": true,
+      "stop_reason": "Barred as tape by the English-only ruling (Wyatt, 2026-08-16), which is settled rather than pending. No ASR budget changes it; the narrator describes the tradition in English instead."
     }
   ],
   "slots_no_amount_of_asr_can_fill": [
@@ -759,12 +856,12 @@
     "what_no_amount_of_asr_buys": "Beats 11 (yakitori), 12 (Korea) and 17 (barbacoa as living practice) have sources that are not in English, so they are permanent narration beats under the English-only ruling. Beat 13 (braai) and beat 9's Ottoman/mangal root have no source that passes the content gate at any budget. Beat 8 (the steppe) has no source found and none proven absent. Of the five empty fan beats only beat 10 (tandoor) could be closed by measuring and transcribing, and it is a fan hole, so it is cheap."
   },
   "identified_not_yet_measured": {
-    "_comment": "Act IV and Act V sources named in stage 2's coverage report and in docs/adr/0008-ad-tolerance-and-timestamp-precision.md that have NO measured row in `episodes` yet. Deliberately recorded without feed metadata: this pass did not fetch their feeds, and inventing a guid or an enclosure URL is how the wrong episode gets registered. Measure, then promote to a real row.",
+    "_comment": "Act IV and Act V sources named in stage 2's coverage report and in docs/adr/0008-ad-tolerance-and-timestamp-precision.md that have NO measured row in `episodes` yet. Deliberately recorded without feed metadata: this pass did not fetch their feeds, and inventing a guid or an enclosure URL is how the wrong episode gets registered. Measure, then promote to a real row. REVISED 2026-08-18: four rows below were found in data/discover.json by the catalogue search, and their metadata is SOURCED FROM THAT FILE rather than from a feed fetch — `metadata_source` says so on each. Nothing here has been ad-measured by this pass and nothing was fetched, so the promote-after-measuring rule stands unchanged.",
     "rows": [
       {
         "show": "Gastropod",
         "episode_title": "The Birth of Cool: How Refrigeration Changed Everything",
-        "approx_duration_sec": 2940,
+        "approx_duration_sec": 2955,
         "spine_beats": [
           31
         ],
@@ -772,9 +869,32 @@
         "beat_verdict": "empty",
         "intended_priority": 1,
         "ad_status": "PADDABLE. The one show in this repo probed twice by decode-and-compare (+66.1 s and +32.7 s), so about a 100 s pad against the 120 s ceiling. The `1.080 — injected` figure in grilling-foray-sourcing.md §4 is bitrate-implied AND against a different episode, and applying it here is the axis error ADR-0008 warns about; it overstated the real load by 3–6x.",
-        "blocked_by": "needs-asr",
+        "blocked_by": "needs-ad-probes",
         "buys": "Beat 31, the hinge of Act V and the mechanism that ends the necessity era Act I establishes. Beat 2 argues smoke is infrastructure and Act V assumes it stopped being so, with nothing narrating the transition, so the Foray's central irony is currently asserted at both ends and explained at neither. Publishes no timed transcript (0 of 293 episodes), so it needs ASR. Previously sat in excluded_by_instruction as 'already being transcribed', which is a workstream note, not a rejection.",
-        "outstanding_caveat": "Both Gastropod probes were the same client on the same day. Sample a different requester's copy before relying on the pad."
+        "outstanding_caveat": "Both Gastropod probes were the same client on the same day. Sample a different requester's copy before relying on the pad.",
+        "catalogue_id": "gastropod--refrigeration",
+        "metadata_source": "data/discover.json (built 2026-08-18), not a feed fetch",
+        "duration_source": "data/discover.json duration_sec (2955). Supersedes the ~2940 approximation this row carried.",
+        "enclosure_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/traffic.megaphone.fm/VMP3459876434.mp3?updated=1728068137",
+        "apple_collection_id": 918896288,
+        "apple_track_id": 1000658674702,
+        "release_date": "2024-06-11",
+        "dai_suspected": true,
+        "declared_bytes": null,
+        "why_blocked_changed": "Was `needs-asr`. data/discover.json records dai_suspected true with audio_bytes null, and the enclosure is a Megaphone file behind a Podtrac redirect, so the byte method cannot size a pad and ADR-0008's N >= 2 decode-and-compare requirement bites BEFORE the ASR does. The show's measured PADDABLE verdict (+66.1 s, +32.7 s) is on a DIFFERENT episode and carries its own caveat that both probes were one client on one day.",
+        "hook_as_catalogued": "How mechanical refrigeration rewired what humans grow, ship, and eat.",
+        "tags_as_catalogued": [
+          "refrigeration",
+          "food-science",
+          "food-history",
+          "technology",
+          "cold-chain",
+          "storytelling",
+          "explainer"
+        ],
+        "confidence": "Moderate-to-good on the beat, lower on its payload. The hook states the beat's own causal chain and the `cold-chain` tag names the rail half, but beat 31's strong signal is 'a speaker who states the functional-to-decorative transition outright' for smoking or curing, and a general refrigeration episode may never mention smoke. Realistic outcome: a cut that carries the mechanism plus a Patch that supplies the consequence — which still moves the beat off empty and still sheds a Carry.",
+        "ranked": 1,
+        "register_caveat": "NOT REGISTER-CLEARED, and this corpus cannot clear it. data/catalog.json's editorial note for the show reads 'Two science journalists dissect food chemistry and history -- a stretch pick for engineering minds.' Two journalists is nearer to the SYSK shape than to The Grill Coach's, where a named historian makes his own argument. Cutting the other way, and not decisively: the tags are food-science and food-history rather than banter, and beat 31 asks for 'a historian of food technology or of refrigeration', which is a subject a journalist can carry by interviewing one. If the founder rules the SYSK register out, whether that ruling reaches this show is a question the READ has to answer before a cut is minted."
       },
       {
         "show": "Proof (America's Test Kitchen)",
@@ -833,8 +953,255 @@
         "ad_status": "Measured 1.0470, LOCATE-REQUIRED.",
         "blocked_by": "locate-step-missing",
         "buys": "A second shot at beat 10, and possibly something for beat 9's missing Ottoman root. Both fan positions."
+      },
+      {
+        "show": "The BBQ Central Show",
+        "episode_title": "Jess Pryles Is Not Here To Fu*k Spiders!!",
+        "catalogue_id": "the-bbq-central-show--jess-pryles-is-not-here-to",
+        "metadata_source": "data/discover.json (built 2026-08-18), not a feed fetch",
+        "approx_duration_sec": 3967,
+        "duration_source": "data/discover.json duration_sec (3967)",
+        "enclosure_url": "https://mgln.ai/e/1143/media.blubrry.com/bbqcentral/content.blubrry.com/bbqcentral/07282026_hourone.mp3",
+        "apple_collection_id": 1412947410,
+        "apple_track_id": 1000778822987,
+        "release_date": "2026-07-29",
+        "dai_suspected": false,
+        "declared_bytes": 95210714,
+        "spine_beats": [
+          3
+        ],
+        "beat_structure": "chain",
+        "beat_verdict": "3 empty, and grilling-history-coverage.md §3 calls it 'a chain hole, and a load-bearing one'",
+        "intended_priority": 1,
+        "ranked": 2,
+        "ad_status": "UNMEASURED. dai_suspected is false and declared_bytes is present, so the 2-byte ranged-GET method applies — but the enclosure carries an `mgln.ai` prefix ahead of the Blubrry origin, so measure it rather than assuming the flag.",
+        "blocked_by": "needs-ad-probes",
+        "hook_as_catalogued": "Jess Pryles talks brisket science, BBQ myths, and the road to a $1M contest.",
+        "tags_as_catalogued": [
+          "barbecue",
+          "bbq",
+          "grilling",
+          "food-science",
+          "competition",
+          "interview"
+        ],
+        "buys": "Beat 3, the low-and-slow bargain, which is Act I's pivot and the mechanism every later slowness claim depends on. This is the ONLY item in the 1,534-item catalogue tagged both `barbecue` and `food-science`, and 'brisket science' plus 'myths' is the one hook in the pool that promises mechanism rather than method — a barbecue myth is normally a claim about why something works. grilling-beat-cut-plan.md §3b reached the same row independently, naming beat 3 as 'the only empty beat for which this project's own recommendation pool is on-brief'.",
+        "confidence": "Moderate, and the downside is specific. Myth-busting can deliver a beat's conclusion with none of its mechanism, which is exactly how the SYSK tough-meat passage failed this beat. The mechanism vocabulary is absent from the catalogue's metadata entirely — collagen 0, gelatin 0, maillard 0, tenderness 0 whole-word across all 1,534 items — so nothing in the metadata can promise the mechanism is on the tape. Rather better than even that one legal cut states it causally, and no higher.",
+        "what_it_does_not_buy": "Not beat 37: `brisket` reaches two items and beat 37 needs 'brisket's price history and what changed it' against a reject line of 'technique interviews with no economics'. A contest purse is not a price history. Not beat 36 either — see the stop on the Pitmasters row.",
+        "show_level_note": "data/catalog.json describes the show as 'Long-running BBQ radio show with pitmasters and technique talk -- the answer to a barbecue request.' That cuts both ways and both edges matter: 'pitmasters' is the first half of beat 3's own evidence line, which asks for 'a pitmaster or a food scientist naming the mechanism', and 'technique talk' is the phrase grilling-history-coverage.md §7 used to reject three of this show's guests. The show is the right place to look for beat 3 and the wrong place to look for any other beat, which is why these rows are scored against beat 3 alone and five siblings are stops."
+      },
+      {
+        "show": "The BBQ Central Show",
+        "episode_title": "Cigar Wrapper Talk With Mr. J; Robert Moss Brings The Mustard Based TRUTH!!",
+        "catalogue_id": "the-bbq-central-show--cigar-wrapper-talk-with-mr-j",
+        "metadata_source": "data/discover.json (built 2026-08-18), not a feed fetch",
+        "approx_duration_sec": 3776,
+        "duration_source": "data/discover.json duration_sec (3776)",
+        "enclosure_url": "https://mgln.ai/e/1143/media.blubrry.com/bbqcentral/content.blubrry.com/bbqcentral/08112026_hourone.mp3",
+        "apple_collection_id": 1412947410,
+        "apple_track_id": 1000782886572,
+        "release_date": "2026-08-12",
+        "dai_suspected": false,
+        "declared_bytes": 90636142,
+        "spine_beats": [],
+        "beat_structure": "n/a — this row buys a spine amendment, not a beat",
+        "beat_verdict": "27 thin and UNWRITABLE (grilling-history-coverage.md §10e). This row does not change that.",
+        "intended_priority": 2,
+        "ranked": 3,
+        "ad_status": "UNMEASURED, same shape as the Pryles row: dai_suspected false, declared_bytes present, `mgln.ai` prefix. Measure it.",
+        "blocked_by": "needs-ad-probes",
+        "hook_as_catalogued": "Mr. J breaks down why premium cigar wrappers are the priciest, most labor-intensive part.",
+        "tags_as_catalogued": [
+          "bbq",
+          "cigars",
+          "food",
+          "tasting",
+          "craft",
+          "interview"
+        ],
+        "buys": "grilling-history-coverage.md §8's first pending spine amendment, and nothing else. That section recommends revising beat 27's 'German settlement trace' to a disputed origin on the strength of Robert Moss saying on tape that he is skeptical of it, and it names THIS EPISODE by title as 'the place to check this before revising'. It is the Foray's own best available speaker on the one claim the tape contradicts.",
+        "confidence": "High that it settles the amendment. Equally high that it moves NO BEAT: beat 27's reason to belong is the contested-custody half — who was credited as whole-hog custodian and what changed — and a mustard-sauce origin segment does not touch custody. Note also that the hook is about cigar wrappers, so the Moss material is a second-half item of unknown length and the hook is no guide to it.",
+        "why_ranked_third": "A settled spine amendment is worth less than a closed beat and more than a speculative cut. Ranking it above a beat candidate would be scoring by subject rather than by what it unblocks.",
+        "show_level_note": "data/catalog.json describes the show as 'Long-running BBQ radio show with pitmasters and technique talk -- the answer to a barbecue request.' That cuts both ways and both edges matter: 'pitmasters' is the first half of beat 3's own evidence line, which asks for 'a pitmaster or a food scientist naming the mechanism', and 'technique talk' is the phrase grilling-history-coverage.md §7 used to reject three of this show's guests. The show is the right place to look for beat 3 and the wrong place to look for any other beat, which is why these rows are scored against beat 3 alone and five siblings are stops."
+      },
+      {
+        "show": "The BBQ Central Show",
+        "episode_title": "Steven Raichlen Is A Man On Fire! Emma Nguyen Just Wins!",
+        "catalogue_id": "the-bbq-central-show--steven-raichlen",
+        "metadata_source": "data/discover.json (built 2026-08-18), not a feed fetch",
+        "approx_duration_sec": 3627,
+        "duration_source": "data/discover.json duration_sec (3627)",
+        "enclosure_url": "https://mgln.ai/e/1143/media.blubrry.com/bbqcentral/content.blubrry.com/bbqcentral/05192026_hourone.mp3",
+        "apple_collection_id": 1412947410,
+        "apple_track_id": 1000768683757,
+        "release_date": "2026-05-20",
+        "dai_suspected": false,
+        "declared_bytes": 87050439,
+        "spine_beats": [
+          3
+        ],
+        "beat_structure": "chain",
+        "beat_verdict": "3 empty",
+        "intended_priority": 3,
+        "ranked": 4,
+        "ad_status": "UNMEASURED. Same shape as the two rows above.",
+        "blocked_by": "conditional-on-the-pryles-row",
+        "hook_as_catalogued": "Barbecue Bible author Steven Raichlen talks smoke, fire, and grilling technique on air.",
+        "tags_as_catalogued": [
+          "bbq",
+          "barbecue",
+          "steven-raichlen",
+          "grilling",
+          "smoking",
+          "technique",
+          "food",
+          "interview"
+        ],
+        "buys": "A second shot at beat 3 and nothing else. DO NOT BUY THIS UNTIL THE PRYLES ROW HAS BEEN READ — if beat 3 closes there, this row is depth on a carried beat and becomes a stop by the rule at the top of this file.",
+        "confidence": "Low, about one in four. grilling-history-coverage.md §7 already classes Raichlen among the 'technique, restaurant and personality material of the kind beats 26, 36 and 37 explicitly reject', and the only reason this is a low priority rather than a stop is that beat 3 is the beat that WANTS technique, provided the technique comes with mechanism. The difference between this row and the bacon stop below is that Raichlen's declared subject is smoke and fire while the bacon row's is a reputation.",
+        "show_level_note": "data/catalog.json describes the show as 'Long-running BBQ radio show with pitmasters and technique talk -- the answer to a barbecue request.' That cuts both ways and both edges matter: 'pitmasters' is the first half of beat 3's own evidence line, which asks for 'a pitmaster or a food scientist naming the mechanism', and 'technique talk' is the phrase grilling-history-coverage.md §7 used to reject three of this show's guests. The show is the right place to look for beat 3 and the wrong place to look for any other beat, which is why these rows are scored against beat 3 alone and five siblings are stops."
       }
     ]
   },
-  "arc_slots_note": "SUPERSEDED as a sorting instrument. `arc_slots` below is the six-slot arc the old order was ranked against; it is kept for provenance only. The spine's 40 beats are what rows are now scored against, via `spine_beats`."
+  "arc_slots_note": "SUPERSEDED as a sorting instrument. `arc_slots` below is the six-slot arc the old order was ranked against; it is kept for provenance only. The spine's 40 beats are what rows are now scored against, via `spine_beats`.",
+  "catalogue_search_2026_08_18": {
+    "_comment": "The 2026-08-18 pass searched data/discover.json instead of this manifest, because this manifest's queue was empty. Full reasoning, per-beat scoring and every quotation are in docs/curation/grilling-catalogue-tape-search.md. This block is the machine-readable residue so that a later pass does not re-derive it.",
+    "pool": {
+      "data/discover.json": "1,534 items, built 2026-08-18T11:43:23.489Z",
+      "data/item-tags.json": "1,561 tagged ids",
+      "data/catalog.json": "213 shows",
+      "data/taxonomy.json": "109 topic nodes in use",
+      "food_holding": "56 items across food/cooking-science (16), food/fermentation (17) and health/nutrition (23), most of it brewing, supplements and diet science. The `food-history` tag reaches 12 items."
+    },
+    "instrument": "search-engine.js's own hitText and hitTag, imported rather than reimplemented, so every count is the predicate the product ranks on after #270. Word boundaries throughout.",
+    "substring_trap_measured": {
+      "why_it_is_here": "The previous round's vocabulary table used substring matching, so `pit` matched 'despite' and `fire` matched 'firearms' — the collision class #218/#248 spent days eliminating. Re-measured on this pool:",
+      "pit": "naive 52, whole-word 1 — a 52-FOLD overstatement, and the one survivor is `the-archaeology-show--hominin-structures`, where the pits are archaeological features in Peru",
+      "fire": "naive 21, whole-word 13",
+      "smoke": "naive 1, whole-word 1",
+      "grill": "naive 7, whole-word 7",
+      "bbq": "naive 8, whole-word 8"
+    },
+    "act_iv_zero_counts": "Whole-word hits across all 1,534 items: barbacoa 0, taino 0, carolina 0, stockyard 0, juneteenth 0, emancipation 0, freedmen 0, antebellum 0, plantation 0, foodways 0, soul-food 0, twitty 0, hog 0, swine 0, charcoal 0, collagen 0, gelatin 0, maillard 0, tenderness 0, smokehouse 0, biltong 0, kipper 0, jerk 0, maroon 0, allspice 0, pimento 0, vinegar 0, braai 0, yakitori 0, tandoor 0, mangal 0, kebab 0, asado 0, churrasco 0, lechon 0. `memphis` 1 (a cycling travelogue), `kansas` 1 (an amusement-park story), `migration` 1 (the settlement of Aotearoa), `texas` 8 of which 7 are place-name collisions.",
+    "finding": "ACT IV CANNOT BE CLOSED FROM THIS CATALOGUE. Zero of its seven empty chain beats — 16, 17, 20, 25, 26, 28, 29 — has a candidate. The catalogue holds no American barbecue history at all: no Great Migration, no Kansas City, no Memphis, no barbacoa attestation, no West African fire technique. Act I's beat 3 and Act V's beat 31 are the only empty chain beats with a catalogue candidate, and both candidates are moderate-confidence rather than certain.",
+    "what_two_closures_buy": "Re-derived from grilling-beat-cut-plan.md §3a's own formula, narration = 1,484 - 73m against tape = 2,737.4 + 180m on the 31-beat stage-one Foray: m=0 gives 35.15 % (over the hard ceiling), m=1 gives 32.60 %, m=2 gives 30.17 %, and the 25 % target needs m >= 4.3. So the catalogue can buy the CEILING and cannot buy the TARGET, and the nine chain links the 22-beat plan cuts — beat 29 among them — are not bought back by anything found here.",
+    "rows_marked_stop": [
+      {
+        "catalogue_id": "the-bbq-central-show--grant-pinkerton",
+        "beat": 26,
+        "stop_reason": "Restaurant profile — 'a Houston pitmaster on running one of Texas's most respected barbecue joints'. Beat 26 wants the butcher-shop lineage and its immigrant provenance, the East Texas and Rio Grande lineages named as such, and brisket's rise dated; its reject line is 'brisket technique content with no history'. grilling-history-coverage.md §7 already names this row as what beat 26 rejects."
+      },
+      {
+        "catalogue_id": "the-bbq-central-show--embedded-correspondents-july-2026",
+        "beat": 3,
+        "stop_reason": "HOUR TWO OF THE SAME BROADCAST as the Pryles row — 07282026_hourtwo.mp3 against 07282026_hourone.mp3 — and its hook describes the two-hour PAIR rather than itself. A hook that describes its sibling is not evidence about this episode. If the Pryles row carries beat 3, this is depth on a beat that has just been carried."
+      },
+      {
+        "catalogue_id": "the-bbq-central-show--pitmasters-contestants-connie-desousa-and-john",
+        "beat": 36,
+        "stop_reason": "Contestants on a television competition plus 'the economics of a premium cigar wrapper'. Beat 36 wants the founding of the sanctioning bodies, the mechanics of the box and someone naming the one-bite artefact as an artefact; its reject line is 'contest-day narrative with no argument'. Note for anyone recounting: SEVEN items in the catalogue carry the `competition` tag and three are BBQ Central — this row, the Pryles row and the Embedded Correspondents row — the other four being three Business Wars episodes and one Masters of Scale. All three BBQ Central rows are current contests rather than the circuit's founding."
+      },
+      {
+        "catalogue_id": "the-bbq-central-show--sam-tours-japan-with-guests-ali",
+        "beat": 11,
+        "stop_reason": "Beat 11 is empty by ruling on its source's LANGUAGE, so an English Japan episode would not be barred — the reason this is still a stop is the hook, 'four guests on the outdoor cooking business and ranking the ultimate fast-food burgers', which names a business discussion and a burger ranking rather than binchotan, whole-bird thrift or tare. Beat 11 is also a fan stop the cut plan drops, so its ceiling is low even if it landed."
+      },
+      {
+        "catalogue_id": "the-bbq-central-show--best-moments-meathead",
+        "beat": 3,
+        "stop_reason": "A 563 s best-of reel of 'tips', which is beat 3's reject line almost verbatim. IT CARRIES A LEAD WORTH MORE THAN THE ROW — see leads_not_rows."
+      },
+      {
+        "catalogue_id": "gastropod--bringing-home-the-bacon",
+        "beat": 2,
+        "stop_reason": "Fails grilling-history-coverage.md §8's test in one line — 'the test is smoke' — on its own metadata: the declared subject is a REPUTATION history ('why bacon was reviled for centuries before becoming America's favorite breakfast meat') and nothing in title, hook or tags evidences smoke, water activity, the pellicle or the historical ordering. Fails beat 19 for a second reason: beat 19 wants free-range husbandry and the corn-and-hog complex in the colonial and antebellum South, and 'from Shakespeare to the Baconator' is the wrong two continents and the wrong three centuries. ONE THING WOULD CHANGE THIS: if the founder rules the SYSK register out, beat 19 loses its only candidate and this becomes the sole register-safe pork row in the catalogue — but it would still have to be read for husbandry its hook gives no reason to expect. It is the only bacon episode in 1,534 items, which is why it is argued rather than listed."
+      },
+      {
+        "catalogue_id": "gastropod--sushi",
+        "beat": 2,
+        "stop_reason": "Preservation without smoke, which is §8's test failing in its purest form."
+      },
+      {
+        "catalogue_id": "gastropod--salad-days-a-story-of-science",
+        "beat": 33,
+        "stop_reason": "Beat 33's CLAIM SHAPE about a different subject — gendered food, not gendered fire. Beat 33 is the one unwritable empty beat in the spine and the cut plan drops it; admitting a salad episode would be inventing the beat's evidence out of an analogy."
+      },
+      {
+        "catalogue_id": "odd-lots--how-a-sardine-gets-from-the",
+        "beat": 37,
+        "stop_reason": "The most instructive rejection in the pass. 'How canned sardines went from thrift-store staple to premium foodie obsession' is beat 37's claim stated outright, about the wrong food. It is a genuine economics interview and it would make the argument well, and using it would be exactly the substitution the founder's rule forbids."
+      },
+      {
+        "catalogue_id": "hardcore-history--blitz-human-resources",
+        "beat": 20,
+        "stop_reason": "The largest tempting row in the catalogue at 20,352 s: 'centuries of human bondage, economics, and violence in the Atlantic slave trade'. Beat 20's reject line asks the question directly — 'generic statements that African cooking influenced Southern food, with no technique and no mechanism of transfer' — and there is no cooking in it at all, so it does not reach even the generic version."
+      },
+      {
+        "catalogue_id": "the-moth--soul-searching-soul-food-and-the",
+        "beat": 20,
+        "stop_reason": "TITLE-ONLY MATCH. The episode title contains 'Soul Food' as a themed-hour conceit and the hook — 'storytellers share big risks, long goodbyes, and a reflection on the anatomy of a straw' — corroborates no food content whatsoever."
+      },
+      {
+        "catalogue_id": "cbc-ideas--fear-of-fire",
+        "beat": 1,
+        "stop_reason": "'Author John Vaillant on how fire shaped humanity' is wildfire and climate, not cooking. Beat 1 is strong and deliberately capped at two segments in any case."
+      },
+      {
+        "catalogue_id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1615",
+        "beat": 5,
+        "stop_reason": "'A short history of why humans took so long to learn to burn coal well', 227 s, industrial fuel. Beat 5 is strong."
+      },
+      {
+        "catalogue_id": "the-roundhouse--civil-war-railroads, the-roundhouse--canadian-pacific, railway-mania--* (2), well-theres-your-problem--up-ns-merger, the-war-on-cars--final-book-tour-dispatches",
+        "beat": 28,
+        "stop_reason": "The freight half of beat 28 has plenty of tape in this catalogue and it is the wrong half: rail history with no food in it, so these fail on subject before they reach the beat's 'best-of restaurant lists' reject line."
+      },
+      {
+        "catalogue_id": "criminal--125-acres, amicus-dahlia-lithwick--by-the-people-for-the-children, 5-4-podcast--250-years-of-bad-decisions-scotus-the-civil-war-and-the-end-, lex-fridman-podcast--499-gary-gallagher-american-civil-war, 99-percent-invisible--mosquito-hawks, the-ancients--how-slavery-built-the-roman-empire",
+        "beat": 21,
+        "stop_reason": "American slavery, Reconstruction and Civil War history without food. Beats 21, 22 and 24 are already strong on a historian's own argument, so even a good row here would be depth."
+      },
+      {
+        "catalogue_id": "The Allusionist (show, 8 items)",
+        "beat": 16,
+        "stop_reason": "The right register and no episode on the word. The catalogue holds a lexicography show tagged etymology, lexicography and dictionaries, and it holds no episode on barbacoa or on any food word's attestation. A lexicography show with no barbecue episode is not a candidate."
+      }
+    ],
+    "leads_not_rows": {
+      "_comment": "Named without metadata on purpose, per identified_not_yet_measured's own rule that inventing a guid or an enclosure URL is how the wrong episode gets registered. None of these is in data/discover.json; each needs a feed fetch to become a row.",
+      "rows": [
+        {
+          "lead": "Meathead Goldwyn on The BBQ Central Show, full length",
+          "for_beat": 3,
+          "why": "The only trace in the catalogue is a 563 s best-of reel, which is a stop. But Goldwyn is the author of the barbecue FOOD-SCIENCE book, which makes a full-length episode with him the best-shaped beat 3 candidate anywhere in this project's records — better than either ranked row. The feed is already known to publish transcripts on 12 of its 1,858 episodes.",
+          "do_this_first": "Check the feed for a full Goldwyn episode BEFORE buying the Raichlen row."
+        },
+        {
+          "lead": "Gastropod — 'Where There's Smoke, There's… Whiskey, Fish, and Barbecue!'",
+          "for_beat": 2,
+          "why": "grilling-foray-sourcing.md §4 lists it in its REJECTED table on a bitrate-implied 1.080 that the same section's own header now says is superseded, on a show ADR-0008 has since measured as PADDABLE. Smoke, fish and barbecue in one title is beat 2's shape, and fish is one of beat 2's three named worked examples. This is the same stale-rejection mechanism this manifest already caught once on this show, where the refrigeration episode sat under 'already being transcribed' — a workstream note, not a rejection.",
+          "do_this_first": "Fetch the feed and promote it to a row if the title survives contact with the description."
+        },
+        {
+          "lead": "The History of American Food — '068 Wood Part II — Charcoal, BBQ & Mellowed Spirits'",
+          "for_beat": 34,
+          "why": "Also from grilling-foray-sourcing.md §4, kept on file as measured ad-free at 1.000 across 221 episodes. `charcoal` reaches ZERO items in the catalogue and beat 34's charcoal-versus-gas split has no tape at all. Ad-free means no probe and no locate step, which makes this the cheapest unread lead in the pass.",
+          "do_this_first": "Nothing but a feed fetch. It needs no ad work."
+        }
+      ]
+    },
+    "discrepancies_found_and_left_as_found": [
+      "THIS FILE ASSERTS A FOUNDER RULING ON THE SYSK REGISTER THAT NO OTHER DOCUMENT RECORDS. `excluded_by_instruction` calls Stuff You Should Know 'EXCLUDED on the register' and `read_this_before_spending_cpu.spend_this_first` says 'and then the founder ruled the register out'. But grilling-history-coverage.md §2b says 'whether a show of this register belongs in this Foray at all is a founder call, not mine', its §9 item 9 lists the ruling as pending, grilling-beat-cut-plan.md §5 calls it 'not a sensitivity, it is a dependency' still awaiting an answer, and docs/DECISIONS.md records no such ruling. One of those is wrong and the difference is four beats and 491.3 s of tape. NOT RESOLVED HERE: this pass does not know which, and guessing would be worse than reporting.",
+      "THE BBQ CENTRAL SHOW'S SHOW-LEVEL EXCLUSION IS A WORKSTREAM NOTE, NOT A CONTENT REJECTION, AND IT NOW HIDES EIGHT SCOREABLE ROWS. `excluded_by_instruction` excludes the show as 'already being transcribed by the American-arc workstream' and notes that only one of its 1,858 episodes was on plot. data/discover.json now holds EIGHT BBQ Central episodes, and the catalogue search scores ALL EIGHT of them against specific beats — three as ranked rows and five as stops. One of the three is the best beat 3 candidate in the pool and one settles a pending spine amendment, so neither is inside the five. This is precisely the correction this file already made for Gastropod: 'previously sat in excluded_by_instruction as already being transcribed, which is a workstream note, not a rejection'. Same mechanism, second occurrence.",
+      "THE ARC-SLOT FIELDS ARE STILL CARRIED AND STILL SUPERSEDED. `arc_slots_note` already says so. The new rows above carry no `arc_slot` for that reason, and a reader should not infer that the field was forgotten."
+    ],
+    "show_level_notes_quoted": {
+      "why": "Show-level editorial notes in data/catalog.json bear directly on register, which is the axis the SYSK decision turns on, so they are quoted rather than summarised.",
+      "The BBQ Central Show": "Long-running BBQ radio show with pitmasters and technique talk -- the answer to a barbecue request.",
+      "Gastropod": "Two science journalists dissect food chemistry and history -- a stretch pick for engineering minds.",
+      "The Allusionist": "Helen Zaltzman on the strange histories tangled up inside ordinary words and phrases.",
+      "what_they_change": "Gastropod's note makes the rank-1 row NOT register-cleared (see its own register_caveat). The BBQ Central note is the reason the three ranked rows from that show are scored against beat 3 and a spine amendment only. The Allusionist note sharpens beat 16's negative: the catalogue holds a show about the histories inside ordinary words and no episode on this word."
+    },
+    "adversarial_check": "The last five terms above — freedmen, antebellum, plantation, foodways, soul-food — were added specifically to try to BREAK the Act IV finding rather than to confirm it, together with a sweep over cuisine, restaurant, diner, chef, cookbook, recipe, butcher and meat. Of the restaurant and meat hits, all but one are business, nutrition, DIY or ghost-story episodes: How I Built This on Toast and STARR Restaurants, Odd Lots on franchising and the gig economy, Masters of Scale on ButcherBox, Sigma Nutrition on red meat and cancer, This Week in Startups on lab-grown meat, GardenFork Radio on smoother restaurant visits, Astonishing Legends on a haunted-restaurant cookbook. The exception is `gastropod--bringing-home-the-bacon`, which whole-word `meat` reaches and which is a genuine food-history episode — it is argued at length and stopped in `rows_marked_stop` rather than swept up here. So the sweep found one food-history row and it was already scored. THERE IS NO AMERICAN BARBECUE HISTORY IN THIS CATALOGUE TO FIND, which is the claim; 'no food history at all' would be too strong."
+  }
 }
