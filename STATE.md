@@ -7,6 +7,30 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### mobile bundle — the catalogue ships as a bounded slice, and the cap stops being a date (2026-08-18, one PR, no follow-up)
+
+- **What:** `perf/bundle-discover-trim`. `prepare-webdir.mjs` reported **2.98 MB of
+  its 3.00 MB cap — 16 KB of headroom** — and `data/discover.json` grows ~35 KB every
+  night, so the next catalogue refresh would have failed the mobile build and the
+  failure would have read as the build breaking rather than as the catalogue growing.
+  The bundle now carries a **bounded slice**: the newest `BUNDLED_ITEMS_PER_SHOW` (3)
+  items of each of the 213 shows, plus enough to keep every topic represented, and
+  `data/item-tags.json` trimmed to that pool. **35 files, 1.78 MB.** O(shows × topics),
+  not O(episodes), so a year of nightlies adds nothing.
+- **Not done, deliberately:** the cap was NOT raised and NOT lowered — 3 MB still
+  means "something enormous got in", and new per-file budgets (800 KB / 160 KB) mean
+  "the slice stopped being bounded". Fetching the tail of the catalogue at runtime is
+  still **#40**: it needs the `connect-src` widening `docs/mobile-shell.md` §2.3
+  declined to add in advance, and it does not fix the build break.
+- **Shared files:** `tools/mobile/prepare-webdir.mjs` (+ test),
+  `tools/mobile/shell-invariants.test.mjs`, `test/suite-integrity.test.js` (two
+  floors), `docs/mobile-shell.md` §0/§2.1/§3/§5, `docs/android-lock-screen.md` §10,
+  `docs/narrator-pipeline.md`, `docs/DECISIONS.md`, `HUMAN-ACTIONS.md`, this file.
+  **No change to `app.js`, `index.html`, the CSP, `sw.js` or anything the website
+  serves** — the web keeps fetching the whole document.
+- **Watch out:** `mobile/` is NOT on `ALLOWED_PREFIXES`, so `path-policy` reports
+  CLEAN while auto-merge declines to act. This PR waits for a human.
+
 ### search matcher — `grill` reaches `grilling`, and the third copy of the matcher dies (2026-08-17, one PR, founder-gated, no follow-up)
 
 - **What:** `fix/218-219-suffix-matcher`. #218 (widen the SUFFIX side of
@@ -951,10 +975,19 @@ docs/. Completed workstreams move to their plan doc's retro section.
   the specific failure mode that script's header exists to prevent.
 - **Heads-up — the bundle's data list is DERIVED from `app.js`'s `fetchJson`
   calls.** Add a `fetchJson("data/new.json")` and the next bundle carries it, no
-  edit needed. But the bundle is capped at **3 MB and today it is 2.52 MB** (30
-  files; `discover.json` alone is 1.63 MB). If you make the client fetch something
-  large, `prepare-webdir` **fails the build**. Do not raise the cap to make it
-  pass — that cap is what keeps the 16 MB `breadth-classification.json` out.
+  edit needed. But the bundle is capped at **3 MB and today it is 1.78 MB** (35
+  files). If you make the client fetch something large, `prepare-webdir` **fails the
+  build**. Do not raise the cap to make it pass — that cap is what keeps the 16 MB
+  `breadth-classification.json` out.
+- **Heads-up — `data/discover.json` and `data/item-tags.json` are NOT copied into
+  the bundle; a bounded SLICE of them is.** The bundle hit 2.98 MB of the 3.00 MB cap
+  on 2026-08-18 with `discover.json` growing ~35 KB every night, so the next refresh
+  would have failed the mobile build. It now carries the newest
+  `BUNDLED_ITEMS_PER_SHOW` (3) items of each of the 213 shows plus enough to keep
+  every topic — 622 of 1,534 items, 680 KB — which is O(shows × topics) rather than
+  O(episodes), so a year of nightlies adds nothing. If you add a data file whose size
+  tracks the CATALOGUE rather than the product, it needs a `PROJECTED_DATA` entry too.
+  `docs/mobile-shell.md` §3.
 - **Heads-up — `app.js` no longer registers the service worker unconditionally.**
   It asks `shouldRegisterServiceWorker(window)`: off inside the shell, on
   everywhere else. Gated on `window.Capacitor.isNativePlatform()` and the

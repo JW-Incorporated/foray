@@ -943,7 +943,7 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
    npm run prepare:webdir
    ```
 
-   **Worked if:** it prints something like `webDir ready: mobile/www  (30 files, 2.52 MB of 3.00 MB)`. If it prints a size *error* instead, stop and report it — that guard is doing its job and the fix is not to raise the cap.
+   **Worked if:** it prints something like `webDir ready: mobile/www  (35 files, 1.78 MB of 3.00 MB)`, followed by two `sliced:` lines showing `data/discover.json` and `data/item-tags.json` inside their own budgets. If it prints a size *error* instead, stop and report it — that guard is doing its job and the fix is not to raise the cap. A `budget` error names one knob, `BUNDLED_ITEMS_PER_SHOW`; that one is safe to lower and `docs/mobile-shell.md` §3 says what it costs.
 
 3. Generate the iOS project:
 

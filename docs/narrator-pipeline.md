@@ -381,9 +381,11 @@ clone does not help a contributor who needs history, and `data/` already carries
 62 MB of pipeline inputs. **Reject.**
 
 **b) Bundled in the app.** `tools/mobile/prepare-webdir.mjs` **fails** above
-**3.00 MB** and the bundle is at **2.63 MB** — **370 kB of headroom.** One
-Foray's narration is **11.1 MB: 30x the remaining headroom and 3.7x the entire
-cap.** Ten is 110.9 MB. Bundling would require raising the cap by ~37x, and the
+**3.00 MB**. The bundle was **2.63 MB** when this was written, reached 2.98 MB on
+2026-08-18, and is **1.78 MB** now that the catalogue ships as a bounded slice
+(`docs/mobile-shell.md` §3) — so **1.22 MB of headroom**, and this argument does not
+turn on it. One Foray's narration is **11.1 MB: 9x the remaining headroom and 3.7x
+the entire cap.** Ten is 110.9 MB. Bundling would require raising the cap by ~37x, and the
 cap is the only thing standing between the bundle and the 16 MB classification
 file. Plus the CSP change in §2.1. **Reject as a default**; see §2.4 for the one
 version of this that survives.

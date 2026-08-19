@@ -705,8 +705,8 @@ its reasoning.
 - **The native bundle's `webDir` is built by a committed, dependency-free script
   whose data list is DERIVED from `app.js`, not written down.**
   `tools/mobile/prepare-webdir.mjs`. `data/` holds ~62 MB of pipeline inputs and
-  the client fetches 2.1 MB of data (2.52 MB of bundle), so the bundle is curated and the cap (3 MB) **fails**
-  the build rather than warning. #36 listed the runtime files by hand and then
+  the client fetches ~2.3 MB of data, so the bundle is curated and the cap (3 MB)
+  **fails** the build rather than warning. #36 listed the runtime files by hand and then
   said to verify the list against the `fetchJson` calls; a list that must be
   manually verified is a list that will drift, so the script reads the calls. The
   matching risk — a regex that stops matching and emits a small, silent, valid
