@@ -113,8 +113,15 @@ nouns, so a high fire-term count can be evidence for the neighbour. That trap
 cannot fire on this catalogue for the simple reason that the vocabulary is absent
 in both directions: `jerk` **0**, `maroon` **0**, `allspice` **0**, `pimento` **0**,
 `vinegar` **0**. There is no Caribbean fire tape here to mistake for American fire
-tape. **The trap that does fire is the title-only match**, and §7 records the two
-instances.
+tape. **The trap that does fire on this catalogue is the title-and-hook mismatch**, and
+it has three distinct shapes here, all recorded below: a title that matches while the
+hook corroborates nothing (`the-moth--soul-searching-soul-food-and-the`); a hook that
+describes its sibling episode rather than itself
+(`the-bbq-central-show--embedded-correspondents-july-2026`); and a hook that describes
+the wrong half of its own episode, where the payload is in the title and the hook is
+about cigars (`the-bbq-central-show--cigar-wrapper-talk-with-mr-j`). The third is a
+ranked row rather than a stop, which is the point: the mismatch cuts both ways and
+neither direction can be trusted without reading.
 
 ---
 
@@ -125,8 +132,11 @@ nutrition holding is **56 items** across `food/cooking-science` (16),
 `food/fermentation` (17) and `health/nutrition` (23), and most of that is brewing,
 supplements and diet science. The `food-history` tag reaches **12 items**.
 
-**Every item in the catalogue that a barbecue Foray could argue about is in this
-table.** Eight are one show and eight are another.
+**Every item in the catalogue whose subject touches fire, barbecue or food history is
+in this table.** Eight of the seventeen are one show and four are another, which is most
+of what is wrong here. §7 adds the adjacent rows a keyword pass surfaces — the rail
+history, the Reconstruction legal history — which are on the Foray's territory without
+being on its subject.
 
 | id | show | length | first beat considered | verdict |
 |---|---|---|---|---|
@@ -148,10 +158,11 @@ table.** Eight are one show and eight are another.
 | `cbc-ideas--fear-of-fire` | CBC Ideas | 3,248 s | 1 | **stop** |
 | `engines-of-our-ingenuity--the-engines-of-our-ingenuity-1615` | Engines of Our Ingenuity | 227 s | 5 | **stop** |
 
-**Sixteen rows considered, two worth buying, one worth reading for a spine
-question, one conditional, twelve stops.** That ratio is the finding, not a
+**Seventeen rows scored: two worth buying, one worth reading for a spine question, one
+conditional on the first, and thirteen stops.** That ratio is the finding, not a
 disappointment: it is what a catalogue built for general listening looks like when
-it is asked a fifteen-beat question about the American South.
+it is asked a fifteen-beat question about the American South. §7's stop table has
+sixteen entries rather than thirteen because three of them group several ids each.
 
 ---
 
@@ -288,7 +299,7 @@ limit on how much a title-and-hook pass can promise here, and it is stated befor
 candidate rather than after it.
 
 **Candidate: `the-bbq-central-show--jess-pryles-is-not-here-to`** (3,967 s, released
-2026-07-29). Title: *"Jess Pryles Is Not Here To Fu*k Spiders!!"*. Hook: *"Jess Pryles
+2026-07-29). Title: *"Jess Pryles Is Not Here To Fu\*k Spiders!!"*. Hook: *"Jess Pryles
 talks brisket science, BBQ myths, and the road to a $1M contest."* Tags: `barbecue`,
 `bbq`, `grilling`, **`food-science`**, `competition`, `interview`.
 
