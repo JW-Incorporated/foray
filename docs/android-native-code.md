@@ -603,11 +603,28 @@ app.js  styles.css  search-engine.js  STATE.md  HUMAN-ACTIONS.md
   `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`,
   `docs/agents/routine-invariants.md`, `backend/src/`, `tools/ci/`,
   `tools/test-search.mjs`, `tools/validate-semantic-index.mjs`. A PR touching one
-  is reported **UNAPPROVED** by the `path-policy` check and wants a
-  `founder-approved` label — **report-only** until the repo variable
-  `PATH_POLICY_ENFORCE` is set, which `HUMAN-ACTIONS.md` #1 is still open on, and
-  `formatGovernedCheck()` says out loud that an agent with write access can apply
-  that label, so it is a record and not a lock.
+  is reported **UNAPPROVED** by the `path-policy` check, **which is enforcing and
+  goes RED** — `PATH_POLICY_ENFORCE=1` was set on 2026-08-16, and this PR's own run
+  printed `ENFORCE: 1`, `verdict: UNAPPROVED` and exit 1 for touching `CLAUDE.md`.
+  A `founder-approved` label clears it.
+
+  Two qualifications, and the first is the one that decides what the red actually
+  costs. **`path-policy` is enforcing but not yet a *required* check on `main`** —
+  that is the open half of `HUMAN-ACTIONS.md` #1, deliberately parked — so the red
+  is loud rather than absolute; `backend` and `data-and-site` are the required
+  ones. And `formatGovernedCheck()` says out loud that an agent with write access
+  can apply the approval label, so it records a decision rather than locking
+  anything.
+
+  > **THIS BULLET WAS WRONG IN ITS FIRST VERSION AND THE ERROR IS THE POINT.** It
+  > said the check was *"report-only until `PATH_POLICY_ENFORCE` is set, which
+  > HUMAN-ACTIONS #1 is still open on"* — reasoned from `governedCheck()`'s
+  > `enforce: false` default plus a half-read ticket, and never checked the live
+  > repo variable. The variable had been set two days earlier, HUMAN-ACTIONS #1 says
+  > *"Step 1 is already done"* in its own text, and the check went red on this very
+  > change. **A default is not a setting and an open ticket is not a state**, which
+  > is the same species of mistake as the premise this whole section exists to
+  > correct.
 - **`DENIED_PREFIXES` IS TESTED FIRST AND WINS.** `pathPolicy()` checks denied,
   `continue`s on a hit, and only then consults the allow-list — so `docs/adr/` and
   `tools/ci/` are governed even though `docs/` and `tools/` are allowlisted. Any
