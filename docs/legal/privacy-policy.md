@@ -4,7 +4,7 @@
 Every `TODO(founder)` below is a fact only a founder can supply. Do not publish
 this to a store listing with any of them unresolved.
 
-Last updated: 2026-08-18 · Applies to: the Foray web app
+Last updated: 2026-08-19 · Applies to: the Foray web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
 same code.
 
@@ -82,7 +82,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_seen` | Episode ids already shown to you, so they are not repeated | **No** |
 | `cp_saved` | The episodes you saved | **No** (but see `saved` in §2) |
 | `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
-| `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-18 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves Foray's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
+| `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves Foray's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
 | `cp_foray:<id>` | Where you are inside a given Foray, and which segment you were in | **No** |
