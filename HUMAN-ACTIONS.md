@@ -1361,6 +1361,45 @@ about where a claim came from.
 
 ---
 
+### 23. Apply `founder-approved` to PR #297, so something watches for a dark night
+
+**Tag:** `[APPROVAL]` · **Time:** ~2 minutes · **Owner:** Wyatt or Joey
+
+**Why it matters.** On 2026-08-20 and 2026-08-21 the nightly content pipeline
+produced nothing and every workflow in the list was green (#290). The Action did
+its half both nights and logged *"published digest: 29 resolved episodes"* both
+nights; the Cloud agent that turns a digest into a PR had hit a weekly usage
+limit and simply did not run. The only symptom was an absence, and nothing in the
+system watched for one. The second miss then overwrote the first night's digest —
+`resolved.json` is replaced, not appended — and 2026-08-19 ended up holding 10
+episodes against the previous Wednesday's 30. #293 recovered 17 by hand.
+
+The checker landed in **#296** (merged, fully allowlisted). It is a command, not
+a schedule, until the two workflow files in **#297** merge: `nightly-watch.yml`,
+which goes red on a digest older than 12h with no `nightly/<date>` PR, and a
+guard in `nightly-refresh.yml` that refuses to publish over an unmerged digest.
+
+**What to do.** Apply the `founder-approved` label to
+https://github.com/JW-Incorporated/foray/pull/297 and merge it. Every other check
+on that PR is green; `path-policy` is red because `.github/` is a governed path
+and `PATH_POLICY_ENFORCE=1` is live, which is the check doing its job.
+
+**What you are approving.** Two workflow files. One new scheduled job at 21:40
+UTC that only ever reads, and one new first step in `nightly-refresh` that can
+fail the job before the scan. That second one is the one worth a moment: while it
+is red, the pipeline publishes nothing. That is deliberate — it is what stops the
+data loss — and it has an escape hatch, an `overwrite_unmerged_digest` dispatch
+input for the case where the stranded episodes have aged out of the feeds. The
+failing run prints the recovery steps, including the branch name that clears it.
+
+**Until this merges**, a missed night is still invisible. The fallback is manual:
+`node tools/refresh/watch-nightly.mjs --mode absence --digest <digest> --pulls
+<pr-list> --discover data/discover.json` (see `tools/refresh/README.md`).
+
+**Status:** OPEN
+
+---
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and
