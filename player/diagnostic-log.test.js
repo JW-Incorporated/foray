@@ -991,6 +991,110 @@ test("a mashed dead button does not evict the seams that explain why it is dead"
   assert.match(formatDiagnosticReport(log.read()), /start failed\s+error=NotAllowedError\s+x50/);
 });
 
+test("today's failed taps are never folded into YESTERDAY's entry", () => {
+  /* THE DEFECT REVIEW FOUND IN THE FIRST VERSION OF COALESCING, and the reason it
+     anchors on identity rather than on the tail's shape.
+
+     The ring is DURABLE. A new session's `PlayerDiagnostics` loads the previous
+     session's entries verbatim, and a failed tap that lands before `boot()` has
+     written its row sees yesterday's matching `tapFail` sitting at the tail. Shape
+     matching folded today's taps into it — keeping YESTERDAY's `wall` and `seq` —
+     so a drive on which the play button failed left no row, no clock and no
+     sequence number of its own. A button that failed yesterday with
+     `NotAllowedError` and fails again today is precisely this feature's case, so
+     that was the likely path, not the exotic one.
+
+     MUTATION: match on the tail's fields —
+     `last.type === "tapFail" && last.phase === phaseName && last.error === error`
+     — instead of on `this._lastTap`. Today's entry is never created and every
+     assertion below fails.
+
+     It also fixes the second head of the same defect: a restored row carries no
+     live `repeated` binding, and `+= 1` on a missing field yields NaN. */
+  const store = fakeStore();
+  const c = clock();
+
+  // Yesterday: a session that ended with a coalesced run of failed taps.
+  const first = new PlayerDiagnostics({ log: new DiagnosticLog({ storage: store, now: c.now }), now: c.now });
+  first.tapFailed({ phase: "start", name: "NotAllowedError" });
+  first.tapFailed({ phase: "start", name: "NotAllowedError" });
+  assert.equal(parse(store).entries.length, 1, "yesterday coalesced normally");
+
+  // Today: a NEW instance over the SAME durable store, same failure.
+  c.tick(15 * 60 * 60 * 1000);
+  const today = new PlayerDiagnostics({ log: new DiagnosticLog({ storage: store, now: c.now }), now: c.now });
+  today.tapFailed({ phase: "start", name: "NotAllowedError" });
+  today.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const entries = parse(store).entries;
+  assert.equal(entries.length, 2, "today gets its own row rather than incrementing yesterday's");
+  assert.equal(entries[0].repeated, 2);
+  assert.equal(entries[1].repeated, 2);
+  assert.ok(entries[1].wall > entries[0].wall, "and its own clock");
+  assert.ok(entries[1].seq > entries[0].seq, "and its own sequence number");
+  assert.ok(Number.isFinite(entries[1].repeated), "a restored row never turns a count into NaN");
+});
+
+test("a cleared record does not leave a counter pointing at an entry that is gone", () => {
+  /* `reset()`'s own stated reason, applied to the new state: a Clear during
+     playback drops the ring, and what is in flight has to go with it.
+
+     BE PRECISE ABOUT WHAT THIS PINS, because mutation testing showed the obvious
+     version of this test pinned nothing. Removing `this._lastTap = null` from
+     `reset()` changes NO behaviour reachable from the public surface: the
+     coalescing branch requires `this._lastTap === entries[entries.length - 1]`,
+     and an orphan from a cleared ring can never again be the tail of it, so the
+     identity check already makes the behavioural assertions below pass either
+     way. Those assertions are still worth having — they are the property a reader
+     cares about — but the invariant assertion is the one that kills the mutant,
+     and it is white-box on purpose, because the line is defence in depth for a
+     class whose `_seam` and `_stop` are cleared beside it for the same reason.
+
+     MUTATION: remove `this._lastTap = null` from `reset()`. Only the middle
+     assertion fails. */
+  const { diag, log, store } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  log.clear();
+  diag.reset();
+
+  assert.equal(diag._lastTap, null, "nothing in flight survives a Clear");
+
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  const entries = parse(store).entries;
+  assert.equal(entries.length, 1, "one entry, belonging to the record that exists now");
+  assert.equal(entries[0].repeated, 1, "counting from one, not continuing an evicted run");
+});
+
+test("a coalesced run says how long it went on, not only how many times", () => {
+  /* `x50` alone cannot separate a hand mashing a dead button from a listener
+     returning to it four times across five minutes, and those are different bugs.
+     The FIRST `wall` stays the entry's stamp — it is when the failure began, and
+     it is what keeps this row ordered against the seam rows that explain it — so
+     the end of the run needs its own field.
+
+     MUTATION: stop writing `lastWall` on a repeat. The report loses "over …" and
+     the last assertion fails. */
+  const { diag, log, store } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const entry = parse(store).entries[0];
+  assert.equal(entry.repeated, 2);
+  assert.equal(entry.lastWall, entry.wall, "same instant here, because the clock did not move");
+
+  // And a run that spans real time reports the span.
+  const store2 = fakeStore();
+  const c = clock();
+  const d2 = new PlayerDiagnostics({ log: new DiagnosticLog({ storage: store2, now: c.now }), now: c.now });
+  d2.tapFailed({ phase: "start", name: "NotAllowedError" });
+  c.tick(9400);
+  d2.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const log2 = new DiagnosticLog({ storage: store2, now: c.now });
+  assert.match(formatDiagnosticReport(log2.read()), /x2 over 9400ms/);
+});
+
 test("a different failure starts a new entry, so a coalesced count always means one thing", () => {
   /* A count is only readable if a run means "this, n times, with nothing else in
      between". MUTATION: coalesce on `type` alone, ignoring phase and error. All

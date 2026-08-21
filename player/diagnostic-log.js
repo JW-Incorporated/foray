@@ -464,6 +464,10 @@ export class PlayerDiagnostics {
     this._seam = null;
     /** The reconcile stop awaiting its landed state — see `reconciled()`. */
     this._stop = null;
+    /** The failed-tap entry THIS INSTANCE opened and is still counting into, or
+        null. Identity, never shape — see `tapFailed` for the session-crossing
+        defect that reading the ring's tail produced. */
+    this._lastTap = null;
     /** When the current visibility state began, for the DURATION half of a
         visibility transition — a hidden window is only correlatable with a stall
         if its length is known.
@@ -725,27 +729,59 @@ export class PlayerDiagnostics {
        tap, for the reason §6 of the test suite learned the hard way: a reader
        cannot tell a field that means "once" from a field that was never written.
 
+       IDENTITY, NEVER SHAPE, and this is the correction review forced. A first
+       version matched on the tail entry's FIELDS — type, phase, error. The ring is
+       durable, so `_load()` restores the previous session's entries verbatim, and a
+       failed tap that lands before `boot()` has written its row sees yesterday's
+       matching `tapFail` at the tail. Today's taps were folded into yesterday's
+       entry, keeping yesterday's clock and sequence number, and the whole of
+       today's drive left NO row at all. That is not the exotic case: a play button
+       that failed yesterday with `NotAllowedError` and fails again today is
+       precisely what this feature is for. `_lastTap` is a reference to an entry
+       THIS instance created, so a restored one can never be mistaken for it — and
+       it also closes the second head of the same defect, where a restored row
+       without `repeated` turned `+= 1` into `NaN`.
+
+       IT MUST STILL BE THE TAIL. A `_lastTap` that something has since been
+       recorded after is a run that ended, and folding into it would put a count on
+       an entry that no longer describes the last thing that happened.
+
        WHAT THIS DOES NOT FIX, stated rather than hidden: the write RATE. Each
        repeat still re-serialises the ring (`save()`), so mashing drives ~5
        writes/s against the ~0.15/s this file's cost note argues itself into
        accepting. Bounding that needs a timer, and this module deliberately owns
        none — everything is injected, which is what makes its failure paths
        testable. The exposure is a few seconds of a hand on a dead button, and the
-       ring no longer grows during it. */
+       ring no longer grows during it.
+
+       `seq` DELIBERATELY DOES NOT ADVANCE on a repeat. It counts entries recorded,
+       which is what the report's `recorded` means and what its ordering claims rest
+       on; a coalesced tap is not a new entry. `lastWall` carries the other half
+       instead — see below. */
     const entries = this.log.entries;
-    const last = entries[entries.length - 1];
-    if (last && last.type === "tapFail" && last.phase === phaseName && last.error === error) {
-      last.repeated += 1;
+    if (this._lastTap
+      && this._lastTap === entries[entries.length - 1]
+      && this._lastTap.phase === phaseName
+      && this._lastTap.error === error) {
+      this._lastTap.repeated += 1;
+      /* WHEN THE RUN ENDED, because the count alone cannot tell a ten-second mash
+         from a listener returning to a dead button four times across five minutes,
+         and those are different bugs. The FIRST `wall` stays as the entry's stamp —
+         it is the moment the failure began, and it is what keeps this row ordered
+         against the seam rows that explain it. */
+      this._lastTap.lastWall = this._now();
       this.log.save();
-      return last;
+      return this._lastTap;
     }
 
-    return this.log.record("tapFail", {
+    this._lastTap = this.log.record("tapFail", {
       phase: phaseName,
       error,
       repeated: 1,
+      lastWall: null,
       hidden: this._isHidden(),
     });
+    return this._lastTap;
   }
 
   /**
@@ -816,6 +852,11 @@ export class PlayerDiagnostics {
   reset() {
     this._seam = null;
     this._stop = null;
+    /* For this method's own reason: a Clear during playback must not leave this
+       object pointing at an entry that is no longer in the ring. Without it, the
+       next failed tap would increment a counter on an orphan and `save()` it,
+       putting a row back under a key a listener has just emptied. */
+    this._lastTap = null;
     this._visSince = this._now();
   }
 
@@ -937,9 +978,13 @@ function lineFor(e) {
        findings: a tap that failed with no error CLASS is a `playForay` that
        returned a rejection carrying nothing, and a reader who sees a blank will
        assume the field was never written. */
+    /* `over Ns` is not decoration: `x50` alone cannot separate a hand mashing a
+       dead button from a listener coming back to it across five minutes, and those
+       are different bugs. */
     case "tapFail":
       return `${head} ${e.phase ?? "?"} failed  error=${e.error ?? "none"}` +
         (e.repeated > 1 ? `  x${e.repeated}` : "") +
+        (e.repeated > 1 && e.lastWall != null ? ` over ${ms(e.lastWall - e.wall)}` : "") +
         `  hidden=${e.hidden ? "y" : "n"}`;
     default:
       return `${head} ${JSON.stringify(e)}`;

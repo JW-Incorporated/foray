@@ -89,18 +89,20 @@ const FLOORS = {
      explaining why it was dead.
      21 -> 22: the bridge between the page and this record was covered by neither
      suite, and transposing its two arguments left everything green. */
-  "player/diagnostic-log.test.js": 47,
-  "player/diagnostic-record.test.js": 22,
+  "player/diagnostic-log.test.js": 50,
+  "player/diagnostic-record.test.js": 23,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
-  /* 83 -> 86 with #225: the page's two failure guards now reach the field record,
-     and the third of these is the one that keeps the instrument from becoming the
-     outage it was built to explain. */
-  "player/foray-playback.test.js": 86,
+  /* 83 -> 87 with #225: the page's two failure guards now reach the field record.
+     Two of the four exist to keep the instrument from becoming the outage it was
+     built to explain — one pins that the message is on screen BEFORE the record is
+     touched (the obvious version of it could not see the order at all), and one
+     that an error too hostile to read still produces both. */
+  "player/foray-playback.test.js": 87,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 37,
   "player/foray-resolve.test.js": 54,

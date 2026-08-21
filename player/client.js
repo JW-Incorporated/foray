@@ -82,7 +82,9 @@
      - WRITES ARE DURABLE AT THE MOMENT OF THE EVENT, not flushed on unload. A page
        suspended mid-seam is exactly when the record matters.
      - THE MESSAGE TEXT IS NEVER STORED — only matched numbers, authored segment
-       ids, and stage names from a fixed vocabulary. No audio, no URLs, no identity.
+       ids, stage names from a fixed vocabulary, and the error CLASS of a failed
+       tap (#225: an `Error`/`DOMException` `.name`, never a `.message`). No audio,
+       no URLs, no identity. `diagnostic-log.js`'s header holds the full rule.
 */
 
 import { PlayerQueueManager } from "./queue-manager.js";

@@ -1248,8 +1248,11 @@ item is the only way that record reaches anyone.**
 actually was, whether it was a cross-episode load or a seek inside one file, the
 load deadline in force, and the last stage it reached if it never completed. Plus
 out-point overshoot, external stops with the state the player landed in, resume
-decisions including the ones that refused to write, and every
-background/foreground transition with its duration. **It never leaves the device
+decisions including the ones that refused to write, every background/foreground
+transition with its duration, and any press of a play or transport control that
+failed — with the *class* of the error (for example `NotAllowedError`, meaning
+the browser held the audio back), never its message, and with a count when the
+same failure repeats. **It never leaves the device
 on its own** — there is no consent gate on the existing event pipeline, so this
 record deliberately does not ride it (`docs/legal/privacy-policy.md` §1,
 `cp_diag`). Copying it is you choosing to send it. It contains no audio, no URLs

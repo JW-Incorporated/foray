@@ -904,9 +904,39 @@ test("the page's failed-tap bridge reaches the record with its arguments the rig
   /* AND IT IS TOTAL FOR A CALLER THAT IS NOT app.js. `app.js` wraps its own call,
      which protects app.js and nothing else; a published global that throws is a
      hazard the next caller inherits undocumented.
-     MUTATION: drop the try/catch in `asText`. This throws instead of returning. */
+
+     MUTATION: drop the try/catch in `asText`. `tapFailed` throws, the bridge's own
+     catch turns it into `false`, and the first assertion fails — note that it fails
+     on the RETURN VALUE, not on a thrown error, because the bridge is the thing
+     standing behind it. An earlier draft of this comment claimed the call would
+     throw; it would not, and saying so was wrong. */
   assert.equal(win.forayNoteTapFailure("start", { toString() { throw new Error("no"); } }), true);
   assert.deepEqual(rows("tapFail").map((e) => e.error), ["NotAllowedError", null]);
 
   restore();
+});
+
+test("the failed-tap bridge answers rather than throws — a source assertion", () => {
+  /* A SOURCE ASSERTION, and deliberately, for the reason the `forayDiagnosticReport`
+     one above gives. The bridge's own try/catch is currently UNREACHABLE from any
+     argument it accepts: `asText` made `tapFailed` total, so nothing a caller can
+     pass gets past it. Review confirmed that by deleting the guard and watching
+     both suites stay green.
+
+     That leaves two honest options — delete it as dead, or pin it as a property of
+     the published surface. It is kept and pinned: `window.forayNoteTapFailure` is a
+     global on a page with no import boundary, `tapFailed` is not frozen, and the
+     next change inside it is exactly the one that would make a public global start
+     throwing at callers who never asked for that risk. The guard is insurance
+     against this module's own future, which a behavioural test cannot express and a
+     source assertion can.
+
+     MUTATION: remove the `catch (_) { return false; }` from the bridge. This
+     fails. */
+  const src = fs.readFileSync(new URL("./client.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /window\.forayNoteTapFailure = [\s\S]{0,600}?catch \(_\) \{\s*return false;/,
+    "a published global must answer rather than throw"
+  );
 });

@@ -1867,9 +1867,17 @@ function paintForayFailure(signal) {
    anything that is not a bare identifier, so a message would be discarded there
    regardless; sending only the name means the rule is visible on both sides. */
 function noteTapFailure(phase, err) {
+  /* READ THE NAME IN ITS OWN GUARD. `err` is whatever was thrown, and reading a
+     property off it can itself throw — a Proxy, a getter, an object from another
+     realm. Folded into the guard below, a failure here would skip the write
+     entirely, so the one error too strange to describe would also be the one that
+     left no trace. `null` is a worse answer than `TypeError` and a far better one
+     than silence. */
+  let name = null;
+  try { name = err?.name ?? null; } catch (_) { name = null; }
   try {
     if (typeof window.forayNoteTapFailure === "function") {
-      window.forayNoteTapFailure(phase, err?.name ?? null);
+      window.forayNoteTapFailure(phase, name);
     }
   } catch (_) {
     /* A record that will not write is not a reason to lose the line on screen. */
@@ -1883,15 +1891,38 @@ async function guardForayStart(run) {
     console.warn("[foray] start failed", err);
     state.forayPlaying = null;
     state.forayPainted = null;
-    paintForayFailure(err?.name ? `${err.name}: ${err.message ?? ""}` : String(err));
-    /* LAST, AFTER THE PAINT, and the order is the argument this file already
-       makes about the bridge: it comes from a module the service worker refreshes
-       independently of this one, which is why it is wrapped at all. The `try`
-       covers a throw; it does not cover a slow synchronous write, and every
-       statement between the catch and the paint is one that can stand between a
-       listener and the only thing on screen telling them what happened. #225 is a
-       listener-facing bug, so the listener is served first and the record second. */
-    noteTapFailure("start", err);
+    /* THE PAINT FIRST AND THE RECORD LAST, but the record lands either way.
+
+       The order: the bridge comes from a module the service worker refreshes
+       independently of this file, which is why it is wrapped at all. A `try`
+       covers a throw and not a slow synchronous write, and every statement
+       between the catch and the paint is one that can stand between a listener
+       and the only thing on screen telling them what happened. #225 is a
+       listener-facing bug, so the listener is served first.
+
+       The `finally`: the argument to `paintForayFailure` is built before the call,
+       and `String(err)` and both template reads throw on an exotic or hostile
+       `err` — the same hazard `diagnostic-log.js`'s `asText` exists for. Without
+       the `finally`, moving the record after the paint would mean that a failure
+       to paint costs the record too, in exactly the case the evidence matters
+       most: the surface did not appear, which IS this issue's literal symptom.
+
+       And the signal is built in its own guard first, because that argument is
+       evaluated BEFORE the call: `String(err)` and both template reads throw on a
+       hostile `err`, and an exception raised here would escape this catch block
+       and become the unhandled rejection the whole guard exists to prevent.
+       "Error" is a poor description and it still reaches the listener as the
+       ordinary load-failure line, which is the honest fallback — something failed
+       and pressing play again is the thing to do. */
+    let signal = "Error";
+    try {
+      signal = err?.name ? `${err.name}: ${err.message ?? ""}` : String(err);
+    } catch (_) { /* an error too strange to describe is still an error */ }
+    try {
+      paintForayFailure(signal);
+    } finally {
+      noteTapFailure("start", err);
+    }
     return null;
   }
 }
@@ -2780,8 +2811,9 @@ let diagUi = null;
 
 const DIAG_SUB =
   "What the player measured on this device: seam gaps, load deadlines, "
-  + "out-point overshoot, stops and resume decisions. It is stored on this device "
-  + "only and is never sent anywhere. Copy it into a bug report.";
+  + "out-point overshoot, stops, resume decisions, and any press that didn't take. "
+  + "It is stored on this device only and is never sent anywhere. "
+  + "Copy it into a bug report.";
 
 function buildDiagSheet() {
   const root = ddEl("div", "fy-sheet");
