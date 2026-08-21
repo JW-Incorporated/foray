@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T08:55:16.399Z",
+  "built_at": "2026-08-21T08:57:50.787Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-f280b533",
+    "last_batch_id": "fresh-2026-08-21-ee6465c6",
     "last_batch_tier": 1
   },
   "entries": {
@@ -2091,29 +2091,39 @@
     "118796495": {
       "topics": [
         "kids-family",
-        "religion/christianity"
+        "religion/christianity",
+        "sports",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "kids-family",
-          "confidence": 0.95
+          "confidence": 0.9
         },
         {
           "node": "religion/christianity",
-          "confidence": 0.85
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Religious puppet show for children with Bible stories and moral lessons.",
+      "rationale": "Content centered on kids & family.",
       "display_title": "Paws & Tales",
-      "blurb": "Animal characters teach children Bible stories and life lessons in fun, memorable ways.",
+      "blurb": "Find adventure, fun, and mu...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-08-04-df65f813",
-      "classified_at": "2026-08-04T01:00:32.780Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "119777571": {
       "topics": [
@@ -5409,28 +5419,40 @@
     },
     "258530615": {
       "topics": [
-        "history"
+        "history",
+        "true-crime",
+        "sports",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "history",
-          "confidence": 0.95
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
         }
       ],
-      "needs_review": true,
-      "rationale": "NYC-focused historical storytelling with archival figures and events.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "blurb: banned /\\bexplores?\\b/i"
-      ],
+      "needs_review": false,
+      "rationale": "Content centered on history.",
+      "display_title": "The Bowery Boys: New York City History",
+      "blurb": "The tides of American histo...",
+      "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:00:47.708Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "258864037": {
       "topics": [
@@ -5450,25 +5472,40 @@
     },
     "259617791": {
       "topics": [
-        "tv-film/reviews"
+        "true-crime",
+        "tv-film/reviews",
+        "comedy",
+        "fiction"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
           "node": "tv-film/reviews",
-          "confidence": 0.9
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Deep film franchise reviews with sharp insight and behind-the-scenes stories.",
-      "display_title": "Now Playing",
-      "blurb": "Deep reviews of film franchises from Bond to Marvel with research and wit.",
+      "rationale": "Podcast focused on true crime.",
+      "display_title": "Now Playing - The Movie Review Podcast",
+      "blurb": "The hosts of Now Playing Po...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:00:47.708Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "259744514": {
       "topics": [
@@ -5516,25 +5553,40 @@
     },
     "261059123": {
       "topics": [
-        "relationships"
+        "religion/christianity",
+        "religion",
+        "tv-film",
+        "education"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "relationships",
-          "confidence": 0.9
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Christian marriage advice with practical insights from relationship experts.",
+      "rationale": "Content centered on christianity.",
       "display_title": "Focus on the Family Marriage Podcast",
-      "blurb": "Practical, faith-based marriage guidance for couples at every stage.",
+      "blurb": "If you’re married — or soon...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:00:47.708Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "261189509": {
       "topics": [
@@ -5565,25 +5617,40 @@
     },
     "261291929": {
       "topics": [
-        "sports/soccer"
+        "sports/football",
+        "sports",
+        "tv-film/reviews",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "sports/soccer",
-          "confidence": 0.95
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Premier League soccer analysis and interviews with fact-checking segments.",
+      "rationale": "Content centered on football.",
       "display_title": "Football Daily",
-      "blurb": "Premier League and European football coverage with expert analysis.",
+      "blurb": "The latest news, insight, a...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:00:47.708Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "261654474": {
       "topics": [
@@ -5595,25 +5662,40 @@
     },
     "261735167": {
       "topics": [
-        "sports/fantasy"
+        "sports/football",
+        "true-crime",
+        "sports",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "sports/fantasy",
-          "confidence": 0.9
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Fantasy football strategy, analysis, and league domination tips.",
+      "rationale": "Content centered on football.",
       "display_title": "Fantasy Football Today",
-      "blurb": "Fantasy football strategy and league rankings with expert advice.",
+      "blurb": "Want to dominate your leagu...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "261779480": {
       "topics": [
@@ -5625,74 +5707,114 @@
     },
     "261779765": {
       "topics": [
-        "culture/art",
-        "history"
+        "comedy",
+        "fiction",
+        "space",
+        "tv-film"
       ],
-      "confidence": "medium",
+      "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "culture/art",
-          "confidence": 0.7
+          "node": "comedy",
+          "confidence": 0.8
         },
         {
-          "node": "history",
-          "confidence": 0.65
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Biographical series featuring people inspired by historical figures.",
+      "rationale": "Content centered on comedy.",
       "display_title": "Great Lives",
-      "blurb": "Biographical interviews about people who inspire others.",
+      "blurb": "Biographical series in whic...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "262026947": {
       "topics": [
+        "sports/football",
+        "sports",
+        "news",
         "education/language-learning"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
           "node": "education/language-learning",
-          "confidence": 0.95
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "BBC English language learning with vocabulary, grammar, and conversation.",
+      "rationale": "Content centered on football.",
       "display_title": "6 Minute English",
-      "blurb": "Practical English learning from BBC programs with vocabulary focus.",
+      "blurb": "Learn and practise useful E...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "262026989": {
       "topics": [
-        "education/language-learning"
+        "education/language-learning",
+        "fiction",
+        "tv-film",
+        "education"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "education/language-learning",
-          "confidence": 0.95
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Real English conversation practice for everyday communication skills.",
+      "rationale": "Content centered on language learning.",
       "display_title": "Learning English Conversations",
-      "blurb": "Everyday English conversations to improve speaking skills.",
+      "blurb": "Everyday expressions and re...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "262223371": {
       "topics": [
@@ -5750,29 +5872,39 @@
     "263585537": {
       "topics": [
         "comedy",
-        "tv-film/reviews"
+        "news",
+        "tv-film",
+        "culture/books"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "comedy",
-          "confidence": 0.85
+          "confidence": 0.8
         },
         {
-          "node": "tv-film/reviews",
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
           "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Comedy podcast about the worst recent films with humorous analysis.",
+      "rationale": "Podcast focused on comedy.",
       "display_title": "The Flop House",
-      "blurb": "Humorous reviews of bad movies with comedy and snark.",
+      "blurb": "The Flop House is a comedy ...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "263659039": {
       "topics": [
@@ -5824,25 +5956,40 @@
     },
     "265307843": {
       "topics": [
-        "society/law"
+        "news/politics",
+        "true-crime",
+        "news",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "society/law",
-          "confidence": 0.9
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Weekly legal analysis and commentary on current law stories.",
+      "rationale": "Content centered on politics.",
       "display_title": "The Law Show",
-      "blurb": "In-depth understanding of legal stories and current law issues.",
+      "blurb": "Weekly conversation that wi...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "265970428": {
       "topics": [
@@ -6172,30 +6319,40 @@
     },
     "273148505": {
       "topics": [
-        "culture/art",
-        "hobbies"
+        "tv-film/reviews",
+        "comedy",
+        "fiction",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "culture/art",
-          "confidence": 0.85
+          "node": "tv-film/reviews",
+          "confidence": 0.8
         },
         {
-          "node": "hobbies",
-          "confidence": 0.7
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Live weekly comic book discussion and interviews with guests.",
+      "rationale": "Content centered on film & tv reviews.",
       "display_title": "Comic Book Club",
-      "blurb": "Weekly comic book discussion and interviews with creators.",
+      "blurb": "Comic Book Club is a LIVE w...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "273149718": {
       "topics": [
@@ -6304,52 +6461,77 @@
     },
     "276268457": {
       "topics": [
-        "gaming"
+        "history",
+        "sports",
+        "tv-film/reviews",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "gaming",
-          "confidence": 0.95
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Nintendo gaming news, reviews, and franchise analysis.",
+      "rationale": "Content centered on history.",
       "display_title": "Nintendo Voice Chat",
-      "blurb": "Nintendo gaming news, reviews, and franchise discussion.",
+      "blurb": "For over 130 years, Nintend...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "276584069": {
       "topics": [
-        "travel",
-        "hobbies"
+        "history",
+        "news",
+        "tv-film",
+        "education"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "travel",
-          "confidence": 0.9
+          "node": "history",
+          "confidence": 0.85
         },
         {
-          "node": "hobbies",
-          "confidence": 0.6
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Award-winning Disney World travel planning and resort discussion.",
-      "display_title": "Be Our Guest WDW",
-      "blurb": "Disney World travel planning and resort information.",
+      "rationale": "Podcast focused on history.",
+      "display_title": "Be Our Guest WDW Podcast",
+      "blurb": "This award-winning podcast ...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "277522775": {
       "topics": [
@@ -6674,30 +6856,40 @@
     },
     "283908977": {
       "topics": [
-        "health/fitness",
-        "health/nutrition"
+        "health",
+        "news",
+        "education/language-learning",
+        "kids-family/stories"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "health/fitness",
-          "confidence": 0.9
+          "node": "health",
+          "confidence": 0.8
         },
         {
-          "node": "health/nutrition",
-          "confidence": 0.7
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/language-learning",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Fitness, nutrition, biohacking, and anti-aging health topics.",
+      "rationale": "Content centered on health & fitness.",
       "display_title": "Boundless Life",
-      "blurb": "Fitness, nutrition, and cutting-edge health optimization.",
+      "blurb": "Free fitness, nutrition, bi...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "284012446": {
       "topics": [
@@ -6927,25 +7119,40 @@
     },
     "291668879": {
       "topics": [
-        "science"
+        "history",
+        "news/politics",
+        "true-crime",
+        "sports"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science",
+          "node": "history",
           "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Science and reason podcast from Australia examining claims critically.",
+      "rationale": "Podcast focused on history.",
       "display_title": "The Skeptic Zone",
-      "blurb": "Science and reason podcast examining claims critically.",
+      "blurb": "The Podcast from Australia ...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "291832580": {
       "topics": [
@@ -7084,25 +7291,40 @@
     },
     "296189771": {
       "topics": [
-        "music"
+        "space",
+        "music",
+        "craft/diy-home",
+        "psychology"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "music",
+          "node": "space",
           "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
         }
       ],
-      "needs_review": true,
-      "rationale": "Music-focused podcast about a band or artist; unclear specifics.",
+      "needs_review": false,
+      "rationale": "Content centered on space.",
       "display_title": "Tritonia",
-      "blurb": "Music podcast about a band and their creative journey.",
+      "blurb": "Perfectionists in the studi...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "296237493": {
       "topics": [
@@ -7382,25 +7604,40 @@
     },
     "308747255": {
       "topics": [
-        "society/law"
+        "true-crime",
+        "comedy",
+        "health",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "society/law",
+          "node": "true-crime",
           "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Workers compensation legal advice and commentary show.",
+      "rationale": "Content centered on true crime.",
       "display_title": "Workers Comp Matters",
-      "blurb": "Workers compensation legal analysis and advice.",
+      "blurb": "Workers Comp Matters is hos...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "309303712": {
       "topics": [
@@ -7516,25 +7753,40 @@
     },
     "313139609": {
       "topics": [
-        "sports/wrestling"
+        "history",
+        "sports",
+        "tv-film/reviews",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "sports/wrestling",
-          "confidence": 0.95
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Wrestling news and analysis covering WWE and professional wrestling.",
+      "rationale": "Content centered on history.",
       "display_title": "Solomonster Sounds Off",
-      "blurb": "Professional wrestling news and analysis.",
+      "blurb": "Solomonster Sounds Off tack...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "313300476": {
       "topics": [
@@ -7584,25 +7836,40 @@
     },
     "316045799": {
       "topics": [
-        "comedy"
+        "comedy",
+        "news",
+        "fiction",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "comedy",
-          "confidence": 0.95
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Comedy improv and interviews with comedians and celebrities.",
-      "display_title": "Comedy Bang Bang",
-      "blurb": "Comedy improv with celebrity and comedian interviews.",
+      "rationale": "Content centered on comedy.",
+      "display_title": "Comedy Bang Bang: The Podcast",
+      "blurb": "Join host Scott Aukerman (\"Mr",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "317482646": {
       "topics": [
@@ -7620,47 +7887,77 @@
     },
     "318345767": {
       "topics": [
-        "philosophy"
+        "tv-film",
+        "music",
+        "philosophy",
+        "psychology"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
           "node": "philosophy",
-          "confidence": 0.9
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Philosophy podcast by philosophy graduates discussing major ideas.",
-      "display_title": "The Partially Examined Life",
-      "blurb": "Philosophy discussion exploring major philosophical ideas.",
+      "rationale": "Podcast focused on tv & film.",
+      "display_title": "The Partially Examined Life Philosophy Podcast",
+      "blurb": "The Partially Examined Life...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "318542351": {
       "topics": [
-        "tv-film/animation"
+        "fiction",
+        "space",
+        "tv-film",
+        "culture/books"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "tv-film/animation",
-          "confidence": 0.95
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "One Piece anime discussion and episode coverage since 2009.",
+      "rationale": "Podcast focused on fiction & audio drama.",
       "display_title": "The One Piece Podcast",
-      "blurb": "One Piece anime analysis and episode discussion.",
+      "blurb": "We are The One Piece Podcast",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "319637902": {
       "topics": [
@@ -7735,25 +8032,40 @@
     },
     "323983193": {
       "topics": [
-        "automotive"
+        "sports",
+        "space",
+        "tv-film",
+        "business"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "automotive",
-          "confidence": 0.95
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Twice-weekly automotive podcast covering cars and racing.",
+      "rationale": "Podcast focused on sports.",
       "display_title": "CarCast",
-      "blurb": "Automotive news and discussion from industry expert.",
+      "blurb": "CarCast is twice weekly aut...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "324173353": {
       "topics": [
@@ -7922,25 +8234,40 @@
     },
     "328074695": {
       "topics": [
-        "culture/design"
+        "business/startups",
+        "fiction",
+        "tv-film",
+        "culture/books"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "culture/design",
-          "confidence": 0.95
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "One of the first podcasts; interviews with prominent designers.",
-      "display_title": "Design Matters",
-      "blurb": "Interviews with prominent designers and creative leaders.",
+      "rationale": "Podcast focused on startups & deep tech.",
+      "display_title": "Design Matters with Debbie Millman",
+      "blurb": "Design Matters with Debbie ...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "328076847": {
       "topics": [
@@ -7960,30 +8287,40 @@
     },
     "329875043": {
       "topics": [
-        "comedy/interviews",
-        "comedy"
+        "history",
+        "sports",
+        "comedy",
+        "space"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "comedy/interviews",
-          "confidence": 0.9
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
         },
         {
           "node": "comedy",
-          "confidence": 0.85
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Long-form interviews with comedians, actors, and celebrities.",
-      "display_title": "WTF with Marc Maron",
-      "blurb": "Long-form interviews with comedians, actors, and creators.",
+      "rationale": "Content centered on history.",
+      "display_title": "WTF with Marc Maron Podcast",
+      "blurb": "Marc Maron welcomes comedia...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "329937558": {
       "topics": [
@@ -8040,52 +8377,77 @@
     },
     "333469871": {
       "topics": [
-        "personal-journals"
+        "sports/football",
+        "news/politics",
+        "sports",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "personal-journals",
-          "confidence": 0.9
-        }
-      ],
-      "needs_review": false,
-      "rationale": "Personal narrative stories about people and their unique lives.",
-      "display_title": "Lives Less Ordinary",
-      "blurb": "Personal stories about individuals and their unique journeys.",
-      "display_copy_ok": true,
-      "model": "claude-code-cron (tier 1)",
-      "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
-    },
-    "334648685": {
-      "topics": [
-        "psychology",
-        "society"
-      ],
-      "confidence": "high",
-      "source": "classify-agent-tier1",
-      "topic_confidences": [
+          "node": "sports/football",
+          "confidence": 0.85
+        },
         {
-          "node": "psychology",
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
           "confidence": 0.8
         },
         {
-          "node": "society",
-          "confidence": 0.7
+          "node": "news",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Psychology and human interaction podcast about social engineering.",
-      "display_title": "The Social-Engineer Podcast",
-      "blurb": "Psychology of human interaction and social dynamics.",
+      "rationale": "Content centered on football.",
+      "display_title": "Lives Less Ordinary",
+      "blurb": "Introducing a new season of...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
+    },
+    "334648685": {
+      "topics": [
+        "health",
+        "news",
+        "tv-film",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast focused on health & fitness.",
+      "display_title": "The Social-Engineer Podcast",
+      "blurb": "The Social-Engineer Podcast...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "334724074": {
       "topics": [
@@ -8097,25 +8459,40 @@
     },
     "335246945": {
       "topics": [
-        "gaming"
+        "history",
+        "sports",
+        "tv-film/reviews",
+        "news"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "gaming",
-          "confidence": 0.95
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Weekly gaming podcast covering latest video game news and reviews.",
+      "rationale": "Podcast focused on history.",
       "display_title": "The Game Informer Show",
-      "blurb": "Weekly video game news, reviews, and industry coverage.",
+      "blurb": "The Game Informer Show is a...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "335549005": {
       "topics": [
@@ -8213,30 +8590,40 @@
     },
     "339001481": {
       "topics": [
-        "tv-film/interviews",
-        "personal-journals"
+        "religion/christianity",
+        "fiction",
+        "fiction/sci-fi",
+        "religion"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "tv-film/interviews",
-          "confidence": 0.85
+          "node": "religion/christianity",
+          "confidence": 0.8
         },
         {
-          "node": "personal-journals",
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
           "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "True stories from character actor Stephen Tobolowsky about life and Hollywood.",
+      "rationale": "Content centered on christianity.",
       "display_title": "The Tobolowsky Files",
-      "blurb": "True stories from a character actor about life and Hollywood.",
+      "blurb": "True stories about life, lo...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "339817701": {
       "topics": [
@@ -8523,25 +8910,40 @@
     },
     "350709629": {
       "topics": [
-        "food"
+        "history",
+        "true-crime",
+        "news",
+        "kids-family/stories"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "food",
-          "confidence": 0.9
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "James Beard Award-winning food podcast about eating and food culture.",
+      "rationale": "Podcast focused on history.",
       "display_title": "The Sporkful",
-      "blurb": "Award-winning food podcast about eating and food culture.",
+      "blurb": "3x James Beard Award winner",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "351065142": {
       "topics": [
@@ -8644,30 +9046,40 @@
     },
     "354668519": {
       "topics": [
-        "economics",
-        "news/commentary"
+        "history",
+        "true-crime",
+        "sports",
+        "sports/basketball"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "economics",
-          "confidence": 0.9
+          "node": "history",
+          "confidence": 0.85
         },
         {
-          "node": "news/commentary",
-          "confidence": 0.7
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports/basketball",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Economics and hidden incentives in everyday life exploration.",
+      "rationale": "Content centered on history.",
       "display_title": "Freakonomics Radio",
-      "blurb": "Economics podcast exploring hidden incentives in everyday life.",
+      "blurb": "Freakonomics co-author Step...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "354850879": {
       "topics": [
@@ -8934,30 +9346,40 @@
     },
     "368421863": {
       "topics": [
-        "gaming",
-        "hobbies"
+        "history",
+        "space/rockets",
+        "sports",
+        "tv-film/reviews"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "gaming",
-          "confidence": 0.9
+          "node": "history",
+          "confidence": 0.85
         },
         {
-          "node": "hobbies",
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film/reviews",
           "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Warhammer 40,000 tabletop gaming podcast and hobby discussion.",
-      "display_title": "The Independent Characters",
-      "blurb": "Warhammer 40K tabletop gaming discussion and hobby podcast.",
+      "rationale": "Podcast focused on history.",
+      "display_title": "The Independent Characters | Warhammer 40k Podcast",
+      "blurb": "The Warhammer 40k Podcast t...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "368930767": {
       "topics": [
@@ -8968,30 +9390,40 @@
     },
     "369032477": {
       "topics": [
-        "cities/urbanism",
-        "society"
+        "news/politics",
+        "business/startups",
+        "news",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "cities/urbanism",
-          "confidence": 0.9
+          "node": "news/politics",
+          "confidence": 0.85
         },
         {
-          "node": "society",
-          "confidence": 0.7
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Urban development and city planning podcast about sustainable cities.",
+      "rationale": "Podcast focused on politics.",
       "display_title": "The Strong Towns Podcast",
-      "blurb": "Urban development and sustainable city planning discussion.",
+      "blurb": "The Strong Towns Podcast is...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "369057069": {
       "topics": [
@@ -9069,7 +9501,9 @@
     "373784645": {
       "topics": [
         "sports",
-        "comedy"
+        "sports/baseball",
+        "news",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
@@ -9079,19 +9513,27 @@
           "confidence": 0.8
         },
         {
-          "node": "comedy",
-          "confidence": 0.7
+          "node": "sports/baseball",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
-      "needs_review": true,
-      "rationale": "Sports podcast format unclear from limited signal; may be comedy-sports hybrid.",
+      "needs_review": false,
+      "rationale": "Podcast focused on sports.",
       "display_title": "Toucher & Hardy",
-      "blurb": "Sports and humor podcast with daily commentary.",
+      "blurb": "Full show podcasts in one-h...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "373784825": {
       "topics": [
@@ -9266,30 +9708,40 @@
     },
     "383631335": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "history",
+        "sports",
+        "business/startups",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "sports/endurance",
-          "confidence": 0.9
+          "node": "history",
+          "confidence": 0.85
         },
         {
-          "node": "health/fitness",
-          "confidence": 0.7
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Running and track & field analysis with professional athletes.",
-      "display_title": "LetsRun Track Talk",
-      "blurb": "Professional running and track & field analysis.",
+      "rationale": "Podcast focused on history.",
+      "display_title": "LetsRun.com's Track Talk: The Home of Running and",
+      "blurb": "LetsRun",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "384366241": {
       "topics": [
@@ -9300,52 +9752,77 @@
     },
     "384453923": {
       "topics": [
-        "hobbies",
-        "travel"
+        "news",
+        "nature/ocean-science",
+        "tv-film",
+        "business"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "hobbies",
-          "confidence": 0.85
+          "node": "news",
+          "confidence": 0.8
         },
         {
-          "node": "travel",
-          "confidence": 0.7
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Longest-running amusement park podcast covering theme parks.",
+      "rationale": "Podcast focused on news & current affairs.",
       "display_title": "In the Loop",
-      "blurb": "Amusement park news and analysis podcast.",
+      "blurb": "In the Loop podcast is the ...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "384522641": {
       "topics": [
-        "gaming"
+        "sports",
+        "news",
+        "space",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "gaming",
-          "confidence": 0.95
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Weekly Pokémon news, strategy, and game coverage.",
-      "display_title": "It's Super Effective",
-      "blurb": "Weekly Pokémon news and game strategy coverage.",
+      "rationale": "Podcast focused on sports.",
+      "display_title": "It's Super Effective: A Pokemon Podcast",
+      "blurb": "It's Super Effective is a w...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "385017460": {
       "topics": [
@@ -9794,30 +10271,40 @@
     },
     "410021783": {
       "topics": [
-        "health/sexuality",
-        "fiction"
+        "true-crime",
+        "fiction",
+        "travel",
+        "linguistics"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "health/sexuality",
+          "node": "true-crime",
           "confidence": 0.85
         },
         {
           "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "linguistics",
           "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Adult romance and erotica fiction audio stories.",
-      "display_title": "Spice",
-      "blurb": "Romantic and sensual audio fiction stories.",
+      "rationale": "Podcast focused on true crime.",
+      "display_title": "Spice | Romantic Stories of Love | Sex",
+      "blurb": "Are you with a friend",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "410853090": {
       "topics": [
@@ -9843,30 +10330,40 @@
     },
     "412308695": {
       "topics": [
-        "philosophy",
+        "religion/christianity",
+        "comedy",
+        "fiction",
         "religion"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "philosophy",
-          "confidence": 0.85
+          "node": "religion/christianity",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
         },
         {
           "node": "religion",
-          "confidence": 0.7
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Secular and atheist perspective on religion and spirituality.",
+      "rationale": "Content centered on christianity.",
       "display_title": "TheThinkingAtheist",
-      "blurb": "Secular perspective on religion and critical thinking.",
+      "blurb": "Seth Andrews, a former Chri...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "412308812": {
       "topics": [
@@ -10205,30 +10702,40 @@
     },
     "425328515": {
       "topics": [
-        "religion",
-        "science"
+        "history",
+        "tv-film/reviews",
+        "comedy",
+        "science/physics"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "religion",
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
           "confidence": 0.8
         },
         {
-          "node": "science",
-          "confidence": 0.75
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Investigative podcast about fringe beliefs and pseudoscience.",
+      "rationale": "Content centered on history.",
       "display_title": "Oh No, Ross and Carrie",
-      "blurb": "Investigation of fringe beliefs and pseudoscience claims.",
+      "blurb": "Welcome to Oh No, Ross and ...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "425369034": {
       "topics": [
@@ -10442,25 +10949,40 @@
     },
     "430244417": {
       "topics": [
-        "fiction/drama"
+        "true-crime",
+        "news",
+        "fiction",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "fiction/drama",
-          "confidence": 0.95
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Classic old-time radio drama about detective character.",
-      "display_title": "Yours Truly Johnny Dollar",
-      "blurb": "Classic detective drama from old-time radio era.",
+      "rationale": "Content centered on true crime.",
+      "display_title": "The Great Detectives Present Yours Truly Johnny Dollar",
+      "blurb": "Listen to the adventures of...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "430247008": {
       "topics": [
@@ -10619,25 +11141,40 @@
     },
     "440260757": {
       "topics": [
-        "music"
+        "tv-film",
+        "psychology",
+        "relationships",
+        "tv-film/interviews"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "music",
-          "confidence": 0.85
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.65
         }
       ],
       "needs_review": false,
-      "rationale": "Monthly music selection show from electronic music producers.",
+      "rationale": "Content centered on tv & film.",
       "display_title": "Hysteria Radio",
-      "blurb": "Monthly electronic music selection and DJ mixes.",
+      "blurb": "Every month Bingo Players s...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "440985304": {
       "topics": [
@@ -10714,25 +11251,40 @@
     },
     "444083093": {
       "topics": [
-        "fiction"
+        "fiction",
+        "tv-film",
+        "music",
+        "culture"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "fiction",
-          "confidence": 0.85
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
         }
       ],
       "needs_review": false,
-      "rationale": "Multi-award winning horror fiction anthology series.",
+      "rationale": "Podcast focused on fiction & audio drama.",
       "display_title": "The NoSleep Podcast",
-      "blurb": "Award-winning horror fiction anthology podcast.",
+      "blurb": "The NoSleep Podcast is a mu...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "444092800": {
       "topics": [
@@ -10940,30 +11492,40 @@
     },
     "456574751": {
       "topics": [
-        "gaming",
-        "education"
+        "comedy",
+        "travel",
+        "math",
+        "math/puzzles"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "gaming",
+          "node": "comedy",
           "confidence": 0.8
         },
         {
-          "node": "education",
-          "confidence": 0.7
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "math",
+          "confidence": 0.75
+        },
+        {
+          "node": "math/puzzles",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "BBC Radio quiz show covering trivia and intelligent games.",
+      "rationale": "Content centered on comedy.",
       "display_title": "Quizzes",
-      "blurb": "Intelligent quiz games and trivia from BBC Radio.",
+      "blurb": "Intelligent and challenging...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "456672668": {
       "topics": [
@@ -11004,25 +11566,40 @@
     },
     "458066753": {
       "topics": [
-        "computing"
+        "history",
+        "health",
+        "news",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "computing",
-          "confidence": 0.95
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Apple technology tips and productivity focused topics.",
+      "rationale": "Content centered on history.",
       "display_title": "Mac Power Users",
-      "blurb": "Apple technology tips and productivity maximization.",
+      "blurb": "Learn about getting the mos...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "458210899": {
       "topics": [
@@ -11116,25 +11693,40 @@
     },
     "463700741": {
       "topics": [
-        "history"
+        "history",
+        "science",
+        "medicine/biology",
+        "travel"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
           "node": "history",
-          "confidence": 0.95
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "BBC Radio history podcast covering themes and key individuals.",
+      "rationale": "Content centered on history.",
       "display_title": "In Our Time: History",
-      "blurb": "BBC Radio history podcast covering themes and figures.",
+      "blurb": "Historical themes, events a...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "463701000": {
       "topics": [
@@ -11248,30 +11840,40 @@
     },
     "469838627": {
       "topics": [
-        "tv-film",
-        "news"
+        "tv-film/reviews",
+        "comedy",
+        "news",
+        "fiction"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "tv-film",
-          "confidence": 0.9
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
         },
         {
           "node": "news",
-          "confidence": 0.75
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Weekly movie and TV entertainment news coverage.",
-      "display_title": "The Nerdpocalypse",
-      "blurb": "Movie and TV entertainment news and coverage.",
+      "rationale": "Content centered on film & tv reviews.",
+      "display_title": "The Nerdpocalypse | Movie & TV News",
+      "blurb": "The Nerdpocalypse is your w...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "470623173": {
       "topics": [
@@ -11283,30 +11885,40 @@
     },
     "470624027": {
       "topics": [
-        "news/tech",
-        "engineering"
+        "sports",
+        "health",
+        "news",
+        "fiction"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "news/tech",
-          "confidence": 0.9
+          "node": "sports",
+          "confidence": 0.8
         },
         {
-          "node": "engineering",
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
           "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Technology topics from TED talks and tech innovation.",
+      "rationale": "Content centered on sports.",
       "display_title": "TED Tech",
-      "blurb": "Technology innovation and future trends from TED.",
+      "blurb": "From the construction of vi...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "471418144": {
       "topics": [
@@ -11384,25 +11996,40 @@
     },
     "474208361": {
       "topics": [
+        "history",
+        "news/politics",
+        "space/rockets",
         "science/physics"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
           "node": "science/physics",
-          "confidence": 0.95
+          "confidence": 0.8
         }
       ],
       "needs_review": false,
-      "rationale": "Physics stories and discoveries from Physics World magazine.",
-      "display_title": "Physics World Stories",
-      "blurb": "Physics discoveries and stories from experts.",
+      "rationale": "Content centered on history.",
+      "display_title": "Physics World Stories Podcast",
+      "blurb": "Physics is full of captivat...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "474303851": {
       "topics": [
@@ -11594,7 +12221,9 @@
     "481087877": {
       "topics": [
         "news/politics",
-        "religion"
+        "news",
+        "fiction",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
@@ -11604,41 +12233,49 @@
           "confidence": 0.85
         },
         {
-          "node": "religion",
-          "confidence": 0.7
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Conservative political and religious commentary podcast.",
+      "rationale": "Content centered on politics.",
       "display_title": "Steve Deace Show",
-      "blurb": "Conservative political commentary with snarky perspective.",
+      "blurb": "Principled conservatism wit...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "481139825": {
       "topics": [
-        "science"
+        "education"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "science",
-          "confidence": 0.9
+          "node": "education",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Turkish science podcast covering scientific topics independently.",
+      "rationale": "Podcast focused on education.",
       "display_title": "Açık Bilim Podcast",
-      "blurb": "Turkish science podcast covering research topics.",
+      "blurb": "Açık Bilim Podcast, bağımsı...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "481165891": {
       "topics": [
@@ -11776,25 +12413,40 @@
     },
     "493253759": {
       "topics": [
-        "history/military-modern"
+        "history",
+        "news",
+        "tv-film",
+        "culture/books"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "history/military-modern",
-          "confidence": 0.95
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Biweekly WWII history podcast with detailed analysis.",
-      "display_title": "The History of WWII",
-      "blurb": "Biweekly WWII history with detailed episode coverage.",
+      "rationale": "Podcast focused on history.",
+      "display_title": "The History of WWII Podcast",
+      "blurb": "A biweekly history podcast ...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "493868820": {
       "topics": [
@@ -12152,25 +12804,40 @@
     },
     "508943027": {
       "topics": [
-        "craft/woodworking"
+        "history",
+        "craft/woodworking",
+        "space",
+        "tv-film"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
           "node": "craft/woodworking",
-          "confidence": 0.95
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Woodworking tips and advice from Fine Woodworking magazine editors.",
-      "display_title": "Shop Talk Live",
-      "blurb": "Woodworking tips and advice from magazine experts.",
+      "rationale": "Content centered on history.",
+      "display_title": "Shop Talk Live - Fine Woodworking",
+      "blurb": "Fine Woodworking magazine e...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "509929387": {
       "topics": [
@@ -12629,52 +13296,77 @@
     },
     "531754457": {
       "topics": [
-        "education/language-learning"
+        "news",
+        "economics/markets",
+        "education",
+        "economics"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "education/language-learning",
-          "confidence": 0.95
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Italian language learning audio course for beginners.",
-      "display_title": "Andante",
-      "blurb": "Beginner Italian language learning audio course.",
+      "rationale": "Content centered on news & current affairs.",
+      "display_title": "Andante: beginners' Italian - Audio",
+      "blurb": "Do you want to learn the ba...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "533465123": {
       "topics": [
-        "religion/spirituality",
-        "paranormal"
+        "history",
+        "tv-film",
+        "culture/books",
+        "travel"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "religion/spirituality",
+          "node": "history",
           "confidence": 0.85
         },
         {
-          "node": "paranormal",
-          "confidence": 0.7
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
         }
       ],
       "needs_review": false,
-      "rationale": "Astrology and intuitive spiritual guidance podcast.",
-      "display_title": "Intuitive Astrology",
-      "blurb": "Astrology and intuitive spiritual guidance.",
+      "rationale": "Content centered on history.",
+      "display_title": "Intuitive Astrology with Molly McCord",
+      "blurb": "Join bestselling author of ...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "535203893": {
       "topics": [
@@ -13073,25 +13765,40 @@
     },
     "562603085": {
       "topics": [
-        "hobbies"
+        "tv-film/reviews",
+        "tv-film",
+        "music",
+        "travel"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "hobbies",
-          "confidence": 0.85
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
         }
       ],
-      "needs_review": true,
-      "rationale": "Pipes hobby interview show; specific focus unclear from signal.",
-      "display_title": "The Pipes Magazine Radio Show",
-      "blurb": "Interviews about pipes and tobacco hobby.",
+      "needs_review": false,
+      "rationale": "Content centered on film & tv reviews.",
+      "display_title": "The Pipes Magazine Radio Show Podcast",
+      "blurb": "The Pipes Magazine Radio Sh...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "562793280": {
       "topics": [
@@ -13300,25 +14007,40 @@
     },
     "581324591": {
       "topics": [
-        "gaming"
+        "sports",
+        "tv-film",
+        "travel",
+        "adventure"
       ],
       "confidence": "high",
       "source": "classify-agent-tier1",
       "topic_confidences": [
         {
-          "node": "gaming",
-          "confidence": 0.95
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.75
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.7
         }
       ],
       "needs_review": false,
-      "rationale": "D&D 5e actual play campaign with comedy and roleplay.",
-      "display_title": "Greetings Adventurers",
-      "blurb": "Dungeons & Dragons 5e actual play campaign.",
+      "rationale": "Podcast focused on sports.",
+      "display_title": "Greetings Adventurers - Dungeons and Dragons 5e Actual",
+      "blurb": "The Dungeons and Dragons Po...",
       "display_copy_ok": true,
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
-      "batch_id": "fresh-2026-07-25-9879393b",
-      "classified_at": "2026-07-25T06:01:49.445Z"
+      "batch_id": "fresh-2026-08-21-ee6465c6",
+      "classified_at": "2026-08-21T08:57:50.787Z"
     },
     "582272991": {
       "topics": [
