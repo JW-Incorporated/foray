@@ -1,6 +1,6 @@
-# Foray backend
+# 4a backend
 
-Node.js + TypeScript backend core for Foray: feed ingest primitives,
+Node.js + TypeScript backend core for 4a: feed ingest primitives,
 episode identity/dedup, a Tier-1 enrichment pipeline (real + stub), cost
 metering with a budget guard, and a curation engine that assembles a
 4-archetype session document. Local-first: `npm install && npm test`

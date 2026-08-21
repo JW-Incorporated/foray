@@ -51,7 +51,7 @@
    `forayNowPlaying`) so the two surfaces cannot drift.
 
    Narration items (`kind === "tts"`) take `title = "Up next: <episode>"`,
-   verbatim from `04_VOICE_AUDIO_SPEC.md` line 11, and `artist = "Foray"` —
+   verbatim from `04_VOICE_AUDIO_SPEC.md` line 11, and `artist = "4a"` —
    we wrote that audio, and putting a publisher's name on a line they did not
    record would be the one credit error this module must not make. No Foray
    ships narration yet, which is exactly why the branch is tested.
@@ -319,11 +319,11 @@ export function mediaMetadata({
     // Deliberately NOT the narration item's own title when there is nothing
     // after it: an authored narration id is a slug (`bridge-3`), and a slug on a
     // car display is worse than the Foray's name, which is always a sentence.
-    title = upNext ? `Up next: ${upNext}` : (foray || "Foray");
+    title = upNext ? `Up next: ${upNext}` : (foray || "4a");
     // Our line, our name. Never a publisher's.
-    artist = "Foray";
+    artist = "4a";
   } else {
-    title = clean(item?.title) || foray || "Foray";
+    title = clean(item?.title) || foray || "4a";
     artist = clean(item?.show);
   }
 

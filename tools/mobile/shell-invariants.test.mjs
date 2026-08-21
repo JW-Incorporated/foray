@@ -209,7 +209,14 @@ test("the app id is pinned, because it is permanent once published", () => {
      the change impossible to do by accident. If a founder rules differently,
      edit this line in the same PR. */
   assert.equal(capConfig.appId, "com.jwincorporated.foray");
-  assert.equal(capConfig.appName, "Foray");
+  /* `appName` is NOT in the same class and this test used to imply it was. The
+     bundle id is permanent once published; the display name is just the label
+     under the icon and can change any time. The app was renamed to **4a** on
+     2026-08-21 (founder instruction) while the bundle id was deliberately left
+     alone — renaming that WOULD cost the listing and the install base, and it is
+     still the open ruling in HUMAN-ACTIONS #15. Keeping the id on `foray` is the
+     correct outcome, not an oversight. */
+  assert.equal(capConfig.appName, "4a");
 });
 
 test("mobile/ is the only place a Capacitor config lives", () => {

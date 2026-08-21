@@ -186,7 +186,7 @@ test("a missing show yields an EMPTY artist — a credit is never invented", () 
   const m = mediaMetadata({ item: { kind: "episode", title: "T", show: "" }, forayTitle: "F", index: 0, total: 2 });
   assert.equal(m.artist, "");
   assert.notEqual(m.artist, "F");
-  assert.notEqual(m.artist, "Foray");
+  assert.notEqual(m.artist, "4a");
 });
 
 test("a missing episode title falls back to the Foray, never to an empty display", () => {
@@ -196,7 +196,7 @@ test("a missing episode title falls back to the Foray, never to an empty display
 
 test("with nothing at all the display still says something true", () => {
   const m = mediaMetadata();
-  assert.equal(m.title, "Foray");
+  assert.equal(m.title, "4a");
   assert.equal(m.artist, "");
   assert.equal(m.album, "");
 });
@@ -235,7 +235,7 @@ test("a narration item with nothing after it shows the FORAY, never its own slug
      and a flattering fixture ("Closing line") hid it. */
   assert.equal(mediaMetadata({ item: { kind: "tts", title: "bridge-3" }, forayTitle: "The history of grilling" }).title,
     "The history of grilling");
-  assert.equal(mediaMetadata({ item: { kind: "tts", title: "bridge-3" } }).title, "Foray");
+  assert.equal(mediaMetadata({ item: { kind: "tts", title: "bridge-3" } }).title, "4a");
 });
 
 test("a narration item is credited to Foray, never to a publisher", () => {
@@ -244,7 +244,7 @@ test("a narration item is credited to Foray, never to a publisher", () => {
     nextItem: { kind: "episode", title: "T", show: "Origin Stories" },
     forayTitle: "F", index: 1, total: 4,
   });
-  assert.equal(m.artist, "Foray");
+  assert.equal(m.artist, "4a");
 });
 
 test("a narration item never carries a publisher's artwork", () => {
@@ -940,7 +940,7 @@ test("the PUBLISHER's name is what actually reaches the platform, not ours", () 
      same until somebody edits the bridge.
      BOTH BRANCHES, and that matters — the first version of this test ran only
      without a `MediaMetadata` constructor, so `new MediaMetadata({ ...metadata,
-     artist: "Foray" })` still credited us for nine publishers' work with the
+     artist: "4a" })` still credited us for nine publishers' work with the
      whole suite green. Every engine that has a lock screen takes the other
      branch. */
   for (const MediaMetadata of [null, FakeMediaMetadata]) {

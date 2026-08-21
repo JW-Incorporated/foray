@@ -1,4 +1,4 @@
-# Foray
+# 4a
 
 Personal AI podcast curator. Long-term target: iOS app per the briefing package in `docs/brief/`. Current phase: a deployed static web menu that tests curation quality (the M2 gate) before any audio engineering.
 
