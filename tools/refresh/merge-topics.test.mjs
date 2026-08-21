@@ -358,7 +358,8 @@ test("scan.mjs seeds topics from the SHOW and from nothing else, so the nightly 
      seeded from the show. If that ever becomes a per-episode assignment inside
      scan.mjs, there are two topic seams again and this goes red.
      WHAT IT DOES NOT CATCH, said plainly so the next reader does not over-trust
-     it: the property-match below sees OBJECT-LITERAL keys only. A review round
+     it: the first match below sees OBJECT-LITERAL PROPERTIES ONLY — a `topics:`
+     key inside a `{ … }`. A review round
      probed it with a statement-form seam — `pending[pending.length - 1].topics =
      ["culture/books"];` — and the suite stayed green, which is the exact defect
      the test exists for. Hence the second assertion: no assignment TO a `.topics`

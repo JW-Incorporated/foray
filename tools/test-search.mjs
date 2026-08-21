@@ -292,9 +292,26 @@ const topicalCases = [
   // Same fix cost "geopolitics" as a loose match for "politics" (the
   // prefix-guard can't distinguish a meaningful compound like
   // geo-politics from a coincidental collision like dif-fusion) -- an
-  // accepted, deliberate precision/recall trade-off. 4 genuinely
-  // politics-tagged items, honestly sparse.
-  { query: "politics", status: "sparse", checkTop: 4, anyOf: ["politics"] },
+  // accepted, deliberate precision/recall trade-off. That trade-off is
+  // unchanged; what changed is the catalogue.
+  //
+  // sparse -> ok ON 2026-08-21 (#292), AND THE STATUS IS THE ONLY THING THAT
+  // MOVED -- the top of the ranking is identical, and the two arrivals are at
+  // ranks 2 and 6. Per-episode topics gave two genuinely political episodes the
+  // `news/politics` label their show-level default had denied them: Stuff You
+  // Should Know's "How Russia Shapes What the World Thinks" (Operation
+  // Doppelganger, previously `history/technology` + `science/materials`) and
+  // Software Engineering Daily's "AI and the New Global Security Landscape"
+  // (previously `computing/history`). 4 strong -> 6, which is exactly RICH_MIN.
+  //
+  // This expectation was UPDATED, not relaxed, and the distinction is the point:
+  // the old value recorded a catalogue that could not say an episode was about
+  // politics unless its whole show was. Both new items are political on their
+  // face, so "ok" is now the honest label and "sparse" would be the stale one.
+  // It sits exactly ON RICH_MIN, so it is the one status here that a single
+  // future item could move -- upward only, since the nightly adds and never
+  // removes.
+  { query: "politics", status: "ok", checkTop: 4, anyOf: ["politics"] },
   // Bulk concept-expansion additions (PR2) -- each grounded in verified
   // real tag coverage, see tools/validate-semantic-index.mjs for the
   // coverage audit that backs every one of these.
@@ -591,8 +608,39 @@ for (const query of ["nuclear fusion energy", "true crime cold case", "startups 
   const weighted = search(query, { listenedShows: new Set(["Lex Fridman Podcast"]) });
   const rankUnweighted = unweighted.picks.findIndex((p) => p.i.show === "Lex Fridman Podcast");
   const rankWeighted = weighted.picks.findIndex((p) => p.i.show === "Lex Fridman Podcast");
+  /* RE-ANCHORED 2026-08-21 (#292), from `rankUnweighted === 0`.
+     THE MECHANISM UNDER TEST NEVER MOVED -- Lex still goes from rank 1 to rank 3
+     under the down-weight. What broke was the PRECONDITION, which hard-coded
+     which show happens to sit at rank 0 for this query. Per-episode topics gave
+     Stuff You Should Know's "Can Nuclear Fusion Reactors Save The World?" the
+     `engineering/energy-fusion` label its show-level default
+     (`history/technology` + `science/materials`) had denied it, and it took rank
+     0 from a FISSION episode that had been out-ranking it. For the query
+     "nuclear fusion energy" that is straightforwardly the right top result, so
+     re-pinning `=== 0` to whatever is first today would pin the wrong thing.
+
+     `rankUnweighted >= 0` IS LOAD-BEARING AND IS NOT A WEAKENING. Without it a
+     Lex episode that vanished from the picks entirely would score -1, and
+     `rankWeighted > -1` passes for every possible weighted rank -- the test
+     would go green precisely when the down-weight had started EXCLUDING rather
+     than nudging, which is the one thing this section exists to forbid. The
+     companion check below is the second half of that guard.
+
+     MUTATIONS RUN AGAINST THE RE-ANCHORED FORM, since an expectation edited to
+     match current output is a rubber stamp until something breaks it:
+       KILLED  `LISTENED_PENALTY = 1` (down-weight removed) -- weighted rank
+               equals unweighted, so nothing is pushed lower.
+       KILLED  `diversify` filtering listened shows out of the candidate set
+               (down-weight turned into true exclusion) -- rank goes to -1 and
+               `rankUnweighted >= 0` catches it. This is the mutation the guard
+               above exists for, and it kills THIS check as well as the
+               not-excluded one below.
+       SURVIVES `LISTENED_PENALTY = 0`, and correctly so: multiplying by zero
+               still leaves the item in the ranking, merely last. That is a
+               down-weight, not an exclusion, so there is nothing here to catch.
+               Recorded because it looks like a gap and is not. */
   check(`listened-history down-weight pushes Lex Fridman Podcast lower in "${query}"`,
-    rankUnweighted === 0 && rankWeighted > rankUnweighted,
+    rankUnweighted >= 0 && rankWeighted > rankUnweighted,
     `unweighted rank=${rankUnweighted}, weighted rank=${rankWeighted}`);
   const weightedCount = weighted.picks.filter((p) => p.i.show === "Lex Fridman Podcast").length;
   check(`listened-history down-weight doesn't exclude Lex Fridman Podcast outright`, weightedCount > 0,
