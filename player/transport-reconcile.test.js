@@ -73,6 +73,17 @@ class Element {
     this.error = null;
     /** url -> "ok" | "error". Anything unlisted loads fine. */
     this.loadPlan = new Map();
+    /** Reject `play()` with this `DOMException`-ish name instead of playing.
+        `"NotAllowedError"` is autoplay policy, which is per ELEMENT — the one
+        failure mode a two-element handover has and a one-element player does
+        not. Off by default, so nothing above this line changes. (#267) */
+    this.refusePlayWith = null;
+    /** Hold the media load algorithm mid-chain instead of running it to
+        `canplay`. Set true to keep a load genuinely IN FLIGHT; `releaseLoad()`
+        lets it finish. Without this the race a test wants to drive resolves
+        itself first and the test passes for the wrong reason. (#267) */
+    this.holdLoad = false;
+    this._heldLoad = null;
   }
   addEventListener(t, fn) {
     if (!this.listeners.has(t)) this.listeners.set(t, new Set());
@@ -88,7 +99,7 @@ class Element {
     this.readyState = 0;
     this.ended = false;
     const plan = this.loadPlan.get(this.src) ?? "ok";
-    queueMicrotask(() => {
+    const run = () => {
       if (plan === "error") {
         this.error = { code: 4 };
         return this.fire("error");
@@ -100,10 +111,24 @@ class Element {
         if (this.currentTime > 0) this.fire("seeked");
         this.fire("canplay");
       });
-    });
+    };
+    if (this.holdLoad) { this._heldLoad = run; return; }
+    queueMicrotask(run);
+  }
+  /** Let a held load finish. A no-op if nothing is held, so a test can call it
+      without first asserting that the race it wanted actually happened —
+      the precondition assertions do that job explicitly instead. */
+  releaseLoad() {
+    const run = this._heldLoad;
+    this._heldLoad = null;
+    if (run) run();
   }
   play() {
     this.calls.push("play");
+    if (this.refusePlayWith) {
+      // A refused play changes nothing about the element and fires no `playing`.
+      return Promise.reject(Object.assign(new Error("blocked"), { name: this.refusePlayWith }));
+    }
     this.paused = false;
     this.ended = false;
     queueMicrotask(() => { if (!this.paused) this.fire("playing"); });
@@ -580,6 +605,154 @@ test("A NARRATION BRIDGE IS ALSO SOMETHING THE ELEMENT IS HOLDING", async () => 
     m.playheadItemId, bridge.id,
     "the element is holding the bridge, so the playhead is about the bridge"
   );
+  m.dispose();
+});
+
+/* ==================================================================== */
+/* part 2b — the reconcile against the REAL backend's refusal recovery    */
+/*           (#267, the tripwire on re-enabling the seam prefetch)        */
+/* ==================================================================== */
+
+/* WHY THIS PART EXISTS AND WHY IT IS HERE RATHER THAN IN
+   `html-audio-backend.test.js`. That suite pins the MECHANISM — an epoch the
+   recovery's continuation re-reads. This part pins the CLAIM THAT THE WINDOW IS
+   REACHABLE, which is a statement about the manager and the backend together and
+   is not observable from either alone. #267 says every guard in
+   `reconcileWithBackend` passes while the refusal recovery's own load is in
+   flight; that is either true or it is not, and it is the reason the fix is
+   needed. Here it is asserted against the real reducer, the real manager and the
+   real `HtmlAudioBackend`, with only the elements faked.
+
+   `prefetch: true` is explicit, because the handover is DEFAULT OFF and nothing
+   in production constructs the backend this way. That is exactly why #266 could
+   not fix this and recorded it instead: reproducing it means asserting a
+   behaviour no shipped path can reach. Kept working and kept honest for whoever
+   re-opens the question with a device measurement. */
+
+/** A manager over the real two-element backend, mid-handover, with the
+    gesture-holding element's next load held in flight — i.e. sitting inside the
+    refusal recovery. Returns everything a test needs to poke it. */
+async function insideRecovery(items) {
+  __resetInstanceForTests();
+  const elA = new Element();
+  const elW = new Element();
+  const log = [];
+  const backend = new HtmlAudioBackend({
+    element: elA, warmElement: elW, prefetch: true, telemetry: (msg) => log.push(msg),
+  });
+  const m = new PlayerQueueManager({
+    backend,
+    positionStore: { save: () => {}, load: () => null },
+    telemetry: (msg) => log.push(msg),
+    scheduler: INSTANT,
+  });
+  m.loadQueue(items);
+  await m.play(0);
+  await settle();
+  assert.equal(m.state.type, "playing", "precondition: the first segment is audible");
+
+  // Warm the next segment, exactly as `onPrefetchWindow` -> `_warmNextSegment`
+  // would inside the lead.
+  backend.prefetch(items[1], { startOffset: 0 });
+  await settle();
+
+  // Autoplay policy is per element, and the element the listener tapped is the
+  // other one. The promoted element will refuse.
+  elW.refusePlayWith = "NotAllowedError";
+  // And the recovery's own re-load, back onto the element that DOES hold the
+  // gesture, is the load this test needs in flight.
+  elA.holdLoad = true;
+
+  await m.skipToNext();
+  await settle();
+  return { m, backend, elA, elW, log };
+}
+
+test("THE #267 WINDOW IS REAL: every reconcile guard passes inside the refusal recovery", async () => {
+  /* Not the fix — the premise. If this test ever starts returning false, the fix
+     below is guarding a window that closed for some other reason, and whoever
+     finds that out should delete the guard rather than keep a mystery.
+
+     MUTATION: there is no code mutation for this one, deliberately — it asserts a
+     property of code it does not change. What breaks it is the ENVIRONMENT: flip
+     `prefetch: true` to `false` in `insideRecovery` and it fails on `"the manager
+     still believes the handover succeeded"` (`m.state.type` is `idle`, not
+     `playing`), which is the whole reason #267 is latent. Expect that run to take
+     **~10 s of real wall clock per test**: with one element there is no handover
+     to refuse, so `elA.holdLoad` simply starves the ordinary load until
+     `LOAD_SETTLE_TIMEOUT_MS` fires. The suite is not hung. */
+  const { m, backend, elA, elW } = await insideRecovery([audioItem("a"), audioItem("b")]);
+
+  assert.equal(backend.el, elA, "the recovery swapped back to the gesture holder");
+  assert.notEqual(elW, elA);
+  assert.equal(m.state.type, "playing", "the manager still believes the handover succeeded");
+  assert.equal(backend.paused, true, "and the element it is holding is genuinely paused");
+  assert.equal(backend.ended, false, "nothing ran out");
+
+  const corrected = await m.reconcileWithBackend("visible");
+  assert.equal(corrected, true,
+    "so a visibilitychange here lands `interrupted` — correctly, on the evidence it has");
+  assert.equal(m.state.type, "interrupted");
+  m.dispose();
+});
+
+test("audio must NOT start after that reconcile, and the queue must not strand (#267)", async () => {
+  /* The failure being prevented, end to end. Without the fix the recovery's
+     continuation calls `play()` after the reconcile has landed `interrupted`:
+     sound comes out while every control says Play — the #263 lie inverted, and
+     the exact failure class #227 exists to stop, arriving from the other
+     direction. It strands as well, because `_handleBackendItemEnded` ignores an
+     end in `interrupted` and the queue never advances.
+
+     MUTATION: delete `this._stopEpoch++;` from `HtmlAudioBackend.pause()`. This
+     fails on the `elA.paused` assertion — audio starts underneath `interrupted`.
+     (The same mutation is named in `html-audio-backend.test.js`; this is the
+     suite that says it MATTERS, because this is the one where the pause comes
+     from the reducer rather than from a test calling `pause()` by hand.)
+
+     THE STRAND ASSERTION AT THE BOTTOM WAS AUDITED SEPARATELY, because that
+     mutation stops the test before it — an assertion that never runs is not
+     evidence. Comment out the `await m.resume()` and the two lines after it so
+     the end arrives while the machine is still `interrupted`, and it fails with
+     `log=["backend.itemEnded.ignored.state=interrupted"]` — #267's exact line,
+     produced rather than quoted. */
+  // THREE items, so "the queue advanced" is observable rather than "the Foray
+  // ended", which is what a two-item queue can only ever show.
+  const { m, backend, elA, log } = await insideRecovery(
+    [audioItem("a"), audioItem("b"), audioItem("c")]
+  );
+  await m.reconcileWithBackend("visible");
+  assert.equal(m.state.type, "interrupted", "precondition: the machine has been corrected");
+
+  // Now the recovery's held load lands — far too late to be allowed to matter.
+  elA.releaseLoad();
+  await settle();
+
+  assert.equal(m.state.type, "interrupted", "the machine is still where the evidence put it");
+  assert.equal(elA.paused, true, "ABOVE ALL: no audio while every control says Play");
+  assert.equal(backend.paused, true, "and the backend agrees, so the transport is not lying");
+  assert.ok(log.some((l) => /handover\.recovery\.stopped/.test(l)),
+    `it declines out loud, log=${JSON.stringify(log.filter((l) => /handover/.test(l)))}`);
+
+  // ONE PRESS RESUMES — which is the only thing that makes declining correct.
+  elA.holdLoad = false;
+  await m.resume();
+  await settle();
+  assert.equal(m.state.type, "playing", "and the listener gets their segment back");
+  assert.equal(elA.paused, false);
+
+  // AND IT IS NOT STRANDED. `_handleBackendItemEnded` falls through on
+  // `interrupted` and emits `backend.itemEnded.ignored.state=interrupted`, so a
+  // player left in that state stops at this segment's end and never advances —
+  // which is indistinguishable, to a listener, from #224 itself.
+  elA.currentTime = 10;
+  elA.runOut();
+  await settle();
+  assert.equal(
+    log.some((l) => /itemEnded\.ignored/.test(l)), false,
+    `the end must be acted on, not ignored; log=${JSON.stringify(log.filter((l) => /itemEnded/.test(l)))}`
+  );
+  assert.equal(m.currentIndex, 2, "the queue advanced to the third segment");
   m.dispose();
 });
 

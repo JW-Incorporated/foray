@@ -1055,15 +1055,21 @@ problem either.
 takes a **foreground** assertion on the WebContent process whenever the page is
 audible — *"UIProcess is taking a foreground assertion because we are playing
 audio"* — on a branch independent of view visibility, released only after a
-10-second grace (`audibleActivityClearDelay = 10_s`).
-**CORRECTION, 2026-08-17, measured — this constant is wrong.** Run 32036295743's
-simulator log shows WebKit starting the clear timer at **5 seconds** ("Starting timer
-to clear audible activity in 5 seconds because we are no longer playing audio") and
-`clearAudibleActivity` firing 5.006 s later. The 10 s figure in this paragraph is a
-*different* timer — `WebPageProxy::updateThrottleState` releasing the foreground
-assertion. Both appear in that log, seconds apart, and conflating them made a 9.15 s
-measured silence look like a near-miss when it had already crossed the real
-threshold. §0b carries the corrected reading. `takeAudibleActivity()`
+10-second grace ~~(`audibleActivityClearDelay = 10_s`)~~.
+
+**CORRECTION, 2026-08-17, measured — the NAME in that strikethrough is the error,
+not the number.** The 10 s belongs to this timer, the foreground-assertion
+release. `audibleActivityClearDelay` is a *different* timer and it is **5 s**.
+Run 32036295743's simulator log carries both, 20 ms apart, for our process:
+*"Starting timer to clear audible activity in 5 seconds because we are no longer
+playing audio"*, with `clearAudibleActivity` firing 5.006 s later; and
+*"UIProcess starting timer to release a foreground assertion in 10 seconds if
+audio doesn't start to play"*. Conflating them made a 9.15 s measured silence
+look like a near-miss when it had already crossed the audible-activity clear
+outright — and completed anyway. §0b carries the corrected reading; `docs/ios-ci.md`
+§4c has the log lines in full and the three-deadline table that keeps them apart.
+Re-verified 2026-08-21 (#267's PR), which also fixed the last two places in the
+repo still carrying the wrong label. `takeAudibleActivity()`
 is literally `throttler()->foregroundActivity("View is playing audio")`, and
 `ProcessThrottler` only suspends a process with no activities. **So the web
 process is not suspended while audio plays, and JS keeps running.** (That last
@@ -1158,9 +1164,10 @@ with a caveat; nothing like the failure §3 measures.**
 **The seam beat is safe on both engines, and this was the specific worry.** The
 beat pauses the element for 2.0 s, which withdraws the audibility that everything
 above depends on — but both engines carry a grace window far longer than the
-beat: **30 s** on Chromium (`kRecentAudioDelay`, §5.2) and **10 s** on WebKit
-(`audibleActivityClearDelay`, §7.4 — **but see §7.4's correction: the measured
-value is 5 s, not 10 s**). 2.0 s against the smaller of those is **2.5×** headroom,
+beat: **30 s** on Chromium (`kRecentAudioDelay`, §5.2) and **5 s** on WebKit
+(`audibleActivityClearDelay`, §7.4 — **measured**; an earlier draft of this line
+said 10 s, which is a different WebKit timer, the foreground-assertion release).
+2.0 s against the smaller of those is **2.5×** headroom,
 not the 5× this paragraph originally claimed. Measured on Chromium (§4.2) the beat stretches to 2.8–4.6 s in a
 hidden page; on iOS, 1 s alignment predicts 2–3 s. **Longer than authored,
 audible as a slightly baggy pause, not a stall and not a stop.** Nobody needs to

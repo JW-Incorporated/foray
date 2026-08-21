@@ -688,7 +688,7 @@ test("stages are capped inside a seam, oldest first, and the truncation is decla
 
 test("timeupdate is not a diagnostic and cannot enter the record", () => {
   /* `timeupdate` fires at 4 Hz. A record that wrote localStorage on it would be
-     the instrument perturbing the measurement — `html-audio-backend.js:1421`
+     the instrument perturbing the measurement — `html-audio-backend.js:1534`
      names that hazard in its own words.
      MUTATION: add "timeupdate" to MEDIA_STAGES. Both assertions fail. */
   const { diag, store } = mk();

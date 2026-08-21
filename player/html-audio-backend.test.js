@@ -1833,6 +1833,16 @@ class PairAudio extends FakeAudio {
     this._fire("playing");
     return Promise.resolve();
   }
+  /** KNOWN DIVERGENCE FROM THE SPEC, recorded rather than fixed: this fires
+      `pause` UNCONDITIONALLY, where a real element fires it only if it was not
+      already paused. `transport-reconcile.test.js`'s header calls that exact
+      shape out as the fake that is blind to the `_expectPause` leak — so build
+      nothing about `_notePause` on this class, use that suite's `Element`. The
+      visible consequence here is that `b.pause()` on an already-paused element
+      emits a spurious `audio.pausedUnexpectedly`; no test in this file asserts
+      on it. Left alone because tightening it would change what the pre-existing
+      tests in this section are asserting, which is a bigger change than it
+      looks. */
   pause() {
     this.pairLog.push(`${this.name}:pause`);
     this.calls.push("pause");
@@ -2321,6 +2331,123 @@ test("an autoplay refusal that lands after the listener paused must not restart 
   assert.equal(b.el, w, "and no recovery ran");
 });
 
+test("a stop DURING the recovery must not start audio when its load lands (#267)", async () => {
+  /* THE TEST ABOVE IS A DIFFERENT WINDOW, and the distinction is the whole
+     issue. There, the pause arrives BEFORE the rejection is handled, so
+     `pause()`'s `_handoverUnproven = false` makes `_recoverFromRefusedHandover`
+     decline at its own front door and no recovery ever runs. Here the recovery
+     has ALREADY started: it cleared `_handoverUnproven` itself at the top, its
+     load is in flight, and its continuation is scheduled. Nothing between the
+     pause and that continuation reads the flag again, so the continuation would
+     reach `this.play()` and start audio.
+
+     WHY THIS IS REACHABLE AND NOT A HYPOTHETICAL TAP. The caller is
+     `PlayerQueueManager.reconcileWithBackend`, and in this window every one of
+     its guards passes: the manager says `playing`, `this.el` is the swapped-in
+     element and genuinely `paused`, `ended` is false, and `_applying` is 0
+     because `_handle` has already returned. So a `visibilitychange` lands
+     `interrupted(wasPlaying: true)` -> `pausePlayback` -> `backend.pause()`,
+     entirely correctly, and audio then starts underneath it: the #263 lie
+     inverted, every control showing Play with sound coming out.
+     `transport-reconcile.test.js` pins that reachability through the real
+     manager; this pins the mechanism.
+
+     MUTATION: delete `this._stopEpoch++;` from `pause()` (or change the
+     continuation's `if (this._stopEpoch !== stopMark)` to `if (false)`) and this
+     fails on the `a.paused` assertion — the recovery calls `play()` and the
+     element goes audible.
+
+     THE RACE IS DRIVEN, NOT HOPED FOR — same technique as the skip test below.
+     `laggySeek` on the gesture-holding element means the recovery's own load
+     CANNOT settle until this test fires the seek, so the pause is guaranteed to
+     land while it is in flight. Without that the recovery would settle first and
+     the test would pass for the wrong reason. */
+  const { b, a, log } = pair({ a: { laggySeek: true }, warm: { refuse: true } });
+  b.onError = () => {};
+  await b.load(item("a0", A_URL), { startOffset: 0 });   // offset 0 needs no seek
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });   // handover
+  b.setOutPoint(20);
+  b.play();                                              // refused; recovery starts
+  await settle();
+  assert.equal(b.el, a, "precondition: the recovery swapped back to the gesture holder");
+  assert.equal(b.outPoint, null, "precondition: the recovery's load is still in flight");
+
+  // The stop. In production this is `pausePlayback` from the reconcile, on an
+  // element that is ALREADY paused — which is why the epoch cannot be conditioned
+  // on the element firing a `pause` event.
+  b.pause();
+
+  // Now let the recovery's load settle, exactly as it would have anyway.
+  a.settleSeek();
+  await settle();
+
+  assert.equal(a.paused, true, "ABOVE ALL: audio did not start after a deliberate stop");
+  assert.ok(log.some((l) => /handover\.recovery\.stopped/.test(l)),
+    "and it says why, rather than failing silently");
+});
+
+test("a stop during the recovery still ARMS the boundary, so the queue advances on resume (#267)", async () => {
+  /* The other half, and it is not the same assertion twice. Declining to play is
+     only correct if the segment stays playable: the element holds the right
+     audio at the right offset and one press must resume it, ending at the
+     authored boundary.
+
+     Drop the boundary along with the play and the failure is worse than the one
+     being fixed. `_handleBackendItemEnded` is the only thing that advances a
+     Foray, an out-point is the only thing that ends a segment early, and a
+     segment with no out-point runs to the end of its whole source episode — a
+     median 936.5 s of the wrong show. That is exactly the strand #267 describes
+     and a listener cannot tell it apart from #224.
+
+     So `setOutPoint(boundary)` is deliberately sequenced BEFORE the stop check in
+     the continuation, and this test is what pins that ordering rather than the
+     mere presence of the two lines.
+
+     MUTATION: move `if (boundary != null) this.setOutPoint(boundary);` below the
+     `this._stopEpoch !== stopMark` early return in `_recoverFromRefusedHandover`
+     — a one-line move, nothing deleted — and this fails: `b.outPoint` is null and
+     `ends` stays empty because no boundary was ever armed. The test above still
+     passes under that mutation, which is why these are two tests.
+
+     AND THE PRECONDITION BELOW IS NOT DECORATION — a pre-push review broke this
+     test by removing it. Without `laggySeek` the recovery settles BEFORE the
+     pause, `_stopEpoch` still equals `stopMark`, the boundary is armed on the
+     ordinary path, and the mutation above survives: the test would then be
+     pinned by the fake's microtask timing rather than by anything it asserts.
+     That is `CLAUDE.md`'s five-agent failure exactly — the harness being more
+     forgiving than the thing it stands for. The assertion states the race
+     happened. */
+  const { b, a, ends } = pair({ a: { laggySeek: true }, warm: { refuse: true } });
+  b.onError = () => {};
+  await b.load(item("a0", A_URL), { startOffset: 0 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  b.setOutPoint(20);
+  b.play();                                              // refused; recovery starts
+  await settle();
+  assert.equal(b.outPoint, null, "precondition: the recovery's load is still in flight");
+  b.pause();                                             // the reconcile's stop
+  a.settleSeek();
+  await settle();
+
+  assert.equal(b.outPoint, 20, "the boundary survives the stop — the segment is still bounded");
+  assert.deepStrictEqual(ends, [], "and nothing has ended yet: the stop is a stop");
+
+  // The listener presses play. From here the segment must behave normally.
+  b.play();
+  await settle();
+  assert.equal(a.paused, false, "one press resumes, which is what the stop preserved");
+  a.tickTo(19);
+  assert.deepStrictEqual(ends, [], "not early");
+  a.tickTo(20.01);
+  assert.deepStrictEqual(ends, ["outPoint"], "and the boundary lands, so the queue advances");
+});
+
 test("a skip during the recovery does not re-arm the previous segment's boundary", async () => {
   /* Nothing awaits the recovery's load — the manager already believes the
      handover succeeded — so a listener who skips while it is in flight would
@@ -2358,6 +2485,54 @@ test("a skip during the recovery does not re-arm the previous segment's boundary
   assert.equal(b.outPoint, 1000, "the new segment's boundary must survive");
   assert.equal(b.currentItem?.id, "c");
   assert.ok(log.some((l) => /handover\.recovery\.superseded/.test(l)));
+});
+
+test("a recovery that FAILS after a deliberate stop reports nothing either (#267)", async () => {
+  /* The reject branch needs the stop check for a sharper reason than the success
+     branch does. `onError` reaches the manager as `E.error`, which the reducer
+     answers with `[S.idle(), [pausePlayback, ...]]` in EVERY state — so reporting
+     here would overwrite the `interrupted(wasPlaying: true)` the reconcile just
+     established with `idle`, throwing away the one-press resume that is the whole
+     reason the success branch declines instead of abandoning the segment. It
+     would also be a lie about causation: what happened was a stop, not a failure.
+
+     Nothing is lost by staying quiet. Every resume goes through `loadItem` ->
+     `load()` and issues a fresh load; if the URL really is dead, that one fails
+     with somebody waiting on it.
+
+     MUTATION: delete the `if (this._stopEpoch !== stopMark)` early return from
+     the REJECT branch of `_recoverFromRefusedHandover` (the success branch's copy
+     is a different line and does not affect this test). Fails on `reported`. */
+  const { b, a, log } = pair({ a: { laggySeek: true }, warm: { refuse: true } });
+  /* THE ELEMENT-LEVEL `error` HANDLER REPORTS TOO, and that is not what this is
+     about — the same split the superseded test below makes. `media error 4` is
+     the element saying its own src is broken and it has always been reported;
+     the line under test is the RECOVERY's `play rejected: ...`, which is the one
+     that arrives for an item nobody is waiting on. So collect everything and
+     assert on which of the two came out. */
+  const reported = [];
+  b.onError = (m) => { reported.push(m); };
+  await b.load(item("a0", A_URL), { startOffset: 0 });
+  b.play();
+  b.prefetch(item("b", B_URL), { startOffset: 12 });
+  await settle();
+  await b.load(item("b", B_URL), { startOffset: 12 });
+  b.setOutPoint(20);
+  b.play();                                  // refused; recovery starts
+  await settle();
+  assert.equal(b.outPoint, null, "precondition: the recovery's load is still in flight");
+
+  b.pause();                                 // the reconcile's stop
+  a.error = { code: 4 };
+  a._fire("error");                          // and now the stale recovery load fails
+  await settle();
+
+  assert.equal(
+    reported.some((m) => /play rejected/.test(m)), false,
+    `a stop must not be reported as a recovery failure — that degrades to idle; got ${JSON.stringify(reported)}`
+  );
+  assert.ok(log.some((l) => /handover\.recovery\.stopped/.test(l)));
+  assert.equal(log.some((l) => /handover\.recovery\.failed/.test(l)), false);
 });
 
 test("a recovery that FAILS after being superseded reports nothing to the manager", async () => {

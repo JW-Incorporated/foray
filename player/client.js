@@ -1185,7 +1185,7 @@ function ensureBooted() {
 
      `timeupdate` is deliberately absent. It fires at 4 Hz and is not a
      diagnostic, and a record that wrote localStorage on it would be the
-     instrument perturbing the measurement — see `html-audio-backend.js:1421`.
+     instrument perturbing the measurement — see `html-audio-backend.js:1534`.
 
      `addMediaListener`, like the repaints above, so these survive the handover
      to the second element at a cross-episode seam. */
