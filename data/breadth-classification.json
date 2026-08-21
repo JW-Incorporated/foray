@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-15T16:08:37.454Z",
+  "built_at": "2026-08-21T16:08:38.010Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-15-65fd7bef",
+    "last_batch_id": "fresh-2026-08-21-4a02f910",
     "last_batch_tier": 1
   },
   "entries": {
@@ -75708,10 +75708,35 @@
     },
     "1501500390": {
       "topics": [
-        "medicine"
+        "health",
+        "education/self-improvement",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "General health Q&A show with expert advice on diverse wellness topics including nutrition, stress, body, emotions.",
+      "display_title": "What's That Rash?",
+      "blurb": "Expert-led health Q&A covering practical advice on nutrition, wellness, stress, and body health for general audiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-4a02f910",
+      "classified_at": "2026-08-21T16:08:38.010Z"
     },
     "1501539688": {
       "topics": [
