@@ -83812,13 +83812,929 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-19-c8380c46",
       "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896933992": {
+      "topics": [
+        "nature/earth-science",
+        "nature",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical agronomy and farm business guidance from experienced farmers.",
+      "display_title": "The Turn Row Podcast",
+      "blurb": "Real conversations with farmers on agronomy, crop production, technology, and farm management.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "1896934934": {
+      "topics": [
+        "society/law",
+        "society",
+        "news/politics"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Federal employment law, EEO complaints, and workplace rights guidance.",
+      "display_title": "Civil Rights for Civil Servants",
+      "blurb": "Attorneys explain federal employment law, rights protections, and navigating workplace complaints.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "1896935246": {
+      "topics": [
+        "tv-film/interviews",
+        "craft/filmmaking",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes film industry interviews with camera crew and production veterans.",
+      "display_title": "The Prelim Podcast",
+      "blurb": "Industry crew members share unfiltered stories from major film and TV sets.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "1896936182": {
+      "topics": [
+        "health/nutrition",
+        "health/fitness",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Meal prep, fitness coaching, and sustainable weight management strategies.",
+      "display_title": "Wellness Table",
+      "blurb": "Practical nutrition and fitness guidance, including meal prep and digital health coaching.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "1896937394": {
+      "topics": [
+        "news/commentary",
+        "culture",
+        "news"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Candid conversations on culture, politics, race, faith, and social issues.",
+      "display_title": "But, Can You Take A Punch",
+      "blurb": "Honest dialogue on politics, culture, race, mental health, and social issues.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "1896937832": {
+      "topics": [
+        "sports/hockey",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NHL trade analysis and league happenings from enthusiast hosts.",
+      "display_title": "The OhNyquist Podcast",
+      "blurb": "Two hockey fans break down trades, draft picks, and NHL developments.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "1896943688": {
+      "topics": [
+        "music",
+        "culture/performing-arts",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live music performances from Seattle artists streamed and released biweekly.",
+      "display_title": "Noise Complaint",
+      "blurb": "Live performances from Seattle's independent and experimental music scene.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "1896944012": {
+      "topics": [
+        "culture/performing-arts",
+        "relationships",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrities' partners share stories of life alongside famous spouses.",
+      "display_title": "Plus One with Lisa and Morgan",
+      "blurb": "Spouses and partners of celebrities share their own stories and experiences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "1896944966": {
+      "topics": [
+        "craft/photography",
+        "culture",
+        "personal-journals"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "personal-journals",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily personal reflections on photography, life, and photography industry topics.",
+      "display_title": "The Daily FRO",
+      "blurb": "Photographer Jared Polin shares daily reflections on photography and life.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6781119098": {
+      "topics": [
+        "hobbies",
+        "gaming",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mahjong players discuss strategy, collecting, business, and table community.",
+      "display_title": "The Mahj Salon",
+      "blurb": "Mahjong enthusiasts discuss gameplay, culture, and the growing mahjong community.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6782550038": {
+      "topics": [
+        "psychology",
+        "education/self-improvement",
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mindfulness practices and attention protection in the age of AI tools.",
+      "display_title": "Mindfulness & AI",
+      "blurb": "Practical strategies for maintaining presence and awareness while using AI.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6782845808": {
+      "topics": [
+        "nature/earth-science",
+        "craft/diy-home",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Gardening, nature appreciation, and outdoor living from expert and enthusiast hosts.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6783081164": {
+      "topics": [
+        "sports/wrestling",
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rapid-fire professional wrestling debate and analysis, ten takes per episode.",
+      "display_title": "The 2 Count",
+      "blurb": "Fast-paced wrestling commentary and debate on storylines, matches, and the industry.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6783086540": {
+      "topics": [
+        "business/careers",
+        "education/self-improvement",
+        "business"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career interviews exploring daily work life and challenging common misconceptions.",
+      "display_title": "Interesting Jobs",
+      "blurb": "Interviews with people in unique careers, revealing the reality of interesting work.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6783348350": {
+      "topics": [
+        "education/self-improvement",
+        "business/management",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Group facilitation skills, leadership, and participation management techniques.",
+      "display_title": "How to Be a Great Facilitator",
+      "blurb": "Practical facilitation techniques for leading better group discussions and workshops.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6783459182": {
+      "topics": [
+        "nature/pets",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Senior pet health, care decisions, and veterinary guidance for aging animals.",
+      "display_title": "Senior Pet Talk",
+      "blurb": "Expert advice on health care and quality of life for aging dogs and cats.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6783602666": {
+      "topics": [
+        "fiction",
+        "paranormal",
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Narrated horror stories with paranormal and creepy themes.",
+      "display_title": "Nightmares",
+      "blurb": "Spooky and paranormal stories narrated for late-night listening.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6783799700": {
+      "topics": [
+        "music",
+        "culture",
+        "hobbies"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Punk musicians and community organizers discuss the sustained punk scene.",
+      "display_title": "Too Old To Punk?",
+      "blurb": "Interviews with everyday punk musicians and organizers sustaining the scene.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6784457756": {
+      "topics": [
+        "music",
+        "history",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Grateful Dead forensic documentary exploring band history and tape culture.",
+      "display_title": "The Shakedown Archives",
+      "blurb": "Detailed Grateful Dead history and the 50-year culture of tape collecting.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6784671218": {
+      "topics": [
+        "education/self-improvement",
+        "psychology",
+        "computing"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        },
+        {
+          "node": "computing",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI prompt engineering and communication skills for better thinking with AI.",
+      "display_title": "Talk to the Machine",
+      "blurb": "Techniques for more effective AI prompting and thinking with language models.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6784802882": {
+      "topics": [
+        "transport/trains",
+        "transport"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "transport/trains",
+          "confidence": 0.95
+        },
+        {
+          "node": "transport",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "British and international train commentary and railway system discussion.",
+      "display_title": "Trainsatlantic",
+      "blurb": "Twice-monthly discussion of trains, railways, and transport systems globally.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6784858508": {
+      "topics": [
+        "food",
+        "culture",
+        "travel"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        },
+        {
+          "node": "travel",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food and lifestyle interviews with chefs, founders, and cultural figures.",
+      "display_title": "Walk-Ins Welcome",
+      "blurb": "Conversations with chefs and food figures on cuisine and culinary culture.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6785180246": {
+      "topics": [
+        "health/fitness",
+        "health/nutrition",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness, nutrition, wellness, and productivity guidance for active living.",
+      "display_title": "Active Life Blueprint",
+      "blurb": "Practical fitness, nutrition, and wellness advice for a healthier lifestyle.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6785338556": {
+      "topics": [
+        "sports/golf",
+        "hobbies",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf stories and community connections from players and enthusiasts.",
+      "display_title": "Fairway and Friends",
+      "blurb": "Golf stories and conversations celebrating the sport and community.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6785528498": {
+      "topics": [
+        "culture/performing-arts",
+        "tv-film/interviews",
+        "relationships"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.75
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conversations with female cast members of a film production.",
+      "display_title": "Women's Hour",
+      "blurb": "Candid interviews with female performers sharing their production experiences.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6785577242": {
+      "topics": [
+        "science",
+        "education",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Seattle-based groundbreaking research including gene therapy and psychedelics.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6785600168": {
+      "topics": [
+        "psychology",
+        "education/self-improvement",
+        "philosophy"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neuroscience, transcendental meditation, and personal development conversations.",
+      "display_title": "Depth Over Noise",
+      "blurb": "Neuroscience insights and meditative practices for personal transformation.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6785668034": {
+      "topics": [
+        "music",
+        "history",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Band history and retrospective covering Joywave's musical journey.",
+      "display_title": "Joywave: The First Century",
+      "blurb": "Joywave band members reflect on their musical history and evolution.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6785747258": {
+      "topics": [
+        "medicine",
+        "news/tech",
+        "health"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare industry news, FDA approvals, and medical technology updates.",
+      "display_title": "Medlines",
+      "blurb": "Healthcare and medical industry news, advances, and regulatory updates.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6785756522": {
+      "topics": [
+        "paranormal",
+        "fiction",
+        "true-crime"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal encounters and horror stories narrated for late-night audiences.",
+      "display_title": "Skinwalker Diaries",
+      "blurb": "Paranormal horror stories and supernatural encounters narrated for immersion.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-6e6e5f38",
+      "classified_at": "2026-08-21T08:49:44.505Z"
     }
   },
-  "built_at": "2026-08-19T17:00:56.760Z",
+  "built_at": "2026-08-21T08:49:44.505Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-19-c8380c46",
+    "last_batch_id": "fresh-2026-08-21-6e6e5f38",
     "last_batch_tier": 1
   }
 }
