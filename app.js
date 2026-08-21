@@ -1141,7 +1141,7 @@ function archivedRow(item, idx, ctx) {
     <div class="info">
       <div class="t">${named ? esc(item.title) : "Part no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a right now`
+        ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a's catalogue right now`
         : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${link}

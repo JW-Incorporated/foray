@@ -363,11 +363,11 @@ function buildUI() {
   openLink.target = "_blank";
   openLink.rel = "noopener";
   /* The bar already survives navigation — it lives on <body>, not inside
-     #view — but until now there was no way BACK. Leaving the Foray page to look
+     #view — but until now there was no way BACK. Leaving the foray page to look
      at something else meant the running order, the segment you were on and the
      thumbs were all gone until you found the URL again. This is that way back,
      and it is an in-app hash route, never an external link. */
-  const forayLink = el("a", "fp-openep fp-toforay", "Back to the foray");
+  const forayLink = el("a", "fp-openep fp-toforay", "Back to the running order");
   forayLink.hidden = true;
   const collapse = el("button", "fp-collapse", "Close");
   collapse.type = "button";
