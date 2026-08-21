@@ -281,13 +281,13 @@ async function tellClients(reason) {
 
 /* 504 rather than an empty document or an empty JSON body. app.js turns a
    non-ok into null and every consumer treats null as "absent", which is how the
-   page ends up saying "Forays aren't available right now" instead of rendering
+   page ends up saying "Couldn't load forays right now" instead of rendering
    an empty running order against code that cannot read it. */
 function unavailable(request) {
   if (isNavigation(request)) {
     return new Response(
-      "<!doctype html><html lang=en><meta charset=utf-8><title>Foray</title>" +
-        "<p>Foray couldn't load and there is no saved copy on this device. " +
+      "<!doctype html><html lang=en><meta charset=utf-8><title>4a</title>" +
+        "<p>4a couldn't load and there is no saved copy on this device. " +
         "Reload once you have a connection.",
       { status: 504, headers: { "Content-Type": "text/html; charset=utf-8" } }
     );
@@ -351,7 +351,7 @@ async function handleData(request, env) {
   /* `res.ok`, not `res` — the same rule `handleShell` applies, for the same
      reason. A 404 or a 502 on `data/session.json` is not an answer worth
      rendering: `fetchJson` turns it into null and `init()` gives up with
-     "Couldn't load Foray" even when a perfectly good cached copy is sitting
+     "Couldn't load 4a" even when a perfectly good cached copy is sitting
      right here. A genuine 404 with nothing cached still surfaces as the 404, so
      a file that was really removed still reads as absent. */
   if (res && res.ok) return res;

@@ -20,9 +20,9 @@
   the repo's prose convention and Android's own.
 -->
 <resources>
-    <string name="foray_playback_service_description">Keeps a Foray playing while the app is in the background.</string>
+    <string name="foray_playback_service_description">Keeps a foray playing while the app is in the background.</string>
     <string name="foray_playback_channel_name">Playback</string>
-    <string name="foray_playback_channel_description">Shown while a Foray is playing, so Android keeps the app running in the background.</string>
+    <string name="foray_playback_channel_description">Shown while a foray is playing, so Android keeps the app running in the background.</string>
     <string name="foray_playback_notification_title">4a</string>
     <string name="foray_playback_notification_text">Playback active</string>
     <string name="foray_action_play">Play</string>

@@ -51,7 +51,7 @@ can tell "not built yet" from "built, differently".
 | Mockup concept | Shipped as | Where |
 |---|---|---|
 | `resume` / "Jump back in" / `ForayCard` progress | resume across sessions: one row per Foray in `localStorage`, the Foray's own clock | `player/foray-progress.js`, `?foray=…` page + home rail |
-| `MiniPlayer` identity + tap-to-open | the bar already survived navigation; it now leads with the FORAY title, says `Now: <show> · part N of M`, and carries a "Back to the Foray" route | `player/client.js` |
+| `MiniPlayer` identity + tap-to-open | the bar already survived navigation; it now leads with the FORAY title, says `Now: <show> · part N of M`, and carries a "Back to the foray" route | `player/client.js` |
 | `Thumbs` + `FeedbackSheet` (9 `FB_CHIPS`) | per-segment thumbs on the running order; up is one tap, down opens the reason sheet and only commits on submit | `app.js` (`cp_foray_feedback`, `thumbs` events) |
 | `Scrubber` over the whole Foray (`seek()`, jsx ~1329) | the segment strip IS the scrubber: a click is a position in the hour, cold or playing. It already looked like one and behaved like 32 jump targets | `app.js` (`stripElapsedAt`), `ForayPlayer.foraySeek` |
 | `SegmentStrip`'s partial fill on the current bar (`cur.into / seg.dur`, jsx ~229) | the live bar fills left to right; bars behind are full, ahead are empty | `app.js` (`paintSegFill`), `.fy-seg-fill` |

@@ -1031,7 +1031,7 @@ export function formatDiagnosticReport(record) {
      by the elapsed wall clock and call the answer a write cadence, which it is
      not. */
   const head = [
-    `Foray playback diagnostics — v${r.v ?? "?"}`,
+    `4a playback diagnostics — v${r.v ?? "?"}`,
     `Local only. Nothing here is sent anywhere.`,
     "",
     `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)`,
@@ -1044,6 +1044,6 @@ export function formatDiagnosticReport(record) {
     "",
   ].filter((l) => l != null);
 
-  if (!entries.length) head.push("Nothing recorded yet. Play a Foray and come back.");
+  if (!entries.length) head.push("Nothing recorded yet. Play a foray and come back.");
   return head.concat(entries.map(lineFor)).join("\n");
 }

@@ -367,7 +367,7 @@ function buildUI() {
      at something else meant the running order, the segment you were on and the
      thumbs were all gone until you found the URL again. This is that way back,
      and it is an in-app hash route, never an external link. */
-  const forayLink = el("a", "fp-openep fp-toforay", "Back to the Foray");
+  const forayLink = el("a", "fp-openep fp-toforay", "Back to the foray");
   forayLink.hidden = true;
   const collapse = el("button", "fp-collapse", "Close");
   collapse.type = "button";

@@ -121,7 +121,7 @@ function findAllIn(root, sel) { return root.tree().filter((e) => e !== root && m
  *   also writes `cp_recent_branches` and `cp_seen` as a matter of course.
  */
 function mount({
-  report = "Foray playback diagnostics — v1\nentries 2 of 200 (oldest dropped first)",
+  report = "4a playback diagnostics — v1\nentries 2 of 200 (oldest dropped first)",
   reportThrows = null, clipboard = true, clipboardRefuses = false, seed = {}, boot = false,
 } = {}) {
   const store = new Map(Object.entries(seed).map(([k, v]) => [k, String(v)]));
