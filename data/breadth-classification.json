@@ -83812,13 +83812,813 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-19-c8380c46",
       "classified_at": "2026-08-19T17:00:40.620Z"
+    },
+    "1896933992": {
+      "topics": [
+        "nature/earth-science",
+        "business/management",
+        "business/startups"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical agricultural podcast covering crop production, agronomy, farming operations, and industry trends for active farmers.",
+      "display_title": "The Turn Row Podcast",
+      "blurb": "Real conversations for farmers on agronomy, crop science, and agricultural operations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:47:15.051Z"
+    },
+    "1896934934": {
+      "topics": [
+        "society/government",
+        "education/how-to"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Specialized legal podcast covering federal employment law, MSPB appeals, EEO complaints, and worker protections.",
+      "display_title": "Civil Rights for Civil Servants",
+      "blurb": "Federal employment law guidance for civil servants on rights, protections, and legal processes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "1896935246": {
+      "topics": [
+        "culture/performing-arts",
+        "craft/filmmaking"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes film and TV crew interviews; stories from cinematographers, camera operators, and set workers.",
+      "display_title": "The Prelim Podcast",
+      "blurb": "Unfiltered behind-the-scenes stories from Hollywood film and TV crew members.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "1896936182": {
+      "topics": [
+        "health/fitness",
+        "health/nutrition",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering nutrition, fitness, weight management, and holistic health strategies.",
+      "display_title": "The Wellness Table Podcast",
+      "blurb": "Practical health advice on nutrition, fitness, meal prep, and sustainable wellness habits.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "1896937394": {
+      "topics": [
+        "news/commentary",
+        "culture",
+        "society/government"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "West Coast-focused podcast covering culture, politics, race, and social issues through guest conversations and community perspectives.",
+      "display_title": "But, Can You Take A Punch?",
+      "blurb": "Culture and social commentary from a West Coast perspective through candid guest conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "1896937832": {
+      "topics": [
+        "sports/hockey"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual NHL fan podcast covering trades, draft analysis, standings analysis, and major league news.",
+      "display_title": "The OhNyquist Podcast",
+      "blurb": "Rapid-fire NHL discussion covering trades, draft picks, and league news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "1896943688": {
+      "topics": [
+        "music",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live music performances and interviews from Seattle musicians; recorded and released every other Friday with diverse genres.",
+      "display_title": "Noise Complaint | The Stranger",
+      "blurb": "Live music performances and artist interviews from Seattle's independent music scene.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "1896944012": {
+      "topics": [
+        "culture/pop-culture",
+        "culture/performing-arts"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity interviews with the spouses/partners of famous people, focusing on their personal stories and life experiences.",
+      "display_title": "Plus One with Lisa and Morgan",
+      "blurb": "Stories from celebrity spouses and partners about life in the spotlight.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "1896944966": {
+      "topics": [
+        "craft/photography",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/photography",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily personal commentary from photographer Jared Polin on photography, life, YouTube changes, and daily observations.",
+      "display_title": "The Daily FRO",
+      "blurb": "Photography tips and personal commentary from daily life by photographer Jared Polin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6781119098": {
+      "topics": [
+        "hobbies",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mahjong enthusiast podcast covering gameplay, tile collecting, tournament culture, and the social/business aspects of the game.",
+      "display_title": "The Mahj Salon",
+      "blurb": "Mahjong culture, gameplay, collecting, and tournament talk from dedicated players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6782550038": {
+      "topics": [
+        "education/self-improvement",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical mindfulness podcast addressing how AI, technology, and constant connectivity affect attention, awareness, and mental presence.",
+      "display_title": "Mindfulness in the Age of AI",
+      "blurb": "Practical mindfulness strategies for maintaining focus and awareness while using AI tools.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6782845808": {
+      "topics": [
+        "craft/diy-home",
+        "nature",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Gardening and outdoor lifestyle podcast featuring celebrity guests discussing favorite outdoor places and Adam Frost's gardening advice.",
+      "display_title": "Outsiding",
+      "blurb": "Gardens, outdoor spaces, and celebrity guest conversations hosted by gardening expert Adam Frost.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6783081164": {
+      "topics": [
+        "sports/wrestling"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rapid-fire pro wrestling podcast covering WWE, AEW, and major league storylines in 2-minute segments.",
+      "display_title": "The 2 Count",
+      "blurb": "Fast-paced pro wrestling analysis and debate from WWE, AEW, and beyond.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6783086540": {
+      "topics": [
+        "business/careers",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/careers",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career-focused interviews with people in interesting jobs, covering day-to-day work, misconceptions, and what they love about their roles.",
+      "display_title": "Interesting Jobs the Podcast",
+      "blurb": "Interviews with people in unique careers about their work, challenges, and what drives them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6783348350": {
+      "topics": [
+        "education/self-improvement",
+        "business/management"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional development podcast teaching practical facilitation skills for leading discussions, managing groups, and reaching decisions.",
+      "display_title": "How to Be a Great Facilitator",
+      "blurb": "Practical facilitation skills for leading meetings, workshops, and group discussions effectively.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6783602666": {
+      "topics": [
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror storytelling podcast featuring creepy true stories, paranormal encounters, and real horror tales narrated for late-night listening.",
+      "display_title": "Nightmares",
+      "blurb": "Curated horror stories and paranormal accounts presented as true narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6783799700": {
+      "topics": [
+        "music",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Punk culture history podcast exploring everyday punk lives through interviews with musicians, organizers, and longtime scene participants.",
+      "display_title": "Too Old To Punk?",
+      "blurb": "Punk culture history told through interviews with musicians and longtime scene members.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6784457756": {
+      "topics": [
+        "music",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Forensic documentary podcast about the Grateful Dead covering band history, tape culture, key figures, and 50-year archival record.",
+      "display_title": "The Shakedown Archives",
+      "blurb": "Documentary podcast reconstructing Grateful Dead history through archival research and recorded analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6784671218": {
+      "topics": [
+        "education/self-improvement",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical AI communication skills podcast teaching how to write better prompts, think more strategically, and get better AI responses.",
+      "display_title": "Talk to the Machine",
+      "blurb": "AI communication skills for writing better prompts and getting more effective responses.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6784802882": {
+      "topics": [
+        "travel",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "UK train enthusiasts podcast covering railway topics, travel history, and modern rail systems twice monthly.",
+      "display_title": "Trainsatlantic",
+      "blurb": "Train systems and rail history from UK and US perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6784858508": {
+      "topics": [
+        "food",
+        "culture"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Food and lifestyle podcast featuring interviews with chefs, founders, and culinary figures about their work and industry perspectives.",
+      "display_title": "Walk-Ins Welcome w/ Ivy Dai",
+      "blurb": "Interviews with chefs and food industry figures about their work and culinary philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6785180246": {
+      "topics": [
+        "health/fitness",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and fitness podcast providing practical tips on exercise, nutrition, wellness habits, and building sustainable lifestyle changes.",
+      "display_title": "Active Life Blueprint",
+      "blurb": "Practical fitness and wellness advice for building sustainable health habits.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6785338556": {
+      "topics": [
+        "sports/golf"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf lifestyle podcast featuring interviews with course architects, caddies, players, and industry figures about golf culture and history.",
+      "display_title": "Fairway and Friends Pawdscast",
+      "blurb": "Golf stories and interviews with players, caddies, and industry figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6785528498": {
+      "topics": [
+        "culture/performing-arts",
+        "tv-film/interviews"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV series podcast from The Promised Land featuring actress interviews about their careers, character journeys, and personal experiences.",
+      "display_title": "Women's Hour",
+      "blurb": "Behind-the-scenes interviews with cast members from The Promised Land series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6785577242": {
+      "topics": [
+        "science",
+        "education"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local science podcast featuring groundbreaking research happening in Seattle; interviews with working scientists about current projects.",
+      "display_title": "Pocket Science",
+      "blurb": "Research stories and scientist interviews from the Seattle area.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6785600168": {
+      "topics": [
+        "psychology",
+        "education/self-improvement"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Neuroscience-based podcast with Dr. Tony Nader exploring caring, burnout, purpose, and transformation through guest conversations.",
+      "display_title": "Depth Over Noise",
+      "blurb": "Neuroscience and personal transformation conversations about caring and purposeful living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6785668034": {
+      "topics": [
+        "music"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Band retrospective podcast from Joywave covering their history and first century, recorded at local Rochester landmarks.",
+      "display_title": "Joywave: The First Century",
+      "blurb": "Retrospective of the band Joywave's history and first century.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6785747258": {
+      "topics": [
+        "medicine",
+        "news/commentary"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.95
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly healthcare news podcast for medical professionals covering policy, clinical research, and industry updates from physician perspectives.",
+      "display_title": "Medlines",
+      "blurb": "Weekly healthcare news and industry updates for medical professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6785756522": {
+      "topics": [
+        "fiction"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Horror narrative podcast featuring paranormal and true horror stories formatted as first-person accounts for late-night listening.",
+      "display_title": "Skinwalker Diaries",
+      "blurb": "Paranormal and horror stories presented as first-person accounts and true narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:46:59.643Z"
+    },
+    "6783459182": {
+      "topics": [
+        "nature/pets",
+        "medicine"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Veterinary podcast focused on senior pet care, integrating Western medicine and Eastern approaches; hosted by integrative vet Dr. Steffen.",
+      "display_title": "Senior Pet Talk",
+      "blurb": "Senior pet healthcare and integrative veterinary medicine for dogs and cats.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-bf309754",
+      "classified_at": "2026-08-21T08:47:15.051Z"
     }
   },
-  "built_at": "2026-08-19T17:00:56.760Z",
+  "built_at": "2026-08-21T08:47:15.051Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-19-c8380c46",
+    "last_batch_id": "fresh-2026-08-21-bf309754",
     "last_batch_tier": 1
   }
 }
