@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-19T11:43:46.428Z",
+  "built_at": "2026-08-21T08:13:19.771Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -13720,6 +13720,235 @@
       "guitar",
       "songwriting",
       "indie"
+    ],
+    "catalyst-shayle-kann--can-ai-revolutionize-grid-operations": [
+      "ai",
+      "grid",
+      "utilities",
+      "energy",
+      "engineering",
+      "machine-learning",
+      "infrastructure"
+    ],
+    "cbc-ideas--the-overlapping-truths-of-history-and": [
+      "history",
+      "fiction",
+      "literature",
+      "authors",
+      "storytelling",
+      "writing",
+      "ideas",
+      "canada"
+    ],
+    "stuff-you-should-know--rope-yeah-rope": [
+      "materials",
+      "invention",
+      "history-of-technology",
+      "explainer",
+      "manufacturing",
+      "craft",
+      "banter"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1618": [
+      "mathematics",
+      "history-of-science",
+      "explainer",
+      "bite-sized",
+      "ideas",
+      "education"
+    ],
+    "this-week-in-startups--taste-is-the-new-programming-language": [
+      "startups",
+      "ai",
+      "video-games",
+      "founders",
+      "entrepreneurship",
+      "technology",
+      "interview"
+    ],
+    "lingthusiasm--119-irregularity-is-all-over-the": [
+      "linguistics",
+      "language",
+      "grammar",
+      "etymology",
+      "explainer",
+      "research",
+      "science"
+    ],
+    "just-fly-performance-podcast--529-clifton-harski-on-jump-training": [
+      "sports-science",
+      "training",
+      "strength-training",
+      "coaching",
+      "athletes",
+      "physiology",
+      "interview"
+    ],
+    "99-percent-invisible--100-objects-14-basketball-sleeve": [
+      "design",
+      "objects",
+      "nba",
+      "sports",
+      "culture",
+      "history",
+      "storytelling"
+    ],
+    "off-nominal--253-dome-is-your-strategy": [
+      "space",
+      "investing",
+      "markets",
+      "banter",
+      "aerospace",
+      "panel"
+    ],
+    "software-engineering-daily--ai-and-the-new-global-security": [
+      "ai",
+      "ai-safety",
+      "national-security",
+      "policy",
+      "ethics",
+      "technology",
+      "geopolitics"
+    ],
+    "odd-lots--nick-bostrom-on-what-happens-if": [
+      "philosophy",
+      "ai",
+      "economics",
+      "ideas",
+      "ethics",
+      "futurism",
+      "interview"
+    ],
+    "the-race-f1-podcast--in-car-insights-what-we-learned": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "panel",
+      "sports",
+      "banter"
+    ],
+    "the-race-f1-podcast--tech-show-the-secrets-of-driver": [
+      "formula-1",
+      "motorsport",
+      "engineering",
+      "simulation",
+      "technical",
+      "racing",
+      "technology"
+    ],
+    "camera-shake-photography-podcast--inside-an-award-winning-dog-photographer": [
+      "photography",
+      "craft",
+      "dogs",
+      "animals",
+      "careers",
+      "interview",
+      "art"
+    ],
+    "science-vs--hank-green-what-no-one-tells": [
+      "science",
+      "social-media",
+      "youtube",
+      "creativity",
+      "technology",
+      "interview",
+      "culture"
+    ],
+    "business-wars--warby-parker-vs-luxottica-a-modern": [
+      "business",
+      "business-history",
+      "retail",
+      "entrepreneurship",
+      "markets",
+      "interview",
+      "founders"
+    ],
+    "masters-of-scale--how-barnes-noble-made-a-comeback": [
+      "business",
+      "leadership",
+      "retail",
+      "books",
+      "founders",
+      "entrepreneurship",
+      "interview"
+    ],
+    "huberman-lab--essentials-how-to-access-your-creativity": [
+      "creativity",
+      "neuroscience",
+      "music-production",
+      "psychology",
+      "self-improvement",
+      "meditation",
+      "interview"
+    ],
+    "craft-beer-and-brewing-magazine-podcast--499-spyglass-searches-for-unique-modes": [
+      "brewing",
+      "craft-beer",
+      "fermentation",
+      "technical",
+      "food-science",
+      "interview"
+    ],
+    "fast-talk--437-potluck-discussion-best-time-of": [
+      "cycling",
+      "training",
+      "sports-science",
+      "endurance",
+      "coaching",
+      "physiology",
+      "panel"
+    ],
+    "ten-percent-happier--the-evidence-for-aliens-the-afterlife": [
+      "paranormal",
+      "psychology",
+      "philosophy",
+      "journalism",
+      "mental-health",
+      "interview",
+      "folklore"
+    ],
+    "zoe-science-nutrition--5-ways-to-control-your-blood": [
+      "nutrition",
+      "health",
+      "medicine",
+      "blood-sugar",
+      "longevity",
+      "research",
+      "evidence-based"
+    ],
+    "this-past-weekend-theo-von--676-billy-strings": [
+      "music",
+      "comedy",
+      "interview",
+      "celebrities",
+      "family",
+      "personal-story",
+      "hang"
+    ],
+    "astonishing-legends--s2-ep31-dlo-231-the-kids": [
+      "paranormal",
+      "folklore",
+      "mystery",
+      "storytelling",
+      "investigation",
+      "history"
+    ],
+    "dateline--lindsay-clancy-s-defense-luigi-mangione": [
+      "true-crime",
+      "courts",
+      "law",
+      "journalism",
+      "investigation",
+      "murder",
+      "policy"
+    ],
+    "the-moth--calling-in-the-moth-podcast": [
+      "storytelling",
+      "personal-story",
+      "radio",
+      "culture",
+      "family",
+      "narrative"
     ]
   }
 }
