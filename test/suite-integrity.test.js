@@ -79,7 +79,12 @@ const FLOORS = {
      Zero slack, like media-session and data-deletion below and for the same
      reason: what these guard is a set of decisions each one edit from its
      opposite. Raise them when the suites grow. */
-  "player/diagnostic-log.test.js": 38,
+  /* 38 -> 43 with #225: a failed TAP is an entry rather than a stage, because the
+     tap the record exists to explain is a cold start with no seam to hang a stage
+     on. Five, and one of them is in this file because mutation testing caught it
+     passing vacuously — `lineFor` renders a missing field and a null one
+     identically, so only an assertion on the stored entry can tell them apart. */
+  "player/diagnostic-log.test.js": 43,
   "player/diagnostic-record.test.js": 21,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
@@ -87,7 +92,10 @@ const FLOORS = {
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
-  "player/foray-playback.test.js": 83,
+  /* 83 -> 86 with #225: the page's two failure guards now reach the field record,
+     and the third of these is the one that keeps the instrument from becoming the
+     outage it was built to explain. */
+  "player/foray-playback.test.js": 86,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 37,
   "player/foray-resolve.test.js": 54,

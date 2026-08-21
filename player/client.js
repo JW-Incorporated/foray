@@ -249,6 +249,29 @@ window.forayDiagnosticClear = () => { diagLog.clear(); diag.reset(); return true
  * leaves the device untouched on purpose, and that has to include this record.
  */
 window.forayForgetDiagnostics = () => { diagLog.clear(); diag.reset(); return true; };
+/**
+ * A tap the PAGE saw fail, into the record (#225).
+ *
+ * The one thing the record could not see. Everything else in it is emitted from
+ * inside this module or the element below it, so a failure that came back OUT of
+ * `playForay` as an exception — a module skew, a queue that could not be built, a
+ * rejection with no media event behind it — reached `app.js`'s guards, painted a
+ * line on screen, and left the record with no entry for the tap at all. The
+ * founder's "several errors" is exactly that class, and it is why #225's next
+ * field report should arrive with evidence instead of a count.
+ *
+ * A BRIDGE AND NOT AN IMPORT because `app.js` is a classic script, like every
+ * other `window.foray*` above it. It takes an error NAME, never a message: the
+ * sanitising is done in `diagnostic-log.js` so that a caller of a different
+ * vintage cannot get raw text into a record that gets pasted into issues.
+ *
+ * Returns a boolean rather than the entry, so nothing on the page can come to
+ * hold a reference into the ring.
+ */
+window.forayNoteTapFailure = (phase, errorName) => {
+  diag.tapFailed({ phase, name: errorName });
+  return true;
+};
 
 /* ---------- DOM ---------- */
 

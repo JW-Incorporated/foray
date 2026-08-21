@@ -1844,11 +1844,44 @@ function paintForayFailure(signal) {
    state is still the truth, and clearing the page's flags would leave a button
    labelled "Pause" that means "start" — the very confusion this issue is about.
    That one says so and touches nothing; the next tick owns the state. */
+/* The record's copy of a failed tap (#225), and the only evidence that outlives
+   the message on screen.
+
+   A console line is not evidence on a phone — that is the whole reason #225 was
+   reported as "several errors" with no error in it. `cp_diag` already holds the
+   browser's side of a refusal (`play.rejected` becomes a `stop/autoplay` entry);
+   this is the page's side, the exception that actually came back out of
+   `playForay`, which nothing else in the record can see.
+
+   WRAPPED, AND THE WRAP IS THE POINT. This runs inside the two guards that are
+   this page's last defence against an unhandled rejection. A diagnostic that
+   threw here would take the on-screen message down with it and restore the exact
+   failure mode the issue is about: a tap that does nothing and says nothing.
+   `record()` and `save()` are both written never to throw — but the function on
+   `window` comes from a module the service worker refreshes independently of this
+   file (see the vintage note in `renderForay`), so "never throws" is a property
+   of a version, not of this call. Checked, and caught anyway.
+
+   THE NAME, NEVER THE MESSAGE. `err.message` carries URLs and prose, and this
+   record is built to be pasted into an issue. `player/diagnostic-log.js` drops
+   anything that is not a bare identifier, so a message would be discarded there
+   regardless; sending only the name means the rule is visible on both sides. */
+function noteTapFailure(phase, err) {
+  try {
+    if (typeof window.forayNoteTapFailure === "function") {
+      window.forayNoteTapFailure(phase, err?.name ?? null);
+    }
+  } catch (_) {
+    /* A record that will not write is not a reason to lose the line on screen. */
+  }
+}
+
 async function guardForayStart(run) {
   try {
     return await run();
   } catch (err) {
     console.warn("[foray] start failed", err);
+    noteTapFailure("start", err);
     state.forayPlaying = null;
     state.forayPainted = null;
     paintForayFailure(err?.name ? `${err.name}: ${err.message ?? ""}` : String(err));
@@ -1861,6 +1894,7 @@ async function guardForayTap(run) {
     return await run();
   } catch (err) {
     console.warn("[foray] control failed", err);
+    noteTapFailure("control", err);
     const line = $("#fy-error");
     if (line) {
       line.hidden = false;

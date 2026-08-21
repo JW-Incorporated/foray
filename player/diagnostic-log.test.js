@@ -30,7 +30,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf,
+  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf, errorNameOf,
   DIAG_KEY, DIAG_CAP, STAGE_CAP, DIAG_VERSION, MEDIA_STAGES,
 } from "./diagnostic-log.js";
 
@@ -824,4 +824,101 @@ test("an empty record says so rather than showing a blank box", () => {
   const { log } = mk();
   assert.match(formatDiagnosticReport(log.read()), /Nothing recorded yet/);
   assert.match(formatDiagnosticReport(null), /Nothing recorded yet/);
+});
+
+/* ==================================================================== */
+/* 6. a tap the page saw fail (#225)                                    */
+/* ==================================================================== */
+
+test("a failed tap is an ENTRY, so a first tap with no seam still leaves evidence", () => {
+  /* THE WHOLE REASON `tapFailed` EXISTS, and the trap it was written around.
+     #225 is a FIRST tap: nothing has played, so no seam has ever been opened —
+     and `_stage` returns early when there is no seam in flight. Routed through
+     `note()` like every other line in this record, the one tap the record exists
+     to explain would contribute exactly nothing.
+
+     MUTATION: make `tapFailed` call `this._stage("foray.tap.failed")` instead of
+     `this.log.record(...)`. The ring stays empty and the first assertion fails,
+     which is how this defect would otherwise have shipped looking correct. */
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const entries = parse(store).entries;
+  assert.equal(entries.length, 1, "a failed first tap has to survive as its own entry");
+  assert.equal(entries[0].type, "tapFail");
+  assert.equal(entries[0].phase, "start");
+  assert.equal(entries[0].error, "NotAllowedError");
+  assert.equal(entries[0].seq, 1, "and it is sequenced like everything else in the ring");
+});
+
+test("the phase is one of two words, and anything else is normalised rather than stored", () => {
+  /* The phase is the one thing only the PAGE knows — whether the tap got nowhere
+     or failed over audio already playing. It is a vocabulary word, so it obeys the
+     same rule as a stage name: never data.
+
+     MUTATION: store `String(phase)` without the `TAP_PHASES` check. The third
+     entry keeps the caller's text and this fails — and a caller of another vintage
+     could put a Foray id into a record built to be pasted into an issue. */
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: "start", name: "TypeError" });
+  diag.tapFailed({ phase: "control", name: "TypeError" });
+  diag.tapFailed({ phase: "segment 4 of grilling-history-1", name: "TypeError" });
+
+  assert.deepEqual(parse(store).entries.map((e) => e.phase), ["start", "control", "start"]);
+});
+
+test("an error NAME is kept and an error MESSAGE is refused", () => {
+  /* The privacy rule of §2, applied to the one field #225 adds. A `.name` is a
+     closed vocabulary and answers the only question asked of it — was the browser
+     refusing, or did the code break. A `.message` carries prose and URLs.
+
+     MUTATION: drop the character check and return the trimmed string. Every
+     assertion from the third down fails. */
+  assert.equal(errorNameOf("NotAllowedError"), "NotAllowedError");
+  assert.equal(errorNameOf("TypeError"), "TypeError");
+
+  assert.equal(errorNameOf("load failed (code 4) for https://cdn.test/a.mp3"), null);
+  assert.equal(errorNameOf("player.forayJump is not a function"), null);
+  assert.equal(errorNameOf("play.rejected"), null, "a dotted stage name is not an error name");
+  assert.equal(errorNameOf(""), null);
+  assert.equal(errorNameOf(null), null);
+  assert.equal(errorNameOf("A".repeat(49)), null, "and it is bounded like a stage name");
+});
+
+test("a failure with no error class is recorded as one rather than as a blank", () => {
+  /* A rejection carrying nothing is a real outcome, and a different finding from a
+     field that was never written — a reader who sees a gap will assume the second.
+
+     THE ASSERTION IS ON THE STORED ENTRY, NOT ON THE REPORT, and that distinction
+     is the entire value of this test. `lineFor` renders `e.error ?? "none"`, so a
+     MISSING key and a null one produce the identical line. The first draft of this
+     test asserted only the report text, and the mutation below SURVIVED it — the
+     report cannot tell the two apart, and only the JSON a founder pastes can. Kept
+     as written because it is the clearest example in this file of a green test
+     pinning nothing.
+
+     MUTATION: omit the `error` key when the name is null —
+     `...(errorNameOf(name) ? { error: errorNameOf(name) } : {})`. The `in` check
+     below fails; the `match` at the bottom does not. */
+  const { diag, store, log } = mk();
+  diag.tapFailed({ phase: "control" });
+
+  const entry = parse(store).entries[0];
+  assert.ok("error" in entry, "the field is written even with no class, so a reader can tell it was asked");
+  assert.equal(entry.error, null);
+  assert.match(formatDiagnosticReport(log.read()), /control failed\s+error=none/);
+});
+
+test("the report names a failed tap in words rather than dumping its JSON", () => {
+  /* This is the surface a founder reads ON A PHONE, so an entry that falls through
+     to `lineFor`'s `default` is a brace-and-quote blob in a panel about 340 px wide.
+
+     MUTATION: delete the `tapFail` case from `lineFor`. The default branch
+     JSON-stringifies the entry and the second assertion fails. */
+  const { diag, log } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  const line = formatDiagnosticReport(log.read()).split("\n").find((l) => l.includes("tapFail"));
+
+  assert.match(line, /start failed\s+error=NotAllowedError/);
+  assert.ok(!line.includes("{"), `the report is read, not parsed: ${line}`);
 });

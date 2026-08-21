@@ -354,6 +354,31 @@ export function stageOf(message) {
   return STAGE_ROOTS.has(root) ? head : null;
 }
 
+/** The two things a failed tap can be, and the page is the only side that knows
+    which. A start got nowhere; a control failed over audio that is still going.
+    `app.js`'s two guards carry exactly this distinction (#225), and a value from
+    anywhere else is normalised to `start` rather than stored. */
+const TAP_PHASES = new Set(["start", "control"]);
+
+/**
+ * An error's CLASS, or null.
+ *
+ * `.name` and never `.message`. A DOM exception's name is a closed vocabulary
+ * (`NotAllowedError`, `NotSupportedError`, `AbortError`) and answers the only
+ * question this record is asked — was the browser refusing, or did the code
+ * break. A `.message` carries prose and URLs, and this record gets pasted into
+ * issues; that is the same rule `knownCar` above is written to enforce, applied
+ * before the value is stored rather than after.
+ *
+ * Underscore but no dot: an error name is one identifier, so the dotted form a
+ * stage name allows would mean something got through that is not a name.
+ */
+export function errorNameOf(name) {
+  const n = String(name ?? "").trim();
+  if (!n || n.length > STAGE_NAME_MAX) return null;
+  return /^[A-Za-z][A-Za-z0-9_]*$/.test(n) ? n : null;
+}
+
 /* Every number this record holds comes through one of these. Formats the iOS CI
    probe already reads (`tools/mobile/probe/probe-seam.js`), so they are as much
    a contract as anything untyped in this repo gets — and
@@ -622,6 +647,31 @@ export class PlayerDiagnostics {
   }
 
   /**
+   * A transport tap that failed, as seen BY THE PAGE (#225).
+   *
+   * AN ENTRY, NOT A STAGE, and that is the whole reason this method exists rather
+   * than a line pushed through `note()`. `_stage` writes into the seam in flight
+   * and returns early when there is none — and the failure #225 is about is a
+   * COLD START, where no seam has ever been opened. Routed through `note()` this
+   * would have recorded exactly nothing, on precisely the tap the record exists
+   * to explain.
+   *
+   * It does NOT duplicate the element layer. A refused `el.play()` already lands
+   * as `stop/autoplay` via `play.rejected`, which is the browser's side of the
+   * story. This is the page's side: an exception that came back out of
+   * `playForay` and put a message on screen. The two can both be present for one
+   * tap, and a reader wants that — it is the difference between "the browser held
+   * the audio" and "the module threw before the browser was ever asked".
+   */
+  tapFailed({ phase = "start", name = null } = {}) {
+    return this.log.record("tapFail", {
+      phase: TAP_PHASES.has(String(phase)) ? String(phase) : "start",
+      error: errorNameOf(name),
+      hidden: this._isHidden(),
+    });
+  }
+
+  /**
    * A visibility transition, WITH the length of the state it just left.
    *
    * That duration is the point. #239's hidden deadline and the probe's ~26 s
@@ -806,6 +856,13 @@ function lineFor(e) {
     }
     case "boot":
       return `${head} hidden=${e.hidden ? "y" : "n"}`;
+    /* `error=none` rather than an empty space, because the two are different
+       findings: a tap that failed with no error CLASS is a `playForay` that
+       returned a rejection carrying nothing, and a reader who sees a blank will
+       assume the field was never written. */
+    case "tapFail":
+      return `${head} ${e.phase ?? "?"} failed  error=${e.error ?? "none"}` +
+        `  hidden=${e.hidden ? "y" : "n"}`;
     default:
       return `${head} ${JSON.stringify(e)}`;
   }

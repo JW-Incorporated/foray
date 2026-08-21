@@ -1591,6 +1591,73 @@ test("a control that throws over LIVE audio says so without lying about the stat
   assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 2);
 });
 
+test("a failed start leaves a trace in the record, not only on the screen", async () => {
+  /* THE HALF OF #225 THAT PAYS FOR THE NEXT REPORT. The line on screen is for the
+     listener in front of the phone; this is for whoever reads the issue afterwards.
+     A `console.warn` is not evidence on a device with no console — "several errors"
+     with no error in it is precisely what the founder was able to send, and it is
+     why this issue could not be diagnosed from the report.
+
+     MUTATION: delete `noteTapFailure("start", err)` from `guardForayStart`. The
+     first assertion fails. */
+  const boom = Object.assign(new Error("player.forayJump is not a function"), { name: "TypeError" });
+  const { dom, ctx } = await mountForayPage({ startThrows: boom });
+  const noted = [];
+  // `ctx.window === ctx`, so this IS `window.forayNoteTapFailure` as app.js reads it.
+  ctx.forayNoteTapFailure = (phase, name) => { noted.push({ phase, name }); return true; };
+
+  await dom.el("fy-play").click();
+
+  assert.deepEqual(noted, [{ phase: "start", name: "TypeError" }], "the record has to learn what the page saw");
+  /* MUTATION: pass `err` rather than `err?.name`. `name` arrives as an Error, the
+     deepEqual above fails, and a `.message` carrying URLs would be on its way into
+     a record built to be pasted into an issue. */
+  assert.equal(typeof noted[0].name, "string");
+  // The listener-facing surface is unchanged by the new call — it still comes first.
+  assert.equal(dom.el("fy-error").hidden, false, "the message on screen is not traded for the record");
+});
+
+test("a control that fails over live audio is recorded as a control, not as a start", async () => {
+  /* The two phases answer different questions — a tap that got NOWHERE versus a
+     transport action that did not take over audio still playing — and they point
+     at different halves of the code. A record that called both "start" would send
+     the next investigation to the wrong one.
+
+     MUTATION: pass "start" in `guardForayTap`. This fails. */
+  const { dom, bridge, resolved, ctx } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  onChange({ forayId: FORAY_ID, index: 4, playing: true, loading: false, gap: false, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null });
+
+  const noted = [];
+  ctx.forayNoteTapFailure = (phase, name) => { noted.push({ phase, name }); return true; };
+  bridge.throwOnToggle(Object.assign(new Error("nope"), { name: "TypeError" }));
+  await dom.el("fy-play").click();
+
+  assert.deepEqual(noted, [{ phase: "control", name: "TypeError" }]);
+});
+
+test("a record that throws does not cost the listener the message on screen", async () => {
+  /* THE GUARD'S GUARD, and the reason the write is wrapped where it stands.
+     `noteTapFailure` runs inside the two functions that are this page's last
+     defence against an unhandled rejection, and app.js is regularly paired with a
+     player module of a different vintage — the service worker refreshes the two
+     independently (see the note in `renderForay`), so "this function never throws"
+     is a property of a version, not of the call.
+
+     MUTATION: remove the try/catch inside `noteTapFailure`. The click rejects, the
+     failure line never paints, and #225's exact symptom — a tap that does nothing
+     and says nothing — is back, now caused by the instrument meant to explain it. */
+  const boom = Object.assign(new Error("boom"), { name: "TypeError" });
+  const { dom, ctx } = await mountForayPage({ startThrows: boom });
+  ctx.forayNoteTapFailure = () => { throw new Error("the record is broken"); };
+
+  await dom.el("fy-play").click();            // must NOT reject
+
+  assert.equal(dom.el("fy-error").hidden, false, "the line on screen outranks the record");
+  assert.match(dom.el("fy-error").textContent, /press play/i);
+});
+
 test("the tap reaches playForay with nothing awaited in front of it", async () => {
   /* THE FIRST DEFECT IN THE FOUNDER'S SENTENCE, pinned as far as this harness
      can reach. Safari lifts an element's autoplay restriction inside the
