@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-19T08:16:11.703Z",
+  "built_at": "2026-08-21T07:50:36.743Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-19-06f7776d",
+    "last_batch_id": "fresh-2026-08-21-1fa416ce",
     "last_batch_tier": 1
   },
   "entries": {
@@ -204671,7 +204671,22 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "90-minute ambient music episodes tuned to 432 Hz healing frequency, designed for sleep and relaxation.",
+      "display_title": "Sleep Anchor: 432 Hz Healing Frequency",
+      "blurb": "Ambient healing frequency music for sleep, focus, and relaxation—90 minutes per episode.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-1fa416ce",
+      "classified_at": "2026-08-21T07:50:36.743Z"
     },
     "1895571517": {
       "topics": [
