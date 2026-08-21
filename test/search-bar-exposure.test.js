@@ -85,32 +85,36 @@ function rank(query) {
 }
 
 /* NOT the battery's whole query list, and chosen rather than copied. Each ranking
-   here costs ~230 ms and each result swept costs a re-classification, so the list is
-   the queries that can actually exercise the bar, one line of reason each. (The
-   battery's own list is in tools/test-search.mjs, which is a script on
-   DENIED_PREFIXES; nothing here can read it.)
+   costs ~230 ms and each swept result costs a re-classification, so the list is the
+   queries that can exercise the bar, with the reason each is here. (The battery's own
+   list is in tools/test-search.mjs, a script on DENIED_PREFIXES; nothing here can
+   read it. `node tools/test-search.mjs --tiering` prints it.)
 
    SPARSE, so the bar decides what reaches the page and the answer is short enough
-   for a dropped clearer to be visible rather than a `cap` artefact:
+   that a dropped clearer is visible rather than a `cap` artefact. These are the five
+   queries that carry the clearer half of the assertion:
      "the history of jazz", "meditation", "politics", "nba", "stock market"
-   HONESTLY EMPTY today, one coincidental match each -- they hold the "an already
-   empty query may stay empty" edge that a naive version of this test got wrong:
+   "the history of jazz" is also the ONLY query in this list where the top-ranked
+   result is not the highest-scoring one (5.250 with a 5.400 in a lower `matched`
+   tier), which makes it the one that can tell `results[0].sum` from
+   `Math.max(...)` -- so it is doing two jobs, and the five queries the --tiering
+   report lists inversions for are not substitutes: measured, all five have
+   `results[0].sum === Math.max(...)`, because their inversions are in the tail.
+   HONESTLY EMPTY today, one coincidental match each. They assert nothing on a green
+   run -- "warriors" has a single result, so the sweep never enters, and
+   "basketball"'s two-result ranking has no clearer to drop. They are here for the
+   MUTATED runs: "basketball" is where the second-best anchor is caught, because that
+   rewrite gives the query an answer and then takes it away again.
      "warriors", "basketball"
-   RANKING DISAGREES WITH THE SCORES (the --tiering report lists an inversion), so
-   `results[0].sum` and `Math.max(...)` are different numbers and the sweep can tell
-   a top-anchored bar from a max-anchored one:
-     "plane crashes", "world war 2", "video games", "true crime cold case",
-     "train history"
-   LONG AND RICH, where the answer is truncated and only the never-empty half
-   applies -- kept so the suite covers the branch where `candidates` is the whole
-   result array:
-     "comedy", "true crime", "how bbq works" */
+   LONG AND TRUNCATED, where `candidates` is the whole result array and the page
+   fills, so only the never-empty half applies. Kept because that is the branch the
+   app is in for most queries, and dropped down to three because each is ~100
+   results and they cost the most:
+     "how bbq works", "world war 2", "true crime cold case" */
 const QUERIES = [
   "the history of jazz", "meditation", "politics", "nba", "stock market",
   "warriors", "basketball",
-  "plane crashes", "world war 2", "video games", "true crime cold case",
-  "train history",
-  "comedy", "true crime", "how bbq works",
+  "how bbq works", "world war 2", "true crime cold case",
 ];
 
 test("on the live catalogue, improving a result ranked below the top one never empties a query or drops a clearer (#301)", () => {
@@ -134,8 +138,7 @@ test("on the live catalogue, improving a result ranked below the top one never e
      reader looking for the mutation coverage of those two should look there and not
      conclude from a green run here that nothing pins them.
 
-     Measured here on 2026-08-21: 15 queries, 0 violations (the swept count is
-     asserted at the bottom). Both of the exclusions in the header were found by
+     Measured here on 2026-08-21: 10 queries, 306 improvements, 0 violations. Both of the exclusions in the header were found by
      THIS suite going red on correct behaviour -- an already-empty query staying
      empty, and "stock market" losing a clearer to the per-show cap -- which is the
      reason it exists next to the fixtures rather than instead of them.
@@ -150,21 +153,24 @@ test("on the live catalogue, improving a result ranked below the top one never e
   const sort = (rs) => rs.slice().sort((a, b) => b.matched - a.matched || b.sum - a.sum);
   const barOf = (rs) => rs[0].sum * SE.STRONG_RATIO;
   let swept = 0;
-  let truncated = 0;
+  let skipped = 0;
+  let clearerRuns = 0;
   for (const query of QUERIES) {
     const results = rank(query);
-    assert.ok(results.length > 0, `"${query}" returned nothing, so it is testing nothing`);
+    /* A query can stop matching anything at all when the nightly rotates
+       data/discover.json -- "warriors" hangs on a single item today. That is a
+       catalogue fact, not a defect, so it is skipped and counted; the floor below is
+       what keeps the skipping honest. */
+    if (!results.length) { skipped++; continue; }
     const base = SE.classifyResults(results);
-    /* "warriors" and "basketball" are honestly empty on today's pool -- one
-       coincidental match each -- and an improvement that leaves them under the bar
-       leaves them empty. The claim is that a query WITH an answer keeps one, so
-       they contribute the clearer half of the sweep and not the never-empty half.
-       They are kept in the list rather than dropped from it because which queries
-       are in this state is a property of the catalogue, not of the code. */
+    /* An improvement that leaves an already-empty query under the bar leaves it
+       empty, which is not a violation of anything: the claim is that a query WITH an
+       answer keeps one. Written as a guard rather than by dropping those queries
+       from the list, because which queries are in this state is a property of the
+       catalogue and changes under the nightly. */
     const hadAnswer = base.status !== "empty";
     /* Only meaningful where the page is not full -- see the header. */
     const pinnable = base.picks.length < cap;
-    if (!pinnable) truncated++;
     const baseClearers = base.picks.filter((p) => p.sum >= barOf(results)).map((p) => p.i.id);
     const top = results[0].sum;
     const topTier = results[0].matched;
@@ -194,7 +200,8 @@ test("on the live catalogue, improving a result ranked below the top one never e
              PER_SHOW_CAP with no room left to backfill. The query got richer and one
              clearer left the page: the per-show cap and `cap` decided that, not the
              bar, and #301 is a claim about the bar. */
-          if (pinnable && out.picks.length < cap) {
+          if (pinnable && out.picks.length < cap && baseClearers.length) {
+            clearerRuns++;
             const shown = out.picks.map((p) => p.i.id);
             for (const id of baseClearers) {
               assert.ok(shown.includes(id), `${what} dropped ${id}, which clears the bar -- #301's bound is broken`);
@@ -205,12 +212,13 @@ test("on the live catalogue, improving a result ranked below the top one never e
       }
     }
   }
-  /* Non-vacuity, and the reason it is a floor rather than the measured 492: the
-     catalogue grows nightly, so the exact count is not a claim anybody can keep
-     true. What must stay true is that this ran over real rankings -- and that at
-     least some of them were short enough for the clearer half to apply, which the
-     second assertion is for. Both would go to zero together if the pool failed to
-     load, which is the failure this catches. */
-  assert.ok(swept >= 400, `swept only ${swept} improvements over ${QUERIES.length} queries`);
-  assert.ok(truncated < QUERIES.length, "every query filled the page, so the clearer assertion never ran");
+  /* Non-vacuity, in the two places this test can quietly stop testing anything, and
+     floors rather than the measured numbers because the catalogue grows nightly and
+     an exact count is not a claim anyone can keep true. Measured 2026-08-21: all 10
+     queries ranked, 306 improvements swept, 143 of them asserting on a clearer. The first version asserted `truncated < QUERIES.length` instead, which
+     read like it was protecting the clearer half and could not fail while any query
+     was empty -- an empty query is not truncated. */
+  assert.ok(QUERIES.length - skipped >= 6, `only ${QUERIES.length - skipped} of ${QUERIES.length} queries ranked`);
+  assert.ok(swept >= 150, `swept only ${swept} improvements`);
+  assert.ok(clearerRuns >= 50, `the clearer half of the assertion ran only ${clearerRuns} times`);
 });

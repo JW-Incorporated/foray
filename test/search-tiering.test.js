@@ -380,75 +380,39 @@ test("a result the ranking keeps below the top one cannot evict a bar-clearer, h
      however they score -- that is the case the bar must ignore, and the case a
      careless `Math.max(...results.map(x => x.sum))` would get wrong.
 
-     Swept over three shapes, each row raised in its own matched tier and in the
-     tier above (a topic label raises `matched` as well as `sum`, which is exactly
-     what PR #300 did, so a sweep that only moved `sum` would miss the realistic
-     edit). 174 improvements; the counter at the bottom pins that.
+     Swept over two shapes, each row raised in its own matched tier and in the tier
+     above (a topic label raises `matched` as well as `sum`, which is exactly what
+     PR #300 did, so a sweep that only moved `sum` would miss the realistic edit).
+     130 improvements; the counter at the bottom pins that.
 
-     THREE SHAPES BECAUSE ONE WAS NOT ENOUGH, and each extra one was added by
-     running a mutation, not by reading:
-       - Over the real "meditation" shape alone the MEDIAN mutation survives:
-         under a median bar all nine results clear, the status is "ok", and the
-         wide branch passes the whole `results` array through, so the bar filters
-         nothing and no eviction can reach the page. `MEDIAN_SENSITIVE` is the
-         shape that stays sparse under both rules -- two clearers of a top-anchored
-         bar, and a pair straddling a median-anchored one, so raising either drags
-         the median past the other.
-       - Both of those are single-tier, so in both the top result is also the
-         highest-scoring one, and `Math.max(...)` and `results[0].sum` are the same
-         number. `TIERED` is the shape where they differ (a matched=1 result
-         scoring 9 under a matched=2 top scoring 10, which is the live "the history
-         of jazz" shape, 5.400 under 5.250). It is also the only fixture that
-         reaches the #216 widening at all: with one row in the top tier no sub-bar
-         result can outrank a clearer, so on the other two `strongPrefix` returns
-         exactly the clearers and the branch is entered but never widens.
+     WHAT THIS TEST CAN AND CANNOT CATCH, and the line between them is provable
+     rather than a measurement that might change. The assertion is about results
+     that clear `results[0].sum * STRONG_RATIO`. Three of the four bar rewrites #301
+     considers -- second-best, median, and the direction-1 clamp -- all anchor on a
+     value that is at most the top score, so each produces a bar at most today's.
+     A LOWER bar cannot evict anything, so none of them can be caught here, by
+     construction and not by luck. They are caught where their cost really is, which
+     is the honest-empty floor: the #301 test above and "fewer than two bar-clearing
+     results is honestly empty" both go red on all three, and the battery goes red
+     on the live pool.
+     What this test is for is the other direction -- a rewrite that lets a result the
+     ranking places BELOW the top one push the bar UP:
 
-     THE FIXTURES ARE NINE, FIVE AND FOUR ROWS AND THAT IS DELIBERATE. At no more
-     than DEFAULT_CAP results the #216 prefix can never outgrow a page, so the
-     `prefix.length <= cap` fallback stays out of reach. It IS reachable, and there
-     the pick count is not monotone: measured on one top result, eight sub-bar
-     results in a higher matched tier, one clearer beneath them and one weak result
-     below that, promoting the weak one into the sub-bar tier takes the prefix from
-     10 to 11, turns the widening off, and drops the answer from 10 picks to 2.
-     That is #216's page guard behaving as ruled -- past a page the hole-filling
-     has become padding, and the two picks it keeps are the honest clearers -- so
-     it is recorded here rather than asserted as a second defect. It is also why
-     the live-pool version of this bound (test/search-bar-exposure.test.js, where
-     result lists are long enough to reach it) asserts "never empty" and not the
-     pick count.
+     KILLED BY: `const bar = Math.max(...results.map(x => x.sum)) * STRONG_RATIO`,
+     which reads like a tidy-up of the line it replaces and is not one. It hands the
+     bar to whichever result scores most, including one the comparator ranks below a
+     clearer, and `TIERED` is the fixture where those differ. Before `TIERED` existed
+     this mutation passed every unit test and all 123 battery checks -- found by
+     review, not by this file.
 
-     KILLED BY (all three run, all three fail this test):
-       - `const bar = (results[1] ? results[1].sum : results[0].sum) *
-         STRONG_RATIO` -- direction 2, second-best as the anchor. Raising the
-         runner-up then raises the bar. On the live pool the same rule makes
-         "meditation" status "ok" over 9 picks, promoting Marcus Aurelius and two
-         Engines of Our Ingenuity episodes onto the page, and the battery goes red.
-       - the median form of the same direction, `const s = results.map(x => x.sum)
-         .sort((a, b) => a - b); const bar = s[Math.floor(s.length / 2)] *
-         STRONG_RATIO`. Raising a below-median result drags the median, and with it
-         the bar, over results that were clearing it. On the live pool it puts
-         Serial, Dateline, Morbid and Wicked Words in the top five for "grill".
-       - `const bar = Math.max(...results.map(x => x.sum)) * STRONG_RATIO`, which
-         reads like a tidy-up of the line it replaces and is not one: it hands the
-         bar to whichever result scores most, including one the ranking places
-         below a clearer. Before `TIERED` was added this mutation passed all 341
-         unit tests and all 123 battery checks.
-       - the direction-1 clamp, `Math.min(results[0].sum, 2 * results[1].sum) *
-         STRONG_RATIO`, which also makes the bar read another result's score. It
-         needs `TIERED` too. (An earlier version of this comment argued the clamp
-         could not break the bound because `min(top, 2 * second) <= top`. That
-         compares the clamped bar to today's, which is not what the bound says;
-         under the clamp, raising results[1] raises the clamped bar. Left here
-         because the wrong version was written down first.) */
+     WHY BOTH FIXTURES, since only one carries that mutation. `MEDITATION` is the
+     live shape the defect was measured on, so the property is swept over real
+     numbers and not only over a shape built to break something; it also covers the
+     single-tier case, where `Math.max(...)` and `results[0].sum` agree and the sweep
+     must stay green. `TIERED` is the two-tier case. An earlier version had a third,
+     `MEDIAN_SENSITIVE`, built to catch the median rewrite; it was deleted once the
+     paragraph above showed no clearer-based assertion can catch that rewrite at all. */
   const sort = (rs) => rs.slice().sort((a, b) => b.matched - a.matched || b.sum - a.sum);
-  /* Two clearers of the real bar (10 and 6, bar 5), and 2.80/2.79 straddling a
-     median-anchored one (median 5.5, bar 2.75). Raising 2.80 to 5.90 drags the
-     median to 5.9 and the median bar to 2.95, which evicts 2.79 -- a result whose
-     own score did not move. */
-  const MEDIAN_SENSITIVE = () => [
-    row("m-top", 1, 10), row("m-second", 1, 6), row("m-third", 1, 5.5),
-    row("m-just-above", 1, 2.80), row("m-just-below", 1, 2.79),
-  ];
   /* `matched` dominates the comparator, so the two matched=1 rows stay below the
      matched=2 pair however high they score -- and 9 outscores the top result
      without being it, which is the only way to tell `results[0].sum` from
@@ -468,7 +432,7 @@ test("a result the ranking keeps below the top one cannot evict a bar-clearer, h
      rule, this test is meant to go red and be re-argued. */
   const clearersOf = (out, rows) => out.picks.filter((p) => p.sum >= rows[0].sum * SE.STRONG_RATIO).map((p) => p.i.id);
   let swept = 0;
-  for (const fixture of [MEDITATION, MEDIAN_SENSITIVE, TIERED]) {
+  for (const fixture of [MEDITATION, TIERED]) {
     const base = SE.classifyResults(fixture());
     const baseClearers = clearersOf(base, fixture());
     const top = fixture()[0].sum;
@@ -501,6 +465,6 @@ test("a result the ranking keeps below the top one cannot evict a bar-clearer, h
   }
   /* Without this the loops could sweep nothing and the test would pass green,
      which is the failure mode this suite's header is about. Exact, not a floor:
-     dropping any one fixture changes it, and all three are load-bearing. */
-  assert.equal(swept, 174, `swept ${swept} improvements, expected 174`);
+     dropping either fixture changes it. */
+  assert.equal(swept, 130, `swept ${swept} improvements, expected 130`);
 });

@@ -869,10 +869,10 @@ const RICH_MIN = 6;
    the top-ranked result already did -- ties, and the sum-vs-`matched` disagreement
    #216 records, which is why this is "any query" in practice but not by
    construction.
-   Measured over the 37 queries tools/test-search.mjs searches (2026-08-21 pool,
-   bumping only results[0].sum): 27 lose picks at or before +80%, and four go
-   EMPTY at +54% or less -- "meditation" and "nba" at +34%, "politics" at +51%,
-   "stock market" at +54%.
+   Measured on the 2026-08-21 pool over the 35 of tools/test-search.mjs's 37 queries
+   that return anything (`--tiering` prints them), bumping only results[0].sum: 27
+   lose picks at or before +80%, and four go EMPTY at +54% or less -- "meditation"
+   and "nba" at +34%, "politics" at +51%, "stock market" at +54%.
    The instance: PR #300 labelled Huberman's meditation episode `health/meditation`
    correctly, 8.100 -> 12.150. The bar went 4.050 -> 6.075, Ten Percent Happier's
    5.400 fell out although nothing about ITS relevance changed, one clearer was
