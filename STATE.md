@@ -34,6 +34,145 @@ docs/. Completed workstreams move to their plan doc's retro section.
   alcohol assembly work against the 63-beat spine until HUMAN-ACTIONS #22 is
   answered.
 
+### seven drinks shows are curated, and the alcohol spine goes 1/15/47 -> 2/21/40 (2026-08-19, one PR, auto-mergeable, no follow-up)
+
+- **What:** `feat/drinks-curation`. #279 (rescoped by the founder on the issue — the
+  original body proposed importing all 443 drinks-shaped breadth rows and the
+  arithmetic in his correcting comment shows that would have been 2,095 KB against an
+  800 KB per-file budget). Seven shows into `data/catalog.json` (213 -> 220), 28
+  beat-serving episodes into `data/discover.json`, then a re-score of
+  `alcohol-forms-spine.md`'s 63 beats reusing #278's gate. New document:
+  `docs/curation/alcohol-forms-coverage-2.md`. #278's counts are deliberately NOT
+  edited — they are the baseline.
+- **The result is uneven and that is the finding.** Beat 19 goes empty -> **strong**
+  (the first strong beat outside beer); 4, 5, 10, 15, 17, 22 go empty -> thin.
+  **Act I still has no strong tape** (0/3/13 -> 0/7/9) and **Acts IV, V and VI did not
+  move at all**, because WhiskyCast + Bourbon Pursuit + Spirits & Distilling publish
+  **zero transcripts across 2,431 episodes** and #278's gate requires a passage to be
+  READ. Of 4,652 episodes across the seven, **33 carry a transcript and 31 of those are
+  Cider Chat**. Cider Chat is the first non-DAI drinks source ever to produce a
+  SCOREABLE verdict here — **not** the first non-DAI drinks show in the catalogue, which
+  an earlier draft claimed: `fermup`, `experimental-brewing` and
+  `craft-beer-and-brewing-magazine-podcast` are all `dai: false` and predate #279. What
+  is new is that every one of #278's five verdict-producing sources was DAI-suspected,
+  so every span in this re-score is playable today rather than blocked on the locate step.
+- **Bundle: 682.0 -> 704.5 KB of 800.0, 3.21 KB per show measured against the 3.20
+  projected.** The budget was NOT raised. Headroom ~29 shows. Whole bundle 2.01 -> 2.03
+  MB of 3.00. The topic top-up did not fire despite `food/drinks` being a new topic,
+  because all 28 items carry it and the per-show pass covered it; a block spread over
+  several new topics would cost more. **Measured three times, against `6d163c5`,
+  `9b1374b` and `81f7179`** (89 nightly episodes apart): 3.23, 3.21, 3.21 KB/show. The
+  slice is N-per-show, so a nightly that adds episodes to existing shows does not move
+  it — which is why a per-show cost is a meaningful number at all.
+- **tag-DF re-checked both ways (#275's question and #274's refusal). The answer is
+  the first sentence; the rest is why the numbers under it must not be quoted.**
+  Growth: **0 expansion buckets move** — nothing crosses `TAG_DF_TOO_BROAD` 0.10 or
+  `TAG_DF_COMMON` 0.02, so no term is deleted from or demoted in query expansion. That
+  held against all three `main` baselines, and over a **2,730-term** vocabulary (#275's
+  1,366 plus every distinct tag string on either side), not just #275's. **Challenged
+  and re-run:** review counted tags by exact string equality and got **two** movers,
+  `comedy` and `craft`. Neither survives the engine's own `tagCount`/`hitTag` path,
+  which is a superset — `comedy` 175/1,650 -> 175/1,678, `drop` on both sides (exact
+  misses 8 items each side, and the drinks shows added **zero** comedy items, so it is
+  denominator dilution, not skew); `craft` 43/1,650 = 2.61 % -> 70/1,678 = 4.17 %,
+  **already `0.4x` before this branch**, so it got much more common without changing
+  bucket. The `craft` mechanism was read correctly though — it nearly doubled (+27
+  items) off one Crafts-genre show, which is #275's predicted skew, and §7a-i keeps it.
+  **The margin is the finding, not the zero: `comedy` sits ~7 items above
+  `TAG_DF_TOO_BROAD`.** It survived only because drinks add no comedy; any ~7-item
+  dilution without comedy tags pushes it under, on the exact term #275 used as its
+  worked example. Recorded in §7a-ii, not fixed here. At `81f7179`,
+  **three score multipliers move, all across `TAG_DF_RARE` 0.008 and all three ours**:
+  `fermentation` 0.61 -> 1.13 %, `food-history` 0.73 -> 0.83 %, `craft-beer`
+  0.79 -> 0.83 %, each with a tag count that genuinely rose.
+  **DO NOT QUOTE THE MULTIPLIER COUNT.** It read 3, then 13, then 3 across the three
+  baselines. The 13 was not a different effect: eleven of those terms sat at
+  13/1,617 = 0.804 % and fell to 13/1,645 = 0.790 % with **no change in tag count** —
+  denominator, not skew. Which terms sit on the 0.008 line is a function of last week's
+  nightlies, not of this branch.
+  Sampling: the slice-vs-whole divergence goes **18 -> 17** expansion buckets and
+  70 -> 75 multipliers; **no term enters the set, `family` leaves, and no drinks term
+  is in it at any threshold.** `item-tags.json` stays `COPIED_WHOLE`, and
+  `prepare-webdir.test.mjs`'s assertions still hold (17 > 0, 34 < 75). Note `main`
+  measures **18/70, not the 12/62** the test records — drift is nightlies, not this
+  change, it has moved in the safe direction, and the test's own comment predicted it.
+  Re-run with the test's own code path rather than citing this line:
+  `node --test tools/mobile/prepare-webdir.test.mjs`.
+- **New tool:** `tools/refresh/backfill-show.mjs` (+ suite, + floor). `scan.mjs` reads
+  the newest **10** items inside a **48-hour** window, so it structurally cannot reach a
+  show added today. The backfill emits `scan.mjs`'s exact pending shape and hands off to
+  the unchanged `resolve.mjs` -> `merge.mjs`. **`--newest` defaults to 25 to match
+  `resolve.mjs`'s `limit=25` lookup**, `--match` filters inside that window, and zero
+  matches is an error rather than an empty run.
+- **The test-rigour claim this entry used to make was FALSE, and that is the most
+  important line here.** It said *"17 mutations run against the suite; the one that came
+  back green found dead code."* Review re-ran them: **18 of 20 survived**, for one
+  structural reason — every invariant worth pinning lived inside `main()`, which is not
+  exported and which no test called, so it was unreachable by construction. The
+  `NO_MATCH` guard the script exists for had no test at all; nor did `EMPTY_FEED`, the
+  `episodes` payload key, or `--out`. One test asserted `k in record`, and
+  `"show" in { show: undefined }` is true while `JSON.stringify` drops the key — so
+  eight fields could be emptied and the suite stayed green. **Fixed in this branch**:
+  the guards moved into exported functions (`feedItems`, `selectEpisodes`,
+  `buildPayload`, `resolveOutPath`), the record test asserts values and the serialised
+  round-trip, unknown flags are now refused rather than ignored, and the suite went
+  18 -> 24 tests. **Twenty mutations were run against the new suite and twenty were
+  killed**; each test names its own in its comment. A second review round is why that
+  number is trustworthy: it caught a `??`-for-`||` in the new `feedItems` that let an
+  empty `<item/>` through as a one-element array — reinstating the silent-success bug
+  one layer down — and four loose-equality survivors under `assert.deepEqual`. Both are
+  fixed and both are now mutations in the list. The dead `guid` ternary the old claim
+  described is real and is gone; `scan.mjs` still has its copy.
+- **What is still NOT covered, so "twenty killed" is not over-read:** `main()`'s
+  wiring. It fetches over the network and is not exported, so deleting its
+  `writeFileSync`, inverting its `--dry-run` branch or dropping its throttle still
+  leaves the suite green. Every *guard* it used to hold is now in an exported function
+  and tested; the plumbing between them is not. Also: the UTC date-shift mutation only
+  fails off UTC — in CI the local and UTC formatters are the same function — so that
+  test's comment names `TZ=America/Los_Angeles` as the way to reproduce it.
+- **Two limitations named rather than fixed.** `PENDING_PATH` is honoured, and it is the
+  same env var `scan.mjs` writes, so the header's "cannot clobber a nightly scan" holds
+  for the DEFAULT path and not for the env var — `--out` wins over it and is the way to
+  be sure. And `release_date` is the UTC day, so a feed declaring a negative offset late
+  in its local day shifts forward: 17 of Spirits & Distilling's 47 items do. **No item
+  this PR ships is affected**, and it matches `scan.mjs`, so it is the pipeline's
+  behaviour rather than a defect introduced here — but the fixture only ever used
+  `+0000`, the one offset where it cannot appear, which is how it stayed invisible.
+  Both are now pinned by tests.
+- **`classify-dai.mjs` is not optional after adding shows.** `merge.mjs` stamps
+  `dai_suspected` from a per-show cache and answers `false` for a show it has never
+  seen, so 8 of the 28 items (art19, Megaphone) were wrong until it ran. Documented in
+  `tools/refresh/README.md`.
+- **Shared files:** `data/catalog.json`, `data/discover.json`, `data/item-tags.json`,
+  `data/dai-classification.json`, `data/topic-coverage-report.json` (regenerated —
+  `wine-cocktails` and `coffee` move absent -> deep), `docs/curation/alcohol-forms-coverage.md`
+  (a supersession banner only; its counts are untouched), `docs/curation/alcohol-forms-coverage-2.md`
+  (new), `tools/refresh/backfill-show.mjs` + `.test.mjs` (new), `tools/refresh/README.md`,
+  `test/suite-integrity.test.js` (one floor), this file. **No `search-engine.js`, no
+  `app.js`, no `player/`, no `mobile/`, no `data/catalog-breadth.json`, no spine edit.**
+- **Watch out — `data/catalog-breadth.json`'s `in_curated` is now stale-false for these
+  seven and is deliberately left alone.** The field is written only by
+  `harvest-catalog.mjs` and read by no code; the file is one 12 MB line, so seven
+  booleans would produce an unreviewable whole-file diff. `alcohol-forms-coverage-2.md`
+  §10 records it. Same for `data/transcript-availability.json`, which still indexes 213
+  shows — the §2 measurement was taken with `--catalog`/`--out` into scratch and not
+  committed, because a partial index is worse than a stale one.
+- **Seven shows do NOT change the alcohol product-mode question, and this entry must
+  not be read as if they did.** #287 landed after this branch was cut and measured the
+  alcohol Foray at **72.9 % narrator written in full**, against the 40 % line
+  `narration-craft.md` calls "an essay with clips. Not a Foray." That verdict — the
+  catalogue cannot fund this Foray as a **tape-led** product — is a founder decision
+  filed as `HUMAN-ACTIONS.md` **#22**, and it is **still open and still unanswered**.
+  What moved is coverage (1/15/47 -> 2/21/40) and what is now *reachable by
+  transcription* (§8 of coverage-2). What did not move is Act I, which still has no
+  strong tape at all and is the act the founder actually asked for. Nobody has re-run
+  #287's narration arithmetic against 2/21/40 and this PR does not claim to have.
+- **`path-policy`: CLEAN, auto-merge ARMED.** All 12 changed files are on
+  `ALLOWED_PREFIXES` and none on `DENIED_PREFIXES` (verified with
+  `path-policy check --enforce`, exit 0, and `decide`). **So taking this out of draft
+  IS the decision to merge it** — `decide --draft` returns NOT ARMED and `decide`
+  without it returns ARMED, so there is no review window after undraft. The reviewer
+  pass ran in the FOREGROUND before push.
 
 ### #267's tripwire is disarmed, and the seam prefetch STAYS OFF — with the arithmetic that says why (2026-08-21, one PR, no follow-up) — `fix/224-seam-prefetch`
 

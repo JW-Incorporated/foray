@@ -4193,6 +4193,145 @@
       "episode_count": null,
       "explicit": false,
       "source": "itunes_verified"
+    },
+    {
+      "show_id": "basic-brewing-radio",
+      "title": "Basic Brewing Radio",
+      "apple_collection_id": 75092679,
+      "feed_url": "http://www.basicbrewing.com/radio/radio.rss",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/3c/52/06/3c5206cb-3c81-e73d-6c1e-e9676f5eb451/mza_6652414973040377254.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 978,
+      "editorial_note": "Twenty years of homebrewing experiments, run as tests with results reported.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "itunes_verified"
+    },
+    {
+      "show_id": "whiskycast",
+      "title": "WhiskyCast",
+      "apple_collection_id": 93465727,
+      "feed_url": "https://rss.libsyn.com/shows/24093/destinations/35929.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/49/39/7a/49397a97-40bb-14a0-c110-b59cb96c49e6/mza_346208350090045766.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 1176,
+      "editorial_note": "Distillery interviews and whisky trade news, running weekly since 2005.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "itunes_verified"
+    },
+    {
+      "show_id": "ill-drink-to-that-wine-talk",
+      "title": "I'll Drink to That! Wine Talk",
+      "apple_collection_id": 538210866,
+      "feed_url": "https://rss.art19.com/i-ll-drink-to-that--wine-talk-",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/54/00/c5/5400c527-76de-e543-2905-80004703b12a/mza_17756266480680203435.jpeg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 505,
+      "editorial_note": "Long-form interviews with winemakers and sommeliers about their own work.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn",
+        "narrative"
+      ],
+      "cadence_hint": "biweekly",
+      "explicit": true,
+      "source": "itunes_verified"
+    },
+    {
+      "show_id": "inside-winemaking",
+      "title": "Inside Winemaking - the art and science of growing grapes and crafting wine",
+      "apple_collection_id": 906249753,
+      "feed_url": "https://rss.libsyn.com/shows/56081/destinations/208658.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/de/36/2c/de362c99-57f1-5dec-2139-534327421fba/mza_12479071518656272860.png/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 224,
+      "editorial_note": "A working Napa winemaker asks other winemakers how they make their decisions.",
+      "taxonomy_node_ids": [
+        "food/drinks",
+        "food/fermentation"
+      ],
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": "monthly",
+      "explicit": false,
+      "source": "itunes_verified"
+    },
+    {
+      "show_id": "cider-chat",
+      "title": "Cider Chat",
+      "apple_collection_id": 1054230417,
+      "feed_url": "https://rss.libsyn.com/shows/73722/destinations/320706.xml",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/7d/5b/2a/7d5b2a5d-5439-2823-d1c4-8310c5b5a349/mza_15700147877021374767.png/600x600bb.jpg",
+      "apple_genre": "Places & Travel",
+      "episode_count": 514,
+      "editorial_note": "Cidermakers and orchardists on fruit, fermentation, and what proper cider means.",
+      "taxonomy_node_ids": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn",
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": true,
+      "source": "itunes_verified"
+    },
+    {
+      "show_id": "bourbon-pursuit",
+      "title": "Bourbon Pursuit",
+      "apple_collection_id": 975392298,
+      "feed_url": "https://feeds.megaphone.fm/bourbonpursuit",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d7/d8/e0/d7d8e09b-e9ee-c938-b377-f7739801262f/mza_16631299733019105118.jpg/600x600bb.jpg",
+      "apple_genre": "Food",
+      "episode_count": 1207,
+      "editorial_note": "Distillers, blenders and coopers on how American whiskey is actually made.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "stretch"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": true,
+      "source": "itunes_verified"
+    },
+    {
+      "show_id": "spirits-and-distilling",
+      "title": "Spirits & Distilling Podcast",
+      "apple_collection_id": 1734460262,
+      "feed_url": "https://feeds.fireside.fm/spiritsanddistilling/rss",
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/4c/14/dd/4c14ddaf-0381-52ed-5ce4-8595b6553f76/mza_15577906674133471666.jpg/600x600bb.jpg",
+      "apple_genre": "Crafts",
+      "episode_count": 47,
+      "editorial_note": "Craft distillers on stills, cuts and cask policy. Dormant since December 2025.",
+      "taxonomy_node_ids": [
+        "food/drinks"
+      ],
+      "archetype_fit": [
+        "deep-learn",
+        "stretch"
+      ],
+      "cadence_hint": "ended",
+      "explicit": false,
+      "source": "itunes_verified"
     }
   ]
 }

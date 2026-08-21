@@ -361,6 +361,35 @@ const FLOORS = {
   "tools/mobile/ios-ci.test.mjs": 89,
   "tools/mobile/ios-workflow.test.mjs": 34,
   "tools/mobile/probe/install-probe.test.mjs": 39,
+  /* The one-shot that gets a newly curated show's back catalogue into the pipeline
+     (#279). The floor matters because the whole script exists to make one silent
+     failure impossible — a backfill that reports success while emitting nothing, or
+     emitting rows `resolve.mjs` can only drop — and the tests that pin that are the
+     easiest ones in the repo for a later session to find inconvenient.
+
+     THIS COMMENT PREVIOUSLY CLAIMED "seventeen mutations were run ... the one that
+     came back green found dead code rather than a hole in the tests." THAT CLAIM WAS
+     FALSE and it is recorded here rather than quietly deleted, because a false
+     evidence claim is worse than none: the next reader stops checking. Review of
+     PR #289 re-ran the mutations and 18 of 20 SURVIVED, for one structural reason —
+     every invariant that mattered lived inside `main()`, which is not exported and
+     which no test called, so it was unreachable by construction. That included the
+     `NO_MATCH` guard this whole script exists for.
+     The fix was to move those guards into exported functions (`feedItems`,
+     `selectEpisodes`, `buildPayload`, `resolveOutPath`) and pin them. **Twenty
+     mutations were then run against this suite and twenty were killed**; each test
+     names its own. A second review round found two of the first ten had been claimed
+     too early — a `??`-for-`||` in `feedItems` that let an empty `<item/>` through as
+     a one-element array, and four loose-equality survivors under `assert.deepEqual` —
+     so the count above is the re-run, not the first pass.
+
+     WHAT IS STILL UNCOVERED, said plainly so "twenty killed" cannot be read as more
+     than it is: `main()`'s WIRING. Deleting the `writeFileSync`, inverting the
+     `--dry-run` branch, or dropping the throttle still leaves this suite green,
+     because `main()` fetches over the network and is not exported. Every guard it
+     used to hold is now tested; the plumbing between them is not.
+     The floor is 24 because that is the count, with no slack. */
+  "tools/refresh/backfill-show.test.mjs": 24,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,
