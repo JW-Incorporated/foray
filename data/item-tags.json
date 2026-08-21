@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-21T08:13:19.771Z",
+  "built_at": "2026-08-21T09:04:57.156Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -13949,6 +13949,276 @@
       "culture",
       "family",
       "narrative"
+    ],
+    "stuff-you-should-know--short-stuff-did-a-shipwreck-double": [
+      "history",
+      "american-history",
+      "bite-sized",
+      "explainer",
+      "storytelling",
+      "banter"
+    ],
+    "the-rest-is-history--698-the-troubles-the-brink-of": [
+      "history",
+      "military-history",
+      "politics",
+      "britain",
+      "conflict",
+      "narrative",
+      "banter"
+    ],
+    "conan-obrien-needs-a-friend--summer-s-pouses-episode-4-liza": [
+      "comedy",
+      "interview",
+      "conan-obrien",
+      "relationships",
+      "banter",
+      "celebrities"
+    ],
+    "the-ancients--the-maya-ballgame": [
+      "ancient-history",
+      "archaeology",
+      "history",
+      "interview",
+      "sports",
+      "religion"
+    ],
+    "ancient-history-fangirl--why-are-techbro-oligarchs-so-obsessed": [
+      "ancient-history",
+      "history",
+      "tech-industry",
+      "politics",
+      "culture",
+      "banter"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2631": [
+      "physics",
+      "science",
+      "bite-sized",
+      "explainer",
+      "history-of-science",
+      "research"
+    ],
+    "this-week-in-startups--neurosymbolic-ai-outperforms-chatbots-and-product": [
+      "startups",
+      "ai",
+      "machine-learning",
+      "interview",
+      "venture-capital",
+      "technology",
+      "search"
+    ],
+    "twenty-minute-vc--20vc-spacex-buys-cursor-for-60bn": [
+      "venture-capital",
+      "startups",
+      "ai",
+      "markets",
+      "business",
+      "tech-industry",
+      "banter"
+    ],
+    "around-the-house-eric-g--robot-vacuums-and-routers-the-new": [
+      "home-improvement",
+      "policy",
+      "technology",
+      "tools",
+      "explainer",
+      "diy"
+    ],
+    "fly-on-the-wall--one-leg-outta-the-pantyhose-with": [
+      "comedy",
+      "interview",
+      "stand-up",
+      "hollywood",
+      "banter",
+      "careers"
+    ],
+    "the-bbq-central-show--pitmaster-and-tastemade-tv-susie-bulloch": [
+      "food",
+      "barbecue",
+      "cooking",
+      "interview",
+      "craft",
+      "books"
+    ],
+    "flight-safety-detectives--how-to-evacuate-an-airplane-episode": [
+      "aviation",
+      "safety",
+      "investigation",
+      "interview",
+      "engineering",
+      "explainer"
+    ],
+    "song-exploder--charli-xcx-camera": [
+      "music",
+      "songwriting",
+      "music-analysis",
+      "interview",
+      "pop-culture",
+      "creativity"
+    ],
+    "planetary-radio--the-spacex-falcon-9-that-crashed": [
+      "space",
+      "aerospace",
+      "science",
+      "interview",
+      "astronomy",
+      "engineering"
+    ],
+    "planet-money--getting-entrepreneurial-in-korea-summer-school": [
+      "economics",
+      "history",
+      "manufacturing",
+      "business",
+      "policy",
+      "explainer",
+      "entrepreneurship"
+    ],
+    "volts--why-can-t-utilities-innovate": [
+      "energy",
+      "grid",
+      "policy",
+      "technology",
+      "interview",
+      "infrastructure"
+    ],
+    "volts--he-helped-uruguay-decarbonize-can-he": [
+      "energy",
+      "grid",
+      "climate",
+      "policy",
+      "interview",
+      "economics"
+    ],
+    "unexplainable--why-can-t-i-remember-being": [
+      "science",
+      "neuroscience",
+      "psychology",
+      "brain",
+      "research",
+      "parenting",
+      "explainer"
+    ],
+    "how-i-built-this--advice-line-with-carlton-calvin-of": [
+      "entrepreneurship",
+      "business",
+      "advice",
+      "founders",
+      "startups",
+      "interview"
+    ],
+    "we-have-ways-of-making-you-talk--british-band-of-brothers-back-in": [
+      "military-history",
+      "world-war-2",
+      "history",
+      "banter",
+      "narrative",
+      "britain"
+    ],
+    "the-war-on-cars--let-s-get-political-re-release": [
+      "urbanism",
+      "cities",
+      "transit",
+      "policy",
+      "politics",
+      "activism"
+    ],
+    "talking-headways--episode-590-coulda-built-36-paris": [
+      "urbanism",
+      "cities",
+      "infrastructure",
+      "policy",
+      "interview",
+      "economics"
+    ],
+    "chemistry-world-podcast--uk-science-department-abolished-ireland-s": [
+      "chemistry",
+      "science",
+      "policy",
+      "research",
+      "engineering",
+      "news"
+    ],
+    "sticky-notes--mozart-clarinet-concerto": [
+      "classical-music",
+      "music-history",
+      "music-analysis",
+      "history",
+      "explainer",
+      "biography"
+    ],
+    "that-triathlon-show--the-best-practices-we-stand-by": [
+      "endurance",
+      "training",
+      "sports-science",
+      "research",
+      "advice",
+      "interview"
+    ],
+    "mel-robbins-podcast--the-adhd-doctor-how-to-focus": [
+      "mental-health",
+      "psychology",
+      "adhd",
+      "interview",
+      "self-improvement",
+      "medicine"
+    ],
+    "armchair-expert--armchair-anonymous-spas": [
+      "comedy",
+      "storytelling",
+      "personal-story",
+      "banter",
+      "interview",
+      "pop-culture"
+    ],
+    "armchair-expert--chris-young-on-being-sentenced-to": [
+      "interview",
+      "law",
+      "courts",
+      "personal-story",
+      "addiction",
+      "criminal-justice",
+      "biography"
+    ],
+    "call-her-daddy--harry-jowsey-my-wedding-divorce": [
+      "interview",
+      "relationships",
+      "celebrities",
+      "reality-tv",
+      "pop-culture",
+      "personal-story"
+    ],
+    "las-culturistas--visual-identity-w-matt-bowen": [
+      "comedy",
+      "pop-culture",
+      "banter",
+      "acting",
+      "music",
+      "celebrities"
+    ],
+    "handsome--pretty-little-episode-105": [
+      "comedy",
+      "banter",
+      "absurdist",
+      "hang",
+      "funny",
+      "stand-up"
+    ],
+    "dateline--talking-dateline-conversations-at-crimecon": [
+      "true-crime",
+      "interview",
+      "journalism",
+      "investigation",
+      "media",
+      "careers"
+    ],
+    "modern-love--i-don-t-trust-a-i": [
+      "relationships",
+      "ai",
+      "personal-story",
+      "technology",
+      "mental-health",
+      "storytelling"
     ]
   }
 }
