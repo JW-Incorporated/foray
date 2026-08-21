@@ -863,17 +863,21 @@ const RICH_MIN = 6;
 /* WHAT A RELATIVE BAR COSTS, AND WHY THE BILL IS STILL BEING PAID (#301).
    Because the bar is a fraction of results[0].sum, raising the TOP result's own
    score raises the bar for every other result, so IMPROVING A QUERY'S BEST MATCH
-   CAN DELETE THAT QUERY'S ANSWER. Doubling the top score empties any query: the
-   bar reaches the old top score, which by construction nothing else was above.
+   CAN DELETE THAT QUERY'S ANSWER. Doubling the top score is enough to empty any
+   query whose ranking is also sum-ordered: the bar reaches the OLD top score, and
+   the only results still clearing it are the ones that scored at least as much as
+   the top-ranked result already did -- ties, and the sum-vs-`matched` disagreement
+   #216 records, which is why this is "any query" in practice but not by
+   construction.
    Measured over the 37 queries tools/test-search.mjs searches (2026-08-21 pool,
-   bumping only results[0].sum): 33 lose picks at or before +100%, and four go
-   EMPTY at +54% or less -- "meditation" and "nba" at +34%, "politics" at +50%,
+   bumping only results[0].sum): 27 lose picks at or before +80%, and four go
+   EMPTY at +54% or less -- "meditation" and "nba" at +34%, "politics" at +51%,
    "stock market" at +54%.
    The instance: PR #300 labelled Huberman's meditation episode `health/meditation`
    correctly, 8.100 -> 12.150. The bar went 4.050 -> 6.075, Ten Percent Happier's
    5.400 fell out although nothing about ITS relevance changed, one clearer was
    left, and "meditation" returned nothing where it had returned two. Coverage
-   went up; the gain WAS the mechanism. The show-name RESCUE comment below
+   went up; the gain WAS the mechanism. The show-name RESCUE comment above
    describes the same failure from a different cause, so the shape was already
    known -- what #301 adds is that ordinary curation triggers it.
 
@@ -891,8 +895,10 @@ const RICH_MIN = 6;
         depression that mentions basketball in passing.
      2. ANCHOR ON A ROBUST STATISTIC. Second-best: 2 red -- "meditation" becomes
         status "ok" over 9 picks, promoting Marcus Aurelius and two Engines of Our
-        Ingenuity episodes, and a second result can no longer fail to clear half
-        of its own score, so `empty` is unreachable at two or more results.
+        Ingenuity episodes. It also all but deletes the honest-empty state: the
+        anchor clears its own bar, so `empty` needs the TOP-ranked result to score
+        under half of the runner-up, which only the sum-vs-`matched` disagreement
+        can produce and no battery query currently does.
         Median: 2 red -- filler is the majority on a broad query, so the median IS
         filler; "grill" comes back with Serial, Dateline, Morbid and Wicked Words
         in the top five, which is the "Texas" leak this bar was calibrated to keep
@@ -911,12 +917,20 @@ const RICH_MIN = 6;
         meditation runner-up sits at ratio 0.4444 and "basketball"'s filler at
         0.4286, so the whole window that saves the measured instance without
         admitting measured filler is (0.4286, 0.4444].
-   So the hazard is bounded and documented instead: the bar reads results[0].sum
-   and nothing else, so no other result's improvement can evict anything, and the
-   dangerous curation edit is specifically "raise the score of the result already
-   ranked first on a thin query". Both halves are pinned in
-   test/search-tiering.test.js. #301 stays open: the fix is a product ruling about
-   what a one-strong-answer query should show, not a constant. */
+   So the hazard is bounded and documented instead. The bar reads results[0].sum
+   and nothing else, so an improvement that leaves a result RANKED BELOW the top
+   one cannot evict anything, however large it is: the dangerous curation edit is
+   specifically "raise the score of the result the ranking already places first on
+   a thin query". Two things that bound does NOT cover, both measured rather than
+   reasoned: an improvement big enough to OVERTAKE the top result makes it
+   results[0] and the same hazard applies to it; and past a page #216's
+   `prefix.length <= cap` fallback can still cut the pick count (10 picks to 2,
+   measured) when a promotion lengthens the prefix -- that one keeps the honest
+   clearers, so it is the guard working as ruled rather than this defect.
+   Both halves are pinned in test/search-tiering.test.js, and the bound is
+   re-checked against the live pool in test/search-bar-exposure.test.js. #301
+   stays open: the fix is a product ruling about what a one-strong-answer query
+   should show, not a constant. */
 
 /* How many picks a playlist shows. Was an inline `cap = 10` default in both
    diversify() and classifyResults(); named and exported because #216 made it

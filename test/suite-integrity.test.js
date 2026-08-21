@@ -205,6 +205,15 @@ const FLOORS = {
      it — see the suite header for how the coverage divides against
      data-deletion and app-security. */
   "test/playlist-durability.test.js": 33,
+  /* #301's bound, over the REAL catalogue: improving a result the ranking keeps
+     below the top one must never empty its query or drop a bar-clearer. One test,
+     floored at one, because the alternative to a floor here is a suite that can be
+     deleted in a PR nobody reads -- and this is the only place a #301-shaped claim
+     meets real score distributions, which is where two of its exclusions came from
+     (an already-empty query, and a clearer lost to the per-show cap rather than the
+     bar). It catches two of the four bar rewrites on today's pool; the fixture
+     suite above catches all four, and both files say so. */
+  "test/search-bar-exposure.test.js": 1,
   /* The document-frequency SCALE (#275): tagCount vs tagDF, the three threshold
      fractions, and the two invariances the fix buys -- growth and proportional
      subsetting. Floored because what it guards is an ABSENCE OF DRIFT, which no
