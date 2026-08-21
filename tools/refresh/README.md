@@ -22,6 +22,7 @@ scan.mjs ──▶ fresh-pending.json ──▶ resolve.mjs ──▶ resolved.j
 | `merge.mjs`   | ✅ | Apply agent-authored hooks/tags, enforce copy rules, write data files |
 | `enclosure.mjs` | — | Shared audio-provenance helpers (not a stage) |
 | `dai.mjs` | — | DAI host classification (not a stage) |
+| `watch-nightly.mjs` | ✅ | **Not a stage.** Watches for the ABSENCE of a night — see below |
 | `classify-dai.mjs` | ✅ | **One-shot, not nightly.** Classifies shows, stamps `dai_suspected` |
 | `backfill-audio.mjs` | ✅ | **One-shot, not nightly.** Backfills audio onto pre-#21 items |
 | `backfill-show.mjs` | ✅ | **One-shot, not nightly.** Emits a pending file for a NEWLY CURATED show |
@@ -191,6 +192,64 @@ Rules (mirrored in `merge.mjs`'s preflight AND the CI gate — keep in sync with
 - A resolved item with **no** edit is skipped (the agent may deliberately omit a
   cross-promo/trailer that slipped through). Items already in `discover.json` are
   skipped — `merge.mjs` is idempotent and safe to re-run.
+
+## The watchdog (`watch-nightly.mjs`, issue #290)
+
+Everything above is the pipeline. This is the thing that notices when half of it
+does not happen.
+
+On 2026-08-20 and 2026-08-21 the Cloud agent did not run — its account had hit a
+weekly usage limit. The Action succeeded both nights and logged *"published
+digest: 29 resolved episodes"* both nights. Every workflow was green and nothing
+reached `main`. The only symptom was an **absence**, and nothing watched for one.
+
+The runner prompt already guards the mirror image: step 2 refuses a digest older
+than 12 hours, because a stale digest holds only items already in
+`discover.json`, so `merge.mjs` reports "0 items added" — *"a silently skipped
+night that looks like a successful one"*. That is this bug's reasoning applied to
+a missing **Action**. This module applies it to a missing **agent**, on the same
+12-hour clock. Together they say: a digest must be *consumed* within 12h of being
+*made*, and whichever half fails to hold up its end goes red.
+
+Two modes:
+
+```sh
+# "did last night produce a PR?" — scheduled, hours after the agent should be done
+node tools/refresh/watch-nightly.mjs --mode absence \
+     --digest resolved.json --pulls pulls.json
+
+# "would publishing now destroy an unmerged digest?" — run by the Action BEFORE it publishes
+node tools/refresh/watch-nightly.mjs --mode overwrite \
+     --digest prior-resolved.json --pulls pulls.json --discover data/discover.json
+```
+
+`--mode overwrite` is the one that matters. `resolved.json` is **replaced** each
+night, not appended, so the moment data is actually lost is when a digest is
+about to be overwritten while its predecessor never merged. It fires only when
+both signals agree — no `nightly/<date>` PR open or merged, **and** not one of
+that digest's episodes in the pool — because the runner is told to drop
+cross-promos, trailers and encores, so "some items never landed" is a healthy
+night and only "none of them landed" is unambiguous.
+
+Because it runs before the publish step, **detecting is preventing**: the job
+fails with `resolved.json` and `refresh-state.json` untouched, so the unmerged
+digest survives and tonight's episodes are still unseen. Nothing needs
+recovering; a human just has to look.
+
+The flip side is that a red guard stalls the pipeline until its verdict changes,
+so the way out is printed in the failing run's own summary rather than left to be
+worked out: re-cut the digest (do **not** retry the runner against it — it is
+over 12h old by then and step 2 refuses it), and name the recovery branch after
+the **digest's** date, `nightly/<date>-recovery`, because that is the string the
+guard looks for. `--window-hours` is computed from the digest's age, since the 72
+in #293's runbook is right for a one-day-old digest and silently too small for
+one stranded over a weekend. If the episodes are genuinely gone from the feeds,
+`nightly-refresh` takes an `overwrite_unmerged_digest` dispatch input — the only
+way past the guard, and deliberately a decision with someone's name on it.
+
+Every input is a file the caller fetched — no network, no dependencies — which is
+what lets `watch-nightly.test.mjs` replay the real 2026-08-20 night from
+`fixtures/nightly-watch/` and prove the alarm fires.
 
 ## Running locally
 

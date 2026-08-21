@@ -44,6 +44,35 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
    was measured starting at 10:54 and 11:05 on consecutive days. The cron moved
    to 06:40 UTC to restore the ≥2h margin, but this guard is the backstop.)
 
+   **The same guard now exists pointing the other way** (issue #290). If YOU do
+   not run, `tools/refresh/watch-nightly.mjs --mode absence` goes red on the same
+   12-hour clock, and the Action refuses to overwrite your unread digest. So the
+   12 here is not an arbitrary number in one file any more: a digest must be
+   consumed within 12h of being made, and whichever half drops it goes red.
+
+   **If you were sent here to clear a red watchdog**, the digest on the branch is
+   by definition older than 12h and step 2 will refuse it — correctly, because
+   the items in it may already be in `discover.json`. Do not override the guard.
+   Re-cut the digest instead, which is what recovered #290's lost day:
+   ```sh
+   rm -f data-local/refresh-state.json          # no seen-guid state: re-emit the window
+   node tools/refresh/scan.mjs --window-hours 72
+   node tools/refresh/resolve.mjs
+   ```
+   `resolve.mjs` dedups against `discover.json` on `id` and `apple_track_id` and
+   `merge.mjs` skips ids already in the pool, so nothing already published comes
+   back and only the missing tail lands. Then continue from step 4 as normal.
+
+   **Name the branch `nightly/<the digest's date>-recovery`, not today's date.**
+   That string is load bearing, not cosmetic: the overwrite guard in
+   `nightly-refresh.yml` clears itself when a PR matching the stranded digest's
+   date appears, and a branch named after the day you did the work matches
+   nothing and leaves the guard red every morning after. #293 got this right —
+   it merged on the 21st as `nightly/2026-08-19-recovery`. The red run's own
+   report prints the exact name and the `--window-hours` to use; prefer those
+   numbers over the ones above, because they are computed from the digest that
+   is actually stuck.
+
 3. **If `resolved.resolved` is empty**, there is nothing to do. Stop. Do not
    open a PR, do not commit.
 

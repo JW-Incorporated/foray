@@ -20,6 +20,26 @@ changes a runner.
 | **nightly-refresh (scan+resolve)** | GitHub Actions (`.github/workflows/nightly-refresh.yml`) | Daily 06:40 UTC | — (deterministic) | Actions minutes (free tier, public repo) | workflow file | live |
 | **foray-nightly-enrich** | Claude Cloud routine | Daily ~11:40 UTC (≥2h after the Action) | Sonnet | Wyatt's account | `runner-prompts/foray-nightly.md` | live |
 | **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h, staggered 40 min apart — see below | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live — **push to `reclassify-<N>`, open NO PR** (see below) |
+| **nightly-watch** | GitHub Actions (`.github/workflows/nightly-watch.yml`) | Daily 21:40 UTC | — (deterministic) | Actions minutes | workflow file → `tools/refresh/watch-nightly.mjs` | **checker landed, workflow pending a founder merge** — `.github/` is governed (#290) |
+
+> ### `nightly-watch` exists because a green workflow list is not evidence (issue #290)
+>
+> `foray-nightly-enrich` runs on Wyatt's account. On 2026-08-20 and 2026-08-21 it
+> hit a weekly usage limit and did not run at all. The Action kept succeeding and
+> kept logging *"published digest: 29 resolved episodes"*; every scheduled run in
+> the window was `success`; nothing reached `main` for two days. The only symptom
+> was an **absence**, and until this row existed nothing in the system watched for
+> one.
+>
+> It is not a second content pipeline. It reads the digest branch and the PR list
+> and asks one question — *did the night the digest belongs to produce a
+> `nightly/<date>` PR?* — with a 12-hour grace window, the same number the runner
+> prompt uses for the mirror-image refusal.
+>
+> **A billing failure in a Cloud routine is silent by construction.** Any runner
+> in the table above whose absence would be invisible needs the same treatment;
+> the six classify shards deliberately open no PR, so "nothing on `main`" cannot
+> be the signal for them either (see the note below).
 
 > ### The six classify shards open no pull request. Do not read "nothing on `main`" as "the fleet is dead."
 >
