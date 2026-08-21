@@ -1279,7 +1279,16 @@ Live, always-current view: <https://github.com/JW-Incorporated/foray/pulls?q=is%
 Everything the merge machinery could not land on its own ends up here, so
 the residue is one batched glance instead of something anyone has to notice.
 
-**Nothing is waiting on a founder right now.**
+| PR | What it is | Why it needs you |
+| --- | --- | --- |
+| [#288](https://api.github.com/repos/JW-Incorporated/foray/pulls/288) | The Android build stops belonging to one machine: a Linux CI job, and a recipe for rebuilding the toolchain (#245) | Touches governed path `.github/workflows/android-build.yml` (matched DENIED `.github/`). |
+| [#297](https://api.github.com/repos/JW-Incorporated/foray/pulls/297) | Wire the #290 watchdog in: one workflow to report the absence, one guard to stop the loss | Touches governed path `.github/workflows/nightly-refresh.yml` (matched DENIED `.github/`) and 1 more. |
+| [#300](https://api.github.com/repos/JW-Incorporated/foray/pulls/300) | Topics were a per-show default nobody could appeal, so 77 of 99 substantial shows wore one label (#292) | Touches governed path `tools/test-search.mjs` (matched DENIED `tools/test-search.mjs`). |
+| [#305](https://api.github.com/repos/JW-Incorporated/foray/pulls/305) | Record the 4a rename where decisions live, and stop the ADR re-seeding the ambiguity | Touches governed path `docs/DECISIONS.md` (matched DENIED `docs/DECISIONS.md`) and 1 more. |
+
+To let a whole category of these merge unread instead, add its path to
+`ALLOWED_PREFIXES` in `tools/ci/path-policy.mjs` — that is what #167/#168
+did for `STATE.md`, and it converts a recurring merge into a one-line diff.
 
 <!-- END generated:waiting-on-you -->
 
