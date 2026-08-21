@@ -30,13 +30,46 @@
 # "0 items added" — a silently skipped night rather than a visible error. The
 # freshness guard in the runner prompt now catches that too, but the real fix is
 # to stop racing. 06:40 leaves ~3h of slack even on a badly delayed morning.
+#
+# THIS JOB SUCCEEDING DOES NOT MEAN THE NIGHT SUCCEEDED (issue #290)
+# It is half of one. On 2026-08-20 and 2026-08-21 the agent's account hit a
+# weekly usage limit and never ran; this job succeeded both nights, logged
+# "published digest: 29 resolved episodes" both nights, and no content reached
+# main for two days with nothing red anywhere. Two changes here, both small:
+#
+#   1. The job now says so, in its own run summary — "expecting a PR by HH:MM" —
+#      so a green tick stops implying a finished night.
+#   2. It REFUSES TO PUBLISH over an unmerged digest. `resolved.json` is replaced
+#      on the digest branch, not appended, and scan.mjs marks everything it emits
+#      as seen, so overwriting a digest nobody merged takes those episodes out of
+#      the pipeline for good. That is the moment data is actually lost, and it is
+#      why 2026-08-19 ended up holding 10 episodes against the previous
+#      Wednesday's 30 (#293 recovered 17 of them by hand).
+#
+# The guard runs FIRST, before the scan, and that placement is the whole trick:
+# nothing later in this job can change its verdict, so failing early costs no
+# runner minutes AND leaves resolved.json and refresh-state.json untouched. The
+# unmerged digest survives and tonight's episodes are still unseen — detection is
+# prevention, and nothing needs recovering. `nightly-watch.yml` is the other half
+# of #290: it reports the absence; this stops the loss.
 
 name: nightly-refresh
 
 on:
   schedule:
     - cron: "40 6 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      overwrite_unmerged_digest:
+        # THE ESCAPE HATCH, and the reason the guard below is safe to make
+        # blocking. Without it, a digest whose episodes have aged out of the
+        # publisher feeds can never be recovered, `landed` stays 0 forever, and
+        # the guard is red every morning with no way past — a stall strictly more
+        # expensive than the bug it prevents. With it, moving on is a decision
+        # someone makes on purpose, from the Actions tab, with their name on it.
+        description: "Publish even if the digest on refresh-digest never merged. Its episodes are lost for good. See #290."
+        type: boolean
+        default: false
 
 concurrency:
   group: nightly-refresh
@@ -44,6 +77,9 @@ concurrency:
 
 permissions:
   contents: write
+  # Read-only, and only so the overwrite guard below can ask whether last night's
+  # digest ever became a `nightly/<date>` PR. This job still proposes nothing.
+  pull-requests: read
 
 env:
   DIGEST_BRANCH: refresh-digest
@@ -59,6 +95,113 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: backend/package-lock.json
+
+      # ISSUE #290 — BEFORE ANYTHING ELSE. See this file's header for why the
+      # placement matters: the verdict cannot change later in the job, so running
+      # it here fails in seconds instead of after a ten-minute scan, and every
+      # file on the digest branch is still exactly as the last run left it.
+      #
+      # It fires only when BOTH signals agree — no `nightly/<date>` PR open or
+      # merged for the digest on the branch, AND not one of that digest's
+      # episodes in data/discover.json. The runner is told to drop cross-promos,
+      # trailers and encores, so "some items never landed" is a healthy night;
+      # only "none of them landed" means nobody processed it. See
+      # tools/refresh/watch-nightly.mjs, whose suite proves this against the real
+      # 2026-08-20 digest.
+      - name: Refuse to overwrite a digest that never merged
+        if: github.event.inputs.overwrite_unmerged_digest != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Same shape as the retry in the publish step below, and not shared with
+          # it because steps get separate shells — a third file to keep in sync
+          # would cost more than six duplicated lines.
+          retry() {
+            local n=1 max=4 delay=5
+            until "$@"; do
+              if [ $n -ge $max ]; then return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+
+          # "I COULD NOT TELL" MUST NOT BE SPELLED THE SAME WAY AS "THERE IS NONE".
+          # The obvious `if gh api … 2>/dev/null; then … else no-prior-digest; fi`
+          # collapses 404, 5xx, rate limits, token blips and DNS into one branch,
+          # and every one of them would report NO_PRIOR_DIGEST — green — and then
+          # overwrite the unmerged digest this step exists to protect. So a 404 is
+          # a FINAL answer (empty prior.b64, no retry — it will not become a file)
+          # and everything else is retried and then fatal.
+          fetch_digest() {
+            gh api "repos/$REPO/contents/resolved.json?ref=$DIGEST_BRANCH" --jq .content > prior.b64 2> prior.err && return 0
+            grep -qiE 'not found|HTTP 404|no commit found' prior.err || return 1
+            # `--jq .content` against a 404 body writes the literal `null` to
+            # stdout, so the file is non-empty and `base64 -d` chokes on it.
+            # Empty it, and let the `-s` test below mean what it says.
+            : > prior.b64
+          }
+
+          if retry fetch_digest; then
+            if [ -s prior.b64 ]; then
+              base64 -d < prior.b64 > prior-resolved.json
+              echo "prior digest on $DIGEST_BRANCH: $(wc -c < prior-resolved.json) bytes"
+            else
+              rm -f prior-resolved.json prior.b64
+              echo "no resolved.json on $DIGEST_BRANCH — first run, or the branch is new"
+            fi
+          else
+            echo "::error::Could not read $DIGEST_BRANCH, so cannot tell whether last night merged. Refusing to publish over it." >&2
+            cat prior.err >&2
+            exit 1
+          fi
+
+          # Two fetches, unioned by the checker. `--limit 200` is newest-first and
+          # a busy day can push the night's PR off it (35 PRs landed here in one
+          # session); the targeted search cannot be crowded out but lags GitHub's
+          # search index by minutes. Neither alone is sufficient; both together
+          # have no window in which the PR is invisible.
+          #
+          # An empty or failed PR list must NEVER reach the checker as "no PR
+          # exists" — that is the same fail-open shape as above, so `retry` and
+          # `set -e` make it a job failure instead.
+          list_pulls() {
+            gh pr list --repo "$REPO" --state all --limit 200 \
+              --json number,title,headRefName,state,mergedAt,createdAt,url > recent-pulls.json
+          }
+          retry list_pulls
+
+          # The digest's own date, from the ONE implementation of that rule.
+          # Re-deriving it in YAML is how tools/ci/path-policy.mjs's two-copies
+          # bug started.
+          echo '[]' > nightly-pulls.json
+          if DIGEST_DATE=$(node tools/refresh/watch-nightly.mjs --mode date --digest prior-resolved.json); then
+            search_pulls() {
+              gh pr list --repo "$REPO" --state all --limit 50 \
+                --search "head:nightly/$DIGEST_DATE" \
+                --json number,title,headRefName,state,mergedAt,createdAt,url > nightly-pulls.json
+            }
+            retry search_pulls
+          fi
+
+          node tools/refresh/watch-nightly.mjs --mode overwrite \
+            --digest prior-resolved.json \
+            --pulls recent-pulls.json \
+            --pulls nightly-pulls.json \
+            --discover data/discover.json
+
+      - name: Say out loud that the overwrite guard was bypassed
+        if: github.event.inputs.overwrite_unmerged_digest == 'true'
+        run: |
+          {
+            echo "### The #290 overwrite guard was bypassed for this run"
+            echo
+            echo "\`overwrite_unmerged_digest\` was set, so this run will publish over whatever is"
+            echo "on \`$DIGEST_BRANCH\` without checking whether it ever merged. If it had not, those"
+            echo "episodes are gone from the pipeline."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       # scan.mjs pulls fast-xml-parser from backend/ via createRequire.
       - name: Install backend deps
@@ -139,3 +282,25 @@ jobs:
           put_file resolved.json "chore(refresh): digest — ${COUNT} resolved ($(date -u +%F))"
           put_file refresh-state.json "chore(refresh): scan state ($(date -u +%F))"
           echo "published digest: ${COUNT} resolved episodes"
+
+          # ISSUE #290, the cheap half: state the expectation. "published digest:
+          # 29 resolved episodes" is the line that read like a finished night for
+          # two days running. A green tick on this job means the DETERMINISTIC
+          # half is done and nothing more, so say that where a human reads it.
+          {
+            echo "### Digest published — this is half a night, not a night"
+            echo
+            echo "**${COUNT}** resolved episodes are on \`${DIGEST_BRANCH}\`."
+            echo
+            echo "The judgment half has not happened yet. \`foray-nightly-enrich\` still has to"
+            echo "author hooks and tags and open \`nightly/$(date -u +%F)\`."
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| digest generated | \`$(date -u +%FT%TZ)\` |"
+            echo "| PR expected by | **$(date -u -d '+12 hours' +%FT%TZ)** |"
+            echo "| red if it is not | \`nightly-watch\` at 21:40 UTC |"
+            echo
+            echo "That 12h is the same window the runner prompt uses to refuse a stale digest."
+            echo "A green tick here has meant a dark night before — see issue #290."
+          } >> "$GITHUB_STEP_SUMMARY"
