@@ -787,6 +787,41 @@ its reasoning.
   generated native files was rejected in favour of one command a founder runs on a
   Mac (`HUMAN-ACTIONS.md` #16).
 
+## 2026-08-21 (the app is 4a; the stitched-audio unit is still a foray)
+
+- **Renamed the app to `4a`** (founder instruction). This supersedes the
+  2026-07-08 entry above for the *app's* name only; that entry stays as written
+  because it is the record of what was decided then, and the rename it describes
+  did happen.
+- **The stitched-audio unit keeps the name `foray`**, lowercase as a common noun
+  mid-sentence. The two had shared one word since 2026-07-08, and `foray` now
+  means exactly one thing. `privacy-policy.md`'s old line 21 — *"Foray is a
+  podcast curator. It picks episodes and assembles them into a 'Foray'"* — used
+  both senses in one sentence; that ambiguity is what this separation removes.
+- **Renamed: display surfaces only** — `<title>`, the iOS home-screen label, the
+  `<h1>`, `manifest.json` `name`/`short_name`, Capacitor `appName`, the Android
+  lock-screen notification title, `media-session.js`'s `artist`, the READMEs, and
+  the published legal documents (#302, #304).
+- **Deliberately NOT renamed, each because it breaks something real:** the bundle
+  id `com.jwincorporated.foray` (permanent once published, and still the open
+  ruling in `HUMAN-ACTIONS` #15); `cp_foray:` and `cp_foray_feedback` keys, which
+  hold every listener's saved position and are named after the **unit**, not the
+  app; the IndexedDB database `foray`; the `foray_*` event types; `sw.js`'s
+  `foray-v5` cache; the `?foray=` parameter and every shared link using it; 56
+  file and directory paths; the repo name and the Pages URL
+  `jw-incorporated.github.io/foray`; and the `Foray/0.1` User-Agent, which is our
+  identity to podcast hosts.
+- **Not a find-and-replace.** "foray" appears 5,903 times across 275 of 502
+  tracked files, and almost all of it is the unit or an identifier.
+  `backend/fixtures/feeds/conan.xml` contains the word as ordinary English inside
+  verbatim publisher copy (*"her first foray into drama"*) — a regex rename would
+  have edited a real podcast's episode description.
+- **`test/app-name.test.js` pins the name on every display surface**, because
+  reverting `index.html`'s `<title>` to "Foray" passed all 339 tests: the name
+  users see was asserted nowhere. Each assertion is mutation-tested. That
+  discipline is what then found the surface #302 missed — a *second*
+  `<title>Foray</title>` in `sw.js`'s offline fallback page.
+
 ## 2026-08-24 (the permanent bundle id)
 
 - **The app id is `dev.jwlabs.foura`** (founder ruling, HUMAN-ACTIONS #15). This supersedes
