@@ -350,6 +350,18 @@ const FLOORS = {
   "tools/mobile/probe/install-probe.test.mjs": 39,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
+  /* The nightly watchdog (#290). ZERO SLACK, for the reason media-session and
+     data-deletion are floored that way: what this suite holds down is a set of
+     decisions each one line from its opposite, on a check nobody watches run.
+     It is also the suite most able to look fine while pinning nothing — a
+     watchdog fixture that is healthy makes every assertion pass while the alarm
+     is wired to nothing. The committed fixtures are the real 2026-08-20 failure
+     rebuilt from git, and two of these 62 tests exist purely to pin that they
+     still are. All 62 were mutation-killed; the mutation is named in each.
+     47 -> 62 in the pre-push review round, which found that the guard could
+     stall the pipeline with no documented way to clear it and that the digest
+     fetch failed OPEN on any API error that was not a 404. */
+  "tools/refresh/watch-nightly.test.mjs": 62,
   "tools/segments/sweep-transcripts.test.mjs": 26,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
