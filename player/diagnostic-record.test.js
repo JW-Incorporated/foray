@@ -874,3 +874,39 @@ test("the surface's text is reachable through the bridge app.js actually uses", 
   assert.match(globalThis.window.forayDiagnosticReport(), /Nothing recorded yet/);
   restore();
 });
+
+test("the page's failed-tap bridge reaches the record with its arguments the right way round", async (t) => {
+  /* THE ONE MAPPING NO OTHER SUITE CAN SEE (#225). `player/foray-playback.test.js`
+     proves app.js CALLS `window.forayNoteTapFailure(phase, name)` — against a fake.
+     `player/diagnostic-log.test.js` proves `tapFailed` stores what it is handed.
+     Between them sits one line of client.js,
+     `(phase, errorName) => diag.tapFailed({ phase, name: errorName })`, which
+     review found was covered by neither.
+
+     TRANSPOSE THOSE TWO ARGUMENTS AND EVERY SUITE STAYS GREEN while every entry
+     in the field forever reads `start failed  error=start`: "NotAllowedError" is
+     not in the phase vocabulary so it normalises to `start`, and "control" is a
+     valid identifier so it is stored as the error class. A total, silent loss of
+     the diagnostic, with nothing red anywhere. That is the shape CLAUDE.md's
+     "audit the harness, not only the test" is about.
+
+     MUTATION: `diag.tapFailed({ phase: errorName, name: phase })` in client.js.
+     The `deepEqual` below fails. */
+  const { win, rows, restore } = await bootClient(t);
+
+  assert.equal(typeof win.forayNoteTapFailure, "function",
+    "app.js is a classic script and cannot import this module; the bridge is the only way in");
+  assert.equal(win.forayNoteTapFailure("control", "NotAllowedError"), true);
+
+  assert.deepEqual(rows("tapFail").map((e) => [e.phase, e.error, e.repeated]),
+    [["control", "NotAllowedError", 1]]);
+
+  /* AND IT IS TOTAL FOR A CALLER THAT IS NOT app.js. `app.js` wraps its own call,
+     which protects app.js and nothing else; a published global that throws is a
+     hazard the next caller inherits undocumented.
+     MUTATION: drop the try/catch in `asText`. This throws instead of returning. */
+  assert.equal(win.forayNoteTapFailure("start", { toString() { throw new Error("no"); } }), true);
+  assert.deepEqual(rows("tapFail").map((e) => e.error), ["NotAllowedError", null]);
+
+  restore();
+});

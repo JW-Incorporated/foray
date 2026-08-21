@@ -1881,10 +1881,17 @@ async function guardForayStart(run) {
     return await run();
   } catch (err) {
     console.warn("[foray] start failed", err);
-    noteTapFailure("start", err);
     state.forayPlaying = null;
     state.forayPainted = null;
     paintForayFailure(err?.name ? `${err.name}: ${err.message ?? ""}` : String(err));
+    /* LAST, AFTER THE PAINT, and the order is the argument this file already
+       makes about the bridge: it comes from a module the service worker refreshes
+       independently of this one, which is why it is wrapped at all. The `try`
+       covers a throw; it does not cover a slow synchronous write, and every
+       statement between the catch and the paint is one that can stand between a
+       listener and the only thing on screen telling them what happened. #225 is a
+       listener-facing bug, so the listener is served first and the record second. */
+    noteTapFailure("start", err);
     return null;
   }
 }
@@ -1894,13 +1901,14 @@ async function guardForayTap(run) {
     return await run();
   } catch (err) {
     console.warn("[foray] control failed", err);
-    noteTapFailure("control", err);
     const line = $("#fy-error");
     if (line) {
       line.hidden = false;
       line.textContent = FY_TAP_FAILED;
       line.classList.remove("is-hint");
     }
+    // Last, for the reason given in `guardForayStart` above.
+    noteTapFailure("control", err);
     return null;
   }
 }

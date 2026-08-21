@@ -30,7 +30,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf, errorNameOf,
+  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf, errorNameOf, tapPhaseOf,
   DIAG_KEY, DIAG_CAP, STAGE_CAP, DIAG_VERSION, MEDIA_STAGES,
 } from "./diagnostic-log.js";
 
@@ -921,4 +921,94 @@ test("the report names a failed tap in words rather than dumping its JSON", () =
 
   assert.match(line, /start failed\s+error=NotAllowedError/);
   assert.ok(!line.includes("{"), `the report is read, not parsed: ${line}`);
+});
+
+test("a phase that answers differently each time it is read cannot smuggle text in", () => {
+  /* THE HOLE REVIEW FOUND IN THE FIRST DRAFT OF THIS FEATURE, and it is the
+     reason `asText` exists. That draft read `String(phase)` once for the
+     vocabulary check and a second time for the value it stored, so an object
+     whose `toString` answered "control" first and a URL afterwards passed the
+     gate and was stored anyway — straight into the report a founder pastes into
+     an issue. `window.forayNoteTapFailure` is a public global on a page with no
+     import boundary, so "a caller of another vintage" is this record's stated
+     threat model, not a hypothetical.
+
+     MUTATION: restore `TAP_PHASES.has(String(phase)) ? String(phase) : "start"`.
+     The smuggled string is stored and both of the last two assertions fail. */
+  const twoFaced = () => {
+    let reads = 0;
+    return { toString() { reads += 1; return reads === 1 ? "control" : "https://cdn.test/a.mp3?token=SECRET"; } };
+  };
+
+  assert.equal(tapPhaseOf(twoFaced()), "control", "coerced once, so the checked value IS the returned value");
+
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: twoFaced(), name: "TypeError" });
+
+  const stored = parse(store).entries[0].phase;
+  assert.equal(stored, "control");
+  assert.ok(!stored.includes("cdn.test"), `a record built to be pasted into an issue must not carry this: ${stored}`);
+});
+
+test("a value that refuses to become text is dropped rather than thrown", () => {
+  /* `String(v)` runs `v.toString()`, which can throw — and both sanitisers run
+     inside `app.js`'s two failure guards, where a throw is precisely the outage
+     this record was built to explain. A record that took the page down would be
+     the instrument destroying the measurement.
+
+     MUTATION: drop the try/catch in `asText` and return `String(v ?? "")`. Every
+     call below throws and this fails. */
+  const hostile = { toString() { throw new Error("no"); } };
+
+  assert.equal(errorNameOf(hostile), null);
+  assert.equal(tapPhaseOf(hostile), "start");
+
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: hostile, name: hostile });
+  assert.deepEqual(parse(store).entries.map((e) => [e.phase, e.error]), [["start", null]]);
+});
+
+test("a mashed dead button does not evict the seams that explain why it is dead", () => {
+  /* THE FOUNDER'S REPORT IS A MASHED BUTTON: a play control that does nothing
+     gets pressed again, and again. Uncoalesced, ~200 taps clear a 200-entry ring
+     — measured at 200 of 200 seam entries dropped — so the failure destroys its
+     own evidence, and it does it exactly when the `control` phase says a drive
+     was already underway.
+
+     MUTATION: delete the coalescing branch so every tap calls `log.record(...)`.
+     The ring fills with tapFail rows, the seam is evicted, and the first three
+     assertions fail. */
+  const { diag, log, store } = mk({ cap: 8 });
+  log.record("seam", { fromId: "sa", toId: "sb", observedGapMs: 2000 });
+  for (let i = 0; i < 50; i++) diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const entries = parse(store).entries;
+  assert.equal(entries.length, 2, "one seam, one coalesced failure");
+  assert.equal(entries[0].type, "seam", "the seam that explains the failure outlives it");
+  assert.equal(entries[1].repeated, 50, "and the count is the evidence, not fifty identical rows");
+  /* MUTATION: drop the `x${e.repeated}` clause from `lineFor`. This fails, and the
+     one surface a founder reads would say a dead button was pressed once. */
+  assert.match(formatDiagnosticReport(log.read()), /start failed\s+error=NotAllowedError\s+x50/);
+});
+
+test("a different failure starts a new entry, so a coalesced count always means one thing", () => {
+  /* A count is only readable if a run means "this, n times, with nothing else in
+     between". MUTATION: coalesce on `type` alone, ignoring phase and error. All
+     of these collapse into one row and this fails — and "x5" would then mean five
+     unrelated failures, which is worse evidence than no count at all. */
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  diag.tapFailed({ phase: "start", name: "TypeError" });      // a different class
+  diag.tapFailed({ phase: "control", name: "TypeError" });    // a different phase
+  diag.visibility(true);                                      // and something else entirely
+  diag.tapFailed({ phase: "control", name: "TypeError" });
+
+  const taps = parse(store).entries.filter((e) => e.type === "tapFail");
+  assert.deepEqual(taps.map((e) => [e.phase, e.error, e.repeated]), [
+    ["start", "NotAllowedError", 2],
+    ["start", "TypeError", 1],
+    ["control", "TypeError", 1],
+    ["control", "TypeError", 1],
+  ], "a run is broken by a different failure OR by anything else reaching the ring");
 });

@@ -46,12 +46,17 @@
  *
  * ── WHAT IS NEVER RECORDED, BY CONSTRUCTION ────────────────────────────────
  * No audio, no URLs, no listener identity. The rule that guarantees it: a
- * telemetry line's TEXT is never stored. Only three things go in —
+ * telemetry line's TEXT is never stored. Only four things go in —
  *
  *   1. numbers matched by one of the explicit patterns below,
  *   2. authored segment/item ids (already in `cp_foray:` rows; no new identity),
  *   3. STAGE NAMES from a fixed vocabulary (`STAGE_ROOTS`), taken as the leading
- *      dotted token of a message and dropped entirely if unrecognised.
+ *      dotted token of a message and dropped entirely if unrecognised,
+ *   4. ERROR CLASSES on a failed tap (#225) — an `Error`/`DOMException` `.name`
+ *      and never a `.message`, admitted by SHAPE (a bare ASCII identifier of at
+ *      most `STAGE_NAME_MAX`) rather than by a fixed list, because a `TypeError`
+ *      from module skew is exactly the case that needs recording. See
+ *      `errorNameOf` for why a shape is safe here and what would break it.
  *
  * So `audio.error code=4 src=https://cdn.example/…` stores `code=4` and the stage
  * `audio.error`, and the URL — which `html-audio-backend.js`'s `short()` truncates
@@ -361,20 +366,54 @@ export function stageOf(message) {
 const TAP_PHASES = new Set(["start", "control"]);
 
 /**
+ * A value as text, or `""` when it refuses to become text.
+ *
+ * `String(v)` runs `v.toString()`, which a broken or hostile object can make
+ * throw — and both callers below run inside `app.js`'s failure guards, where a
+ * throw is the outage this record exists to explain. COERCE ONCE, HERE: every
+ * sanitiser below binds the result to a local and tests THAT, so a `toString`
+ * returning a different value on each call cannot pass a check with one string
+ * and be stored as another. Review found exactly that hole in the first draft of
+ * `tapFailed`, which tested `String(phase)` and then stored `String(phase)` a
+ * second time.
+ */
+function asText(v) {
+  try { return String(v ?? ""); } catch (_) { return ""; }
+}
+
+/** The phase, normalised to the vocabulary. Exported so the rule is testable on
+    its own rather than only through an entry, and so the one-coercion property
+    above has somewhere to be pinned. */
+export function tapPhaseOf(phase) {
+  const p = asText(phase);
+  return TAP_PHASES.has(p) ? p : "start";
+}
+
+/**
  * An error's CLASS, or null.
  *
- * `.name` and never `.message`. A DOM exception's name is a closed vocabulary
- * (`NotAllowedError`, `NotSupportedError`, `AbortError`) and answers the only
- * question this record is asked — was the browser refusing, or did the code
- * break. A `.message` carries prose and URLs, and this record gets pasted into
- * issues; that is the same rule `knownCar` above is written to enforce, applied
- * before the value is stored rather than after.
+ * `.name` and never `.message`. A `.name` answers the only question this record
+ * is asked — was the browser refusing, or did the code break — while a `.message`
+ * carries prose and URLs, and this record gets pasted into issues. Same rule
+ * `knownCar` above enforces, applied before the value is stored rather than after.
+ *
+ * A SHAPE RULE, NOT A CLOSED VOCABULARY, and the distinction is worth stating
+ * because the shape is weaker: `DOMException.name` really is a closed set, but
+ * this accepts any ASCII identifier of up to `STAGE_NAME_MAX`. That is deliberate
+ * — a `TypeError` from module skew is exactly the case #225 needs to see, and it
+ * is not in any list worth maintaining. It is safe because no production path
+ * assigns a data-derived `.name`: every throw reaching here is a first-party or
+ * platform error. A caller that ever sets `.name` from a URL, a title or an id
+ * would defeat it, so that is the line not to cross.
  *
  * Underscore but no dot: an error name is one identifier, so the dotted form a
  * stage name allows would mean something got through that is not a name.
+ *
+ * `trim()` BEFORE the anchored test, and the order matters: a trailing newline
+ * would otherwise be the classic way past a `$`.
  */
 export function errorNameOf(name) {
-  const n = String(name ?? "").trim();
+  const n = asText(name).trim();
   if (!n || n.length > STAGE_NAME_MAX) return null;
   return /^[A-Za-z][A-Za-z0-9_]*$/.test(n) ? n : null;
 }
@@ -664,9 +703,47 @@ export class PlayerDiagnostics {
    * the audio" and "the module threw before the browser was ever asked".
    */
   tapFailed({ phase = "start", name = null } = {}) {
+    const phaseName = tapPhaseOf(phase);
+    const error = errorNameOf(name);
+
+    /* A MASHED BUTTON MUST NOT WIPE THE RECORD IT IS TRYING TO EXPLAIN.
+       A listener whose play button does nothing presses it again, and again —
+       that is the founder's report, in his own words. Uncoalesced, ~200 taps
+       (about 40 s at a realistic 5/s) evict every seam row in a 200-entry ring,
+       so the record of a failure mid-drive is destroyed by the failure itself.
+       Measured before this guard existed: 200 taps against a full ring dropped
+       all 200 seam entries. `repeated=37` is also simply better evidence than 37
+       identical rows.
+
+       ONLY AN UNBROKEN RUN OF THE SAME FAILURE COALESCES. A different phase or a
+       different error class is a different finding and starts a new entry, and
+       anything else recorded in between (a stop, a visibility change) ends the
+       run — so a coalesced entry always means "this, n times, with nothing else
+       happening", which is what makes the count readable.
+
+       `repeated` is written as 1 from the start rather than added on the second
+       tap, for the reason §6 of the test suite learned the hard way: a reader
+       cannot tell a field that means "once" from a field that was never written.
+
+       WHAT THIS DOES NOT FIX, stated rather than hidden: the write RATE. Each
+       repeat still re-serialises the ring (`save()`), so mashing drives ~5
+       writes/s against the ~0.15/s this file's cost note argues itself into
+       accepting. Bounding that needs a timer, and this module deliberately owns
+       none — everything is injected, which is what makes its failure paths
+       testable. The exposure is a few seconds of a hand on a dead button, and the
+       ring no longer grows during it. */
+    const entries = this.log.entries;
+    const last = entries[entries.length - 1];
+    if (last && last.type === "tapFail" && last.phase === phaseName && last.error === error) {
+      last.repeated += 1;
+      this.log.save();
+      return last;
+    }
+
     return this.log.record("tapFail", {
-      phase: TAP_PHASES.has(String(phase)) ? String(phase) : "start",
-      error: errorNameOf(name),
+      phase: phaseName,
+      error,
+      repeated: 1,
       hidden: this._isHidden(),
     });
   }
@@ -862,6 +939,7 @@ function lineFor(e) {
        assume the field was never written. */
     case "tapFail":
       return `${head} ${e.phase ?? "?"} failed  error=${e.error ?? "none"}` +
+        (e.repeated > 1 ? `  x${e.repeated}` : "") +
         `  hidden=${e.hidden ? "y" : "n"}`;
     default:
       return `${head} ${JSON.stringify(e)}`;

@@ -269,8 +269,17 @@ window.forayForgetDiagnostics = () => { diagLog.clear(); diag.reset(); return tr
  * hold a reference into the ring.
  */
 window.forayNoteTapFailure = (phase, errorName) => {
-  diag.tapFailed({ phase, name: errorName });
-  return true;
+  /* TOTAL FOR EVERY CALLER, not just for the one that has its own guard. `app.js`
+     wraps its call because this bridge may be of a different vintage; that
+     protects `app.js` and does nothing for the next caller. A published global
+     that can throw is a hazard the next person inherits undocumented, so the
+     boolean this already returns becomes the honest answer instead. */
+  try {
+    diag.tapFailed({ phase, name: errorName });
+    return true;
+  } catch (_) {
+    return false;
+  }
 };
 
 /* ---------- DOM ---------- */

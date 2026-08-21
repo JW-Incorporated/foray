@@ -1645,9 +1645,14 @@ test("a record that throws does not cost the listener the message on screen", as
      independently (see the note in `renderForay`), so "this function never throws"
      is a property of a version, not of the call.
 
-     MUTATION: remove the try/catch inside `noteTapFailure`. The click rejects, the
-     failure line never paints, and #225's exact symptom — a tap that does nothing
-     and says nothing — is back, now caused by the instrument meant to explain it. */
+     MUTATION: remove the try/catch inside `noteTapFailure`. The throw escapes the
+     catch block; the click handler at `app.js`'s `#fy-play` is `async`, so
+     `await dom.el("fy-play").click()` REJECTS and this test dies on that rejection
+     rather than on the assertions below. Which assertion does the killing changed
+     when review moved the record write to AFTER the paint — the line is on screen
+     by then — and both halves still have to hold: the guard must not re-raise (a
+     throw here is exactly the unhandled rejection #225 is about), and the message
+     must already be painted before the record is touched at all. */
   const boom = Object.assign(new Error("boom"), { name: "TypeError" });
   const { dom, ctx } = await mountForayPage({ startThrows: boom });
   ctx.forayNoteTapFailure = () => { throw new Error("the record is broken"); };
