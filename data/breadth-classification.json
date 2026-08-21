@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-16T08:30:04.343Z",
+  "built_at": "2026-08-21T07:59:28.608Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-16-e1a5d6d1",
+    "last_batch_id": "fresh-2026-08-21-c3ae0dc4",
     "last_batch_tier": 1
   },
   "entries": {
@@ -127171,8 +127171,22 @@
         "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investigative series about a historical disappearance case in rural Australia; focuses on documented events and investigation.",
+      "display_title": "Expanse",
+      "blurb": "Investigation into the 2007 disappearance of four people from rural Western Australia, uncovering secrets and hidden identities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-c3ae0dc4",
+      "classified_at": "2026-08-21T07:59:28.608Z"
     },
     "1635132780": {
       "topics": [
