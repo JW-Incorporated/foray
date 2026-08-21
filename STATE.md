@@ -57,32 +57,33 @@ docs/. Completed workstreams move to their plan doc's retro section.
   is new is that every one of #278's five verdict-producing sources was DAI-suspected,
   so every span in this re-score is playable today rather than blocked on the locate step.
 - **Bundle: 682.0 -> 704.5 KB of 800.0, 3.21 KB per show measured against the 3.20
-  projected.** The budget was NOT raised. Headroom ~29 shows. Whole bundle 2.01 -> 2.02
+  projected.** The budget was NOT raised. Headroom ~29 shows. Whole bundle 2.01 -> 2.03
   MB of 3.00. The topic top-up did not fire despite `food/drinks` being a new topic,
   because all 28 items carry it and the per-show pass covered it; a block spread over
-  several new topics would cost more. **Re-measured after the rebase onto `9b1374b`**
-  (nightly #291, +26 episodes) — the pre-rebase figures were 681.3 -> 703.9 and
-  3.23 KB/show.
-- **tag-DF re-checked both ways (#275's question and #274's refusal), and the honest
-  answer is in the second sentence.** Growth: **0 expansion buckets move** — nothing
-  crosses `TAG_DF_TOO_BROAD` 0.10 or `TAG_DF_COMMON` 0.02, so no term is deleted from
-  or demoted in query expansion. **13 score multipliers move across `TAG_DF_RARE`
-  0.008, and only two of them are ours**: `fermentation` 0.618% -> 1.155% and
-  `food-history` 0.742% -> 0.851%, both correctly demoted x1.35 -> x1 because the
-  catalogue now genuinely holds more of that subject. **The other eleven are the
-  DENOMINATOR, not the drinks** — `fusion`, `marine`, `guitar`, `strength`, `car`,
-  `theater`, `geology`, `fiction`, `failure`, `photography`, `meteorology` all sit at
-  13/1,617 = 0.804% on `main` and fall to 13/1,645 = 0.790% purely because the map
-  grew, which promotes them x1 -> x1.35. Any 28-item night does this; the nightly does
-  it too. So the topically-skewed block #275 warned about moved **two** terms, both in
-  the direction the ranker is supposed to move them.
-  Sampling: the slice-vs-whole divergence is **14 -> 14** expansion buckets and
-  63 -> 75 multipliers; **no term enters or leaves the expansion-bucket set, and no
-  drinks term is in it at any threshold.** `item-tags.json` stays `COPIED_WHOLE`, and
-  `prepare-webdir.test.mjs`'s two assertions (`moved > 0`, `moved * 2 < movedAbsolute`)
-  still hold at 14 and 28 < 72. Note `main` measures **14/63, not the 12/62**
-  `prepare-webdir.test.mjs` records — that drift is nightlies, not this change, and the
-  test's own comment predicted it. Re-run with the test's own code path:
+  several new topics would cost more. **Measured three times, against `6d163c5`,
+  `9b1374b` and `81f7179`** (89 nightly episodes apart): 3.23, 3.21, 3.21 KB/show. The
+  slice is N-per-show, so a nightly that adds episodes to existing shows does not move
+  it — which is why a per-show cost is a meaningful number at all.
+- **tag-DF re-checked both ways (#275's question and #274's refusal). The answer is
+  the first sentence; the rest is why the numbers under it must not be quoted.**
+  Growth: **0 expansion buckets move** — nothing crosses `TAG_DF_TOO_BROAD` 0.10 or
+  `TAG_DF_COMMON` 0.02, so no term is deleted from or demoted in query expansion. That
+  held against all three `main` baselines this branch was measured on. At `81f7179`,
+  **three score multipliers move, all across `TAG_DF_RARE` 0.008 and all three ours**:
+  `fermentation` 0.61 -> 1.13 %, `food-history` 0.73 -> 0.83 %, `craft-beer`
+  0.79 -> 0.83 %, each with a tag count that genuinely rose.
+  **DO NOT QUOTE THE MULTIPLIER COUNT.** It read 3, then 13, then 3 across the three
+  baselines. The 13 was not a different effect: eleven of those terms sat at
+  13/1,617 = 0.804 % and fell to 13/1,645 = 0.790 % with **no change in tag count** —
+  denominator, not skew. Which terms sit on the 0.008 line is a function of last week's
+  nightlies, not of this branch.
+  Sampling: the slice-vs-whole divergence goes **18 -> 17** expansion buckets and
+  70 -> 75 multipliers; **no term enters the set, `family` leaves, and no drinks term
+  is in it at any threshold.** `item-tags.json` stays `COPIED_WHOLE`, and
+  `prepare-webdir.test.mjs`'s assertions still hold (17 > 0, 34 < 75). Note `main`
+  measures **18/70, not the 12/62** the test records — drift is nightlies, not this
+  change, it has moved in the safe direction, and the test's own comment predicted it.
+  Re-run with the test's own code path rather than citing this line:
   `node --test tools/mobile/prepare-webdir.test.mjs`.
 - **New tool:** `tools/refresh/backfill-show.mjs` (+ suite, + floor). `scan.mjs` reads
   the newest **10** items inside a **48-hour** window, so it structurally cannot reach a

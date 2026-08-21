@@ -14,17 +14,19 @@ they are the *before*, and a re-score is only meaningful against an unedited bas
 untouched. Eleven publisher transcripts were fetched to a scratch directory outside
 the repository and read; none is stored.
 
-**Measured at `main` = `9b1374b`**, against `data/discover.json` at 1,618 items after
-this change (1,590 before) and `data/catalog.json` at 220 shows (213 before).
+**Measured at `main` = `81f7179`**, against `data/discover.json` at 1,651 items after
+this change (1,623 before) and `data/catalog.json` at 220 shows (213 before).
 
-> **Re-measured after a rebase.** This pass was originally taken at `main` = `6d163c5`
-> with `data/discover.json` at 1,564 items. Nightly refreshes #284 and #291 have since
-> added 56 episodes, so every figure below that is a function of the whole pool — the
-> bundle sizes in §6 and both halves of the tag-DF check in §7 — was re-run against
-> `9b1374b` and the numbers here are the new ones. **The beat verdicts in §3 are not
+> **Re-measured twice, after two rebases.** This pass was originally taken at
+> `main` = `6d163c5` with `data/discover.json` at 1,564 items. Nightly refreshes #284,
+> #291 and the #290 recovery in #293 have since added 89 episodes, so every figure below
+> that is a function of the whole pool — the bundle sizes in §6 and both halves of the
+> tag-DF check in §7 — was re-run against `81f7179`. **The beat verdicts in §3 are not
 > affected**: they are readings of specific passages in specific episodes, and no
-> nightly touches those. Where a pre-rebase figure is still useful it is given
-> alongside.
+> nightly touches those. Nor is §6's marginal cost, which is a per-show quantity.
+> **What the re-runs did change is §7's multiplier count, three times, and §7(a) now
+> says so instead of quoting one night's number as though it were a property of this
+> change.**
 
 ---
 
@@ -541,15 +543,20 @@ after:   webDir ready: mobile\www  (35 files, 2.02 MB of 3.00 MB)
            sliced: data/discover.json  704.5 KB of 800.0 KB
 ```
 
-| | before (`9b1374b`) | after |
+| | before (`81f7179`) | after |
 |---|---|---|
 | slice | 624 items / 213 shows / **682.0 KB** | 645 items / 220 shows / **704.5 KB** |
 | per-show marginal cost | (projected 3.20 KB) | **3.21 KB measured** |
 | headroom to the 800 KB budget | ~36 shows | **~29 shows** |
-| whole bundle | 2.01 MB of 3.00 | 2.02 MB of 3.00 |
+| whole bundle | 2.01 MB of 3.00 | 2.03 MB of 3.00 |
 
-(Pre-rebase the same measurement read 681.3 -> 703.9 KB and 3.23 KB/show, against a
-1,564-item pool. The marginal cost is the stable quantity and it moved by 0.02 KB.)
+**The marginal cost is the stable quantity and it is the one the budget argument rests
+on.** Across three different `main` baselines (`6d163c5`, `9b1374b`, `81f7179`, spanning
+89 nightly episodes) the slice measured 681.3 -> 703.9, then 682.0 -> 704.5, then
+682.0 -> 704.5 KB: **3.23, 3.21 and 3.21 KB per show**. The slice is
+`BUNDLED_ITEMS_PER_SHOW` items per show, so a nightly that adds episodes to shows the
+catalogue already has does not move it — only a nightly that adds a SHOW would, and
+those go through curation. That is why seven shows can be costed at all.
 
 **The budget was not raised and did not need to be.** #274 chose 800 KB on the reasoning
 that *"a bundle creeping toward the cap is a signal worth getting, not noise"*, and this
@@ -587,60 +594,68 @@ that kind of skew, so both halves were re-measured over the 1,366-term vocabular
 (`semantic-index.json` concept terms plus `ALIASES`), reading the rules from the engine
 (`expansionBucket`, `dfMultiplier`) rather than mirroring them.
 
-**(a) Growth — the whole map, `main` (`9b1374b`, 1,617 entries) against this branch
-(1,645). 0 expansion buckets move.** That is the answer to the question #279 was asked
-to settle: **nothing crosses `TAG_DF_TOO_BROAD` 0.10 or `TAG_DF_COMMON` 0.02**, the two
-thresholds that delete a term from query expansion or cut its weight to 0.4x. #275's fix
-absorbed the addition, which is what it was for.
+**(a) Growth — the whole map, `main` (`81f7179`, 1,650 entries) against this branch
+(1,678).**
 
-Thirteen score multipliers move across `TAG_DF_RARE` 0.008, and **the split between
-them is the finding, because only two are ours**:
+**0 expansion buckets move, and that is the answer to the question #279 was asked to
+settle.** Nothing crosses `TAG_DF_TOO_BROAD` 0.10 or `TAG_DF_COMMON` 0.02 — the two
+thresholds that delete a term from query expansion or cut its weight to 0.4x. That held
+on every baseline this was measured against. #275's fix absorbed the addition, which is
+what it was for. The nearest term to either line is `comedy` at 10.43 %, already above
+0.10 on both sides, and `markets`/`market` at 2.15 %, already above 0.02 on both sides.
 
-| term | main | branch | multiplier | cause |
+**Three score multipliers move, all across `TAG_DF_RARE` 0.008, all downward, and all
+three are genuinely ours:**
+
+| term | main | branch | multiplier | tag count |
 |---|---|---|---|---|
-| `fermentation` | 0.62 % | 1.16 % | 1.35 → 1 | tag count 10 → **19** — genuinely ours |
-| `food-history` | 0.74 % | 0.85 % | 1.35 → 1 | tag count 12 → **14** — genuinely ours |
-| `fusion`, `marine`, `guitar`, `strength`, `car`, `theater`, `geology`, `fiction`, `failure`, `photography`, `meteorology` | 0.80 % | 0.79 % | 1 → 1.35 | tag count **unchanged at 13** — pure denominator |
+| `fermentation` | 0.61 % | 1.13 % | 1.35 → 1 | 10 → **19** |
+| `food-history` | 0.73 % | 0.83 % | 1.35 → 1 | 12 → **14** |
+| `craft-beer` | 0.79 % | 0.83 % | 1.35 → 1 | 13 → **14** |
 
-The eleven in the last row all sit at 13/1,617 = 0.804 % on `main` and fall to
-13/1,645 = 0.790 % because the map grew by 28 entries. **Not one of their tag counts
-changed.** Any 28-item night does this — the nightly does it too — so it is not evidence
-about topical skew at all. The topically-skewed block #275 warned about moved **two**
-terms, both demoted, both because the catalogue now genuinely holds more of that
-subject, which is the ranker working rather than drifting.
+Those are three drinks terms becoming less rare because the catalogue now holds more
+drinks. That is the ranker working as designed, not drifting.
 
-(Pre-rebase, against `6d163c5`, the same measurement read 0 buckets and 3 multipliers:
-`fermentation`, `food-history` and `craft-beer`. `craft-beer` had already crossed by
-`9b1374b`, which is the same denominator effect one night earlier.)
+> **THE MULTIPLIER COUNT IS A NIGHTLY-SCALE QUANTITY AND SHOULD NOT BE QUOTED.** This
+> was measured against three `main` baselines during the life of this branch and read
+> **3, then 13, then 3**. The 13 was not a different effect: eleven of those terms sat
+> at exactly 13/1,617 = 0.804 % and fell to 13/1,645 = 0.790 % with **no change to their
+> tag count at all** — the denominator moved and the numerator did not. Which terms
+> happen to be sitting on the 0.008 line depends on what the nightlies did last week,
+> not on what this branch did. **The stable finding is the pair above it: zero expansion
+> buckets, and every crossing at `TAG_DF_RARE` only.** Re-measure rather than cite:
+> `tools/mobile/prepare-webdir.test.mjs`'s "REAL REPO" test carries the code.
 
 **(b) Sampling — whole map against the bundled slice, the divergence the
 `COPIED_WHOLE` refusal rests on. It does not get worse.**
 
 | | expansion buckets | score multipliers |
 |---|---|---|
-| `main` (`9b1374b`) | 14 | 63 |
-| this branch | **14** | **75** |
+| `main` (`81f7179`) | 18 | 70 |
+| this branch | **17** | **75** |
 
-**Not one term enters or leaves the expansion-bucket divergence set.** It is the same
-fourteen on both sides: `comedy`, `economics`, `law`, `market`, `markets`, `materials`,
-`neuroscience`, `philosophy`, `physics`, `sports-science`, `story`, `true-crime`,
-`world-war`, `world-war-2`. **Not one drinks term is in it**, at any threshold:
-`beer` 1.16 %, `wine` 0.67 %, `cider` 0.24 %, `whisky` 0.12 %, `whiskey` 0.49 %,
-`distilling` 0.67 %, `bourbon` 0.36 % — all "full", all far below `TAG_DF_COMMON`.
-`comedy` is still the sharp one at 10.33 % whole against 8.33 % slice.
+**No term ENTERS the divergence set; one leaves it (`family`).** The seventeen are
+`careers`, `comedy`, `economics`, `founder`, `founders`, `market`, `markets`,
+`materials`, `neuroscience`, `physics`, `sports-science`, `stories`, `story`, `tools`,
+`true-crime`, `world-war`, `world-war-2`. **Not one drinks term is in it**, at any
+threshold: `beer` 1.13 %, `wine` 0.66 %, `cider` 0.24 %, `whisky` 0.12 %,
+`whiskey` 0.48 %, `distilling` 0.66 %, `bourbon` 0.36 % — all "full", all far below
+`TAG_DF_COMMON`. `comedy` is still the sharp one at 10.43 % whole against 8.18 % slice.
 
-(Pre-rebase this read 14 → 13 buckets and 68 → 71 multipliers, with `family` leaving the
-set. `family` left `main`'s set on its own between `6d163c5` and `9b1374b`, which is the
-same point the test's comment makes: this set is a nightly-scale quantity.)
+Same caveat as (a): the SIZE of this set is a nightly-scale quantity — it read 14, then
+14, then 18 on `main` across the three baselines. **The finding that survives all three
+is directional and it is the one the refusal needs: the divergence does not get worse
+when these seven shows are added, and no drinks term is ever in it.**
 
-**One thing to flag rather than bury: `main` measures 14/63, not the 12/62
-`prepare-webdir.test.mjs` records.** The test's own comment predicted this —
+**One thing to flag rather than bury: `main` measures 18/70, not the 12/62
+`prepare-webdir.test.mjs` records.** The test's own comment predicted exactly this —
 *"a sampling residue of 12 terms on a slice the nightly rebuilds, so one refresh could
 take it to 0 without anybody having decided anything"* — and the drift is nightlies, not
-this change. The refusal's assertions still pass on this branch (`moved` 14 > 0, and
-14 × 2 = 28 < 72 under the pre-#275 absolute rule), so `item-tags.json` stays copied
-whole and the ~181 KB stays unbought. **This change is not evidence for or against
-trimming it.** Re-run it with the test's own code path rather than by quotation:
+this change. It has drifted UP, which is the safe direction for the refusal. The
+assertions still pass on this branch (`moved` 17 > 0, and 17 × 2 = 34 < 75 under the
+pre-#275 absolute rule), so `item-tags.json` stays copied whole and the ~181 KB stays
+unbought. **This change is not evidence for or against trimming it.** Re-run it with the
+test's own code path rather than by quotation:
 `node --test tools/mobile/prepare-webdir.test.mjs`.
 
 ---
