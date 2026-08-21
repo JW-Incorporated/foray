@@ -177,7 +177,8 @@ real blurb) and writes, for every item it wants to publish:
 {
   "<item-id>": {
     "hook": "<=16 words, grounded in the real description",
-    "tags": ["5-to-12", "lowercase-hyphenated", "tags"]
+    "tags": ["5-to-12", "lowercase-hyphenated", "tags"],
+    "topics": ["nature/earth-science", "history/technology"]
   }
 }
 ```
@@ -192,6 +193,44 @@ Rules (mirrored in `merge.mjs`'s preflight AND the CI gate — keep in sync with
 - A resolved item with **no** edit is skipped (the agent may deliberately omit a
   cross-promo/trailer that slipped through). Items already in `discover.json` are
   skipped — `merge.mjs` is idempotent and safe to re-run.
+
+### `topics` — optional, and the only per-episode topic seam (#292)
+
+`scan.mjs` and `backfill-show.mjs` both seed an episode's topics from its
+**show's** `taxonomy_node_ids` in `data/catalog.json`. **Omit `topics` and that
+seed stands**, which is the right answer for a single-subject show: *Engines of
+Our Ingenuity* really is `history/technology` on all 38 episodes, *The Race F1
+Podcast* really is `automotive/racing`. Supply `topics` and it **replaces** the
+seed outright for that one episode.
+
+Be slow to conclude a show is single-subject. *Odd Lots* looks like the safe case
+and is not — 22 episodes on `economics/markets` include *How the Invention of
+Rope Gave Us Modern Civilization* and *Architect Norman Foster on Why the West
+Struggles to Build Big*. Read the episodes, not the show's premise.
+
+It is applied in `merge.mjs` — the single point where the nightly and the
+backfill converge — so the two pipelines cannot disagree about it. Rules and the
+reasoning behind each live in `topics.mjs`; the short version:
+
+- every id must exist in `data/taxonomy.json` (a bad id **fails the run** in
+  preflight; it is never filtered away, which would silently restore the show
+  default);
+- `[]` is **refused**. `resolve.mjs` drops an episode with no valid topic, so an
+  empty override would remove the episode from the catalogue rather than relabel
+  it, and the product rule is **label, never exclude**;
+- the first topic is the item's **branch** for discovery diversity
+  (`branchOf` in `search-engine.js`), so put the primary subject first.
+
+Before deciding whether a show needs overrides, read it:
+
+```
+node tools/refresh/topic-uniformity.mjs                       # N of M shows carry one label
+node tools/refresh/topic-uniformity.mjs --show "Radiolab"     # one show, episode by episode
+```
+
+That report **exits 0 and is not a gate**, deliberately: a uniform label is a
+defect on a show that ranges and a truth on a show that does not, and no
+arithmetic separates them. Only reading the episodes does.
 
 ## The watchdog (`watch-nightly.mjs`, issue #290)
 
@@ -272,6 +311,16 @@ GitHub Actions (ephemeral workspace) and locally (`data-local/`):
 | `PENDING_PATH`  | `data-local/fresh-pending.json` | Action |
 | `RESOLVED_PATH` | `data-local/resolved.json`      | Action publishes this to the digest branch |
 | `EDITS_PATH`    | `data-local/edits.json`         | Cloud agent writes this |
+| `MERGE_DISCOVER_PATH` | `data/discover.json`      | Tests only — the nightly writes the real file |
+| `MERGE_TAGS_PATH`     | `data/item-tags.json`     | Tests only — the nightly writes the real file |
+
+**The `MERGE_` prefix is load-bearing, not tidiness.** `tools/classify/root-dumping-report.mjs`
+has its own live `DISCOVER_PATH`, and its documented workflow has you exporting it
+in a shell. An unprefixed name here would mean one exported variable feeding one
+tool and being silently ignored by the other — and the one that ignores it
+**writes `data/discover.json` in place**, so the operator believes they are
+writing to a scratch file while the real catalogue is overwritten. Use the exact
+names in this table; a near-miss fails open, not closed.
 
 ## Cloud topology (Hybrid — see `docs/` migration plan)
 

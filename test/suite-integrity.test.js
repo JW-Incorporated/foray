@@ -430,6 +430,27 @@ const FLOORS = {
   "tools/refresh/backfill-show.test.mjs": 24,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
+  /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between
+     the catalogue and a return to show-level labelling — 77 of the 99 shows with
+     >= 8 episodes carried one identical topic set on every episode, and the two
+     ways that comes back are both silent: an override that MERGES with the show
+     seed instead of replacing it, or a bad node id filtered away so the episode
+     quietly keeps the default. Both leave every count unchanged.
+     ONE of the 16 is a REAL-REPO pin on the nine shows re-derived in that PR, and
+     it is why deleting this file would be worth someone's while: it is the only
+     assertion that those 126 episodes still carry per-episode topics. It holds a
+     per-show floor on distinct topic sets (normally half the episode count) and
+     a `>=` floor on the episode count, because label-never-exclude means a "fix"
+     that improves uniformity by DROPPING episodes must fail while the nightly
+     ADDING episodes must not. Two review rounds shaped that line: the first
+     caught a `>= 2` distinctness test under which 22 of 23 episodes could be
+     re-seeded green, the second caught an `===` count test that would have
+     reddened the nightly within a day. A second REAL-REPO test pins taxonomy
+     validity across the whole catalogue.
+     All 19 mutations run against it were killed, and two false-alarm probes
+     (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
+     stay green. Each test names its own mutation. */
+  "tools/refresh/merge-topics.test.mjs": 16,
   /* The nightly watchdog (#290). ZERO SLACK, for the reason media-session and
      data-deletion are floored that way: what this suite holds down is a set of
      decisions each one line from its opposite, on a check nobody watches run.

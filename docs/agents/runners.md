@@ -18,7 +18,7 @@ changes a runner.
 | Runner | Where | Cadence | Model | Billing | Prompt / source | Status |
 |--------|-------|---------|-------|---------|-----------------|--------|
 | **nightly-refresh (scan+resolve)** | GitHub Actions (`.github/workflows/nightly-refresh.yml`) | Daily 06:40 UTC | — (deterministic) | Actions minutes (free tier, public repo) | workflow file | live |
-| **foray-nightly-enrich** | Claude Cloud routine | Daily ~11:40 UTC (≥2h after the Action) | Sonnet | Wyatt's account | `runner-prompts/foray-nightly.md` | live |
+| **foray-nightly-enrich** | Claude Cloud routine | Daily ~11:40 UTC (≥2h after the Action) | Sonnet | Wyatt's account | `runner-prompts/foray-nightly.md` | live — **step 4 changed 2026-08-21 (#292)**: `edits.json` gained an optional per-episode `topics` field, and the "no schema changes" constraint now names it as in scope. Without that edit the fix would have been inert on the pipeline it was built for — topics were assigned per show, and the agent had no way to say otherwise. |
 | **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h, staggered 40 min apart — see below | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live — **push to `reclassify-<N>`, open NO PR** (see below) |
 | **nightly-watch** | GitHub Actions (`.github/workflows/nightly-watch.yml`) | Daily 21:40 UTC | — (deterministic) | Actions minutes | workflow file → `tools/refresh/watch-nightly.mjs` | **checker landed, workflow pending a founder merge** — `.github/` is governed (#290) |
 

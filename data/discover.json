@@ -339,7 +339,7 @@
       "duration_min": 46,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
+        "nature/earth-science",
         "history/technology"
       ],
       "hook": "During the Cold War, the USSR raced not to space but eight miles straight down.",
@@ -360,8 +360,8 @@
       "duration_min": 37,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "nature/earth-science",
+        "history/social-history"
       ],
       "hook": "The 1964 Alaska quake was the second largest ever recorded — this is that story.",
       "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/48109605-021f-4a87-81fe-b47400fd9e33/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
@@ -381,8 +381,8 @@
       "duration_min": 44,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "engineering/energy-fusion",
+        "science/physics"
       ],
       "hook": "Physicists have chased a working fusion reactor for decades — where the science stands now.",
       "audio_url": "https://podtrac.com/pts/redirect.mp3/pscrb.fm/rss/p/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/a91018a4-ea4f-4130-bf55-ae270180c327/4b6c5e78-b2d7-4bf3-b511-b46e00fde7d7/audio.mp3?utm_source=Podcast&in_playlist=44710ecc-10bb-48d1-93c7-ae270180c33e",
@@ -544,8 +544,8 @@
       "duration_min": 49,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
+        "business/careers",
+        "engineering/precision-mfg"
       ],
       "hook": "A mechanical engineer on the gap between what engineering school teaches and what industry needs.",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/19422682-s7e28-justin-rittenhouse-what-engineering-school-doesn-t-teach-you-about-industry.mp3",
@@ -566,7 +566,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
         "engineering/precision-mfg",
-        "craft/diy-home"
+        "food/drinks"
       ],
       "hook": "The 19-year engineering journey behind the world's first electronic espresso tamper.",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/19378446-s7e27-daniel-kurnianto-the-engineering-journey-behind-the-world-s-first-electronic-coffee-tamper.mp3",
@@ -586,8 +586,7 @@
       "duration_min": 47,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
+        "engineering/precision-mfg"
       ],
       "hook": "A 30-year FEA analyst on the mistakes that quietly wreck your simulation results.",
       "audio_url": "https://www.buzzsprout.com/995575/episodes/19148225-s7e21-rod-scholl-pro-tips-from-30-year-analyst-for-accurate-simulations-fea-cfd.mp3",
@@ -649,8 +648,8 @@
       "duration_min": 76,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/social-history",
+        "society/government"
       ],
       "hook": "How Alexander Hamilton went from impoverished orphan to a fatal duel with Aaron Burr.",
       "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT9231431046.mp3",
@@ -670,7 +669,7 @@
       "duration_min": 76,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
+        "food/food-history",
         "history/military-ancient"
       ],
       "hook": "How wine built civilization — from Homer's Odyssey to Julius Caesar's conquests.",
@@ -691,8 +690,8 @@
       "duration_min": 61,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "sports/soccer",
+        "history/military-modern"
       ],
       "hook": "How Mussolini used the 1934 World Cup as a fascist propaganda machine.",
       "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT5810592007.mp3",
@@ -2737,7 +2736,8 @@
       "duration_min": 40,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "music/music-history",
+        "society/law"
       ],
       "hook": "A quirky radio rule that quietly reshaped who gets heard in Canadian music.",
       "audio_url": "https://mgln.ai/e/2/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/3bb687b0-04af-4257-90f1-39eef4e631b6/episodes/cb4f1b8e-7e97-4206-8cc4-0120c4a79af4/audio/128/default.mp3?aid=rss_feed&awCollectionId=3bb687b0-04af-4257-90f1-39eef4e631b6&awEpisodeId=cb4f1b8e-7e97-4206-8cc4-0120c4a79af4&feed=BqbsxVfO",
@@ -2757,7 +2757,8 @@
       "duration_min": 32,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "sports/baseball",
+        "engineering/ai-robotics"
       ],
       "hook": "Umpires blow 34,000 calls a year -- can automated strike zones fix that?",
       "audio_url": "https://mgln.ai/e/2/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/3bb687b0-04af-4257-90f1-39eef4e631b6/episodes/e8612a4e-6524-47d6-a833-7c5c242eb235/audio/128/default.mp3?aid=rss_feed&awCollectionId=3bb687b0-04af-4257-90f1-39eef4e631b6&awEpisodeId=e8612a4e-6524-47d6-a833-7c5c242eb235&feed=BqbsxVfO",
@@ -2817,7 +2818,8 @@
       "duration_min": 84,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "nature/ocean-science",
+        "medicine/biology"
       ],
       "hook": "Sea slugs with stolen weaponry, tiny eyes, and fluid gender -- glamorous biology.",
       "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/89060b63-e603-4297-b6e8-5a654e50244e/episodes/4bd4f339-bd41-40d6-ad5d-8f3bb80b3bb4/audio/128/default.mp3?aid=rss_feed&awCollectionId=89060b63-e603-4297-b6e8-5a654e50244e&awEpisodeId=4bd4f339-bd41-40d6-ad5d-8f3bb80b3bb4&feed=FO6kxYGj",
@@ -2837,7 +2839,8 @@
       "duration_min": 71,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "nature/animal-cognition",
+        "medicine/biology"
       ],
       "hook": "An evolutionary biologist on why armadillos curl up and skunks just stink.",
       "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/89060b63-e603-4297-b6e8-5a654e50244e/episodes/ef589f0a-b4c7-4bc2-9587-d451dedceb2f/audio/128/default.mp3?aid=rss_feed&awCollectionId=89060b63-e603-4297-b6e8-5a654e50244e&awEpisodeId=ef589f0a-b4c7-4bc2-9587-d451dedceb2f&feed=FO6kxYGj",
@@ -3157,7 +3160,8 @@
       "duration_min": 54,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "news/tech",
+        "engineering/ai-robotics"
       ],
       "hook": "Hosts break down restricted AI models, IDE wars, and DeepMind's talent exodus.",
       "audio_url": "https://traffic.megaphone.fm/SED4808597618.mp3",
@@ -3177,7 +3181,8 @@
       "duration_min": 51,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "computing/software-engineering",
+        "engineering/ai-robotics"
       ],
       "hook": "How observability tools must adapt as AI agents start writing and shipping code.",
       "audio_url": "https://traffic.megaphone.fm/SED4888500318.mp3",
@@ -3317,7 +3322,8 @@
       "duration_min": 50,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "education",
+        "society/government"
       ],
       "hook": "A psychologist turned university president on winning back public trust in academia.",
       "audio_url": "https://mgln.ai/e/2/pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/2be48404-a43c-4fa8-a32c-760a3216272e/episodes/6700161c-0ea1-4cdd-978e-8499e9ced7d3/audio/128/default.mp3?aid=rss_feed&awCollectionId=2be48404-a43c-4fa8-a32c-760a3216272e&awEpisodeId=6700161c-0ea1-4cdd-978e-8499e9ced7d3&feed=Y8lFbOT4",
@@ -3337,7 +3343,8 @@
       "duration_min": 64,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "education",
+        "business/management"
       ],
       "hook": "How Vanderbilt's chancellor navigates campus politics without picking public fights.",
       "audio_url": "https://mgln.ai/e/2/pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/2be48404-a43c-4fa8-a32c-760a3216272e/episodes/c7cf3aee-3abd-4def-83bf-af6626170ac8/audio/128/default.mp3?aid=rss_feed&awCollectionId=2be48404-a43c-4fa8-a32c-760a3216272e&awEpisodeId=c7cf3aee-3abd-4def-83bf-af6626170ac8&feed=Y8lFbOT4",
@@ -4461,7 +4468,8 @@
       "duration_min": 26,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "space/astronomy",
+        "science/physics"
       ],
       "hook": "Physicists ask whether our entire observable universe might sit inside a black hole.",
       "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP1036315823.mp3",
@@ -4481,6 +4489,7 @@
       "duration_min": 30,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
+        "psychology/decision-making",
         "science/storytelling"
       ],
       "hook": "Why some risks terrify us while far deadlier ones barely register at all.",
@@ -4501,7 +4510,8 @@
       "duration_min": 33,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "nature",
+        "medicine/biology"
       ],
       "hook": "Entomologists weigh in on the campaign to stomp every spotted lanternfly on sight.",
       "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP2712966402.mp3",
@@ -5601,7 +5611,8 @@
       "duration_min": 158,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "nature/pets",
+        "psychology/decision-making"
       ],
       "hook": "Cesar Millan on calm-assertive energy and what dog training reveals about behavior.",
       "audio_url": "https://traffic.megaphone.fm/SCIM6380580289.mp3",
@@ -5621,7 +5632,8 @@
       "duration_min": 180,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "health/fitness",
+        "sports/biomechanics"
       ],
       "hook": "A movement coach on training the mind-body connection most people ignore.",
       "audio_url": "https://traffic.megaphone.fm/SCIM2496765743.mp3",
@@ -5641,7 +5653,8 @@
       "duration_min": 171,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "relationships/dating",
+        "psychology/decision-making"
       ],
       "hook": "The psychology of attraction, compatibility, and why romance follows patterns.",
       "audio_url": "https://traffic.megaphone.fm/SCIM9984287085.mp3",
@@ -7925,8 +7938,8 @@
       "duration_min": 70,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "culture/art",
+        "history/social-history"
       ],
       "hook": "What Leonardo ambiguous smile reveals about Renaissance Italy and the man himself.",
       "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT1735270133.mp3?updated=1777982084",
@@ -7946,7 +7959,6 @@
       "duration_min": 73,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
         "history/military-ancient"
       ],
       "hook": "Darius, King of Kings, sends the Persian Empire across the Aegean toward Athens.",
@@ -7967,8 +7979,8 @@
       "duration_min": 78,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/military-modern",
+        "society/government"
       ],
       "hook": "Why the Iranian Revolution erupted in 1979, and the Shah fatal bond with Carter.",
       "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT5083873634.mp3?updated=1768557306",
@@ -7988,8 +8000,8 @@
       "duration_min": 40,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "music/music-history",
+        "history/social-history"
       ],
       "hook": "Paul McCartney on postwar Liverpool, learning music, and the books behind the Beatles.",
       "audio_url": "https://pdst.fm/e/traffic.megaphone.fm/GLT5781731754.mp3",
@@ -8689,7 +8701,8 @@
       "duration_min": 87,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "history/social-history",
+        "society"
       ],
       "hook": "Joseph Tainter on whether societies collapse suddenly or slowly enough to notice.",
       "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/89060b63-e603-4297-b6e8-5a654e50244e/episodes/1785d067-6ba2-4588-acc6-9d8c9272fd17/audio/128/default.mp3?aid=rss_feed&awCollectionId=89060b63-e603-4297-b6e8-5a654e50244e&awEpisodeId=1785d067-6ba2-4588-acc6-9d8c9272fd17&feed=FO6kxYGj",
@@ -8729,7 +8742,8 @@
       "duration_min": 69,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "nature/animal-cognition",
+        "medicine/biology"
       ],
       "hook": "Duck bills, beaver tails, eggs, milk, and venom in one animal.",
       "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/89060b63-e603-4297-b6e8-5a654e50244e/episodes/2bd64438-e8ec-4d71-ad36-34d5b82e633d/audio/128/default.mp3?aid=rss_feed&awCollectionId=89060b63-e603-4297-b6e8-5a654e50244e&awEpisodeId=2bd64438-e8ec-4d71-ad36-34d5b82e633d&feed=FO6kxYGj",
@@ -8749,7 +8763,8 @@
       "duration_min": 55,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "nature/animal-cognition",
+        "culture/mythology"
       ],
       "hook": "Owl eyes, silent flight, and the folklore of good and bad omens.",
       "audio_url": "https://pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/89060b63-e603-4297-b6e8-5a654e50244e/episodes/d4db0e9a-2382-43b3-af3c-6b5092a33299/audio/128/default.mp3?aid=rss_feed&awCollectionId=89060b63-e603-4297-b6e8-5a654e50244e&awEpisodeId=d4db0e9a-2382-43b3-af3c-6b5092a33299&feed=FO6kxYGj",
@@ -9958,7 +9973,8 @@
       "duration_min": 211,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "health/nutrition",
+        "medicine/biology"
       ],
       "hook": "Rhonda Patrick on cardio, resistance training, fasting, omega-3s, creatine, and building a total health program.",
       "audio_url": "https://traffic.megaphone.fm/SCIM9935898395.mp3?updated=1774241455",
@@ -9978,7 +9994,7 @@
       "duration_min": 147,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "medicine/biology"
       ],
       "hook": "How engineered T-cells fight cancer, plus CRISPR gene editing and everyday cancer-risk choices.",
       "audio_url": "https://traffic.megaphone.fm/SCIM5861479163.mp3?updated=1773031397",
@@ -9998,6 +10014,7 @@
       "duration_min": 119,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
+        "medicine/biology",
         "medicine/neuroscience"
       ],
       "hook": "Stanford's Tony Wyss-Coray on proteins in young blood that rejuvenate the aging brain.",
@@ -10018,7 +10035,8 @@
       "duration_min": 169,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "medicine/biology",
+        "health/fitness"
       ],
       "hook": "A physician on the real science and safety of BPC-157, GLP-1s, and growth-hormone peptides.",
       "audio_url": "https://traffic.megaphone.fm/SCIM8380331046.mp3",
@@ -14075,8 +14093,8 @@
       "duration_min": 47,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "history/social-history",
+        "society/government"
       ],
       "hook": "The life and outsized political legacy of America's most consequential first lady.",
       "explicit": false,
@@ -14097,8 +14115,8 @@
       "duration_min": 13,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "history/social-history",
+        "travel/destinations"
       ],
       "hook": "Finally sorting out the difference between the UK, Great Britain, and the British Isles.",
       "explicit": false,
@@ -14140,8 +14158,8 @@
       "duration_min": 50,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "history/technology",
+        "automotive"
       ],
       "hook": "Two men and a dog drive coast to coast before anyone believed cars would last.",
       "explicit": false,
@@ -14162,8 +14180,8 @@
       "duration_min": 39,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
+        "business/management",
+        "engineering/precision-mfg"
       ],
       "hook": "Lean and Six Sigma veteran Heylands Lowry on building continuous-improvement culture that sticks.",
       "explicit": false,
@@ -14347,7 +14365,8 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/15/3a/ec/153aecb2-6baa-17e0-6cc7-05ee29d105c6/mza_11420557464017573962.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "culture/design",
+        "history/social-history"
       ],
       "hook": "After the teddy bear's success, President Taft got a stuffed possum. It flopped.",
       "explicit": false,
@@ -14368,7 +14387,8 @@
       "duration_min": 50,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "psychology/decision-making",
+        "relationships"
       ],
       "hook": "Behavioral scientist Nicholas Epley on icebreakers, friendship recession, and why texting shortchanges your hormones.",
       "explicit": true,
@@ -14621,8 +14641,8 @@
       "duration_min": 75,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
       "topics": [
-        "health/mental",
-        "psychology"
+        "health/meditation",
+        "religion/buddhism"
       ],
       "hook": "Kornfield, Goldstein, and Salzberg on the broke 20-somethings who built the Insight Meditation Society.",
       "explicit": false,
@@ -15031,7 +15051,7 @@
       "duration_min": 72,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
+        "culture/mythology",
         "history/military-ancient"
       ],
       "hook": "Tom and Dominic trace Homer's Odyssey and the real places behind Odysseus's trials.",
@@ -15326,7 +15346,8 @@
       "duration_min": 33,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "music/theory-production",
+        "psychology/decision-making"
       ],
       "hook": "Why some listeners latch onto lyrics while others hear only the music.",
       "explicit": false,
@@ -15389,7 +15410,8 @@
       "duration_min": 149,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "medicine/neuroscience",
+        "psychology/decision-making"
       ],
       "hook": "UCLA memory expert Alan Castel on retrieval practice, false memories, and cognitive aging.",
       "explicit": false,
@@ -15846,8 +15868,8 @@
       "duration_min": 46,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "health/mental",
+        "medicine/biology"
       ],
       "hook": "Baby blues fade; postpartum depression doesn't. How it works and why moms must ask.",
       "explicit": false,
@@ -16010,7 +16032,8 @@
       "duration_min": 42,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "aviation/flight-history",
+        "history/social-history"
       ],
       "hook": "A Louisiana man born into slavery designed an airship; his interrupted plans may not be finished.",
       "explicit": false,
@@ -16052,7 +16075,8 @@
       "duration_min": 53,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "computing/software-engineering",
+        "engineering/ai-robotics"
       ],
       "hook": "AI writes code, but production operations stay manual; Mezmo's agents aim to change that.",
       "explicit": false,
@@ -16073,7 +16097,8 @@
       "duration_min": 43,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/64/0f/33/640f335f-2451-e3ee-270f-bf27a9a011d8/mza_4772490987386613528.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "architecture/infrastructure",
+        "culture/design"
       ],
       "hook": "Architect Bjarke Ingels argues the oxymoron is the secret sauce to everything.",
       "explicit": false,
@@ -16697,8 +16722,8 @@
       "duration_min": 47,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "music/music-history",
+        "tv-film/history"
       ],
       "hook": "Chuck and Josh revisit Soul Train, the TV show that put Black music on air.",
       "explicit": false,
@@ -16719,8 +16744,8 @@
       "duration_min": 49,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "true-crime/investigative",
+        "history/social-history"
       ],
       "hook": "The real story behind Detroit's teenage cocaine kingpin myth, and how far off it is.",
       "explicit": false,
@@ -16741,8 +16766,8 @@
       "duration_min": 37,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
+        "business/management",
+        "engineering/precision-mfg"
       ],
       "hook": "Steve Riley on continuous improvement from the factory floor, where small changes pay back fast.",
       "explicit": false,
@@ -16947,7 +16972,8 @@
       "duration_min": 34,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/1b/3a/d8/1b3ad82d-dc2c-aa5a-45db-0c4f97b01791/mza_7343686313082453055.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "history/social-history",
+        "true-crime/investigative"
       ],
       "hook": "How a 1982 Iowa disappearance put missing kids on milk cartons and stoked stranger danger.",
       "explicit": false,
@@ -17052,6 +17078,7 @@
       "duration_min": 65,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
+        "medicine/biology",
         "economics/markets"
       ],
       "hook": "Most penicillin allergies aren't real. The misdiagnosis costs billions and worsens care.",
@@ -17671,8 +17698,8 @@
       "duration_min": 73,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/social-history",
+        "true-crime/cold-cases"
       ],
       "hook": "Crown Prince Rudolf, a 17-year-old baroness, and the Mayerling deaths that shook the Habsburgs.",
       "explicit": false,
@@ -17945,7 +17972,7 @@
       "duration_min": 32,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "nature/paleontology"
       ],
       "hook": "Riley Black on how paleontologists reconstruct dinosaur lives from fragmentary Mesozoic clues.",
       "explicit": false,
@@ -18008,7 +18035,8 @@
       "duration_min": 161,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "medicine/neuroscience",
+        "education/self-improvement"
       ],
       "hook": "Dr. Tommy Wood on exercise, diet, and compounds that speed skill learning and preserve cognition.",
       "explicit": false,
@@ -18422,8 +18450,8 @@
       "duration_min": 47,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "society/law",
+        "history/social-history"
       ],
       "hook": "How 50 state attorneys general took on cigarette makers who spent a century denying addiction.",
       "explicit": false,
@@ -18570,7 +18598,8 @@
       "duration_min": 45,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "history/archaeology",
+        "culture/art"
       ],
       "hook": "Neil MacGregor on building the series, plus the Rosetta Stone that unlocked ancient Egypt.",
       "explicit": false,
@@ -19186,8 +19215,8 @@
       "duration_min": 48,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "history/social-history",
+        "society/government"
       ],
       "hook": "How Switzerland became the world's most famous neutral country, and what that neutrality actually means.",
       "explicit": false,
@@ -19208,8 +19237,8 @@
       "duration_min": 51,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
+        "business/careers",
+        "economics/markets"
       ],
       "hook": "An electrical engineer turned wealth advisor on managing the money that technical careers can generate.",
       "explicit": false,
@@ -19230,8 +19259,8 @@
       "duration_min": 79,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/social-history",
+        "true-crime/cold-cases"
       ],
       "hook": "Murder or suicide at Mayerling? The Habsburg heir, his teenage mistress, and a covered-up death.",
       "explicit": false,
@@ -19578,7 +19607,8 @@
       "duration_min": 36,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "culture/pop-culture",
+        "history/social-history"
       ],
       "hook": "How Bruce Lee's nunchucks became a symbol of 1970s Asian American identity and resistance.",
       "explicit": false,
@@ -19640,7 +19670,8 @@
       "duration_min": 123,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "medicine/biology",
+        "health"
       ],
       "hook": "Four experts on menopause and perimenopause: hormone therapy, sleep, and separating science from myth.",
       "explicit": true,
@@ -19766,7 +19797,8 @@
       "duration_min": 48,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "engineering/ai-robotics",
+        "space/rockets"
       ],
       "hook": "Steve Levitt talks with a team that wants to move AI data centers into space.",
       "explicit": false,
@@ -19955,6 +19987,7 @@
       "duration_min": 41,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
+        "health/meditation",
         "medicine/neuroscience"
       ],
       "hook": "Neuroscientist Sam Harris on how meditation reshapes focus, the sense of self, and reactivity.",
@@ -20692,8 +20725,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/social-history",
+        "espionage"
       ],
       "hook": "Tom and Dominic trace Sir William Cecil's spy network protecting Elizabeth I from Catholic plots.",
       "explicit": false
@@ -20945,7 +20978,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "health",
+        "medicine/biology"
       ],
       "hook": "Rowan Jacobsen makes the case for a healthier middle ground between sun avoidance and overexposure.",
       "explicit": false
@@ -21008,6 +21042,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
+        "health",
         "medicine/neuroscience"
       ],
       "hook": "Huberman answers listener questions on sleep, fertility, menopause, memory, and finding your passion.",
@@ -21420,8 +21455,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "culture/books"
       ],
       "hook": "A tribute to Judy Blume, the author whose honest books defined teen literature.",
       "explicit": false
@@ -21547,7 +21581,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "culture/design",
+        "kids-family/parenting"
       ],
       "hook": "How a simple cardboard box helped make Finland a great place to raise kids.",
       "explicit": false
@@ -21931,8 +21966,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/48/01/ba/4801ba68-20eb-6807-1183-107804eb4871/mza_15142572847780103134.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "true-crime/cold-cases"
       ],
       "hook": "A quick true-crime look at the notorious Shark Arm Murders case from Australia.",
       "explicit": false
@@ -22059,7 +22093,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "business/startups",
+        "computing/software-engineering"
       ],
       "hook": "A look at how Gojek and Grab grew from Southeast Asia's early venture backing.",
       "explicit": false
@@ -22101,7 +22136,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "comedy/stand-up",
+        "health/mental"
       ],
       "hook": "Comedian Gary Gulman discusses depression, recovery, and staying well through basketball with Stephen Dubner.",
       "explicit": false
@@ -22164,7 +22200,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "nature/weather",
+        "nature/earth-science"
       ],
       "hook": "Sean Illing and David Wallace-Wells examine how a major El Nino could reshape the climate.",
       "explicit": true
@@ -22654,7 +22691,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "culture/design",
+        "history/technology"
       ],
       "hook": "The 1925 Brannock Device's odd history, from outfitting WWII sailors to today's shoe stores.",
       "explicit": false
@@ -23151,8 +23189,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
+        "business/careers",
+        "engineering/precision-mfg"
       ],
       "hook": "Steven Szymeczek traces his path from childhood tinkering to aircraft parts to his own product studio.",
       "explicit": false
@@ -23300,7 +23338,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "space/rockets",
+        "society/law"
       ],
       "hook": "Private firms are rewriting the rules of the space age once set by governments alone.",
       "explicit": false
@@ -23553,8 +23592,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/military-modern",
+        "transport/maritime"
       ],
       "hook": "Tom and Dominic trace Francis Drake's rise from poverty to his clash with the Armada.",
       "explicit": false
@@ -23806,7 +23845,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "nature/animal-cognition",
+        "medicine/biology"
       ],
       "hook": "Ed Yong on magnetoreception, the still-mysterious sense birds use to navigate Earth's magnetic field.",
       "explicit": false
@@ -23869,7 +23909,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "medicine/biology"
       ],
       "hook": "Immunologist Max Krummel on how sleep, emotions, and memory shape immune function and cancer defense.",
       "explicit": true
@@ -24283,8 +24323,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "food/cooking-science",
+        "health/nutrition"
       ],
       "hook": "Josh and Chuck break down why the humble beans-and-rice combo feeds so much of the world.",
       "explicit": false
@@ -24411,7 +24451,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "culture/design",
+        "nature"
       ],
       "hook": "The complicated real story behind nature-inspired designs that look effortlessly borrowed from biology.",
       "explicit": false
@@ -24453,7 +24494,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "computing/cybersecurity",
+        "engineering/ai-robotics"
       ],
       "hook": "How AI is reshaping software supply chain attacks on package managers and CI/CD pipelines.",
       "explicit": false
@@ -24771,8 +24813,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/48/90/a4/4890a430-350b-be5c-914e-986bc96a6201/mza_5605493399931920987.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "history/technology",
+        "culture/design"
       ],
       "hook": "Phone books once listed everyone's number and address in town — a short history.",
       "explicit": false
@@ -24898,7 +24940,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "nature/animal-cognition",
+        "culture/mythology"
       ],
       "hook": "A hyena researcher unpacks matriarchies, Lion King myths, and why hyenas get such a bad rap.",
       "explicit": true
@@ -24982,7 +25025,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "culture/books",
+        "psychology/decision-making"
       ],
       "hook": "Harlan Coben on suburbia, impostor syndrome, and what he learned from David Foster Wallace.",
       "explicit": true
@@ -25003,7 +25047,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "nature/ocean-science"
       ],
       "hook": "Scientists retrieve decade-old structures from the ocean's dim twilight zone, encrusted with new life.",
       "explicit": false
@@ -25407,7 +25451,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "culture/fashion",
+        "history/social-history"
       ],
       "hook": "Roman Mars traces a 19th-century textile category defined by who was forced to wear it.",
       "explicit": false
@@ -25728,7 +25773,7 @@
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
         "engineering/precision-mfg",
-        "craft/diy-home"
+        "business/careers"
       ],
       "hook": "Sam Thomason discusses CNC machining, factory automation, and building a career across the U.S. and Japan.",
       "explicit": false
@@ -26240,7 +26285,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "economics/markets",
+        "engineering/ai-robotics"
       ],
       "hook": "Former SEC chair Gary Gensler weighs whether America's AI bet could trigger the next crash.",
       "explicit": false
@@ -26474,8 +26520,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/military-modern",
+        "espionage"
       ],
       "hook": "Tom and Dominic examine the 1585 Spanish invasion threat to Elizabeth I, alongside Philip Sidney.",
       "explicit": false
@@ -26644,7 +26690,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "science/storytelling",
+        "psychology/decision-making"
       ],
       "hook": "Hank Green on why pseudoscience spreads easily and what that reveals about real science.",
       "explicit": false
@@ -26686,6 +26733,7 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
+        "engineering/ai-robotics",
         "medicine/neuroscience"
       ],
       "hook": "Fei-Fei Li on using AI safely to extend human intelligence, creativity, and collaboration with robots.",
@@ -27624,8 +27672,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "music/music-history",
+        "music/pop-global"
       ],
       "hook": "How reggae grew from Kingston's Trenchtown into a global phenomenon after Bob Marley and the Wailers.",
       "explicit": false
@@ -27646,8 +27694,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/social-history",
+        "espionage"
       ],
       "hook": "Elizabeth I faces betrayal, Catholic conspiracy, and a plot to crown Mary, Queen of Scots.",
       "explicit": false
@@ -27920,7 +27968,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "computing/software-engineering",
+        "engineering/ai-robotics"
       ],
       "hook": "Why the terminal, unchanged for decades, is becoming the natural home for AI agent development tools.",
       "explicit": false
@@ -28130,7 +28179,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "medicine/neuroscience",
+        "health/mental"
       ],
       "hook": "Huberman Lab explains how key neuromodulators drive motivation, energy, focus, and mood all day.",
       "explicit": false
@@ -28304,8 +28354,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "news/politics",
+        "espionage"
       ],
       "hook": "Operation Doppelganger: how a 2022-uncovered Russian propaganda campaign quietly shaped what you believe.",
       "explicit": false
@@ -28326,8 +28376,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/20/ed/c7/20edc799-fdb3-e608-a164-0cdaaee63c6b/mza_16701966284979673066.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/social-history",
+        "religion/christianity"
       ],
       "hook": "How the 1572 St Bartholomew's Day Massacre pushed Elizabeth I's spymaster to crush Catholic conspiracies.",
       "explicit": true
@@ -28537,7 +28587,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "health",
+        "medicine/biology"
       ],
       "hook": "Patrons share hard-won advice on brain fog, HRT shortages, and workplace conversations about menopause.",
       "explicit": true
@@ -28579,7 +28630,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "computing/software-engineering",
+        "computing/cybersecurity"
       ],
       "hook": "Docker Sandboxes give each AI coding agent its own isolated micro VM for safety.",
       "explicit": false
@@ -28747,7 +28799,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "education/self-improvement",
+        "health/mental"
       ],
       "hook": "Navy SEAL Jocko Willink on why discipline, not motivation, drives you through adversity.",
       "explicit": false
@@ -28897,8 +28950,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "true-crime/investigative",
+        "history/social-history"
       ],
       "hook": "The real story behind Bonnie and Clyde, the crime couple immortalized by Hollywood.",
       "explicit": false
@@ -29025,7 +29078,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "architecture/infrastructure",
+        "history/social-history"
       ],
       "hook": "A Hong Kong bamboo scaffolding fire reveals a deeper story about a century-old building tradition.",
       "explicit": false
@@ -29067,7 +29121,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "news/tech",
+        "engineering/ai-robotics"
       ],
       "hook": "SED News covers runaway AI incidents, Anthropic and OpenAI security disclosures, and Amazon's agent cost overruns.",
       "explicit": false
@@ -29109,7 +29164,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "religion/judaism",
+        "philosophy/ethics"
       ],
       "hook": "Rabbi Angela Buchdahl talks boundary-crossing, October 7's aftermath, and faith without certainty with Stephen Dubner.",
       "explicit": false
@@ -29579,8 +29635,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/0d/86/b3/0d86b3c1-6a82-327b-fdd5-10e1303890a4/mza_17702458396406057850.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "history/social-history",
+        "history/military-ancient"
       ],
       "hook": "Did Nero really fiddle while Rome burned in 64 CE? Chuck and Josh bust the myth.",
       "explicit": false
@@ -29601,8 +29657,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/social-history",
+        "espionage"
       ],
       "hook": "Tom and Dominic close their series on the Babington Plot and Mary Queen of Scots' trial.",
       "explicit": false
@@ -29833,7 +29889,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "medicine/neuroscience",
+        "health/mental"
       ],
       "hook": "Sleep scientist Vanessa Hill on revenge bedtime procrastination, blue light, and sleep myths.",
       "explicit": true
@@ -30241,8 +30298,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "true-crime/fraud-cults",
+        "espionage"
       ],
       "hook": "The strange life and suspicious death of publisher, spy, and international con man Robert Maxwell.",
       "explicit": false
@@ -30326,7 +30383,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "history/social-history",
+        "society/government"
       ],
       "hook": "How 23 letters that survived a deathbed order to burn them toppled a corrupt political machine.",
       "explicit": false
@@ -30389,7 +30447,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "computing/software-engineering",
+        "engineering/ai-robotics"
       ],
       "hook": "As AI agents write and operate more production code, does cloud infrastructure need a rebuild?",
       "explicit": false
@@ -30818,8 +30877,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "topics": [
-        "engineering/precision-mfg",
-        "craft/diy-home"
+        "business/marketing",
+        "engineering/precision-mfg"
       ],
       "hook": "Mechanical engineer Tony Kelbert on positioning, quoting, and selling into aerospace and defense supply chains.",
       "explicit": false
@@ -32006,7 +32065,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "nature/ocean-science",
+        "nature/earth-science"
       ],
       "hook": "In Palau, researchers test whether restored coral reefs can survive hotter, warming ocean waters.",
       "explicit": false
@@ -32048,7 +32108,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "medicine/neuroscience",
+        "health/mental"
       ],
       "hook": "Caltech's Ralph Adolphs on where emotions live in the body and how to regulate them.",
       "explicit": false
@@ -32239,8 +32300,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "linguistics/language",
+        "philosophy/ideas"
       ],
       "hook": "Irony is easy to recognize but notoriously hard to define, despite dozens of competing definitions.",
       "explicit": false
@@ -32387,7 +32448,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "nature/paleontology",
+        "history/social-history"
       ],
       "hook": "Two rival paleontologists turned a hunt for dinosaur bones into an all-out scientific war.",
       "explicit": false
@@ -32408,7 +32470,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/44/4e/42/444e42f6-1ce8-1e7b-2d50-4ed506c27004/mza_18370866018545460916.jpg/600x600bb.jpg",
       "topics": [
-        "nature/animal-cognition"
+        "nature/animal-cognition",
+        "medicine/biology"
       ],
       "hook": "Skunk expert Jerry Dragoo joins to discuss skunk biology, defenses, and reputation.",
       "explicit": true
@@ -32450,7 +32513,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "engineering/ai-robotics",
+        "computing/software-engineering"
       ],
       "hook": "How large language models are reshaping recommendation systems beyond traditional deep learning architectures.",
       "explicit": false
@@ -32471,7 +32535,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
       "topics": [
-        "economics/markets"
+        "music/music-history",
+        "culture/books"
       ],
       "hook": "Warren Zanes on his path from playing in his brother's band to writing about Bruce Springsteen.",
       "explicit": false
@@ -32702,8 +32767,8 @@
       "dai_suspected": false,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
       "topics": [
-        "health/mental",
-        "psychology"
+        "religion/buddhism",
+        "health/mental"
       ],
       "hook": "Susan Piver on Buddhist advice for boundaries, rituals, and easing self-aggression.",
       "explicit": true
@@ -32893,8 +32958,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "history/technology",
+        "science/materials"
       ],
       "hook": "The case for rope as one of the unsung heroes of the world of inventions.",
       "explicit": false
@@ -32999,7 +33064,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/d0/35/79d035ea-9043-b43e-7380-33cd47bd968b/mza_2606971010425550919.jpg/600x600bb.jpg",
       "topics": [
-        "architecture/infrastructure"
+        "sports/basketball",
+        "culture/fashion"
       ],
       "hook": "Why NBA players wear arm sleeves: Allen Iverson, and basketball's relationship with race.",
       "explicit": false
@@ -33041,7 +33107,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/95/aa/58/95aa58ac-8618-5259-4a26-2f864665ebf4/mza_15276922367235047332.png/600x600bb.jpg",
       "topics": [
-        "computing/history"
+        "engineering/ai-robotics",
+        "news/politics"
       ],
       "hook": "Where AI risk stops being about code: bioweapon uplift and military targeting systems.",
       "explicit": false
@@ -33209,7 +33276,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
       "topics": [
-        "medicine/neuroscience"
+        "psychology/decision-making",
+        "culture/art"
       ],
       "hook": "Rick Rubin on noticing ideas, trusting your taste, and staying fully present with the work.",
       "explicit": false
@@ -33402,8 +33470,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a1/c8/3e/a1c83e0d-6c62-e712-c3d0-e72d38ffeaeb/mza_10991066693323876157.jpg/600x600bb.jpg",
       "topics": [
-        "science/materials",
-        "history/technology"
+        "history/social-history",
+        "transport/maritime"
       ],
       "hook": "Did one shipwreck double American territory? Short Stuff's answer is a qualified sort of.",
       "explicit": false
@@ -33424,8 +33492,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/05/8f/a3058ff1-eff9-036b-f412-8c4e96aad380/mza_221907431660085079.jpg/600x600bb.jpg",
       "topics": [
-        "history/technology",
-        "history/military-ancient"
+        "history/military-modern",
+        "history/social-history"
       ],
       "hook": "Part two: how 1969's marches from Belfast to Derry pushed Ulster toward civil war.",
       "explicit": false
@@ -33761,7 +33829,8 @@
       "dai_suspected": true,
       "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
       "topics": [
-        "science/storytelling"
+        "medicine/neuroscience",
+        "psychology/decision-making"
       ],
       "hook": "Babies forget their earliest years. Researchers ask whether those experiences still shape them anyway.",
       "explicit": false
