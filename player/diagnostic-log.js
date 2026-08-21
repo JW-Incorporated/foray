@@ -46,12 +46,17 @@
  *
  * ── WHAT IS NEVER RECORDED, BY CONSTRUCTION ────────────────────────────────
  * No audio, no URLs, no listener identity. The rule that guarantees it: a
- * telemetry line's TEXT is never stored. Only three things go in —
+ * telemetry line's TEXT is never stored. Only four things go in —
  *
  *   1. numbers matched by one of the explicit patterns below,
  *   2. authored segment/item ids (already in `cp_foray:` rows; no new identity),
  *   3. STAGE NAMES from a fixed vocabulary (`STAGE_ROOTS`), taken as the leading
- *      dotted token of a message and dropped entirely if unrecognised.
+ *      dotted token of a message and dropped entirely if unrecognised,
+ *   4. ERROR CLASSES on a failed tap (#225) — an `Error`/`DOMException` `.name`
+ *      and never a `.message`, admitted by SHAPE (a bare ASCII identifier of at
+ *      most `STAGE_NAME_MAX`) rather than by a fixed list, because a `TypeError`
+ *      from module skew is exactly the case that needs recording. See
+ *      `errorNameOf` for why a shape is safe here and what would break it.
  *
  * So `audio.error code=4 src=https://cdn.example/…` stores `code=4` and the stage
  * `audio.error`, and the URL — which `html-audio-backend.js`'s `short()` truncates
@@ -354,6 +359,65 @@ export function stageOf(message) {
   return STAGE_ROOTS.has(root) ? head : null;
 }
 
+/** The two things a failed tap can be, and the page is the only side that knows
+    which. A start got nowhere; a control failed over audio that is still going.
+    `app.js`'s two guards carry exactly this distinction (#225), and a value from
+    anywhere else is normalised to `start` rather than stored. */
+const TAP_PHASES = new Set(["start", "control"]);
+
+/**
+ * A value as text, or `""` when it refuses to become text.
+ *
+ * `String(v)` runs `v.toString()`, which a broken or hostile object can make
+ * throw — and both callers below run inside `app.js`'s failure guards, where a
+ * throw is the outage this record exists to explain. COERCE ONCE, HERE: every
+ * sanitiser below binds the result to a local and tests THAT, so a `toString`
+ * returning a different value on each call cannot pass a check with one string
+ * and be stored as another. Review found exactly that hole in the first draft of
+ * `tapFailed`, which tested `String(phase)` and then stored `String(phase)` a
+ * second time.
+ */
+function asText(v) {
+  try { return String(v ?? ""); } catch (_) { return ""; }
+}
+
+/** The phase, normalised to the vocabulary. Exported so the rule is testable on
+    its own rather than only through an entry, and so the one-coercion property
+    above has somewhere to be pinned. */
+export function tapPhaseOf(phase) {
+  const p = asText(phase);
+  return TAP_PHASES.has(p) ? p : "start";
+}
+
+/**
+ * An error's CLASS, or null.
+ *
+ * `.name` and never `.message`. A `.name` answers the only question this record
+ * is asked — was the browser refusing, or did the code break — while a `.message`
+ * carries prose and URLs, and this record gets pasted into issues. Same rule
+ * `knownCar` above enforces, applied before the value is stored rather than after.
+ *
+ * A SHAPE RULE, NOT A CLOSED VOCABULARY, and the distinction is worth stating
+ * because the shape is weaker: `DOMException.name` really is a closed set, but
+ * this accepts any ASCII identifier of up to `STAGE_NAME_MAX`. That is deliberate
+ * — a `TypeError` from module skew is exactly the case #225 needs to see, and it
+ * is not in any list worth maintaining. It is safe because no production path
+ * assigns a data-derived `.name`: every throw reaching here is a first-party or
+ * platform error. A caller that ever sets `.name` from a URL, a title or an id
+ * would defeat it, so that is the line not to cross.
+ *
+ * Underscore but no dot: an error name is one identifier, so the dotted form a
+ * stage name allows would mean something got through that is not a name.
+ *
+ * `trim()` BEFORE the anchored test, and the order matters: a trailing newline
+ * would otherwise be the classic way past a `$`.
+ */
+export function errorNameOf(name) {
+  const n = asText(name).trim();
+  if (!n || n.length > STAGE_NAME_MAX) return null;
+  return /^[A-Za-z][A-Za-z0-9_]*$/.test(n) ? n : null;
+}
+
 /* Every number this record holds comes through one of these. Formats the iOS CI
    probe already reads (`tools/mobile/probe/probe-seam.js`), so they are as much
    a contract as anything untyped in this repo gets — and
@@ -400,6 +464,10 @@ export class PlayerDiagnostics {
     this._seam = null;
     /** The reconcile stop awaiting its landed state — see `reconciled()`. */
     this._stop = null;
+    /** The failed-tap entry THIS INSTANCE opened and is still counting into, or
+        null. Identity, never shape — see `tapFailed` for the session-crossing
+        defect that reading the ring's tail produced. */
+    this._lastTap = null;
     /** When the current visibility state began, for the DURATION half of a
         visibility transition — a hidden window is only correlatable with a stall
         if its length is known.
@@ -622,6 +690,101 @@ export class PlayerDiagnostics {
   }
 
   /**
+   * A transport tap that failed, as seen BY THE PAGE (#225).
+   *
+   * AN ENTRY, NOT A STAGE, and that is the whole reason this method exists rather
+   * than a line pushed through `note()`. `_stage` writes into the seam in flight
+   * and returns early when there is none — and the failure #225 is about is a
+   * COLD START, where no seam has ever been opened. Routed through `note()` this
+   * would have recorded exactly nothing, on precisely the tap the record exists
+   * to explain.
+   *
+   * It does NOT duplicate the element layer. A refused `el.play()` already lands
+   * as `stop/autoplay` via `play.rejected`, which is the browser's side of the
+   * story. This is the page's side: an exception that came back out of
+   * `playForay` and put a message on screen. The two can both be present for one
+   * tap, and a reader wants that — it is the difference between "the browser held
+   * the audio" and "the module threw before the browser was ever asked".
+   */
+  tapFailed({ phase = "start", name = null } = {}) {
+    const phaseName = tapPhaseOf(phase);
+    const error = errorNameOf(name);
+
+    /* A MASHED BUTTON MUST NOT WIPE THE RECORD IT IS TRYING TO EXPLAIN.
+       A listener whose play button does nothing presses it again, and again —
+       that is the founder's report, in his own words. Uncoalesced, ~200 taps
+       (about 40 s at a realistic 5/s) evict every seam row in a 200-entry ring,
+       so the record of a failure mid-drive is destroyed by the failure itself.
+       Measured before this guard existed: 200 taps against a full ring dropped
+       all 200 seam entries. `repeated=37` is also simply better evidence than 37
+       identical rows.
+
+       ONLY AN UNBROKEN RUN OF THE SAME FAILURE COALESCES. A different phase or a
+       different error class is a different finding and starts a new entry, and
+       anything else recorded in between (a stop, a visibility change) ends the
+       run — so a coalesced entry always means "this, n times, with nothing else
+       happening", which is what makes the count readable.
+
+       `repeated` is written as 1 from the start rather than added on the second
+       tap, for the reason §6 of the test suite learned the hard way: a reader
+       cannot tell a field that means "once" from a field that was never written.
+
+       IDENTITY, NEVER SHAPE, and this is the correction review forced. A first
+       version matched on the tail entry's FIELDS — type, phase, error. The ring is
+       durable, so `_load()` restores the previous session's entries verbatim, and a
+       failed tap that lands before `boot()` has written its row sees yesterday's
+       matching `tapFail` at the tail. Today's taps were folded into yesterday's
+       entry, keeping yesterday's clock and sequence number, and the whole of
+       today's drive left NO row at all. That is not the exotic case: a play button
+       that failed yesterday with `NotAllowedError` and fails again today is
+       precisely what this feature is for. `_lastTap` is a reference to an entry
+       THIS instance created, so a restored one can never be mistaken for it — and
+       it also closes the second head of the same defect, where a restored row
+       without `repeated` turned `+= 1` into `NaN`.
+
+       IT MUST STILL BE THE TAIL. A `_lastTap` that something has since been
+       recorded after is a run that ended, and folding into it would put a count on
+       an entry that no longer describes the last thing that happened.
+
+       WHAT THIS DOES NOT FIX, stated rather than hidden: the write RATE. Each
+       repeat still re-serialises the ring (`save()`), so mashing drives ~5
+       writes/s against the ~0.15/s this file's cost note argues itself into
+       accepting. Bounding that needs a timer, and this module deliberately owns
+       none — everything is injected, which is what makes its failure paths
+       testable. The exposure is a few seconds of a hand on a dead button, and the
+       ring no longer grows during it.
+
+       `seq` DELIBERATELY DOES NOT ADVANCE on a repeat. It counts entries recorded,
+       which is what the report's `recorded` means and what its ordering claims rest
+       on; a coalesced tap is not a new entry. `lastWall` carries the other half
+       instead — see below. */
+    const entries = this.log.entries;
+    if (this._lastTap
+      && this._lastTap === entries[entries.length - 1]
+      && this._lastTap.phase === phaseName
+      && this._lastTap.error === error) {
+      this._lastTap.repeated += 1;
+      /* WHEN THE RUN ENDED, because the count alone cannot tell a ten-second mash
+         from a listener returning to a dead button four times across five minutes,
+         and those are different bugs. The FIRST `wall` stays as the entry's stamp —
+         it is the moment the failure began, and it is what keeps this row ordered
+         against the seam rows that explain it. */
+      this._lastTap.lastWall = this._now();
+      this.log.save();
+      return this._lastTap;
+    }
+
+    this._lastTap = this.log.record("tapFail", {
+      phase: phaseName,
+      error,
+      repeated: 1,
+      lastWall: null,
+      hidden: this._isHidden(),
+    });
+    return this._lastTap;
+  }
+
+  /**
    * A visibility transition, WITH the length of the state it just left.
    *
    * That duration is the point. #239's hidden deadline and the probe's ~26 s
@@ -689,6 +852,11 @@ export class PlayerDiagnostics {
   reset() {
     this._seam = null;
     this._stop = null;
+    /* For this method's own reason: a Clear during playback must not leave this
+       object pointing at an entry that is no longer in the ring. Without it, the
+       next failed tap would increment a counter on an orphan and `save()` it,
+       putting a row back under a key a listener has just emptied. */
+    this._lastTap = null;
     this._visSince = this._now();
   }
 
@@ -806,6 +974,18 @@ function lineFor(e) {
     }
     case "boot":
       return `${head} hidden=${e.hidden ? "y" : "n"}`;
+    /* `error=none` rather than an empty space, because the two are different
+       findings: a tap that failed with no error CLASS is a `playForay` that
+       returned a rejection carrying nothing, and a reader who sees a blank will
+       assume the field was never written. */
+    /* `over Ns` is not decoration: `x50` alone cannot separate a hand mashing a
+       dead button from a listener coming back to it across five minutes, and those
+       are different bugs. */
+    case "tapFail":
+      return `${head} ${e.phase ?? "?"} failed  error=${e.error ?? "none"}` +
+        (e.repeated > 1 ? `  x${e.repeated}` : "") +
+        (e.repeated > 1 && e.lastWall != null ? ` over ${ms(e.lastWall - e.wall)}` : "") +
+        `  hidden=${e.hidden ? "y" : "n"}`;
     default:
       return `${head} ${JSON.stringify(e)}`;
   }

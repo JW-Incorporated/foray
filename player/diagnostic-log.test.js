@@ -30,7 +30,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf,
+  DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport, stageOf, errorNameOf, tapPhaseOf,
   DIAG_KEY, DIAG_CAP, STAGE_CAP, DIAG_VERSION, MEDIA_STAGES,
 } from "./diagnostic-log.js";
 
@@ -824,4 +824,295 @@ test("an empty record says so rather than showing a blank box", () => {
   const { log } = mk();
   assert.match(formatDiagnosticReport(log.read()), /Nothing recorded yet/);
   assert.match(formatDiagnosticReport(null), /Nothing recorded yet/);
+});
+
+/* ==================================================================== */
+/* 6. a tap the page saw fail (#225)                                    */
+/* ==================================================================== */
+
+test("a failed tap is an ENTRY, so a first tap with no seam still leaves evidence", () => {
+  /* THE WHOLE REASON `tapFailed` EXISTS, and the trap it was written around.
+     #225 is a FIRST tap: nothing has played, so no seam has ever been opened —
+     and `_stage` returns early when there is no seam in flight. Routed through
+     `note()` like every other line in this record, the one tap the record exists
+     to explain would contribute exactly nothing.
+
+     MUTATION: make `tapFailed` call `this._stage("foray.tap.failed")` instead of
+     `this.log.record(...)`. The ring stays empty and the first assertion fails,
+     which is how this defect would otherwise have shipped looking correct. */
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const entries = parse(store).entries;
+  assert.equal(entries.length, 1, "a failed first tap has to survive as its own entry");
+  assert.equal(entries[0].type, "tapFail");
+  assert.equal(entries[0].phase, "start");
+  assert.equal(entries[0].error, "NotAllowedError");
+  assert.equal(entries[0].seq, 1, "and it is sequenced like everything else in the ring");
+});
+
+test("the phase is one of two words, and anything else is normalised rather than stored", () => {
+  /* The phase is the one thing only the PAGE knows — whether the tap got nowhere
+     or failed over audio already playing. It is a vocabulary word, so it obeys the
+     same rule as a stage name: never data.
+
+     MUTATION: store `String(phase)` without the `TAP_PHASES` check. The third
+     entry keeps the caller's text and this fails — and a caller of another vintage
+     could put a Foray id into a record built to be pasted into an issue. */
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: "start", name: "TypeError" });
+  diag.tapFailed({ phase: "control", name: "TypeError" });
+  diag.tapFailed({ phase: "segment 4 of grilling-history-1", name: "TypeError" });
+
+  assert.deepEqual(parse(store).entries.map((e) => e.phase), ["start", "control", "start"]);
+});
+
+test("an error NAME is kept and an error MESSAGE is refused", () => {
+  /* The privacy rule of §2, applied to the one field #225 adds. A `.name` is a
+     closed vocabulary and answers the only question asked of it — was the browser
+     refusing, or did the code break. A `.message` carries prose and URLs.
+
+     MUTATION: drop the character check and return the trimmed string. Every
+     assertion from the third down fails. */
+  assert.equal(errorNameOf("NotAllowedError"), "NotAllowedError");
+  assert.equal(errorNameOf("TypeError"), "TypeError");
+
+  assert.equal(errorNameOf("load failed (code 4) for https://cdn.test/a.mp3"), null);
+  assert.equal(errorNameOf("player.forayJump is not a function"), null);
+  assert.equal(errorNameOf("play.rejected"), null, "a dotted stage name is not an error name");
+  assert.equal(errorNameOf(""), null);
+  assert.equal(errorNameOf(null), null);
+  assert.equal(errorNameOf("A".repeat(49)), null, "and it is bounded like a stage name");
+});
+
+test("a failure with no error class is recorded as one rather than as a blank", () => {
+  /* A rejection carrying nothing is a real outcome, and a different finding from a
+     field that was never written — a reader who sees a gap will assume the second.
+
+     THE ASSERTION IS ON THE STORED ENTRY, NOT ON THE REPORT, and that distinction
+     is the entire value of this test. `lineFor` renders `e.error ?? "none"`, so a
+     MISSING key and a null one produce the identical line. The first draft of this
+     test asserted only the report text, and the mutation below SURVIVED it — the
+     report cannot tell the two apart, and only the JSON a founder pastes can. Kept
+     as written because it is the clearest example in this file of a green test
+     pinning nothing.
+
+     MUTATION: omit the `error` key when the name is null —
+     `...(errorNameOf(name) ? { error: errorNameOf(name) } : {})`. The `in` check
+     below fails; the `match` at the bottom does not. */
+  const { diag, store, log } = mk();
+  diag.tapFailed({ phase: "control" });
+
+  const entry = parse(store).entries[0];
+  assert.ok("error" in entry, "the field is written even with no class, so a reader can tell it was asked");
+  assert.equal(entry.error, null);
+  assert.match(formatDiagnosticReport(log.read()), /control failed\s+error=none/);
+});
+
+test("the report names a failed tap in words rather than dumping its JSON", () => {
+  /* This is the surface a founder reads ON A PHONE, so an entry that falls through
+     to `lineFor`'s `default` is a brace-and-quote blob in a panel about 340 px wide.
+
+     MUTATION: delete the `tapFail` case from `lineFor`. The default branch
+     JSON-stringifies the entry and the second assertion fails. */
+  const { diag, log } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  const line = formatDiagnosticReport(log.read()).split("\n").find((l) => l.includes("tapFail"));
+
+  assert.match(line, /start failed\s+error=NotAllowedError/);
+  assert.ok(!line.includes("{"), `the report is read, not parsed: ${line}`);
+});
+
+test("a phase that answers differently each time it is read cannot smuggle text in", () => {
+  /* THE HOLE REVIEW FOUND IN THE FIRST DRAFT OF THIS FEATURE, and it is the
+     reason `asText` exists. That draft read `String(phase)` once for the
+     vocabulary check and a second time for the value it stored, so an object
+     whose `toString` answered "control" first and a URL afterwards passed the
+     gate and was stored anyway — straight into the report a founder pastes into
+     an issue. `window.forayNoteTapFailure` is a public global on a page with no
+     import boundary, so "a caller of another vintage" is this record's stated
+     threat model, not a hypothetical.
+
+     MUTATION: restore `TAP_PHASES.has(String(phase)) ? String(phase) : "start"`.
+     The smuggled string is stored and both of the last two assertions fail. */
+  const twoFaced = () => {
+    let reads = 0;
+    return { toString() { reads += 1; return reads === 1 ? "control" : "https://cdn.test/a.mp3?token=SECRET"; } };
+  };
+
+  assert.equal(tapPhaseOf(twoFaced()), "control", "coerced once, so the checked value IS the returned value");
+
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: twoFaced(), name: "TypeError" });
+
+  const stored = parse(store).entries[0].phase;
+  assert.equal(stored, "control");
+  assert.ok(!stored.includes("cdn.test"), `a record built to be pasted into an issue must not carry this: ${stored}`);
+});
+
+test("a value that refuses to become text is dropped rather than thrown", () => {
+  /* `String(v)` runs `v.toString()`, which can throw — and both sanitisers run
+     inside `app.js`'s two failure guards, where a throw is precisely the outage
+     this record was built to explain. A record that took the page down would be
+     the instrument destroying the measurement.
+
+     MUTATION: drop the try/catch in `asText` and return `String(v ?? "")`. Every
+     call below throws and this fails. */
+  const hostile = { toString() { throw new Error("no"); } };
+
+  assert.equal(errorNameOf(hostile), null);
+  assert.equal(tapPhaseOf(hostile), "start");
+
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: hostile, name: hostile });
+  assert.deepEqual(parse(store).entries.map((e) => [e.phase, e.error]), [["start", null]]);
+});
+
+test("a mashed dead button does not evict the seams that explain why it is dead", () => {
+  /* THE FOUNDER'S REPORT IS A MASHED BUTTON: a play control that does nothing
+     gets pressed again, and again. Uncoalesced, ~200 taps clear a 200-entry ring
+     — measured at 200 of 200 seam entries dropped — so the failure destroys its
+     own evidence, and it does it exactly when the `control` phase says a drive
+     was already underway.
+
+     MUTATION: delete the coalescing branch so every tap calls `log.record(...)`.
+     The ring fills with tapFail rows, the seam is evicted, and the first three
+     assertions fail. */
+  const { diag, log, store } = mk({ cap: 8 });
+  log.record("seam", { fromId: "sa", toId: "sb", observedGapMs: 2000 });
+  for (let i = 0; i < 50; i++) diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const entries = parse(store).entries;
+  assert.equal(entries.length, 2, "one seam, one coalesced failure");
+  assert.equal(entries[0].type, "seam", "the seam that explains the failure outlives it");
+  assert.equal(entries[1].repeated, 50, "and the count is the evidence, not fifty identical rows");
+  /* MUTATION: drop the `x${e.repeated}` clause from `lineFor`. This fails, and the
+     one surface a founder reads would say a dead button was pressed once. */
+  assert.match(formatDiagnosticReport(log.read()), /start failed\s+error=NotAllowedError\s+x50/);
+});
+
+test("today's failed taps are never folded into YESTERDAY's entry", () => {
+  /* THE DEFECT REVIEW FOUND IN THE FIRST VERSION OF COALESCING, and the reason it
+     anchors on identity rather than on the tail's shape.
+
+     The ring is DURABLE. A new session's `PlayerDiagnostics` loads the previous
+     session's entries verbatim, and a failed tap that lands before `boot()` has
+     written its row sees yesterday's matching `tapFail` sitting at the tail. Shape
+     matching folded today's taps into it — keeping YESTERDAY's `wall` and `seq` —
+     so a drive on which the play button failed left no row, no clock and no
+     sequence number of its own. A button that failed yesterday with
+     `NotAllowedError` and fails again today is precisely this feature's case, so
+     that was the likely path, not the exotic one.
+
+     MUTATION: match on the tail's fields —
+     `last.type === "tapFail" && last.phase === phaseName && last.error === error`
+     — instead of on `this._lastTap`. Today's entry is never created and every
+     assertion below fails.
+
+     It also fixes the second head of the same defect: a restored row carries no
+     live `repeated` binding, and `+= 1` on a missing field yields NaN. */
+  const store = fakeStore();
+  const c = clock();
+
+  // Yesterday: a session that ended with a coalesced run of failed taps.
+  const first = new PlayerDiagnostics({ log: new DiagnosticLog({ storage: store, now: c.now }), now: c.now });
+  first.tapFailed({ phase: "start", name: "NotAllowedError" });
+  first.tapFailed({ phase: "start", name: "NotAllowedError" });
+  assert.equal(parse(store).entries.length, 1, "yesterday coalesced normally");
+
+  // Today: a NEW instance over the SAME durable store, same failure.
+  c.tick(15 * 60 * 60 * 1000);
+  const today = new PlayerDiagnostics({ log: new DiagnosticLog({ storage: store, now: c.now }), now: c.now });
+  today.tapFailed({ phase: "start", name: "NotAllowedError" });
+  today.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const entries = parse(store).entries;
+  assert.equal(entries.length, 2, "today gets its own row rather than incrementing yesterday's");
+  assert.equal(entries[0].repeated, 2);
+  assert.equal(entries[1].repeated, 2);
+  assert.ok(entries[1].wall > entries[0].wall, "and its own clock");
+  assert.ok(entries[1].seq > entries[0].seq, "and its own sequence number");
+  assert.ok(Number.isFinite(entries[1].repeated), "a restored row never turns a count into NaN");
+});
+
+test("a cleared record does not leave a counter pointing at an entry that is gone", () => {
+  /* `reset()`'s own stated reason, applied to the new state: a Clear during
+     playback drops the ring, and what is in flight has to go with it.
+
+     BE PRECISE ABOUT WHAT THIS PINS, because mutation testing showed the obvious
+     version of this test pinned nothing. Removing `this._lastTap = null` from
+     `reset()` changes NO behaviour reachable from the public surface: the
+     coalescing branch requires `this._lastTap === entries[entries.length - 1]`,
+     and an orphan from a cleared ring can never again be the tail of it, so the
+     identity check already makes the behavioural assertions below pass either
+     way. Those assertions are still worth having — they are the property a reader
+     cares about — but the invariant assertion is the one that kills the mutant,
+     and it is white-box on purpose, because the line is defence in depth for a
+     class whose `_seam` and `_stop` are cleared beside it for the same reason.
+
+     MUTATION: remove `this._lastTap = null` from `reset()`. Only the middle
+     assertion fails. */
+  const { diag, log, store } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  log.clear();
+  diag.reset();
+
+  assert.equal(diag._lastTap, null, "nothing in flight survives a Clear");
+
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  const entries = parse(store).entries;
+  assert.equal(entries.length, 1, "one entry, belonging to the record that exists now");
+  assert.equal(entries[0].repeated, 1, "counting from one, not continuing an evicted run");
+});
+
+test("a coalesced run says how long it went on, not only how many times", () => {
+  /* `x50` alone cannot separate a hand mashing a dead button from a listener
+     returning to it four times across five minutes, and those are different bugs.
+     The FIRST `wall` stays the entry's stamp — it is when the failure began, and
+     it is what keeps this row ordered against the seam rows that explain it — so
+     the end of the run needs its own field.
+
+     MUTATION: stop writing `lastWall` on a repeat. The report loses "over …" and
+     the last assertion fails. */
+  const { diag, log, store } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const entry = parse(store).entries[0];
+  assert.equal(entry.repeated, 2);
+  assert.equal(entry.lastWall, entry.wall, "same instant here, because the clock did not move");
+
+  // And a run that spans real time reports the span.
+  const store2 = fakeStore();
+  const c = clock();
+  const d2 = new PlayerDiagnostics({ log: new DiagnosticLog({ storage: store2, now: c.now }), now: c.now });
+  d2.tapFailed({ phase: "start", name: "NotAllowedError" });
+  c.tick(9400);
+  d2.tapFailed({ phase: "start", name: "NotAllowedError" });
+
+  const log2 = new DiagnosticLog({ storage: store2, now: c.now });
+  assert.match(formatDiagnosticReport(log2.read()), /x2 over 9400ms/);
+});
+
+test("a different failure starts a new entry, so a coalesced count always means one thing", () => {
+  /* A count is only readable if a run means "this, n times, with nothing else in
+     between". MUTATION: coalesce on `type` alone, ignoring phase and error. All
+     of these collapse into one row and this fails — and "x5" would then mean five
+     unrelated failures, which is worse evidence than no count at all. */
+  const { diag, store } = mk();
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  diag.tapFailed({ phase: "start", name: "NotAllowedError" });
+  diag.tapFailed({ phase: "start", name: "TypeError" });      // a different class
+  diag.tapFailed({ phase: "control", name: "TypeError" });    // a different phase
+  diag.visibility(true);                                      // and something else entirely
+  diag.tapFailed({ phase: "control", name: "TypeError" });
+
+  const taps = parse(store).entries.filter((e) => e.type === "tapFail");
+  assert.deepEqual(taps.map((e) => [e.phase, e.error, e.repeated]), [
+    ["start", "NotAllowedError", 2],
+    ["start", "TypeError", 1],
+    ["control", "TypeError", 1],
+    ["control", "TypeError", 1],
+  ], "a run is broken by a different failure OR by anything else reaching the ring");
 });

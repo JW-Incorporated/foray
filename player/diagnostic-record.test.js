@@ -874,3 +874,69 @@ test("the surface's text is reachable through the bridge app.js actually uses", 
   assert.match(globalThis.window.forayDiagnosticReport(), /Nothing recorded yet/);
   restore();
 });
+
+test("the page's failed-tap bridge reaches the record with its arguments the right way round", async (t) => {
+  /* THE ONE MAPPING NO OTHER SUITE CAN SEE (#225). `player/foray-playback.test.js`
+     proves app.js CALLS `window.forayNoteTapFailure(phase, name)` — against a fake.
+     `player/diagnostic-log.test.js` proves `tapFailed` stores what it is handed.
+     Between them sits one line of client.js,
+     `(phase, errorName) => diag.tapFailed({ phase, name: errorName })`, which
+     review found was covered by neither.
+
+     TRANSPOSE THOSE TWO ARGUMENTS AND EVERY SUITE STAYS GREEN while every entry
+     in the field forever reads `start failed  error=start`: "NotAllowedError" is
+     not in the phase vocabulary so it normalises to `start`, and "control" is a
+     valid identifier so it is stored as the error class. A total, silent loss of
+     the diagnostic, with nothing red anywhere. That is the shape CLAUDE.md's
+     "audit the harness, not only the test" is about.
+
+     MUTATION: `diag.tapFailed({ phase: errorName, name: phase })` in client.js.
+     The `deepEqual` below fails. */
+  const { win, rows, restore } = await bootClient(t);
+
+  assert.equal(typeof win.forayNoteTapFailure, "function",
+    "app.js is a classic script and cannot import this module; the bridge is the only way in");
+  assert.equal(win.forayNoteTapFailure("control", "NotAllowedError"), true);
+
+  assert.deepEqual(rows("tapFail").map((e) => [e.phase, e.error, e.repeated]),
+    [["control", "NotAllowedError", 1]]);
+
+  /* AND IT IS TOTAL FOR A CALLER THAT IS NOT app.js. `app.js` wraps its own call,
+     which protects app.js and nothing else; a published global that throws is a
+     hazard the next caller inherits undocumented.
+
+     MUTATION: drop the try/catch in `asText`. `tapFailed` throws, the bridge's own
+     catch turns it into `false`, and the first assertion fails — note that it fails
+     on the RETURN VALUE, not on a thrown error, because the bridge is the thing
+     standing behind it. An earlier draft of this comment claimed the call would
+     throw; it would not, and saying so was wrong. */
+  assert.equal(win.forayNoteTapFailure("start", { toString() { throw new Error("no"); } }), true);
+  assert.deepEqual(rows("tapFail").map((e) => e.error), ["NotAllowedError", null]);
+
+  restore();
+});
+
+test("the failed-tap bridge answers rather than throws — a source assertion", () => {
+  /* A SOURCE ASSERTION, and deliberately, for the reason the `forayDiagnosticReport`
+     one above gives. The bridge's own try/catch is currently UNREACHABLE from any
+     argument it accepts: `asText` made `tapFailed` total, so nothing a caller can
+     pass gets past it. Review confirmed that by deleting the guard and watching
+     both suites stay green.
+
+     That leaves two honest options — delete it as dead, or pin it as a property of
+     the published surface. It is kept and pinned: `window.forayNoteTapFailure` is a
+     global on a page with no import boundary, `tapFailed` is not frozen, and the
+     next change inside it is exactly the one that would make a public global start
+     throwing at callers who never asked for that risk. The guard is insurance
+     against this module's own future, which a behavioural test cannot express and a
+     source assertion can.
+
+     MUTATION: remove the `catch (_) { return false; }` from the bridge. This
+     fails. */
+  const src = fs.readFileSync(new URL("./client.js", import.meta.url), "utf8");
+  assert.match(
+    src,
+    /window\.forayNoteTapFailure = [\s\S]{0,600}?catch \(_\) \{\s*return false;/,
+    "a published global must answer rather than throw"
+  );
+});

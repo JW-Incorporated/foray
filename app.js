@@ -1844,6 +1844,46 @@ function paintForayFailure(signal) {
    state is still the truth, and clearing the page's flags would leave a button
    labelled "Pause" that means "start" — the very confusion this issue is about.
    That one says so and touches nothing; the next tick owns the state. */
+/* The record's copy of a failed tap (#225), and the only evidence that outlives
+   the message on screen.
+
+   A console line is not evidence on a phone — that is the whole reason #225 was
+   reported as "several errors" with no error in it. `cp_diag` already holds the
+   browser's side of a refusal (`play.rejected` becomes a `stop/autoplay` entry);
+   this is the page's side, the exception that actually came back out of
+   `playForay`, which nothing else in the record can see.
+
+   WRAPPED, AND THE WRAP IS THE POINT. This runs inside the two guards that are
+   this page's last defence against an unhandled rejection. A diagnostic that
+   threw here would take the on-screen message down with it and restore the exact
+   failure mode the issue is about: a tap that does nothing and says nothing.
+   `record()` and `save()` are both written never to throw — but the function on
+   `window` comes from a module the service worker refreshes independently of this
+   file (see the vintage note in `renderForay`), so "never throws" is a property
+   of a version, not of this call. Checked, and caught anyway.
+
+   THE NAME, NEVER THE MESSAGE. `err.message` carries URLs and prose, and this
+   record is built to be pasted into an issue. `player/diagnostic-log.js` drops
+   anything that is not a bare identifier, so a message would be discarded there
+   regardless; sending only the name means the rule is visible on both sides. */
+function noteTapFailure(phase, err) {
+  /* READ THE NAME IN ITS OWN GUARD. `err` is whatever was thrown, and reading a
+     property off it can itself throw — a Proxy, a getter, an object from another
+     realm. Folded into the guard below, a failure here would skip the write
+     entirely, so the one error too strange to describe would also be the one that
+     left no trace. `null` is a worse answer than `TypeError` and a far better one
+     than silence. */
+  let name = null;
+  try { name = err?.name ?? null; } catch (_) { name = null; }
+  try {
+    if (typeof window.forayNoteTapFailure === "function") {
+      window.forayNoteTapFailure(phase, name);
+    }
+  } catch (_) {
+    /* A record that will not write is not a reason to lose the line on screen. */
+  }
+}
+
 async function guardForayStart(run) {
   try {
     return await run();
@@ -1851,7 +1891,38 @@ async function guardForayStart(run) {
     console.warn("[foray] start failed", err);
     state.forayPlaying = null;
     state.forayPainted = null;
-    paintForayFailure(err?.name ? `${err.name}: ${err.message ?? ""}` : String(err));
+    /* THE PAINT FIRST AND THE RECORD LAST, but the record lands either way.
+
+       The order: the bridge comes from a module the service worker refreshes
+       independently of this file, which is why it is wrapped at all. A `try`
+       covers a throw and not a slow synchronous write, and every statement
+       between the catch and the paint is one that can stand between a listener
+       and the only thing on screen telling them what happened. #225 is a
+       listener-facing bug, so the listener is served first.
+
+       The `finally`: the argument to `paintForayFailure` is built before the call,
+       and `String(err)` and both template reads throw on an exotic or hostile
+       `err` — the same hazard `diagnostic-log.js`'s `asText` exists for. Without
+       the `finally`, moving the record after the paint would mean that a failure
+       to paint costs the record too, in exactly the case the evidence matters
+       most: the surface did not appear, which IS this issue's literal symptom.
+
+       And the signal is built in its own guard first, because that argument is
+       evaluated BEFORE the call: `String(err)` and both template reads throw on a
+       hostile `err`, and an exception raised here would escape this catch block
+       and become the unhandled rejection the whole guard exists to prevent.
+       "Error" is a poor description and it still reaches the listener as the
+       ordinary load-failure line, which is the honest fallback — something failed
+       and pressing play again is the thing to do. */
+    let signal = "Error";
+    try {
+      signal = err?.name ? `${err.name}: ${err.message ?? ""}` : String(err);
+    } catch (_) { /* an error too strange to describe is still an error */ }
+    try {
+      paintForayFailure(signal);
+    } finally {
+      noteTapFailure("start", err);
+    }
     return null;
   }
 }
@@ -1867,6 +1938,8 @@ async function guardForayTap(run) {
       line.textContent = FY_TAP_FAILED;
       line.classList.remove("is-hint");
     }
+    // Last, for the reason given in `guardForayStart` above.
+    noteTapFailure("control", err);
     return null;
   }
 }
@@ -2738,8 +2811,9 @@ let diagUi = null;
 
 const DIAG_SUB =
   "What the player measured on this device: seam gaps, load deadlines, "
-  + "out-point overshoot, stops and resume decisions. It is stored on this device "
-  + "only and is never sent anywhere. Copy it into a bug report.";
+  + "out-point overshoot, stops, resume decisions, and any press that didn't take. "
+  + "It is stored on this device only and is never sent anywhere. "
+  + "Copy it into a bug report.";
 
 function buildDiagSheet() {
   const root = ddEl("div", "fy-sheet");

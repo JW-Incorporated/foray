@@ -82,7 +82,9 @@
      - WRITES ARE DURABLE AT THE MOMENT OF THE EVENT, not flushed on unload. A page
        suspended mid-seam is exactly when the record matters.
      - THE MESSAGE TEXT IS NEVER STORED — only matched numbers, authored segment
-       ids, and stage names from a fixed vocabulary. No audio, no URLs, no identity.
+       ids, stage names from a fixed vocabulary, and the error CLASS of a failed
+       tap (#225: an `Error`/`DOMException` `.name`, never a `.message`). No audio,
+       no URLs, no identity. `diagnostic-log.js`'s header holds the full rule.
 */
 
 import { PlayerQueueManager } from "./queue-manager.js";
@@ -249,6 +251,38 @@ window.forayDiagnosticClear = () => { diagLog.clear(); diag.reset(); return true
  * leaves the device untouched on purpose, and that has to include this record.
  */
 window.forayForgetDiagnostics = () => { diagLog.clear(); diag.reset(); return true; };
+/**
+ * A tap the PAGE saw fail, into the record (#225).
+ *
+ * The one thing the record could not see. Everything else in it is emitted from
+ * inside this module or the element below it, so a failure that came back OUT of
+ * `playForay` as an exception — a module skew, a queue that could not be built, a
+ * rejection with no media event behind it — reached `app.js`'s guards, painted a
+ * line on screen, and left the record with no entry for the tap at all. The
+ * founder's "several errors" is exactly that class, and it is why #225's next
+ * field report should arrive with evidence instead of a count.
+ *
+ * A BRIDGE AND NOT AN IMPORT because `app.js` is a classic script, like every
+ * other `window.foray*` above it. It takes an error NAME, never a message: the
+ * sanitising is done in `diagnostic-log.js` so that a caller of a different
+ * vintage cannot get raw text into a record that gets pasted into issues.
+ *
+ * Returns a boolean rather than the entry, so nothing on the page can come to
+ * hold a reference into the ring.
+ */
+window.forayNoteTapFailure = (phase, errorName) => {
+  /* TOTAL FOR EVERY CALLER, not just for the one that has its own guard. `app.js`
+     wraps its call because this bridge may be of a different vintage; that
+     protects `app.js` and does nothing for the next caller. A published global
+     that can throw is a hazard the next person inherits undocumented, so the
+     boolean this already returns becomes the honest answer instead. */
+  try {
+    diag.tapFailed({ phase, name: errorName });
+    return true;
+  } catch (_) {
+    return false;
+  }
+};
 
 /* ---------- DOM ---------- */
 

@@ -1591,6 +1591,125 @@ test("a control that throws over LIVE audio says so without lying about the stat
   assert.equal(bridge.calls.filter((c) => c.name === "forayToggle").length, 2);
 });
 
+test("a failed start leaves a trace in the record, not only on the screen", async () => {
+  /* THE HALF OF #225 THAT PAYS FOR THE NEXT REPORT. The line on screen is for the
+     listener in front of the phone; this is for whoever reads the issue afterwards.
+     A `console.warn` is not evidence on a device with no console — "several errors"
+     with no error in it is precisely what the founder was able to send, and it is
+     why this issue could not be diagnosed from the report.
+
+     MUTATION: delete `noteTapFailure("start", err)` from `guardForayStart`. The
+     first assertion fails. */
+  const boom = Object.assign(new Error("player.forayJump is not a function"), { name: "TypeError" });
+  const { dom, ctx } = await mountForayPage({ startThrows: boom });
+  const noted = [];
+  // `ctx.window === ctx`, so this IS `window.forayNoteTapFailure` as app.js reads it.
+  ctx.forayNoteTapFailure = (phase, name) => { noted.push({ phase, name }); return true; };
+
+  await dom.el("fy-play").click();
+
+  assert.deepEqual(noted, [{ phase: "start", name: "TypeError" }], "the record has to learn what the page saw");
+  /* MUTATION: pass `err` rather than `err?.name`. `name` arrives as an Error, the
+     deepEqual above fails, and a `.message` carrying URLs would be on its way into
+     a record built to be pasted into an issue. */
+  assert.equal(typeof noted[0].name, "string");
+  // The listener-facing surface is unchanged by the new call — it still comes first.
+  assert.equal(dom.el("fy-error").hidden, false, "the message on screen is not traded for the record");
+});
+
+test("a control that fails over live audio is recorded as a control, not as a start", async () => {
+  /* The two phases answer different questions — a tap that got NOWHERE versus a
+     transport action that did not take over audio still playing — and they point
+     at different halves of the code. A record that called both "start" would send
+     the next investigation to the wrong one.
+
+     MUTATION: pass "start" in `guardForayTap`. This fails. */
+  const { dom, bridge, resolved, ctx } = await mountForayPage();
+  await dom.el("fy-play").click();
+  const onChange = bridge.lastOnChange();
+  onChange({ forayId: FORAY_ID, index: 4, playing: true, loading: false, gap: false, ended: false, elapsedSec: 600, totalSec: resolved.totalSec, error: null });
+
+  const noted = [];
+  ctx.forayNoteTapFailure = (phase, name) => { noted.push({ phase, name }); return true; };
+  bridge.throwOnToggle(Object.assign(new Error("nope"), { name: "TypeError" }));
+  await dom.el("fy-play").click();
+
+  assert.deepEqual(noted, [{ phase: "control", name: "TypeError" }]);
+});
+
+test("a record that throws does not cost the listener the message on screen", async () => {
+  /* THE GUARD'S GUARD, and the reason the write is wrapped where it stands.
+     `noteTapFailure` runs inside the two functions that are this page's last
+     defence against an unhandled rejection, and app.js is regularly paired with a
+     player module of a different vintage — the service worker refreshes the two
+     independently (see the note in `renderForay`), so "this function never throws"
+     is a property of a version, not of the call.
+
+     MUTATION: remove the try/catch inside `noteTapFailure`. The throw escapes the
+     catch block; the click handler at `app.js`'s `#fy-play` is `async`, so
+     `await dom.el("fy-play").click()` REJECTS and this test dies on that rejection
+     rather than on the assertions below. Which assertion does the killing changed
+     when review moved the record write to AFTER the paint — the line is on screen
+     by then — and both halves still have to hold: the guard must not re-raise (a
+     throw here is exactly the unhandled rejection #225 is about), and the message
+     must already be painted before the record is touched at all. */
+  const boom = Object.assign(new Error("boom"), { name: "TypeError" });
+  const { dom, ctx } = await mountForayPage({ startThrows: boom });
+
+  /* READ THE DOM FROM INSIDE THE BRIDGE, which is the only way to see the ORDER
+     rather than the outcome. A second review found the first version of this test
+     asserted only the end state — and since the throw is swallowed either way, it
+     passed with the record write moved back ABOVE the paint. It could not see the
+     one property the reorder exists to create. */
+  let paintedWhenNoted = null;
+  ctx.forayNoteTapFailure = () => {
+    // THE FIRST observation only. Overwriting would let a mutant that records
+    // before the paint AND again after it be masked by its own second call.
+    if (paintedWhenNoted === null) paintedWhenNoted = dom.el("fy-error").textContent;
+    throw new Error("the record is broken");
+  };
+
+  await dom.el("fy-play").click();            // must NOT reject
+
+  /* MUTATION: move `noteTapFailure("start", err)` back above the `try`/paint in
+     `guardForayStart`. `paintedWhenNoted` is "" and this fails. */
+  assert.match(paintedWhenNoted ?? "", /press play/i,
+    "the line was already on screen before the record was touched at all");
+  assert.equal(dom.el("fy-error").hidden, false, "the line on screen outranks the record");
+  assert.match(dom.el("fy-error").textContent, /press play/i);
+});
+
+test("an error too strange to describe still reaches the screen AND the record", async () => {
+  /* THE CASE THE REORDER CREATED, and the reason both reads in this guard are
+     themselves guarded. Everything `guardForayStart` does with `err` can throw
+     when `err` is hostile: `String(err)` and the two template reads that build the
+     message, and `err?.name` inside the record write. A throw from the first
+     escapes the catch block and becomes the unhandled rejection the guard exists
+     to prevent; a throw from the second silently skips the write. Which leaves the
+     strangest error — the one worth having evidence about — as the one that
+     produces neither a message nor a trace.
+
+     A Proxy that refuses every property read is the cheapest faithful stand-in for
+     that class, and it is not far-fetched: a cross-realm object or a getter that
+     throws does the same.
+
+     MUTATION 1: unwrap the `signal` construction back to a bare argument. The
+     click rejects and this fails before any assertion.
+     MUTATION 2: fold the `err?.name` read into `noteTapFailure`'s existing try. It
+     throws, the write is skipped, and `noted` is empty. */
+  const hostile = new Proxy({}, { get() { throw new Error("no property is readable"); } });
+  const { dom, ctx } = await mountForayPage({ startThrows: hostile });
+  const noted = [];
+  ctx.forayNoteTapFailure = (phase, name) => { noted.push({ phase, name }); return true; };
+
+  await dom.el("fy-play").click();            // must NOT reject
+
+  assert.equal(dom.el("fy-error").hidden, false, "the listener is still told something failed");
+  assert.match(dom.el("fy-error").textContent, /press play/i, "and still told what to do next");
+  assert.deepEqual(noted, [{ phase: "start", name: null }],
+    "and the tap is recorded even when nothing about the error can be read");
+});
+
 test("the tap reaches playForay with nothing awaited in front of it", async () => {
   /* THE FIRST DEFECT IN THE FOUNDER'S SENTENCE, pinned as far as this harness
      can reach. Safari lifts an element's autoplay restriction inside the

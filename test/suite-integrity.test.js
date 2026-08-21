@@ -79,15 +79,30 @@ const FLOORS = {
      Zero slack, like media-session and data-deletion below and for the same
      reason: what these guard is a set of decisions each one edit from its
      opposite. Raise them when the suites grow. */
-  "player/diagnostic-log.test.js": 38,
-  "player/diagnostic-record.test.js": 21,
+  /* 38 -> 47 with #225: a failed TAP is an entry rather than a stage, because the
+     tap the record exists to explain is a cold start with no seam to hang a stage
+     on. Nine, and three of them exist because something was caught rather than
+     imagined — a test that passed vacuously (`lineFor` renders a missing field and
+     a null one identically, so only the stored entry can tell them apart), a
+     sanitiser that coerced twice and could be handed one string for the check and
+     another for the value, and a mashed button that evicted the very seam rows
+     explaining why it was dead.
+     21 -> 22: the bridge between the page and this record was covered by neither
+     suite, and transposing its two arguments left everything green. */
+  "player/diagnostic-log.test.js": 50,
+  "player/diagnostic-record.test.js": 23,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
   "player/durable-store.test.js": 74,
   "player/idb-tier.test.js": 23,
-  "player/foray-playback.test.js": 83,
+  /* 83 -> 87 with #225: the page's two failure guards now reach the field record.
+     Two of the four exist to keep the instrument from becoming the outage it was
+     built to explain — one pins that the message is on screen BEFORE the record is
+     touched (the obvious version of it could not see the order at all), and one
+     that an error too hostile to read still produces both. */
+  "player/foray-playback.test.js": 87,
   "player/foray-progress.test.js": 58,
   "player/foray-queue.test.js": 37,
   "player/foray-resolve.test.js": 54,
