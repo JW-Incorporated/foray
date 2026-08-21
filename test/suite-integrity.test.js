@@ -158,6 +158,7 @@ const FLOORS = {
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
+  "test/app-name.test.js": 6,
   "test/app-security.test.js": 22,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
