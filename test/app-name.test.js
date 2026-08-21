@@ -491,7 +491,7 @@ test("the playlist-shortfall copy names the app, not the unit", () => {
   const row = fnBody("app.js", "archivedRow");
   const note = fnBody("app.js", "partsNote");
   for (const [where, body, phrase] of [
-    ["archivedRow", row, `not in ${APP_NAME} right now`],
+    ["archivedRow", row, `not in ${APP_NAME}'s catalogue right now`],
     ["archivedRow", row, `Saved before ${APP_NAME} kept episode details`],
     ["partsNote", note, `not in ${APP_NAME}'s catalogue right now`],
     ["partsNote", note, `saved before ${APP_NAME} kept episode details`],
@@ -554,7 +554,7 @@ test("the mini-player's back link lowercases the unit", () => {
     /el\("a", "fp-openep fp-toforay", "([^"]*)"\)/
   );
   assert.ok(m, "player/client.js no longer builds the .fp-toforay link");
-  assert.equal(m[1], "Back to the foray");
+  assert.equal(m[1], "Back to the running order");
 });
 
 /* The home screen's kicker above each foray's title. A LABEL, not prose, so a

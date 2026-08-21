@@ -526,7 +526,7 @@ test("an archived part is SHOWN and labelled, never hidden — 'label, never exc
   assert.strictEqual(goneCount(html), 1, "the departed one must be marked");
   assert.ok(html.includes("Episode 2 of something"), "the archived part must still be named");
   assert.ok(html.includes("Show 2"), "and still credit its show");
-  assert.ok(html.includes("not in 4a right now"), "and say what happened to it");
+  assert.ok(html.includes("not in 4a's catalogue right now"), "and say what happened to it");
 });
 
 test("THE SECOND RENDER SAYS WHAT THE FIRST SAID — liveness is the pool, not the snapshot cache", () => {
@@ -561,7 +561,7 @@ test("THE SECOND RENDER SAYS WHAT THE FIRST SAID — liveness is the pool, not t
   for (const [label, html] of [["first", first], ["second", second]]) {
     assert.strictEqual(rowCount(html), 2, `${label} render: both parts must be there`);
     assert.strictEqual(goneCount(html), 1, `${label} render: the archived part must stay marked`);
-    assert.ok(html.includes("not in 4a right now"), `${label} render: it must keep its caption`);
+    assert.ok(html.includes("not in 4a's catalogue right now"), `${label} render: it must keep its caption`);
     assert.ok(html.includes("class=\"note\""), `${label} render: the shortfall must still be announced`);
     assert.deepStrictEqual(nextMarkers(html), ["2"], `${label} render: next belongs on the live part`);
     assert.strictEqual((html.match(/data-play="/g) || []).length, 1,
@@ -591,7 +591,7 @@ test("a rotated-out part does not become live for a DIFFERENT playlist that also
   assert.strictEqual(goneCount(m.view()), 1, "A must mark it");
   m.ctx.renderPlaylistDetail("qB");
   assert.strictEqual(goneCount(m.view()), 1, "and B must mark it too, on its first render");
-  assert.ok(m.view().includes("not in 4a right now"));
+  assert.ok(m.view().includes("not in 4a's catalogue right now"));
 });
 
 test("an archived pick never becomes the continue banner, and cannot degrade a live snapshot", () => {
