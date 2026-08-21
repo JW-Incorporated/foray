@@ -103,7 +103,12 @@ export function titleMatches(title, needles) {
     nothing — both have to be told apart from a real feed, and neither may be
     reported as a successful run of zero episodes. */
 export function feedItems(doc, showId = "?") {
-  let items = doc?.rss?.channel?.item ?? [];
+  /* `||`, NOT `??`, and the difference is a real defect this file already shipped
+     once: fast-xml-parser renders `<item></item>` and `<item/>` as the empty STRING,
+     which `??` passes through to a one-element array. The run then emits zero records
+     and exits 0 saying BACKFILL_COMPLETE — the exact silent success this script exists
+     to make impossible. `""` is falsy, so `||` sends it to the guard below. */
+  let items = doc?.rss?.channel?.item || [];
   if (!Array.isArray(items)) items = [items];
   if (items.length === 0) {
     throw new BackfillError("EMPTY_FEED", `${showId}: feed has zero <item> entries (or is not RSS)`);
@@ -144,7 +149,7 @@ export function buildPayload({ shows, match, newest, episodes, now = new Date() 
   return {
     generated_at: now.toISOString(),
     source: "backfill-show",
-    shows: shows.map((s) => (typeof s === "string" ? s : s.show_id)),
+    shows: shows.map((s) => s.show_id),
     match,
     newest,
     episodes,

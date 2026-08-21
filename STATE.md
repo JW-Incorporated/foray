@@ -50,8 +50,12 @@ docs/. Completed workstreams move to their plan doc's retro section.
   move at all**, because WhiskyCast + Bourbon Pursuit + Spirits & Distilling publish
   **zero transcripts across 2,431 episodes** and #278's gate requires a passage to be
   READ. Of 4,652 episodes across the seven, **33 carry a transcript and 31 of those are
-  Cider Chat**. Cider Chat is also the first NON-DAI drinks source the project has had,
-  so every span in the re-score is playable today rather than blocked on the locate step.
+  Cider Chat**. Cider Chat is the first non-DAI drinks source ever to produce a
+  SCOREABLE verdict here — **not** the first non-DAI drinks show in the catalogue, which
+  an earlier draft claimed: `fermup`, `experimental-brewing` and
+  `craft-beer-and-brewing-magazine-podcast` are all `dai: false` and predate #279. What
+  is new is that every one of #278's five verdict-producing sources was DAI-suspected,
+  so every span in this re-score is playable today rather than blocked on the locate step.
 - **Bundle: 682.0 -> 704.5 KB of 800.0, 3.21 KB per show measured against the 3.20
   projected.** The budget was NOT raised. Headroom ~29 shows. Whole bundle 2.01 -> 2.02
   MB of 3.00. The topic top-up did not fire despite `food/drinks` being a new topic,
@@ -98,9 +102,20 @@ docs/. Completed workstreams move to their plan doc's retro section.
   the guards moved into exported functions (`feedItems`, `selectEpisodes`,
   `buildPayload`, `resolveOutPath`), the record test asserts values and the serialised
   round-trip, unknown flags are now refused rather than ignored, and the suite went
-  18 -> 24 tests. **Ten mutations were run against the new suite and ten were killed**;
-  each test names its own in its comment. The dead `guid` ternary the old claim
-  described is real and is gone — `scan.mjs` still has its copy.
+  18 -> 24 tests. **Twenty mutations were run against the new suite and twenty were
+  killed**; each test names its own in its comment. A second review round is why that
+  number is trustworthy: it caught a `??`-for-`||` in the new `feedItems` that let an
+  empty `<item/>` through as a one-element array — reinstating the silent-success bug
+  one layer down — and four loose-equality survivors under `assert.deepEqual`. Both are
+  fixed and both are now mutations in the list. The dead `guid` ternary the old claim
+  described is real and is gone; `scan.mjs` still has its copy.
+- **What is still NOT covered, so "twenty killed" is not over-read:** `main()`'s
+  wiring. It fetches over the network and is not exported, so deleting its
+  `writeFileSync`, inverting its `--dry-run` branch or dropping its throttle still
+  leaves the suite green. Every *guard* it used to hold is now in an exported function
+  and tested; the plumbing between them is not. Also: the UTC date-shift mutation only
+  fails off UTC — in CI the local and UTC formatters are the same function — so that
+  test's comment names `TZ=America/Los_Angeles` as the way to reproduce it.
 - **Two limitations named rather than fixed.** `PENDING_PATH` is honoured, and it is the
   same env var `scan.mjs` writes, so the header's "cannot clobber a nightly scan" holds
   for the DEFAULT path and not for the env var — `--out` wins over it and is the way to

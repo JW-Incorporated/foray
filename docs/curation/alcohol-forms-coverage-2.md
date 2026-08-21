@@ -793,15 +793,18 @@ them have changed:
   curated cider episodes where there were none, 729 on wine, 2,431 on whisky and spirits.
 - **"It is not fixable by transcription" is less true than it was, and the number that
   says so is 6 -> 7, not 6 -> 16.** #278's queue would have moved six beats. §8's queue
-  is nine ranked rows over five non-DAI shows and *touches* beats 3, 10, 12, 13, 14, 15,
+  is nine ranked rows spanning seven shows, five of them non-DAI, and *touches* beats
+  3, 10, 12, 13, 14, 15,
   19, 22, 26, 29, 37, 38, 39, 44, 51 and 62 — but **only seven of those sixteen are
-  currently empty.** By this document's own §4c list, 19 and 26 are already strong and
-  10, 13, 14, 15, 22, 29 and 51 are already thin, so transcribing the queue would
-  *deepen* those and *close* seven. An earlier draft quoted the sixteen as though all of
-  them were closures and called it "the change this issue bought"; it is not. What this
-  issue bought is that the queue is **nine named episodes in curated shows** rather than
-  a search that returns nothing — a purchase decision instead of a sourcing problem.
-  That is real and worth having. On beats closed it is one more than #278's queue.
+  currently empty**, and those seven are **13, 29, 37, 38, 44, 51 and 62** (§4c's list
+  of the forty). Of the other nine, 19 and 26 are strong (§4a) and 3, 10, 12, 14, 15, 22
+  and 39 are thin, so transcribing the queue would *deepen* those and *close* seven. An
+  earlier draft quoted the sixteen as though all of them were closures and called it
+  "the change this issue bought"; it is not, and a first correction of that draft named
+  the wrong nine. What this issue bought is that the queue is **nine named episodes in
+  curated shows** rather than a search that returns nothing — a purchase decision
+  instead of a sourcing problem. That is real and worth having. On beats closed it is
+  one more than #278's queue.
 - **The failure is still in the chain**, and Act I is still the chain that matters.
   24 of 40 chain beats are empty, nine of them in Act I, and Act I has no strong tape at
   all. **The derivation the founder asked for — "walk me through the production process
@@ -814,9 +817,10 @@ Foray that can demonstrate, with playable tape from people who do the work, how 
 fermentation is stopped on purpose, what a winemaker decides after the yeast finishes,
 why cider apples are inedible, and what a barrel is actually doing. **That is four beats
 of mechanism, and by this document's own gate only one of the four — beat 19 — is
-strong; the other three are thin.** It is not sixteen, and §0's *"curation bought the
-wine and cider families outright"* is too strong for what one strong beat and six thin
-ones buy: it bought a foothold in them.
+strong; the other three are thin.** It is not sixteen. (§0 originally read *"curation
+bought the wine and cider families outright"*, which is too strong for what one strong
+beat and six thin ones buy; it now reads "a foothold", and this note stays so the
+correction is not made twice.)
 
 **And none of it changes the product-mode question.** #287 landed after this pass and
 measured the alcohol Foray at **72.9 % narrator written in full**, against the 40 % line

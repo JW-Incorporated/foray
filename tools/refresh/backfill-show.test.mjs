@@ -154,14 +154,19 @@ test("the emitted record carries every field resolve.mjs reads, WITH ITS VALUE",
     description: "Natural cider is often misunderstood .",
     explicit_hint: false,
   };
-  assert.deepEqual(record, expected);
+  /* STRICT, because `deepEqual` is loose enough to be under-fitted here: `"71" == 71`
+     and `0 == false`, so `duration_min: String(...)`, `apple_collection_id: String(...)`,
+     `audio_bytes: String(...)` and `explicit_hint: ... ? 1 : 0` all survived the loose
+     version. All four were run against this one and all four fail. Types matter to
+     resolve.mjs: `apple_collection_id` goes into a URL and a Map key. */
+  assert.deepStrictEqual(record, expected);
   /* And the key set is exactly this — a record that grew a field resolve.mjs does
      not read is a divergence from scan.mjs's shape, which is the one thing this
      script is not allowed to invent. */
   assert.deepEqual(Object.keys(record).sort(), Object.keys(expected).sort());
   /* The serialisation round-trip, because `in` is not what the pipeline sees.
      An undefined value survives `in` and does not survive the file. */
-  assert.deepEqual(JSON.parse(JSON.stringify(record)), expected);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(record)), expected);
 });
 
 test("topics come from the SHOW's taxonomy_node_ids, which is how a curated show labels its episodes", () => {
@@ -289,6 +294,14 @@ test("an unknown flag is refused rather than ignored", () => {
   assert.equal(codeOf(["--show", "cider-chat", "--newest"]), "MISSING_VALUE");
   /* and the valid line still parses */
   assert.equal(codeOf(["--show", "cider-chat", "--match", "489", "--dry-run"]), null);
+  /* `--out` REACHES the parse result. Pinned because this branch promoted `--out`
+     from a convenience to the documented way of not colliding with a nightly scan
+     (see the header's invariant #2), and nothing tested that the flag arrived.
+     KILLED BY: dropping "--out" from VALUE_FLAGS (it then throws BAD_FLAG), or
+     `out: null` in the returned object. Both run. */
+  const a = parseArgs(["--show", "cider-chat", "--out", "mine.json"]);
+  assert.equal(a.out, "mine.json");
+  assert.equal(parseArgs(["--show", "cider-chat"]).out, null);
 });
 
 // ------------------------------------------------------- the run's invariants --
@@ -318,7 +331,11 @@ test("a feed with no items is an error, and a one-item feed is one item not one 
      by deleting the length check (second). Both run. */
   assert.equal(feedItems({ rss: { channel: { item: item() } } }, "cider-chat").length, 1);
   assert.equal(feedItems({ rss: { channel: { item: [item(), item()] } } }).length, 2);
-  for (const dead of [{}, { rss: {} }, { rss: { channel: {} } }, { html: { body: "404" } }]) {
+  for (const dead of [{}, { rss: {} }, { rss: { channel: {} } }, { html: { body: "404" } },
+    /* THE ONE THAT CAUGHT A REAL REGRESSION. fast-xml-parser renders `<item/>` and
+       `<item></item>` as the empty string, so a `??` here (which this file briefly
+       had) wraps it to `[""]`, passes the guard, emits nothing and exits 0. */
+    { rss: { channel: { item: "" } } }]) {
     const e = (() => { try { feedItems(dead, "cider-chat"); return null; } catch (x) { return x; } })();
     assert.equal(e?.code, "EMPTY_FEED", `${JSON.stringify(dead)} was read as a successful zero-episode run`);
   }
@@ -373,7 +390,13 @@ test("release_date is the UTC day, which SHIFTS a non-UTC feed forward — pinne
      script introduced — but the ONLY offset in the fixture above is +0000, the one
      value where the shift cannot appear, and that is how it stayed invisible.
      Change the behaviour and this test tells you what you changed.
-     KILLED BY: switching to a local-time formatter. */
+
+     KILLED BY: switching to a local-time formatter — BUT ONLY OFF UTC. In UTC the two
+     formatters are the same function, so no fixture can tell them apart and this
+     mutation survives in CI. Run it as `TZ=America/Los_Angeles node --test
+     tools/refresh/backfill-show.test.mjs`, where it fails three assertions. Said out
+     loud because "I ran the mutation" is worth nothing if the reader's machine cannot
+     reproduce it. */
   const utc = pendingRecord(show(), item({ pubDate: "Wed, 04 Feb 2026 07:00:00 +0000" }));
   assert.equal(utc.record.release_date, "2026-02-04");
   const shifted = pendingRecord(show(), item({ pubDate: "Tue, 03 Feb 2026 19:00:00 -0700" }));

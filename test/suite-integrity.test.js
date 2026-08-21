@@ -363,8 +363,18 @@ const FLOORS = {
      which no test called, so it was unreachable by construction. That included the
      `NO_MATCH` guard this whole script exists for.
      The fix was to move those guards into exported functions (`feedItems`,
-     `selectEpisodes`, `buildPayload`, `resolveOutPath`) and pin them. Ten mutations
-     were then run against this suite and ten were killed; each test names its own.
+     `selectEpisodes`, `buildPayload`, `resolveOutPath`) and pin them. **Twenty
+     mutations were then run against this suite and twenty were killed**; each test
+     names its own. A second review round found two of the first ten had been claimed
+     too early — a `??`-for-`||` in `feedItems` that let an empty `<item/>` through as
+     a one-element array, and four loose-equality survivors under `assert.deepEqual` —
+     so the count above is the re-run, not the first pass.
+
+     WHAT IS STILL UNCOVERED, said plainly so "twenty killed" cannot be read as more
+     than it is: `main()`'s WIRING. Deleting the `writeFileSync`, inverting the
+     `--dry-run` branch, or dropping the throttle still leaves this suite green,
+     because `main()` fetches over the network and is not exported. Every guard it
+     used to hold is now tested; the plumbing between them is not.
      The floor is 24 because that is the count, with no slack. */
   "tools/refresh/backfill-show.test.mjs": 24,
   "tools/refresh/dai.test.mjs": 8,

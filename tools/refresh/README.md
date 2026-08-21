@@ -96,11 +96,14 @@ real justification — a test enforces it, because an unexplained entry is one
 nobody can safely remove later. After editing, run `--reclassify`; re-resolving
 220 shows over the network to apply a one-line change would be absurd.
 
-Current state: **141 of 220 shows are DAI**, leaving **509 items eligible for
-precise seeking** — measured at `9b1374b`. **The item count moves every night**,
-so do not quote it: `classify-dai.mjs --reclassify --dry-run` prints the live
-figure and touches no network. (The 326 this line carried from #47 until #279 was
-stale by 147, which is the whole argument for naming the command instead.)
+Current state on this branch: **141 of 220 shows are DAI**, leaving **509 items
+eligible for precise seeking**. (`main` at `9b1374b` is 139 of 213 and 489 —
+the seven shows and 28 items of #279 are the difference.) **Both numbers move
+every night**, so do not quote them: `classify-dai.mjs --reclassify --dry-run`
+prints the live figures and touches no network. This line carried `326` from #47
+until #279 without anyone re-running it, which is the whole argument for naming
+the command instead of a number.
+
 Re-run `--reclassify` after adding shows to
 `data/catalog.json`: `merge.mjs` reads this cache and stamps `false` for a show
 it has never seen, so seven shows added in #279 landed 28 items with
