@@ -1,5 +1,14 @@
 # Naming Study — replacing "CommutePilot"
 
+> **SUPERSEDED — 2026-08-21.** The founder chose **4a** as the product name, so
+> this study's recommendation ("Foray") is no longer the answer. It is kept
+> unrewritten as the record of how the July 2026 shortlist was reached, what was
+> checked and what was rejected — including the availability evidence a formal
+> clearance search would start from. Note the split the decision created: the
+> **app** is `4a`; the word **foray** survives in the product as the name of the
+> stitched-audio unit, not as the name of the app. See #302 and
+> `docs/legal/privacy-policy.md`.
+
 Date: July 2026. Builds on `docs/marketing/03-positioning-pricing.md` §4, which rules out
 "-pilot"/"Co-" morphemes and "AI [noun]" category framing, and sketches six naming
 directions. This study generates candidates across those directions (plus new ones),

@@ -1,12 +1,18 @@
-# Foray — Privacy Policy
+# 4a — Privacy Policy
 
 **Status: DRAFT — not yet published, not yet reviewed by a lawyer.**
 Every `TODO(founder)` below is a fact only a founder can supply. Do not publish
 this to a store listing with any of them unresolved.
 
-Last updated: 2026-08-19 · Applies to: the Foray web app
+Last updated: 2026-08-19 · Applies to: the **4a** web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
-same code.
+same code. The app was formerly Foray. That is why the word is still in this URL
+and in the names of the local database and the cache bucket §1 describes:
+renaming the database would orphan data already on your device, and renaming the
+other two would break saved links and make every listener re-download the app
+shell, for no benefit to you. Separately, a "foray" is what the app calls one
+assembled run of segments — that is the sense the `cp_foray:` keys in §1 use,
+and it is unchanged.
 
 This document was written by reading the shipped code, not from a template.
 Every claim below has a file and line reference in
@@ -18,10 +24,10 @@ change both files in the same PR.
 
 ## The short version
 
-Foray is a podcast curator. It picks episodes and assembles them into a "Foray" —
+4a is a podcast curator. It picks episodes and assembles them into a "foray" —
 an ordered run of segments drawn from real podcast episodes.
 
-- **Most of what Foray knows about you never leaves your device.** Your topic
+- **Most of what 4a knows about you never leaves your device.** Your topic
   interests, your play positions, your history, your playlists and your settings
   are stored locally and are not transmitted.
 - **Five kinds of event are sent to our database**: which episode you picked,
@@ -33,9 +39,9 @@ an ordered run of segments drawn from real podcast episodes.
   proxy podcast audio. That means the publisher — and the measurement or
   ad-attribution services the publisher has put in front of their own audio —
   sees your IP address and your app/browser user-agent directly. **We never see
-  it.** This is the most important thing to understand about how Foray works, and
+  it.** This is the most important thing to understand about how 4a works, and
   §4 explains it properly, including who those third parties actually are.
-- **Foray itself contains no advertising, ad tracking, analytics SDK or crash
+- **4a itself contains no advertising, ad tracking, analytics SDK or crash
   reporter.** There is no third-party SDK in the app at all. That is a statement
   about our code, not a claim that nobody observes your playback — see §4.
 - **We do not sell or share your data**, and we do not track you across other
@@ -49,7 +55,7 @@ an ordered run of segments drawn from real podcast episodes.
 
 ## 1. What stays on your device
 
-Foray keeps its state under keys beginning `cp_`. **Nearly every key is written to
+4a keeps its state under keys beginning `cp_`. **Nearly every key is written to
 two places on your device**: `localStorage` and an IndexedDB database (name
 `foray`, object store `kv`). The second copy exists because browsers evict
 `localStorage` — Safari clears script-writable storage after about seven days
@@ -83,10 +89,10 @@ The app also asks the browser to mark its storage as persistent
 | `cp_seen` | Episode ids already shown to you, so they are not repeated | **No** |
 | `cp_saved` | The episodes you saved | **No** (but see `saved` in §2) |
 | `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
-| `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves Foray's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
+| `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_recent_branches` | Which topic branches you recently came from | **No** |
-| `cp_foray:<id>` | Where you are inside a given Foray, and which segment you were in | **No** |
+| `cp_foray:<id>` | Where you are inside a given foray, and which segment you were in | **No** |
 | `cp_pos:<id>` | Your position in seconds inside an individual episode | **No** |
 | `cp_rate` | Your playback speed | **No** |
 | `cp_player` | Which external podcast app you prefer to open episodes in | **No** |
@@ -120,7 +126,7 @@ and a timestamp:
 | `picked` | Episode slug, its topic ids, an `app` label, and a context label. See the note below — both labels carry less about you than their names suggest |
 | `finished` | Episode slug, topic ids, and a completion marker. Marked `manual_stopgap` because on the web you press Done — the app cannot observe real playback in an external app |
 | `saved` | Episode slug, topic ids |
-| `thumbs` | Up or down; the taxonomy node it applies to; optionally the episode slug, segment id and Foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
+| `thumbs` | Up or down; the taxonomy node it applies to; optionally the episode slug, segment id and foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
 | `session_shown` → stored as `session_built` | A session key and which builder produced it |
 
 **Not sent — recorded only on your device:** `play_started`, `position` (your play
@@ -150,7 +156,7 @@ Two things worth calling out plainly, because a generic policy would hide them:
   anything into it you would not want stored on our server.
 - **Two of the fixed thumbs-down reason codes are "Leans too far left" and
   "Leans too far right."** These describe how *the episode* struck you, not your
-  own politics, and Foray never asks for your political views. But a record that
+  own politics, and 4a never asks for your political views. But a record that
   you marked something as too far left or right is a signal about content you
   reacted to, it is transmitted, and you should know that before you use it.
 
@@ -160,7 +166,7 @@ entirely on your device against files already downloaded
 
 ## 3. The anonymous account
 
-Foray has no signup, no password, no email and no profile. On the first page load
+4a has no signup, no password, no email and no profile. On the first page load
 that produces an event, the app asks Supabase — our hosted database provider — to
 create an **anonymous account**. Supabase issues a user id and a token, which are
 stored in `cp_sb_session` on your device. Every row we store is keyed to that id,
@@ -191,13 +197,13 @@ address it came from**, as any server does.
 
 ## 4. What your device contacts directly — and we never see
 
-**This is the most important thing about how Foray is built, and it cuts both
+**This is the most important thing about how 4a is built, and it cuts both
 ways.**
 
 Product principle 3 says we never rehost, proxy or transform episode audio. The
 app honours that literally: it sets an `<audio>` element's `src` to the
 publisher's own enclosure URL and plays it
-(`player/html-audio-backend.js:load()`). There is no Foray server in the path.
+(`player/html-audio-backend.js:load()`). There is no 4a server in the path.
 
 The upside is real: **we cannot build a listening profile out of your audio
 requests, because they never touch us.** The corresponding disclosure is equally
@@ -210,7 +216,7 @@ ours.
 
 As of 2026-08-17 the catalogue the app downloads points at **43 distinct hosts**
 for audio, across the three data files the app fetches on load
-(`data/segment-sources.json` — the assembled Forays; `data/session.json` — the
+(`data/segment-sources.json` — the assembled forays; `data/session.json` — the
 home cards; `data/discover.json` — the recommendation pool, ~1,480 playable
 items). Anything with a play button plays this way.
 
@@ -262,7 +268,7 @@ impression to later behaviour — `pdst.fm`, `pdcn.co` and `pdrl.fm` (Podsights)
   have no account or contract with any of them, we send them nothing, and we
   receive nothing back. They measure for the publisher and their advertisers, not
   for us.
-- So when §5 says Foray does not use ad tracking, that is true of Foray: there is
+- So when §5 says the app does not use ad tracking, that is true of 4a: there is
   no ad code, no ad identifier and no ad SDK in this app. It is **not** a claim
   that no advertising-related party ever observes your playback request — because
   once you play an episode from its own source, some do.
@@ -284,7 +290,7 @@ Finally, the web app is served from **GitHub Pages**, so GitHub serves the page
 and the catalogue files and sees those requests. In the native app the shell and
 catalogue are bundled, so this does not apply there.
 
-## 5. What Foray does not do
+## 5. What 4a does not do
 
 Verified by reading the client, not by assertion. The app's Content Security
 Policy (`index.html`) is the structural reason most of this list is not merely
@@ -311,7 +317,7 @@ bound on the channel that would carry data *out*.
 - **No device fingerprinting.** We do not collect a device id, advertising id,
   screen size, timezone or language list.
 - **No sale of data, and no sharing for anyone else's advertising.**
-- **Nothing you do is sent to an AI provider.** Foray uses AI in its own build
+- **Nothing you do is sent to an AI provider.** 4a uses AI in its own build
   pipeline to classify public podcast metadata and write recommendation copy. That
   runs on our machines against public feed data, **not on your data**. The app
   itself makes no AI API call, and `connect-src` would block one.
@@ -325,7 +331,7 @@ bound on the channel that would carry data *out*.
 
 ## 6. Children
 
-Foray is a general-audience podcast app and is not directed to children. We do
+4a is a general-audience podcast app and is not directed to children. We do
 not ask for, or knowingly collect, anyone's age. "Family mode" is only a local
 content filter that hides explicit-rated episodes — it collects nothing and sends
 nothing.
@@ -382,9 +388,10 @@ choice, and says plainly that the server rows remain.)
   the button rather than the browser's site-data screen.
 
 **Clearing site data still works** and is the belt to this braces — in your
-browser's settings for the Foray origin (web), or by deleting the app (iOS /
-Android). It removes the local copies but **not** the server rows, for the reason
-in the paragraph above.
+browser's settings for the origin the web app is served from,
+`jw-incorporated.github.io` (web), or by deleting the app (iOS / Android). It
+removes the local copies but **not** the server rows, for the reason in the
+paragraph above.
 
 The `foray-v5` Cache Storage bucket is not touched by the button: it holds the
 app shell and the catalogue files (§1), which are the same for every listener and

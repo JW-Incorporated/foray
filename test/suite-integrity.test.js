@@ -158,7 +158,12 @@ const FLOORS = {
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
   "player/seek-policy.test.js": 33,
-  "test/app-name.test.js": 6,
+  /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
+     published legal documents were added. Zero slack, deliberately: every
+     assertion here is a single string in a single file, so each is exactly one
+     careless edit from its opposite, and #302 exists because reverting one of
+     them passed the whole suite. */
+  "test/app-name.test.js": 8,
   "test/app-security.test.js": 22,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server

@@ -26,7 +26,7 @@ matching the code. **No answer in this file changed with it.**
 Both stores define "collect" as **transmitted off the device**. Data that only
 ever sits in `localStorage` or IndexedDB is *not* collected under either
 definition. That is why §1 of the audit matters more than any other section: most
-of what Foray knows is not declarable, and declaring it anyway would overstate
+of what 4a knows is not declarable, and declaring it anyway would overstate
 collection.
 
 ---
@@ -51,7 +51,7 @@ every answer below:
    URLs from `data/segment-sources.json`, `data/session.json` and
    `data/discover.json`). **43 distinct first-hop hosts**, many of them
    measurement or ad-attribution prefixes that redirect onward, so the real chain
-   is longer. No Foray server in the path; we receive nothing. See §A6 — this is
+   is longer. No 4a server in the path; we receive nothing. See §A6 — this is
    the answer most likely to be got wrong in either direction.
 
 The client's CSP (`index.html`) sets `connect-src 'self'` plus the Supabase
@@ -175,7 +175,7 @@ reasoning, with the strong parts separated from the interpretive ones:
 
 1. **We receive nothing. This is the reason that does the work, and it is a
    fact.** Both stores' definitions turn on data the developer or its partners can
-   access. There is no Foray server in the audio path and there cannot be
+   access. There is no 4a server in the audio path and there cannot be
    (product principle 3), so there is nothing for us to collect and no recipient
    we transferred anything to. The prefix operators are the **publisher's**
    vendors, chosen by the publisher in their own RSS enclosure URL; we have no
@@ -198,7 +198,7 @@ even where the form has no checkbox. **Do not let the absence of a form field
 become an absence of disclosure** — that is the one move that would turn a
 defensible position into a misleading one.
 
-One consequence to keep straight when filling in the forms: "Foray contains no ad
+One consequence to keep straight when filling in the forms: "4a contains no ad
 tracking" is true of **our** code and is the right answer to the advertising
 questions. It is not the same statement as "no advertising-related party sees
 your playback", which would be false. The policy draws that distinction; keep it
@@ -275,7 +275,7 @@ longer than the real-time request needs**. Same conclusion as Play — the local
 | **Health & Fitness** | **No** | — |
 | **Financial Info** | **No** | No payments or IAP. |
 | **Location** (precise or coarse) | **No** | No geolocation call; no permission requested. |
-| **Sensitive Info** | **No** | Apple's category covers racial/ethnic data, sexual orientation, pregnancy, disability, religious or political *belief*, biometric and genetic data. Foray asks for none. See A5 for the slant-chip judgement. |
+| **Sensitive Info** | **No** | Apple's category covers racial/ethnic data, sexual orientation, pregnancy, disability, religious or political *belief*, biometric and genetic data. 4a asks for none. See A5 for the slant-chip judgement. |
 | **Contacts** | **No** | — |
 | **User Content — Other User Content** | **Yes** | The free-text thumbs-down note is transmitted (`app.js:toEventRow()`). |
 | **User Content** — photos, videos, audio, gameplay, customer support | **No** | None exist. The app plays third-party audio; it records and uploads none. |
@@ -301,14 +301,14 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
   identity is a real name; answering "not linked" would be wrong.
 - **Used for tracking?** **No** — all three. Apple defines tracking as linking
   *the data you collect* with third-party data for targeted advertising or ad
-  measurement, or sharing it with a data broker. Foray does none: no ad SDK, no
+  measurement, or sharing it with a data broker. 4a does none: no ad SDK, no
   data broker, and no third party receives anything from us. **Therefore the app
   needs no App Tracking Transparency prompt.**
   - Read together with §A6: the publisher's own attribution prefixes do observe
     the playback request. That does not make this answer Yes — Apple's question is
     about what *we* do with data *we* collect, and we neither obtain those
     requests nor combine anything with third-party data. It is still disclosed in
-    the policy. If Foray ever integrated an attribution vendor itself, or received
+    the policy. If 4a ever integrated an attribution vendor itself, or received
     reporting back from one, this answer would flip and an ATT prompt would be
     required.
 - **Purposes:** **App Functionality** and **Product Personalization** only. Not
@@ -345,7 +345,7 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
     live. Re-check this before every submission rather than trusting this
     paragraph.
 - **Account deletion (App Store guideline 5.1.1(v)).** Applies to apps that let
-  you *create an account*. Foray creates an anonymous account with no user
+  you *create an account*. 4a creates an anonymous account with no user
   action, which is arguably outside the rule — but the safe posture is the same
   delete control Play wants. Build it once, satisfy both.
   - **The control now exists** (A7), which is the "build it once" half. Read the

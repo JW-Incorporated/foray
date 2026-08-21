@@ -2,6 +2,13 @@
 
 *Marketing round 2, desk 09. 2026-07-08. Grounded in what's actually shipped (app.js v3: 4-card menu, splatter with 30% exploration floor, series builder, search, stars, continue card, interests sliders, external playback handoff, PWA manifest) and verified 2026 competitor feature sets. Product principles supersede everything below. Does not re-argue 00/08; extends them.*
 
+> **Name change since this memo — 2026-08-21.** The product is now **4a**
+> (founder instruction; #302). Two passages below are copy meant to be published
+> and have been updated to say so: the first-visit explainer card in §4 and the
+> App Store listing draft in §5. The analysis prose everywhere else in this file
+> still says "Foray" and is deliberately left as the July 2026 record. The
+> stitched-audio unit the app assembles is still called a `foray`.
+
 ---
 
 ## 0. Watchlist alert first — two competitors moved into adjacent lanes this year
@@ -181,7 +188,7 @@ The friend-tester on Android currently gets: cold page, four cards with no expla
 
 **Recommendation — one screen, one interview, one flag (total < 90 seconds):**
 
-1. **First-visit explainer, one dismissible card, ≤ 40 words.** "Foray is your personal podcast curator. Four picks a day, each with its reason. Playback happens in the app you already use — Foray never takes over your library." The last sentence pre-empts the handoff surprise *and* restates 04's "adds to what you have, never switch" rule.
+1. **First-visit explainer, one dismissible card, ≤ 40 words.** "4a is your personal podcast curator. Four picks a day, each with its reason. Playback happens in the app you already use — 4a never takes over your library." The last sentence pre-empts the handoff surprise *and* restates 04's "adds to what you have, never switch" rule.
 2. **Interest seeding, one tap-through, skippable.** Show the taxonomy leaves as chips, "tap a few you're curious about lately" (3–7 taps), writes straight into the existing `cp_interests` store. This is a declared *prior*, observed thereafter — consistent with principle 2, which forbids declared *state*, not seeded starting points the sliders already expose. Skipping = defaults, exactly today's behavior.
 3. **Name the wildcard once.** First splatter render includes a one-time line: "The wildcard ignored your tastes on purpose. That's not a bug — tell us when it hits." Converts the most confusing element into the brand's signature move. (Evidence: diversity *with a stated bridge* reads as intelligence, without one as error — 00.)
 
@@ -195,10 +202,10 @@ Instrument all three steps (`onboarding_seen`, `interests_seeded` with chip coun
 
 ## 5. App Store listing draft (M3; copy-rule compliant)
 
-- **Name:** Foray
+- **Name:** 4a
 - **Subtitle (29/30 chars):** `Your personal podcast curator`
 - **Promotional text (168/170 chars):** `Four picks a day, each with its reason. Real shows, real hosts, no infinite feed — a small menu built for your curiosity, with one wildcard you didn't see coming.`
-- **Description, first paragraph:** `Foray deals you four podcast episodes a day and tells you why each one is on your menu. Not a feed, not a chart, not another app shouting its favorites — a personal curator that learns what you're curious about, keeps roughly a third of every menu deliberately outside your lane, and always says the reason out loud. When the menu's done, it's done: no autoplay chain, no endless scroll, nothing designed to keep you here longer than the listening deserves.`
+- **Description, first paragraph:** `4a deals you four podcast episodes a day and tells you why each one is on your menu. Not a feed, not a chart, not another app shouting its favorites — a personal curator that learns what you're curious about, keeps roughly a third of every menu deliberately outside your lane, and always says the reason out loud. When the menu's done, it's done: no autoplay chain, no endless scroll, nothing designed to keep you here longer than the listening deserves.`
 - **Keyword field (6 terms):** `podcast, curator, discovery, episodes, recommendations, listening`
 - **Screenshot captions (5):**
   1. `Four picks. Each one explained.`
