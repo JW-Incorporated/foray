@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-13T16:52:22.830Z",
+  "built_at": "2026-08-21T16:34:38.367Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-13-65c875ae",
+    "last_batch_id": "fresh-2026-08-21-eb751061",
     "last_batch_tier": 1
   },
   "entries": {
@@ -1775,10 +1775,35 @@
     },
     "94688506": {
       "topics": [
-        "relationships"
+        "history",
+        "psychology/decision-making",
+        "science/storytelling"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.75
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal narrative interview show exploring resilience, history, politics, and psychology through diverse human stories.",
+      "display_title": "Conversations",
+      "blurb": "Long-form interviews with diverse guests exploring personal stories of resilience, spanning history, psychology, and human experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-eb751061",
+      "classified_at": "2026-08-21T16:34:38.367Z"
     },
     "94793843": {
       "topics": [
@@ -45700,10 +45725,30 @@
     },
     "1349523628": {
       "topics": [
-        "news/daily"
+        "economics/markets",
+        "psychology/decision-making"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.5
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily news digest covering politics, crime, international affairs, and economics; no dedicated news category exists in taxonomy.",
+      "display_title": "ABC News Daily",
+      "blurb": "Daily news briefing providing analysis of Australian and international stories including politics, economics, and current events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-eb751061",
+      "classified_at": "2026-08-21T16:34:38.367Z"
     },
     "1349600088": {
       "topics": [
