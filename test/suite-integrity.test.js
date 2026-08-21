@@ -352,10 +352,21 @@ const FLOORS = {
      (#279). The floor matters because the whole script exists to make one silent
      failure impossible — a backfill that reports success while emitting nothing, or
      emitting rows `resolve.mjs` can only drop — and the tests that pin that are the
-     easiest ones in the repo for a later session to find inconvenient. Seventeen
-     mutations were run against this suite; the one that came back green found dead
-     code in the script rather than a hole in the tests. */
-  "tools/refresh/backfill-show.test.mjs": 18,
+     easiest ones in the repo for a later session to find inconvenient.
+
+     THIS COMMENT PREVIOUSLY CLAIMED "seventeen mutations were run ... the one that
+     came back green found dead code rather than a hole in the tests." THAT CLAIM WAS
+     FALSE and it is recorded here rather than quietly deleted, because a false
+     evidence claim is worse than none: the next reader stops checking. Review of
+     PR #289 re-ran the mutations and 18 of 20 SURVIVED, for one structural reason —
+     every invariant that mattered lived inside `main()`, which is not exported and
+     which no test called, so it was unreachable by construction. That included the
+     `NO_MATCH` guard this whole script exists for.
+     The fix was to move those guards into exported functions (`feedItems`,
+     `selectEpisodes`, `buildPayload`, `resolveOutPath`) and pin them. Ten mutations
+     were then run against this suite and ten were killed; each test names its own.
+     The floor is 24 because that is the count, with no slack. */
+  "tools/refresh/backfill-show.test.mjs": 24,
   "tools/refresh/dai.test.mjs": 8,
   "tools/refresh/enclosure.test.mjs": 18,
   "tools/segments/sweep-transcripts.test.mjs": 26,

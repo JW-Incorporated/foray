@@ -14,8 +14,17 @@ they are the *before*, and a re-score is only meaningful against an unedited bas
 untouched. Eleven publisher transcripts were fetched to a scratch directory outside
 the repository and read; none is stored.
 
-**Measured at `main` = `6d163c5`**, against `data/discover.json` at 1,592 items after
-this change (1,564 before) and `data/catalog.json` at 220 shows (213 before).
+**Measured at `main` = `9b1374b`**, against `data/discover.json` at 1,618 items after
+this change (1,590 before) and `data/catalog.json` at 220 shows (213 before).
+
+> **Re-measured after a rebase.** This pass was originally taken at `main` = `6d163c5`
+> with `data/discover.json` at 1,564 items. Nightly refreshes #284 and #291 have since
+> added 56 episodes, so every figure below that is a function of the whole pool — the
+> bundle sizes in §6 and both halves of the tag-DF check in §7 — was re-run against
+> `9b1374b` and the numbers here are the new ones. **The beat verdicts in §3 are not
+> affected**: they are readings of specific passages in specific episodes, and no
+> nightly touches those. Where a pre-rebase figure is still useful it is given
+> alongside.
 
 ---
 
@@ -38,10 +47,13 @@ this change (1,564 before) and `data/catalog.json` at 220 shows (213 before).
 > 0.7 %, and 31 of the 33 belong to one show.**
 
 So the honest answer to the question #279 was opened to settle — does curation close
-the gap, or does narration have to — is **both, in a specific split**. Curation bought
-the wine and cider families outright. Whisky, the spirits fan, and the fortification
-chain are now *identified* rather than *available*: the shows exist, the episodes are
-named, and every one of them is an ASR purchase.
+the gap, or does narration have to — is **narration still has to, and curation bought a
+foothold**. In wine and cider it bought real tape: one strong beat and several thin ones,
+playable today. Whisky, the spirits fan, and the fortification chain are now *identified*
+rather than *available*: the shows exist, the episodes are named, and every one of them
+is an ASR purchase. **Seven beats of sixty-three moved and Act I still has no strong
+tape**, so this does not change the product-mode question #287 measured and
+`HUMAN-ACTIONS.md` #22 is waiting on — see §11.
 
 ---
 
@@ -151,12 +163,17 @@ Three things follow and they shape the whole re-score.
   `[Transcript continues exactly as delivered in Step 1]`. It is a publishing artefact,
   not a transcript. So Inside Winemaking ships **one** readable episode, not two, and
   any future sweep that counts `episodes_with_timed_transcript` will keep reporting two.
-- **Cider Chat is the first non-DAI drinks source this project has had.** Every one of
-  the five sources that produced a verdict in #278 was DAI-suspected, which under
-  `ADR-0008` made all sixteen of its spans authorable-and-unplayable. Cider Chat
-  declares `delivery-edge.libsyn.com` and Inside Winemaking `content.libsyn.com`, both
-  static. **Every span in this document is playable today**, which is the single
-  largest qualitative difference between this pass and #278.
+- **Cider Chat is the first non-DAI drinks source ever to produce a SCOREABLE verdict
+  here — not the first non-DAI drinks show in the catalogue.** The stronger claim was in
+  an earlier draft of this document and it is false: `fermup`, `experimental-brewing`
+  and `craft-beer-and-brewing-magazine-podcast` are all `dai: false` in
+  `data/dai-classification.json` and were curated long before #279. What is true, and is
+  the point, is that every one of the five sources that produced a verdict in #278 was
+  DAI-suspected, which under `ADR-0008` made all sixteen of its spans
+  authorable-and-unplayable. Cider Chat declares `delivery-edge.libsyn.com` and Inside
+  Winemaking `content.libsyn.com`, both static. **Every span in this document is
+  playable today**, which is the largest qualitative difference between this pass and
+  #278.
 
 **Eleven transcripts were read end to end** — nine Cider Chat, one Inside Winemaking,
 plus the stub confirmed as a stub. Quotations are reproduced **as the transcripts hold
@@ -436,9 +453,12 @@ most important still-empty beat in the document**, and §5 says why it survived 
 search.
 
 **Chain versus fan**, on #278 §9b's split: of 40 chain beats, chain empties fall from
-**30 to 24**. The fan is where the strong beat landed (19 is inside the wine chain, so
-strictly it is a chain beat too — the wine chain now reads 3 empty / 1 thin / 1 strong
-against 4 empty / 1 thin).
+**30 to 24**. **The movement is overwhelmingly in the CHAIN, not the fan** — six of the
+seven beats that moved are chain beats, including beat 19, the strong one, which sits
+inside the wine chain. The wine chain now reads 3 empty / 1 thin / 1 strong against
+4 empty / 1 thin. (An earlier draft of this line said the fan was where the strong beat
+landed and then corrected itself inside its own parenthesis; the parenthesis was the
+true half.)
 
 ### 4c. Beats still empty — all forty, named
 
@@ -515,23 +535,26 @@ to stop. It stays thin on its existing segment. §7 proposes the amendment.
 Measured with the shipped tool, before and after, on this branch:
 
 ```
-before:  webDir ready: mobile\www  (35 files, 2.00 MB of 3.00 MB)
-           sliced: data/discover.json  681.3 KB of 800.0 KB
+before:  webDir ready: mobile\www  (35 files, 2.01 MB of 3.00 MB)
+           sliced: data/discover.json  682.0 KB of 800.0 KB
 after:   webDir ready: mobile\www  (35 files, 2.02 MB of 3.00 MB)
-           sliced: data/discover.json  703.9 KB of 800.0 KB
+           sliced: data/discover.json  704.5 KB of 800.0 KB
 ```
 
-| | before | after |
+| | before (`9b1374b`) | after |
 |---|---|---|
-| slice | 623 items / 213 shows / **681.3 KB** | 644 items / 220 shows / **703.9 KB** |
-| per-show marginal cost | (projected 3.20 KB) | **3.23 KB measured** |
-| headroom to the 800 KB budget | ~37 shows | **~29 shows** |
-| whole bundle | 2.00 MB of 3.00 | 2.02 MB of 3.00 |
+| slice | 624 items / 213 shows / **682.0 KB** | 645 items / 220 shows / **704.5 KB** |
+| per-show marginal cost | (projected 3.20 KB) | **3.21 KB measured** |
+| headroom to the 800 KB budget | ~36 shows | **~29 shows** |
+| whole bundle | 2.01 MB of 3.00 | 2.02 MB of 3.00 |
+
+(Pre-rebase the same measurement read 681.3 -> 703.9 KB and 3.23 KB/show, against a
+1,564-item pool. The marginal cost is the stable quantity and it moved by 0.02 KB.)
 
 **The budget was not raised and did not need to be.** #274 chose 800 KB on the reasoning
 that *"a bundle creeping toward the cap is a signal worth getting, not noise"*, and this
-change is the signal working as intended: seven shows cost 22.6 KB and the number to
-watch went from 37 to 29.
+change is the signal working as intended: seven shows cost 22.5 KB and the number to
+watch went from 36 to 29.
 
 **The projection held, and the reason it held is worth recording because it was the
 open question.** `discoverSlice` is not purely 3-per-show: after the per-show pass it
@@ -539,8 +562,11 @@ tops up to keep every topic represented, and 10 shows currently carry more than 
 for that reason. Drinks shows introduced exactly **one** new topic — `food/drinks`,
 which went from 0 items to 28 — and the per-show pass covered it on its own, because
 **every one of the 28 new items carries `food/drinks`**. So the top-up did not fire:
-the per-show distribution is unchanged in shape (1×1, 28×2, 181×3, 8×4, 2×6, against
-1/28/174/8/2 before) and all 21 new slice items are the plain 3-per-show allocation.
+the per-show distribution is unchanged in shape — shows carrying 1/2/3/4/6 slice items
+go **2/28/181/8/2** against **2/28/174/8/2** before, so the only bucket that moves is
+the 3-item one, +7, one per new show — and all 21 new slice items are the plain
+3-per-show allocation. (Pre-rebase the 1-item bucket held one show rather than two; the
+nightly added the other.)
 A future block of shows spread across *several* new topics would not be this cheap.
 
 **One product-level outcome outside the Foray, from the regenerated
@@ -561,51 +587,71 @@ that kind of skew, so both halves were re-measured over the 1,366-term vocabular
 (`semantic-index.json` concept terms plus `ALIASES`), reading the rules from the engine
 (`expansionBucket`, `dfMultiplier`) rather than mirroring them.
 
-**(a) Growth — the whole map, `main` against this branch. 0 expansion buckets move.**
-Three score multipliers move, all in the same direction and all across
-`TAG_DF_RARE` 0.008 upward, which is the corpus genuinely becoming more about those
-terms:
-
-| term | main | branch | multiplier |
-|---|---|---|---|
-| `fermentation` | 0.57 % | 1.11 % | 1.35 → 1 |
-| `food-history` | 0.75 % | 0.86 % | 1.35 → 1 |
-| `craft-beer` | 0.75 % | 0.80 % | 1.35 → 1 |
-
-**Not one term crosses `TAG_DF_COMMON` 0.02 or `TAG_DF_TOO_BROAD` 0.10.** #275's fix
+**(a) Growth — the whole map, `main` (`9b1374b`, 1,617 entries) against this branch
+(1,645). 0 expansion buckets move.** That is the answer to the question #279 was asked
+to settle: **nothing crosses `TAG_DF_TOO_BROAD` 0.10 or `TAG_DF_COMMON` 0.02**, the two
+thresholds that delete a term from query expansion or cut its weight to 0.4x. #275's fix
 absorbed the addition, which is what it was for.
+
+Thirteen score multipliers move across `TAG_DF_RARE` 0.008, and **the split between
+them is the finding, because only two are ours**:
+
+| term | main | branch | multiplier | cause |
+|---|---|---|---|---|
+| `fermentation` | 0.62 % | 1.16 % | 1.35 → 1 | tag count 10 → **19** — genuinely ours |
+| `food-history` | 0.74 % | 0.85 % | 1.35 → 1 | tag count 12 → **14** — genuinely ours |
+| `fusion`, `marine`, `guitar`, `strength`, `car`, `theater`, `geology`, `fiction`, `failure`, `photography`, `meteorology` | 0.80 % | 0.79 % | 1 → 1.35 | tag count **unchanged at 13** — pure denominator |
+
+The eleven in the last row all sit at 13/1,617 = 0.804 % on `main` and fall to
+13/1,645 = 0.790 % because the map grew by 28 entries. **Not one of their tag counts
+changed.** Any 28-item night does this — the nightly does it too — so it is not evidence
+about topical skew at all. The topically-skewed block #275 warned about moved **two**
+terms, both demoted, both because the catalogue now genuinely holds more of that
+subject, which is the ranker working rather than drifting.
+
+(Pre-rebase, against `6d163c5`, the same measurement read 0 buckets and 3 multipliers:
+`fermentation`, `food-history` and `craft-beer`. `craft-beer` had already crossed by
+`9b1374b`, which is the same denominator effect one night earlier.)
 
 **(b) Sampling — whole map against the bundled slice, the divergence the
 `COPIED_WHOLE` refusal rests on. It does not get worse.**
 
 | | expansion buckets | score multipliers |
 |---|---|---|
-| `main` | 14 | 68 |
-| this branch | **13** | **71** |
+| `main` (`9b1374b`) | 14 | 63 |
+| this branch | **14** | **75** |
 
-**No term enters the divergence set on this branch; `family` leaves it.** The 13 are
-`comedy`, `economics`, `founder`, `founders`, `market`, `markets`, `materials`,
-`medicine`, `neuroscience`, `physics`, `sports-science`, `world-war`, `world-war-2` —
-the same set `main` has, minus `family`. **Not one drinks term is in it**, at any
-threshold: `beer` 1.11 %, `wine` 0.68 %, `cider` 0.25 %, `whisky` 0.12 %,
-`distilling` 0.68 %, `bourbon` 0.37 % — all "full", all far below `TAG_DF_COMMON`.
-`comedy` is still the sharp one at 10.44 % whole against 8.20 % slice.
+**Not one term enters or leaves the expansion-bucket divergence set.** It is the same
+fourteen on both sides: `comedy`, `economics`, `law`, `market`, `markets`, `materials`,
+`neuroscience`, `philosophy`, `physics`, `sports-science`, `story`, `true-crime`,
+`world-war`, `world-war-2`. **Not one drinks term is in it**, at any threshold:
+`beer` 1.16 %, `wine` 0.67 %, `cider` 0.24 %, `whisky` 0.12 %, `whiskey` 0.49 %,
+`distilling` 0.67 %, `bourbon` 0.36 % — all "full", all far below `TAG_DF_COMMON`.
+`comedy` is still the sharp one at 10.33 % whole against 8.33 % slice.
 
-**One thing to flag rather than bury: `main` measures 14/68, not the 12/62
+(Pre-rebase this read 14 → 13 buckets and 68 → 71 multipliers, with `family` leaving the
+set. `family` left `main`'s set on its own between `6d163c5` and `9b1374b`, which is the
+same point the test's comment makes: this set is a nightly-scale quantity.)
+
+**One thing to flag rather than bury: `main` measures 14/63, not the 12/62
 `prepare-webdir.test.mjs` records.** The test's own comment predicted this —
 *"a sampling residue of 12 terms on a slice the nightly rebuilds, so one refresh could
 take it to 0 without anybody having decided anything"* — and the drift is nightlies, not
-this change. The refusal's assertions still pass (13 > 0, and 13 × 2 < the pre-#275
-absolute rule's count), so `item-tags.json` stays copied whole and the ~181 KB stays
-unbought. **This change is not evidence for or against trimming it.**
+this change. The refusal's assertions still pass on this branch (`moved` 14 > 0, and
+14 × 2 = 28 < 72 under the pre-#275 absolute rule), so `item-tags.json` stays copied
+whole and the ~181 KB stays unbought. **This change is not evidence for or against
+trimming it.** Re-run it with the test's own code path rather than by quotation:
+`node --test tools/mobile/prepare-webdir.test.mjs`.
 
 ---
 
 ## 8. The ranked queue this pass creates, and it is much longer than #278's
 
-#278's §10 had *"five rows worth buying and then a wall"*. The wall is gone. What
-replaces it is a queue of **named episodes in curated shows** whose only obstacle is
-that nobody has read them — which is a purchase decision, not a search problem. Ordered
+#278's §10 had *"five rows worth buying and then a wall"*. **The wall moved; it did not
+go.** What replaces it is a queue of **named episodes in curated shows** whose only
+obstacle is that nobody has read them — a purchase decision rather than a search
+problem, which is a better kind of obstacle and still an obstacle. On the count that
+matters it reaches seven closed beats against #278's six (§11), not sixteen. Ordered
 by beats moved per job, with the hypothesis stated falsifiably so the next pass can
 score it the way #278 §9c scored §5.
 
@@ -670,8 +716,11 @@ host-solo sensory monologue, which is what beat 10 rejects, and 490 is an indust
 editorial. 503 (*UK Blossom Time Tour*) is 72 minutes of guest testimonial with no
 sourced production mechanism, and 504's recoopering passage is real
 previous-contents-as-a-variable material carrying no mechanism at all. **Four of eleven
-transcripts read moved nothing**, which is a better ratio than #278's six of seventeen
-and the same finding in kind.
+transcripts read moved nothing** — 36.4 %, against #278's six of seventeen, 35.3 %. That
+is very slightly **worse**, not better, and an earlier draft of this line claimed the
+opposite. The honest reading is that the two rates are indistinguishable at this sample
+size, which is itself the finding: curating better-targeted shows did not raise the hit
+rate per transcript read. Same finding as #278, in kind and in size.
 
 ---
 
@@ -739,25 +788,51 @@ them have changed:
 - **It was not a search failure then and it is not one now**, but the pool is different:
   the 42 hand-picked technical terms that returned zero across 75,253 rows were being
   asked of a catalogue with three drink shows in it — all three on beer or food
-  fermentation. It now has ten, and seven of them are on wine, cider or spirits: 514
+  fermentation. It now has ten, and **six** of them are on wine, cider or spirits — the
+  seventh new show, Basic Brewing Radio, is beer, which the catalogue already had: 514
   curated cider episodes where there were none, 729 on wine, 2,431 on whisky and spirits.
-- **"It is not fixable by transcription" is no longer true.** #278's queue would have
-  moved six beats. §8's queue is nine ranked rows over five non-DAI shows and would
-  plausibly reach beats 3, 10, 12, 13, 14, 15, 19, 22, 26, 29, 37, 38, 39, 44, 51 and 62
-  — because the shows are now curated and the episodes are named. That is the change
-  this issue bought.
+- **"It is not fixable by transcription" is less true than it was, and the number that
+  says so is 6 -> 7, not 6 -> 16.** #278's queue would have moved six beats. §8's queue
+  is nine ranked rows over five non-DAI shows and *touches* beats 3, 10, 12, 13, 14, 15,
+  19, 22, 26, 29, 37, 38, 39, 44, 51 and 62 — but **only seven of those sixteen are
+  currently empty.** By this document's own §4c list, 19 and 26 are already strong and
+  10, 13, 14, 15, 22, 29 and 51 are already thin, so transcribing the queue would
+  *deepen* those and *close* seven. An earlier draft quoted the sixteen as though all of
+  them were closures and called it "the change this issue bought"; it is not. What this
+  issue bought is that the queue is **nine named episodes in curated shows** rather than
+  a search that returns nothing — a purchase decision instead of a sourcing problem.
+  That is real and worth having. On beats closed it is one more than #278's queue.
 - **The failure is still in the chain**, and Act I is still the chain that matters.
   24 of 40 chain beats are empty, nine of them in Act I, and Act I has no strong tape at
   all. **The derivation the founder asked for — "walk me through the production process
   for each" — is still narration with tape as illustration.**
 
-So the three options #278 named are still the three options, with the second one
-partly spent and now much cheaper to finish. What is different is that
-`alcohol-forms-1` has moved from *"a Foray about beer, absinthe and bourbon with a
-chapter on prohibition"* to a Foray that can demonstrate, with playable tape from people
-who do the work, how a fermentation is stopped on purpose, what a winemaker decides
-after the yeast finishes, why cider apples are inedible, and what a barrel is actually
-doing. That is four beats of real mechanism in Acts I and II. It is not sixteen.
+So the three options #278 named are still the three options, with the second one partly
+spent and now cheaper to finish. What is different is that `alcohol-forms-1` has moved
+from *"a Foray about beer, absinthe and bourbon with a chapter on prohibition"* to a
+Foray that can demonstrate, with playable tape from people who do the work, how a
+fermentation is stopped on purpose, what a winemaker decides after the yeast finishes,
+why cider apples are inedible, and what a barrel is actually doing. **That is four beats
+of mechanism, and by this document's own gate only one of the four — beat 19 — is
+strong; the other three are thin.** It is not sixteen, and §0's *"curation bought the
+wine and cider families outright"* is too strong for what one strong beat and six thin
+ones buy: it bought a foothold in them.
+
+**And none of it changes the product-mode question.** #287 landed after this pass and
+measured the alcohol Foray at **72.9 % narrator written in full**, against the 40 % line
+`narration-craft.md` calls *"an essay with clips. Not a Foray."* That verdict — the
+catalogue cannot fund this Foray as a **tape-led** product — is filed as
+`HUMAN-ACTIONS.md` **#22** and is still open. #22's arithmetic was computed against
+1 / 15 / 47; **nobody has re-run it against 2 / 21 / 40, and this document does not
+claim to have.** Six more thin beats and one strong one in Acts I and II do not
+plausibly close a thirty-point gap, but that is a judgement and #22 wants a measurement.
+Read §11 as *"the catalogue action was worth doing and did not answer the funding
+question"*, which is what #279 was scoped to find out.
+
+**One inheritance to declare.** The headline 2 / 21 / 40 rests on #278 §9a's undecided
+founder call: the SYSK register decides 11 of the 15 thin verdicts this pass inherits,
+and under a SYSK-out reading the same gate gives roughly **2 / 12 / 49**. #278 recorded
+that as open and it is still open, so the counts here carry it too.
 
 ---
 

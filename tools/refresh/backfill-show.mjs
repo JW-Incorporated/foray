@@ -28,6 +28,14 @@
       backfill run cannot clobber a nightly scan that is mid-flight. Point
       `resolve.mjs` at it with `PENDING_PATH`.
 
+      **The word doing the work there is DEFAULT.** `PENDING_PATH` is the same env
+      var `scan.mjs` writes and `resolve.mjs` reads, and the hand-off recipe in the
+      README has you exporting it — so a backfill and a nightly scan sharing one
+      shell DO write the same file, and this script cannot tell. Use `--out`, which
+      wins over the env var, if the two could overlap. Named rather than fixed
+      because the env var is how the rest of `tools/refresh/` is wired and a
+      script that ignored it would be the more surprising object.
+
    `--newest` DEFAULTS TO 25 AND THAT NUMBER IS NOT ARBITRARY. `resolve.mjs`
    looks episodes up at `limit=25`, which is roughly a year on a weekly show
    (measured 2026-08-19: Cider Chat at limit=25 reaches back to 2026-01-21, at
@@ -89,16 +97,74 @@ export function titleMatches(title, needles) {
   return needles.some((n) => t.includes(String(n).toLowerCase()));
 }
 
+/** The channel's `<item>`s as an array. fast-xml-parser collapses a single-item
+    feed to one object, and a document that is not RSS at all (an HTML error page
+    served with a 200, which is what a dead feed usually looks like) yields
+    nothing — both have to be told apart from a real feed, and neither may be
+    reported as a successful run of zero episodes. */
+export function feedItems(doc, showId = "?") {
+  let items = doc?.rss?.channel?.item ?? [];
+  if (!Array.isArray(items)) items = [items];
+  if (items.length === 0) {
+    throw new BackfillError("EMPTY_FEED", `${showId}: feed has zero <item> entries (or is not RSS)`);
+  }
+  return items;
+}
+
 /** Picks the episodes to emit, newest-first as the feed declares them.
     `--newest` is applied to the FEED, then `--match` filters inside it, in that
     order — the reverse would let a `--match` reach past the iTunes window and
-    produce rows resolve.mjs can only drop. */
-export function selectEpisodes(items, { newest = DEFAULT_NEWEST, match = [] } = {}) {
+    produce rows resolve.mjs can only drop.
+
+    ZERO MATCHES IS AN ERROR AND THAT IS THE POINT OF THE FUNCTION. A typo'd
+    `--match` and a feed with nothing to backfill must never look the same to the
+    operator, because the second is a fine outcome and the first is a silently
+    wasted run. This guard used to live in `main()`, which no test can reach —
+    it was moved here so it could be pinned. */
+export function selectEpisodes(items, { newest = DEFAULT_NEWEST, match = [], showId = "?" } = {}) {
   if (!Number.isInteger(newest) || newest < 1) {
     throw new BackfillError("BAD_NEWEST", `--newest must be a positive integer, got ${newest}`);
   }
   const window = items.slice(0, newest);
-  return window.filter((it) => titleMatches(text(it.title), match));
+  const chosen = window.filter((it) => titleMatches(text(it.title), match));
+  if (chosen.length === 0) {
+    throw new BackfillError(
+      "NO_MATCH",
+      `${showId}: 0 of the newest ${newest} feed items matched ${JSON.stringify(match)}. ` +
+        `An empty backfill and a satisfied one must never look the same, so this is an error.`
+    );
+  }
+  return chosen;
+}
+
+/** The pending file's envelope. `episodes` IS THE KEY resolve.mjs reads; naming it
+    anything else produces a file that parses, validates as JSON, and resolves zero
+    episodes. Built here rather than inline in main() so a test can read it. */
+export function buildPayload({ shows, match, newest, episodes, now = new Date() }) {
+  return {
+    generated_at: now.toISOString(),
+    source: "backfill-show",
+    shows: shows.map((s) => (typeof s === "string" ? s : s.show_id)),
+    match,
+    newest,
+    episodes,
+  };
+}
+
+/** Where the pending file goes, in precedence order: `--out`, then `PENDING_PATH`,
+    then the default.
+
+    THE DEFAULT IS NOT `fresh-pending.json` AND `PENDING_PATH` IS A KNOWN HOLE.
+    Invariant #2 in this file's header — "a backfill run cannot clobber a nightly
+    scan that is mid-flight" — holds for the DEFAULT and not for the env var, because
+    `scan.mjs` and `resolve.mjs` read the same `PENDING_PATH`. The README's own
+    hand-off flow has you exporting it in the shell, so a backfill and a nightly in
+    one shell will write the same file. Use `--out` to be sure; the flag wins over
+    the env var precisely so there is a way to be sure. */
+export function resolveOutPath({ out = null, env = {}, root = ROOT, cwd = process.cwd() } = {}) {
+  if (out) return resolvePath(cwd, out);
+  if (env.PENDING_PATH) return resolvePath(cwd, env.PENDING_PATH);
+  return join(root, "data-local", "backfill-pending.json");
 }
 
 /** One RSS <item> -> one fresh-pending.json record. Field-for-field the shape
@@ -162,7 +228,28 @@ export function resolveShows(catalog, names) {
 
 // -------------------------------------------------------------------- main --
 
+export const VALUE_FLAGS = ["--show", "--match", "--newest", "--out"];
+export const BARE_FLAGS = ["--dry-run"];
+
+/** REFUSES WHAT IT DOES NOT UNDERSTAND, rather than ignoring it. A silently
+    dropped flag is the worst outcome this script has: `--newst 60` used to mean
+    "--newest 25 and say nothing", and `--show --dry-run` used to mean "look up a
+    show called `--dry-run`". Both report a successful run against the wrong
+    input, which is the same failure `NO_MATCH` exists to prevent, one layer up. */
 export function parseArgs(argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith("--")) continue;
+    if (BARE_FLAGS.includes(a)) continue;
+    if (!VALUE_FLAGS.includes(a)) {
+      throw new BackfillError("BAD_FLAG", `unknown flag ${JSON.stringify(a)}. Known: ${[...VALUE_FLAGS, ...BARE_FLAGS].join(" ")}`);
+    }
+    const v = argv[i + 1];
+    if (v === undefined || v.startsWith("--")) {
+      throw new BackfillError("MISSING_VALUE", `${a} needs a value, got ${v === undefined ? "end of arguments" : JSON.stringify(v)}`);
+    }
+    i++; // consume the value, so it is never itself read as a flag
+  }
   const many = (flag) => argv.reduce((acc, a, i) => (a === flag && argv[i + 1] !== undefined ? [...acc, argv[i + 1]] : acc), []);
   const one = (flag, fallback) => {
     const i = argv.indexOf(flag);
@@ -198,18 +285,10 @@ async function main() {
   for (const show of shows) {
     await new Promise((r) => setTimeout(r, THROTTLE_MS));
     const doc = parser.parse(await fetchFeed(show.feed_url));
-    let items = doc?.rss?.channel?.item || [];
-    if (!Array.isArray(items)) items = [items];
-    if (items.length === 0) throw new BackfillError("EMPTY_FEED", `${show.show_id}: feed has zero <item> entries`);
-
-    const chosen = selectEpisodes(items, { newest: args.newest, match: args.match });
-    if (chosen.length === 0) {
-      throw new BackfillError(
-        "NO_MATCH",
-        `${show.show_id}: 0 of the newest ${args.newest} feed items matched ${JSON.stringify(args.match)}. ` +
-          `An empty backfill and a satisfied one must never look the same, so this is an error.`
-      );
-    }
+    const items = feedItems(doc, show.show_id);
+    const chosen = selectEpisodes(items, {
+      newest: args.newest, match: args.match, showId: show.show_id,
+    });
     for (const it of chosen) {
       const { record, reason } = pendingRecord(show, it);
       if (!record) { skipped.push(`${show.show_id} :: ${text(it.title)} :: ${reason}`); continue; }
@@ -219,19 +298,8 @@ async function main() {
     console.log(`  ${show.show_id}: ${chosen.length} of ${items.length} feed items selected`);
   }
 
-  const payload = {
-    generated_at: new Date().toISOString(),
-    source: "backfill-show",
-    shows: shows.map((s) => s.show_id),
-    match: args.match,
-    newest: args.newest,
-    episodes,
-  };
-  const outPath = args.out
-    ? resolvePath(process.cwd(), args.out)
-    : process.env.PENDING_PATH
-      ? resolvePath(process.cwd(), process.env.PENDING_PATH)
-      : join(ROOT, "data-local", "backfill-pending.json");
+  const payload = buildPayload({ shows, match: args.match, newest: args.newest, episodes });
+  const outPath = resolveOutPath({ out: args.out, env: process.env });
 
   if (args.dryRun) {
     console.log(`--dry-run: ${episodes.length} episode(s) would go to ${outPath}`);

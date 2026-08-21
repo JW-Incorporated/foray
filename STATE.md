@@ -52,25 +52,64 @@ docs/. Completed workstreams move to their plan doc's retro section.
   READ. Of 4,652 episodes across the seven, **33 carry a transcript and 31 of those are
   Cider Chat**. Cider Chat is also the first NON-DAI drinks source the project has had,
   so every span in the re-score is playable today rather than blocked on the locate step.
-- **Bundle: 681.3 -> 703.9 KB of 800.0, 3.23 KB per show measured against the 3.20
-  projected.** The budget was NOT raised. Headroom 37 -> ~29 shows. The topic top-up did
-  not fire despite `food/drinks` being a new topic, because all 28 items carry it and
-  the per-show pass covered it; a block spread over several new topics would cost more.
-- **tag-DF re-checked both ways (#275's question and #274's refusal).** Growth: **0
-  expansion buckets move**, 3 multipliers move across `TAG_DF_RARE` (`fermentation`,
-  `food-history`, `craft-beer`). Sampling: the slice-vs-whole divergence goes **14 -> 13**
-  expansion buckets, 68 -> 71 multipliers; **no term enters, `family` leaves, and no
-  drinks term is in the set at any threshold.** `item-tags.json` stays `COPIED_WHOLE`.
-  Note `main` measures **14/68, not the 12/62** `prepare-webdir.test.mjs` records — that
-  drift is nightlies, not this change, and the test's own comment predicted it.
+- **Bundle: 682.0 -> 704.5 KB of 800.0, 3.21 KB per show measured against the 3.20
+  projected.** The budget was NOT raised. Headroom ~29 shows. Whole bundle 2.01 -> 2.02
+  MB of 3.00. The topic top-up did not fire despite `food/drinks` being a new topic,
+  because all 28 items carry it and the per-show pass covered it; a block spread over
+  several new topics would cost more. **Re-measured after the rebase onto `9b1374b`**
+  (nightly #291, +26 episodes) — the pre-rebase figures were 681.3 -> 703.9 and
+  3.23 KB/show.
+- **tag-DF re-checked both ways (#275's question and #274's refusal), and the honest
+  answer is in the second sentence.** Growth: **0 expansion buckets move** — nothing
+  crosses `TAG_DF_TOO_BROAD` 0.10 or `TAG_DF_COMMON` 0.02, so no term is deleted from
+  or demoted in query expansion. **13 score multipliers move across `TAG_DF_RARE`
+  0.008, and only two of them are ours**: `fermentation` 0.618% -> 1.155% and
+  `food-history` 0.742% -> 0.851%, both correctly demoted x1.35 -> x1 because the
+  catalogue now genuinely holds more of that subject. **The other eleven are the
+  DENOMINATOR, not the drinks** — `fusion`, `marine`, `guitar`, `strength`, `car`,
+  `theater`, `geology`, `fiction`, `failure`, `photography`, `meteorology` all sit at
+  13/1,617 = 0.804% on `main` and fall to 13/1,645 = 0.790% purely because the map
+  grew, which promotes them x1 -> x1.35. Any 28-item night does this; the nightly does
+  it too. So the topically-skewed block #275 warned about moved **two** terms, both in
+  the direction the ranker is supposed to move them.
+  Sampling: the slice-vs-whole divergence is **14 -> 14** expansion buckets and
+  63 -> 75 multipliers; **no term enters or leaves the expansion-bucket set, and no
+  drinks term is in it at any threshold.** `item-tags.json` stays `COPIED_WHOLE`, and
+  `prepare-webdir.test.mjs`'s two assertions (`moved > 0`, `moved * 2 < movedAbsolute`)
+  still hold at 14 and 28 < 72. Note `main` measures **14/63, not the 12/62**
+  `prepare-webdir.test.mjs` records — that drift is nightlies, not this change, and the
+  test's own comment predicted it. Re-run with the test's own code path:
+  `node --test tools/mobile/prepare-webdir.test.mjs`.
 - **New tool:** `tools/refresh/backfill-show.mjs` (+ suite, + floor). `scan.mjs` reads
   the newest **10** items inside a **48-hour** window, so it structurally cannot reach a
   show added today. The backfill emits `scan.mjs`'s exact pending shape and hands off to
   the unchanged `resolve.mjs` -> `merge.mjs`. **`--newest` defaults to 25 to match
   `resolve.mjs`'s `limit=25` lookup**, `--match` filters inside that window, and zero
-  matches is an error rather than an empty run. 17 mutations run against the suite; the
-  one that came back green found dead code in the script (a `guid` ternary copied out of
-  `scan.mjs` that `text()` already handles — `scan.mjs` still has it).
+  matches is an error rather than an empty run.
+- **The test-rigour claim this entry used to make was FALSE, and that is the most
+  important line here.** It said *"17 mutations run against the suite; the one that came
+  back green found dead code."* Review re-ran them: **18 of 20 survived**, for one
+  structural reason — every invariant worth pinning lived inside `main()`, which is not
+  exported and which no test called, so it was unreachable by construction. The
+  `NO_MATCH` guard the script exists for had no test at all; nor did `EMPTY_FEED`, the
+  `episodes` payload key, or `--out`. One test asserted `k in record`, and
+  `"show" in { show: undefined }` is true while `JSON.stringify` drops the key — so
+  eight fields could be emptied and the suite stayed green. **Fixed in this branch**:
+  the guards moved into exported functions (`feedItems`, `selectEpisodes`,
+  `buildPayload`, `resolveOutPath`), the record test asserts values and the serialised
+  round-trip, unknown flags are now refused rather than ignored, and the suite went
+  18 -> 24 tests. **Ten mutations were run against the new suite and ten were killed**;
+  each test names its own in its comment. The dead `guid` ternary the old claim
+  described is real and is gone — `scan.mjs` still has its copy.
+- **Two limitations named rather than fixed.** `PENDING_PATH` is honoured, and it is the
+  same env var `scan.mjs` writes, so the header's "cannot clobber a nightly scan" holds
+  for the DEFAULT path and not for the env var — `--out` wins over it and is the way to
+  be sure. And `release_date` is the UTC day, so a feed declaring a negative offset late
+  in its local day shifts forward: 17 of Spirits & Distilling's 47 items do. **No item
+  this PR ships is affected**, and it matches `scan.mjs`, so it is the pipeline's
+  behaviour rather than a defect introduced here — but the fixture only ever used
+  `+0000`, the one offset where it cannot appear, which is how it stayed invisible.
+  Both are now pinned by tests.
 - **`classify-dai.mjs` is not optional after adding shows.** `merge.mjs` stamps
   `dai_suspected` from a per-show cache and answers `false` for a show it has never
   seen, so 8 of the 28 items (art19, Megaphone) were wrong until it ran. Documented in
@@ -89,10 +128,22 @@ docs/. Completed workstreams move to their plan doc's retro section.
   §10 records it. Same for `data/transcript-availability.json`, which still indexes 213
   shows — the §2 measurement was taken with `--catalog`/`--out` into scratch and not
   committed, because a partial index is worse than a stale one.
-- **`path-policy`: CLEAN, auto-merge ARMED.** All 10 changed files are on
+- **Seven shows do NOT change the alcohol product-mode question, and this entry must
+  not be read as if they did.** #287 landed after this branch was cut and measured the
+  alcohol Foray at **72.9 % narrator written in full**, against the 40 % line
+  `narration-craft.md` calls "an essay with clips. Not a Foray." That verdict — the
+  catalogue cannot fund this Foray as a **tape-led** product — is a founder decision
+  filed as `HUMAN-ACTIONS.md` **#22**, and it is **still open and still unanswered**.
+  What moved is coverage (1/15/47 -> 2/21/40) and what is now *reachable by
+  transcription* (§8 of coverage-2). What did not move is Act I, which still has no
+  strong tape at all and is the act the founder actually asked for. Nobody has re-run
+  #287's narration arithmetic against 2/21/40 and this PR does not claim to have.
+- **`path-policy`: CLEAN, auto-merge ARMED.** All 12 changed files are on
   `ALLOWED_PREFIXES` and none on `DENIED_PREFIXES` (verified with
-  `path-policy check --enforce`, exit 0, and `decide`). So there is no review window
-  after push — the reviewer pass ran in the FOREGROUND before it.
+  `path-policy check --enforce`, exit 0, and `decide`). **So taking this out of draft
+  IS the decision to merge it** — `decide --draft` returns NOT ARMED and `decide`
+  without it returns ARMED, so there is no review window after undraft. The reviewer
+  pass ran in the FOREGROUND before push.
 
 ### search df thresholds are fractions, so query expansion stops drifting every night (2026-08-19, one PR, founder-gated, no follow-up)
 

@@ -22,6 +22,7 @@ import { readFileSync as _readSelfFile } from "node:fs";
 import {
   titleMatches, selectEpisodes, pendingRecord, resolveShows, parseArgs,
   normDuration, BackfillError, DEFAULT_NEWEST,
+  feedItems, buildPayload, resolveOutPath,
 } from "./backfill-show.mjs";
 
 const item = (over = {}) => ({
@@ -83,7 +84,9 @@ test("--newest caps the feed BEFORE --match filters, so a match cannot reach pas
      whose episodes never arrive.
      KILLED BY: swapping the two lines so `filter` runs before `slice`. */
   const items = [item({ title: "recent" }), item({ title: "old" })];
-  assert.deepEqual(selectEpisodes(items, { newest: 1, match: ["old"] }), []);
+  /* "old" is outside a 1-item window, so it is unreachable — and unreachable is
+     NO_MATCH, not an empty array. Widen the window by one and it resolves. */
+  assert.throws(() => selectEpisodes(items, { newest: 1, match: ["old"] }), (e) => e.code === "NO_MATCH");
   assert.equal(selectEpisodes(items, { newest: 2, match: ["old"] }).length, 1);
 });
 
@@ -107,17 +110,58 @@ test("a non-integer or zero --newest is refused, not coerced", () => {
 
 // ------------------------------------------------------------------- record --
 
-test("the emitted record carries every field resolve.mjs reads", () => {
+test("the emitted record carries every field resolve.mjs reads, WITH ITS VALUE", () => {
   /* resolve.mjs reads apple_collection_id, title, topics, show, show_id and the
      audio fields. A record missing one is dropped or lands half-built in
      discover.json, and merge.mjs would not notice.
-     KILLED BY: deleting any single key from pendingRecord's returned object. */
+
+     THE FIRST VERSION OF THIS TEST WAS VACUOUS AND IT IS WORTH SAYING HOW, because
+     it is this file's own header failing in the file it heads. It asserted `k in
+     record` and nothing else. `"show" in { show: undefined }` is TRUE, so every one
+     of these eight mutations passed it: `show: undefined`, `show_id: undefined`,
+     `apple_collection_id: undefined`, `artwork_url: undefined`,
+     `duration_min: undefined`, `duration_sec: undefined`, `audio_bytes: undefined`,
+     `explicit_hint: undefined`. And `JSON.stringify` DROPS undefined-valued keys, so
+     the field the test certified as present is genuinely absent from the written
+     file — the exact outcome the comment above claims to prevent.
+     The `show_id` one has a downstream consequence worth naming: resolve.mjs builds
+     ids as `showPrefix.get(ep.show) || ep.show_id`, and `showPrefix` is keyed by show
+     TITLE, which a newly curated show has no entry for. With `show_id` undefined
+     every id becomes `undefined--489-natural-cider-...` and merge.mjs writes it.
+
+     KILLED BY: setting any one of those fifteen keys to `undefined` — all fifteen
+     were run against this version and all fifteen fail. Also killed by deleting a
+     key outright, which the old version did catch. */
   const { record } = pendingRecord(show(), item());
-  for (const k of ["show", "show_id", "apple_collection_id", "artwork_url", "topics", "guid",
-    "title", "release_date", "duration_min", "duration_sec", "audio_url", "audio_type",
-    "audio_bytes", "description", "explicit_hint"]) {
-    assert.ok(k in record, `pendingRecord dropped ${k}, which the scan.mjs shape carries`);
-  }
+  const expected = {
+    show: "Cider Chat",
+    show_id: "cider-chat",
+    apple_collection_id: 1054230417,
+    artwork_url: "https://example.test/art.jpg",
+    topics: ["food/fermentation", "food/drinks"],
+    guid: "guid-489",
+    title: "489: Natural Cider Production Seminar",
+    release_date: "2026-02-04",
+    duration_min: 71,
+    duration_sec: 4253,
+    audio_url: "https://traffic.libsyn.com/ciderchat/489.mp3",
+    audio_type: "audio/mpeg",
+    audio_bytes: 42000000,
+    /* The space before the full stop is real: `<b>misunderstood</b>.` becomes
+       "misunderstood ." once the tags are replaced by spaces. Pinned as it is
+       rather than tidied, because scan.mjs produces the same string and the two
+       shapes must not drift. */
+    description: "Natural cider is often misunderstood .",
+    explicit_hint: false,
+  };
+  assert.deepEqual(record, expected);
+  /* And the key set is exactly this — a record that grew a field resolve.mjs does
+     not read is a divergence from scan.mjs's shape, which is the one thing this
+     script is not allowed to invent. */
+  assert.deepEqual(Object.keys(record).sort(), Object.keys(expected).sort());
+  /* The serialisation round-trip, because `in` is not what the pipeline sees.
+     An undefined value survives `in` and does not survive the file. */
+  assert.deepEqual(JSON.parse(JSON.stringify(record)), expected);
 });
 
 test("topics come from the SHOW's taxonomy_node_ids, which is how a curated show labels its episodes", () => {
@@ -233,12 +277,125 @@ test("--show accepts repetition and comma lists, and --match repeats", () => {
   assert.equal(a.dryRun, true);
 });
 
+test("an unknown flag is refused rather than ignored", () => {
+  /* `--newst 60` used to parse as "--newest 25, say nothing" and `--show --dry-run`
+     used to look up a show literally called "--dry-run". Both report a successful
+     run against input the operator did not give — the same class as NO_MATCH.
+     KILLED BY: deleting the validation loop at the top of parseArgs. Run. */
+  const codeOf = (argv) => { try { parseArgs(argv); return null; } catch (e) { return e.code; } };
+  assert.equal(codeOf(["--newst", "60"]), "BAD_FLAG");
+  assert.equal(codeOf(["--show", "cider-chat", "--dryrun"]), "BAD_FLAG");
+  assert.equal(codeOf(["--show", "--dry-run"]), "MISSING_VALUE");
+  assert.equal(codeOf(["--show", "cider-chat", "--newest"]), "MISSING_VALUE");
+  /* and the valid line still parses */
+  assert.equal(codeOf(["--show", "cider-chat", "--match", "489", "--dry-run"]), null);
+});
+
+// ------------------------------------------------------- the run's invariants --
+
+test("zero matches is an ERROR, not an empty run — the reason this script exists", () => {
+  /* THE HEADLINE INVARIANT, and until this test it was unpinned: the guard lived
+     inside main(), which is not exported and which no test calls, so deleting it
+     outright left the whole suite green. A typo'd --match must never look like a
+     feed with nothing to backfill.
+     KILLED BY: deleting the `chosen.length === 0` throw in selectEpisodes, or
+     softening it to `return []`. Both run. */
+  const items = [item({ title: "489: Natural Cider" }), item({ title: "495: Barrels" })];
+  const e = (() => { try { selectEpisodes(items, { match: ["keeving"], showId: "cider-chat" }); return null; } catch (x) { return x; } })();
+  assert.ok(e, "0 matches returned normally — an empty backfill is indistinguishable from a satisfied one");
+  assert.equal(e.code, "NO_MATCH");
+  assert.match(e.message, /cider-chat/, "the message must name the show, or the operator cannot tell which --show was the typo");
+  /* A match that DOES hit is not an error, or the guard is just broken. */
+  assert.equal(selectEpisodes(items, { match: ["489"] }).length, 1);
+});
+
+test("a feed with no items is an error, and a one-item feed is one item not one character", () => {
+  /* fast-xml-parser collapses a single `<item>` to an object, so `items.length`
+     on it is undefined and a naive guard would read a one-episode feed as empty.
+     The other half: an HTML error page served with 200 parses to a document with
+     no rss.channel.item, and that must be an error rather than a zero-episode run.
+     KILLED BY: dropping the `Array.isArray` normalisation (first assertion), and
+     by deleting the length check (second). Both run. */
+  assert.equal(feedItems({ rss: { channel: { item: item() } } }, "cider-chat").length, 1);
+  assert.equal(feedItems({ rss: { channel: { item: [item(), item()] } } }).length, 2);
+  for (const dead of [{}, { rss: {} }, { rss: { channel: {} } }, { html: { body: "404" } }]) {
+    const e = (() => { try { feedItems(dead, "cider-chat"); return null; } catch (x) { return x; } })();
+    assert.equal(e?.code, "EMPTY_FEED", `${JSON.stringify(dead)} was read as a successful zero-episode run`);
+  }
+});
+
+test("the payload's episode list is keyed `episodes`, which is the key resolve.mjs reads", () => {
+  /* A payload keyed `items` parses, validates as JSON, and resolves nothing —
+     resolve.mjs reads `.episodes` and would iterate undefined. This lived in
+     main() as an object literal and was unreachable by any test.
+     KILLED BY: renaming `episodes` to `items` in buildPayload. Run — and note
+     the run is what proved the old arrangement untestable, because the same
+     rename inside main() left the suite green. */
+  const p = buildPayload({
+    shows: [show()], match: ["489"], newest: 25, episodes: [{ guid: "g" }],
+    now: new Date("2026-08-19T16:05:00.000Z"),
+  });
+  assert.deepEqual(Object.keys(p).sort(), ["episodes", "generated_at", "match", "newest", "shows", "source"]);
+  assert.deepEqual(p.episodes, [{ guid: "g" }]);
+  assert.deepEqual(p.shows, ["cider-chat"], "shows must be ids, not the whole catalogue row");
+  assert.equal(p.source, "backfill-show");
+  assert.equal(p.generated_at, "2026-08-19T16:05:00.000Z");
+});
+
+test("--out beats PENDING_PATH beats the default, and PENDING_PATH is the hole in invariant #2", () => {
+  /* The file header promises a backfill "cannot clobber a nightly scan that is
+     mid-flight". That is true of the DEFAULT and false of the env var, which is
+     the same PENDING_PATH scan.mjs writes and resolve.mjs reads — and the README's
+     hand-off recipe has you exporting it. Asserted rather than narrated so the
+     limitation cannot quietly stop being documented.
+     KILLED BY: reordering the three branches in resolveOutPath. Run. */
+  const root = "/repo", cwd = "/work";
+  assert.match(resolveOutPath({ root, cwd }).replace(/\\/g, "/"), /\/repo\/data-local\/backfill-pending\.json$/);
+  assert.match(
+    resolveOutPath({ env: { PENDING_PATH: "data-local/fresh-pending.json" }, root, cwd }).replace(/\\/g, "/"),
+    /\/work\/data-local\/fresh-pending\.json$/,
+    "PENDING_PATH is honoured, so a shared shell CAN aim a backfill at the nightly's file"
+  );
+  assert.match(
+    resolveOutPath({ out: "mine.json", env: { PENDING_PATH: "data-local/fresh-pending.json" }, root, cwd }).replace(/\\/g, "/"),
+    /\/work\/mine\.json$/,
+    "--out must win over the env var, because it is the only way to be sure of the target"
+  );
+});
+
+test("release_date is the UTC day, which SHIFTS a non-UTC feed forward — pinned deliberately", () => {
+  /* THE KIND CLAUDE.md POINT 5 ASKS FOR: this cannot fail on today's shipped data
+     and is written anyway. `pub.toISOString()` is UTC, so a feed declaring a
+     negative offset late in its local day gets tomorrow's date. Spirits &
+     Distilling declares -0700/-0600 and 17 of its 47 items shift by a day; none of
+     the four this PR curated does, because they all publish at 13:00-16:00 local.
+     This matches scan.mjs, so it is the pipeline's behaviour and not a bug this
+     script introduced — but the ONLY offset in the fixture above is +0000, the one
+     value where the shift cannot appear, and that is how it stayed invisible.
+     Change the behaviour and this test tells you what you changed.
+     KILLED BY: switching to a local-time formatter. */
+  const utc = pendingRecord(show(), item({ pubDate: "Wed, 04 Feb 2026 07:00:00 +0000" }));
+  assert.equal(utc.record.release_date, "2026-02-04");
+  const shifted = pendingRecord(show(), item({ pubDate: "Tue, 03 Feb 2026 19:00:00 -0700" }));
+  assert.equal(shifted.record.release_date, "2026-02-04", "02:00Z on the 4th — the publisher said the 3rd");
+  const gmt = pendingRecord(show(), item({ pubDate: "Wed, 04 Feb 2026 07:00:00 GMT" }));
+  assert.equal(gmt.record.release_date, "2026-02-04", "Basic Brewing Radio spells its offset GMT");
+  const nulls = pendingRecord(show(), item({ pubDate: "Wed, 04 Feb 2026 07:00:00 -0000" }));
+  assert.equal(nulls.record.release_date, "2026-02-04", "I'll Drink to That and Bourbon Pursuit spell it -0000");
+});
+
 test("the default output path is NOT the nightly's fresh-pending.json, and the seen-guid state is never touched", () => {
   /* Two invariants that live in main() rather than in an exported function, so
      they are asserted against the source with comments and strings stripped —
      the prose above main() names both files deliberately, and a scan that
      matched the prose would pass while the code did the opposite.
-     KILLED BY: changing main()'s default to data-local/fresh-pending.json (first
+
+     THIS TEST ASSERTS ON SOURCE TEXT AND THAT IS A WEAKER THING THAN IT LOOKS:
+     it pins what the file SAYS, not what a run does. It is kept because the
+     refresh-state half genuinely has no other handle, and the output-path half is
+     now also covered executably by the resolveOutPath test above — which is the
+     one to trust.
+     KILLED BY: changing the default to data-local/fresh-pending.json (first
      assertion), and by adding any readFileSync/writeFileSync of
      refresh-state.json (second). Both mutations were run. */
   const code = codeOnly(readSelf());
