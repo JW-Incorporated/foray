@@ -96,15 +96,28 @@ const FLOORS = {
      became reachable when `player/client.js` gave this backend its first real sink —
      two `_emit` calls sit inside a Promise executor — so the guard and its test landed
      together. */
-  "player/html-audio-backend.test.js": 109,
+  /* 109 -> 112 with #267: the three tests that pin the stop epoch the
+     autoplay-refusal recovery's continuation re-reads. They guard an inverted
+     #263 — audio starting while the machine says `interrupted` — and each
+     survives the others' mutations (audio, the boundary's arming order, and the
+     reject branch's report are three separate lines), so a floor that allowed one
+     to be dropped would allow exactly a third of it. */
+  "player/html-audio-backend.test.js": 112,
   /* What the player believes after an interruption it could not observe (#263).
      Floored because this suite is the only thing in the repo that boots
      `player/client.js` for real, and the cheapest way to lose that is for
      somebody to find its DOM stub inconvenient. The three facts it holds down
      are all a single line from reverting: the surface reconciles against the
      element on becoming visible, the reconcile never starts audio, and a
-     position nobody could read is never written down. */
-  "player/transport-reconcile.test.js": 25,
+     position nobody could read is never written down.
+
+     25 -> 27 with #267: part 2b, which is the only place in the repo that asserts
+     the refusal-recovery window is REACHABLE from the reconcile — a claim about the
+     manager and the backend together, invisible from either suite alone. It is also
+     the only test here constructed with `prefetch: true`, i.e. the only one that can
+     see a code path nothing in production enables. That is precisely what makes it
+     easy to delete as "testing a dead feature", and precisely why it is floored. */
+  "player/transport-reconcile.test.js": 27,
   /* The lock screen and the car (#27). Floored high on purpose: four product
      decisions live in that module — publisher credit in `artist`, previous/next
      as segments, the Foray's clock in `setPositionState`, and a seam beat that

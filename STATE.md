@@ -35,6 +35,64 @@ docs/. Completed workstreams move to their plan doc's retro section.
   answered.
 
 
+### #267's tripwire is disarmed, and the seam prefetch STAYS OFF — with the arithmetic that says why (2026-08-21, one PR, no follow-up) — `fix/224-seam-prefetch`
+
+- **What it was asked to do:** re-enable the seam prefetch for #224 and close #267
+  in the same change. **Half of that shipped.** #267 is closed; the prefetch is
+  still default-off, and the branch name is now misleading — read this entry
+  before assuming otherwise.
+- **#267 is fixed and no longer latent.** The autoplay-refusal recovery in
+  `player/html-audio-backend.js` does not await its own reload, so between the
+  swap-back and that load settling, **every guard in
+  `PlayerQueueManager.reconcileWithBackend` passes** — the manager says `playing`,
+  the blessed element is genuinely paused, `_applying` is 0, and
+  `_handoverUnproven` was cleared by the recovery itself. A `visibilitychange`
+  there lands `interrupted(wasPlaying: true)` correctly, and then the recovery's
+  scheduled continuation called `play()`: **audio while the machine says
+  `interrupted`** — the #263 lie inverted — plus a strand, because
+  `_handleBackendItemEnded` ignores an end in `interrupted`. Fixed with
+  `_stopEpoch`, the twin of `_loadSeq`: `_loadSeq` catches a skip, and a stop
+  changes no item, so it could never catch a pause. The continuation arms the
+  out-point **first** and only then declines the play, so one press still resumes
+  and the queue still advances.
+- **THE PREFETCH WAS NOT RE-ENABLED, and there are now TWO independent reasons.**
+  The first is the 2026-08-17 platform refutation in the entry below (loads are
+  throttled by VISIBILITY). The second is new, is arithmetic, and needs no device:
+  **a correctly-derived `PREFETCH_LEAD_SEC` does not fit the content.** Since #239
+  the hidden deadline is 20 s, and lead >= deadline + ~2 s of `timeupdate` slop
+  gives **22 s of WALL clock**. `_maybeOpenPrefetchWindow` divides by rate, so the
+  CONTENT needed ahead of the boundary is `22 x rate`: 22 s at 1x, **33 s at 1.5x,
+  44 s at 2x** — against a **30 s hard floor** on segment length. Above ~1.36x the
+  window for a floor-length segment would have to open before the segment starts.
+  The derivation is written out in full beside the constant.
+- **`audibleActivityClearDelay` IS 5 s, not 10 s — settled.** Two different WebKit
+  timers appear in run 32036295743's log 20 ms apart: the audible-activity clear
+  (**5 s**, `clearAudibleActivity` fired 5.006 s later) and the foreground-assertion
+  release (**10 s**). `docs/ios-ci.md` §4c had it right; `mp1-background-audio.md`
+  §7.4's label and `html-audio-backend.js`'s §prefetch bullet were wrong and are
+  fixed here. **Issue #224's body was also wrong and has been corrected in place.**
+  It matters: the 9,153 ms beat did not squeak inside a grace window, it **crossed**
+  the audible-activity clear and completed anyway. The 847 ms of headroom is
+  against the 10 s foreground-assertion release, which is the cliff that remains.
+- **What #224 still needs, plainly:** a device. `#239`'s 20 s hidden deadline was
+  already on `main` when the car report landed on `capital-types-1`, so widening
+  the deadline alone did not fix it. Nothing in this PR touches the stopping.
+- **Four new tests** (floors 109 -> 111 and 25 -> 27), each carrying the mutation
+  that kills it in its own comment; one carries an ENVIRONMENT mutation instead,
+  and says so, because it asserts a property of code it does not change.
+  `player/transport-reconcile.test.js` gained **part 2b**, the only place in the
+  repo asserting the recovery window is *reachable* from the reconcile — a claim
+  about the manager and the backend together, invisible from either suite alone,
+  and the only test in that file built with `prefetch: true`.
+- **The pre-push review earned its keep and is worth reading as a pattern.** It
+  broke one of the two new tests by deleting a `laggySeek` precondition — without
+  it the recovery settled before the pause, so the ordering claim was pinned by
+  the fake's microtask timing rather than by any assertion, and the mutation
+  survived. It also found that the recovery's **reject** branch had no stop check,
+  so a load that failed after a deliberate stop still reported `E.error` and
+  replaced `interrupted(wasPlaying: true)` with `idle` — undoing the one-press
+  resume the fix exists to preserve. Both are in.
+
 ### search df thresholds are fractions, so query expansion stops drifting every night (2026-08-19, one PR, founder-gated, no follow-up)
 
 - **What:** `fix/275-relative-tagdf`. #275. `search-engine.js`'s `tagDF()` returned an

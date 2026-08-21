@@ -298,7 +298,22 @@ const LOAD_SETTLE_TIMEOUT_HIDDEN_MS = 20_000;
        audio (`takeAudibleActivity()` -> `foregroundActivity("View is playing
        audio")`), and `ProcessThrottler` only suspends a process with no
        activities (mp1-background-audio.md §7.4). Pause and that assertion
-       lapses after `audibleActivityClearDelay` = 10 s.
+       lapses after `audibleActivityClearDelay`, which is **5 s** — MEASURED,
+       verbatim, in run 32036295743's own simulator log:
+       *"Starting timer to clear audible activity in 5 seconds because we are no
+       longer playing audio"*, with `clearAudibleActivity` firing 5.006 s later.
+       **An earlier draft of this line said 10 s and that was a conflation of two
+       different WebKit timers**, both of which appear in that same log 20 ms
+       apart: the 10 s one is `WebPageProxy::updateThrottleState` releasing the
+       FOREGROUND ASSERTION (*"starting timer to release a foreground assertion
+       in 10 seconds if audio doesn't start to play"*), which is a different
+       mechanism with a different expiry. `docs/ios-ci.md` §4c and
+       mp1-background-audio.md §7.4 both carry the correction and the log lines.
+       It matters here because the 9,153 ms beat below reads differently under
+       each: against 5 s the silence CROSSED the audible-activity clear outright
+       and the transition completed anyway, rather than squeaking inside a grace
+       window by 847 ms. The 847 ms is real but it is headroom against the 10 s
+       FOREGROUND-ASSERTION release, which is the cliff that remains.
      - Blink is the same shape and it is MEASURED (§4.1): a hidden page that is
        producing audio is not throttled at all (111 ms median for a 100 ms
        timer, identical to visible); pause the element and the same timer
@@ -308,9 +323,9 @@ const LOAD_SETTLE_TIMEOUT_HIDDEN_MS = 20_000;
    ── AND THAT REASONING WAS WRONG. THE HANDOVER IS PARKED, DEFAULT OFF ──────
 
    The two bullets above are about DOM TIMERS and PROCESS SUSPENSION, and are
-   sound in that scope (though note `docs/ios-ci.md` §"a claim it walks back"
-   measured `audibleActivityClearDelay` behaving as ~5 s rather than the 10 s
-   quoted above). The inference drawn from them — "so a load issued while audio is
+   sound in that scope (with the 5 s correction folded into the first one, above,
+   rather than left as a footnote — see `docs/ios-ci.md` §4c for the log).
+   The inference drawn from them — "so a load issued while audio is
    playing runs in the un-throttled window" — is FALSE, and it was measured false
    the first time it ran on a device. Run **32057395270** shipped the handover to
    an iOS Simulator and the seam got WORSE than the bug: `observedGapMs: null`,
@@ -447,6 +462,71 @@ const LOAD_SETTLE_TIMEOUT_HIDDEN_MS = 20_000;
  * moves. Do not raise this number and re-ship — the reasoning above is sound
  * about the deadline and the content, and wrong about the platform. See the
  * refutation in the header.
+ *
+ * ── RE-DERIVED AGAINST THE HIDDEN NUMBERS (2026-08-21, #224) ──────────────
+ *
+ * The bullets above are sized off `LOAD_SETTLE_TIMEOUT_MS` = 10 s, which has not
+ * been the deadline a seam actually gets since #239 shipped
+ * `LOAD_SETTLE_TIMEOUT_HIDDEN_MS` = 20 s on 2026-08-17. This is that derivation
+ * redone. **It does not produce a smaller number, and it does not produce a
+ * usable one** — which is the finding, and it is arithmetic rather than another
+ * inference from the platform.
+ *
+ *   1. LEAD >= DEADLINE, unchanged and still the binding constraint. A lead
+ *      shorter than the deadline lets a warm load that the backend still
+ *      considers VALID be unresolved at the boundary: not ready, so discarded,
+ *      and the cold fallback pays the whole load anyway. The hidden deadline is
+ *      the one that matters, because a hidden seam is the only case this feature
+ *      exists for.                                                       20.0 s
+ *   2. TRIGGER SLOP. The window opens on `timeupdate`, and the widest interval
+ *      this repo has recorded is 1,825 ms against a 250 ms nominal (the same
+ *      number `OUT_POINT_ARM_LEAD_SEC` is sized off). Round up.          + 2.0 s
+ *                                                                       ───────
+ *      PREFETCH_LEAD_SEC would have to be at least                        22 s
+ *
+ * Cross-check against the load itself rather than against our own deadline, and
+ * it lands in the same place: worst CLEAN hidden sample 9.153 s (run
+ * 32036295743) x the 1.8 spread between the two clean samples = 16.5 s, plus the
+ * cold cross-origin CDN none of them exercised (1.41 s worst ranged-GET TTFB,
+ * desktop, a lower bound) ~= 18 s, + 2 s slop = **20 s**. Two independent routes,
+ * 20-22 s. Call it 22.
+ *
+ * ── AND 22 s DOES NOT FIT THE CONTENT. THIS IS THE PART THAT IS NEW ───────
+ *
+ * The lead is WALL clock; `_maybeOpenPrefetchWindow` opens the window when
+ * `(outPoint - currentTime) / rate <= PREFETCH_LEAD_SEC`, so the CONTENT it needs
+ * ahead of the boundary is `PREFETCH_LEAD_SEC x rate`. `RATES` runs to
+ * `MAX_RATE = 2` (`playback-rate.js`), and no segment may be shorter than 30 s
+ * (`docs/curation/segment-length-rules.md`, hard floor). So:
+ *
+ *     rate 1.00   22 s of content   73% of a floor-length segment
+ *     rate 1.50   33 s of content   **exceeds the 30 s floor**
+ *     rate 2.00   44 s of content   **exceeds it by 47%**
+ *
+ * Above 30/22 = **1.36x**, a floor-length segment can never give the warm load
+ * its lead. Note what that does and does NOT mean, because the obvious reading is
+ * wrong: `_maybeOpenPrefetchWindow` has no lower bound — it fires on any tick
+ * with `remainingWallSec <= PREFETCH_LEAD_SEC`, not on a crossing — so the window
+ * still OPENS, on the segment's very first tick. It just opens with less lead
+ * than it was sized for: 15 s of wall clock on a 30 s segment at 2x, against a
+ * 20 s hidden deadline. **That is the worse outcome of the two.** A window that
+ * could not open would cost nothing; a window that opens too late guarantees an
+ * unresolved warm load at the boundary — the seam pays the cold fallback anyway
+ * AND has spent the bytes.
+ *
+ * The skip-waste budget goes the same way. Like for like at the derived lead:
+ * 22 s of a 103 s median segment is **21%** at 1x and 44 s is **43%** at 2x,
+ * against the ~11% the 12 s constant was justified on. Nearly half of every
+ * segment spending the next one's bandwidth, on a listener's cellular data.
+ *
+ * **So a correctly-derived lead is incompatible with the content this player
+ * ships**, independently of the platform refutation in the header. Two separate
+ * reasons this feature cannot simply be switched on, and only one of them needs
+ * a device to argue about. The number below stays at 12 because prefetch is
+ * default-off and an inert constant that matches its own (stale) reasoning is
+ * less misleading than an inert constant that matches no reasoning at all — but
+ * 12 is NOT the derived value, and anything that turns prefetch on has to answer
+ * this arithmetic before it touches this line.
  */
 export const PREFETCH_LEAD_SEC = 12;
 
@@ -548,6 +628,20 @@ export class HtmlAudioBackend {
         recovery, which is the only path here that continues after a promise
         nobody awaited, and therefore the only one that can be overtaken. */
     this._loadSeq = 0;
+    /** Bumped by every DELIBERATE stop (#267). The twin of `_loadSeq`, for the
+        other way the refusal recovery can be overtaken.
+
+        `_loadSeq` answers "is this still the item the player is on"; it cannot
+        answer "does the player still want audio", because a pause changes no
+        item. `pause()` already sets `_handoverUnproven = false` — *"A deliberate
+        stop ends the recovery window: whatever a pending `play()` rejects with
+        after this point, nothing may start audio again on its own"* — but that
+        only covers a rejection that has not happened yet. Once the recovery has
+        STARTED, `_handoverUnproven` is already false, its own load is in flight,
+        and its continuation is scheduled: nothing between the pause and that
+        continuation reads the flag again. This epoch is what the continuation
+        re-reads. See `_recoverFromRefusedHandover`. */
+    this._stopEpoch = 0;
     /** Listeners a surface registered through `addMediaListener`, so they can
         be moved to the promoted element instead of being stranded on the
         demoted one. `player/client.js` repaints off these. */
@@ -1242,26 +1336,83 @@ export class HtmlAudioBackend {
        wrong out-point, which this repo costs at a median 936.5 s of the wrong
        episode. `_loadSeq` is bumped by every `load()`, so reading it back
        immediately after the call gives this recovery a claim it can check. */
+    /* AND IT MUST NOT OUTLIVE THE LISTENER'S INTENT EITHER (#267). Same shape,
+       different question: `_loadSeq` catches a skip, and a stop changes no item,
+       so it cannot catch a pause. The reachable case is not a tap — it is
+       `PlayerQueueManager.reconcileWithBackend`. Every one of its guards passes
+       in this window (the manager says `playing`, `this.el` is the blessed
+       element and genuinely `paused`, `_applying` is 0 because `_handle` has
+       returned, and `_handoverUnproven` was cleared at the top of this method),
+       so a `visibilitychange` here lands `interrupted(wasPlaying: true)` —
+       correctly, on the evidence it has. Then this continuation would call
+       `play()` and start audio while the machine says `interrupted`: the #263 lie
+       inverted, every control showing Play with sound coming out. It strands
+       too — `_handleBackendItemEnded` ignores an end in `interrupted`, so the
+       queue never advances and the Foray stops at that segment, which a listener
+       cannot tell apart from #224. */
     const settled = this.load(item, { startOffset: offset });
     const mine = this._loadSeq;
+    const stopMark = this._stopEpoch;
     settled.then(
       () => {
         if (this._released) return;
         if (this._loadSeq !== mine) {
           return this._emit(`handover.recovery.superseded ${item.id} — a newer load owns the element`);
         }
+        /* ARMED BEFORE THE STOP CHECK, DELIBERATELY. Declining to play is not
+           the same as abandoning the segment: the element holds the right audio
+           at the right offset, and the point of declining is that one press
+           resumes it, bounded, and the queue advances.
+
+           DEFENSIVE RATHER THAN LOAD-BEARING, and worth being exact about
+           rather than claiming more than it does. Through the manager, no resume
+           plays without reloading — `handlePlay` on `interrupted` emits
+           `loadItem`, `load()` disarms by contract, and `itemLoaded` re-arms from
+           the item's own bounds — so a dropped boundary here would be recovered
+           by that path rather than running the segment to the end of its source
+           episode. This ordering is what makes the backend correct on its own
+           terms, for a caller that resumes without reloading, and it costs one
+           line. Keep it; do not upgrade the claim. */
         if (boundary != null) this.setOutPoint(boundary);
+        if (this._stopEpoch !== stopMark) {
+          return this._emit(
+            `handover.recovery.stopped ${item.id} — something paused the player; the boundary is armed, audio is not`
+          );
+        }
         this.play();
       },
       (loadErr) => {
-        /* The same two claims the success branch makes, and for a sharper
-           reason: reporting an error for an item nobody is on sends the manager
-           to `idle` and pauses the segment the listener actually skipped TO. A
-           released backend must be silent for the same reason its success path
-           is. */
+        /* THE SAME THREE CLAIMS THE SUCCESS BRANCH MAKES, and each one for a
+           sharper reason here, because this branch does not merely fail to start
+           audio — it REPORTS, and `onError` is `E.error`, which is
+           `[S.idle(), [pausePlayback, ...]]` in every state
+           (`queue-state.js`'s `reduce`). So a report from a recovery nobody is
+           waiting on does not just add noise, it overwrites whatever the player
+           had become.
+
+             - released: a torn-down backend must be silent, same as above.
+             - superseded: reporting an error for an item nobody is on sends the
+               manager to `idle` and pauses the segment the listener skipped TO.
+             - stopped: reporting here would replace the
+               `interrupted(wasPlaying: true)` the reconcile just established
+               with `idle` — throwing away the one-press resume that is the
+               entire reason the success branch declines instead of abandoning
+               the segment. And it would be a lie about causation: what the
+               listener (or the reconcile) did was stop, not fail.
+
+           Declining to report is safe in the stopped case because nothing is
+           pending on it. The element holds no usable media, but every resume
+           path goes through `loadItem` -> `load()` and issues a fresh one; if
+           the URL really is dead, THAT load fails with somebody waiting for it
+           and the degrade path runs then, which is where it belongs. */
         if (this._released) return;
         if (this._loadSeq !== mine) {
           return this._emit(`handover.recovery.superseded ${item.id} — a newer load owns the element`);
+        }
+        if (this._stopEpoch !== stopMark) {
+          return this._emit(
+            `handover.recovery.stopped ${item.id} — it also failed, but nobody is waiting on it`
+          );
         }
         // Now it is a genuine failure and the manager's degrade path is right.
         this._emit(`handover.recovery.failed ${item.id}: ${loadErr?.message ?? loadErr}`);
@@ -1590,6 +1741,13 @@ export class HtmlAudioBackend {
     // A deliberate stop ends the recovery window: whatever a pending `play()`
     // rejects with after this point, nothing may start audio again on its own.
     this._handoverUnproven = false;
+    // AND ends a recovery that has ALREADY started (#267). The line above is
+    // read at the moment a rejection arrives; by then an in-flight recovery has
+    // already cleared it and holds a scheduled continuation that calls `play()`.
+    // The continuation re-reads this counter instead. Bumped unconditionally —
+    // pausing an already-paused element is still an instruction not to be
+    // audible, and the reconcile of a lost route does exactly that (#263).
+    this._stopEpoch++;
     this.el.pause();
   }
 

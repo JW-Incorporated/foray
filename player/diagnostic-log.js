@@ -86,7 +86,7 @@
  * seam cannot make a single entry unbounded.
  *
  * ── THE COST, STATED HONESTLY ──────────────────────────────────────────────
- * `html-audio-backend.js:1421` carries the warning in its own words: a telemetry
+ * `html-audio-backend.js:1534` carries the warning in its own words: a telemetry
  * sink that writes localStorage synchronously sits on the hidden, throttled,
  * seam-critical path.
  *
