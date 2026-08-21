@@ -696,6 +696,28 @@
       "batch_id": "fresh-2026-07-25-31acd1c8",
       "classified_at": "2026-07-25T13:54:10.190Z"
     },
+    "128859062": {
+      "topics": [
+        "science"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Science podcast; no signal available to assess specificity.",
+      "display_title": "The Skeptics' Guide to the Universe",
+      "blurb": "Weekly science news and critical thinking topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
     "135067274": {
       "topics": [
         "news/daily",
@@ -862,6 +884,28 @@
       "tier": 1,
       "batch_id": "fresh-2026-07-25-31acd1c8",
       "classified_at": "2026-07-25T13:54:10.190Z"
+    },
+    "152016440": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily news show; no signal to determine focus areas.",
+      "display_title": "WSJ What's News",
+      "blurb": "Daily news briefing from Wall Street Journal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
     },
     "152564324": {
       "topics": [
@@ -84728,13 +84772,398 @@
       "tier": 1,
       "batch_id": "fresh-2026-08-21-6e6e5f38",
       "classified_at": "2026-08-21T08:49:44.505Z"
+    },
+    "6786131990": {
+      "topics": [
+        "craft"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional Pilates education podcast featuring instructor expertise and industry trends.",
+      "display_title": "The Pilates Journal Podcast",
+      "blurb": "Industry conversations with Pilates educators on practices and innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6786414044": {
+      "topics": [
+        "psychology",
+        "philosophy/ideas"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development and success coaching with motivation, discipline, mindset focus.",
+      "display_title": "NEXT LEVEL YOU Podcast",
+      "blurb": "Motivational podcast on personal growth, discipline, resilience, and mindset.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6786461834": {
+      "topics": [
+        "society",
+        "psychology"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.7
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Working mothers share experiences of motherhood, life reimagining, and identity shifts.",
+      "display_title": "Can We Say That Out Loud?",
+      "blurb": "Candid conversations with working moms on motherhood, identity, and life changes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6787167878": {
+      "topics": [
+        "history/military-modern",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertaining deep-dives into WWII figures and events through personality and anecdote.",
+      "display_title": "Old Gossip with Rebecca Siegel",
+      "blurb": "Witty explorations of WWII history, personalities, and lesser-known historical moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6787704722": {
+      "topics": [
+        "music",
+        "society"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host shares stories from books and music, blending literary and sonic reflection.",
+      "display_title": "聲紡讀書部",
+      "blurb": "Book club and music podcast exploring stories across literature and sound.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6787734266": {
+      "topics": [
+        "aviation",
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation history narratives centered on legendary pilots and aircraft restorations.",
+      "display_title": "The Hangar with Taildragger",
+      "blurb": "Historical narratives of aviation, famous pilots, and classic aircraft restoration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6787806776": {
+      "topics": [
+        "engineering",
+        "craft"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        },
+        {
+          "node": "craft",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Irrigation and water management professional conversations with industry leaders.",
+      "display_title": "SprinklerDude's Podcast",
+      "blurb": "Irrigation industry conversations on design, tech, water conservation, and business.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6787827890": {
+      "topics": [
+        "gaming",
+        "adventure"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "D&D actual-play podcast mixing humor, storytelling, and life challenges.",
+      "display_title": "Critical Bromance",
+      "blurb": "D&D actual-play podcast blending fantasy adventure with personal life reflection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6787944980": {
+      "topics": [
+        "sports"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Iowa Hawkeyes football fan show covering team updates, interviews, game analysis.",
+      "display_title": "Hawkeye Hangover",
+      "blurb": "Iowa Hawkeyes football podcast with news, interviews, and fan perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6788145944": {
+      "topics": [
+        "medicine",
+        "science"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Natural health and biblical healing approach to chronic illness, nutrition, regeneration.",
+      "display_title": "The Jordan Rubin Show",
+      "blurb": "Health and nutrition podcast with focus on natural healing and wellness recovery.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6788197016": {
+      "topics": [
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal memoir podcast; individual life stories without clear thematic focus.",
+      "display_title": "A Most Unpredictable Life",
+      "blurb": "Year-by-year memoir podcast exploring surprising life moments and transformations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6788227778": {
+      "topics": [
+        "medicine",
+        "psychology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews on women's body knowledge, health mechanics, wellness, spirituality.",
+      "display_title": "The Through Line",
+      "blurb": "In-depth conversations on women's health, body literacy, wellness, and femininity.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6788245550": {
+      "topics": [
+        "computing",
+        "society"
+      ],
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tech and society narratives: Wikipedia, digital knowledge systems, AI, information power.",
+      "display_title": "All That We Touch",
+      "blurb": "Investigations of technology's impact on society through documented narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6788246294": {
+      "topics": [
+        "comedy/casual-hangs",
+        "gaming"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy book review with comedic banter among hosts discussing chapters and themes.",
+      "display_title": "Three Knights and a Page",
+      "blurb": "Comedic fantasy book club with three hosts discussing chapters and literary themes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
+    },
+    "6788895068": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "University-level history course covering ancient, Renaissance, modern history eras.",
+      "display_title": "History Chats with Dr. S.",
+      "blurb": "University history lectures spanning ancient, medieval, Renaissance, and modern eras.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-21-83ab9473",
+      "classified_at": "2026-08-21T16:50:10.205Z"
     }
   },
-  "built_at": "2026-08-21T08:49:44.505Z",
+  "built_at": "2026-08-21T16:50:10.205Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-21-6e6e5f38",
+    "last_batch_id": "fresh-2026-08-21-83ab9473",
     "last_batch_tier": 1
   }
 }
