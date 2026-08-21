@@ -7,6 +7,29 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### #301's strong bar is measured and DOCUMENTED, not changed (2026-08-21, one PR, auto-mergeable, no follow-up) — `fix/301-strong-bar`
+
+- **What:** improving a query's best match can empty that query, because the strong
+  bar is a fraction of the top result's own score. All four directions in the issue
+  were run against `tools/test-search.mjs`; three are red on the live pool and each
+  redness is filler reaching an honest-empty answer, so the grader is UNCHANGED and
+  what lands is the reproduction, the bound, and the ruling next to the constant.
+  **#301 stays open** — the remaining question is a product ruling about what a
+  one-strong-answer query should show, and it is the founder's.
+- **Branch prefix:** `fix/301-strong-bar` — PR only, never main.
+- **Owned files:** `test/search-bar-exposure.test.js` (new).
+- **Shared files it touches, minimally:** `search-engine.js` (comment only, no
+  behaviour change), `test/search-tiering.test.js` (+2 tests),
+  `test/suite-integrity.test.js` (floor 11 -> 13 and the new suite's floor 1 —
+  #247's entry claims this file too, so this is the announcement).
+- **Explicitly out of scope:** `tools/test-search.mjs` (DENIED_PREFIXES, and its
+  expectations are all correct — nothing in this PR needs them changed), and any
+  change to `STRONG_RATIO`, `RICH_MIN` or the two-clearer floor.
+- **Live finding another session should know:** "meditation" is ON the cliff today —
+  two bar-clearers, and a +34% improvement to its top result returns nothing. If a
+  curation PR turns a battery status check red, check what the query's top result
+  scored before and after BEFORE suspecting the retrieval.
+
 ### Narration architecture + one audited thread (#247) — `feat/narration-architecture`
 
 - **What:** the three-level narration design the founder proposed (dots →

@@ -279,3 +279,192 @@ test("strongPrefix is total and never empty, even against a bar nothing clears",
   assert.deepEqual(SE.strongPrefix(all, 9.5), [all[0]]);
   assert.deepEqual(SE.strongPrefix(all, 99), [all[0]]);
 });
+
+/* ---------- #301: the top result's own score is the whole hazard surface ---------- */
+
+/* "meditation" on the 2026-08-21 pool, verbatim from the live ranker
+   (`node tools/test-search.mjs --tiering` plus a per-result dump through the same
+   harness): nine results, all matched=1, bar 4.050, two clearers, status sparse,
+   two picks. Shows are set explicitly because four of the nine really are one
+   show, and a fixture that spread them would be measuring a pool the ranker
+   never returns. */
+const MEDITATION = () => [
+  row("huberman--meditation-to-focus", 1, 8.100, "huberman-lab"),
+  row("ten-percent--ims-founders", 1, 5.400, "ten-percent-happier"),
+  row("ten-percent--youre-gonna-be-alright", 1, 3.375, "ten-percent-happier"),
+  row("ten-percent--self-help-without-other-people", 1, 3.375, "ten-percent-happier"),
+  row("ten-percent--stop-fixing-yourself", 1, 3.375, "ten-percent-happier"),
+  row("huberman--access-your-creativity", 1, 3.375, "huberman-lab"),
+  row("philosophize-this--marcus-aurelius", 1, 2.700, "philosophize-this"),
+  row("engines--1612", 1, 2.025, "engines-of-our-ingenuity"),
+  row("engines--1617", 1, 2.025, "engines-of-our-ingenuity"),
+];
+
+test("improving the top result can empty a query, and that is #301 rather than a bug this suite fixes", () => {
+  /* THIS TEST ASSERTS A DEFECT ON PURPOSE. It is the reproduction #301 asks for,
+     pinned so the hazard is loud instead of silent, and it is NOT a statement
+     that this is the behaviour anyone wants. If you change the grader so that
+     improving one item can no longer delete its query's answer, THIS TEST MUST
+     FAIL: read it, delete it, lower this suite's floor in
+     test/suite-integrity.test.js from 13 to 12 in the same PR, and say so in
+     #301. A green run here means the perverse incentive is still live -- the
+     pipeline is still rewarded for leaving a thin topic's single best episode
+     mislabelled.
+
+     The numbers are PR #300's, measured: labelling Huberman's meditation episode
+     `health/meditation` took it 8.100 -> 12.150 (+50%), the bar 4.050 -> 6.075,
+     and Ten Percent Happier's 5.400 -- whose own relevance did not change, and
+     which is a genuine mindfulness episode rather than a ranker false positive --
+     fell out of the strong set. One clearer left, so `strong.length < 2` returns
+     empty. Coverage went UP and the answer went to nothing.
+
+     +34% would have been enough -- a bar of 5.427 leaves 5.400 out -- and the
+     real edit was +50%.
+
+     KILLED BY (both run, both fail this test):
+       - `if (strong.length < 1)` plus `if (picks.length < 1)` -- direction 3 in
+         the issue. Returns sparse with one pick instead of empty, so the
+         `deepEqual([])` fails. It also turns two live battery checks red:
+         "warriors" and "basketball" start answering with their lone coincidental
+         match (an Ancients episode on Scotland's first warriors; a Freakonomics
+         episode on depression that mentions basketball in passing).
+       - `const bar = Math.min(results[0].sum, results[1] ? 2 * results[1].sum :
+         results[0].sum) * STRONG_RATIO` -- direction 1, capping the bar's rise.
+         The runner-up then clears by construction, so `after` stays sparse. It
+         costs the honest-empty floor: "basketball" answers with the depression
+         episode, and the battery says so. */
+  const before = SE.classifyResults(MEDITATION());
+  assert.equal(before.status, "sparse");
+  assert.deepEqual(ids(before), ["huberman--meditation-to-focus", "ten-percent--ims-founders"]);
+
+  const improved = MEDITATION();
+  improved[0] = row("huberman--meditation-to-focus", 1, 12.150, "huberman-lab");
+  const after = SE.classifyResults(improved);
+  const fixed = "if this now returns an answer, #301 has been FIXED: delete this test, drop the floor to 12, and close the issue";
+  assert.equal(after.status, "empty", fixed);
+  assert.deepEqual(after.picks, [], fixed);
+
+  /* Stated as the property it violates, so a failure names the mechanism rather
+     than a status string. */
+  assert.ok(after.picks.length < before.picks.length,
+    "improving the best match reduced the pick count -- #301");
+});
+
+test("a result the ranking keeps below the top one cannot evict a bar-clearer, however much it improves (#301)", () => {
+  /* The bound on #301, and the reason it is a hazard rather than a catastrophe:
+     the bar reads `results[0].sum` and nothing else, so the only dangerous edit is
+     one that raises the score of the result the ranking already places first.
+     Improving anything the comparator still ranks BELOW that result can add it to
+     the answer, reorder the answer, or flip the status up to "ok" -- it can never
+     empty the query and never drop a result that clears the bar. That is what
+     makes "improve the single best episode of a thin topic" the one curation move
+     to think twice about, and it is the claim both robust-statistic options in
+     #301 would have to give up.
+
+     WHY "A BAR-CLEARER" AND NOT "A RESULT", which is where the first version of
+     this test was wrong and the sweep said so: on `TIERED`, promoting the
+     matched=1 result scoring 9 into the top tier at 9.99 takes the answer from
+     three picks to two. What it loses is the 2.5 -- a SUB-BAR result that #216's
+     widening was showing only because it sat between two clearers, and the
+     promotion moves it out from between them. That is the widening's own rule
+     working, not the bar evicting anything, so the assertion is about the
+     clearers. Asserting the raw pick count instead would have pinned #216's
+     widening as if it were #301's bound.
+
+     "BELOW THE TOP ONE" IS LOAD-BEARING, not hedging. An improvement large enough
+     to overtake results[0] makes the improved item results[0], and then the
+     defect above is simply about it instead: on the fixture below, raising the
+     runner-up from 5.400 to 20 empties the query. The sweep therefore raises a
+     same-tier result only as far as the top score, and goes ABOVE it only for
+     results in a LOWER `matched` tier, which the comparator keeps below the top
+     however they score -- that is the case the bar must ignore, and the case a
+     careless `Math.max(...results.map(x => x.sum))` would get wrong.
+
+     Swept over two shapes, each row raised in its own matched tier and in the tier
+     above (a topic label raises `matched` as well as `sum`, which is exactly what
+     PR #300 did, so a sweep that only moved `sum` would miss the realistic edit).
+     130 improvements; the counter at the bottom pins that.
+
+     WHAT THIS TEST CAN AND CANNOT CATCH, and the line between them is provable
+     rather than a measurement that might change. The assertion is about results
+     that clear `results[0].sum * STRONG_RATIO`. Three of the four bar rewrites #301
+     considers -- second-best, median, and the direction-1 clamp -- all anchor on a
+     value that is at most the top score, so each produces a bar at most today's.
+     A LOWER bar cannot evict anything, so none of them can be caught here, by
+     construction and not by luck. They are caught where their cost really is, which
+     is the honest-empty floor: the #301 test above and "fewer than two bar-clearing
+     results is honestly empty" both go red on all three, and the battery goes red
+     on the live pool.
+     What this test is for is the other direction -- a rewrite that lets a result the
+     ranking places BELOW the top one push the bar UP:
+
+     KILLED BY: `const bar = Math.max(...results.map(x => x.sum)) * STRONG_RATIO`,
+     which reads like a tidy-up of the line it replaces and is not one. It hands the
+     bar to whichever result scores most, including one the comparator ranks below a
+     clearer, and `TIERED` is the fixture where those differ. Before `TIERED` existed
+     this mutation passed every unit test and all 123 battery checks -- found by
+     review, not by this file.
+
+     WHY BOTH FIXTURES, since only one carries that mutation. `MEDITATION` is the
+     live shape the defect was measured on, so the property is swept over real
+     numbers and not only over a shape built to break something; it also covers the
+     single-tier case, where `Math.max(...)` and `results[0].sum` agree and the sweep
+     must stay green. `TIERED` is the two-tier case. An earlier version had a third,
+     `MEDIAN_SENSITIVE`, built to catch the median rewrite; it was deleted once the
+     paragraph above showed no clearer-based assertion can catch that rewrite at all. */
+  const sort = (rs) => rs.slice().sort((a, b) => b.matched - a.matched || b.sum - a.sum);
+  /* `matched` dominates the comparator, so the two matched=1 rows stay below the
+     matched=2 pair however high they score -- and 9 outscores the top result
+     without being it, which is the only way to tell `results[0].sum` from
+     `Math.max(...)`. The runner-up sits at 2.5, under half the top score, so the
+     direction-1 clamp is ACTIVE here rather than a no-op; raising it to 9.99 takes
+     the clamped bar 2.5 -> 5 and evicts the 4. Two clearers of the real bar (10
+     and 9) with the 2.5 admitted between them, so this is also the only fixture
+     where the #216 prefix actually widens. */
+  const TIERED = () => [
+    row("t-top", 2, 10), row("t-second", 2, 2.5),
+    row("t-lower-tier-big", 1, 9), row("t-lower-tier-small", 1, 4),
+  ];
+  /* One line of classifyResults repeated on purpose, the same way the strongPrefix
+     test below repeats it: the assertion is about which results CLEAR THE BAR, and
+     a bar the test computes for itself is what makes a changed bar rule visible
+     here instead of silently redefining the claim. If a future fix changes the
+     rule, this test is meant to go red and be re-argued. */
+  const clearersOf = (out, rows) => out.picks.filter((p) => p.sum >= rows[0].sum * SE.STRONG_RATIO).map((p) => p.i.id);
+  let swept = 0;
+  for (const fixture of [MEDITATION, TIERED]) {
+    const base = SE.classifyResults(fixture());
+    const baseClearers = clearersOf(base, fixture());
+    const top = fixture()[0].sum;
+    const topTier = fixture()[0].matched;
+    for (let k = 1; k < fixture().length; k++) {
+      const belowTopTier = fixture()[k].matched < topTier;
+      /* Above `top` only where the comparator keeps the row below results[0]
+         anyway; at or under `top` otherwise, per the paragraph above. */
+      const targets = [top * 0.28, top * 0.45, top * 0.59, top * 0.6, top * 0.9, top * 0.999, top]
+        .concat(belowTopTier ? [top * 1.1, top * 2, top * 4] : []);
+      for (const target of targets) {
+        for (const bumpTier of [0, 1]) {
+          const rows = fixture();
+          if (target <= rows[k].sum) continue;
+          /* A promotion that would carry the row past the top tier while it also
+             outscores the top result is the overtake case, not this one. */
+          if (bumpTier && target > top && rows[k].matched + 1 >= topTier) continue;
+          rows[k] = row(rows[k].i.id, rows[k].matched + bumpTier, target, rows[k].i.show);
+          const out = SE.classifyResults(sort(rows));
+          const what = `${rows[k].i.id} raised to ${target.toFixed(3)} (matched +${bumpTier})`;
+          assert.notEqual(out.status, "empty", `improving ${what} emptied the query -- #301's bound is broken`);
+          const shown = ids(out);
+          for (const id of baseClearers) {
+            assert.ok(shown.includes(id), `improving ${what} dropped ${id}, which clears the bar -- #301's bound is broken`);
+          }
+          swept++;
+        }
+      }
+    }
+  }
+  /* Without this the loops could sweep nothing and the test would pass green,
+     which is the failure mode this suite's header is about. Exact, not a floor:
+     dropping either fixture changes it. */
+  assert.equal(swept, 130, `swept ${swept} improvements, expected 130`);
+});
