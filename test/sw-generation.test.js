@@ -358,8 +358,8 @@ test("a navigation pins the page it creates, not the page that started it", asyn
 
 test("a data file that answers 404 falls back to the cached copy", async () => {
   /* `handleShell` already treats "an answer that is not the file" as no answer. A
-     404 or 502 on data/session.json makes init() give up with "Couldn't load
-     Foray" even when a good cached copy is right here. */
+     404 or 502 on data/session.json makes init() give up with "Couldn't load 4a"
+     even when a good cached copy is right here. */
   const h = loadWorker({
     seed: { "data/session.json": '{"session_id":"cached"}' },
     network: (url) => (url.endsWith("app.js") ? ok("APP@deploy-2") : new Response("", { status: 502 })),
@@ -439,7 +439,7 @@ test("falling back to cached code tells the page it is a version behind", async 
 
 test("refusing data with nothing cached answers 504 and says why", async () => {
   /* app.js turns a non-ok into null and every consumer treats null as absent, so
-     this is the path that ends in "Forays aren't available right now" rather than
+     this is the path that ends in "Couldn't load forays right now" rather than
      an empty running order rendered by code that cannot read the document. */
   const h = loadWorker({
     seed: { "app.js": "APP@deploy-1" },

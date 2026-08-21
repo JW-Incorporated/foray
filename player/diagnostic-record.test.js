@@ -864,7 +864,7 @@ test("the surface's text is reachable through the bridge app.js actually uses", 
   assert.equal(typeof globalThis.window.forayDiagnosticReport, "function");
   assert.equal(typeof globalThis.window.forayDiagnosticClear, "function");
   const text = globalThis.window.forayDiagnosticReport();
-  assert.match(text, /Foray playback diagnostics/);
+  assert.match(text, /4a playback diagnostics/);
   assert.match(text, /Local only\. Nothing here is sent anywhere\./);
   assert.match(text, /entries \d+ of 200 \(oldest dropped first\)/);
   assert.match(text, /seams 1: 1 measured/);

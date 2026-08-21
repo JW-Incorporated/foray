@@ -1020,7 +1020,7 @@ function introHtml() {
   if (lsGet("cp_intro_dismissed", false)) return "";
   return `<div class="intro" id="home-intro">
     <button class="intro-close" id="intro-close" aria-label="Dismiss">✕</button>
-    <p class="intro-tag">Foray picks podcast episodes for you, grouped into 4 topic queues below — not one long feed to scroll.</p>
+    <p class="intro-tag">4a picks podcast episodes for you, grouped into four topic queues below — not one long feed to scroll.</p>
     <p class="intro-body">Three queues are topics you're already into. One is deliberately something else, on purpose. Tap a card to open its queue and see what's in it.</p>
   </div>`;
 }
@@ -1141,8 +1141,8 @@ function archivedRow(item, idx, ctx) {
     <div class="info">
       <div class="t">${named ? esc(item.title) : "Part no longer in the catalogue"}</div>
       <div class="s">${named
-        ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in Foray right now`
-        : "Saved before Foray kept episode details"}</div>
+        ? `${esc(item.show)}${item.duration_min ? ` · ${fmtDur(item.duration_min)}` : ""} · not in 4a right now`
+        : "Saved before 4a kept episode details"}</div>
     </div>
     ${named ? starBtn(item.id) : ""}${link}
   </div>`;
@@ -1158,7 +1158,7 @@ function partsNote(rows) {
   const parts = [];
   if (archived) {
     const one = archived === 1;
-    parts.push(`${archived} part${one ? " is" : "s are"} not in Foray's catalogue right now, so ${one ? "it" : "they"} cannot play in the app — open ${one ? "it" : "them"} in your podcast app instead.`);
+    parts.push(`${archived} part${one ? " is" : "s are"} not in 4a's catalogue right now, so ${one ? "it" : "they"} cannot play in the app — open ${one ? "it" : "them"} in your podcast app instead.`);
   }
   if (unnamed) {
     const one = unnamed === 1;
@@ -1167,7 +1167,7 @@ function partsNote(rows) {
        return" — and the note a reviewer reads is never the one that ships to them.
        It also no longer claims rebuilding REPLACES this playlist: buildPlaylist
        mints a new id and prepends a new playlist, leaving this one untouched. */
-    parts.push(`${unnamed} part${one ? " was" : "s were"} saved before Foray kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the home screen gives you a fresh one from what Foray has today.`);
+    parts.push(`${unnamed} part${one ? " was" : "s were"} saved before 4a kept episode details and cannot be named yet — ${one ? "it" : "they"} will fill in if the episode${one ? " returns" : "s return"} to the catalogue, and building the same playlist again from the home screen gives you a fresh one from what 4a has today.`);
   }
   return `<p class="note">${esc(parts.join(" "))}</p>`;
 }
@@ -1586,7 +1586,7 @@ async function renderForay(id) {
     return;
   }
   if (!state.forays) {
-    $("#view").innerHTML = `<div class="page"><p class="note">Forays aren't available right now.</p></div>`;
+    $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load forays right now.</p></div>`;
     return;
   }
 
@@ -1599,7 +1599,7 @@ async function renderForay(id) {
   // Same answer for "no such Foray" and "not published": a client that
   // distinguishes them announces the existence of unpublished work.
   if (!r) {
-    $("#view").innerHTML = `<div class="page"><p class="note">That Foray isn't available.</p></div>`;
+    $("#view").innerHTML = `<div class="page"><p class="note">That foray isn't available.</p></div>`;
     return;
   }
   state.foray = r;
@@ -2271,7 +2271,7 @@ function forayHomeHtml() {
   if (!list.length) return "";
   return `<div class="fy-home">${list.map(f => `
     <a class="fy-home-row" href="#/foray/${esc(f.id)}">
-      <span class="fy-home-kicker">Foray${f.status === "published" ? "" : " · draft"}</span>
+      <span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>
       <span class="fy-home-title">${esc(f.title)}</span>
     </a>`).join("")}</div>`;
 }
@@ -2595,7 +2595,7 @@ function ddEl(tag, cls, text) {
 /** What the control covers and what it cannot. Every line is read by a listener,
     so every line is inside the copy budget (CLAUDE.md principle 4). */
 const DD_COVERS = [
-  "This device: every Foray key, in both storage layers.",
+  "This device: every 4a key, in both storage layers.",
   "Our server: the events this device sent, and its account rows.",
   "Your anonymous account row stays. It holds no name, email or phone number.",
   "Publisher and ad hosts saw your IP as audio played. We cannot delete that.",
@@ -2883,7 +2883,7 @@ function diagText() {
   }
   try {
     const out = String(window.forayDiagnosticReport() || "");
-    return out || "Nothing recorded yet. Play a Foray and come back.";
+    return out || "Nothing recorded yet. Play a foray and come back.";
   } catch (err) {
     return `The record could not be read: ${err && err.message ? err.message : String(err)}`;
   }
@@ -3051,7 +3051,7 @@ async function init() {
   const [, session] = await Promise.all([storageReady(), fetchJson("data/session.json")]);
   state.session = session;
   if (!state.session) {
-    $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load Foray — check your connection and reload.</p></div>`;
+    $("#view").innerHTML = `<div class="page"><p class="note">Couldn't load 4a — check your connection and reload.</p></div>`;
     return;
   }
   /* Every one of these may come back null (fetchJson swallows a 404 and a
@@ -3178,8 +3178,8 @@ function shouldRegisterServiceWorker(win) {
    updates — and a loop would take the whole site out, which is worse than the
    bug being fixed. The listener presses it, or ignores it and keeps listening. */
 const SHELL_NOTICE = {
-  "stale-shell": "Foray is showing its last saved copy — the network didn't answer while this page was loading.",
-  "generation-changed": "Foray updated in the background, so this page is one version behind.",
+  "stale-shell": "4a is showing its last saved copy — the network didn't answer while this page was loading.",
+  "generation-changed": "4a updated in the background, so this page is one version behind.",
 };
 
 function showShellNotice(reason) {
