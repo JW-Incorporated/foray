@@ -68,7 +68,20 @@ docs/. Completed workstreams move to their plan doc's retro section.
   the first sentence; the rest is why the numbers under it must not be quoted.**
   Growth: **0 expansion buckets move** — nothing crosses `TAG_DF_TOO_BROAD` 0.10 or
   `TAG_DF_COMMON` 0.02, so no term is deleted from or demoted in query expansion. That
-  held against all three `main` baselines this branch was measured on. At `81f7179`,
+  held against all three `main` baselines, and over a **2,730-term** vocabulary (#275's
+  1,366 plus every distinct tag string on either side), not just #275's. **Challenged
+  and re-run:** review counted tags by exact string equality and got **two** movers,
+  `comedy` and `craft`. Neither survives the engine's own `tagCount`/`hitTag` path,
+  which is a superset — `comedy` 175/1,650 -> 175/1,678, `drop` on both sides (exact
+  misses 8 items each side, and the drinks shows added **zero** comedy items, so it is
+  denominator dilution, not skew); `craft` 43/1,650 = 2.61 % -> 70/1,678 = 4.17 %,
+  **already `0.4x` before this branch**, so it got much more common without changing
+  bucket. The `craft` mechanism was read correctly though — it nearly doubled (+27
+  items) off one Crafts-genre show, which is #275's predicted skew, and §7a-i keeps it.
+  **The margin is the finding, not the zero: `comedy` sits ~7 items above
+  `TAG_DF_TOO_BROAD`.** It survived only because drinks add no comedy; any ~7-item
+  dilution without comedy tags pushes it under, on the exact term #275 used as its
+  worked example. Recorded in §7a-ii, not fixed here. At `81f7179`,
   **three score multipliers move, all across `TAG_DF_RARE` 0.008 and all three ours**:
   `fermentation` 0.61 -> 1.13 %, `food-history` 0.73 -> 0.83 %, `craft-beer`
   0.79 -> 0.83 %, each with a tag count that genuinely rose.

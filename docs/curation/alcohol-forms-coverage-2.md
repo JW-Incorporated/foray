@@ -600,9 +600,77 @@ that kind of skew, so both halves were re-measured over the 1,366-term vocabular
 **0 expansion buckets move, and that is the answer to the question #279 was asked to
 settle.** Nothing crosses `TAG_DF_TOO_BROAD` 0.10 or `TAG_DF_COMMON` 0.02 — the two
 thresholds that delete a term from query expansion or cut its weight to 0.4x. That held
-on every baseline this was measured against. #275's fix absorbed the addition, which is
-what it was for. The nearest term to either line is `comedy` at 10.43 %, already above
-0.10 on both sides, and `markets`/`market` at 2.15 %, already above 0.02 on both sides.
+on every baseline this was measured against, and over a vocabulary of **2,730 terms**:
+#275's check vocabulary (semantic-index concepts plus `ALIASES`, 1,366 terms) *plus every
+distinct tag string appearing on either side*. The wider run finds the same zero.
+
+### 7a-i. The challenge that had to be answered, because it looked right
+
+Review re-derived this independently by counting tags with **exact string equality** and
+found **two** buckets moving — `comedy` `drop` → `0.4x`, and `craft` `full` → `0.4x`.
+`craft` in particular looked like #275's warning landing exactly where it said it would:
+it nearly doubled, and the seventh show curated here is Apple genre **Crafts**.
+
+It does not survive the engine's own counting path, and the reason is the one the
+challenge itself named as its caveat. `tagCount` counts items where
+`tags.some(tag => hitTag(tag, term))`, and `hitTag` stems, so exact equality is a **lower
+bound**. Both terms are undercounted by it, and reconciling them term by term is what
+settles it:
+
+| term | exact match | via `hitTag` (the engine) | verdict |
+|---|---|---|---|
+| `comedy` | 167/1,650 = **10.121 %** → 167/1,678 = **9.952 %**  (`drop` → `0.4x`) | 175/1,650 = **10.606 %** → 175/1,678 = **10.429 %** (`drop` → `drop`) | **no move** |
+| `craft` | 28/1,650 = **1.697 %** → 55/1,678 = **3.278 %**  (`full` → `0.4x`) | 43/1,650 = **2.606 %** → 70/1,678 = **4.172 %** (`0.4x` → `0.4x`) | **no move** |
+
+- **`comedy`** — exact equality misses the same **8** items on both sides, and that is
+  enough to move it from just-under 0.10 to just-over. Note the real numerator is
+  **175 on both sides**: the seven drinks shows contributed **zero** `comedy` items, so
+  nothing here is a skew effect at all. It is pure denominator dilution.
+- **`craft`** — the challenge's reading of the MECHANISM is correct and worth keeping:
+  it genuinely nearly doubled, **43 → 70 items, +27**, and the cause is a single
+  identifiable Crafts-genre show. What the exact count got wrong is only the starting
+  point. `craft` was **already `0.4x` before this branch** (2.606 %, above
+  `TAG_DF_COMMON`); the exact method put main at 1.697 %, below the line, which
+  manufactured a crossing that was not there. The term got much more common and stayed
+  in the same bucket.
+
+**So the headline stands at zero — but it is a near miss on one term, and that is the
+part worth carrying forward, not the zero.**
+
+**Reproduce it rather than citing this table.** Both numbers above come out of the
+engine, so checking them needs no new tool and no reimplementation — which is the whole
+point, since a reimplementation is what produced the two false movers:
+
+```js
+// node --input-type=module, from the repo root
+import { createRequire } from "node:module";
+import fs from "node:fs";
+const SE = createRequire(import.meta.url)("./search-engine.js");
+const M = { itemTags: JSON.parse(fs.readFileSync("data/item-tags.json", "utf8")) };
+console.log(SE.tagCount("craft", M), SE.tagDF("craft", M), SE.expansionBucket(SE.tagDF("craft", M)));
+```
+
+Run it once on `main` and once here and compare `expansionBucket`. **Never count tags by
+`tags.includes(term)`** — `tagCount` matches through `hitTag`, which stems, so exact
+equality is a lower bound and it is low by 8 on `comedy` and 15 on `craft`.
+
+### 7a-ii. The margin, which is thinner than the zero suggests
+
+Recorded because a bucket that does not move this time is not a bucket that will not
+move next time, and the numbers are small:
+
+| term | branch | distance to its line |
+|---|---|---|
+| `comedy` | 10.429 % | **above `TAG_DF_TOO_BROAD` by ~7 items** |
+| `philosophy`, `stories` | 1.967 % | below `TAG_DF_COMMON` by ~1 item |
+| `markets`, `market`, `career` | 2.145 % | above `TAG_DF_COMMON` by ~2 items |
+
+**`comedy` is the one to watch and it is seven items from the edge.** It survived this
+change only because a drinks block contributes no comedy — *any* block of roughly seven
+items that dilutes the map without adding `comedy` tags pushes it under 0.10, at which
+point the web deletes it from query expansion and the app keeps it at 0.4x. That is
+#275's exact scenario, on the exact term #275 used as its worked example, and it is now
+one ordinary nightly away. It is not this PR's to fix; it is this PR's to have measured.
 
 **Three score multipliers move, all across `TAG_DF_RARE` 0.008, all downward, and all
 three are genuinely ours:**
