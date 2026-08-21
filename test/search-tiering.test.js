@@ -279,3 +279,158 @@ test("strongPrefix is total and never empty, even against a bar nothing clears",
   assert.deepEqual(SE.strongPrefix(all, 9.5), [all[0]]);
   assert.deepEqual(SE.strongPrefix(all, 99), [all[0]]);
 });
+
+/* ---------- #301: the top result's own score is the whole hazard surface ---------- */
+
+/* "meditation" on the 2026-08-21 pool, verbatim from the live ranker
+   (`node tools/test-search.mjs --tiering` plus a per-result dump through the same
+   harness): nine results, all matched=1, bar 4.050, two clearers, status sparse,
+   two picks. Shows are set explicitly because four of the nine really are one
+   show, and a fixture that spread them would be measuring a pool the ranker
+   never returns. */
+const MEDITATION = () => [
+  row("huberman--meditation-to-focus", 1, 8.100, "huberman-lab"),
+  row("ten-percent--ims-founders", 1, 5.400, "ten-percent-happier"),
+  row("ten-percent--youre-gonna-be-alright", 1, 3.375, "ten-percent-happier"),
+  row("ten-percent--self-help-without-other-people", 1, 3.375, "ten-percent-happier"),
+  row("ten-percent--stop-fixing-yourself", 1, 3.375, "ten-percent-happier"),
+  row("huberman--access-your-creativity", 1, 3.375, "huberman-lab"),
+  row("philosophize-this--marcus-aurelius", 1, 2.700, "philosophize-this"),
+  row("engines--1612", 1, 2.025, "engines-of-our-ingenuity"),
+  row("engines--1617", 1, 2.025, "engines-of-our-ingenuity"),
+];
+
+test("improving the top result can empty a query, and that is #301 rather than a bug this suite fixes", () => {
+  /* THIS TEST ASSERTS A DEFECT ON PURPOSE. It is the reproduction #301 asks for,
+     pinned so the hazard is loud instead of silent, and it is NOT a statement
+     that this is the behaviour anyone wants. If you change the grader so that
+     improving one item can no longer delete its query's answer, THIS TEST MUST
+     FAIL: read it, delete it, and say so in #301. A green run here means the
+     perverse incentive is still live -- the pipeline is still rewarded for
+     leaving a thin topic's single best episode mislabelled.
+
+     The numbers are PR #300's, measured: labelling Huberman's meditation episode
+     `health/meditation` took it 8.100 -> 12.150 (+50%), the bar 4.050 -> 6.075,
+     and Ten Percent Happier's 5.400 -- whose own relevance did not change, and
+     which is a genuine mindfulness episode rather than a ranker false positive --
+     fell out of the strong set. One clearer left, so `strong.length < 2` returns
+     empty. Coverage went UP and the answer went to nothing.
+
+     +34% would have been enough (a bar of 5.427 clears 5.400); the real edit was
+     +50%.
+
+     KILLED BY (both run, both fail this test):
+       - `if (strong.length < 1)` plus `if (picks.length < 1)` -- direction 3 in
+         the issue. Returns sparse with one pick instead of empty, so the
+         `deepEqual([])` fails. It also turns two live battery checks red:
+         "warriors" and "basketball" start answering with their lone coincidental
+         match (an Ancients episode on Scotland's first warriors; a Freakonomics
+         episode on depression that mentions basketball in passing).
+       - `const bar = Math.min(results[0].sum, results[1] ? 2 * results[1].sum :
+         results[0].sum) * STRONG_RATIO` -- direction 1, capping the bar's rise.
+         The runner-up then clears by construction, so `after` stays sparse. It
+         costs the honest-empty floor: "basketball" answers with the depression
+         episode, and the battery says so. */
+  const before = SE.classifyResults(MEDITATION());
+  assert.equal(before.status, "sparse");
+  assert.deepEqual(ids(before), ["huberman--meditation-to-focus", "ten-percent--ims-founders"]);
+
+  const improved = MEDITATION();
+  improved[0] = row("huberman--meditation-to-focus", 1, 12.150, "huberman-lab");
+  const after = SE.classifyResults(improved);
+  assert.equal(after.status, "empty");
+  assert.deepEqual(after.picks, []);
+
+  /* Stated as the property it violates, so a failure names the mechanism rather
+     than a status string. */
+  assert.ok(after.picks.length < before.picks.length,
+    "improving the best match reduced the pick count -- #301");
+});
+
+test("no result but the top-ranked one can evict anything, however much it improves (#301)", () => {
+  /* The bound on #301, and the reason it is a hazard rather than a catastrophe:
+     the bar reads `results[0].sum` and nothing else, so the ONLY dangerous edit
+     is one that raises the score of the result the ranking already places first.
+     Improving anything else can add it to the answer, reorder the answer, or flip
+     the status up to "ok" -- never delete a result and never empty a query. That
+     is what makes "improve the single best episode of a thin topic" the one
+     curation move to think twice about, and it is the claim both robust-statistic
+     options in #301 would have to give up.
+
+     Swept over two shapes: every non-top result, raised to every value up to the
+     top score, in its own matched tier and in the tier above (a topic label
+     raises `matched` as well as `sum`, which is exactly what PR #300 did, so a
+     sweep that only moved `sum` would miss the realistic edit).
+
+     TWO SHAPES BECAUSE ONE WAS NOT ENOUGH, and the second was added by mutation
+     rather than by reading. Over the real "meditation" shape alone the median
+     mutation below SURVIVES: under a median bar those nine results all clear, the
+     status is "ok", and in the wide branch `candidates` is the whole `results`
+     array -- so the bar filters nothing and no eviction can reach the page. The
+     hazard only shows on a shape that stays SPARSE under both rules, which is
+     what `MEDIAN_SENSITIVE` is: two clearers of a top-anchored bar, and a pair of
+     results sitting just above a median-anchored one, so that raising either
+     drags the median past the other.
+
+     THE FIXTURES ARE NINE AND FIVE ROWS AND THAT IS DELIBERATE. At no more than DEFAULT_CAP
+     results the #216 prefix can never outgrow a page, so the `prefix.length <=
+     cap` fallback stays out of reach. It is reachable, and there the pick count
+     is NOT monotone: measured on one top result, eight sub-bar results in a
+     higher matched tier, one clearer beneath them and one weak result below that,
+     promoting the weak one into the sub-bar tier takes the prefix from 10 to 11,
+     turns the widening off, and drops the answer from 10 picks to 2. That is #216's page guard behaving
+     as ruled -- past a page the hole-filling has become padding -- and the two
+     picks it keeps are the honest clearers, so it is recorded here rather than
+     asserted as a second defect.
+
+     KILLED BY (both run, both fail this test):
+       - `const bar = (results[1] ? results[1].sum : results[0].sum) *
+         STRONG_RATIO` -- direction 2, second-best as the anchor. Raising the
+         runner-up then raises the bar. On the live pool the same rule makes
+         "meditation" status "ok" over 9 picks, promoting Marcus Aurelius and two
+         Engines of Our Ingenuity episodes onto the page, and the battery goes red.
+       - the median form of the same direction, `const s = results.map(x => x.sum)
+         .sort((a, b) => a - b); const bar = s[Math.floor(s.length / 2)] *
+         STRONG_RATIO`. Raising a below-median result drags the median, and with it
+         the bar, over results that were clearing it. On the live pool it puts
+         Serial, Dateline, Morbid and Wicked Words in the top five for "grill".
+
+     NOT KILLED BY the bar clamp (`Math.min(results[0].sum, 2 * results[1].sum)`),
+     and that is correct rather than a gap. The clamp does make the bar read
+     results[1], but `min(top, 2 * second)` is never greater than `top`, so a
+     clamped bar can only ever sit LOWER than today's and cannot evict anything.
+     Its cost is the honest-empty floor instead, which is where the test above and
+     the battery's "basketball" check catch it. */
+  const sort = (rs) => rs.slice().sort((a, b) => b.matched - a.matched || b.sum - a.sum);
+  /* Two clearers of the real bar (10 and 6, bar 5), and 2.80/2.79 straddling a
+     median-anchored one (median 5.5, bar 2.75). Raising 2.80 to 5.90 drags the
+     median to 5.9 and the median bar to 2.95, which evicts 2.79 -- a result whose
+     own score did not move. */
+  const MEDIAN_SENSITIVE = () => [
+    row("m-top", 1, 10), row("m-second", 1, 6), row("m-third", 1, 5.5),
+    row("m-just-above", 1, 2.80), row("m-just-below", 1, 2.79),
+  ];
+  let swept = 0;
+  for (const fixture of [MEDITATION, MEDIAN_SENSITIVE]) {
+    const base = SE.classifyResults(fixture());
+    const top = fixture()[0].sum;
+    for (let k = 1; k < fixture().length; k++) {
+      for (const target of [top * 0.28, top * 0.45, top * 0.59, top * 0.6, top * 0.9, top * 0.999, top]) {
+        for (const bumpTier of [0, 1]) {
+          const rows = fixture();
+          if (target <= rows[k].sum) continue;
+          rows[k] = row(rows[k].i.id, rows[k].matched + bumpTier, target, rows[k].i.show);
+          const out = SE.classifyResults(sort(rows));
+          const what = `${rows[k].i.id} raised to ${target.toFixed(3)} (matched +${bumpTier})`;
+          assert.notEqual(out.status, "empty", `improving ${what} emptied the query -- #301's bound is broken`);
+          assert.ok(out.picks.length >= base.picks.length,
+            `improving ${what} cut the answer from ${base.picks.length} picks to ${out.picks.length}`);
+          swept++;
+        }
+      }
+    }
+  }
+  /* Without this the loops could sweep nothing and the test would pass green,
+     which is the failure mode this suite's header is about. */
+  assert.ok(swept >= 100, `swept only ${swept} improvements`);
+});

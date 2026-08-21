@@ -860,6 +860,64 @@ function searchWithRelaxation(pool, interp, minScore, itemTags, rankFallback) {
 const STRONG_RATIO = 0.5;
 const RICH_MIN = 6;
 
+/* WHAT A RELATIVE BAR COSTS, AND WHY THE BILL IS STILL BEING PAID (#301).
+   Because the bar is a fraction of results[0].sum, raising the TOP result's own
+   score raises the bar for every other result, so IMPROVING A QUERY'S BEST MATCH
+   CAN DELETE THAT QUERY'S ANSWER. Doubling the top score empties any query: the
+   bar reaches the old top score, which by construction nothing else was above.
+   Measured over the 37 queries tools/test-search.mjs searches (2026-08-21 pool,
+   bumping only results[0].sum): 33 lose picks at or before +100%, and four go
+   EMPTY at +54% or less -- "meditation" and "nba" at +34%, "politics" at +50%,
+   "stock market" at +54%.
+   The instance: PR #300 labelled Huberman's meditation episode `health/meditation`
+   correctly, 8.100 -> 12.150. The bar went 4.050 -> 6.075, Ten Percent Happier's
+   5.400 fell out although nothing about ITS relevance changed, one clearer was
+   left, and "meditation" returned nothing where it had returned two. Coverage
+   went up; the gain WAS the mechanism. The show-name RESCUE comment below
+   describes the same failure from a different cause, so the shape was already
+   known -- what #301 adds is that ordinary curation triggers it.
+
+   FIRST THING TO SUSPECT when a curation PR turns a battery status check red
+   ("<query> status is sparse" and the like): look at what the query's top result
+   scored before and after. In #300 it read as "the topic change broke meditation"
+   for a while, when it was "the topic change was right and the grader is fragile".
+
+   IT IS STILL HERE BECAUSE EVERY EXIT MEASURED WORSE, not because nobody looked.
+   All four directions in #301 were run against the battery (123 checks, green
+   here) on the 2026-08-21 pool:
+     1. CAP THE BAR'S RISE, `min(top, 2 * second) * STRONG_RATIO`. 1 red. The
+        clamp makes the runner-up clear by construction, which deletes the
+        honest-empty floor: "basketball" answers with a Freakonomics episode on
+        depression that mentions basketball in passing.
+     2. ANCHOR ON A ROBUST STATISTIC. Second-best: 2 red -- "meditation" becomes
+        status "ok" over 9 picks, promoting Marcus Aurelius and two Engines of Our
+        Ingenuity episodes, and a second result can no longer fail to clear half
+        of its own score, so `empty` is unreachable at two or more results.
+        Median: 2 red -- filler is the majority on a broad query, so the median IS
+        filler; "grill" comes back with Serial, Dateline, Morbid and Wicked Words
+        in the top five, which is the "Texas" leak this bar was calibrated to keep
+        out.
+     3. TREAT ONE CLEARER AS AN ANSWER (`strong.length < 1` plus `picks.length <
+        1`). 2 red, and the two are the argument: "warriors" answers with an
+        Ancients episode on Scotland's first warriors, "basketball" with the
+        depression episode. The two-clearer floor is a CORROBORATION rule -- two
+        results clearing independently is the evidence that a thin query has real
+        coverage, and one result is unfalsifiable. A lone clearer is filler often
+        enough that the honest answer is the empty state plus
+        suggestAdjacentTopics().
+     4. RETUNING THIS CONSTANT is not an exit either, because every ratio has a
+        cliff somewhere; it only moves. And there is no room: 0.44 is green, 0.40
+        is 3 red ("grill", "meditation", "basketball"). Post-improvement the
+        meditation runner-up sits at ratio 0.4444 and "basketball"'s filler at
+        0.4286, so the whole window that saves the measured instance without
+        admitting measured filler is (0.4286, 0.4444].
+   So the hazard is bounded and documented instead: the bar reads results[0].sum
+   and nothing else, so no other result's improvement can evict anything, and the
+   dangerous curation edit is specifically "raise the score of the result already
+   ranked first on a thin query". Both halves are pinned in
+   test/search-tiering.test.js. #301 stays open: the fix is a product ruling about
+   what a one-strong-answer query should show, not a constant. */
+
 /* How many picks a playlist shows. Was an inline `cap = 10` default in both
    diversify() and classifyResults(); named and exported because #216 made it
    load-bearing in a third place -- the sparse widening is only safe while it

@@ -184,8 +184,14 @@ const FLOORS = {
      prefix-admitted result does not count toward RICH_MIN -- an absolute bar and
      a candidate-counted `sparse` are both one line, both pass the battery, and
      both silently break a whole class of query. Every test in there was
-     mutation-checked, with the killing mutation named in the test. */
-  "test/search-tiering.test.js": 11,
+     mutation-checked, with the killing mutation named in the test.
+     11 -> 13 on 2026-08-21 (#301): the two new ones are the reproduction of the
+     relative bar's cost -- improving a query's best match can empty it -- and the
+     bound that keeps it survivable, that no OTHER result's improvement can evict
+     anything. The first is a defect pinned on purpose and says so; deleting
+     either without reading #301 would take the only record of a hazard the
+     battery can see only as an unrelated-looking status regression. */
+  "test/search-tiering.test.js": 13,
   /* Saved playlists must not decay (#276). Floored with ZERO SLACK, like
      data-deletion above and for the same reason: what it guards is a set of
      decisions each one line from its opposite, on a failure that is invisible on
