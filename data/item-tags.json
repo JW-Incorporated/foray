@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-21T09:04:57.156Z",
+  "built_at": "2026-08-22T11:43:14.157Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -14481,6 +14481,181 @@
       "california",
       "agriculture",
       "terroir",
+      "craft"
+    ],
+    "being-an-engineer--michael-brooks-how-baycath-medical-is": [
+      "medical-devices",
+      "catheters",
+      "manufacturing",
+      "engineering",
+      "startups",
+      "product-development",
+      "interview"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1619": [
+      "history-of-technology",
+      "engineering",
+      "handbooks",
+      "history",
+      "bite-sized",
+      "explainer"
+    ],
+    "this-week-in-startups--open-source-is-going-to-win": [
+      "startups",
+      "open-source",
+      "ai",
+      "legal-tech",
+      "venture-capital",
+      "business",
+      "interview"
+    ],
+    "planetary-radio--book-club-edition-becoming-martian-by": [
+      "mars",
+      "evolution",
+      "terraforming",
+      "space",
+      "astrobiology",
+      "planetary-science",
+      "book-club",
+      "interview"
+    ],
+    "planet-money--who-decides-what-big-box-sells": [
+      "economics",
+      "retail",
+      "markets",
+      "games",
+      "business",
+      "explainer",
+      "beginner-friendly"
+    ],
+    "odd-lots--jasmine-sun-on-what-the-ai": [
+      "ai",
+      "data-centers",
+      "public-backlash",
+      "economics",
+      "technology",
+      "interview"
+    ],
+    "freakonomics-radio--is-a-museum-just-a-trophy": [
+      "museums",
+      "art-restitution",
+      "looting",
+      "history",
+      "law",
+      "economics",
+      "interview"
+    ],
+    "partially-examined-life--pel-presents-closereads-peirce-s-new": [
+      "philosophy",
+      "peirce",
+      "categories",
+      "metaphysics",
+      "ideas",
+      "deep-dive"
+    ],
+    "the-cinematography-podcast--bringing-indie-instincts-to-voicemails-for": [
+      "cinematography",
+      "filmmaking",
+      "location-scouting",
+      "netflix",
+      "interview",
+      "tv"
+    ],
+    "the-enormocast--enormocast-328-matt-cornell-8211-the": [
+      "climbing",
+      "alpinism",
+      "matt-cornell",
+      "athletes",
+      "interview",
+      "storytelling"
+    ],
+    "i-know-dino--the-scientific-advisor-for-netflix-s": [
+      "dinosaurs",
+      "paleontology",
+      "paleoart",
+      "documentaries",
+      "new-species",
+      "interview"
+    ],
+    "storm-front-freaks--never-stop-chasing-with-reed-timmer": [
+      "weather",
+      "storm-chasing",
+      "tornadoes",
+      "documentary",
+      "filmmaking",
+      "interview"
+    ],
+    "shipwrecks-and-sea-dogs--this-week-in-shipwrecks-1": [
+      "maritime",
+      "shipwrecks",
+      "archaeology",
+      "news",
+      "history",
+      "discoveries"
+    ],
+    "woodshop-life--perfect-pocket-holes-cad-software-epoxy": [
+      "woodworking",
+      "table-saw",
+      "maintenance",
+      "cad",
+      "epoxy",
+      "tips",
+      "practical"
+    ],
+    "mel-robbins-podcast--if-someone-you-love-is-having": [
+      "mental-health",
+      "support",
+      "psychology",
+      "relationships",
+      "self-improvement",
+      "interview"
+    ],
+    "happier-gretchen-rubin--more-happier-what-tattoo-would-you": [
+      "happiness",
+      "habits",
+      "self-improvement",
+      "parenting",
+      "advice",
+      "panel"
+    ],
+    "kill-tony--kt-behind-the-tape-ep-781": [
+      "jeff-arcuri",
+      "stand-up",
+      "comedy",
+      "behind-the-scenes",
+      "live-show"
+    ],
+    "criminal--out-of-the-box": [
+      "true-crime",
+      "history",
+      "smuggling",
+      "olympics",
+      "narrative",
+      "reported-story"
+    ],
+    "unexplained--season-09-episode-31-let-s": [
+      "unexplained",
+      "mystery",
+      "france",
+      "18th-century",
+      "cryptid",
+      "narrative"
+    ],
+    "bourbon-pursuit--twib-heaven-hill-is-joining-e": [
+      "whiskey",
+      "bourbon",
+      "news",
+      "distilling",
+      "kentucky",
+      "craft"
+    ],
+    "bourbon-pursuit--580-barrel-picks-with-a-story": [
+      "whiskey",
+      "bourbon",
+      "barrel-picks",
+      "retail",
+      "community",
+      "interview",
       "craft"
     ]
   }

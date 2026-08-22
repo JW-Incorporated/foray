@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-21T09:04:57.156Z",
+  "built_at": "2026-08-22T11:43:14.157Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -34683,6 +34683,451 @@
         "food/drinks"
       ],
       "hook": "California agave, a larger cousin of Blue Weber, distilled outside the tequila rules.",
+      "explicit": true
+    },
+    {
+      "id": "being-an-engineer--michael-brooks-how-baycath-medical-is",
+      "show": "Being an Engineer",
+      "title": "Michael Brooks | How BayCath Medical Is Rethinking Catheter Development",
+      "apple_collection_id": 1508222292,
+      "apple_track_id": 1000784802959,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/michael-brooks-how-baycath-medical-is-rethinking-catheter/id1508222292?i=1000784802959&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 48,
+      "duration_sec": 2880,
+      "audio_url": "https://www.buzzsprout.com/995575/episodes/19678846-michael-brooks-how-baycath-medical-is-rethinking-catheter-development.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 34590976,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
+      "topics": [
+        "engineering/precision-mfg",
+        "craft/diy-home"
+      ],
+      "hook": "BayCath's founder on building a faster, more collaborative catheter manufacturing partner for startups.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1619",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1619: A Theatre of Machines",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000784994920,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1619-a-theatre-of-machines/id121493645?i=1000784994920&uo=4",
+      "release_date": "2026-08-22",
+      "duration_min": 4,
+      "duration_sec": 229,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260822.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1833871,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "The first engineering handbooks, forerunners that shaped how machines were designed and built.",
+      "explicit": false
+    },
+    {
+      "id": "this-week-in-startups--open-source-is-going-to-win",
+      "show": "This Week in Startups",
+      "title": "Open source is going to win it all: Harvey proves it | E2328",
+      "apple_collection_id": 315114957,
+      "apple_track_id": 1000784930772,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/open-source-is-going-to-win-it-all-harvey-proves-it-e2328/id315114957?i=1000784930772&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 69,
+      "duration_sec": 4154,
+      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/4a885955-6823-4b22-a3e1-a526c25516a5/AUDIO_EP_2328.mp3?dest-id=5500155",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 101502200,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/bf/ce/23/bfce2354-2548-00f0-d795-a34404946a6b/mza_10222213905677371023.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Harvey's in-house model built on open-weight Kimi K3 as evidence open source wins AI.",
+      "explicit": false
+    },
+    {
+      "id": "planetary-radio--book-club-edition-becoming-martian-by",
+      "show": "Planetary Radio: Space Exploration, Astronomy and Science",
+      "title": "Book Club Edition: Becoming Martian by Scott Solomon",
+      "apple_collection_id": 91689834,
+      "apple_track_id": 1000784863073,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/book-club-edition-becoming-martian-by-scott-solomon/id91689834?i=1000784863073&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 78,
+      "duration_sec": 4678,
+      "audio_url": "https://traffic.omny.fm/d/clips/d95da206-8ee8-4ba5-ba8d-ad1200b4e5a4/cf13d5f5-6040-458d-ab5a-ad200189747d/0f22f8da-d721-460f-83fc-b4ad0069806d/audio.mp3?utm_source=Podcast&in_playlist=b75c9f7f-4a63-438e-b506-ad2001897499",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 74904046,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/12/9d/e6/129de6c3-8048-078a-e054-751af12fdcd1/mza_5394175969927495016.jpg/600x600bb.jpg",
+      "topics": [
+        "space/rockets"
+      ],
+      "hook": "Rice professor Scott Solomon on whether humans will terraform Mars or evolve to fit it.",
+      "explicit": false
+    },
+    {
+      "id": "planet-money--who-decides-what-big-box-sells",
+      "show": "Planet Money",
+      "title": "Who decides what big box sells? Our GAME got us answers",
+      "apple_collection_id": 290783428,
+      "apple_track_id": 1000784912496,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/who-decides-what-big-box-sells-our-game-got-us-answers/id290783428?i=1000784912496&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 38,
+      "duration_sec": 2278,
+      "audio_url": "https://tracking.swap.fm/track/XvDEoI11TR00olTUO8US/prfx.byspotify.com/e/play.podtrac.com/npr-510289/npr.simplecastaudio.com/43b5acee-463e-4612-95ad-d2596d9dd337/episodes/9130f48d-4fd4-444e-b120-02f86c0e2cf5/audio/128/default.mp3?awCollectionId=43b5acee-463e-4612-95ad-d2596d9dd337&awEpisodeId=9130f48d-4fd4-444e-b120-02f86c0e2cf5&feed=hvWWWzRv&t=podcast&e=nx-s1-5940897&p=510289&d=2278&size=36461592",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 36461592,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/df/53/85df5334-0fae-28a9-2bc4-b97b81061d0e/mza_10839245066228881011.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "hook": "Pitching a board game to big box retailers reveals how shelf decisions get made.",
+      "explicit": false
+    },
+    {
+      "id": "odd-lots--jasmine-sun-on-what-the-ai",
+      "show": "Odd Lots",
+      "title": "Jasmine Sun on What the AI Industry Got Wrong About the Public Backlash",
+      "apple_collection_id": 1056200096,
+      "apple_track_id": 1000784746275,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/jasmine-sun-on-what-the-ai-industry-got-wrong-about/id1056200096?i=1000784746275&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 52,
+      "duration_sec": 3104,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/tracking.swap.fm/track/UVBrz8bN8aM2Xe47PEPu/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/8387538d-5ecf-4b07-a3f0-b4ab00e1cbc5/audio.mp3?utm_source=Podcast&in_playlist=982f5071-765c-403d-969d-ae27003a8d83",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 49712729,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f3/99/6a/f3996a52-e4a4-bf0d-b7d6-e376c4058568/mza_15550359494736224565.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "hook": "Jasmine Sun on how AI builders missed the public backlash to data center construction.",
+      "explicit": false
+    },
+    {
+      "id": "freakonomics-radio--is-a-museum-just-a-trophy",
+      "show": "Freakonomics Radio",
+      "title": "Is a Museum Just a Trophy Case? (Update)",
+      "apple_collection_id": 354668519,
+      "apple_track_id": 1000784615354,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/is-a-museum-just-a-trophy-case-update/id354668519?i=1000784615354&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 53,
+      "duration_sec": 3175,
+      "audio_url": "https://mgln.ai/e/2/pdst.fm/e/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/2be48404-a43c-4fa8-a32c-760a3216272e/episodes/59b4a5b0-17d0-4b70-9320-dc29578a508b/audio/128/default.mp3?aid=rss_feed&awCollectionId=2be48404-a43c-4fa8-a32c-760a3216272e&awEpisodeId=59b4a5b0-17d0-4b70-9320-dc29578a508b&feed=Y8lFbOT4",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 50803188,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f7/0c/c5/f70cc540-ce36-d96f-b111-c970aad5505c/mza_17703422762227531425.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "hook": "Museums grapple with returning plundered art and artifacts to their rightful owners.",
+      "explicit": false
+    },
+    {
+      "id": "partially-examined-life--pel-presents-closereads-peirce-s-new",
+      "show": "The Partially Examined Life Philosophy Podcast",
+      "title": "PEL Presents Closereads: Peirce's New Categories (Part One)",
+      "apple_collection_id": 318345767,
+      "apple_track_id": 1000784897989,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/pel-presents-closereads-peirces-new-categories-part-one/id318345767?i=1000784897989&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 61,
+      "duration_sec": 3666,
+      "audio_url": "https://prfx.byspotify.com/e/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/mgln.ai/e/802/claritaspod.com/measure/traffic.libsyn.com/secure/partiallyexaminedlife/PCR151_Peirces_Categories_Part_One_7-27-26.mp3?dest-id=16399",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 61279428,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts114/v4/32/eb/a9/32eba9ac-dfb0-618b-e874-6696c69ea59d/mza_257738567509116492.jpeg/600x600bb.jpg",
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "hook": "Peirce's idiosyncratic categories for classifying the basic types of things in the universe.",
+      "explicit": false
+    },
+    {
+      "id": "the-cinematography-podcast--bringing-indie-instincts-to-voicemails-for",
+      "show": "The Cinematography Podcast",
+      "title": "Bringing indie instincts to Voicemails for Isabelle",
+      "apple_collection_id": 812436884,
+      "apple_track_id": 1000784978190,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/bringing-indie-instincts-to-voicemails-for-isabelle/id812436884?i=1000784978190&uo=4",
+      "release_date": "2026-08-22",
+      "duration_min": 71,
+      "duration_sec": 4272,
+      "audio_url": "https://media.blubrry.com/cine/media.blubrry.com/cine/content.blubrry.com/cine/Julia_Swain_ep_370.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 5242880,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/48/06/54/48065404-97a9-b8be-c4ac-cca360291f66/mza_13428131324207435940.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/photography",
+        "craft/filmmaking"
+      ],
+      "hook": "DP Julia Swain on faking the Golden Gate Bridge for Netflix's Voicemails for Isabelle.",
+      "explicit": true
+    },
+    {
+      "id": "the-enormocast--enormocast-328-matt-cornell-8211-the",
+      "show": "The Enormocast: the climbing podcast",
+      "title": "Enormocast 328: Matt Cornell &#8211; The Right Reasons",
+      "apple_collection_id": 490027390,
+      "apple_track_id": 1000784976823,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/enormocast-328-matt-cornell-the-right-reasons/id490027390?i=1000784976823&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 94,
+      "duration_sec": 5659,
+      "audio_url": "https://media.blubrry.com/enormocast/content.blubrry.com/enormocast/Enormo_328_Matt_Cornell.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 90834152,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/ca/f3/b5/caf3b5bf-75df-9cd9-ab9a-040a9db19900/mza_11650686212841206162.jpg/600x600bb.jpg",
+      "topics": [
+        "adventure/exploration"
+      ],
+      "hook": "Alpinist Matt Cornell on leaving suburban Michigan to chase vertical playgrounds and become a climber.",
+      "explicit": true
+    },
+    {
+      "id": "i-know-dino--the-scientific-advisor-for-netflix-s",
+      "show": "I Know Dino: The Big Dinosaur Podcast",
+      "title": "The Scientific Advisor for Netflix’s The Dinosaurs",
+      "apple_collection_id": 960976813,
+      "apple_track_id": 1000784983210,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-scientific-advisor-for-netflixs-the-dinosaurs/id960976813?i=1000784983210&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 61,
+      "duration_sec": 3646,
+      "audio_url": "https://pscrb.fm/rss/p/mgln.ai/e/802/rss.art19.com/episodes/9de99d96-9f9f-4ff5-b939-921d3be236ea.mp3?rss_browser=BAhJIgpGb3JheQY6BkVU--3f447deb1117b611db0e9adfdd91a5aaf96f4fde",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 58351699,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/49/6c/4c/496c4c91-e216-77d6-64a4-8096e6f89f48/mza_14223214653639207080.jpeg/600x600bb.jpg",
+      "topics": [
+        "nature/paleontology"
+      ],
+      "hook": "Paleoartist Joschua Knüppe on Netflix dinosaur documentaries and the new raptor Kank australis.",
+      "explicit": false
+    },
+    {
+      "id": "storm-front-freaks--never-stop-chasing-with-reed-timmer",
+      "show": "Storm Front Freaks",
+      "title": "NEVER STOP CHASING with Reed Timmer & Ken Cole (248)",
+      "apple_collection_id": 1116866428,
+      "apple_track_id": 1000784976994,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/never-stop-chasing-with-reed-timmer-ken-cole-248/id1116866428?i=1000784976994&uo=4",
+      "release_date": "2026-08-22",
+      "duration_min": 86,
+      "duration_sec": 5140,
+      "audio_url": "https://mcdn.podbean.com/mf/web/sbtrwmc6teutvw24/episode248_final_edit.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 123373737,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/c5/9e/38/c59e387e-bdf7-92cd-8162-1dad9a4997f2/mza_17431518058263513553.png/600x600bb.jpg",
+      "topics": [
+        "nature/weather"
+      ],
+      "hook": "Storm chaser Reed Timmer and director Ken Cole on the making of Never Stop Chasing.",
+      "explicit": true
+    },
+    {
+      "id": "shipwrecks-and-sea-dogs--this-week-in-shipwrecks-1",
+      "show": "Shipwrecks and Sea Dogs",
+      "title": "This Week in Shipwrecks #1",
+      "apple_collection_id": 1640165188,
+      "apple_track_id": 1000784780915,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/this-week-in-shipwrecks-1/id1640165188?i=1000784780915&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 11,
+      "duration_sec": 673,
+      "audio_url": "https://prefix.up.audio/s/tracking.swap.fm/track/2IMk17EdnEqyRhJTIpIU/clrtpod.com/m/mgln.ai/e/1008/op3.dev/e/traffic.megaphone.fm/RHAPSODYVOICES3273208763.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a3/6a/6e/a36a6eee-d6fa-4def-65b8-33304a949d54/mza_15180103104043645429.jpeg/600x600bb.jpg",
+      "topics": [
+        "transport/maritime"
+      ],
+      "hook": "New weekly roundup: a 2,000-year-old Roman cargo ship found off Sicily, plus more wreck news.",
+      "explicit": false
+    },
+    {
+      "id": "woodshop-life--perfect-pocket-holes-cad-software-epoxy",
+      "show": "Woodshop Life Podcast",
+      "title": "Perfect Pocket Holes?, CAD Software, Epoxy Finish and MORE!!!",
+      "apple_collection_id": 1437541488,
+      "apple_track_id": 1000784850738,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/perfect-pocket-holes-cad-software-epoxy-finish-and-more/id1437541488?i=1000784850738&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 54,
+      "duration_sec": 3237,
+      "audio_url": "https://mcdn.podbean.com/mf/web/h6nvxzd67k2hurfu/The_Woodshop_Life_Podcast_Ep_202asgt8.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 54927590,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/b3/2a/bb/b32abb08-08a2-18cd-3cd0-ff21b4e67556/mza_14318323082919900905.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/woodworking"
+      ],
+      "hook": "Maintaining a 20-year-old table saw, plus CAD software and epoxy finish tips for woodworkers.",
+      "explicit": false
+    },
+    {
+      "id": "mel-robbins-podcast--if-someone-you-love-is-having",
+      "show": "The Mel Robbins Podcast",
+      "title": "If Someone You Love Is Having a Hard Time, Listen to This",
+      "apple_collection_id": 1646101002,
+      "apple_track_id": 1000784875315,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/if-someone-you-love-is-having-a-hard-time-listen-to-this/id1646101002?i=1000784875315&uo=4",
+      "release_date": "2026-08-22",
+      "duration_min": 69,
+      "duration_sec": 4117,
+      "audio_url": "https://dts.podtrac.com/redirect.mp3/pdst.fm/e/stitcher.simplecastaudio.com/b9de9f5f-6dab-4833-b4c2-05f1d28dd998/episodes/fe13fffa-dfb4-44ec-80c2-b5139dfd91f2/audio/128/default.mp3?aid=rss_feed&awCollectionId=b9de9f5f-6dab-4833-b4c2-05f1d28dd998&awEpisodeId=fe13fffa-dfb4-44ec-80c2-b5139dfd91f2&feed=UCwaTX1J",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 65873961,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/66/a5/ab66a5f5-b52b-c70a-227b-0721bd9dc660/mza_13546984924981879479.jpg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement",
+        "health/mental"
+      ],
+      "hook": "Psychologist Lisa Damour on offering real support to someone struggling without taking control.",
+      "explicit": false
+    },
+    {
+      "id": "happier-gretchen-rubin--more-happier-what-tattoo-would-you",
+      "show": "Happier with Gretchen Rubin",
+      "title": "More Happier: What Tattoo Would You Get? Plus How to Give Yourself Permission to Play",
+      "apple_collection_id": 969519520,
+      "apple_track_id": 1000783196140,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/more-happier-what-tattoo-would-you-get-plus-how-to/id969519520?i=1000783196140&uo=4",
+      "release_date": "2026-08-22",
+      "duration_min": 26,
+      "duration_sec": 1587,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME4434094216.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ca/b0/56/cab056c9-eff6-d51f-bc30-79451a9363dc/mza_4124499741351311580.jpeg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement"
+      ],
+      "hook": "Gretchen and Elizabeth on a quiet desk fan, tattoo picks, and calmer back-to-school parenting.",
+      "explicit": false
+    },
+    {
+      "id": "kill-tony--kt-behind-the-tape-ep-781",
+      "show": "KILL TONY",
+      "title": "KT: Behind the Tape (Ep: 781 Jeff Arcuri)",
+      "apple_collection_id": 1042361179,
+      "apple_track_id": 1000784983052,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/kt-behind-the-tape-ep-781-jeff-arcuri/id1042361179?i=1000784983052&uo=4",
+      "release_date": "2026-08-22",
+      "duration_min": 56,
+      "duration_sec": 3389,
+      "audio_url": "https://clrtpod.com/m/pscrb.fm/rss/p/rsv.simplecastaudio.com/5c11d3b8-db1c-4d5c-86b2-2ac6921d6852/episodes/c1c80def-c30d-48fe-9775-24a50ef0be3c/audio/128/default.mp3?aid=rss_feed&awCollectionId=5c11d3b8-db1c-4d5c-86b2-2ac6921d6852&awEpisodeId=c1c80def-c30d-48fe-9775-24a50ef0be3c&feed=JZSQrle9",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 54238700,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a0/ad/df/a0addf99-adce-5a42-a138-81d9f8e4562e/mza_8301528492532104652.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "hook": "Behind-the-scenes footage from Kill Tony's Jeff Arcuri episode with the show's regular comics.",
+      "explicit": true
+    },
+    {
+      "id": "criminal--out-of-the-box",
+      "show": "Criminal",
+      "title": "Out of the Box",
+      "apple_collection_id": 809264944,
+      "apple_track_id": 1000779882033,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/out-of-the-box/id809264944?i=1000779882033&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 43,
+      "duration_sec": 2598,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP8314883922.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/bd/98/22/bd9822cc-b8e0-59de-5809-45926a0ee5f3/mza_2331604259390110897.jpeg/600x600bb.jpg",
+      "topics": [
+        "true-crime",
+        "society/law"
+      ],
+      "hook": "A javelin thrower who couldn't afford a flight home shipped himself in cargo instead.",
+      "explicit": false
+    },
+    {
+      "id": "unexplained--season-09-episode-31-let-s",
+      "show": "Unexplained",
+      "title": "Season 09 Episode 31: Let's Get Wild (The Beast of Gévaudan)",
+      "apple_collection_id": 1078112813,
+      "apple_track_id": 1000784863610,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/season-09-episode-31-lets-get-wild-the-beast-of-g%C3%A9vaudan/id1078112813?i=1000784863610&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 30,
+      "duration_sec": 1824,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/4be3ef45-824a-44b3-b437-b038010038fc/9c5fdf8d-f4f7-4051-bc63-b4ad00f68978/audio.mp3?utm_source=Podcast&in_playlist=3eb75c81-5ed8-4148-bb7b-b03801003947",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 29242775,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7e/a9/5c/7ea95c62-4e9b-359b-7dde-2df168676370/mza_156597234584228073.jpg/600x600bb.jpg",
+      "topics": [
+        "paranormal"
+      ],
+      "hook": "For three years something stalked 18th-century France, killing over a hundred people: the Beast of Gévaudan.",
+      "explicit": false
+    },
+    {
+      "id": "bourbon-pursuit--twib-heaven-hill-is-joining-e",
+      "show": "Bourbon Pursuit",
+      "title": "TWiB: Heaven Hill is joining E!’s Cocktail Wars, Bardstown Bourbon Company has two new releases, Maker's Mark Cellar Aged 2026",
+      "apple_collection_id": 975392298,
+      "apple_track_id": 1000784787403,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/twib-heaven-hill-is-joining-e-s-cocktail-wars-bardstown/id975392298?i=1000784787403&uo=4",
+      "release_date": "2026-08-21",
+      "duration_min": 34,
+      "duration_sec": 2053,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/traffic.megaphone.fm/BPLLC5816536300.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d7/d8/e0/d7d8e09b-e9ee-c938-b377-f7739801262f/mza_16631299733019105118.jpg/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "hook": "Heaven Hill joins E!'s Cocktail Wars, plus new Bardstown Bourbon and Maker's Mark releases.",
+      "explicit": true
+    },
+    {
+      "id": "bourbon-pursuit--580-barrel-picks-with-a-story",
+      "show": "Bourbon Pursuit",
+      "title": "580 - Barrel Picks With A Story with Michael Nagdi of Prime Barrel",
+      "apple_collection_id": 975392298,
+      "apple_track_id": 1000784537805,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/barrel-picks-with-a-story-with-michael-nagdi-of-prime-barrel/id975392298?i=1000784537805&uo=4",
+      "release_date": "2026-08-20",
+      "duration_min": 64,
+      "duration_sec": 3810,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/traffic.megaphone.fm/BPLLC4043975569.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d7/d8/e0/d7d8e09b-e9ee-c938-b377-f7739801262f/mza_16631299733019105118.jpg/600x600bb.jpg",
+      "topics": [
+        "food/drinks"
+      ],
+      "hook": "Prime Barrel's Michael Nagdi on turning single-barrel picks into an online Discord community.",
       "explicit": true
     }
   ]
