@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-21T08:27:51.853Z",
+  "built_at": "2026-08-22T08:27:24.991Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-21-5220bf57",
+    "last_batch_id": "fresh-2026-08-22-c4c822e0",
     "last_batch_tier": 1
   },
   "entries": {
@@ -6469,8 +6469,27 @@
         "education/language-learning",
         "linguistics/language"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.4
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Top-Thema mit Vokabeln | Audios | DW Deutsch",
+      "blurb": "Language Learning podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "283038015": {
       "topics": [
@@ -17363,8 +17382,23 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "المصحف المجود - عبد الباسط عبد الصمد",
+      "blurb": "Islam podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "828454298": {
       "topics": [
@@ -35955,11 +35989,30 @@
     },
     "1202441485": {
       "topics": [
+        "news",
         "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.4
+        },
+        {
+          "node": "business",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "WSJ Minute Briefing",
+      "blurb": "Business News podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1202449205": {
       "topics": [
@@ -38178,8 +38231,23 @@
       "topics": [
         "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Vermont Dog Trainer Show",
+      "blurb": "Pets & Animals podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1236633267": {
       "topics": [
@@ -44278,8 +44346,27 @@
         "nature/earth-science",
         "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.4
+        },
+        {
+          "node": "science",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Fakt oder Fake: Internetmythen auf dem Prüfstand –",
+      "blurb": "Earth Sciences podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1309285684": {
       "topics": [
@@ -47753,8 +47840,23 @@
       "topics": [
         "religion/hinduism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "The ACHARYA SHREE YOGEESH Podcast",
+      "blurb": "Hinduism podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1349300090": {
       "topics": [
@@ -54619,9 +54721,23 @@
       "topics": [
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "The Orisha",
+      "blurb": "Religion podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1436719991": {
       "topics": [
@@ -55234,9 +55350,23 @@
       "topics": [
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Deconversion Therapy",
+      "blurb": "Religion podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1438044265": {
       "topics": [
@@ -64414,8 +64544,23 @@
       "topics": [
         "aviation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "The Pilot's Lounge",
+      "blurb": "Aviation podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1470773952": {
       "topics": [
@@ -77802,8 +77947,23 @@
       "topics": [
         "culture/books"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "پادکست فارسی انسانک | Ensanak",
+      "blurb": "Books podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1502888044": {
       "topics": [
@@ -82924,12 +83084,30 @@
     },
     "1514257615": {
       "topics": [
-        "nature",
-        "economics/markets"
+        "science",
+        "nature"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.4
+        },
+        {
+          "node": "nature",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Grazing Grass Podcast | Rotational Grazing, Soil Health",
+      "blurb": "Natural Sciences podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1514305199": {
       "topics": [
@@ -100095,8 +100273,23 @@
       "topics": [
         "philosophy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "The Ayaan Hirsi Ali Podcast",
+      "blurb": "Philosophy podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1552066046": {
       "topics": [
@@ -107284,8 +107477,23 @@
       "topics": [
         "nature/pets"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Anna und die wilden Tiere",
+      "blurb": "Pets & Animals podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1568364149": {
       "topics": [
@@ -129865,8 +130073,23 @@
       "topics": [
         "kids-family/stories"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Stories Podcast Sleep Series",
+      "blurb": "Stories for Kids podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1645070363": {
       "topics": [
@@ -144491,8 +144714,23 @@
       "topics": [
         "nature"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Farming for the Future",
+      "blurb": "Nature podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1697122438": {
       "topics": [
@@ -152142,9 +152380,23 @@
       "topics": [
         "tv-film/animation"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Poirot Investigates - Agatha Christie",
+      "blurb": "Animation & Manga podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1718814345": {
       "topics": [
@@ -158256,8 +158508,23 @@
       "topics": [
         "sports/volleyball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "The Leave It Better Podcast",
+      "blurb": "Volleyball podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1734854300": {
       "topics": [
@@ -162062,8 +162329,23 @@
       "topics": [
         "news/daily"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "15 Minuten. Der tagesschau-Podcast am Morgen",
+      "blurb": "Daily News podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1746560024": {
       "topics": [
@@ -174458,9 +174740,23 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "المصحف المرتل",
+      "blurb": "Islam podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1792746019": {
       "topics": [
@@ -174516,15 +174812,45 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Sheikh Raad Al Kurdi | القارئ رعد الكردي",
+      "blurb": "Islam podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1792870669": {
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Sheikh Ali Jaber | القارئ علي جابر",
+      "blurb": "Islam podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1792892867": {
       "topics": [
@@ -176135,8 +176461,23 @@
       "topics": [
         "sports/volleyball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "SandyNoles: An FSU Beach Volleyball Podcast",
+      "blurb": "Volleyball podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1797408314": {
       "topics": [
@@ -183112,8 +183453,23 @@
       "topics": [
         "religion/buddhism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Stillness Within: Daily Buddhist Wisdom",
+      "blurb": "Buddhism podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1819342249": {
       "topics": [
@@ -185586,8 +185942,23 @@
       "topics": [
         "sports/volleyball"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Volleyball Performance Podcast - Injury Rehab & Sports",
+      "blurb": "Volleyball podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1828051619": {
       "topics": [
@@ -193171,8 +193542,23 @@
       "topics": [
         "aviation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "The Josh Cahill & Swiss001 Show",
+      "blurb": "Aviation podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1853881645": {
       "topics": [
@@ -193503,8 +193889,27 @@
         "tv-film/history",
         "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/history",
+          "confidence": 0.4
+        },
+        {
+          "node": "history",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Scanners Inc Podcast",
+      "blurb": "Film History podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1855309485": {
       "topics": [
@@ -200024,8 +200429,23 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Mohammed The Messenger of Allah ﷺ Seerah Rasulullah",
+      "blurb": "Islam podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1884834608": {
       "topics": [
@@ -200338,11 +200758,29 @@
     "1885558681": {
       "topics": [
         "health/sexuality",
-        "fiction"
+        "relationships"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.4
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "Erotic Fiction  Adult sex story",
+      "blurb": "Sexuality podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "1885618533": {
       "topics": [
@@ -208785,8 +209223,23 @@
       "topics": [
         "health/alternative"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tier-0 prior only; signal fetch failed.",
+      "display_title": "The Alternative Health Journey",
+      "blurb": "Alternative Health podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-c4c822e0",
+      "classified_at": "2026-08-22T08:27:24.991Z"
     },
     "6786156720": {
       "topics": [
