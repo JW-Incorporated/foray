@@ -29,6 +29,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
+const { execFileSync } = require("node:child_process");
 const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
@@ -372,21 +373,24 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
      search-engine.js therefore stays exempt from this scan, on the grounds that
      the scan was never the right instrument for it. */
   const DECL = /(?:^|[^.\w])(?:const|let|var|function)\s+(hitText|hitTag)\s*(?:=|\()/;
-  const SKIP = new Set(["node_modules", ".git", "audio-cache", "data-local", "ios", "mobile"]);
+  /* SCAN THE TRACKED SET, NOT THE DIRECTORY TREE. This used to walk the
+     filesystem with a hardcoded skip list, which made the result depend on local
+     scratch: `dist/search-engine.js` (gitignored web build output) failed it for
+     anyone who ran `tools/web/prepare-dist.mjs` before this suite, and agent
+     worktrees under `.claude/worktrees/` failed it three copies at a time. Both
+     are false positives -- a build artefact is a COPY of search-engine.js, not a
+     second declaration of the thing this guards.
+     The invariant is about files that are IN THE REPO, so ask git what those are.
+     That is immune to build output, worktrees, and any future scratch directory
+     nobody remembered to add to a skip list. */
+  const tracked = execFileSync("git", ["ls-files", "-z", "*.js", "*.mjs", "*.cjs"],
+    { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 24 })
+    .split(" ").filter(Boolean);
   const offenders = [];
-  const walk = (dir) => {
-    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (SKIP.has(e.name)) continue;
-      const abs = path.join(dir, e.name);
-      if (e.isDirectory()) walk(abs);
-      else if (/\.(js|mjs|cjs)$/.test(e.name)) {
-        const rel = path.relative(ROOT, abs).replace(/\\/g, "/");
-        if (rel === "search-engine.js") continue;
-        if (DECL.test(fs.readFileSync(abs, "utf8"))) offenders.push(rel);
-      }
-    }
-  };
-  walk(ROOT);
+  for (const rel of tracked) {
+    if (rel === "search-engine.js") continue;
+    if (DECL.test(fs.readFileSync(path.join(ROOT, rel), "utf8"))) offenders.push(rel);
+  }
   assert.deepEqual(offenders, [],
     `these files declare their own hitText/hitTag instead of importing search-engine.js's: ${offenders.join(", ")}. ` +
     `Three copies existed and two drifted looser than the ranker (#211, #219) -- import them.`);
