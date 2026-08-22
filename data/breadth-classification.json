@@ -46493,12 +46493,10 @@
       ],
       "needs_review": true,
       "rationale": "Australian wildlife and botany show exploring animal behavior, plant reproduction, and natural ecology through expert interviews.",
-      "display_title": null,
-      "blurb": null,
-      "display_copy_ok": false,
-      "display_copy_notes": [
-        "blurb: banned /\\bexplores?\\b/i"
-      ],
+      "display_title": "What The Duck?!",
+      "blurb": "Wildlife expert Dr Ann Jones investigates unusual Australian animals and plants, from flower reproduction to animal behavior and survival strategies.",
+      "display_copy_ok": true,
+      "display_copy_notes": [],
       "model": "claude-code-cron (tier 1)",
       "tier": 1,
       "batch_id": "fresh-2026-08-22-f845e5d5",
@@ -85199,7 +85197,7 @@
       "classified_at": "2026-08-21T16:50:10.205Z"
     }
   },
-  "built_at": "2026-08-22T16:48:36.274Z",
+  "built_at": "2026-08-22T16:48:59.680Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
