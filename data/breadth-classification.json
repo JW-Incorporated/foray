@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-21T08:57:50.787Z",
+  "built_at": "2026-08-22T00:54:54.896Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-21-ee6465c6",
+    "last_batch_id": "fresh-2026-08-22-bb66dbfd",
     "last_batch_tier": 1
   },
   "entries": {
@@ -22697,10 +22697,30 @@
     },
     "985462397": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Philosophical examination of ethical dilemmas and social questions through contemporary examples.",
+      "display_title": "The Minefield",
+      "blurb": "Ethical and philosophical exploration of modern social dilemmas and their implications.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-bb66dbfd",
+      "classified_at": "2026-08-22T00:54:54.896Z"
     },
     "985496719": {
       "topics": [
