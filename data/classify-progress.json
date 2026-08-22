@@ -295,11 +295,6 @@
       "last_error": "HTTP 403",
       "last_attempt_at": "2026-08-21T16:47:01.573Z"
     },
-    "1606314974": {
-      "attempts": 2,
-      "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-21T16:47:01.573Z"
-    },
     "1666375694": {
       "attempts": 2,
       "last_error": "feed has zero <item> entries",

@@ -46464,6 +46464,46 @@
       "batch_id": "fresh-2026-08-07-5484d3b9",
       "classified_at": "2026-08-07T00:51:21.729Z"
     },
+    "1606314974": {
+      "topics": [
+        "nature",
+        "nature/animal-cognition",
+        "science",
+        "medicine/biology"
+      ],
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "medicine/biology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Australian wildlife and botany show exploring animal behavior, plant reproduction, and natural ecology through expert interviews.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-22-f845e5d5",
+      "classified_at": "2026-08-22T16:48:36.274Z"
+    },
     "1606646222": {
       "topics": [
         "kids-family/parenting",
@@ -85159,11 +85199,11 @@
       "classified_at": "2026-08-21T16:50:10.205Z"
     }
   },
-  "built_at": "2026-08-21T16:50:10.205Z",
+  "built_at": "2026-08-22T16:48:36.274Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-21-83ab9473",
+    "last_batch_id": "fresh-2026-08-22-f845e5d5",
     "last_batch_tier": 1
   }
 }
