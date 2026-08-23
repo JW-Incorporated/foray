@@ -21,7 +21,7 @@ than deleted.
 | | State |
 |---|---|
 | `mobile/` project, config, ignore rules | **Committed** |
-| `tools/mobile/prepare-webdir.mjs` (the `webDir` build) | **Committed and run.** 35 files, **1.96 MB** of a 3.00 MB cap. It reached 2.98 MB of 3.00 on 2026-08-18 and would have failed on the next nightly refresh; `data/discover.json` is now a bounded slice rather than a copy (§3) |
+| `tools/mobile/prepare-webdir.mjs` (the `webDir` build) | **Committed and run.** 36 files, **2.10 MB** of a 3.00 MB cap. It reached 2.98 MB of 3.00 on 2026-08-18 and would have failed on the next nightly refresh; `data/discover.json` is now a bounded slice rather than a copy (§3), and since #327 so are `data/segments.json` and `data/segment-sources.json` (§3.3) |
 | The four architecture changes (§2) | **Committed**, each with a test |
 | `mobile/node_modules` | **Installed.** `#36 said all seven @capacitor/* packages resolve to 8.5.0` — **that was never true of an install.** Core, CLI, `android` and `ios` are 8.5.0; the four plugins are 8.1.1 / 8.0.1 / 8.0.2 / 8.0.3. `mobile/package-lock.json` is now committed |
 | `mobile/android/` | **Generated and BUILT** — debug and unsigned release APKs, on Windows. Issue #37, `docs/android-shell-build.md` |
@@ -267,13 +267,18 @@ than copied; `item-tags.json` could not be, for the reason §3.1 measures — se
 
 | | Source | Bundled | Rule |
 |---|---|---|---|
-| `data/discover.json` | 1.70 MB, 1,534 items | **680 KB, 622 items** | `BUNDLED_ITEMS_PER_SHOW` (3) items of every show — its join anchor plus the newest of the rest — plus enough to leave every topic represented |
-| `data/item-tags.json` | 302 KB, 1,561 entries | **copied whole** | trimming it to the bundled pool re-ranks search in the app and not on the web — still true after #275, for a smaller reason; see §3.1 |
+| `data/discover.json` | 1.85 MB, 1,677 items | **704.6 KB, 645 items** | `BUNDLED_ITEMS_PER_SHOW` (3) items of every show — its join anchor plus the newest of the rest — plus enough to leave every topic represented |
+| `data/item-tags.json` | 329 KB, 1,704 entries | **copied whole** | trimming it to the bundled pool re-ranks search in the app and not on the web — still true after #275, for a smaller reason; see §3.1 |
+| `data/segments.json` | 165 KB, 212 segments | **41 KB, 57 segments** | exactly the segments the bundled Forays reference — §3.3 |
+| `data/segment-sources.json` | 52 KB, 64 episodes | **15 KB, 19 episodes** | the episodes those segments play out of — §3.3 |
+| `data/forays.json` | 20 KB, 3 Forays | **copied whole** | it is the *selector* for the two rows above; slice it and the segments it names leave with it |
 
-**35 files, 1.96 MB of 3.00 MB.** The shape of that selection is the whole point:
-it is **O(shows × topics)**, not O(episodes). Shows have been flat at **213 since
-2026-07-13** while episodes went 764 → 1,534, because the nightly refresh adds
-episodes to shows already in the catalogue. **A year of nightlies is ~8,000 more
+**36 files, 2.10 MB of 3.00 MB.** The shape of that selection is the whole point:
+it is **O(shows × topics)**, not O(episodes). Shows have moved 213 → **221 since
+2026-07-13** while episodes went 764 → **1,677**, because the nightly refresh adds
+episodes to shows already in the catalogue — and the slice grew 622 → 645 items
+(23, or 8 new shows × 3 less the topic top-up's overlap) against 143 new
+episodes. **A year of nightlies is ~8,000 more
 episodes and zero bundle bytes for this file** — a claim executed as a test, not
 asserted: *"REAL REPO: a year of nightly refreshes adds no bundle bytes"* synthesises
 the year and slices it (the same year copied whole would be a 9.6 MB file).
@@ -333,7 +338,7 @@ byte-identity in the bundle, and a real-repo test re-runs the measurement so the
 refusal cannot quietly stop being true.
 
 **What it costs, stated plainly: `item-tags.json` is still O(episodes), so the bundle
-still grows ~4 KB a night.** From 1.96 MB that is about **245 nights** of headroom
+still grows ~4 KB a night.** From 2.10 MB that is about **230 nights** of headroom
 under the 3 MB cap, not a year. The catalogue half of the problem is solved
 permanently; this half is deferred, and the cap will say so loudly and in time.
 
@@ -498,6 +503,79 @@ immediately; the app would not. This is exactly **#40**'s remaining half ("data
 freshness"), whose web half landed in #204 — and it is the difference between a
 demo and a daily product. `@capacitor/preferences` is installed for #40's native
 storage tier, but nothing registers it yet.
+
+### 3.3 The segment pool is sliced too, and it is *exactly* the referenced set (#327)
+
+`data/segments.json` is the raw material for every future Foray, which makes it the
+one file in this bundle **designed** to grow without bound — and until #327 it was
+copied verbatim, along with `data/segment-sources.json`, because neither had a
+`PROJECTED_DATA` entry and the plan takes an unlisted file as-is.
+
+**The re-baseline that was not a fix.** On 2026-08-23 the first real
+segment-extraction batch (#328) took the pool from 69 segments to 212 and the
+registry from 19 to 64. The bundle went **2.11 MB → 2.26 MB in one commit** and
+tripped both headroom assertions in `prepare-webdir.test.mjs`, which were re-based
+once, tight (2.4 MB / 600 KB). The arithmetic under that: **~1.0 KB of bundle per
+segment** across the two files, against **~740 KB of headroom** — about **745 more
+segments**, while `item-tags.json` ate the same headroom at ~4 KB a night. Worse,
+**0 of those 143 new segments was reachable from any Foray**: the three committed
+Forays reference 57 segments between them, so the bundle carried ~160 KB the app had
+no way to play.
+
+**The slice is the referenced set and nothing else, and that is a stronger guarantee
+than the catalogue's.** `discoverSlice` needs a **topic top-up** because `app.js`
+routes `#/subject/<topic>` off `discover.json` — a topic with no items left is a
+browse page that renders empty in the app and full on the web. The segment pool has
+no such surface: `state.segments` and `state.segmentSources` are read in exactly one
+place in `app.js` (`renderForay`), handed straight to `player/client.js`'s
+`resolve()`, which indexes both **by id** and looks up only the ids the Foray names.
+There is no `#/segment/...` route, `search-engine.js` never reads the pool, and
+`index.html` never mentions it. So there is no analogue to build, and the slice can be
+exact. *"REAL REPO: nothing in the app browses the segment pool"* pins that premise —
+if a segment browse surface is ever added, that test fails and the answer is a top-up
+rule and a bigger budget, not a deletion.
+
+**The shape of the bound: O(Forays), not O(pool).** A segment nothing references costs
+the bundle zero bytes, so an extraction batch of 10,000 adds nothing until somebody
+authors against it — executed as a test rather than asserted (*"THE BOUND: a thousand
+new segments in the pool cost the bundle nothing"*). What the ~920 KB of remaining
+headroom buys is therefore no longer denominated in segments at all: it is **~230
+nights of `item-tags.json`** and **~30 new Forays** at ~30 KB each.
+
+**Two traps, both the segment-shaped version of something §3 already learned.**
+
+- **The join reads the LAST row sharing an id, not the first.** `indexSegments` and
+  `indexSources` are `Map.set` over the document in order. A slice that kept "the
+  first row matching a referenced id" keeps the right id, the right count and the
+  right budget — and hands the app a segment with different timestamps out of a
+  different episode. The rule that satisfies the join is *keep every row whose id is
+  referenced, and emit in document order*. Like the artwork anchor above, this
+  **cannot fail on today's data** (the real pool has no duplicate ids) and is written
+  deliberately: it is the only thing between a future re-extraction that reuses an id
+  and a listener hearing the wrong ninety seconds.
+- **All Forays, not the published ones.** `forayVisibility` makes an unpublished Foray
+  reachable by asking for it by id (`?foray=`), which is how a Foray is tested before
+  publishing. Slicing against `listableForays` looks like a tightening and ships a
+  Foray that opens in the app and resolves to an empty running order. **All three
+  Forays are drafts today**, so that rule would reference zero segments — caught here
+  by a hard error, but only because the guard exists.
+
+**How completeness is proved.** `assertForaySliceComplete` checks three things, and
+the third is the one counting cannot do: every referenced segment is in the slice;
+every episode a kept segment plays out of is in the registry slice; and the **real**
+`hydrateForayItems` is re-run over the full pair and the sliced pair for every Foray,
+demanding identical results. It also refuses to be vacuous — no Forays, no referenced
+id in the pool, or a full pair that resolves to nothing are all hard errors, because a
+comparison agrees enthusiastically when both sides are empty (#328's lesson). The
+assertion runs in memory during projection **and again on the bytes on disk**, against
+the **bundled** `data/forays.json` rather than the repo's, which is why that file is in
+`COPIED_WHOLE`.
+
+**Budgets: 100 KB and 40 KB**, against 41 KB and 15 KB today — about four more Forays
+the size of today's three combined. Looser than `discover.json`'s ~13%, deliberately:
+catalogue growth is nobody's decision and should trip a tight alarm, whereas authoring
+a Foray *is* a decision and an alarm that fires on the first one is noise. All three
+budgets are pinned literally in `shell-invariants.test.mjs`.
 
 ## 4. Two footguns that are pinned rather than remembered
 

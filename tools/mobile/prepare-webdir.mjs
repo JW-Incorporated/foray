@@ -59,10 +59,15 @@
  *   - `*.test.js` under `player/`. Test code is not shipped to devices.
  *   - Everything else in `data/`. The pipeline inputs are not client data.
  *
- * THE ONE FILE THAT IS COPIED IN PART, AND WHY THAT IS NOT A FORK EITHER
- * `data/discover.json` and `data/item-tags.json` are the only two bundled files
- * whose size is a function of the CATALOGUE rather than of the product, and the
- * nightly refresh grows them. Measured over 2026-07-19..08-18, `discover.json`
+ * THE FILES THAT ARE COPIED IN PART, AND WHY THAT IS NOT A FORK EITHER
+ * `data/discover.json` and `data/item-tags.json` are the two bundled files whose
+ * size is a function of the CATALOGUE rather than of the product, and the
+ * nightly refresh grows them. `data/segments.json` and `data/segment-sources.json`
+ * are the two whose size is a function of the SEGMENT POOL, and every extraction
+ * batch grows those — see the § above `referencedSegmentIds` for why that is the
+ * worse of the two shapes and what #327 did about it.
+ *
+ * Measured over 2026-07-19..08-18, `discover.json`
  * grew 681 KB -> 1.70 MB, about 35 KB a night, and `item-tags.json` 162 KB ->
  * 302 KB, about 4 KB a night. At that rate the 3 MB cap below is not a ceiling a
  * human ever decides to cross; it is a date. It was going to fire on the next
@@ -130,6 +135,18 @@ import { fileURLToPath } from "node:url";
    correctness condition is "these two functions cannot tell the difference", and
    a second copy of them here would agree with itself while the app disagreed. */
 import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sources.js";
+
+/* The OTHER production join, imported for exactly the same reason (#327). This is
+   the one that turns `data/forays.json`'s `segment_id` references into playable
+   entries by reading `data/segments.json` and `data/segment-sources.json`; the
+   segment slice's whole correctness condition is that it cannot tell the
+   difference. `SEGMENT` comes from the queue builder rather than being spelled
+   "segment" here, so the item type this slice counts is the item type the player
+   dispatches on. */
+import {
+  allForays, hydrateForayItems, indexSegments, indexSources,
+} from "../../player/foray-resolve.js";
+import { SEGMENT } from "../../player/foray-queue.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -655,10 +672,319 @@ export function assertDiscoverSliceComplete(source, slice) {
   return true;
 }
 
+/* ------------------------------------------- the Foray segment slice (#327) */
+
+/* WHY THIS EXISTS, and why it is a different shape from the catalogue slice above.
+ *
+ * `data/segments.json` is the raw material for every future Foray, so it is the one
+ * file in this bundle DESIGNED to grow without bound. The first real extraction
+ * batch (#328) took it from 69 segments to 212 and the source registry from 19 to
+ * 64, and both were copied verbatim — no `PROJECTED_DATA` entry, so the plan took
+ * them as-is. The bundle went 2.11 MB -> 2.26 MB in one commit and tripped the two
+ * headroom assertions in `prepare-webdir.test.mjs`, which were re-baselined once,
+ * tight. That was a re-baseline, not a fix: at ~1.0 KB of bundle per segment across
+ * the two files, the ~740 KB of headroom under the 3 MB cap was ~745 more segments,
+ * against a file whose entire purpose is to keep getting bigger.
+ *
+ * AND NONE OF IT WAS REACHABLE. The three committed Forays reference 57 segments
+ * between them; the bundle was shipping ~160 KB of pool the app had no way to play.
+ *
+ * WHAT THE APP ACTUALLY DOES WITH THESE TWO DOCUMENTS, checked rather than assumed,
+ * because #327 said "plus whatever the app needs to browse" and the answer decides
+ * how strong the guarantee can be. `state.segments` and `state.segmentSources` are
+ * read in exactly one place in `app.js` (`renderForay`, line ~1595) and passed
+ * straight to `player/client.js`'s `resolve()`, which indexes both BY ID and looks
+ * up only the ids the Foray names. Nothing enumerates the pool: there is no
+ * `#/segment/...` route, no segment browse surface, `search-engine.js` never
+ * mentions a segment, and `index.html` never mentions one. So the answer is NO —
+ * the app browses nothing here — and that makes the slice EXACTLY the referenced
+ * set, which is a much stronger guarantee than the catalogue's.
+ *
+ * NO TOPIC TOP-UP, and that is the difference stated as a rule rather than as an
+ * omission. `discoverSlice` tops up after its per-show pass because `app.js` routes
+ * `#/subject/<topic>` off `discover.json`, so a topic with no items left is a browse
+ * page that renders empty in the app and full on the web. A segment's `topic` field
+ * has no such reader — it rides along on a hydrated entry for display and is never
+ * enumerated — so there is no analogous surface to keep populated, and adding an
+ * analogue would be shipping bytes for a page that does not exist.
+ *
+ * THE TRAP, which is the segment-shaped version of "keep each show's first item is
+ * WRONG". `indexSegments` and `indexSources` are `Map.set` in document order, so on
+ * a DUPLICATE id the LAST row wins. A slice that kept "the first row matching a
+ * referenced id" would hand the app a segment with different timestamps from the one
+ * the website plays — same id, same count, same budget, and a listener hears the
+ * wrong 90 seconds. Filtering in document order and keeping EVERY row whose id is
+ * referenced is what makes the two indexes agree, and `assertForaySliceComplete`
+ * re-runs the REAL `hydrateForayItems` over both pairs of documents rather than
+ * trusting that rule.
+ *
+ * ALL FORAYS, NOT THE PUBLISHED ONES. `forayVisibility` makes an unpublished Foray
+ * reachable by asking for it by id (`?foray=<id>`) — that is how the founder tests
+ * one before publishing — so a draft's segments are as fetchable as a published
+ * one's. Slicing against `listableForays` would ship a Foray that resolves to
+ * nothing the moment somebody opened the link they were given, with every test here
+ * green. ALL THREE Forays in the document are drafts today, so that rule would
+ * reference zero segments and ship an empty pool — which the guard in `segmentSlice`
+ * catches, but only because the guard exists.
+ */
+
+/** Every segment id any Foray in the bundled document references.
+ *
+ *  Reads `type === SEGMENT` rather than "has a segment_id", because narration
+ *  bridges (#134) are the other authored item type and they carry no id to
+ *  resolve — the same discrimination `hydrateForayItems` makes, in the same order.
+ */
+export function referencedSegmentIds(foraysDoc) {
+  const ids = new Set();
+  for (const foray of allForays(foraysDoc)) {
+    const items = Array.isArray(foray?.items) ? foray.items : [];
+    for (const item of items) {
+      if (item?.type !== SEGMENT) continue;
+      if (typeof item.segment_id === "string" && item.segment_id !== "") ids.add(item.segment_id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * The bundled subset of `data/segments.json`: the segments the bundled Forays name,
+ * and nothing else.
+ *
+ * Emitted in DOCUMENT ORDER, keeping every row whose id is referenced — see the
+ * duplicate-id trap in the § above. That is also what makes this O(Forays), not
+ * O(pool): a nightly extraction batch of 10,000 segments adds zero bundle bytes
+ * until a Foray is authored against them.
+ *
+ * @throws {WebDirError} if either document is unusable — see the guards.
+ */
+export function segmentSlice(segmentsDoc, foraysDoc) {
+  const segments = segmentsDoc?.segments;
+  /* THE FAILS-GREEN GUARD, the same one `discoverSlice` opens with and for the same
+     reason. Rename `segments` and every comparison downstream compares an empty
+     index against an empty index and PASSES: the bundle ships a segment document
+     with no segments in it, far under every budget, and every Foray in the app
+     resolves to nothing at all. */
+  if (!Array.isArray(segments) || segments.length === 0) {
+    throw new WebDirError(
+      `data/segments.json has no non-empty "segments" array, so there is nothing to slice. ` +
+        `Refusing to write an empty pool: it would pass every size budget in this file and ` +
+        `give every Foray in the app an empty running order.`
+    );
+  }
+  const ids = referencedSegmentIds(foraysDoc);
+  /* THE SECOND FAILS-GREEN GUARD, for the OTHER document this function cannot work
+     without. If `data/forays.json` is renamed, malformed, or its items stop saying
+     `type: "segment"`, the referenced set is empty, the slice is empty, and
+     "every referenced segment survived" is trivially true of nothing. */
+  if (ids.size === 0) {
+    throw new WebDirError(
+      `no Foray in data/forays.json references a single segment, so slicing data/segments.json ` +
+        `against it would ship an empty pool and prove nothing by doing it. Either forays.json ` +
+        `is malformed, or its items no longer carry type ${JSON.stringify(SEGMENT)} — which is ` +
+        `the field player/foray-resolve.js dispatches on.`
+    );
+  }
+  const kept = segments.filter((s) => typeof s?.id === "string" && ids.has(s.id));
+  const { segments: _dropped, ...rest } = segmentsDoc;
+  return {
+    ...rest,
+    /* Not decoration, same as `discoverSlice`'s: a device holding 57 of 212 segments
+       is indistinguishable from a device with a broken pool unless the file says
+       which it is. `referenced` above `kept` on purpose — the two differing is a
+       Foray naming a segment the pool does not have, which is `check-forays.mjs`'s
+       problem to fail on and this file's problem to be legible about. */
+    bundled_from: { segments: segments.length, referenced: ids.size, kept: kept.length },
+    segments: kept,
+  };
+}
+
+/**
+ * The bundled subset of `data/segment-sources.json`: the episodes the kept segments
+ * play out of.
+ *
+ * Derived from `segmentSlice` rather than from the Forays directly, because the join
+ * is two hops — a Foray names a segment, a segment names an `item_id`, and only the
+ * segment document knows which. Recomputing the segment slice here rather than
+ * taking it as an argument keeps the two `PROJECTED_DATA` entries independent of the
+ * order they are listed in; it is the same pure function of the same two documents,
+ * not a second copy of the rule.
+ */
+export function segmentSourceSlice(sourcesDoc, segmentsDoc, foraysDoc) {
+  const sources = sourcesDoc?.sources;
+  if (!Array.isArray(sources) || sources.length === 0) {
+    throw new WebDirError(
+      `data/segment-sources.json has no non-empty "sources" array, so there is nothing to ` +
+        `slice. Refusing to write an empty registry: every segment would resolve to no audio, ` +
+        `under every budget, in a bundle that builds.`
+    );
+  }
+  const needed = new Set();
+  for (const seg of segmentSlice(segmentsDoc, foraysDoc).segments) {
+    if (typeof seg?.item_id === "string" && seg.item_id !== "") needed.add(seg.item_id);
+  }
+  const kept = sources.filter((s) => typeof s?.id === "string" && needed.has(s.id));
+  const { sources: _dropped, ...rest } = sourcesDoc;
+  return {
+    ...rest,
+    bundled_from: { sources: sources.length, referenced: needed.size, kept: kept.length },
+    sources: kept,
+  };
+}
+
+/** Structural JSON equality, over values this module only ever produces from
+ *  `hydrateForayItems` — plain objects of strings, finite numbers and nulls, built
+ *  field-by-field by the same code on both sides, so key order is identical by
+ *  construction and stringify is a faithful comparison. */
+const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * Prove the segment slice kept everything the bundled Forays need.
+ *
+ * THIS IS THE WHOLE POINT OF THE CHANGE, and it is a separate, exported, tested
+ * function for the reason `assertDiscoverSliceComplete` gives: without it, every
+ * selection bug degrades to "wrote a smaller file and reported success", and a
+ * smaller file is precisely what this change is trying to produce.
+ *
+ * Three checks, in the order they matter:
+ *
+ *   1. EVERY REFERENCED SEGMENT IS IN THE SLICE. The plain statement of the
+ *      contract, checked by id, so the failure message can name the segment.
+ *      Restricted to ids the FULL document actually has: a Foray naming a segment
+ *      nobody extracted is a data defect `tools/foray/check-forays.mjs` owns, and
+ *      making the mobile build the thing that reports it would put the message in
+ *      the wrong place.
+ *   2. EVERY EPISODE THOSE SEGMENTS PLAY OUT OF IS IN THE SOURCE SLICE. The second
+ *      hop, checked separately so a lost registry row does not have to be inferred
+ *      from a resolver diff.
+ *   3. THE REAL JOIN AGREES, ENTRY FOR ENTRY. `hydrateForayItems` — the production
+ *      function, imported, not reimplemented — is re-run over the full pair and the
+ *      sliced pair for every Foray in the document, and the hydrated items AND the
+ *      dropped list must be identical. This is what counting cannot see: keeping the
+ *      first of two rows sharing an id passes (1) and (2) with the right number of
+ *      bytes, and hands the listener a different ninety seconds of somebody else's
+ *      episode.
+ *
+ * @param {object} foraysDoc  the Foray document AS BUNDLED — it is the selector, so
+ *   verifying against the repo's copy while shipping another would prove the wrong
+ *   thing. `data/forays.json` is in `COPIED_WHOLE` to keep those the same document.
+ * @param {{segments: object, sources: object}} full   the repo's two documents
+ * @param {{segments: object, sources: object}} sliced what the bundle will carry
+ */
+export function assertForaySliceComplete(foraysDoc, full, sliced) {
+  const forays = allForays(foraysDoc);
+  if (forays.length === 0) {
+    throw new WebDirError(
+      `data/forays.json carries no Forays, so "every segment a Foray references survived the ` +
+        `slice" is trivially true and the bundle would ship an empty pool on the strength of it.`
+    );
+  }
+
+  /* Every check below asks "did the slice LOSE anything", which an unsliced document
+     passes — so bound it from the other side too, exactly as
+     assertDiscoverSliceComplete does. `>` and not `>=`: a pool small enough that the
+     slice is the whole thing is legitimate and is what the fixtures look like. */
+  const PAIR = [["segments", "data/segments.json"], ["sources", "data/segment-sources.json"]];
+  for (const [key, label] of PAIR) {
+    /* Both documents name their array after themselves — `{segments: [...]}` and
+       `{sources: [...]}` — so one accessor covers both halves of the pair. */
+    const after = sliced?.[key]?.[key]?.length ?? 0;
+    const before = full?.[key]?.[key]?.length ?? 0;
+    if (after > before) {
+      throw new WebDirError(
+        `the ${label} slice has ${after} ${key} and the source has ${before}. A slice cannot be ` +
+          `larger than what it is a slice of, so this is not the document it claims to be ` +
+          `derived from.`
+      );
+    }
+  }
+
+  /* 1. every referenced segment the pool HAS is in the slice */
+  const poolIds = new Set((full?.segments?.segments ?? []).map((s) => s?.id));
+  const sliceIds = new Set((sliced?.segments?.segments ?? []).map((s) => s?.id));
+  const wanted = [...referencedSegmentIds(foraysDoc)].filter((id) => poolIds.has(id));
+  if (wanted.length === 0) {
+    throw new WebDirError(
+      `no segment referenced by any Foray is in data/segments.json at all, so "every referenced ` +
+        `segment survived the slice" compares nothing against nothing. Either the pool no longer ` +
+        `carries the ids the Forays name, or one of the two documents did not parse.`
+    );
+  }
+  const lost = wanted.filter((id) => !sliceIds.has(id));
+  if (lost.length) {
+    throw new WebDirError(
+      `the segment slice dropped ${lost.length} segment(s) that a bundled Foray references, ` +
+        `starting with ${JSON.stringify(lost.slice(0, 3))}. Each one is an item that resolves to ` +
+        `nothing in the app and plays fine on the website — a shorter Foray, on a device, with ` +
+        `the build green. The slice must keep every id referencedSegmentIds() returns.`
+    );
+  }
+
+  /* 2. and every episode those segments play out of */
+  const srcIds = new Set((sliced?.sources?.sources ?? []).map((s) => s?.id));
+  const needed = new Set(
+    (sliced?.segments?.segments ?? [])
+      .map((s) => s?.item_id)
+      .filter((id) => typeof id === "string" && id !== "")
+  );
+  const poolSrcIds = new Set((full?.sources?.sources ?? []).map((s) => s?.id));
+  const lostSources = [...needed].filter((id) => poolSrcIds.has(id) && !srcIds.has(id));
+  if (lostSources.length) {
+    throw new WebDirError(
+      `the segment-source slice dropped ${lostSources.length} episode(s) a kept segment plays ` +
+        `out of, starting with ${JSON.stringify(lostSources.slice(0, 3))}. The segment survives ` +
+        `and its audio does not, so the item is dropped at resolve time with no way for anyone ` +
+        `to see why from the bundle.`
+    );
+  }
+
+  /* 3. THE REAL JOIN, RE-RUN OVER BOTH PAIRS. */
+  const hydrateAll = (docs) => {
+    const segments = indexSegments(docs?.segments);
+    const sources = indexSources(docs?.sources);
+    return forays.map((f) => hydrateForayItems(f, { segments, sources }));
+  };
+  const before = hydrateAll(full);
+  const played = before.reduce((n, r) => n + r.items.filter((i) => i?.type === SEGMENT).length, 0);
+  /* THE VACUITY GUARD ON THE COMPARISON ITSELF, and it is the one #328's lesson
+     demands: a check that asks "do these two agree" agrees enthusiastically when
+     both sides are empty. If the FULL documents hydrate no segment entry at all,
+     there is nothing for the slice to have preserved and identity means nothing. */
+  if (played === 0) {
+    throw new WebDirError(
+      `re-running player/foray-resolve.js over the FULL data/segments.json and ` +
+        `data/segment-sources.json produced no playable segment entry for any Foray, so ` +
+        `comparing the slice against it compares empty against empty. The join is broken ` +
+        `upstream of the slice — fix that before trusting anything this function returns.`
+    );
+  }
+  const after = hydrateAll(sliced);
+  forays.forEach((foray, i) => {
+    const id = foray?.id ?? `#${i}`;
+    /* ONE COMPARISON OVER THE WHOLE RESULT, not one for `items` and one for
+       `dropped`, and that is a deliberate deletion rather than an omission.
+       `dropped` is the complement of `items` over the same positions, so given the
+       two checks above it cannot differ unless `items` does — a separate assertion
+       on it would read as a guard and be unreachable, which is precisely what #274's
+       collection-id check turned out to be until it was rewritten to be reached. */
+    if (!sameJson(before[i], after[i])) {
+      throw new WebDirError(
+        `Foray ${JSON.stringify(id)} hydrates differently against the slice than against the ` +
+          `full documents — a different running order, or a different set of dropped items, ` +
+          `in the app and not on the website. Same ids and the same byte budget do not make it ` +
+          `the same Foray: player/foray-resolve.js indexes both documents in DOCUMENT ORDER ` +
+          `with Map.set, so the LAST row sharing an id wins, and a slice that kept a different ` +
+          `one plays different seconds of somebody else's episode. Keep every row whose id is ` +
+          `referenced, and emit in document order.`
+      );
+    }
+  });
+  return true;
+}
+
 /* The one that is NOT sliced, and why, because "it is only tags" was the wrong
  * answer and a reviewer caught it.
  *
- * `data/item-tags.json` is the OTHER catalogue-proportional file: 302 KB, ~4 KB a
+ * `data/item-tags.json` is the OTHER catalogue-proportional file: 329 KB, ~4 KB a
  * night, second only to `discover.json`. Trimming it to the bundled pool takes it to
  * 121 KB and looks completely safe — `search-engine.js` only ever looks a tag list
  * up by an item it is already scoring, so an entry for an absent item is dead weight.
@@ -704,33 +1030,123 @@ export function assertDiscoverSliceComplete(source, slice) {
 /**
  * Which bundled data files are written as a slice rather than copied.
  *
- * A LIST OF ONE, and it stays a list because the next file whose size tracks the
- * catalogue rather than the product belongs here — with its own budget, which is
- * what makes a new entry hard to add carelessly.
+ * THREE ENTRIES, TWO DIFFERENT REASONS, and the difference is what each budget
+ * means. `data/discover.json` is sliced because its size tracks the CATALOGUE and
+ * the nightly refresh grows it whether or not anybody decided anything. The two
+ * Foray documents are sliced because their size tracks the SEGMENT POOL, which
+ * grows with every extraction batch — and unlike the catalogue, none of that growth
+ * is reachable from the app until somebody authors a Foray against it (#327).
  *
  * `maxBytes` is a PER-FILE budget and the tighter of this file's two alarms. It
  * answers a different question from `MAX_BYTES`: not "did something enormous get
- * in" but "did the slice stop being bounded". The two ways that happens are new
- * shows (each costs `perShow` items, ~3.4 KB at 3) and items getting individually
- * fatter, and both are deliberate changes somebody should hear about.
+ * in" but "did the slice stop being bounded".
  *
- * Today's slice is 680 KB, so the budget sits ~17% above it: about 35 more shows, or
- * a 17% rise in the average item. Not a year of silence.
+ *   - `data/discover.json` — 705 KB today, budget 800 KB, ~13% above. The two ways
+ *     it moves are new shows (each costs `perShow` items, ~3.4 KB at 3) and items
+ *     getting individually fatter. Not a year of silence. UNCHANGED by #327.
+ *   - `data/segments.json` — 41 KB today, budget 100 KB. Its unit is a Foray: at
+ *     ~0.74 KB per referenced segment and ~19 segments per Foray, that is about
+ *     four more Forays the size of today's three combined. Authoring a Foray is a
+ *     deliberate act, so the alarm should not fire on the first one — but it must
+ *     fire well before the pool's growth is back inside the bundle.
+ *   - `data/segment-sources.json` — 15 KB today, budget 40 KB, and its unit is the
+ *     EPISODE rather than the segment: today's 57 segments come from 19 episodes, so
+ *     ~0.8 KB each and ~31 more episodes of room, which is the same four Forays if
+ *     they reuse episodes at today's rate and rather fewer if they do not.
+ *
+ * `shell-invariants.test.mjs` pins all three numbers, so raising one costs an edit
+ * there and a sentence about what the new number guards — the same self-referential
+ * hole `MAX_BYTES` has.
  */
 export const PROJECTED_DATA = [
   {
     rel: "data/discover.json",
     maxBytes: 800 * 1024,
+    whenBreached:
+      "Three ways that happens: the catalogue gained shows or topics (each show costs " +
+      "BUNDLED_ITEMS_PER_SHOW items), the items got fatter, or a show grew a long run of " +
+      "items BOTH joins skip — no artwork and no valid collection id — which the anchor " +
+      "prefix has to keep walking. Lower BUNDLED_ITEMS_PER_SHOW to shrink it with no code " +
+      "change.",
     project: (source, ctx) => discoverSlice(source, { perShow: ctx.perShow }),
     verify: (source, written) => assertDiscoverSliceComplete(source, written),
+  },
+  /* THE TWO FORAY DOCUMENTS VERIFY THE SAME JOINT PROPERTY FROM BOTH SIDES, on
+     purpose, because the property IS joint: a segment with no registry row and a
+     registry row with no segment are the same broken running order, and neither
+     file can prove it alone. So each entry re-runs the whole join over both
+     documents. Deleting either `verify` therefore leaves the other one failing —
+     which is the point, since `verify` is the only thing standing between a
+     selection bug and "wrote a smaller file and reported success". */
+  {
+    rel: "data/segments.json",
+    maxBytes: 100 * 1024,
+    whenBreached:
+      "Its unit is a FORAY, not the pool: a segment nothing references costs zero bytes, " +
+      "so this can only move because Forays were authored or because the segments they " +
+      "name got fatter. Neither is a knob to turn — check that it really is authored work " +
+      "and not the slice having come undone (referencedSegmentIds returning too much, or " +
+      "the filter in segmentSlice reverted to a copy).",
+    project: (source, ctx) => segmentSlice(source, ctx.source("data/forays.json")),
+    verify: (source, written, ctx) =>
+      assertForaySliceComplete(
+        ctx.bundled("data/forays.json"),
+        { segments: source, sources: ctx.source("data/segment-sources.json") },
+        { segments: written, sources: ctx.bundled("data/segment-sources.json") }
+      ),
+  },
+  {
+    rel: "data/segment-sources.json",
+    maxBytes: 40 * 1024,
+    whenBreached:
+      "Its unit is the EPISODE a kept segment plays out of, so it moves when new Forays " +
+      "draw on shows the bundle did not already carry — a wider Foray costs more here " +
+      "than a longer one. Same check as data/segments.json: authored work, or a slice " +
+      "that stopped slicing.",
+    project: (source, ctx) =>
+      segmentSourceSlice(source, ctx.source("data/segments.json"), ctx.source("data/forays.json")),
+    verify: (source, written, ctx) =>
+      assertForaySliceComplete(
+        ctx.bundled("data/forays.json"),
+        { segments: ctx.source("data/segments.json"), sources: source },
+        { segments: ctx.bundled("data/segments.json"), sources: written }
+      ),
   },
 ];
 
 /** Bundled files that must arrive BYTE-IDENTICAL, asserted rather than assumed.
  *  Everything not in `PROJECTED_DATA` is copied, so this list adds nothing mechanical
- *  — what it adds is a failing test for the one file somebody will reasonably try to
- *  trim next, with the reason attached. See the § above `PROJECTED_DATA`. */
-export const COPIED_WHOLE = ["data/item-tags.json"];
+ *  — what it adds is a failing test for the files somebody will reasonably try to
+ *  trim next, with the reason attached.
+ *
+ *  `data/item-tags.json`: see the § above `PROJECTED_DATA`; trimming it re-ranks
+ *  search in the app and not on the website.
+ *
+ *  `data/forays.json`: it is the SELECTOR for the two segment slices, so the bundle
+ *  must carry the same Foray document the slice was computed from. Slice or reorder
+ *  it and the segments it names go out of the bundle with it — a Foray listed in the
+ *  app whose every item resolves to nothing. It is 20 KB and bounded by how many
+ *  Forays exist, so there is nothing to gain by trimming it and a silent empty
+ *  running order to lose. */
+export const COPIED_WHOLE = ["data/item-tags.json", "data/forays.json"];
+
+/** Why each `COPIED_WHOLE` entry is copied whole, keyed by the same path.
+ *
+ *  A SEPARATE TABLE rather than a fallback string inside the failure message,
+ *  because a fallback for a key that is always present is a branch that can never
+ *  fire — and this repo has paid for those. `prepare-webdir.test.mjs` asserts the
+ *  two lists have identical keys instead, so adding a file here without saying why
+ *  fails a test rather than printing "undefined" at somebody in six months. */
+export const WHY_COPIED_WHOLE = {
+  "data/item-tags.json":
+    `search-engine.js's tagDF() reads the WHOLE map, so a trimmed one re-ranks 12 query ` +
+    `expansions and 62 score multipliers in the app and not on the website — sampling ` +
+    `skew since #275, arithmetic before it.`,
+  "data/forays.json":
+    `it is the SELECTOR for the two segment slices, so the bundle must carry the same Foray ` +
+    `document the slice was computed from. A Foray that is in the app but not in the ` +
+    `selector had its segments sliced away, and it resolves to an empty running order.`,
+};
 
 /** Exactly how a slice is serialised, in one place, because the bytes are measured
  *  against a budget and compared across runs. Two spaces and a trailing newline is
@@ -747,10 +1163,25 @@ export function sliceBytes(json) {
   return Buffer.byteLength(serializeSlice(json), "utf8");
 }
 
+/** A cached JSON reader rooted at one directory.
+ *
+ *  CACHED because a projection and its verification read the same documents and
+ *  `data/discover.json` is 1.9 MB of parse; ROOTED so the same helper reads the
+ *  repo's copy of a document and the bundle's copy of it, which is the distinction
+ *  `assertForaySliceComplete` turns on — it verifies the slice against the Foray
+ *  document AS BUNDLED, not against the repo's. */
+function docReader(dir) {
+  const cache = new Map();
+  return (rel) => {
+    if (!cache.has(rel)) cache.set(rel, JSON.parse(fs.readFileSync(path.join(dir, rel), "utf8")));
+    return cache.get(rel);
+  };
+}
+
 /** Build every slice, with the assertions that prove each one, and hand back the
  *  JSON to write. */
 export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW, plan = null } = {}) {
-  const read = (rel) => JSON.parse(fs.readFileSync(path.join(root, rel), "utf8"));
+  const read = docReader(root);
   if (plan) {
     const absent = PROJECTED_DATA.filter((p) => !plan.includes(p.rel)).map((p) => p.rel);
     if (absent.length) {
@@ -762,12 +1193,21 @@ export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW
     }
   }
 
+  /* TWO PASSES, and the reason is #327's slice rather than tidiness: the two Foray
+     documents are verified TOGETHER — a segment with no registry row is the same
+     broken running order as a registry row with no segment — so a verification that
+     ran inside the build loop would judge the first slice against an unsliced
+     second one and never see the pair the bundle actually ships. */
   const out = new Map();
   for (const spec of PROJECTED_DATA) {
-    const source = read(spec.rel);
-    const written = spec.project(source, { perShow });
-    spec.verify(source, written);
-    out.set(spec.rel, written);
+    out.set(spec.rel, spec.project(read(spec.rel), { perShow, source: read }));
+  }
+  /* "As the bundle will carry it": a projected file resolves to its slice, and
+     everything else to the copy that is about to be made of it. Same contract
+     `assertSlicesOnDisk` gets from the real directory. */
+  const bundled = (rel) => (out.has(rel) ? out.get(rel) : read(rel));
+  for (const spec of PROJECTED_DATA) {
+    spec.verify(read(spec.rel), out.get(spec.rel), { perShow, source: read, bundled });
   }
   return out;
 }
@@ -781,6 +1221,8 @@ export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW
  * budget is enforced, so the budget is measured on the bytes that ship.
  */
 export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
+  const source = docReader(root);
+  const bundled = docReader(absOut);
   for (const spec of PROJECTED_DATA) {
     const abs = path.join(absOut, spec.rel);
     if (!fs.existsSync(abs)) {
@@ -790,33 +1232,25 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT) {
     if (bytes > spec.maxBytes) {
       throw new Error(
         `the bundled ${spec.rel} is ${fmt(bytes)}, over its ${fmt(spec.maxBytes)} budget.\n` +
-          `This budget is not the 3 MB bundle cap — it is the alarm for the slice having ` +
-          `stopped being bounded. Three ways that happens: the catalogue gained shows or ` +
-          `topics (each show costs BUNDLED_ITEMS_PER_SHOW items), the items got fatter, or a ` +
-          `show grew a long run of items BOTH joins skip — no artwork and no valid collection ` +
-          `id — which the anchor prefix has to keep walking. Lower BUNDLED_ITEMS_PER_SHOW, or ` +
-          `raise this budget deliberately and say what it now guards.`
+          `This budget is not the 3 MB bundle cap — it is the alarm for THIS slice having ` +
+          `stopped being bounded. ${spec.whenBreached}\n` +
+          `Raise this budget only deliberately, and say what the new number guards.`
       );
     }
-    spec.verify(
-      JSON.parse(fs.readFileSync(path.join(root, spec.rel), "utf8")),
-      JSON.parse(fs.readFileSync(abs, "utf8"))
-    );
+    /* Verified against the documents AS THEY SHIP — `bundled` reads out of the
+       output directory, so the Foray document the segment slice is judged against
+       is the one on the device, not the one in the repo. `COPIED_WHOLE` is what
+       makes those the same file, and it is asserted a few lines below. */
+    spec.verify(source(spec.rel), bundled(spec.rel), { source, bundled });
   }
-  /* The file that is deliberately NOT sliced, asserted on the bytes that ship. See
-     the § above PROJECTED_DATA: trimming this one silently re-ranks search in the app
-     because `tagDF` reads the whole map: its SIZE is the denominator of every
-     document-frequency threshold in the query interpreter, and after #275 its
-     COMPOSITION is what a trim would change. */
+  /* The files that are deliberately NOT sliced, asserted on the bytes that ship. */
   for (const rel of COPIED_WHOLE) {
     const a = fs.readFileSync(path.join(root, rel));
     const b = fs.readFileSync(path.join(absOut, rel));
     if (!a.equals(b)) {
       throw new Error(
         `the bundled ${rel} is not byte-identical to the source. It must be copied whole: ` +
-          `search-engine.js's tagDF() reads the WHOLE map, so a trimmed one re-ranks 12 query ` +
-          `expansions and 62 score multipliers in the app and not on the website — sampling ` +
-          `skew since #275, arithmetic before it. See the comment above PROJECTED_DATA.`
+          `${WHY_COPIED_WHOLE[rel]} See the comment above PROJECTED_DATA.`
       );
     }
   }
@@ -958,7 +1392,12 @@ if (isMain) {
       for (const f of shellOnly) console.log(`  ${f.src}  ->  ${f.dest}   (shell only)`);
       console.log(`and these tags would be added to ${out}/index.html before </head>:`);
       for (const tag of shellScriptTags(shellOnly)) console.log(`  ${tag}`);
-      console.log(`the sliced files carry ${BUNDLED_ITEMS_PER_SHOW} item(s) per show:`);
+      /* `bundled_from` says what each slice kept and out of what, which is the only
+         way to tell a bounded slice from a broken projection at a glance — the units
+         differ per file (items per show for the catalogue, referenced segments for
+         the Foray documents), so each one reports its own rather than sharing a
+         heading that is only true of the first. */
+      console.log(`the sliced files, and what each kept (per show: ${BUNDLED_ITEMS_PER_SHOW}):`);
       for (const [rel, json] of projectData(REPO_ROOT, { plan })) {
         const spec = PROJECTED_DATA.find((p) => p.rel === rel);
         console.log(

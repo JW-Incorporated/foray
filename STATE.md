@@ -7,6 +7,30 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### The segment pool stops shipping whole (#327) — `fix/327-slice-segments`
+
+- **What:** `data/segments.json` and `data/segment-sources.json` were copied into
+  the native bundle verbatim (no `PROJECTED_DATA` entry, so the plan takes an
+  unlisted file as-is). #328's first extraction batch took the bundle 2.11 → 2.26 MB
+  in one commit and the two headroom assertions were re-based, tight — a
+  re-baseline, not a fix, against the one file here designed to grow without bound.
+  Both files are now bounded slices: **exactly the segments the bundled Forays
+  reference**, plus the episodes those play out of. **2.26 → 2.10 MB**;
+  `data/discover.json` byte-for-byte unchanged at 704.6 KB.
+- **Branch prefix:** `fix/327-slice-segments` — PR only, never main.
+- **Owned files:** `tools/mobile/prepare-webdir.mjs`, `tools/mobile/prepare-webdir.test.mjs`.
+- **Shared files it touches:** `tools/mobile/shell-invariants.test.mjs` (+1 test,
+  the three per-file budgets re-pinned), `test/suite-integrity.test.js` (floors),
+  `docs/mobile-shell.md` (§3.3, new).
+- **Ruling, since it constrains future work:** nothing in `app.js` or `player/`
+  browses the segment pool — it is read once, in `renderForay`, and resolved by id
+  — so the slice is the referenced set with **no topic top-up**, unlike
+  `discoverSlice`. That premise is pinned by a test. **Adding any segment browse
+  surface (a clip search, a topic index over the pool) breaks it**, and the answer
+  then is a top-up rule plus a bigger budget, not deleting the test.
+- **Explicitly out of scope:** `data/item-tags.json`'s df sidecar (the ~181 KB
+  named in `COPIED_WHOLE`), and #40's fetch-the-tail-of-the-catalogue.
+
 ### SegmentStrip, the signature element (#128) — `feat/128-segment-strip`
 
 - **What:** the Foray-page strip stops being a row of grey bars and becomes the
