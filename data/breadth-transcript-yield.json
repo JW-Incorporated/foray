@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generated_at": "2026-08-23T08:42:43.310Z",
-  "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is 913 bytes/show (measured), ~16.9MB across 19436 feeds, and stays committable.",
+  "generated_at": "2026-08-23T10:22:21.874Z",
+  "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is 914 bytes/show (measured), ~16.9MB across 19436 feeds, and stays committable.",
   "source": {
     "breadth_index": [
       "data-local/breadth/availability-breadth.json",
@@ -12,7 +12,10 @@
       "data-local/breadth/tranche-02.json"
     ],
     "baseline": "data/transcript-availability.json",
-    "measured": "data/breadth-suspect-inflation.json",
+    "measured": [
+      "data/breadth-suspect-inflation.json",
+      "data/breadth-anchorable-inflation.json"
+    ],
     "tranches": [
       {
         "name": "tranche-01",
@@ -58,10 +61,10 @@
       "transcripts": 340781,
       "timed_transcripts": 330840,
       "anchorable_timed_transcripts": 11237,
-      "anchorable_net_of_suspects": 10503,
+      "anchorable_net_of_suspects": 9105,
       "timed_per_show_swept": 367.6,
       "anchorable_per_show_swept": 12.5,
-      "net_anchorable_per_show_swept": 11.7
+      "net_anchorable_per_show_swept": 10.1
     },
     "breadth_explore": {
       "shows_swept": 600,
@@ -75,7 +78,7 @@
       "transcripts": 9205,
       "timed_transcripts": 8450,
       "anchorable_timed_transcripts": 430,
-      "anchorable_net_of_suspects": 430,
+      "anchorable_net_of_suspects": 415,
       "timed_per_show_swept": 14.1,
       "anchorable_per_show_swept": 0.7,
       "net_anchorable_per_show_swept": 0.7
@@ -92,10 +95,10 @@
       "transcripts": 349986,
       "timed_transcripts": 339290,
       "anchorable_timed_transcripts": 11667,
-      "anchorable_net_of_suspects": 10933,
+      "anchorable_net_of_suspects": 9520,
       "timed_per_show_swept": 226.2,
       "anchorable_per_show_swept": 7.8,
-      "net_anchorable_per_show_swept": 7.3
+      "net_anchorable_per_show_swept": 6.3
     }
   },
   "by_host": [
@@ -238,10 +241,10 @@
       "transcripts": 2860,
       "timed_transcripts": 2846,
       "anchorable_timed_transcripts": 9,
-      "anchorable_net_of_suspects": 9,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 50.8,
       "anchorable_per_show_swept": 0.2,
-      "net_anchorable_per_show_swept": 0.2
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "spreaker.com",
@@ -274,10 +277,10 @@
       "transcripts": 147,
       "timed_transcripts": 141,
       "anchorable_timed_transcripts": 141,
-      "anchorable_net_of_suspects": 141,
+      "anchorable_net_of_suspects": 135,
       "timed_per_show_swept": 2.6,
       "anchorable_per_show_swept": 2.6,
-      "net_anchorable_per_show_swept": 2.6
+      "net_anchorable_per_show_swept": 2.5
     },
     {
       "host": "rss.com",
@@ -1084,10 +1087,10 @@
       "transcripts": 435,
       "timed_transcripts": 4,
       "anchorable_timed_transcripts": 4,
-      "anchorable_net_of_suspects": 4,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 2,
       "anchorable_per_show_swept": 2,
-      "net_anchorable_per_show_swept": 2
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "podplaystudio.com",
@@ -1480,10 +1483,10 @@
       "transcripts": 1368,
       "timed_transcripts": 1368,
       "anchorable_timed_transcripts": 1368,
-      "anchorable_net_of_suspects": 1368,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 1368,
       "anchorable_per_show_swept": 1368,
-      "net_anchorable_per_show_swept": 1368
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "talkpython.fm",
@@ -1678,10 +1681,10 @@
       "transcripts": 15,
       "timed_transcripts": 13,
       "anchorable_timed_transcripts": 13,
-      "anchorable_net_of_suspects": 13,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 13,
       "anchorable_per_show_swept": 13,
-      "net_anchorable_per_show_swept": 13
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "anime-pulse.com",
@@ -1696,10 +1699,10 @@
       "transcripts": 13,
       "timed_transcripts": 13,
       "anchorable_timed_transcripts": 13,
-      "anchorable_net_of_suspects": 13,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 13,
       "anchorable_per_show_swept": 13,
-      "net_anchorable_per_show_swept": 13
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "charlashispanas.com",
@@ -4233,10 +4236,10 @@
           "transcripts": 126515,
           "timed_transcripts": 125470,
           "anchorable_timed_transcripts": 2519,
-          "anchorable_net_of_suspects": 2519,
+          "anchorable_net_of_suspects": 1151,
           "timed_per_show_swept": 1254.7,
           "anchorable_per_show_swept": 25.2,
-          "net_anchorable_per_show_swept": 25.2
+          "net_anchorable_per_show_swept": 11.5
         },
         {
           "rank_from": 101,
@@ -4252,10 +4255,10 @@
           "transcripts": 7275,
           "timed_transcripts": 7271,
           "anchorable_timed_transcripts": 4502,
-          "anchorable_net_of_suspects": 4327,
+          "anchorable_net_of_suspects": 4314,
           "timed_per_show_swept": 72.7,
           "anchorable_per_show_swept": 45,
-          "net_anchorable_per_show_swept": 43.3
+          "net_anchorable_per_show_swept": 43.1
         },
         {
           "rank_from": 201,
@@ -4328,15 +4331,23 @@
           "transcripts": 2840,
           "timed_transcripts": 2372,
           "anchorable_timed_transcripts": 319,
-          "anchorable_net_of_suspects": 319,
+          "anchorable_net_of_suspects": 302,
           "timed_per_show_swept": 23.7,
           "anchorable_per_show_swept": 3.2,
-          "net_anchorable_per_show_swept": 3.2
+          "net_anchorable_per_show_swept": 3
         }
       ]
     }
   ],
   "suspect_anchorable": [
+    {
+      "show_id": "1737303645",
+      "title": "The Art Bell Archive",
+      "feed_host": "artbellarchive.org",
+      "enclosure_host": "dn720303.ca.archive.org",
+      "reason": "measured-injecting",
+      "timed_transcripts": 1368
+    },
     {
       "show_id": "1411449986",
       "title": "Auf den Punkt",
@@ -4368,9 +4379,82 @@
       "enclosure_host": "adswizz.podigee-cdn.net",
       "reason": "ad-tech-origin",
       "timed_transcripts": 27
+    },
+    {
+      "show_id": "1458675998",
+      "title": "Snail Trail 4x4 Offroad Podcast",
+      "feed_host": "snailtrail4x4.com",
+      "enclosure_host": "content.blubrry.com",
+      "reason": "measured-injecting",
+      "timed_transcripts": 13
+    },
+    {
+      "show_id": "95185416",
+      "title": "Ze Shows – Anime Pulse",
+      "feed_host": "anime-pulse.com",
+      "enclosure_host": "delivery-edge.libsyn.com",
+      "reason": "measured-injecting",
+      "timed_transcripts": 13
+    },
+    {
+      "show_id": "1624716757",
+      "title": "Cocktails and Gossip",
+      "feed_host": "pdrl.fm",
+      "enclosure_host": "teletraan.libsyn.com",
+      "reason": "measured-injecting",
+      "timed_transcripts": 8
+    },
+    {
+      "show_id": "1125522101",
+      "title": "Service Drive Revolution with Chris Collins",
+      "feed_host": "libsyn.com",
+      "enclosure_host": "delivery-edge.libsyn.com",
+      "reason": "measured-injecting",
+      "timed_transcripts": 6
+    },
+    {
+      "show_id": "1572124982",
+      "title": "Monde Numérique (Actualité Tech & IA)",
+      "feed_host": "audiomeans.fr",
+      "enclosure_host": "files.audiomeans.fr",
+      "reason": "measured-injecting",
+      "timed_transcripts": 4
+    },
+    {
+      "show_id": "1713413210",
+      "title": "The Naked Connection: Master Sex, Dating & Relationships",
+      "feed_host": "pdrl.fm",
+      "enclosure_host": "delivery-edge.libsyn.com",
+      "reason": "measured-injecting",
+      "timed_transcripts": 1
     }
   ],
-  "anchorable_net_of_suspects": 10933,
+  "anchorable_net_of_suspects": 9520,
+  "measurement_coverage": {
+    "measured_clean": {
+      "shows": 23,
+      "timed_transcripts": 4013
+    },
+    "measured_unresolved": {
+      "shows": 12,
+      "timed_transcripts": 5507
+    },
+    "inferred": {
+      "shows": 0,
+      "timed_transcripts": 0
+    },
+    "excluded_measured_injecting": {
+      "shows": 8,
+      "timed_transcripts": 1750
+    },
+    "excluded_by_heuristic": {
+      "shows": 3,
+      "timed_transcripts": 397
+    },
+    "anchorable_net_of_suspects": 9520,
+    "measured_pct_of_net": 42.2,
+    "note": "measured_clean is the only bucket a measurement admitted; measured_unresolved was probed and could not be settled, inferred was never probed, and both remain in the net count on the label-never-exclude rule rather than on evidence"
+  },
   "shows": [
     {
       "show_id": "1002520452",
@@ -38874,9 +38958,9 @@
     }
   ],
   "footprint": {
-    "bytes_per_show": 913,
+    "bytes_per_show": 914,
     "shows_remaining": 19436,
-    "projected_bytes": 17739457,
+    "projected_bytes": 17772641,
     "projected_mb": 16.9
   }
 }

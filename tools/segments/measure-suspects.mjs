@@ -32,19 +32,379 @@
    scan whose threshold quietly disagreed with the scan it claims to reproduce
    would be the most expensive version of that mistake yet.
 
+   #321 POINTS THE SAME INSTRUMENT AT THE SHOWS NOBODY SUSPECTED. See the
+   `which shows` section below: the suspects were the small end, and after #320
+   every one of the 46 anchorable shows carries `dai_reason: "unknown"`. Same
+   probe, same thresholds, same `disposition`; only the pool differs.
+
    Usage:
      node tools/segments/measure-suspects.mjs [--per-show N] [--dry-run]
                                               [--yield FILE] [--out FILE]
+                                              [--pool suspects|anchorable]
+                                              [--limit N] [--min-transcripts N]
+                                              [--host SUBSTR,SUBSTR] [--resume]
+                                              [--repeat N] [--reprobe]
+                                              [--settled FILE,FILE]
 */
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
-import { probeEpisode, summariseShow, AD_FREE_FLOOR, AD_FREE_THRESHOLD } from "../transcribe/ad-inflation.mjs";
+import {
+  probeEpisode,
+  summariseShow,
+  isPlausibleAudioSize,
+  undersizedSamples,
+  AD_FREE_FLOOR,
+  AD_FREE_THRESHOLD,
+} from "../transcribe/ad-inflation.mjs";
+import { ANCHOR_TIME_TOLERANCE_SEC } from "./merge-segments.mjs";
 import { classifyShow, daiHostIn } from "../refresh/dai.mjs";
-import { fetchFeed, parseFeed } from "./sweep-transcripts.mjs";
+import { fetchFeed, parseFeed, writeJsonAtomic } from "./sweep-transcripts.mjs";
+import { hostKeyOf } from "./rank-breadth.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+/* ------------------------------------------------------------- which shows
+
+   TWO POOLS, ONE INSTRUMENT, AND THE SECOND ONE IS THE LARGER PROBLEM (#321).
+
+   #319 pointed this scan at the SUSPECTS: anchorable shows whose "not DAI"
+   verdict was contradicted by a hostname we already knew something about. That
+   is the small end. The large end is everything the hostname rule said nothing
+   about at all — and after #320 that is every anchorable show there is. All 46
+   of them carry `dai_reason: "unknown"`, which does not mean "verified static";
+   it means `classifyShow` walked the redirect chain and recognised no host on
+   it. 10,933 timed transcripts rest on a negative.
+
+   INFERENCE IS EXACTLY WHAT #319 TESTED AND FOUND WANTING. It measured seven
+   inferred-anchorable shows and six of them injected. Running the same
+   instrument over the shows nobody suspected is not a different question asked
+   twice; it is the first time the question has been asked of the supply that
+   actually matters.
+
+   THE ORDER IS BY PLATFORM SIZE, WHICH IS THE POINT AND NOT A DEFAULT.
+   The corpus is concentrated: `atelier.flightcast.com` alone carries 5,461 of
+   the 10,933 net transcripts across seven shows — 47% — and four more hosts
+   carry another 4,170. Ordering shows by their own transcript count would
+   interleave a 1,368-transcript show with a 1-transcript one and answer five
+   platform questions at 20% each. Ordering by HOST TOTAL first settles the
+   biggest platform question first, so an interrupted run has still answered the
+   one that changes what we do next. It is also the conservative direction for a
+   run that may be stopped: the transcripts still resting on inference when the
+   requests run out are the fewest possible.
+
+   IT IS NOT A PLATFORM VERDICT AND THIS ORDERING MUST NOT BE READ AS ONE.
+   `_adswizz_note` in `dai-hosts.json` sets the precedent: "One insert on one
+   show is evidence about that show, not a platform-wide claim." Grouping by
+   host is a REQUEST ORDER. Each show still gets its own five probes and its own
+   `disposition`, and a host with a dirty show and a clean one is reported as
+   exactly that. Nothing in this file aggregates a verdict to a hostname. */
+
+/** Why a show is in the anchorable pool: nothing measured it, ever.
+
+    Deliberately not "clean" and deliberately not "suspect". `dai_reason:
+    "unknown"` was filed as a pass by `classifyShow`, and this names what that
+    pass actually rests on so the shortlist cannot be re-read later as a claim
+    anybody checked. */
+export const INFERRED_STATIC_REASON = "inferred-static";
+
+/** Total timed transcripts per enclosure host, over the rows given.
+
+    Extracted because the ordering below and the report both need it and a
+    second count that drifted from the first is this repo's most-repeated bug. */
+export function hostTotals(rows) {
+  const totals = new Map();
+  for (const r of rows) {
+    const h = String(r.enclosure_host || "unknown");
+    /* BOTH SPELLINGS, because the two row shapes this file handles disagree on
+       the name and a silent zero is the failure mode. A swept index row calls
+       it `episodes_with_timed_transcript`; a pool row produced by `selectPool`
+       calls it `timed_transcripts`. Reading only the former returned all zeros
+       for a pool — which is why `main` used to round-trip the pool back through
+       `report.shows` to count it, an O(n*m) detour that also counted a
+       DIFFERENT set of rows than the ordering had used. */
+    totals.set(h, (totals.get(h) || 0) + (r.timed_transcripts ?? r.episodes_with_timed_transcript ?? 0));
+  }
+  return totals;
+}
+
+/** The shows this run will spend requests on, in the order it will spend them.
+
+    `pool: "suspects"` is #319's behaviour, byte for byte: the shortlist the
+    yield report already computed. `pool: "anchorable"` is the new question —
+    every anchorable show the shortlist did NOT flag, i.e. every show currently
+    counted in `anchorable_net_of_suspects`.
+
+    ANYTHING ALREADY MEASURED IS EXCLUDED, and the shortlist is only half of
+    that. The suspects are netted out of the 10,933 already, so re-probing them
+    cannot move it. But a suspect measured `recover` LEAVES the shortlist — that
+    is what `suspectAnchorable` does with a recovery — so it reappears as an
+    ordinary anchorable row with a measurement already committed against it.
+    Apokalypse & Filterkaffee is exactly that show: #319 spent five probes on
+    it, and a shortlist-only exclusion would have spent five more to re-learn
+    the same answer. `settled` is therefore the show_ids of every row that
+    already reached a disposition, from every measurement file passed in, and
+    the shortlist is unioned into it rather than checked instead of it.
+
+    ROWS COME OUT IN THE SHORTLIST'S SHAPE so the loop below, `dispositionOf`,
+    and `measuredDispositions` in `breadth-yield.mjs` cannot tell the two pools
+    apart. The pool decides what gets measured; it must not decide how. */
+export function selectPool(report, { pool = "suspects", limit = null, minTranscripts = 1, hosts = [], settled = new Set() } = {}) {
+  if (pool === "suspects") return report?.suspect_anchorable || [];
+  if (pool !== "anchorable") throw new Error(`--pool must be "suspects" or "anchorable", got ${pool}`);
+
+  const skip = new Set([...settled].map(String));
+  for (const s of report?.suspect_anchorable || []) skip.add(String(s.show_id));
+  const want = hosts.map((h) => String(h).toLowerCase()).filter(Boolean);
+  const rows = (report?.shows || []).filter(
+    (r) =>
+      r.anchorable &&
+      !skip.has(String(r.show_id)) &&
+      (r.episodes_with_timed_transcript || 0) >= minTranscripts &&
+      (!want.length || want.some((h) => String(r.enclosure_host || "").toLowerCase().includes(h))),
+  );
+
+  /* Host total first, then the show's own size, then show_id. The last key is
+     not decoration: without it two shows of equal size on one host order by
+     whatever the input happened to be, and a `--limit` run would probe a
+     different set on a re-run than the one it reported. */
+  const totals = hostTotals(rows);
+  const ordered = rows.sort(
+    (a, b) =>
+      (totals.get(String(b.enclosure_host || "unknown")) || 0) - (totals.get(String(a.enclosure_host || "unknown")) || 0) ||
+      String(a.enclosure_host || "").localeCompare(String(b.enclosure_host || "")) ||
+      (b.episodes_with_timed_transcript || 0) - (a.episodes_with_timed_transcript || 0) ||
+      String(a.show_id).localeCompare(String(b.show_id)),
+  );
+
+  const capped = Number.isInteger(limit) && limit > 0 ? ordered.slice(0, limit) : ordered;
+  return capped.map((r) => ({
+    show_id: r.show_id,
+    title: r.title,
+    feed_host: hostKeyOf(r.feed_url),
+    enclosure_host: r.enclosure_host,
+    reason: INFERRED_STATIC_REASON,
+    timed_transcripts: r.episodes_with_timed_transcript || 0,
+  }));
+}
+
+/** What this run learned, counted in shows and in transcripts.
+
+    DELIBERATELY NOT `recount`. That function answers the suspects' question —
+    how much of a netted-OUT shortlist comes back — and its `anchorable_after`
+    is `net + recovered`. Applied to the anchorable pool, where every row is
+    already inside `net`, the same arithmetic would count every clean show
+    twice. Two pools asking two questions get two accountings, and the one that
+    does not apply is not written.
+
+    THE SECOND NUMBER IS THE DELIVERABLE. "10,933, all inferred" and "6,000, all
+    measured" are very different assets, and only the split says which one this
+    is. `measured_clean` is the asset; `still_inferred` is the liability, and it
+    is computed in `breadth-yield.mjs` where the whole row set is in scope
+    rather than guessed at from a run that may have been capped by `--limit`. */
+export function measurementSplit(results) {
+  const rows = results || [];
+  const rowsFor = (d) => rows.filter((r) => r.disposition === d);
+  const timed = (list) => list.reduce((n, r) => n + (r.timed_transcripts || 0), 0);
+  const tally = (list) => ({ shows: list.length, timed_transcripts: timed(list) });
+  return {
+    measured_clean: tally(rowsFor("recover")),
+    measured_injecting: tally(rowsFor("drop")),
+    unresolved: tally(rowsFor("unresolved")),
+    /* A NAMED SUBSET OF `unresolved`, and on this corpus it is the single most
+       consequential number the run produced. These are shows repeat-probed
+       under ADR-0008's same-episode rule that never once varied: no evidence
+       whatsoever of a stitcher, and no denominator with which to prove its
+       absence. Rolled into a bare `unresolved` they are indistinguishable from
+       a show whose feed would not load — and the difference is 5,461
+       transcripts, 47% of the corpus, and the answer to "does flightcast
+       inject". It OVERLAPS `unresolved` by construction; it is a different
+       slice of the same rows, never an extra bucket to add in. */
+    repeat_stable_no_denominator: tally(
+      rowsFor("unresolved").filter(
+        (r) =>
+          (r.samples || []).length > 0 &&
+          /* EVERY sample repeat-probed and NONE of them ratio-able, read off the
+             samples rather than off `r.repeats`. A show with one repeated
+             episode and four single ones is not "probed N times and never
+             varied", and the note this slice justifies says exactly that. */
+          (r.samples || []).every((x) => plausibleDeliveries(x).length >= 2 && x.ratio == null) &&
+          !varyingSamples(r.samples),
+      ),
+    ),
+    note:
+      "unresolved is neither a clean bill nor evidence of ads: the show keeps whatever its " +
+      "pre-measurement status was, and stays inferred rather than becoming measured. " +
+      "repeat_stable_no_denominator is the subset of it that was probed N times and never varied — " +
+      "no sign of insertion, and no declared length with which to confirm its absence",
+  };
+}
+
+/** Prefixes of the notes only the probe loop can know — see `fetchNoteOf`. */
+export const FETCH_NOTE_PREFIXES = ["feed unreadable:", "no feed_url"];
+
+/** A carried row's note, but ONLY when the samples could not have produced it.
+
+    THE BUG THIS CLOSES WAS CREATED BY A FIX. Once `--resume` began re-deriving
+    every prior row rather than only the settled ones, a row whose feed had been
+    momentarily unreadable went back through `deriveRow` with no note — and
+    `deriveRow` fills an empty-sample row's note with
+    `NO_DECLARED_LENGTH_REASON`. So `feed unreadable: socket hang up` was
+    rewritten, in committed evidence, as "this show needs ADR-0008
+    decode-and-compare, not a retry". Those are the two opposite follow-ups that
+    reason exists to keep apart, and the rewrite asserted the wrong one.
+
+    ONLY THESE NOTES SURVIVE, and that is the whole point. A note derived from
+    the samples must be RE-derived, or a signal added later never reaches the
+    rows already measured — which is the reason re-derivation exists. A note
+    describing a failed fetch cannot be re-derived from samples that a failed
+    fetch prevented from existing. The two are told apart by prefix because the
+    loop is the only writer of either. */
+export function fetchNoteOf(row) {
+  const note = row?.note;
+  if (typeof note !== "string") return null;
+  return FETCH_NOTE_PREFIXES.some((p) => note.startsWith(p)) ? note : null;
+}
+
+/** Everything a result row says ABOUT its samples, computed from those samples.
+
+    THE SAMPLES ARE THE EVIDENCE; EVERY OTHER FIELD IS AN OPINION ABOUT THEM.
+    Keeping that true is what lets `--resume` carry a row forward from an
+    earlier pass and still have it describe itself in today's vocabulary: the
+    resumed rows go back through this function, so a signal added after they
+    were measured (`constant_offset_bytes` was) appears on them without
+    re-asking a publisher for bytes we already have.
+
+    IT EXISTS BECAUSE THERE WOULD OTHERWISE BE TWO COPIES OF THIS ARITHMETIC —
+    one in the probe loop and one in the resume path — and this repo has found
+    the same duplicated-implementation bug six times, most recently
+    `writeJsonAtomic` in #320. Two copies of a verdict rule is the most
+    expensive shape that failure can take: the file would contain rows judged by
+    two different standards with nothing on them saying which.
+
+    `note` IS PASSED IN, not derived, when the loop already knows something the
+    samples cannot show — an unreadable feed, a missing feed URL. Notes that ARE
+    derivable from the samples are computed here, so a resumed row gets them
+    too. An incoming note wins: "the feed would not load" explains a row's empty
+    samples better than any inference drawn from their absence. */
+export function deriveRow(base, { note = null } = {}) {
+  const samples = base.samples || [];
+  const summary = summariseShow(samples.map((x) => x.ratio));
+  const undersized = undersizedSamples(samples);
+  const inserted = insertedSamples(samples);
+  const unmeasured = unmeasuredSamples(samples);
+  const varying = varyingSamples(samples);
+  /* OBSERVED, NOT DECLARED. The row used to stamp `repeats: args.repeat` across
+     the whole show while the loop decided per EPISODE whether to repeat — an
+     episode that declares a length is probed once however `--repeat` is set. On
+     a show with a mix, the row claimed three probes of episodes that got one,
+     the `repeat_stable_no_denominator` slice counted it, and its note asserted
+     "each probed 3x ... this feed declares no enclosure length" of a feed that
+     does. The committed evidence escapes only because that pass was narrowed by
+     `--host` to two platforms that declare no lengths at all. Reading the count
+     back off the samples cannot lie, and it is null unless EVERY sample carries
+     the same repeat count — a mixed show is not a repeat-probed show. */
+  const counts = samples.map((x) => plausibleDeliveries(x).length);
+  const repeats = counts.length && counts.every((n) => n === counts[0] && n >= 2) ? counts[0] : null;
+  const spread = maxDeliverySpread(samples);
+  const constantOffset = constantOffsetBytes(samples);
+  const disposition = dispositionOf(summary.verdict, { inserted, undersized, unmeasured, varying });
+  const worst = maxDeltaSec(samples);
+
+  let why = note;
+  if (!why && samples.length === 0) why = NO_DECLARED_LENGTH_REASON;
+  /* A drop whose gap never changes size is the one drop most likely to be
+     wrong, and the row has to say so — see `constantOffsetBytes`. Left as a
+     bare `drop` it is indistinguishable from a show caught stitching, and on
+     this pool it is 1,368 transcripts. */
+  if (!why && constantOffset && disposition === "drop") {
+    why =
+      `every sampled episode differs from its declared length by the same ${constantOffset} bytes, across a much ` +
+      `wider spread of episode sizes — a CONSTANT gap, not one proportional to the episode, which is not the ` +
+      `shape most ad load has. It does not follow that the gap is innocent: ADR-0008 lists pre-roll-only as a ` +
+      `real DAI configuration and a fixed-length pre-roll is also a constant offset, so a fixed metadata block ` +
+      `(ID3v2 artwork is typically ~100KB) and a short house pre-roll fit these bytes equally well. ` +
+      `impliedDeltaSec converts the gap at the audio bitrate because it assumes every byte is audio. ` +
+      `Disposition left at drop deliberately — ADR-0008 decode-and-compare on one episode is what chooses`;
+  }
+  /* A repeat-probed show that never varied is BYTE-STABLE ACROSS REQUESTS and
+     still not admitted — see `varyingSamples` on why stability does not acquit.
+     Saying so is the difference between "nobody measured this" and "measured,
+     and here is exactly what the measurement can and cannot conclude". Without
+     it the two read identically as `unresolved`. */
+  if (!why && repeats && !varying && summary.verdict === "unknown") {
+    why =
+      `${samples.length} episode(s) each probed ${repeats}x delivered a byte-identical length every time; this feed ` +
+      `declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a ` +
+      `static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it`;
+  }
+  if (!why && summary.reason) why = summary.reason;
+
+  return {
+    show_id: base.show_id,
+    title: base.title,
+    feed_host: base.feed_host,
+    enclosure_host: base.enclosure_host,
+    suspect_reason: base.suspect_reason,
+    timed_transcripts: base.timed_transcripts,
+    verdict: summary.verdict,
+    disposition,
+    median: summary.median,
+    n: summary.n,
+    inserted_samples: inserted,
+    ...(unmeasured > 0 ? { unmeasured_samples: unmeasured } : {}),
+    ...(repeats ? { repeats, varying_samples: varying } : {}),
+    ...(spread ? { max_delivery_spread_bytes: spread } : {}),
+    ...(constantOffset ? { constant_offset_bytes: constantOffset } : {}),
+    max_delta_sec_implied: worst,
+    tier: adrTier(worst),
+    dai_by_chain: base.dai_by_chain ?? null,
+    dai_via: base.dai_via ?? null,
+    resolved_chain: base.resolved_chain || [],
+    ...(undersized > 0 ? { undersized_samples: undersized } : {}),
+    ...(why ? { note: why } : {}),
+    samples,
+  };
+}
+
+/** Has this row already cost the requests that would answer it?
+
+    STRICTER THAN "HAS A DISPOSITION", AND STRICTER THAN "HAS A SAMPLE", because
+    both weaker rules freeze a transient failure into a permanent verdict — the
+    exact thing `--resume` exists to avoid.
+
+    "Has a disposition" is too weak: a row whose feed would not load gets
+    `unresolved` with no samples at all, and skipping it means one bad minute on
+    one feed host becomes a verdict nobody re-checks.
+
+    "Has at least one sample" is ALSO too weak, and a reviewer caught that the
+    comment claiming otherwise was wrong. The probe loop pushes a sample for
+    every episode it attempts, INCLUDING total failures: `probeEpisode` exhausts
+    its retry ladder and returns `{ratio: null, delivered_bytes: null,
+    error: "HTTP 503"}`, which the loop records. A show whose host was rate-
+    limiting during the run therefore ends with five error samples, a
+    disposition of `unresolved`, and permanent immunity from every later
+    `--resume`.
+
+    So a row is settled when at least one probe actually came back with a
+    PLAUSIBLE length to measure — `isPlausibleAudioSize`, the same floor
+    `plausibleDeliveries` uses, and for the same reason. `n > 0` was the first
+    version of this line and it reintroduced the bug one screen up: a 403 or a
+    404 is not retried, so `probeEpisode` returns the ERROR BODY's Content-Length
+    as `delivered_bytes`. Under `n > 0` a show whose every probe drew a 404 —
+    which `ad-inflation.mjs`'s own header records happening to Captivate — reads
+    as five successful measurements and is skipped by every later `--resume`.
+    That is the freeze this function exists to prevent, wearing the costume of
+    the fix. That covers the feed-level failure, the probe-level failure, and
+    the no-declared-length case (which produces no samples at all and must be
+    re-probeable under `--repeat`), while a genuinely measured row — including a
+    repeat-probed one, whose `delivered_bytes` is populated even though its
+    ratio is null — is never asked for twice. */
+export function isSettled(row) {
+  if (!row || !row.disposition) return false;
+  return (row.samples || []).some((s) => isPlausibleAudioSize(s?.delivered_bytes));
+}
 
 /** Episodes worth spending a probe on: one we could actually anchor.
 
@@ -59,14 +419,27 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
     catalogue is what a feed's tail is. Measuring the oldest episodes of a
     newly-monetised show is the one sampling error that returns a confident
     "ad-free" for a show that is not. Feeds are already newest-first, so this is
-    a `filter`, not a sort — but it is a deliberate one. */
-export function probeTargets(episodes, perShow) {
+    a `filter`, not a sort — but it is a deliberate one.
+
+    `requireDeclaredLength: false` LIFTS THE DENOMINATOR RULE, and only the
+    repeat probe may ask for it. The rule above is right whenever the RATIO is
+    the instrument: without a declared length that sample can only ever come
+    back `unknown`, so probing it spends a real request to learn nothing.
+    `--repeat` changes what the instrument is — it compares a URL's delivered
+    length against ITSELF across requests, and that comparison needs no feed
+    declaration at all. Measured on this pool: all seven `atelier.flightcast.com`
+    shows — 5,461 timed transcripts, 47% of the corpus — publish `<enclosure>`
+    with no `length` attribute on every one of their 200 indexed episodes. Under
+    the denominator rule they yield zero targets and the scan says "could not
+    tell" about half the supply. `main` lifts it exactly when repeats are on and
+    never otherwise. */
+export function probeTargets(episodes, perShow, { requireDeclaredLength = true } = {}) {
   const out = [];
   for (const ep of episodes || []) {
     if (out.length >= perShow) break;
     if (!ep.enclosure_url) continue;
     if (!ep.has_timestamps) continue;
-    if (!Number.isFinite(ep.enclosure_bytes) || ep.enclosure_bytes <= 0) continue;
+    if (requireDeclaredLength && (!Number.isFinite(ep.enclosure_bytes) || ep.enclosure_bytes <= 0)) continue;
     out.push(ep);
   }
   return out;
@@ -122,10 +495,13 @@ export function maxDeltaSec(samples) {
 
 /** ADR-0008's admission ceiling: a pad longer than this is not a pad.
 
-    Imported in spirit from `ANCHOR_TIME_TOLERANCE_SEC` in `merge-segments.mjs`,
-    which is where the ADR takes it from — quoted here rather than re-derived,
-    and used for REPORTING only. */
-export const PADDABLE_CEILING_SEC = 120;
+    IMPORTED, not "imported in spirit". That phrase is what this docstring said
+    beside a literal `120` — and it is the phrase that precedes every one of the
+    six duplicated-implementation incidents this repo has paid for. A reviewer
+    pointed out `ANCHOR_TIME_TOLERANCE_SEC` is already exported from
+    `merge-segments.mjs`, which is where ADR-0008 takes the number from, so
+    there was never anything to restate. Used for REPORTING only. */
+export const PADDABLE_CEILING_SEC = ANCHOR_TIME_TOLERANCE_SEC;
 
 /** Which ADR-0008 tier a show screens into — reported, never gated on.
 
@@ -210,6 +586,158 @@ export function insertedSamples(samples) {
   }).length;
 }
 
+/** The repeat observations of one episode that are big enough to BE an episode.
+
+    A REVIEWER FOUND THE BUG THIS CLOSES, and it was the worst one available
+    here. `probeEpisode` reads `delivered_bytes` from `Content-Range` OR a bare
+    `Content-Length`, and it deliberately does not retry a 403/404/410 — those
+    are answers, not hiccups. So an error page's `Content-Length` is a small
+    positive integer that lands in `deliveries` looking exactly like a
+    measurement. One 404 in the middle of a repeat run turns
+    `[41146837, 1136, 41146837]` into "this episode delivered two different
+    lengths", `varyingSamples` returns 1, and `dispositionOf` reads variance
+    FIRST — so a show is condemned as a stitcher by our own failed request. On
+    Success Story that is 1,264 transcripts. `ad-inflation.mjs`'s own header
+    records Buzzsprout answering 403 and Captivate 404 on precisely these
+    probes, so this is a live path and not a hypothetical.
+
+    `isPlausibleAudioSize` IS IMPORTED RATHER THAN RE-DERIVED. It exists for
+    this exact failure — its docstring says "One host returned 2 bytes for a
+    HEAD during the first probe" — and the first version of the code above
+    reinvented it as a weaker `n > 0`. That is the seventh duplicated
+    implementation this repo would have shipped, and it would have been a copy
+    that disagreed with the original in the direction that destroys supply. */
+export function plausibleDeliveries(sample) {
+  return (sample?.deliveries || []).filter((n) => isPlausibleAudioSize(n));
+}
+
+/** Samples where ONE episode's URL delivered two different file lengths.
+
+    ADR-0008's OWN INSTRUMENT, not a new one. That ADR is explicit that a
+    statistic taken across DIFFERENT episodes is "the wrong axis" and that
+    bounding what a host does needs `N >= 2 probes of the SAME episode`; it
+    records two probes of one Gastropod episode hours apart disagreeing by
+    33.4 s. `NO_DECLARED_LENGTH_REASON` already names decode-and-compare as the
+    follow-up a feed with no `length` attribute needs. This is the cheap half of
+    that: same URL, same GUID, N ranged GETs spaced by the host gate, and the
+    total out of `Content-Range` compared against itself.
+
+    WHY IT HAD TO EXIST. The ratio needs a denominator the publisher publishes,
+    and 47% of this corpus has no such publisher. All seven
+    `atelier.flightcast.com` shows omit `<enclosure length>` entirely, so
+    `inflationRatio` returns null for every episode of all of them and the
+    verdict vocabulary can only say `unknown`. Half the supply would have stayed
+    inferred not because it is ambiguous but because the instrument was pointed
+    at a number nobody wrote down.
+
+    ASYMMETRIC, AND THAT ASYMMETRY IS THE WHOLE DISCIPLINE HERE.
+    Content-Range's total is the length of the resource being served. Two
+    different totals for one URL mean two different resources, which means the
+    file is assembled per request — that is what dynamic ad insertion IS, and it
+    is proof, not a threshold. So variance CONDEMNS.
+    Stability does NOT acquit. A stitcher may key its decision on session, IP or
+    time and hand the same client the same stitch inside a cache window, so N
+    identical answers are consistent with a static file AND with a host that
+    simply did not vary for us. `dispositionOf` therefore reads this only in the
+    `drop` direction; a byte-stable no-length show stays `unresolved`, which is
+    the honest verdict and the one `NO_DECLARED_LENGTH_REASON` already gives.
+
+    THE ONE INNOCENT EXPLANATION, recorded rather than assumed away: if the
+    redirect chain resolved to a DIFFERENT episode between probes, the lengths
+    would differ for a reason that is not insertion. Every probe here is the
+    same feed URL for the same GUID within a couple of minutes, and the resolved
+    chain is recorded on the row, so the claim is checkable. It is also the less
+    likely reading: a chain that serves a different episode per request is a
+    worse problem for anchoring than ads are. */
+export function varyingSamples(samples) {
+  return (samples || []).filter((s) => {
+    const seen = plausibleDeliveries(s);
+    return seen.length >= 2 && new Set(seen).size > 1;
+  }).length;
+}
+
+/** The widest disagreement one episode's repeats showed, in bytes.
+
+    Reported, never gated on — the same rule `maxDeltaSec` is written under.
+    A spread is what makes "this host stitches" legible as a quantity: a
+    9.4MB spread on one episode is the ~30 s slot count, not a rounding
+    artefact, and it is the number that tells a reader whether to believe the
+    row without re-running the scan. */
+export function maxDeliverySpread(samples) {
+  let worst = 0;
+  for (const s of samples || []) {
+    const seen = plausibleDeliveries(s);
+    if (seen.length < 2) continue;
+    worst = Math.max(worst, Math.max(...seen) - Math.min(...seen));
+  }
+  return worst || null;
+}
+
+/** The widest two episode deltas may differ and still read as "the same". */
+export const CONSTANT_OFFSET_TOLERANCE_BYTES = 1024;
+
+/** A byte gap that is the SAME SIZE on every episode, whatever the episode.
+
+    REPORTED, NEVER GATED ON — the rule `adrTier` and `impliedDeltaSec` are
+    written under. Nothing below changes a disposition, and a reviewer confirmed
+    that by inspection: the value reaches the `note` and the committed row and
+    nothing else.
+
+    WHAT IT SEPARATES. Ad load usually scales with the episode, and every
+    obviously-injecting show in this pool shows it doing so: Snail Trail 4x4
+    delivers +811,065 bytes on three episodes, +1,498,237 on a fourth and
+    -870,068 on a fifth. The Art Bell Archive instead delivers +99,324 / +99,387
+    / +99,331 / +99,303 / +99,319 over five episodes running 51.9MB to 56.5MB —
+    an 84-byte spread across a 4.6MB spread in episode size. Those are two
+    different shapes and only one of them is what `impliedDeltaSec` assumes.
+
+    IT DOES NOT SAY THE GAP IS INNOCENT, AND AN EARLIER VERSION OF THIS COMMENT
+    DID. A reviewer caught the overreach against ADR-0008 itself, which lists
+    **pre-roll only** as a real DAI configuration and says of it, in as many
+    words, that "every break is at `t = 0`, so `cum(t)` is the same constant"
+    everywhere. A fixed-length house pre-roll is therefore ALSO a constant byte
+    offset. So what this function distinguishes is "constant" from
+    "proportional" — not "metadata" from "ads". Art Bell's ~99KB is about 16 s
+    at its bitrate, which is a plausible ID3v2 artwork block AND a plausible
+    short pre-roll, and nothing measurable here chooses between them.
+
+    WHY THE DISPOSITION IS LEFT ALONE. Both readings are consistent with the
+    bytes, one of them is ads, and only a decode can tell — ADR-0008's
+    decode-and-compare, on one episode. Re-admitting 1,368 transcripts on the
+    flattering reading is the exact move #319 measured and found wanting: six of
+    seven shows inferred anchorable were injecting. The row keeps `drop` and
+    carries the number a founder needs in order to ask for the decode.
+
+    THREE SAMPLES MINIMUM, the offset must exceed the tolerance, and the episode
+    sizes must differ by several times the offset. Two agreeing deltas is a
+    coincidence. An offset SMALLER than the band we are willing to call "the
+    same" is not distinguishable from zero — without that guard, two committed
+    `recover` rows carried offsets of 429 and 434 bytes, where a 1024-byte
+    tolerance makes "constant" vacuous and a `4 x 429` spread guard is satisfied
+    by any two different episodes; a finding-shaped field that means nothing is
+    worse than no field. It also removes the `lo = -500, hi = 500` case, which
+    returned a literal 0 that every consumer survived only because 0 is falsy.
+    And if every episode is the same size, "constant in bytes" and "proportional
+    to duration" are the same observation, so this could not tell ads from tags
+    even in principle — a daily show of ~20-minute episodes is exactly that. */
+export function constantOffsetBytes(samples) {
+  const deltas = [];
+  const sizes = [];
+  for (const s of samples || []) {
+    if (!Number.isFinite(s.declared_bytes) || !Number.isFinite(s.delivered_bytes)) continue;
+    deltas.push(s.delivered_bytes - s.declared_bytes);
+    sizes.push(s.declared_bytes);
+  }
+  if (deltas.length < 3) return null;
+  const lo = Math.min(...deltas);
+  const hi = Math.max(...deltas);
+  if (hi - lo > CONSTANT_OFFSET_TOLERANCE_BYTES) return null;
+  const offset = Math.round((lo + hi) / 2);
+  if (Math.abs(offset) <= CONSTANT_OFFSET_TOLERANCE_BYTES) return null;
+  if (Math.max(...sizes) - Math.min(...sizes) < Math.abs(offset) * 4) return null;
+  return offset;
+}
+
 /** Samples whose ratio looked clean but which could not be checked in seconds.
 
     An episode with no declared duration and a ratio inside the band is the one
@@ -266,7 +794,14 @@ export function unmeasuredSamples(samples) {
     Being able to inject is not injecting; that distinction is the whole reason
     `ad_inflation` sits beside `dai` rather than replacing it. The chain says
     where to look. The bytes say what is happening. */
-export function dispositionOf(verdict, { inserted = 0, undersized = 0, unmeasured = 0 } = {}) {
+export function dispositionOf(verdict, { inserted = 0, undersized = 0, unmeasured = 0, varying = 0 } = {}) {
+  /* FIRST, because it is the only branch here that rests on positive evidence
+     of the mechanism rather than on a comparison with a number the publisher
+     supplied. See `varyingSamples`. A show whose ratio could not be computed at
+     all still reaches `verdict === "unknown"` and would fall to `unresolved`
+     one line down; catching a host assembling a different file per request is
+     an answer, and an answer outranks "could not tell". */
+  if (varying > 0) return "drop";
   if (verdict === "unknown") return "unresolved";
   if (verdict === "injected") return "drop";
   if (inserted > 0) return "drop";
@@ -315,6 +850,20 @@ function parseArgs(argv) {
     const i = argv.indexOf(flag);
     return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : fallback;
   };
+  /* Same fail-loud rule as `--per-show`, for the same reason: a NaN bound
+     silently selects nothing, and a scan that made no requests reports every
+     show as "could not tell" without anything on the row saying why. */
+  const intOrNull = (flag) => {
+    const raw = get(flag, null);
+    if (raw === null) return null;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1) throw new Error(`${flag} must be a positive integer, got ${raw}`);
+    return n;
+  };
+  const pool = get("--pool", "suspects");
+  if (pool !== "suspects" && pool !== "anchorable") {
+    throw new Error(`--pool must be "suspects" or "anchorable", got ${pool}`);
+  }
   return {
     /* Same guard as `ad-inflation.mjs`: NaN would select zero targets and
        rewrite every verdict as "could not tell" without a single request. */
@@ -325,7 +874,58 @@ function parseArgs(argv) {
       return n;
     })(),
     yieldPath: get("--yield", "data/breadth-transcript-yield.json"),
-    out: get("--out", "data/breadth-suspect-inflation.json"),
+    pool,
+    /* DEFAULTED PER POOL, so a run cannot silently overwrite the other pool's
+       evidence. #319's file is the record for the suspects and #321's is the
+       record for the rest; one path serving both would mean whichever ran last
+       erased the other, and `breadth-yield.mjs` reads BOTH. */
+    out: get("--out", pool === "anchorable" ? "data/breadth-anchorable-inflation.json" : "data/breadth-suspect-inflation.json"),
+    limit: intOrNull("--limit"),
+    minTranscripts: intOrNull("--min-transcripts") ?? 1,
+    /* HOW MANY TIMES EACH EPISODE IS ASKED FOR — ADR-0008's `N >= 2 probes of
+       the SAME episode`. 1 is #319's behaviour and stays the default: repeats
+       multiply the request count by N and are only worth spending where the
+       ratio cannot run. See `varyingSamples`. */
+    repeat: intOrNull("--repeat") ?? 1,
+    hosts: String(get("--host", "")).split(",").map((s) => s.trim()).filter(Boolean),
+    /* Measurement files whose settled shows this run must not re-probe — see
+       `selectPool`. Defaults to #319's, which is the one that exists; a missing
+       path is skipped rather than fatal, because a checkout that has never run
+       the suspect scan must still be able to run this one. */
+    settled: String(get("--settled", "data/breadth-suspect-inflation.json")).split(",").map((s) => s.trim()).filter(Boolean),
+    /* An interrupted run must not cost the requests it already spent. The
+       output is rewritten after every show, so `--resume` reads back what
+       landed and skips those show_ids.
+
+       IT SKIPS ONLY ROWS THAT ACTUALLY SAMPLED SOMETHING, which is stricter
+       than "has a disposition" and had to be. A show whose feed was momentarily
+       unreadable, and a show every episode of which was filtered out for
+       declaring no length, BOTH get `disposition: "unresolved"` and zero
+       samples. Skipping on the disposition alone would freeze a transient
+       network failure into a permanent verdict, and would make it impossible to
+       re-run the no-length shows under `--repeat` — which is the one mode that
+       can answer them. A row with no samples cost one feed request; re-spending
+       that is the cheap side of the trade. */
+    resume: argv.includes("--resume"),
+    /* Measure the selected shows again even if they are already settled. The
+       reason it exists: when the INSTRUMENT changes, committed evidence
+       gathered by the old one is stale in a way `--resume` is designed not to
+       notice. Narrow it with `--host` or `--limit`; on its own it re-spends the
+       whole pool. */
+    reprobe: (() => {
+      /* REFUSED WITHOUT `--resume`, because on its own it is silently
+         destructive rather than merely useless. `--reprobe` is read only inside
+         the resume branch, so without it nothing is re-probed — but the run
+         still rewrites the output with only its own rows, deleting every
+         out-of-scope prior row. That is the exact loss the keyed carry-forward
+         was written to prevent, and `--reprobe` is the flag most likely to be
+         paired with a narrowing `--host`. */
+      if (!argv.includes("--reprobe")) return false;
+      if (!argv.includes("--resume")) {
+        throw new Error("--reprobe requires --resume; without it the run would rewrite the output with only the shows it re-probed");
+      }
+      return true;
+    })(),
     dryRun: argv.includes("--dry-run"),
   };
 }
@@ -333,23 +933,105 @@ function parseArgs(argv) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const report = JSON.parse(readFileSync(resolvePath(process.cwd(), args.yieldPath), "utf8"));
-  const suspects = report.suspect_anchorable || [];
   const feedById = new Map((report.shows || []).map((s) => [String(s.show_id), s.feed_url]));
 
   const gross = report.yield?.breadth_all?.anchorable_timed_transcripts ?? null;
   const net = report.anchorable_net_of_suspects ?? null;
 
+  const outPath = resolvePath(process.cwd(), args.out);
+  const settled = new Set();
+  for (const p of args.settled) {
+    const abs = resolvePath(process.cwd(), p);
+    if (abs === outPath || !existsSync(abs)) continue;
+    for (const r of JSON.parse(readFileSync(abs, "utf8")).results || []) {
+      if (r?.show_id != null && r.disposition) settled.add(String(r.show_id));
+    }
+  }
+  const pool = selectPool(report, {
+    pool: args.pool,
+    limit: args.limit,
+    minTranscripts: args.minTranscripts,
+    hosts: args.hosts,
+    settled,
+  });
+
+  /* Carried forward rather than re-probed. See `--resume` in `parseArgs`. */
+  /* KEYED, NOT APPENDED, and a reviewer found why it had to be. The output is
+     rewritten in full every time, so a `--resume` run that carried forward only
+     the rows it considered settled DELETED every other prior row — run the full
+     pool, then resume with `--host` narrowed, and the out-of-scope rows are
+     neither carried nor re-probed and simply vanish, while `requests` goes on
+     claiming the cost of evidence the file no longer holds. Every prior row is
+     kept; the ones this run re-probes are replaced by show_id. */
+  const carried = new Map();
+  const done = new Set();
+  /* CARRIED FORWARD, not reset. The file's `requests` block is what the PR body
+     quotes as the cost of the evidence, and a resumed run that reported only
+     its own tail would understate a two-pass measurement by hundreds of
+     requests — reading, to anyone auditing politeness later, as though the
+     evidence were far cheaper to obtain than it was. */
+  const priorRequests = { feeds: 0, ranged_gets: 0 };
+  const passes = [];
+  if (args.resume && existsSync(outPath)) {
+    const prior = JSON.parse(readFileSync(outPath, "utf8"));
+    priorRequests.feeds = prior.requests?.feeds || 0;
+    priorRequests.ranged_gets = prior.requests?.ranged_gets || 0;
+    /* PROVENANCE ACCUMULATES LIKE THE REQUEST COUNT DOES. `source` used to
+       describe only the last invocation, so the committed file said
+       `per_show: 5` with no `repeat` beside 8 rows carrying `repeats: 3` and a
+       cumulative 367 requests — a provenance block that could not be reconciled
+       with the evidence it was attached to. */
+    /* Zero-work entries are dropped on the way in as well as on the way out: a
+       re-derive pass makes no request, and a provenance list padded with
+       records of nothing obscures the passes that did cost something. */
+    passes.push(...(prior.source?.passes || []).filter((x) => (x.feeds || 0) || (x.ranged_gets || 0)));
+    for (const r of prior.results || []) {
+      if (r?.show_id == null || !r.disposition) continue;
+      /* RE-DERIVED, not copied. See `deriveRow`: the samples are the evidence
+         and everything else is an opinion about them, so a row measured by an
+         earlier pass must be re-judged by today's rules rather than carried
+         forward under yesterday's. Copying it would let one file hold rows
+         judged by two standards, with nothing on them saying which — and it
+         would silently freeze out any signal added since. No request is made:
+         this reads bytes already committed. */
+      carried.set(String(r.show_id), deriveRow(r, { note: fetchNoteOf(r) }));
+      if (isSettled(r) && !args.reprobe) done.add(String(r.show_id));
+    }
+    console.log(
+      `--resume: ${carried.size} prior row(s) in ${args.out}, ${done.size} settled ` +
+        `(${priorRequests.feeds} feed + ${priorRequests.ranged_gets} ranged GET already spent)` +
+        (args.reprobe ? "; --reprobe: every selected show is measured again" : ""),
+    );
+    console.log("");
+  }
+  const todo = pool.filter((s) => !done.has(String(s.show_id)));
+
   console.log(
-    `${suspects.length} suspect show(s), ${suspects.reduce((n, s) => n + s.timed_transcripts, 0)} timed transcripts ` +
-      `(${gross} anchorable as classified, ${net} net)\n`,
+    `pool "${args.pool}": ${pool.length} show(s), ${pool.reduce((n, s) => n + s.timed_transcripts, 0)} timed transcripts ` +
+      `(${gross} anchorable as classified, ${net} net); ${todo.length} to probe\n`,
   );
+  if (args.pool === "anchorable") {
+    /* THE POOL'S OWN TOTALS, which under `--limit` are deliberately NOT the
+       totals the ordering used: `selectPool` ranks hosts over every candidate
+       row and this reports what will actually be probed. Two scopes, one
+       function, and saying so is the difference between a discrepancy and a
+       bug. */
+    for (const [h, n] of [...hostTotals(pool)].sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${String(n).padStart(5)} timed  ${h}`);
+    }
+    console.log("");
+  }
 
   const started = Date.now();
   let requests = 0;
   let feedRequests = 0;
-  const results = [];
+  /* Counted as it happens, not taken from `todo.length`: the mid-loop
+     checkpoint writes this block too, and a crashed run must not record that it
+     probed a list it had only planned. */
+  let probedCount = 0;
 
-  for (const s of suspects) {
+  for (const s of todo) {
+    probedCount++;
     const feedUrl = feedById.get(String(s.show_id));
     const samples = [];
     let note = null;
@@ -366,10 +1048,29 @@ async function main() {
       }
     }
 
-    const probed = probeTargets(episodes, args.perShow);
+    const probed = probeTargets(episodes, args.perShow, { requireDeclaredLength: args.repeat < 2 });
     for (const ep of probed) {
-      const p = await probeEpisode(ep.enclosure_url, ep.enclosure_bytes);
-      requests += p.attempts;
+      /* REPEATS OF THE SAME URL, spaced by the host gate exactly like any other
+         request — `awaitHostSlot` is inside `probeEpisode`, so N repeats are N
+         gated requests and not a burst. The FIRST is the one the ratio is taken
+         from; the rest exist only to be compared with it.
+
+         SPENT ONLY WHERE THE RATIO CANNOT RUN. An earlier version repeated
+         every probed episode in a repeat run, which a reviewer noted made
+         `--repeat 3` over the full pool cost 3x on 33 shows whose declared
+         length already answers the question — the docstring's "only worth
+         spending where the ratio cannot run" was operator discipline rather
+         than an invariant. It is an invariant now: an episode that declares a
+         length is probed once, whatever `--repeat` says. */
+      const repeats = Number.isFinite(ep.enclosure_bytes) && ep.enclosure_bytes > 0 ? 1 : Math.max(1, args.repeat);
+      const runs = [];
+      for (let i = 0; i < repeats; i++) {
+        const p = await probeEpisode(ep.enclosure_url, ep.enclosure_bytes);
+        requests += p.attempts;
+        runs.push(p);
+      }
+      const p = runs[0];
+      const deliveries = runs.map((r) => r.delivered_bytes);
       samples.push({
         guid: ep.guid ?? null,
         episode: String(ep.title || "").slice(0, 90),
@@ -378,6 +1079,11 @@ async function main() {
         duration_sec: Number.isFinite(ep.duration_sec) ? ep.duration_sec : null,
         ratio: p.ratio == null ? null : Math.round(p.ratio * 1000) / 1000,
         delta_sec_implied: impliedDeltaSec(p.declared_bytes, p.delivered_bytes, ep.duration_sec),
+        /* Only when there is something to compare. A one-probe run writing
+           `deliveries: [n]` would put a field on every row of #319's file that
+           can never mean anything, and `varyingSamples` would have to know to
+           ignore it. */
+        ...(deliveries.length > 1 ? { deliveries } : {}),
         ...(p.error ? { error: p.error, status: p.status } : {}),
       });
     }
@@ -393,81 +1099,182 @@ async function main() {
       chain = { dai: c.dai, via: daiHostIn(c.resolved_chain || []), hosts: c.resolved_chain || [] };
     }
 
-    const summary = summariseShow(samples.map((x) => x.ratio));
-    if (!note && samples.length === 0) note = NO_DECLARED_LENGTH_REASON;
-    const undersized = samples.filter((x) => typeof x.ratio === "number" && x.ratio < AD_FREE_FLOOR).length;
-    const inserted = insertedSamples(samples);
-    const unmeasured = unmeasuredSamples(samples);
-    const disposition = dispositionOf(summary.verdict, { inserted, undersized, unmeasured });
-    const worst = maxDeltaSec(samples);
+    const row = deriveRow(
+      {
+        show_id: s.show_id,
+        title: s.title,
+        feed_host: s.feed_host,
+        enclosure_host: s.enclosure_host,
+        /* WHY THIS ROW WAS SELECTED, and the name is #319's rather than a
+           better one on purpose: `breadth-suspect-inflation.json` is committed
+           under it and renaming the key would leave that file describing itself
+           in a vocabulary the tool no longer writes. On the anchorable pool it
+           reads `inferred-static`, a selection reason and not a suspicion. */
+        suspect_reason: s.reason,
+        timed_transcripts: s.timed_transcripts,
+        dai_by_chain: chain ? chain.dai : null,
+        dai_via: chain ? chain.via : null,
+        resolved_chain: chain ? chain.hosts : [],
+        samples,
+      },
+      { note },
+    );
+    carried.set(String(s.show_id), row);
 
-    results.push({
-      show_id: s.show_id,
-      title: s.title,
-      feed_host: s.feed_host,
-      enclosure_host: s.enclosure_host,
-      suspect_reason: s.reason,
-      timed_transcripts: s.timed_transcripts,
-      verdict: summary.verdict,
-      disposition,
-      median: summary.median,
-      n: summary.n,
-      inserted_samples: inserted,
-      ...(unmeasured > 0 ? { unmeasured_samples: unmeasured } : {}),
-      max_delta_sec_implied: worst,
-      tier: adrTier(worst),
-      dai_by_chain: chain ? chain.dai : null,
-      dai_via: chain ? chain.via : null,
-      resolved_chain: chain ? chain.hosts : [],
-      ...(undersized > 0 ? { undersized_samples: undersized } : {}),
-      ...(note ? { note } : summary.reason ? { note: summary.reason } : {}),
-      samples,
-    });
-
-    const med = summary.median == null ? "  -  " : summary.median.toFixed(3);
+    const med = row.median == null ? "  -  " : row.median.toFixed(3);
     console.log(
-      `  ${disposition.padEnd(10)} ${summary.verdict.padEnd(8)} ${med}  ` +
-        `${inserted}/${samples.length} ins  worst ${String(worst == null ? "-" : `${worst}s`).padStart(5)}  ` +
-        `${String(adrTier(worst) || "-").padEnd(17)} ` +
+      `  ${row.disposition.padEnd(10)} ${row.verdict.padEnd(8)} ${med}  ` +
+        `${row.inserted_samples}/${samples.length} ins  ` +
+        (args.repeat > 1 ? `${row.varying_samples}/${samples.length} vary  ` : "") +
+        `worst ${String(row.max_delta_sec_implied == null ? "-" : `${row.max_delta_sec_implied}s`).padStart(5)}  ` +
+        `${String(row.tier || "-").padEnd(17)} ` +
         `${chain && chain.dai ? `DAI:${chain.via}` : "chain clean"}`.padEnd(24) +
         `  ${String(s.timed_transcripts).padStart(4)} timed  ${s.title.slice(0, 30)}`,
     );
+    /* The note is the row's only explanation of a zero-sample, byte-stable or
+       constant-offset result, and a scan whose most interesting outcome is
+       invisible in its own console output is how "could not tell" gets read as
+       "nothing to see". */
+    if (row.note) console.log(`             ${row.note.slice(0, 150)}`);
+
+    /* AFTER EVERY SHOW, not once at the end. A run over the anchorable pool is
+       forty-odd feeds and two hundred ranged GETs across an hour, and a crash
+       at show 39 that threw away 38 measured shows would be spending a host's
+       patience twice for one answer. `writeJsonAtomic` is imported rather than
+       re-implemented — it is the SIXTH duplicated implementation this repo
+       found (#320) and it carries the Windows `EPERM`-on-rename retry that a
+       fresh copy would not. */
+    if (!args.dryRun) writeReport();
   }
 
-  const counts = recount(results, { gross, net });
   const elapsedMin = (Date.now() - started) / 60000;
+  const results = [...carried.values()];
+  const split = measurementSplit(results);
 
   console.log(`\n${"=".repeat(64)}`);
   console.log(`requests: ${feedRequests} feed + ${requests} ranged GET over ${elapsedMin.toFixed(1)} min`);
-  console.log(`  recovered   ${String(counts.recovered).padStart(5)} timed transcripts (measured byte-stable)`);
-  console.log(`  not as pub. ${String(counts.not_anchorable_as_published).padStart(5)} timed transcripts (caught injecting)`);
-  console.log(`  unresolved  ${String(counts.still_unresolved).padStart(5)} timed transcripts (could not tell)`);
-  console.log(`anchorable as published: ${counts.anchorable_before} -> ${counts.anchorable_after}`);
-  /* Said out loud, because "not anchorable as published" is not "gone" and the
-     difference is 818 transcripts. */
-  console.log(
-    `ADR-0008 screen: ${counts.adr0008.paddable_screened} paddable, ` +
-      `${counts.adr0008.locate_required} locate-required (authored now, played after the locate step)`,
-  );
 
-  const out = {
-    version: 1,
-    measured_at: new Date().toISOString(),
-    method: "2-byte ranged GET; tools/transcribe/ad-inflation.mjs via tools/segments/measure-suspects.mjs",
-    source: { yield_report: args.yieldPath, per_show: args.perShow },
-    requests: { feeds: feedRequests, ranged_gets: requests },
-    counts,
-    results,
-  };
+  if (args.pool === "suspects") {
+    const counts = recount(results, { gross, net });
+    console.log(`  recovered   ${String(counts.recovered).padStart(5)} timed transcripts (measured byte-stable)`);
+    console.log(`  not as pub. ${String(counts.not_anchorable_as_published).padStart(5)} timed transcripts (caught injecting)`);
+    console.log(`  unresolved  ${String(counts.still_unresolved).padStart(5)} timed transcripts (could not tell)`);
+    console.log(`anchorable as published: ${counts.anchorable_before} -> ${counts.anchorable_after}`);
+    /* Said out loud, because "not anchorable as published" is not "gone" and the
+       difference is 818 transcripts. */
+    console.log(
+      `ADR-0008 screen: ${counts.adr0008.paddable_screened} paddable, ` +
+        `${counts.adr0008.locate_required} locate-required (authored now, played after the locate step)`,
+    );
+  } else {
+    console.log(`  measured clean      ${String(split.measured_clean.timed_transcripts).padStart(5)} timed in ${String(split.measured_clean.shows).padStart(2)} show(s)`);
+    console.log(`  measured injecting  ${String(split.measured_injecting.timed_transcripts).padStart(5)} timed in ${String(split.measured_injecting.shows).padStart(2)} show(s)  <- leaves the corpus`);
+    console.log(`  unresolved          ${String(split.unresolved.timed_transcripts).padStart(5)} timed in ${String(split.unresolved.shows).padStart(2)} show(s)  <- stays inferred`);
+    console.log(
+      `anchorable net ${net} -> ${net == null ? "?" : net - split.measured_injecting.timed_transcripts}; ` +
+        `run \`breadth-yield.mjs --measured\` over this file for the measured-vs-inferred split of the whole corpus`,
+    );
+    /* THE SAME LINE THE SUSPECTS BRANCH PRINTS, and it was missing here — which
+       a reviewer pointed out makes `<- leaves the corpus` above read as "gone"
+       in exactly the way `adrTier`'s own docstring says it must not. ADR-0008
+       keeps both tiers in the corpus: paddable plays today with an extended
+       stop, locate-required is authored now and plays once the locate step
+       exists. Note the honest gap: a row dropped on repeat VARIANCE has no
+       declared length, so no `delta_sec_implied`, so no tier — the mitigation
+       is structurally unavailable on exactly the rows `varying` condemns, and
+       those rows are counted as `untiered` rather than silently omitted. */
+    /* OVER THE DROPPED ROWS ONLY, which `recount`'s own tier sums are not: they
+       run over every row in the pool because on the suspects pool every row IS
+       netted out. On the anchorable pool most rows are clean, so reusing them
+       here printed "5,389 paddable" beside a 1,413-transcript drop list —
+       a number four times larger than the thing it claims to soften. */
+    const dropped = results.filter((r) => r.disposition === "drop");
+    const tierTimed = (t) =>
+      dropped.filter((r) => r.tier === t).reduce((n, r) => n + (r.timed_transcripts || 0), 0);
+    const untiered = dropped.filter((r) => !r.tier).reduce((n, r) => n + (r.timed_transcripts || 0), 0);
+    console.log(
+      `ADR-0008 screen of the ${split.measured_injecting.timed_transcripts} dropped: ` +
+        `${tierTimed("paddable-screened")} paddable, ${tierTimed("locate-required")} locate-required ` +
+        `(authored now, played after the locate step)` +
+        (untiered ? `, ${untiered} untiered (no declared length, so no seconds to screen on)` : ""),
+    );
+  }
 
   if (args.dryRun) {
     console.log("\n--dry-run: no files written.");
     return;
   }
-  const outPath = resolvePath(process.cwd(), args.out);
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, JSON.stringify(out, null, 2) + "\n");
+  writeReport();
   console.log(`SUSPECTS_MEASURED: ${outPath}`);
+
+  /* Hoisted so the per-show checkpoint and the final write are the same bytes.
+     Two writers of one file is how a checkpoint and its summary drift. */
+  function writeReport() {
+    const rows = [...carried.values()];
+    writeJsonAtomic(outPath, {
+      version: 1,
+      measured_at: new Date().toISOString(),
+      method: "2-byte ranged GET; tools/transcribe/ad-inflation.mjs via tools/segments/measure-suspects.mjs",
+      /* NAMED IN THE FILE, because two pools now write two files in one shape
+         and only this says which question the rows answer. */
+      pool: args.pool,
+      source: {
+        yield_report: args.yieldPath,
+        /* EVERY INVOCATION THAT CONTRIBUTED, not just the last one. `requests`
+           is cumulative across `--resume`, so a `source` describing only the
+           final pass cannot be reconciled with it — the committed file said
+           `per_show: 5` with no `repeat` beside eight rows carrying
+           `repeats: 3` and 367 cumulative requests. A provenance block that
+           disagrees with the evidence it is attached to is worse than none. */
+        passes: [
+          /* A PASS LIST THAT DOES NOT ADD UP TO `requests` IS WORSE THAN NONE,
+             and it cannot add up on the first resume after this field was
+             introduced: the prior file recorded a cumulative total and no
+             per-pass breakdown. Rather than hand-edit the difference in, the
+             remainder is stated as what it is. Self-correcting: once every pass
+             carries its own entry the difference is 0 and nothing is emitted. */
+          ...(() => {
+            const known = passes.reduce(
+              (a, x) => ({ feeds: a.feeds + (x.feeds || 0), ranged_gets: a.ranged_gets + (x.ranged_gets || 0) }),
+              { feeds: 0, ranged_gets: 0 },
+            );
+            const feeds = priorRequests.feeds - known.feeds;
+            const rangedGets = priorRequests.ranged_gets - known.ranged_gets;
+            return feeds > 0 || rangedGets > 0
+              ? [{ note: "earlier pass(es), recorded before this field existed", feeds, ranged_gets: rangedGets }]
+              : [];
+          })(),
+          ...passes,
+          /* A pass that made no request is bookkeeping noise, not provenance. */
+          ...(feedRequests || requests ? [{
+            per_show: args.perShow,
+            ...(args.repeat > 1 ? { repeat: args.repeat } : {}),
+            ...(args.limit ? { limit: args.limit } : {}),
+            ...(args.hosts.length ? { hosts: args.hosts } : {}),
+            ...(args.reprobe ? { reprobe: true } : {}),
+            shows_probed: probedCount,
+            feeds: feedRequests,
+            ranged_gets: requests,
+            at: new Date().toISOString(),
+          }] : []),
+        ],
+      },
+      requests: {
+        feeds: priorRequests.feeds + feedRequests,
+        ranged_gets: priorRequests.ranged_gets + requests,
+      },
+      ...(args.pool === "suspects" ? { counts: recount(rows, { gross, net }) } : {}),
+      /* Recomputed here rather than closed over, and READ OFF `carried` rather
+         than off any `const` declared beside the summary. The checkpoint calls
+         this mid-loop, so anything bound after the loop is still in its
+         temporal dead zone — a crash-only failure in the code whose entire job
+         is surviving a crash. This function has now had that bug twice: once
+         for `split`, once for `results` when the loop moved to a keyed map.
+         Nothing outside this closure may be referenced here. */
+      measurement: measurementSplit(rows),
+      results: rows,
+    });
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

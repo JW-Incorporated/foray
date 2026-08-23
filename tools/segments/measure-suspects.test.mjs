@@ -14,14 +14,25 @@ import {
   maxDeltaSec,
   insertedSamples,
   unmeasuredSamples,
+  varyingSamples,
+  maxDeliverySpread,
   dispositionOf,
   adrTier,
   recount,
+  selectPool,
+  hostTotals,
+  measurementSplit,
+  constantOffsetBytes,
+  deriveRow,
+  isSettled,
+  plausibleDeliveries,
+  fetchNoteOf,
   INSERT_EVIDENCE_SEC,
   PADDABLE_CEILING_SEC,
   NO_DECLARED_LENGTH_REASON,
+  INFERRED_STATIC_REASON,
 } from "./measure-suspects.mjs";
-import { AD_FREE_THRESHOLD, AD_FREE_FLOOR, summariseShow } from "../transcribe/ad-inflation.mjs";
+import { AD_FREE_THRESHOLD, AD_FREE_FLOOR, summariseShow, undersizedSamples } from "../transcribe/ad-inflation.mjs";
 
 const ep = (over = {}) => ({
   guid: "g",
@@ -403,4 +414,637 @@ test("every committed verdict is reproducible from its own samples", () => {
     assert.equal(r.n, 0, `${r.title}: claims no denominator but reports samples`);
     assert.equal(r.disposition, "unresolved");
   }
+});
+
+/* ================================================== #321: the anchorable pool
+
+   The suspects were the small end. After #320 every one of the 46 anchorable
+   shows carries `dai_reason: "unknown"` — a negative filed as a pass — and
+   10,933 timed transcripts rest on it. These pin the selection, the ordering,
+   and the one instrument that can answer a feed publishing no length at all. */
+
+const showRow = (over = {}) => ({
+  show_id: "s1",
+  title: "A Show",
+  feed_url: "https://example.org/feed.xml",
+  enclosure_host: "cdn.example.org",
+  anchorable: true,
+  episodes_with_timed_transcript: 10,
+  ...over,
+});
+
+const reportWith = (shows, suspects = []) => ({ shows, suspect_anchorable: suspects });
+
+/* MUTATION: make the `pool === "suspects"` branch fall through to the
+   anchorable one. Verified failing.
+
+   #319's behaviour has to survive byte for byte. `breadth-suspect-inflation.json`
+   is the evidence five `measured-injecting` rows rest on, and a re-run that
+   quietly measured a different pool would rewrite that file with rows for shows
+   nobody asked about while dropping the ones that are cited. */
+test("the suspects pool is the shortlist the yield report already computed", () => {
+  const shortlist = [{ show_id: "x", title: "X", timed_transcripts: 5 }];
+  const report = reportWith([showRow()], shortlist);
+  assert.deepEqual(selectPool(report, { pool: "suspects" }), shortlist);
+  // ...and it is the default, so an un-flagged invocation cannot silently
+  // switch instruments on the file it is about to overwrite.
+  assert.deepEqual(selectPool(report), shortlist);
+});
+
+/* MUTATION: drop `settled` from the skip set in `selectPool`, keeping only the
+   shortlist ids. Verified failing.
+
+   This is a real bug, caught by running the tool rather than by reading it.
+   A suspect measured `recover` LEAVES the shortlist — that is what
+   `suspectAnchorable` does with a recovery — so it comes back as an ordinary
+   anchorable row with a measurement already committed against it. Apokalypse &
+   Filterkaffee is exactly that show: #319 spent five probes on it, and a
+   shortlist-only exclusion spends five more to re-learn the same answer, on a
+   host that has already been asked. */
+test("a show already measured is not probed again, even after it left the shortlist", () => {
+  const report = reportWith([
+    showRow({ show_id: "measured-clean", episodes_with_timed_transcript: 14 }),
+    showRow({ show_id: "never-measured", episodes_with_timed_transcript: 99 }),
+  ]);
+  const pool = selectPool(report, { pool: "anchorable", settled: new Set(["measured-clean"]) });
+  assert.deepEqual(pool.map((s) => s.show_id), ["never-measured"]);
+});
+
+/* MUTATION: order `selectPool` by `episodes_with_timed_transcript` alone,
+   dropping the host-total key. Verified failing.
+
+   Ordering by the show's own size interleaves platforms: on the real pool it
+   puts a 1,368-transcript archive.org show ahead of three flightcast shows and
+   answers five platform questions at 20% each. The corpus is CONCENTRATED —
+   one host carries 47% of it — so a run that gets interrupted should have
+   settled the biggest platform, not the biggest show. */
+test("shows are ordered by how much of the corpus their platform carries", () => {
+  /* THE HOSTNAMES SORT AGAINST THE ANSWER ON PURPOSE. An earlier fixture used
+     `fleet.example` and `solo.example`, where alphabetical order happens to
+     agree with host-total order — so the mutant that deletes the host-total key
+     SURVIVED, falling through to the hostname tiebreak and producing the same
+     list. A fixture that cannot distinguish the rule from its neighbour pins
+     nothing. Here `a-solo` sorts first alphabetically and must still come last. */
+  const report = reportWith([
+    showRow({ show_id: "lonely-giant", enclosure_host: "a-solo.example", episodes_with_timed_transcript: 900 }),
+    showRow({ show_id: "big-a", enclosure_host: "z-fleet.example", episodes_with_timed_transcript: 500 }),
+    showRow({ show_id: "big-b", enclosure_host: "z-fleet.example", episodes_with_timed_transcript: 450 }),
+  ]);
+  assert.deepEqual(
+    selectPool(report, { pool: "anchorable" }).map((s) => s.show_id),
+    ["big-a", "big-b", "lonely-giant"],
+    "950 across two shows on one host outranks 900 on another",
+  );
+});
+
+/* MUTATION: drop the `String(a.show_id).localeCompare(...)` tiebreak. Verified
+   failing (the two rows are identical on every earlier key). A `--limit` run
+   whose order depends on input order probes a different set than the one it
+   reported the last time it ran. */
+test("the order is total, so a --limit run is reproducible", () => {
+  const tied = [showRow({ show_id: "b" }), showRow({ show_id: "a" })];
+  assert.deepEqual(selectPool(reportWith(tied), { pool: "anchorable", limit: 1 }).map((s) => s.show_id), ["a"]);
+  assert.deepEqual(selectPool(reportWith([...tied].reverse()), { pool: "anchorable", limit: 1 }).map((s) => s.show_id), ["a"]);
+});
+
+/* MUTATION: let an unrecognised `--pool` fall through to the anchorable branch.
+   Verified failing. A typo'd pool name that silently measured everything would
+   spend hundreds of requests nobody asked for. */
+test("an unknown pool name is refused rather than guessed at", () => {
+  assert.throws(() => selectPool(reportWith([]), { pool: "anchorble" }), /--pool/);
+});
+
+/* MUTATION: change `reason` on the anchorable rows to "clean" or "suspect".
+   Verified failing. The word is load-bearing: these rows were selected because
+   NOTHING measured them, and a shortlist that reads "clean" is a claim nobody
+   checked being laundered into a file. */
+test("an anchorable row says why it was selected, and it is not a verdict", () => {
+  const [row] = selectPool(reportWith([showRow()]), { pool: "anchorable" });
+  assert.equal(row.reason, INFERRED_STATIC_REASON);
+  assert.equal(row.reason, "inferred-static");
+});
+
+test("hostTotals sums timed transcripts per enclosure host", () => {
+  const totals = hostTotals([
+    showRow({ enclosure_host: "a", episodes_with_timed_transcript: 3 }),
+    showRow({ enclosure_host: "a", episodes_with_timed_transcript: 4 }),
+    showRow({ enclosure_host: "b", episodes_with_timed_transcript: 5 }),
+  ]);
+  assert.equal(totals.get("a"), 7);
+  assert.equal(totals.get("b"), 5);
+});
+
+/* ------------------------------------------- probing a feed with no length */
+
+/* MUTATION: flip `requireDeclaredLength`'s default to false. Verified failing.
+
+   The denominator rule is right whenever the RATIO is the instrument: a probe
+   of an episode with no declared length can only ever return `unknown`, so it
+   spends a real request on a host to learn nothing. Defaulting the rule off
+   would silently reintroduce exactly the wasted requests `probeTargets` was
+   written to prevent, on every caller that never heard of repeats. */
+test("the denominator rule holds by default and lifts only when asked", () => {
+  const eps = [ep({ guid: "has-length" }), ep({ guid: "no-length", enclosure_bytes: null })];
+  assert.deepEqual(probeTargets(eps, 5).map((e) => e.guid), ["has-length"]);
+  assert.deepEqual(
+    probeTargets(eps, 5, { requireDeclaredLength: false }).map((e) => e.guid),
+    ["has-length", "no-length"],
+  );
+  // Lifting the denominator rule does not lift the others: a probe still needs
+  // a URL, and a transcript is still the reason the show is in the pool.
+  assert.deepEqual(
+    probeTargets([ep({ guid: "prose", has_timestamps: false, enclosure_bytes: null })], 5, {
+      requireDeclaredLength: false,
+    }),
+    [],
+  );
+});
+
+/* MUTATION: count a single delivery as varying (drop the `seen.length >= 2`
+   guard). Verified failing.
+
+   A one-probe run records no `deliveries` at all and a resumed #319 row has
+   none either; treating "fewer than two observations" as disagreement would
+   condemn every show measured before repeats existed. */
+test("variance needs two observations of the same episode, not one", () => {
+  assert.equal(varyingSamples([{ deliveries: [40_000_000] }]), 0);
+  assert.equal(varyingSamples([{ ratio: 1.0 }]), 0);
+  assert.equal(varyingSamples([{ deliveries: [40_000_000, 40_000_000, 40_000_000] }]), 0);
+});
+
+/* MUTATION: compare `deliveries[0]` against `deliveries[1]` only, instead of
+   `new Set(seen).size > 1`. Verified failing — three probes where the first two
+   agree and the third does not is precisely the stitcher that varies
+   sometimes, which is the population #319 proved the median cannot see. */
+test("one episode delivering two different lengths is the show caught stitching", () => {
+  assert.equal(varyingSamples([{ deliveries: [40_000_000, 40_000_000, 49_400_000] }]), 1);
+  assert.equal(
+    varyingSamples([{ deliveries: [1_000_000, 1_000_000] }, { deliveries: [2_000_000, 2_400_000] }]),
+    1,
+  );
+});
+
+/* MUTATION: drop the `n > 0` filter from the delivered lengths. Verified
+   failing. A failed probe records `delivered_bytes: null`, and counting null
+   beside a real length would read every partial failure as a stitch — the
+   scan's own errors manufacturing its most serious verdict. */
+test("a failed probe is not evidence of stitching", () => {
+  assert.equal(varyingSamples([{ deliveries: [40_000_000, null] }]), 0);
+  assert.equal(varyingSamples([{ deliveries: [null, null] }]), 0);
+});
+
+test("maxDeliverySpread reports the widest disagreement, and null when there is none", () => {
+  assert.equal(maxDeliverySpread([{ deliveries: [40_000_000, 49_400_000] }]), 9_400_000);
+  assert.equal(maxDeliverySpread([{ deliveries: [40_000_000, 40_000_000] }]), null);
+  assert.equal(maxDeliverySpread([{ ratio: 1 }]), null);
+});
+
+/* MUTATION: move the `varying` check in `dispositionOf` below the
+   `verdict === "unknown"` line. Verified failing.
+
+   This is the entire reason repeats exist. A feed that declares no enclosure
+   length produces `ratio: null` on every sample, so `summariseShow` returns
+   `unknown` — and `unknown` is the FIRST branch. Ordered that way, a host
+   caught red-handed serving three different files for one GUID is filed as
+   "could not tell". Positive evidence of the mechanism outranks the absence of
+   a denominator, and on this pool it is 5,461 transcripts. */
+test("a show caught serving different bytes per request is dropped, not shrugged at", () => {
+  assert.equal(dispositionOf("unknown", { varying: 1 }), "drop");
+  assert.equal(dispositionOf("ad-free", { varying: 1 }), "drop");
+  // ...and with nothing varying, `unknown` still refuses to admit the show.
+  assert.equal(dispositionOf("unknown", { varying: 0 }), "unresolved");
+});
+
+/* MUTATION: make stability acquit — return "recover" when repeats agree and
+   nothing else objects. Verified failing.
+
+   Content-Range's total is the length of the resource served, so two totals
+   mean two resources and that is proof. The converse is not: a stitcher may key
+   on session, IP or time and hand one client the same stitch inside a cache
+   window. `ad-inflation.mjs` already refuses to call a thin sample clean for
+   the same reason, and a no-length feed is the thinnest evidence there is. */
+test("byte-stable across repeats is not a clean bill of health", () => {
+  assert.equal(dispositionOf("unknown", { varying: 0, unmeasured: 0 }), "unresolved");
+});
+
+/* ---------------------------------------------------------- the deliverable */
+
+/* MUTATION: count `unresolved` transcripts inside `measured_clean`. Verified
+   failing. "10,933, all inferred" and "6,000, all measured" are very different
+   assets; a split that folds "we probed it and could not tell" into "measured"
+   reports the first as the second. */
+test("the split counts only what a measurement actually settled", () => {
+  const split = measurementSplit([
+    { disposition: "recover", timed_transcripts: 995 },
+    { disposition: "drop", timed_transcripts: 1368 },
+    { disposition: "unresolved", timed_transcripts: 5461 },
+    { disposition: "unresolved", timed_transcripts: 42 },
+  ]);
+  assert.deepEqual(split.measured_clean, { shows: 1, timed_transcripts: 995 });
+  assert.deepEqual(split.measured_injecting, { shows: 1, timed_transcripts: 1368 });
+  assert.deepEqual(split.unresolved, { shows: 2, timed_transcripts: 5503 });
+  /* MUTATION: let repeat_stable_no_denominator count rows that were never
+     repeat-probed, or rows that DID vary. Verified failing. It is a named
+     slice of unresolved, and on this corpus it is 5,503 of the 5,507 — the
+     difference between "nobody could measure flightcast" and "flightcast was
+     probed 105 times and never once varied". */
+  assert.deepEqual(split.repeat_stable_no_denominator, { shows: 0, timed_transcripts: 0 });
+  /* Samples, not stamped fields: the slice reads the observations back so a
+     row cannot claim a repeat count it did not earn. */
+  const rep = (n, ...sizes) => ({ ratio: null, delivered_bytes: sizes[0], deliveries: sizes.length ? sizes : Array(n).fill(50_000_000) });
+  const stable = measurementSplit([
+    { disposition: "unresolved", timed_transcripts: 1264, samples: [rep(3), rep(3)] },
+    { disposition: "unresolved", timed_transcripts: 99, samples: [rep(0, 50_000_000, 59_400_000)] },
+    { disposition: "unresolved", timed_transcripts: 7, samples: [{ ratio: 1.0 }] },
+  ]);
+  assert.deepEqual(stable.repeat_stable_no_denominator, { shows: 1, timed_transcripts: 1264 });
+  assert.equal(stable.unresolved.timed_transcripts, 1370, "it is a slice of unresolved, never an extra bucket");
+});
+
+/* -------------------------------------- the committed anchorable evidence */
+
+/* MUTATION: change any verdict, median, disposition or delivered byte count in
+   data/breadth-anchorable-inflation.json by hand. Verified failing.
+
+   Same rule as the suspects file one screen up, and it matters more here: this
+   file is what turns 10,933 inferred transcripts into a number split by
+   evidence, and a founder deciding what to cut segments from reads its
+   dispositions. Every one is recomputed from the bytes beside it. */
+test("every committed anchorable verdict is reproducible from its own samples", () => {
+  const ev = JSON.parse(readFileSync(new URL("../../data/breadth-anchorable-inflation.json", import.meta.url), "utf8"));
+  assert.equal(ev.pool, "anchorable", "this file answers the anchorable pool's question");
+  assert.ok(ev.results.length > 0);
+
+  for (const r of ev.results) {
+    const recomputed = summariseShow(r.samples.map((s) => s.ratio));
+    assert.equal(recomputed.verdict, r.verdict, `${r.title}: verdict`);
+    assert.equal(recomputed.median, r.median, `${r.title}: median`);
+    assert.equal(recomputed.n, r.n, `${r.title}: sample count`);
+    assert.equal(insertedSamples(r.samples), r.inserted_samples, `${r.title}: inserted samples`);
+    assert.equal(varyingSamples(r.samples), r.varying_samples ?? 0, `${r.title}: varying samples`);
+    assert.equal(maxDeliverySpread(r.samples), r.max_delivery_spread_bytes ?? null, `${r.title}: spread`);
+    /* THE THREE DERIVED COUNTS A REVIEWER FOUND UNCHECKED. Each was written to
+       the row and never recomputed, so each was a claim rather than a
+       measurement — and `unmeasured_samples` was a straight regression against
+       the suspects-file test one screen up, which does check it. Verified by
+       mutation: editing any of them by hand left the suite green. */
+    assert.equal(unmeasuredSamples(r.samples), r.unmeasured_samples ?? 0, `${r.title}: unmeasured samples`);
+    assert.equal(undersizedSamples(r.samples), r.undersized_samples ?? 0, `${r.title}: undersized samples`);
+    assert.equal(constantOffsetBytes(r.samples), r.constant_offset_bytes ?? null, `${r.title}: constant offset`);
+    assert.equal(
+      dispositionOf(r.verdict, {
+        inserted: r.inserted_samples,
+        undersized: r.undersized_samples ?? 0,
+        unmeasured: r.unmeasured_samples ?? 0,
+        varying: r.varying_samples ?? 0,
+      }),
+      r.disposition,
+      `${r.title}: disposition`,
+    );
+    assert.equal(maxDeltaSec(r.samples), r.max_delta_sec_implied, `${r.title}: worst delta`);
+    assert.equal(adrTier(r.max_delta_sec_implied), r.tier, `${r.title}: ADR-0008 tier`);
+
+    for (const s of r.samples) {
+      if (s.ratio != null) {
+        assert.equal(
+          Math.round((s.delivered_bytes / s.declared_bytes) * 1000) / 1000,
+          s.ratio,
+          `${r.title}: ratio arithmetic`,
+        );
+        assert.equal(impliedDeltaSec(s.declared_bytes, s.delivered_bytes, s.duration_sec), s.delta_sec_implied);
+      }
+      /* A repeat-probed sample must carry the observations its row's verdict
+         was computed from. Without this a `varying_samples: 0` is unfalsifiable. */
+      if (r.repeats) {
+        assert.equal((s.deliveries || []).length, r.repeats, `${r.title}: ${r.repeats} deliveries recorded`);
+      }
+    }
+  }
+
+  /* THE HEADLINE, RECOMPUTED. Every measured transcript lands in exactly one
+     bucket — the arithmetic a PR body would otherwise assert by hand. */
+  const split = measurementSplit(ev.results);
+  /* AGAINST THE COMMITTED BLOCK, not merely against itself. The first version
+     of this test asserted an internal sum identity and never compared the
+     result to `ev.measurement` — verified by mutation: setting
+     `measured_clean.timed_transcripts` to 999999 by hand left all 39 tests
+     green. The sibling coverage test in `breadth-yield.test.mjs` had this
+     right; this one did not. */
+  assert.deepEqual(split, ev.measurement, "the committed measurement block is recomputed, not restated");
+  const total = ev.results.reduce((n, r) => n + r.timed_transcripts, 0);
+  assert.equal(
+    split.measured_clean.timed_transcripts +
+      split.measured_injecting.timed_transcripts +
+      split.unresolved.timed_transcripts,
+    total,
+    "every anchorable transcript measured is accounted for in exactly one bucket",
+  );
+
+  /* A show reported as unresolved-with-no-samples must actually have none.
+     Pinning the constant alone would pin nothing. */
+  for (const r of ev.results.filter((x) => x.note === NO_DECLARED_LENGTH_REASON)) {
+    assert.equal(r.n, 0, `${r.title}: claims no denominator but reports samples`);
+    assert.equal(r.disposition, "unresolved");
+  }
+});
+
+/* ------------------------------------ a gap that does not grow with the show */
+
+const sample = (declared, delivered, duration = 3000) => ({
+  declared_bytes: declared,
+  delivered_bytes: delivered,
+  duration_sec: duration,
+  ratio: Math.round((delivered / declared) * 1000) / 1000,
+  delta_sec_implied: impliedDeltaSec(declared, delivered, duration),
+});
+
+/* MUTATION: widen `CONSTANT_OFFSET_TOLERANCE_BYTES` to a megabyte, or drop the
+   `hi - lo` spread check entirely. Verified failing.
+
+   These are the real Art Bell Archive numbers: +99,324 / +99,387 / +99,331 /
+   +99,303 / +99,319 bytes across episodes running 51.9MB to 56.5MB. An 84-byte
+   spread over a 4.6MB spread in episode size is a FIXED BLOCK, not ad load —
+   ad load scales with slots sold, and every genuinely injecting show in this
+   pool shows it doing so. With the tolerance widened, Snail Trail's
+   +811,065 / +1,498,237 / -870,068 would read as "constant" too, and the one
+   signal that distinguishes a stale length from a stitcher would be gone. */
+test("a byte gap identical on every episode is flagged as a fixed block", () => {
+  const artBell = [
+    sample(53_823_465, 53_922_789, 8565),
+    sample(53_088_481, 53_187_868, 8325),
+    sample(56_477_648, 56_576_979, 8504),
+    sample(51_890_380, 51_989_683, 8625),
+    sample(53_066_960, 53_166_279, 8434),
+  ];
+  assert.equal(constantOffsetBytes(artBell), 99_345);
+
+  const snailTrail = [
+    sample(56_322_639, 57_133_704, 3520),
+    sample(36_051_203, 37_549_440, 2253),
+    sample(74_823_188, 73_953_120, 6235),
+    sample(92_623_230, 93_434_295, 5789),
+  ];
+  assert.equal(constantOffsetBytes(snailTrail), null, "ad load varies per episode; this must not read as constant");
+
+  /* AND THE NEAR MISS, which is what actually pins the tolerance. Snail Trail's
+     deltas span 2.4MB, so they stay null even with the tolerance widened a
+     thousandfold — the mutant SURVIVED against that fixture alone. A gap
+     jittering by ~50KB is the realistic adversary: still ad load, still not
+     constant, and only a tight tolerance separates it from an ID3 tag. */
+  const jitter = [sample(50_000_000, 50_800_000), sample(56_000_000, 56_830_000), sample(60_000_000, 60_850_000)];
+  assert.equal(constantOffsetBytes(jitter), null, "a gap that moves by 50KB is not a fixed block");
+});
+
+/* MUTATION: return the offset when fewer than three samples agree. Verified
+   failing. Two matching deltas is a coincidence, and this number's only job is
+   to be strong enough to justify asking for a decode. */
+test("two agreeing episodes are not a pattern", () => {
+  assert.equal(constantOffsetBytes([sample(50_000_000, 50_099_000), sample(56_000_000, 56_099_000)]), null);
+});
+
+/* MUTATION: drop the `Math.max(sizes) - Math.min(sizes)` guard. Verified
+   failing.
+
+   If every sampled episode is the same size, "constant in bytes" and
+   "proportional to duration" are the SAME observation — the function would be
+   unable to tell a fixed tag from an ad slot and would confidently report the
+   ad slot as a tag. A daily show whose episodes are all ~20 minutes is exactly
+   that case, and it is common. */
+test("a constant offset means nothing when the episodes are all the same size", () => {
+  const uniform = [
+    sample(20_000_000, 20_800_000),
+    sample(20_000_100, 20_800_100),
+    sample(19_999_900, 20_799_900),
+  ];
+  assert.equal(constantOffsetBytes(uniform), null);
+});
+
+/* MUTATION: return 0 rather than null when every episode matches its
+   declaration exactly. Verified failing — `recover` already says "no gap", and
+   a `constant_offset_bytes: 0` on a clean row is a field that reads like a
+   finding while describing the absence of one. */
+test("a show with no gap at all reports no constant offset", () => {
+  assert.equal(constantOffsetBytes([sample(50_000_000, 50_000_000), sample(56_000_000, 56_000_000), sample(60_000_000, 60_000_000)]), null);
+});
+
+/* MUTATION: let `constantOffsetBytes` change the disposition — return
+   "unresolved" or "recover" for a constant-offset drop. Verified failing.
+
+   ADR-0008 reversed a sourcing gate and this signal must not become one in
+   either direction. It is suggestive of what the gap IS; only the decoder can
+   say. Re-admitting 1,368 transcripts on a suggestion is precisely the move
+   #319 measured and found wanting — six of seven inferred-anchorable shows
+   were injecting. */
+test("the constant-offset signal explains a drop, it never reverses one", () => {
+  const artBell = [
+    sample(53_823_465, 53_922_789, 8565),
+    sample(53_088_481, 53_187_868, 8325),
+    sample(56_477_648, 56_576_979, 8504),
+  ];
+  const row = deriveRow({ show_id: "ab", samples: artBell });
+  // Three of Art Bell's five; the midpoint of 99,324..99,387 is 99,356.
+  assert.equal(row.constant_offset_bytes, 99_356);
+  assert.equal(row.disposition, "drop", "still dropped: only a decode can settle what the bytes are");
+  assert.match(row.note, /decode-and-compare/);
+});
+
+/* -------------------------------------------- one derivation, not two copies */
+
+/* MUTATION: in the `--resume` path, push the prior row verbatim instead of
+   re-deriving it. Verified failing.
+
+   The samples are the evidence; every other field is an opinion about them. A
+   copied row is judged by the rules that existed when it was measured, so one
+   file ends up holding rows judged by two standards with nothing on them saying
+   which — and any signal added since is silently frozen out of the rows that
+   already exist. `constant_offset_bytes` was added after the pass that measured
+   Art Bell, and re-derivation is why that row carries it without re-asking a
+   publisher for bytes already committed. */
+test("a resumed row is re-judged by today's rules, not yesterday's", () => {
+  const samples = [
+    sample(53_823_465, 53_922_789, 8565),
+    sample(53_088_481, 53_187_868, 8325),
+    sample(56_477_648, 56_576_979, 8504),
+  ];
+  const stale = { show_id: "ab", title: "T", samples, disposition: "recover", verdict: "ad-free", median: 9.9, n: 99 };
+  const fresh = deriveRow(stale);
+  assert.equal(fresh.disposition, "drop", "the stale disposition is recomputed, not trusted");
+  assert.equal(fresh.median, 1.002);
+  assert.equal(fresh.n, 3);
+});
+
+/* MUTATION: derive the note even when the caller supplied one. Verified
+   failing. "the feed would not load" explains an empty sample list better than
+   any inference drawn from its absence, and losing it would make a transient
+   network failure indistinguishable from a feed that declares no lengths — two
+   states wanting opposite follow-ups (a retry, and a decode). */
+test("a caller's note outranks anything the samples could imply", () => {
+  const row = deriveRow({ show_id: "x", samples: [] }, { note: "feed unreadable: socket hang up" });
+  assert.equal(row.note, "feed unreadable: socket hang up");
+  assert.equal(row.disposition, "unresolved");
+  // ...and with no note supplied, the sample-derived one appears.
+  assert.equal(deriveRow({ show_id: "x", samples: [] }).note, NO_DECLARED_LENGTH_REASON);
+});
+
+/* MUTATION: replace the resume path's `deriveRow(r, ...)` call with a bare
+   `results.push(r)`. Verified failing.
+
+   A unit test can pin what `deriveRow` does; only a scan can pin that the
+   resume path USES it. Copying a prior row carries yesterday's verdict into
+   today's file — one file holding rows judged by two standards, with nothing
+   on them saying which — and freezes out every signal added since those rows
+   were measured. `constant_offset_bytes` is exactly such a signal. */
+test("the resume path re-derives a carried-forward row rather than copying it", () => {
+  const src = readFileSync(new URL("./measure-suspects.mjs", import.meta.url), "utf8");
+  assert.match(src, /carried\.set\(String\(r\.show_id\), deriveRow\(r,/, "resumed rows must go back through deriveRow");
+  assert.doesNotMatch(src, /carried\.set\(String\(r\.show_id\), r\)/, "a prior row must never be stored verbatim");
+  /* AND it must hand `deriveRow` the row's fetch note. Without it a carried row
+     whose feed had failed is re-derived with no note, and an empty-sample row's
+     note is filled with `NO_DECLARED_LENGTH_REASON` — rewriting "retry this"
+     as "do not retry this" in committed evidence. `fetchNoteOf` has its own
+     unit test; only a scan pins that the resume path calls it. */
+  assert.match(src, /deriveRow\(r, \{ note: fetchNoteOf\(r\) \}\)/, "a carried row keeps a note the samples cannot re-derive");
+});
+
+/* MUTATION: filter `deliveries` on `n > 0` instead of `isPlausibleAudioSize`.
+   Verified failing.
+
+   The bug a reviewer found, and the most expensive one available in this file.
+   `probeEpisode` reads `delivered_bytes` from Content-Range OR a bare
+   Content-Length, and it does not retry a 403/404/410 — those are answers. So
+   an error page's Content-Length is a small positive integer that looks exactly
+   like a measurement. One 404 mid-repeat makes an episode "deliver two
+   different lengths", and `dispositionOf` reads variance FIRST, so a show is
+   condemned as a stitcher by our own failed request. On Success Story that is
+   1,264 transcripts. `ad-inflation.mjs` exports `isPlausibleAudioSize` for
+   exactly this ("One host returned 2 bytes"), so the fix is an import and not a
+   second threshold. */
+test("an error page's Content-Length is not a delivery", () => {
+  const real = 41_146_837;
+  assert.equal(varyingSamples([{ deliveries: [real, 1136, real] }]), 0, "a 404 body is not a second stitch");
+  assert.equal(maxDeliverySpread([{ deliveries: [real, 1136, real] }]), null);
+  assert.deepEqual(plausibleDeliveries({ deliveries: [real, 1136, null, real] }), [real, real]);
+  // ...and a genuine disagreement between two plausible files still condemns.
+  assert.equal(varyingSamples([{ deliveries: [real, real + 9_400_000] }]), 1);
+});
+
+/* MUTATION: make `isSettled` return true for any row with a disposition, or for
+   any row with at least one sample. Verified failing on both.
+
+   Both weaker rules freeze a transient failure into a permanent verdict, which
+   is the thing `--resume` exists to prevent. A feed that would not load yields
+   a disposition and NO samples; a host that was rate-limiting yields five
+   samples that are all `{ratio: null, delivered_bytes: null, error: "HTTP 503"}`
+   — the probe loop records a sample for every episode it attempts, including
+   total failures. Only "at least one probe came back with a length" separates
+   measured from merely attempted. */
+test("a row is settled only when a probe actually returned a length", () => {
+  const failedFeed = { disposition: "unresolved", samples: [] };
+  const failedProbes = {
+    disposition: "unresolved",
+    samples: [{ ratio: null, delivered_bytes: null, error: "HTTP 503" }, { ratio: null, delivered_bytes: null, error: "HTTP 503" }],
+  };
+  const measured = { disposition: "recover", samples: [{ ratio: 1, delivered_bytes: 40_000_000 }] };
+  /* The repeat case: no ratio, because the feed declares no length — and still
+     settled, because the bytes it exists to compare did arrive. */
+  const repeated = { disposition: "unresolved", samples: [{ ratio: null, delivered_bytes: 60_686_420, deliveries: [60_686_420, 60_686_420] }] };
+
+  assert.equal(isSettled(failedFeed), false);
+  assert.equal(isSettled(failedProbes), false, "five 503s are not a verdict");
+  /* AND the 404 case, which `n > 0` would have called settled: a refusal is not
+     retried, so the error body's Content-Length arrives as `delivered_bytes`. */
+  assert.equal(
+    isSettled({ disposition: "unresolved", samples: [{ ratio: null, delivered_bytes: 1136, error: "HTTP 404" }] }),
+    false,
+    "an error page's Content-Length is not a measurement",
+  );
+  assert.equal(isSettled(measured), true);
+  assert.equal(isSettled(repeated), true, "a repeat probe with no denominator still measured something");
+  assert.equal(isSettled({ samples: [{ delivered_bytes: 1 }] }), false, "no disposition, nothing settled");
+});
+
+/* MUTATION: have `writeReport` read `results` or `split` — the two bindings
+   that live after the probe loop. Verified failing.
+
+   THIS BUG HAS NOW BITTEN TWICE, both times in the function whose entire job is
+   surviving a crash. `writeReport` is called after every show so an interrupted
+   run keeps its measured work; it is a hoisted declaration, so calling it
+   mid-loop is fine, but anything it CLOSES OVER that is bound after the loop is
+   still in its temporal dead zone. First `split`, then `results` when the loop
+   moved to a keyed map — and the second one shipped far enough to abort a live
+   150-request pass on its very first checkpoint. The failure is invisible to
+   every unit test, because it needs the network path to reach it. So it is
+   pinned by reading the source: the checkpoint may reference `carried`, which
+   is bound before the loop, and nothing else from the summary. */
+test("the checkpoint writer touches nothing bound after the probe loop", () => {
+  const src = readFileSync(new URL("./measure-suspects.mjs", import.meta.url), "utf8");
+  const start = src.indexOf("function writeReport()");
+  assert.ok(start > 0, "writeReport must exist and stay a hoisted declaration");
+  /* COMMENTS STRIPPED FIRST. `writeReport`'s own docstring names both bindings
+     in order to explain why it must not touch them, so a scan over the raw text
+     fails on the very sentence that documents the rule. */
+  const body = src
+    .slice(start, src.indexOf("\n  }", start))
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  for (const forbidden of ["results", "split"]) {
+    assert.doesNotMatch(
+      body,
+      new RegExp(`(^|[^.\\w])${forbidden}\\b(?!\\s*:)`, "m"),
+      `writeReport closes over "${forbidden}", which is in its temporal dead zone at the mid-loop checkpoint`,
+    );
+  }
+  assert.match(body, /\[\.\.\.carried\.values\(\)\]/, "it must take its rows from the map bound before the loop");
+});
+
+/* MUTATION: return `row.note` unconditionally from `fetchNoteOf`, or return
+   null unconditionally. Verified failing on both.
+
+   A BUG CREATED BY A FIX. Once `--resume` began re-deriving every prior row
+   rather than only the settled ones, a row whose feed had momentarily failed
+   went back through `deriveRow` with no note — and an empty-sample row's note
+   is filled with `NO_DECLARED_LENGTH_REASON`, whose own docstring says it wants
+   decode-and-compare "not a retry". So `feed unreadable: socket hang up` was
+   rewritten in committed evidence as the opposite follow-up.
+
+   The other direction matters just as much: carrying EVERY note forward would
+   freeze the sample-derived ones, and re-deriving those is the entire reason
+   the resume path calls `deriveRow` at all. */
+test("a failed fetch keeps its note across a resume; a derived note is re-derived", () => {
+  assert.equal(fetchNoteOf({ note: "feed unreadable: socket hang up" }), "feed unreadable: socket hang up");
+  assert.equal(fetchNoteOf({ note: "no feed_url in the yield report for this show_id" }), "no feed_url in the yield report for this show_id");
+  assert.equal(fetchNoteOf({ note: NO_DECLARED_LENGTH_REASON }), null, "a derived note must be recomputed, not carried");
+  assert.equal(fetchNoteOf({}), null);
+
+  // End to end: the row a resume would rebuild keeps the reason it cannot be retried away.
+  const carried = deriveRow({ show_id: "x", samples: [], note: NO_DECLARED_LENGTH_REASON }, { note: fetchNoteOf({ note: "feed unreadable: 500" }) });
+  assert.equal(carried.note, "feed unreadable: 500");
+});
+
+/* MUTATION: stamp `repeats` from the `--repeat` flag instead of reading it off
+   the samples. Verified failing.
+
+   `probeTargets` admits every timestamped episode under `--repeat N`, but an
+   episode that declares a length is probed ONCE however the flag is set. A
+   show with a mix then claimed three probes of episodes that got one, the
+   `repeat_stable_no_denominator` slice counted it, and its note asserted "each
+   probed 3x ... this feed declares no enclosure length" of a feed that does.
+   The committed evidence escapes only because that pass was narrowed by
+   `--host` to platforms that declare no lengths at all. */
+test("a show is only repeat-probed if every one of its samples was", () => {
+  const repeated = (n) => ({ ratio: null, delivered_bytes: 50_000_000, deliveries: Array(n).fill(50_000_000) });
+  const once = { ratio: 1.0, declared_bytes: 50_000_000, delivered_bytes: 50_000_000, duration_sec: 3000 };
+
+  assert.equal(deriveRow({ show_id: "a", samples: [repeated(3), repeated(3)] }).repeats, 3);
+  assert.equal(deriveRow({ show_id: "b", samples: [repeated(3), once] }).repeats, undefined, "a mixed show is not repeat-probed");
+  assert.equal(deriveRow({ show_id: "c", samples: [once, once] }).repeats, undefined);
+
+  // ...and the slice that justifies the flightcast claim reads the samples too.
+  const mixed = deriveRow({ show_id: "b", title: "Mixed", timed_transcripts: 900, samples: [repeated(3), once] });
+  assert.equal(mixed.disposition, "unresolved");
+  assert.deepEqual(
+    measurementSplit([mixed]).repeat_stable_no_denominator,
+    { shows: 0, timed_transcripts: 0 },
+    "a show with one ratio-able episode was not 'probed N times with no denominator'",
+  );
 });

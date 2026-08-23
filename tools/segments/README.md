@@ -14,6 +14,7 @@ step, so any of it runs from a bare checkout in a keyless GitHub Action.
 | `fetch-transcripts.mjs` | Fetches and normalises the free, anchorable transcripts (#104) | reads transcripts |
 | `rank-breadth.mjs` | Which of the 19,436 uncurated feeds to sweep first (#114) | no |
 | `breadth-yield.mjs` | What a breadth tranche returned per request, and what it projects to (#114) | no |
+| `measure-suspects.mjs` | Do the anchorable shows actually inject? Two pools, one probe (#319/#321) | ranged GETs |
 | `politeness.mjs` | The per-host gate both fetchers share: throttle, backoff, `Retry-After` | n/a |
 
 `writeJsonAtomic` lives in `sweep-transcripts.mjs` and `fetch-transcripts.mjs`
@@ -184,6 +185,95 @@ printed still looked like a rate. `checkTranchePairing()` now refuses a pairing
 that is present and wrong, before a file is opened. Passing no `--tranche` at
 all is still legal: an index with no tranche reports under a null arm on
 purpose.
+
+## `measure-suspects.mjs` — replacing inference with evidence
+
+```bash
+# The shortlist the yield report already flagged (#319).
+node tools/segments/measure-suspects.mjs --pool suspects
+
+# Every OTHER anchorable show — the ones nothing has ever measured (#321).
+node tools/segments/measure-suspects.mjs --pool anchorable --resume
+
+# Feeds that publish no <enclosure length> need a different instrument:
+# ADR-0008's N>=2 probes of the SAME episode. --resume re-probes the rows
+# that came back with zero samples and leaves the settled ones alone.
+node tools/segments/measure-suspects.mjs --pool anchorable --resume --repeat 3 \
+  --host atelier.flightcast.com
+
+# Then re-report. --measured is a LIST: both files, or the corpus number
+# contradicts evidence sitting in the repo beside it.
+node tools/segments/breadth-yield.mjs ... \
+  --measured data/breadth-suspect-inflation.json,data/breadth-anchorable-inflation.json
+```
+
+**`dai_reason: "unknown"` is not `dai_reason: "static"`.** It means
+`classifyShow` walked the redirect chain and recognised no host on it — a
+negative filed as a pass. After #320 all 46 anchorable shows carried it and
+10,933 timed transcripts rested on it. #319 had already measured seven shows
+inferred the same way and **six of them injected**, so the inference was not a
+small risk being taken knowingly; it was an untested assumption under the
+whole corpus. `measurement_coverage` in the yield report now splits the
+headline number into what was measured and what was merely not recognised,
+because "10,933, all inferred" and "4,013 measured" are different assets.
+
+**Judge on per-episode inserts, never on the median.** `verdict` is a median
+ratio over five episodes; `disposition` is what any consumer must read. The
+two disagree whenever a platform inserts into SOME episodes: the median then
+measures how many of five samples drew a filled slot. The Art Bell Archive
+returned a median of 1.002 — comfortably "ad-free" — with all five sampled
+episodes over their declared length. Reading `verdict` would have admitted it,
+and it is 1,368 transcripts.
+
+**A 1% band is duration-blind.** 30 s on a 113-minute episode is ratio 1.004.
+`impliedDeltaSec()` converts the gap to seconds at the episode's own implied
+bitrate and `INSERT_EVIDENCE_SEC` is the threshold applied to that result, which
+is why a long episode cannot hide a short insert.
+
+**A gap that never changes size is a different shape from ad load — but not
+necessarily an innocent one.** `constantOffsetBytes()` reports — and gates
+nothing — when every sampled episode differs from its declaration by the *same*
+number of bytes across a much wider spread of episode sizes. Art Bell delivers
++99,324 / +99,387 / +99,331 / +99,303 / +99,319 bytes over episodes running
+51.9MB to 56.5MB: an 84-byte spread across a 4.6MB one, where every obviously
+injecting show here varies (Snail Trail: +811,065 on three episodes, +1,498,237
+on a fourth, −870,068 on a fifth).
+
+That distinguishes *constant* from *proportional*; it does **not** distinguish
+metadata from ads, and an earlier version of this note claimed it did. ADR-0008
+lists **pre-roll only** as a real DAI configuration and says of it that "every
+break is at `t = 0`, so `cum(t)` is the same constant" — so a fixed-length house
+pre-roll is a constant byte offset too. Art Bell's ~99KB is ~16 s at its
+bitrate: a plausible ID3v2 artwork block *and* a plausible short pre-roll.
+Nothing measurable here chooses. The row keeps its `drop`, and decode-and-compare
+on one episode is what would settle it — re-admitting 1,368 transcripts on the
+flattering reading is the move #319 measured and found wanting.
+
+**Variance condemns; stability does not acquit.** `--repeat N` asks for one
+episode N times. `Content-Range`'s total is the length of the resource served,
+so two totals for one URL mean two resources and the file is being assembled
+per request — proof, not a threshold. The converse does not hold: a stitcher
+may key on session, IP or time and hand one client the same stitch inside a
+cache window. So a byte-stable no-denominator show stays `unresolved`, and
+`measurementSplit()` reports it under `repeat_stable_no_denominator` rather
+than letting it read as either a pass or a failure to measure.
+
+**A platform verdict is not a show verdict**, and this pool proves it twice.
+On blubrry, nine shows are clean and one injects — and Becker's Healthcare
+(995 transcripts, clean) resolves through `ins.blubrry.com`, the same
+insertion-capable hop the dirty one uses. Being able to inject is not
+injecting. On libsyn the split is by final origin: all four
+`content.libsyn.com` shows are clean, all four on `delivery-edge.libsyn.com`
+or `teletraan.libsyn.com` inject. Neither observation is written to a host
+list; see `_adswizz_note` in `dai-hosts.json` for why one dirty show must not
+flag every future feed on its platform.
+
+**The samples are the evidence; every other field is an opinion about them.**
+`deriveRow()` computes all of them, and `--resume` puts carried-forward rows
+back through it rather than copying them, so a signal added after a row was
+measured appears on it without re-asking a publisher for bytes already
+committed. Two copies of a verdict rule would let one file hold rows judged by
+two standards with nothing on them saying which.
 
 **Rank on the hosting platform, not the genre.** A `<podcast:transcript>` tag
 is a feature of the platform the publisher pays for, not a choice the publisher

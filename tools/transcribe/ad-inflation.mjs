@@ -130,6 +130,22 @@ export const UNDERSIZED_REASON =
   'delivered bytes fall short of the feed-declared length, so the declared length ' +
   'does not describe the file we receive and the ratio cannot answer the ad question';
 
+/** Samples delivering FEWER bytes than the feed declared.
+
+    HERE, BESIDE THE FLOOR IT APPLIES, because this is the module that owns the
+    rule. It was inlined twice — once in this file's `main`, once in
+    `measure-suspects.mjs` — and #321 extracted the second copy before noticing
+    the first, which would have made it the seventh duplicated implementation
+    this repo has paid for. It cannot be imported the other way round:
+    `measure-suspects.mjs` already imports this module, so the rule has to live
+    at the end that does not create a cycle.
+
+    Exported rather than private so a committed verdict can be RECOMPUTED from
+    its own samples. A derived count that no test can reproduce is a claim. */
+export function undersizedSamples(samples) {
+  return (samples || []).filter((x) => typeof x.ratio === 'number' && x.ratio < AD_FREE_FLOOR).length;
+}
+
 export function classify(ratio) {
   if (ratio == null) return 'unknown';
   if (ratio < AD_FREE_FLOOR) return 'unknown';
@@ -208,10 +224,17 @@ export async function probeEpisode(url, declaredBytes, {
   gate = awaitHostSlot,
   retryWait = waitBeforeRetry,
   sleep = undefined,
+  now = undefined,
   maxAttempts = MAX_ATTEMPTS,
   timeoutMs = PROBE_TIMEOUT_MS,
 } = {}) {
-  const gateOpts = sleep ? { sleep } : {};
+  /* `now` rides alongside `sleep` for the same reason `sleep` is here: so a
+     test can drive the shared gate without real wall-clock. Without it the gate
+     assertion had to allow a 50ms slop against `Date.now()`, and a machine that
+     stalled between two probes — a 78-suite CI run does — failed it for reasons
+     that had nothing to do with the gate. Never set by the tools; a run that
+     supplied its own clock would be a run with no throttle. */
+  const gateOpts = { ...(sleep ? { sleep } : {}), ...(now ? { now } : {}) };
   let status = null;
   let error = null;
 
@@ -270,13 +293,26 @@ export async function probeEpisode(url, declaredBytes, {
     if (res.body && typeof res.body.cancel === 'function') await res.body.cancel();
 
     const ratio = inflationRatio(delivered, declaredBytes);
+    /* "NO USABLE LENGTH IN THE RESPONSE" MUST DESCRIBE THE RESPONSE, and it did
+       not. This used to fire whenever `ratio` was null — but `inflationRatio`
+       also returns null when the CALLER supplied no denominator, which is the
+       normal case for `measure-suspects.mjs --repeat`: it deliberately probes
+       feeds that publish no `<enclosure length>` and compares deliveries with
+       each other instead. Every one of those samples was committed carrying
+       `status: 206`, a 60MB `delivered_bytes`, and an error saying the response
+       had no usable length. Untrue on its face, and a live trap: the suites
+       already assert `ratio == null => error`, so any future code that filtered
+       `!s.error` would silently discard exactly the evidence those rows exist
+       to hold. A missing denominator is the caller's business; a missing length
+       is this function's. */
+    const usableLength = isPlausibleAudioSize(delivered);
     return {
       ratio,
       declared_bytes: Number.isFinite(declaredBytes) && declaredBytes > 0 ? declaredBytes : null,
       delivered_bytes: Number.isFinite(delivered) && delivered > 0 ? delivered : null,
       status,
       attempts: attempt,
-      error: ratio == null ? error || 'no usable length in the response' : null,
+      error: usableLength ? error || null : error || 'no usable length in the response',
     };
   }
 
@@ -440,7 +476,7 @@ async function main() {
        episode means this feed declares lengths it does not deliver, which is
        worth seeing next to a verdict of 'injected' that was computed from the
        same declarations. 5-4 measured 0.875 / 1.024 / 1.059. */
-    const undersized = samples.filter((x) => typeof x.ratio === 'number' && x.ratio < AD_FREE_FLOOR).length;
+    const undersized = undersizedSamples(samples);
     results.push({
       show: show.title,
       apple_collection_id: show.apple_collection_id ?? null,

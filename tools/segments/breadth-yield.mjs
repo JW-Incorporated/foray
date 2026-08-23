@@ -176,13 +176,108 @@ export const AD_TECH_HOST_MARKERS = ["adswizz", "adbarker", "adtonos", "adcontex
     ABSENCE IS NOT A RECOVERY. A show with no entry keeps whatever the heuristic
     said about it. The other default — unmeasured means clean — is the single
     most expensive mistake available in this file, because the unmeasured set is
-    the whole rest of the catalogue. */
-export function measuredDispositions(report) {
+    the whole rest of the catalogue.
+
+    SEVERAL REPORTS, NOT ONE (#321). There are now two pools and two files:
+    #319's `breadth-suspect-inflation.json` settles the shortlist, and #321's
+    `breadth-anchorable-inflation.json` settles the shows the shortlist never
+    flagged. Reading one of them is how #320 found this function in the first
+    place — a committed measurement that no tool consults decays into folklore —
+    and reading only the newer one would silently un-drop five shows #319 caught
+    injecting. LATER FILES WIN on a show_id present in both, because the only
+    reason to measure a show twice is that the first answer is stale. Nothing
+    overlaps today: `selectPool` excludes anything already settled. */
+export function measuredDispositions(reports) {
   const out = new Map();
-  for (const r of report?.results || []) {
-    if (r?.show_id != null && r.disposition) out.set(String(r.show_id), r.disposition);
+  for (const report of Array.isArray(reports) ? reports : [reports]) {
+    for (const r of report?.results || []) {
+      if (r?.show_id != null && r.disposition) out.set(String(r.show_id), r.disposition);
+    }
   }
   return out;
+}
+
+/** THE DELIVERABLE: how much of the anchorable corpus is MEASURED, not inferred.
+
+    WHY A COUNT WAS NOT ENOUGH. This file has always printed
+    `anchorable_net_of_suspects` — 10,933 after #320 — and that number says
+    nothing about what it rests on. Every one of those transcripts came from a
+    show whose `dai_reason` is `"unknown"`, which is not "verified static" but
+    "`classifyShow` walked the redirect chain and recognised no host on it". A
+    negative filed as a pass. "10,933, all inferred" and "6,000, all measured"
+    are very different assets and the second is worth more, and until this
+    function existed the report could not tell them apart.
+
+    FIVE BUCKETS, AND THE SPLIT IS ON WHAT WE KNOW RATHER THAN ON WHAT WE KEEP.
+    The two `excluded_*` buckets are the rows netted OUT — one because bytes
+    caught the show inserting, one because a hostname made it suspicious and
+    nobody has measured it yet — and they are separated because they want
+    opposite follow-ups: the first is settled, the second is a queue. The three
+    remaining buckets are exactly the rows inside `anchorable_net_of_suspects`,
+    so `measured_clean + measured_unresolved + inferred` reconstructs the
+    headline number and the suite asserts that identity.
+
+    `measured_unresolved` IS NOT A THIRD KIND OF CLEAN. A show is unresolved
+    when the probe ran and could not conclude — no declared length to divide by,
+    a sample too thin, delivered bytes short of the declaration. It keeps its
+    pre-measurement status, which for a row nobody suspected means it stays in
+    the corpus. That is the "label, never exclude" rule and it is deliberately
+    NOT a gate: ADR-0008 reversed a sourcing gate and moving these rows out on
+    "we could not tell" would re-impose one in a new unit. But it must never be
+    counted as measured either, so it gets its own bucket rather than being
+    folded into `inferred` (where it would hide the fact that requests were
+    already spent on it) or into `measured_clean` (where it would be a lie). */
+export function measurementCoverage(rows, suspects = [], measured = new Map()) {
+  const suspectIds = new Set(suspects.map((s) => String(s.show_id)));
+  const buckets = {
+    measured_clean: [],
+    measured_unresolved: [],
+    inferred: [],
+    excluded_measured_injecting: [],
+    excluded_by_heuristic: [],
+  };
+  for (const r of rows) {
+    /* `r.anchorable` ALONE, matching `anchorableNetOfSuspects` exactly. An
+       earlier version also required `status === "ok"`, which a reviewer showed
+       makes the two disagree by construction — the buckets are required to sum
+       to the headline number, and the headline number never consults `status`.
+       They read the same today only because `isAnchorable` needs at least one
+       timed transcript and a failed sweep row has none; the first row that is
+       both anchorable and not-ok would put two different values under the same
+       `anchorable_net_of_suspects` key in one file. Agreement has to come from
+       using the same predicate, not from a property of the current data. */
+    if (!r.anchorable) continue;
+    const id = String(r.show_id);
+    const d = measured.get(id);
+    /* SUSPECT MEMBERSHIP DECIDES FIRST, and it has to. A row's disposition says
+       what the bytes showed; `suspects` says whether this report counts it. A
+       heuristic suspect that was probed and came back `unresolved` is still
+       netted out, so filing it under `measured_unresolved` would put a row
+       outside the headline number into a bucket that sums to it. */
+    if (suspectIds.has(id)) {
+      (d === "drop" ? buckets.excluded_measured_injecting : buckets.excluded_by_heuristic).push(r);
+    } else if (d === "recover") buckets.measured_clean.push(r);
+    else if (d === "unresolved") buckets.measured_unresolved.push(r);
+    else buckets.inferred.push(r);
+  }
+  const tally = (k) => ({
+    shows: buckets[k].length,
+    timed_transcripts: buckets[k].reduce((n, r) => n + r.episodes_with_timed_transcript, 0),
+  });
+  const out = Object.fromEntries(Object.keys(buckets).map((k) => [k, tally(k)]));
+  const net =
+    out.measured_clean.timed_transcripts +
+    out.measured_unresolved.timed_transcripts +
+    out.inferred.timed_transcripts;
+  return {
+    ...out,
+    anchorable_net_of_suspects: net,
+    measured_pct_of_net: pct(out.measured_clean.timed_transcripts, net),
+    note:
+      "measured_clean is the only bucket a measurement admitted; measured_unresolved was probed and " +
+      "could not be settled, inferred was never probed, and both remain in the net count on the " +
+      "label-never-exclude rule rather than on evidence",
+  };
 }
 
 /** Anchorable shows whose "not DAI" verdict is contradicted by something we
@@ -552,7 +647,13 @@ function parseArgs(argv) {
     breadth: list("--breadth", "data-local/breadth/availability-breadth.json"),
     tranche: list("--tranche", "data-local/breadth/tranche-01.json"),
     baseline: get("--baseline", "data/transcript-availability.json"),
-    measured: get("--measured", "data/breadth-suspect-inflation.json"),
+    /* COMMA-SEPARATED, like `--breadth` above and for a sharper reason: there
+       are two measurement files now (see `measuredDispositions`) and quoting
+       one of them would report a corpus number contradicted by evidence sitting
+       in the repository beside it. Unlike the tranche pairing, a path that does
+       not resolve is skipped rather than fatal — a checkout that has run
+       neither scan must still be able to produce a report. */
+    measured: list("--measured", "data/breadth-suspect-inflation.json,data/breadth-anchorable-inflation.json"),
     out: get("--out", null),
     poolSize: Number(get("--pool-size", "19436")),
   };
@@ -632,8 +733,8 @@ function main() {
      fallback is the strictly more conservative heuristic rather than a silently
      different denominator. Which side each row landed on is visible in its
      `reason`. */
-  const measuredPath = resolvePath(process.cwd(), args.measured);
-  const measured = existsSync(measuredPath) ? measuredDispositions(readJson(measuredPath)) : new Map();
+  const measuredPaths = args.measured.filter((p) => existsSync(resolvePath(process.cwd(), p)));
+  const measured = measuredDispositions(measuredPaths.map((p) => readJson(resolvePath(process.cwd(), p))));
 
   const suspects = suspectAnchorable(rows, { isDaiHost, measured });
   const baselineSuspects = suspectAnchorable(baselineRows, { isDaiHost, measured });
@@ -667,6 +768,24 @@ function main() {
   }
 
   const net = anchorableNetOfSuspects(rows, suspects);
+  const coverage = measurementCoverage(rows, suspects, measured);
+
+  console.log(`\nwhat the ${net} anchorable transcripts REST ON — measured, or merely not recognised:`);
+  for (const [k, label] of [
+    ["measured_clean", "measured byte-stable"],
+    ["measured_unresolved", "probed, could not settle"],
+    ["inferred", "never probed (dai_reason unknown)"],
+  ]) {
+    console.log(
+      `  ${String(coverage[k].timed_transcripts).padStart(6)} timed  ${String(coverage[k].shows).padStart(3)} show(s)  ${label}`,
+    );
+  }
+  console.log(
+    `  ${String(coverage.measured_pct_of_net).padStart(5)}% of the net corpus is measured; ` +
+      `${coverage.excluded_measured_injecting.timed_transcripts} more were measured and dropped, ` +
+      `${coverage.excluded_by_heuristic.timed_transcripts} dropped on a hostname nobody has measured`,
+  );
+
   if (suspects.length) {
     console.log(`\ncounted anchorable, but the "not DAI" verdict is contradicted — measure before trusting:`);
     for (const f of suspects.slice(0, 12)) {
@@ -690,7 +809,7 @@ function main() {
       breadth_index: args.breadth.map(repoRelative),
       tranche: args.tranche.map(repoRelative),
       baseline: repoRelative(args.baseline),
-      measured: existsSync(measuredPath) ? repoRelative(args.measured) : null,
+      measured: measuredPaths.map(repoRelative),
       /* `swept_at` and `max_episode_rows` are NOT here, and their absence is
          the fix: they used to be scalars taken from the first index, sitting
          beside a `breadth_index` that is now a list of two swept on different
@@ -715,6 +834,10 @@ function main() {
     by_rank_bucket: indexes.map((x) => ({ tranche: x.name, buckets: byRankBucket(x.rows, suspects) })),
     suspect_anchorable: suspects,
     anchorable_net_of_suspects: net,
+    /* WHAT THE HEADLINE NUMBER RESTS ON. See `measurementCoverage`: without it
+       this file reports a five-figure corpus and cannot say whether one
+       transcript of it was ever measured. */
+    measurement_coverage: coverage,
     shows: rows.sort((a, b) => String(a.show_id).localeCompare(String(b.show_id))),
   };
 
