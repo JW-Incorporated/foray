@@ -1,0 +1,509 @@
+{
+  "version": 1,
+  "measured_at": "2026-08-23T06:41:15.563Z",
+  "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs via tools/segments/measure-suspects.mjs",
+  "source": {
+    "yield_report": "data/breadth-transcript-yield.json",
+    "per_show": 5
+  },
+  "requests": {
+    "feeds": 7,
+    "ranged_gets": 54
+  },
+  "counts": {
+    "anchorable_before": 1131,
+    "anchorable_gross_before": 3952,
+    "recovered": 14,
+    "not_anchorable_as_published": 2807,
+    "still_unresolved": 0,
+    "anchorable_after": 1145,
+    "adr0008": {
+      "paddable_screened": 1823,
+      "locate_required": 998,
+      "note": "screened from one probe each of five episodes; ADR-0008 needs N>=2 probes of the SAME episode plus a margin before a pad may be sized or a show admitted on one"
+    }
+  },
+  "results": [
+    {
+      "show_id": "1714228902",
+      "title": "Thrilling Threads - Conspiracy Theories, Strange Phenomena, True Crime, Unsolved Mysteries, etc!",
+      "feed_host": "spreaker.com",
+      "enclosure_host": "d1bxy2pveef3fq.cloudfront.net",
+      "suspect_reason": "dai-host-lost-in-redirect",
+      "timed_transcripts": 998,
+      "verdict": "injected",
+      "disposition": "drop",
+      "median": 1.051,
+      "n": 5,
+      "inserted_samples": 5,
+      "max_delta_sec_implied": 522,
+      "tier": "locate-required",
+      "dai_by_chain": true,
+      "dai_via": "api.spreaker.com",
+      "resolved_chain": [
+        "dts.podtrac.com",
+        "api.spreaker.com",
+        "d1bxy2pveef3fq.cloudfront.net"
+      ],
+      "samples": [
+        {
+          "guid": "https://api.spreaker.com/episode/73391226",
+          "episode": "The Rothschild Heist: Did They Steal the World's Banking System?",
+          "declared_bytes": 45843164,
+          "delivered_bytes": 46571248,
+          "duration_sec": 2866,
+          "ratio": 1.016,
+          "delta_sec_implied": 46
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/73391114",
+          "episode": "Evidence of Non-Human Intelligence? Police UFO Photos & 11:11 Prophecy",
+          "declared_bytes": 43452855,
+          "delivered_bytes": 51802839,
+          "duration_sec": 2716,
+          "ratio": 1.192,
+          "delta_sec_implied": 522
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/74130574",
+          "episode": "Locked Away & Left to Die: The Secret Horrors of Abandoned Asylums",
+          "declared_bytes": 51898974,
+          "delivered_bytes": 59090796,
+          "duration_sec": 3244,
+          "ratio": 1.139,
+          "delta_sec_implied": 450
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/74130357",
+          "episode": "America is Broken: Pete Buttigieg on Why the System Needs a Total Reboot",
+          "declared_bytes": 57577786,
+          "delivered_bytes": 60493467,
+          "duration_sec": 3599,
+          "ratio": 1.051,
+          "delta_sec_implied": 182
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/74129756",
+          "episode": "AI Without Humans: The Secret Attack on Taiwan’s Nuclear Grid & the Global AI Security Cri",
+          "declared_bytes": 48553629,
+          "delivered_bytes": 50010216,
+          "duration_sec": 3035,
+          "ratio": 1.03,
+          "delta_sec_implied": 91
+        }
+      ]
+    },
+    {
+      "show_id": "1207947871",
+      "title": "The WWE Podcast",
+      "feed_host": "spreaker.com",
+      "enclosure_host": "d1bxy2pveef3fq.cloudfront.net",
+      "suspect_reason": "dai-host-lost-in-redirect",
+      "timed_transcripts": 991,
+      "verdict": "injected",
+      "disposition": "drop",
+      "median": 1.011,
+      "n": 5,
+      "inserted_samples": 3,
+      "max_delta_sec_implied": 90,
+      "tier": "paddable-screened",
+      "dai_by_chain": true,
+      "dai_via": "api.spreaker.com",
+      "resolved_chain": [
+        "dts.podtrac.com",
+        "api.spreaker.com",
+        "d1bxy2pveef3fq.cloudfront.net"
+      ],
+      "samples": [
+        {
+          "guid": "https://api.spreaker.com/episode/74551950",
+          "episode": "Full Elimination Chamber Review (2020): Lack of Crowd Response & Shayna Dominates the Wome",
+          "declared_bytes": 56718359,
+          "delivered_bytes": 58162407,
+          "duration_sec": 3545,
+          "ratio": 1.025,
+          "delta_sec_implied": 90
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/74529538",
+          "episode": "WWE SmackDown Review: CM Punk vs Kevin Owens for Undisputed Championship",
+          "declared_bytes": 28924909,
+          "delivered_bytes": 29405980,
+          "duration_sec": 1808,
+          "ratio": 1.017,
+          "delta_sec_implied": 30
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/74428972",
+          "episode": "Responding to Listeners on Random Questions, Raw & SmackDown's Upswing, Solo Sikoa & More",
+          "declared_bytes": 37564543,
+          "delivered_bytes": 37564543,
+          "duration_sec": 2348,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/74351939",
+          "episode": "CURRENT STATE OF WWE (2023): 1 Hour *Special Episode* on Roman's 1000 Day Title Reign",
+          "declared_bytes": 65246202,
+          "delivered_bytes": 65246202,
+          "duration_sec": 4078,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/74287396",
+          "episode": "WWE Raw Review: Solo Remains Babyface & Spikes Roman, Sol Ruca Wins, Gable vs Mysterio for",
+          "declared_bytes": 44878411,
+          "delivered_bytes": 45359064,
+          "duration_sec": 2805,
+          "ratio": 1.011,
+          "delta_sec_implied": 30
+        }
+      ]
+    },
+    {
+      "show_id": "1481597851",
+      "title": "The Baseball Prospectus Podcast Network",
+      "feed_host": "spreaker.com",
+      "enclosure_host": "d1bxy2pveef3fq.cloudfront.net",
+      "suspect_reason": "dai-host-lost-in-redirect",
+      "timed_transcripts": 339,
+      "verdict": "ad-free",
+      "disposition": "drop",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 1,
+      "max_delta_sec_implied": 30,
+      "tier": "paddable-screened",
+      "dai_by_chain": true,
+      "dai_via": "api.spreaker.com",
+      "resolved_chain": [
+        "dts.podtrac.com",
+        "api.spreaker.com",
+        "d1bxy2pveef3fq.cloudfront.net"
+      ],
+      "samples": [
+        {
+          "guid": "https://api.spreaker.com/episode/74461500",
+          "episode": "Five and Dive, Episode 573: Piazza, Marlins Catcher",
+          "declared_bytes": 100963214,
+          "delivered_bytes": 101444285,
+          "duration_sec": 6311,
+          "ratio": 1.005,
+          "delta_sec_implied": 30
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/74261383",
+          "episode": "Five and Dive, Episode 572: This is Birdland (and also Craigland)",
+          "declared_bytes": 94370326,
+          "delivered_bytes": 94370326,
+          "duration_sec": 5899,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/73996231",
+          "episode": "Five and Dive, Episode 571: Big Money, No Whammies",
+          "declared_bytes": 91740945,
+          "delivered_bytes": 91740945,
+          "duration_sec": 5734,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/73826453",
+          "episode": "Five and Dive, Episode 570: Civale Discussions",
+          "declared_bytes": 113769901,
+          "delivered_bytes": 113769901,
+          "duration_sec": 7111,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/73630447",
+          "episode": "Five and Dive, Episode 569: Yan Can Cook",
+          "declared_bytes": 82411260,
+          "delivered_bytes": 82411260,
+          "duration_sec": 5151,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1411449986",
+      "title": "Auf den Punkt",
+      "feed_host": "podigee.io",
+      "enclosure_host": "adswizz.podigee-cdn.net",
+      "suspect_reason": "ad-tech-origin",
+      "timed_transcripts": 337,
+      "verdict": "ad-free",
+      "disposition": "drop",
+      "median": 0.999,
+      "n": 5,
+      "inserted_samples": 1,
+      "max_delta_sec_implied": 24,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "audio.podigee-cdn.net",
+        "adswizz.podigee-cdn.net"
+      ],
+      "samples": [
+        {
+          "guid": "c7f88f3b48c43d2c7c1288bf9302c328",
+          "episode": "Brand im Hohen Venn: Wie können Moore gerettet werden?",
+          "declared_bytes": 17105258,
+          "delivered_bytes": 17087420,
+          "duration_sec": 1022,
+          "ratio": 0.999,
+          "delta_sec_implied": -1
+        },
+        {
+          "guid": "868a50d1d97b1328837e28a4ce5e56c2",
+          "episode": "Eine AfD-Regierung schrumpft die deutsche Wirtschaft",
+          "declared_bytes": 13257021,
+          "delivered_bytes": 13657641,
+          "duration_sec": 781,
+          "ratio": 1.03,
+          "delta_sec_implied": 24
+        },
+        {
+          "guid": "d206961989d1d8e1ee16ab1837aa2a14",
+          "episode": "Wie Meta uns süchtig macht",
+          "declared_bytes": 11354164,
+          "delivered_bytes": 11342071,
+          "duration_sec": 662,
+          "ratio": 0.999,
+          "delta_sec_implied": -1
+        },
+        {
+          "guid": "3ac35bb3f7c7f309363d36c0a2f81083",
+          "episode": "Was Sanktionen gegen Israels rechtsextremen Minister Ben-Gvir bringen würden",
+          "declared_bytes": 13221466,
+          "delivered_bytes": 13207508,
+          "duration_sec": 779,
+          "ratio": 0.999,
+          "delta_sec_implied": -1
+        },
+        {
+          "guid": "f7b0a798f1efb21ec95a0fa57e57c73e",
+          "episode": "Das BSW ist in zwei Lager gespalten",
+          "declared_bytes": 12211436,
+          "delivered_bytes": 12198055,
+          "duration_sec": 716,
+          "ratio": 0.999,
+          "delta_sec_implied": -1
+        }
+      ]
+    },
+    {
+      "show_id": "1496469073",
+      "title": "Sasquatch Experience",
+      "feed_host": "spreaker.com",
+      "enclosure_host": "d1bxy2pveef3fq.cloudfront.net",
+      "suspect_reason": "dai-host-lost-in-redirect",
+      "timed_transcripts": 82,
+      "verdict": "ad-free",
+      "disposition": "drop",
+      "median": 1.008,
+      "n": 5,
+      "inserted_samples": 3,
+      "max_delta_sec_implied": 30,
+      "tier": "paddable-screened",
+      "dai_by_chain": true,
+      "dai_via": "api.spreaker.com",
+      "resolved_chain": [
+        "dts.podtrac.com",
+        "api.spreaker.com",
+        "d1bxy2pveef3fq.cloudfront.net"
+      ],
+      "samples": [
+        {
+          "guid": "https://api.spreaker.com/episode/73347862",
+          "episode": "EP 144: Mike Hartman, Ohio Bigfoot Investigator",
+          "declared_bytes": 48854551,
+          "delivered_bytes": 48854551,
+          "duration_sec": 3490,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/72967420",
+          "episode": "EP 143: Dan Nedrelo Part I",
+          "declared_bytes": 55734368,
+          "delivered_bytes": 56155305,
+          "duration_sec": 3981,
+          "ratio": 1.008,
+          "delta_sec_implied": 30
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/72776394",
+          "episode": "EP 142: Back in Action",
+          "declared_bytes": 46572258,
+          "delivered_bytes": 46994292,
+          "duration_sec": 3327,
+          "ratio": 1.009,
+          "delta_sec_implied": 30
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/71915576",
+          "episode": "EP 141: Cocaine Hippos",
+          "declared_bytes": 108259311,
+          "delivered_bytes": 108259311,
+          "duration_sec": 3384,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/70815542",
+          "episode": "EP 140: Jay Bachochin",
+          "declared_bytes": 51505630,
+          "delivered_bytes": 51927664,
+          "duration_sec": 3679,
+          "ratio": 1.008,
+          "delta_sec_implied": 30
+        }
+      ]
+    },
+    {
+      "show_id": "1614020580",
+      "title": "PWTorch VIP Podcasts",
+      "feed_host": "spreaker.com",
+      "enclosure_host": "d1bxy2pveef3fq.cloudfront.net",
+      "suspect_reason": "dai-host-lost-in-redirect",
+      "timed_transcripts": 60,
+      "verdict": "ad-free",
+      "disposition": "drop",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 2,
+      "max_delta_sec_implied": 30,
+      "tier": "paddable-screened",
+      "dai_by_chain": true,
+      "dai_via": "api.spreaker.com",
+      "resolved_chain": [
+        "dts.podtrac.com",
+        "api.spreaker.com",
+        "d1bxy2pveef3fq.cloudfront.net"
+      ],
+      "samples": [
+        {
+          "guid": "https://api.spreaker.com/episode/72694437",
+          "episode": "PWTorch VIP Podcast for Everyone - Radican Worldwide: Interview with Maya World – Getting ",
+          "declared_bytes": 21181433,
+          "delivered_bytes": 21181433,
+          "duration_sec": 1324,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/72656665",
+          "episode": "PWTorch VIP Podcast for Everyone - VIP Vault – 18 Yrs Ago (3-28-2008): Keller & Mitchell d",
+          "declared_bytes": 50135138,
+          "delivered_bytes": 50135138,
+          "duration_sec": 3134,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/72106358",
+          "episode": "PWTorch VIP Podcast for Everyone - The Fix w/Todd & Wade (pt. 1 of 2): Rousey-Carano fight",
+          "declared_bytes": 108040012,
+          "delivered_bytes": 108521083,
+          "duration_sec": 6753,
+          "ratio": 1.004,
+          "delta_sec_implied": 30
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/71750201",
+          "episode": "PWTorch VIP Podcast for Everyone - The Nicky’s Club with Nick Barbati: A deep dive into th",
+          "declared_bytes": 42981348,
+          "delivered_bytes": 43463672,
+          "duration_sec": 2687,
+          "ratio": 1.011,
+          "delta_sec_implied": 30
+        },
+        {
+          "guid": "https://api.spreaker.com/episode/71025242",
+          "episode": "PWTorch VIP Podcast for Everyone - VIP Vault – 18 Yrs Ago (3-14 & 3-15-2008): Keller & Mit",
+          "declared_bytes": 122200496,
+          "delivered_bytes": 122200496,
+          "duration_sec": 7638,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1505993848",
+      "title": "Apokalypse & Filterkaffee",
+      "feed_host": "podigee.io",
+      "enclosure_host": "adswizz.podigee-cdn.net",
+      "suspect_reason": "ad-tech-origin",
+      "timed_transcripts": 14,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 0.999,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": -3,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "audio.podigee-cdn.net",
+        "adswizz.podigee-cdn.net"
+      ],
+      "samples": [
+        {
+          "guid": "25dcba63994438eff069293708a88bec",
+          "episode": "Searching for Linnemann (mit Annika Prigge)",
+          "declared_bytes": 50924662,
+          "delivered_bytes": 50873142,
+          "duration_sec": 2496,
+          "ratio": 0.999,
+          "delta_sec_implied": -3
+        },
+        {
+          "guid": "9c30d6e7cb878b10eed61df620051775",
+          "episode": "Kemenatenblues (mit Richard David Precht)",
+          "declared_bytes": 55617981,
+          "delivered_bytes": 55561098,
+          "duration_sec": 2740,
+          "ratio": 0.999,
+          "delta_sec_implied": -3
+        },
+        {
+          "guid": "65aaed643ebd51d9d47d411a5072eb6e",
+          "episode": "Viva Espahña (mit Nikki Hassan-Nia)",
+          "declared_bytes": 46248923,
+          "delivered_bytes": 46201678,
+          "duration_sec": 2282,
+          "ratio": 0.999,
+          "delta_sec_implied": -2
+        },
+        {
+          "guid": "a1d48121fe1ede2dc865fd61179d7ca0",
+          "episode": "Merzmaxxing",
+          "declared_bytes": 42651779,
+          "delivered_bytes": 42608922,
+          "duration_sec": 2063,
+          "ratio": 0.999,
+          "delta_sec_implied": -2
+        },
+        {
+          "guid": "6c2708bba770f47b88b3ee6e23ca77e4",
+          "episode": "House of (no red) Cards (mit Nikki Hassan-Nia)",
+          "declared_bytes": 52736959,
+          "delivered_bytes": 52682746,
+          "duration_sec": 2606,
+          "ratio": 0.999,
+          "delta_sec_implied": -3
+        }
+      ]
+    }
+  ]
+}

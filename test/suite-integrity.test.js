@@ -438,7 +438,15 @@ const FLOORS = {
      used to hold is now tested; the plumbing between them is not.
      The floor is 24 because that is the count, with no slack. */
   "tools/refresh/backfill-show.test.mjs": 24,
-  "tools/refresh/dai.test.mjs": 8,
+  /* ROSE FROM 8 ON 2026-08-23, when classification stopped reading only the
+     last hop of the redirect chain. The eight it had covered the host matcher,
+     which was never the bug: `spreaker.com` was on the list the whole time and
+     still cleared 2,470 timed transcripts, because the chain
+     `dts.podtrac.com -> api.spreaker.com -> <cloudfront hash>` was judged on
+     its end. The twelve added cover the walk itself — the hop cap, the per-hop
+     politeness gate, partial chains, and the single authorship of the `reason`
+     sentence that `--reclassify` would otherwise respell offline. */
+  "tools/refresh/dai.test.mjs": 20,
   "tools/refresh/enclosure.test.mjs": 18,
   /* The nightly watchdog (#290). ZERO SLACK, for the reason media-session and
      data-deletion are floored that way: what this suite holds down is a set of
@@ -452,7 +460,7 @@ const FLOORS = {
      stall the pipeline with no documented way to clear it and that the digest
      fetch failed OPEN on any API error that was not a 404. */
   "tools/refresh/watch-nightly.test.mjs": 62,
-  "tools/segments/sweep-transcripts.test.mjs": 34,
+  "tools/segments/sweep-transcripts.test.mjs": 35,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
   /* The free-transcript acquisition step (#104 follow-up): the join that
@@ -516,6 +524,14 @@ const FLOORS = {
      it kills, per this file's own standard. */
   "tools/segments/rank-breadth.test.mjs": 21,
   "tools/segments/breadth-yield.test.mjs": 21,
+  /* The scan that settled tranche 1's seven suspects — 2,821 timed
+     transcripts, 71% of that tranche's anchorable haul, previously dropped on a
+     hostname heuristic. Its arithmetic decides supply, so every step of it is
+     pinned: what is worth probing, bytes to seconds, the worst-case statistic
+     (deliberately NOT the median the verdict uses), the insert threshold from
+     both sides, and a recomputation of all seven committed verdicts from the
+     byte counts filed beside them. */
+  "tools/segments/measure-suspects.test.mjs": 15,
   "tools/transcribe/fetch-audio.test.mjs": 64,
   "tools/transcribe/ad-inflation.test.mjs": 20,
   "tools/corpus/fetcher.test.mjs": 23,

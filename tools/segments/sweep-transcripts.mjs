@@ -88,7 +88,7 @@
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
-import { durationSeconds, hostOf } from "../refresh/enclosure.mjs";
+import { durationSeconds, enclosureLengthBytes, hostOf } from "../refresh/enclosure.mjs";
 import { classifyShow, isDaiHost } from "../refresh/dai.mjs";
 import { UA, awaitHostSlot, waitBeforeRetry } from "./politeness.mjs";
 
@@ -226,6 +226,17 @@ export function parseFeed(xml) {
     return {
       guid: textOf(itemXml, "guid") || enclosureUrl || `item-${idx}`,
       enclosure_url: enclosureUrl,
+      /* THE DENOMINATOR. `tools/transcribe/ad-inflation.mjs` measures ad load
+         as delivered bytes / feed-declared length, so a swept show with no
+         declared length cannot be measured at all — which is the state every
+         one of the 500 breadth shows was in, including the seven whose DAI
+         verdict the whole tranche's headline number turns on. The curated path
+         has always kept it (`audio_bytes`, via `refresh/enclosure.mjs`); the
+         sweep read the enclosure tag and dropped this one attribute. Costs
+         nothing: no extra request, and episode rows live in `data-local/`
+         (#255), so nothing committed grows. `length="0"` means "unknown" and
+         becomes null, exactly as `pickEnclosure` treats it. */
+      enclosure_bytes: enclosure ? enclosureLengthBytes(attrOf(enclosure, "length")) : null,
       title: textOf(itemXml, "title"),
       pub_date: textOf(itemXml, "pubDate"),
       duration_sec: durationSeconds(textOf(itemXml, "duration")),
@@ -246,8 +257,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Fetches a feed body. Retries 429/5xx/network with backoff; 4xx other than
     429 is permanent and fails immediately — retrying a 404 is just rudeness
-    with extra steps. */
-async function fetchFeed(url, { attempts = MAX_ATTEMPTS, timeoutMs = FEED_TIMEOUT_MS, log = () => {} } = {}) {
+    with extra steps.
+
+    EXPORTED so `measure-suspects.mjs` can read a feed without growing a second
+    feed fetcher. That is not a hypothetical: the last two fetchers in this
+    directory were each written by copying the previous one and both copies
+    drifted into the same two politeness bugs, which is why `politeness.mjs`
+    exists at all. This function's retry ladder, its "a 404 is permanent"
+    rule and its `Accept` header are policy, not plumbing. */
+export async function fetchFeed(url, { attempts = MAX_ATTEMPTS, timeoutMs = FEED_TIMEOUT_MS, log = () => {} } = {}) {
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     await awaitHostSlot(url);
@@ -375,18 +393,40 @@ export function pendingShows(shows, progress, { retryFailed = false, maxEpisodeR
     known-DAI list first and, when it already matches, no request is made at
     all: ~38% of this catalogue hides behind measurement prefixes and needs the
     redirect followed, the rest does not, and the cheapest polite request is
-    the one you skip. Falls back to `classifyShow`, which follows redirects. */
+    the one you skip. Falls back to `classifyShow`, which follows redirects.
+
+    `enclosure_chain` is RECORDED, not just consulted. The chain is what the
+    verdict now rests on, and a swept row that keeps only its last hop cannot be
+    re-judged later without re-requesting the feed — which is precisely the hole
+    that made tranche 1's seven suspects un-resettleable from the committed data
+    alone. `enclosure_host` keeps meaning the last hop, so `breadth-yield.mjs`
+    and every existing reader are untouched.
+
+    The outer `awaitHostSlot` is KEPT even though `classifyShow` now gates each
+    hop internally. It costs one 1.2s slot per show on a sweep measured in
+    hours, and it means a future change to where the gate lives cannot silently
+    leave a 500-feed sweep ungated. Over-throttle rather than under. */
 async function resolveDai(sampleEnclosureUrl) {
   if (!sampleEnclosureUrl) {
-    return { dai_suspected: null, dai_reason: "no enclosure url in feed", enclosure_host: null };
+    return { dai_suspected: null, dai_reason: "no enclosure url in feed", enclosure_host: null, enclosure_chain: [] };
   }
   const declared = hostOf(sampleEnclosureUrl);
   if (declared && isDaiHost(declared)) {
-    return { dai_suspected: true, dai_reason: `host:${declared} (declared, no resolve needed)`, enclosure_host: declared };
+    return {
+      dai_suspected: true,
+      dai_reason: `host:${declared} (declared, no resolve needed)`,
+      enclosure_host: declared,
+      enclosure_chain: [declared],
+    };
   }
   await awaitHostSlot(sampleEnclosureUrl);
   const verdict = await classifyShow(sampleEnclosureUrl, { userAgent: UA, timeoutMs: 15_000 });
-  return { dai_suspected: verdict.dai, dai_reason: verdict.reason, enclosure_host: verdict.resolved_host };
+  return {
+    dai_suspected: verdict.dai,
+    dai_reason: verdict.reason,
+    enclosure_host: verdict.resolved_host,
+    enclosure_chain: verdict.resolved_chain || [],
+  };
 }
 
 export function summarizeShow(show, episodes) {
@@ -451,6 +491,7 @@ export async function sweepShow(show, { allEpisodes = false, maxEpisodeRows = In
       dai_suspected: null,
       dai_reason: null,
       enclosure_host: null,
+      enclosure_chain: [],
       episodes_total: 0,
       episodes_with_transcript: 0,
       episodes_with_timed_transcript: 0,

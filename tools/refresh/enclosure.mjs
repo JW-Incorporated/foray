@@ -17,6 +17,22 @@
                   copy and fit-lines depend on it.
 */
 
+/** The `length` attribute of an `<enclosure>`, as bytes or null.
+
+    Split out of `pickEnclosure` so the SECOND feed parser in this repo can
+    share the policy rather than restate it. `tools/segments/sweep-transcripts.mjs`
+    reads feeds with regexes rather than fast-xml-parser, so it cannot call
+    `pickEnclosure` — but "length=0 means unknown, not zero" is a fact about RSS,
+    not about either parser, and this repo has paid four times for the same rule
+    living in two places (#211/#219/#249, #313, #316, #318). */
+export function enclosureLengthBytes(rawLen) {
+  if (rawLen == null) return null;
+  const s = String(rawLen).trim();
+  if (!/^\d+$/.test(s)) return null;
+  const n = Number(s);
+  return n > 0 ? n : null;
+}
+
 /** fast-xml-parser gives `{"@_url":…}`, or an array when a malformed feed
     repeats the tag. Take the first audio enclosure, else the first at all. */
 export function pickEnclosure(item) {
@@ -27,11 +43,7 @@ export function pickEnclosure(item) {
   }
   const url = enc?.["@_url"] ? String(enc["@_url"]).trim() : null;
   const type = enc?.["@_type"] ? String(enc["@_type"]).trim() : null;
-  const rawLen = enc?.["@_length"];
-  const bytes = rawLen != null && /^\d+$/.test(String(rawLen).trim())
-    ? Number(String(rawLen).trim())
-    : null;
-  return { url, type, bytes: bytes && bytes > 0 ? bytes : null };
+  return { url, type, bytes: enclosureLengthBytes(enc?.["@_length"]) };
 }
 
 /** itunes:duration is wildly inconsistent (corner case #5): HH:MM:SS, MM:SS,

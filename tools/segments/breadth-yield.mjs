@@ -213,6 +213,22 @@ export function summaryRow(show) {
     error_code: show.error_code ?? null,
     dai_suspected: show.dai_suspected ?? null,
     enclosure_host: show.enclosure_host ?? null,
+    /* CARRIED, and it is the one field here that grows the committed file for a
+       reason other than counting: it is the EVIDENCE for `dai_suspected`. A row
+       holding only the last hop cannot be re-judged when the host list changes
+       — which is how five Spreaker shows sat at `dai_reason: "unknown"` while
+       `api.spreaker.com` was the middle hop of their own redirect.
+
+       JOINED INTO ONE STRING RATHER THAN LEFT AS AN ARRAY, because the row
+       below every other field of which is a flat scalar, and the suite asserts
+       exactly that ("a summary row carries nothing that scales with episode
+       count"). An array here passes that assertion today ONLY because the test
+       fixture omits the field — the guard would have gone on being green while
+       every real sweep wrote arrays past it. A chain is two to four hosts and
+       does not scale with episodes, so it belongs in the file; it just has to
+       arrive in the shape the file already promises. `split(" > ")` recovers
+       the hops. */
+    enclosure_chain: (show.enclosure_chain || []).join(" > ") || null,
     episodes_total: show.episodes_total || 0,
     episodes_with_transcript: show.episodes_with_transcript || 0,
     episodes_with_timed_transcript: show.episodes_with_timed_transcript || 0,

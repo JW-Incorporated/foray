@@ -22,6 +22,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  ACCEPT_LANGUAGE,
   BASE_BACKOFF_MS,
   MAX_RETRY_AFTER_MS,
   AUDIO_UA,
@@ -240,33 +241,38 @@ test("the modules that re-export the User-Agent re-export THIS one", async () =>
 });
 
 /* MUTATION: in `tools/refresh/dai.mjs`, put the default parameter back to the
-   bare `Foray/0.1` it shipped with. Verified failing.
+   bare `Foray/0.1` it shipped with, or drop `accept-language` from the header
+   object. Verified failing on both.
 
-   THIS ASSERTS ON THE WIRE, NOT ON THE MODULE. `resolveHost` reads its
+   THIS ASSERTS ON THE WIRE, NOT ON THE MODULE. `resolveChain` reads its
    User-Agent from a default parameter, so a test that imported a constant would
    never touch the code path that builds the request — the value could be right
    and the header still wrong. `fetch` is stubbed, so this makes NO network
    request: the header object is captured and the call short-circuits.
-   `resolveHost` resolves ~38% of the catalogue through download-measurement
-   prefixes, and it was the one tool handing publishers no way to reach us. */
+
+   IT FOLLOWS THE FUNCTION IT IS ABOUT. This used to point at `resolveHost`, on
+   the argument that "resolveHost resolves ~38% of the catalogue through
+   download-measurement prefixes". `resolveChain` does that now — `resolveHost`
+   was deleted with the last of its callers — and a wire guard aimed at a
+   function nothing calls is a guard aimed at nothing. */
 test("dai.mjs sends the shared User-Agent, contact address and all", async () => {
-  const { resolveHost } = await import("../refresh/dai.mjs");
+  const { resolveChain } = await import("../refresh/dai.mjs");
   const seen = [];
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = async (url, opts) => {
-    seen.push(opts);
-    return { url: "https://dcs-cached.megaphone.fm/x.mp3", status: 206 };
-  };
-  try {
-    await resolveHost("https://pdst.fm/e/x.mp3");
-  } finally {
-    globalThis.fetch = realFetch;
-  }
+  await resolveChain("https://pdst.fm/e/x.mp3", {
+    gate: async () => 0,
+    fetchImpl: async (url, opts) => {
+      seen.push(opts);
+      return { status: 206, headers: { get: () => null } };
+    },
+  });
 
   assert.equal(seen.length, 1);
   assert.equal(seen[0].headers["User-Agent"], UA);
   assert.ok(seen[0].headers["User-Agent"].includes(CONTACT), "a host that wants to complain can");
   assert.equal(seen[0].headers.Range, "bytes=0-0", "still a ranged GET, not a HEAD (corner case #1)");
+  /* Captivate answers Node's default `accept-language: *` with a 404 on the
+     very redirectors this function now has to follow. */
+  assert.equal(seen[0].headers["accept-language"], ACCEPT_LANGUAGE);
 });
 
 /* MUTATION: in `tools/corpus/fetcher.mjs`, set `USER_AGENT` to a fresh literal
