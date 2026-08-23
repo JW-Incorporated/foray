@@ -25,13 +25,42 @@
 // This scan reproduced 1.15 (Odd Lots) and 1.12 (TPWKY) from range headers
 // alone, so the cheap probe agrees with the expensive one.
 //
+// POLITENESS IS NOT THIS FILE'S TO INVENT (#313). Every request below goes
+// through `tools/segments/politeness.mjs` -- the one per-host gate, with the
+// throttle, the jittered backoff, and the `Retry-After` handling that quiets
+// the WHOLE host rather than only the worker that was told to wait. This module
+// deliberately has no throttle of its own: the last two fetchers each grew a
+// private copy of that policy and both copies drifted into the same two bugs.
+// If you need to change how fast this scans, change it there.
+//
+// THAT INCLUDES THE USER-AGENT, and this file is the reason politeness.mjs now
+// owns `AUDIO_UA`. This module used to carry its own `STANDARD_UA`, a third
+// copy of the fetcher string with an extra `ad-inflation scan;` product token
+// in it. Measured 2026-08-23: Buzzsprout serves the canonical ForayBot UA 206
+// and refuses the drifted one 403, reproducibly, on the same enclosure in the
+// same minute. A 403 carries no length to measure, so the scan did not fail --
+// it returned "could not tell" for all 423 Buzzsprout timed transcripts, and a
+// verdict of "could not tell" caused by our own string is the most expensive
+// kind of quiet wrong answer this scan can produce.
+//
+// The same applies to `accept-language`, which this probe did not send at all:
+// Node defaults it to `*` and Captivate answers that with 404, which is another
+// 301 timed transcripts reading as "could not tell". Both headers now come from
+// `AUDIO_PROBE_HEADERS` so neither fetcher can be missing one the other has.
+//
 // Usage:
 //   node tools/transcribe/ad-inflation.mjs [--per-show N] [--out FILE] [--all]
+//                                          [--show "Title"] [--dry-run]
 // By default it scans only shows that ship timed transcripts, because those are
-// the ones where the answer pays out.
+// the ones where the answer pays out, and it writes the verdicts into
+// `data/dai-classification.json` beside the host-derived flag they qualify.
 
-export const STANDARD_UA =
-  'ForayBot/0.1 (ad-inflation scan; +https://github.com/JW-Incorporated/foray; wjduvall@gmail.com)';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { dirname, join, resolve as resolvePath } from 'node:path';
+import { AUDIO_PROBE_HEADERS, awaitHostSlot, waitBeforeRetry } from '../segments/politeness.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Total size from a Content-Range header ("bytes 0-1/44961612"), or null. */
 export function parseContentRangeTotal(header) {
@@ -67,33 +96,157 @@ export function inflationRatio(deliveredBytes, declaredBytes) {
  */
 export const AD_FREE_THRESHOLD = 1.01;
 
+/**
+ * ...and the same 1% on the other side, because the threshold used to be
+ * one-sided and that was wrong in a way only a real scan could show.
+ *
+ * MEASURED 2026-08-23: Around the House with Eric G delivers a median of 0.758
+ * -- four of its five sampled episodes arrive a QUARTER SMALLER than the length
+ * their own feed declares. A one-sided `ratio < 1.01` called that ad-free and
+ * admitted all 301 of the show's timed transcripts.
+ *
+ * Under-size is not evidence of no ads. It is evidence that the delivered file
+ * is not the file the feed describes -- a stale `length` after a re-encode, or
+ * a redirector serving something else -- and that disqualifies a transcript for
+ * exactly the reason injection does: the publisher's timeline was authored
+ * against a copy we are not receiving. A denominator we have just caught being
+ * wrong cannot be trusted to answer the ad question either, so the honest
+ * verdict is a refusal to answer, not a clean bill of health.
+ *
+ * Both directions therefore fail closed. 0.99 mirrors the ceiling: it absorbs
+ * the same container/tag noise and nothing larger.
+ */
+export const AD_FREE_FLOOR = 0.99;
+
+/** Said out loud on the record, because an unexplained "unknown" is
+    indistinguishable from a failed fetch, and the two want different follow-up:
+    a failed fetch wants a retry, this wants the decode-and-compare of ADR-0008. */
+export const UNDERSIZED_REASON =
+  'delivered bytes fall short of the feed-declared length, so the declared length ' +
+  'does not describe the file we receive and the ratio cannot answer the ad question';
+
 export function classify(ratio) {
   if (ratio == null) return 'unknown';
+  if (ratio < AD_FREE_FLOOR) return 'unknown';
   return ratio < AD_FREE_THRESHOLD ? 'ad-free' : 'injected';
 }
 
 /** Median is the right summary: one odd episode should not reclassify a show. */
 export function summariseShow(ratios) {
   const clean = ratios.filter((r) => typeof r === 'number' && Number.isFinite(r)).sort((a, b) => a - b);
-  if (!clean.length) return { median: null, n: 0, verdict: 'unknown' };
+  if (!clean.length) return { median: null, n: 0, verdict: 'unknown', reason: null };
   const median = clean.length % 2
     ? clean[(clean.length - 1) / 2]
     : (clean[clean.length / 2 - 1] + clean[clean.length / 2]) / 2;
-  return { median, n: clean.length, verdict: classify(median) };
+  const verdict = classify(median);
+  return {
+    median,
+    n: clean.length,
+    verdict,
+    reason: verdict === 'unknown' && median != null ? UNDERSIZED_REASON : null,
+  };
 }
 
-/** Probe one enclosure. Injected so tests never touch the network. */
-export async function probeEpisode(url, declaredBytes, { fetchImpl = fetch, ua = STANDARD_UA } = {}) {
-  const res = await fetchImpl(url, {
-    method: 'GET',
-    redirect: 'follow',
-    headers: { 'user-agent': ua, range: 'bytes=0-1' },
-  });
-  const total =
-    parseContentRangeTotal(res.headers.get('content-range')) ??
-    Number(res.headers.get('content-length'));
-  if (res.body && typeof res.body.cancel === 'function') await res.body.cancel();
-  return inflationRatio(total, declaredBytes);
+/* ------------------------------------------------------------- the request */
+
+/** A probe that hangs holds up the whole sequential scan, and the gate already
+    puts a second between requests; 20s is generous for two bytes. */
+export const PROBE_TIMEOUT_MS = 20_000;
+export const MAX_ATTEMPTS = 3;
+
+/** Statuses worth a second ask. A 403 or a 404 is an answer, not a hiccup, and
+    retrying it spends a host's patience to learn nothing new. */
+export const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+export function isRetryableStatus(status) {
+  return RETRYABLE_STATUS.has(Number(status));
+}
+
+/**
+ * Probe one enclosure with a 2-byte ranged GET. Injected so tests never touch
+ * the network.
+ *
+ * Returns the evidence, not just the ratio: the declared and delivered byte
+ * counts are what make a verdict in `data/dai-classification.json` reproducible
+ * by hand, and a bare number cannot carry the reason it is null.
+ *
+ * WAITING FOR A RETRY IS THE GATE'S JOB, not a private sleep.
+ * `waitBeforeRetry` pushes the whole HOST's slot out, so the next iteration's
+ * `awaitHostSlot` blocks for exactly as long as the host asked — and so does
+ * every other request to that host, which is the bug #313 extracted this module
+ * to kill. A local `await sleep(...)` here would quiet this probe alone and
+ * silently reintroduce it.
+ */
+export async function probeEpisode(url, declaredBytes, {
+  fetchImpl = fetch,
+  headers = AUDIO_PROBE_HEADERS,
+  gate = awaitHostSlot,
+  retryWait = waitBeforeRetry,
+  sleep = undefined,
+  maxAttempts = MAX_ATTEMPTS,
+  timeoutMs = PROBE_TIMEOUT_MS,
+} = {}) {
+  const gateOpts = sleep ? { sleep } : {};
+  let status = null;
+  let error = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    await gate(url, gateOpts);
+
+    let res = null;
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctl && timeoutMs > 0 ? setTimeout(() => ctl.abort(), timeoutMs) : null;
+    try {
+      res = await fetchImpl(url, {
+        method: 'GET',
+        redirect: 'follow',
+        headers: { ...headers },
+        ...(ctl ? { signal: ctl.signal } : {}),
+      });
+    } catch (e) {
+      error = e && e.name === 'AbortError' ? 'timeout' : String((e && e.message) || e);
+      res = null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+
+    if (!res) {
+      if (attempt < maxAttempts) retryWait(url, null, attempt, gateOpts);
+      continue;
+    }
+
+    status = res.status == null ? null : res.status;
+    if (status != null && isRetryableStatus(status)) {
+      error = `HTTP ${status}`;
+      if (res.body && typeof res.body.cancel === 'function') await res.body.cancel();
+      if (attempt < maxAttempts) retryWait(url, res, attempt, gateOpts);
+      continue;
+    }
+
+    const delivered =
+      parseContentRangeTotal(res.headers.get('content-range')) ??
+      Number(res.headers.get('content-length'));
+    if (res.body && typeof res.body.cancel === 'function') await res.body.cancel();
+
+    const ratio = inflationRatio(delivered, declaredBytes);
+    return {
+      ratio,
+      declared_bytes: Number.isFinite(declaredBytes) && declaredBytes > 0 ? declaredBytes : null,
+      delivered_bytes: Number.isFinite(delivered) && delivered > 0 ? delivered : null,
+      status,
+      attempts: attempt,
+      error: ratio == null ? error || 'no usable length in the response' : null,
+    };
+  }
+
+  return {
+    ratio: null,
+    declared_bytes: Number.isFinite(declaredBytes) && declaredBytes > 0 ? declaredBytes : null,
+    delivered_bytes: null,
+    status,
+    attempts: maxAttempts,
+    error: error || 'exhausted attempts',
+  };
 }
 
 export function selectTargets({ discover, availability, perShow = 3, onlyTranscribed = true }) {
@@ -112,4 +265,187 @@ export function selectTargets({ discover, availability, perShow = 3, onlyTranscr
     if (bucket.length < perShow) bucket.push(it);
   }
   return { byShow, timed };
+}
+
+/* ------------------------------------------------------------ the verdicts */
+
+/** Why a show can have no verdict for a reason that is not the network.
+
+    A show whose every curated episode declares `length="0"` — which Megaphone
+    does, per ADR-0008 — yields no probe target at all. That is "could not
+    tell", and it has to be RECORDED as that: a show simply absent from the
+    output reads as one nobody got to, and the point of this scan is to end the
+    "nobody measured it" state for every show in the pool, including the ones
+    where the answer is that we still cannot say. */
+export const NO_TARGETS_REASON =
+  'no curated episode declares an enclosure length, so the ratio has no denominator';
+
+/**
+ * Fold verdicts into `data/dai-classification.json` IN PLACE, keyed the way
+ * that file already keys everything: by `apple_collection_id`.
+ *
+ * `dai` and `reason` are deliberately UNTOUCHED. They are the host-derived
+ * flag; `classify-dai.mjs --reclassify` recomputes them from the host list on
+ * every run, so a measured verdict written into `dai` would be quietly reverted
+ * the next time that ran. Beside the flag is also the honest shape: `dai` says
+ * who *could* inject, `ad_inflation` says who *does*.
+ */
+export function applyVerdicts(classification, results, { measuredAt = new Date().toISOString() } = {}) {
+  const shows = classification.shows ?? (classification.shows = {});
+  let written = 0;
+  let unkeyed = 0;
+  for (const r of results) {
+    const key = r.apple_collection_id == null ? null : String(r.apple_collection_id);
+    if (!key || !shows[key]) { unkeyed++; continue; }
+    shows[key].ad_inflation = {
+      verdict: r.verdict,
+      median_ratio: r.median == null ? null : Math.round(r.median * 1000) / 1000,
+      episodes_probed: r.n,
+      measured_at: measuredAt,
+      method: '2-byte ranged GET; tools/transcribe/ad-inflation.mjs',
+      ...(r.note ? { note: r.note } : {}),
+      samples: r.samples,
+    };
+    written++;
+  }
+  return { written, unkeyed };
+}
+
+/** Shows measured delivering the file their feed describes.
+
+    `tools/segments/fetch-transcripts.mjs` needs exactly this list to decide
+    what it may anchor. It reads it FROM HERE rather than keeping its own copy:
+    a hand-maintained second list of the same measurement is the drift this repo
+    has paid for twice already (#211/#219/#249, and politeness in #313). */
+export function adFreeShows(classification) {
+  return Object.values((classification && classification.shows) || {})
+    .filter((s) => s && s.ad_inflation && s.ad_inflation.verdict === 'ad-free')
+    .map((s) => s.show)
+    .sort();
+}
+
+/* -------------------------------------------------------------------- main */
+
+function parseArgs(argv) {
+  const get = (flag, fallback) => {
+    const i = argv.indexOf(flag);
+    return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : fallback;
+  };
+  return {
+    perShow: Number(get('--per-show', 5)),
+    out: get('--out', null),
+    show: get('--show', null),
+    all: argv.includes('--all'),
+    dryRun: argv.includes('--dry-run'),
+  };
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const discover = JSON.parse(readFileSync(join(ROOT, 'data', 'discover.json'), 'utf8'));
+  const availability = JSON.parse(readFileSync(join(ROOT, 'data', 'transcript-availability.json'), 'utf8'));
+  const classPath = join(ROOT, 'data', 'dai-classification.json');
+  const classification = JSON.parse(readFileSync(classPath, 'utf8'));
+
+  const { byShow } = selectTargets({
+    discover,
+    availability,
+    perShow: args.perShow,
+    onlyTranscribed: !args.all,
+  });
+
+  /* Drive the loop from the AVAILABILITY index rather than from `byShow`, so a
+     show with no probeable episode still produces an explicit "could not tell"
+     row instead of vanishing from the report. */
+  const pool = (availability.shows ?? [])
+    .filter((s) => (s.episodes_with_timed_transcript || 0) > 0)
+    .filter((s) => !args.show || s.title === args.show)
+    .sort((a, b) => b.episodes_with_timed_transcript - a.episodes_with_timed_transcript);
+
+  console.log(`${pool.length} show(s) shipping timed transcripts; up to ${args.perShow} episode(s) each\n`);
+
+  const started = Date.now();
+  let requests = 0;
+  let retried = 0;
+  const results = [];
+
+  for (const show of pool) {
+    const targets = byShow.get(show.title) ?? [];
+    const samples = [];
+    for (const it of targets) {
+      const p = await probeEpisode(it.audio_url, it.audio_bytes);
+      requests += p.attempts;
+      if (p.attempts > 1) retried++;
+      samples.push({
+        item_id: it.id ?? null,
+        episode: String(it.title || '').slice(0, 90),
+        declared_bytes: p.declared_bytes,
+        delivered_bytes: p.delivered_bytes,
+        ratio: p.ratio == null ? null : Math.round(p.ratio * 1000) / 1000,
+        ...(p.error ? { error: p.error, status: p.status } : {}),
+      });
+    }
+
+    const s = summariseShow(samples.map((x) => x.ratio));
+    /* Counted even when the median lands in the band: a single under-sized
+       episode means this feed declares lengths it does not deliver, which is
+       worth seeing next to a verdict of 'injected' that was computed from the
+       same declarations. 5-4 measured 0.875 / 1.024 / 1.059. */
+    const undersized = samples.filter((x) => typeof x.ratio === 'number' && x.ratio < AD_FREE_FLOOR).length;
+    results.push({
+      show: show.title,
+      apple_collection_id: show.apple_collection_id ?? null,
+      timed_transcripts: show.episodes_with_timed_transcript,
+      dai_flagged: show.dai_suspected === true,
+      verdict: s.verdict,
+      median: s.median,
+      n: s.n,
+      ...(undersized > 0 ? { undersized_samples: undersized } : {}),
+      ...(targets.length === 0 ? { note: NO_TARGETS_REASON } : s.reason ? { note: s.reason } : {}),
+      samples,
+    });
+
+    const med = s.median == null ? '  -  ' : s.median.toFixed(3);
+    console.log(
+      `  ${s.verdict.padEnd(8)} ${med}  n=${String(s.n).padStart(2)}  ` +
+      `${String(show.episodes_with_timed_transcript).padStart(5)} timed  ${show.title.slice(0, 48)}`,
+    );
+  }
+
+  const elapsedMin = (Date.now() - started) / 60000;
+  const by = (v) => results.filter((r) => r.verdict === v);
+  const timedIn = (v) => by(v).reduce((n, r) => n + r.timed_transcripts, 0);
+
+  console.log(`\n${'='.repeat(64)}`);
+  console.log(`requests: ${requests} over ${elapsedMin.toFixed(1)} min; probes needing a retry: ${retried}`);
+  for (const v of ['ad-free', 'injected', 'unknown']) {
+    console.log(`  ${v.padEnd(8)} ${String(by(v).length).padStart(3)} shows  ${String(timedIn(v)).padStart(5)} timed transcripts`);
+  }
+
+  if (args.dryRun) {
+    console.log('\n--dry-run: no files written.');
+  } else {
+    const { written, unkeyed } = applyVerdicts(classification, results);
+    classification.built_at = new Date().toISOString();
+    writeFileSync(classPath, JSON.stringify(classification, null, 2) + '\n');
+    console.log(`\nwrote data/dai-classification.json (${written} shows; ${unkeyed} had no entry to attach to)`);
+    console.log(`ad-free shows now: ${adFreeShows(classification).join(', ')}`);
+  }
+
+  if (args.out) {
+    const outPath = resolvePath(process.cwd(), args.out);
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(
+      outPath,
+      JSON.stringify({ measured_at: new Date().toISOString(), requests, results }, null, 2) + '\n',
+    );
+    console.log(`SCAN_WRITTEN: ${outPath}`);
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => {
+    console.error('FATAL:', e);
+    process.exit(1);
+  });
 }

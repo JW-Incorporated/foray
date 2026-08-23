@@ -16,7 +16,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { classifyShow, isDaiHost } from "./dai.mjs";
+import { classifyShow, isDaiHost, mergeShowEntry } from "./dai.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
@@ -77,7 +77,7 @@ for (const [cid, { url, show }] of todo) {
   n++;
   await sleep(THROTTLE_MS);
   const verdict = await classifyShow(url);
-  cache.shows[cid] = { show, ...verdict };
+  cache.shows[cid] = mergeShowEntry(cache.shows[cid], show, verdict);
   console.log(`[${n}/${todo.length}] ${verdict.dai ? "DAI  " : "     "} ${show.slice(0, 40).padEnd(41)} ${verdict.resolved_host || "?"}`);
 }
 

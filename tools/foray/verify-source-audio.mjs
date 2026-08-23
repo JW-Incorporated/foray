@@ -26,19 +26,18 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { AUDIO_PROBE_HEADERS } from "../segments/politeness.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const UA = "ForayBot/0.1 (+https://github.com/JW-Incorporated/foray; wjduvall@gmail.com)";
 const RATIO_CEILING = 1.01;
 
-/* Node's fetch sends `accept-language: *` by default, and Captivate's edge
- * answers that with `404 Missing redirect URL` on every one of its
- * `episodes.captivate.fm/episode/<guid>.mp3` redirectors — three of our nine
- * sources. curl sends no Accept-Language and gets the 302, which is exactly the
- * kind of "it worked when I checked it by hand" that costs an afternoon. The
- * header cannot be deleted through fetch, so it is overwritten with a real
- * language tag. Verified 2026-08-16: `*` -> 404, `en` -> 302. */
-const HEADERS = { Range: "bytes=0-1", "User-Agent": UA, "Accept-Language": "en" };
+/* The Range, the User-Agent and the Accept-Language all come from
+ * `tools/segments/politeness.mjs`, which records why each one is load-bearing:
+ * Captivate 404s Node's default `accept-language: *`, and Buzzsprout 403s a
+ * User-Agent carrying an extra product token. This file used to hold its own
+ * copy of all three; `ad-inflation.mjs` held a second, drifted copy and was
+ * being refused by Buzzsprout because of it. One definition now. */
+const HEADERS = AUDIO_PROBE_HEADERS;
 
 const only = (() => {
   const i = process.argv.indexOf("--id");

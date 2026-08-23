@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-08-19T16:05:06.346Z",
+  "built_at": "2026-08-23T03:58:24.541Z",
   "shows": {
     "75092679": {
       "show": "Basic Brewing Radio",
@@ -104,7 +104,51 @@
       "dai": true,
       "reason": "host:27103.mc.tritondigital.com",
       "resolved_host": "27103.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:20:31.202Z"
+      "checked_at": "2026-07-26T19:20:31.202Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.187,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "stuff-you-should-know--kola-deepest-hole",
+            "episode": "Kola: The World's Deepest Hole",
+            "declared_bytes": 44608461,
+            "delivered_bytes": 52278829,
+            "ratio": 1.172
+          },
+          {
+            "item_id": "stuff-you-should-know--alaska-earthquake-1964",
+            "episode": "Alaska Earthquake of 1964",
+            "declared_bytes": 35549607,
+            "delivered_bytes": 44661517,
+            "ratio": 1.256
+          },
+          {
+            "item_id": "stuff-you-should-know--nuclear-fusion-reactors",
+            "episode": "The Stuff You Should Know Doin' Science Playlist: Can Nuclear Fusion Reactors Save The Wor",
+            "declared_bytes": 42563868,
+            "delivered_bytes": 51675778,
+            "ratio": 1.214
+          },
+          {
+            "item_id": "stuff-you-should-know--eleanor-roosevelt",
+            "episode": "Eleanor Roosevelt: Best First Lady",
+            "declared_bytes": 45619089,
+            "delivered_bytes": 53528527,
+            "ratio": 1.173
+          },
+          {
+            "item_id": "stuff-you-should-know--short-stuff-great-britain",
+            "episode": "Short Stuff: Great Britain",
+            "declared_bytes": 12084466,
+            "delivered_bytes": 14345154,
+            "ratio": 1.187
+          }
+        ]
+      }
     },
     "283657561": {
       "show": "Snap Judgment",
@@ -216,7 +260,51 @@
       "dai": false,
       "reason": "unknown",
       "resolved_host": "content.blubrry.com",
-      "checked_at": "2026-07-26T19:24:04.016Z"
+      "checked_at": "2026-07-26T19:24:04.016Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "the-enormocast--enormocast-326-julia-cassou-telling-true-stories",
+            "episode": "Enormocast 326: Julia Cassou – Telling True Stories",
+            "declared_bytes": 78987516,
+            "delivered_bytes": 78987516,
+            "ratio": 1
+          },
+          {
+            "item_id": "the-enormocast--enormocast-323-cole-brauer-every-day-the-sea",
+            "episode": "Enormocast 323: Cole Brauer – Every Day the Sea",
+            "declared_bytes": 101693149,
+            "delivered_bytes": 101693149,
+            "ratio": 1
+          },
+          {
+            "item_id": "the-enormocast--enormocast-318-babsi-zangerl-10-years-later",
+            "episode": "Enormocast 318: Babsi Zangerl – 10 Years Later",
+            "declared_bytes": 101477898,
+            "delivered_bytes": 101477898,
+            "ratio": 1
+          },
+          {
+            "item_id": "the-enormocast--300-honnold-kalous",
+            "episode": "Enormocast 300: Chris Kalous by Alex Honnold – No Retreat, No Surrender",
+            "declared_bytes": 5242880,
+            "delivered_bytes": 81133322,
+            "ratio": 15.475
+          },
+          {
+            "item_id": "the-enormocast--303-villanueva",
+            "episode": "Enormocast 303: Sean Villanueva O’Driscoll – A Very Particular Set of Skills",
+            "declared_bytes": 101271841,
+            "delivered_bytes": 101271841,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "493253759": {
       "show": "The History of WWII Podcast",
@@ -349,14 +437,103 @@
       "dai": false,
       "reason": "unknown",
       "resolved_host": "content.libsyn.com",
-      "checked_at": "2026-07-26T19:25:54.391Z"
+      "checked_at": "2026-07-26T19:25:54.391Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "sigma-nutrition-radio--electrolyte-mythology",
+            "episode": "#611: Electrolyte Mythology: Wellness Marketing vs. Evidence - Zoë Rom & Kylee Van Horn",
+            "declared_bytes": 54639868,
+            "delivered_bytes": 54639868,
+            "ratio": 1
+          },
+          {
+            "item_id": "sigma-nutrition-radio--red-meat-and-cancer-risk",
+            "episode": "#609: Unprocessed Red Meat & Cancer Risk",
+            "declared_bytes": 68650278,
+            "delivered_bytes": 68650278,
+            "ratio": 1
+          },
+          {
+            "item_id": "sigma-nutrition-radio--how-to-interpret-nutrition-research-allison",
+            "episode": "#604: How To Interpret Nutrition Research – David Allison, PhD",
+            "declared_bytes": 53092458,
+            "delivered_bytes": 53092458,
+            "ratio": 1
+          },
+          {
+            "item_id": "sigma-nutrition-radio--supplement-safety-guerrini",
+            "episode": "#613: Supplement Safety & Medication Interactions – Giulia Guerrini, MPharm",
+            "declared_bytes": 56713781,
+            "delivered_bytes": 56713781,
+            "ratio": 1
+          },
+          {
+            "item_id": "sigma-nutrition-radio--614-human-skills-coaching",
+            "episode": "#614: The Human Skills of Nutrition Coaching – Krista Scott-Dixon, PhD",
+            "declared_bytes": 55942229,
+            "delivered_bytes": 55942229,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "869377733": {
       "show": "Around the House with Eric G",
       "dai": true,
       "reason": "host:episodes.captivate.fm",
       "resolved_host": "episodes.captivate.fm",
-      "checked_at": "2026-07-26T19:21:28.049Z"
+      "checked_at": "2026-07-26T19:21:28.049Z",
+      "ad_inflation": {
+        "verdict": "unknown",
+        "median_ratio": 0.758,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "note": "delivered bytes fall short of the feed-declared length, so the declared length does not describe the file we receive and the ratio cannot answer the ad question",
+        "samples": [
+          {
+            "item_id": "around-the-house-eric-g--healthy-home",
+            "episode": "Is Your House Making You Sick? Find Out with Caroline Blazovsky!",
+            "declared_bytes": 77102281,
+            "delivered_bytes": 53276415,
+            "ratio": 0.691
+          },
+          {
+            "item_id": "around-the-house-eric-g--don-t-fall-behind-your-ultimate",
+            "episode": "Don't Fall Behind: Your Ultimate Guide to Autumn Home Prep!",
+            "declared_bytes": 57274269,
+            "delivered_bytes": 42709573,
+            "ratio": 0.746
+          },
+          {
+            "item_id": "around-the-house-eric-g--from-drips-to-disasters-stop-water",
+            "episode": "From Drips to Disasters: Stop Water Damage Before It Starts!",
+            "declared_bytes": 54729590,
+            "delivered_bytes": 41493310,
+            "ratio": 0.758
+          },
+          {
+            "item_id": "around-the-house-eric-g--the-whiskey-hour-single-casks-sherry",
+            "episode": "The Whiskey Hour: Single Casks, Sherry Finishes & Why Your Ice Cubes Matter",
+            "declared_bytes": 35841728,
+            "delivered_bytes": 35842688,
+            "ratio": 1
+          },
+          {
+            "item_id": "around-the-house-eric-g--is-that-upgrade-really-worth-it",
+            "episode": "Is That Upgrade Really Worth It? Let's Find Out!",
+            "declared_bytes": 26981829,
+            "delivered_bytes": 20467875,
+            "ratio": 0.759
+          }
+        ]
+      }
     },
     "870688022": {
       "show": "Death, Sex & Money",
@@ -370,7 +547,44 @@
       "dai": false,
       "reason": "unknown",
       "resolved_host": "content.libsyn.com",
-      "checked_at": "2026-08-19T16:05:00.829Z"
+      "checked_at": "2026-08-19T16:05:00.829Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 4,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "inside-winemaking--209-andrea-card-francis-ford-coppola",
+            "episode": "209: Andrea Card - Francis Ford Coppola Winery",
+            "declared_bytes": 66967004,
+            "delivered_bytes": 66967004,
+            "ratio": 1
+          },
+          {
+            "item_id": "inside-winemaking--218-the-barrel-management-episode",
+            "episode": "218:  The Barrel Management Episode",
+            "declared_bytes": 56050630,
+            "delivered_bytes": 56050630,
+            "ratio": 1
+          },
+          {
+            "item_id": "inside-winemaking--211-heat-and-cold-stabilization-of",
+            "episode": "211: Heat and Cold Stabilization of wines with Leigh Meyering from MyEnologist",
+            "declared_bytes": 87475830,
+            "delivered_bytes": 87475830,
+            "ratio": 1
+          },
+          {
+            "item_id": "inside-winemaking--205-rich-descenzo-ets-labs",
+            "episode": "205: Rich DeScenzo - ETS Labs",
+            "declared_bytes": 69942503,
+            "delivered_bytes": 69942503,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "908005404": {
       "show": "The Maritime History Podcast",
@@ -552,7 +766,30 @@
       "dai": false,
       "reason": "unknown",
       "resolved_host": "media.engineered.network",
-      "checked_at": "2026-07-26T19:22:50.575Z"
+      "checked_at": "2026-07-26T19:22:50.575Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 2,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "causality-engineered-network--verruckt-waterslide",
+            "episode": "Verrückt Waterslide",
+            "declared_bytes": 18379074,
+            "delivered_bytes": 18379074,
+            "ratio": 1
+          },
+          {
+            "item_id": "causality-engineered-network--oceangate-titan",
+            "episode": "OceanGate Titan",
+            "declared_bytes": 20272591,
+            "delivered_bytes": 20272591,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1048826488": {
       "show": "The Clockwork Game Design Podcast",
@@ -580,14 +817,95 @@
       "dai": false,
       "reason": "unknown",
       "resolved_host": "delivery-edge.libsyn.com",
-      "checked_at": "2026-08-19T16:04:59.564Z"
+      "checked_at": "2026-08-19T16:04:59.564Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.013,
+        "episodes_probed": 4,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "cider-chat--495-cider-barrels-speak-b-tonnage",
+            "episode": "495: Cider Barrels Speak | Bâtonnage & Barrel Aging",
+            "declared_bytes": 31402076,
+            "delivered_bytes": 31402076,
+            "ratio": 1
+          },
+          {
+            "item_id": "cider-chat--489-natural-cider-production-seminar-cidercon",
+            "episode": "489: Natural Cider Production Seminar | CiderCon 2025",
+            "declared_bytes": 104114211,
+            "delivered_bytes": 105565977,
+            "ratio": 1.014
+          },
+          {
+            "item_id": "cider-chat--497-beginner-cider-makers-q-a",
+            "episode": "497:Beginner Cider Makers Q&A | Advice from Professional Cider Makers (Archive)",
+            "declared_bytes": 32416672,
+            "delivered_bytes": 32780439,
+            "ratio": 1.011
+          },
+          {
+            "item_id": "cider-chat--how-cider-is-made-lessons-from",
+            "episode": "How Cider Is Made | Lessons from 500 Episodes of Cider Chat",
+            "declared_bytes": 15448297,
+            "delivered_bytes": 16159267,
+            "ratio": 1.046
+          }
+        ]
+      }
     },
     "1056200096": {
       "show": "Odd Lots",
       "dai": true,
       "reason": "host:27083.mc.tritondigital.com",
       "resolved_host": "27083.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:22:32.976Z"
+      "checked_at": "2026-07-26T19:22:32.976Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.151,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "odd-lots--anthropic-jack-clark",
+            "episode": "Anthropic's Co-Founder and Top Economist on Doing Research at the AI Frontier",
+            "declared_bytes": 63835324,
+            "delivered_bytes": 73457293,
+            "ratio": 1.151
+          },
+          {
+            "item_id": "odd-lots--jeremy-grantham-bubble",
+            "episode": "Jeremy Grantham on How to Tell If a Bubble Is About to Burst",
+            "declared_bytes": 57341309,
+            "delivered_bytes": 64640011,
+            "ratio": 1.127
+          },
+          {
+            "item_id": "odd-lots--grace-shao-chinese-ai",
+            "episode": "Grace Shao on What the World Should Know About Chinese AI",
+            "declared_bytes": 49072820,
+            "delivered_bytes": 56825845,
+            "ratio": 1.158
+          },
+          {
+            "item_id": "odd-lots--invention-of-rope",
+            "episode": "How the Invention of Rope Gave Us Modern Civilization",
+            "declared_bytes": 35435644,
+            "delivered_bytes": 43129319,
+            "ratio": 1.217
+          },
+          {
+            "item_id": "odd-lots--cerebras-wafer-chip",
+            "episode": "Why Cerebras CEO Andrew Feldman Built The World's Largest Computer Chip",
+            "declared_bytes": 49864866,
+            "delivered_bytes": 57240891,
+            "ratio": 1.148
+          }
+        ]
+      }
     },
     "1056223392": {
       "show": "Experimental Brewing",
@@ -608,7 +926,51 @@
       "dai": true,
       "reason": "host:26033.mc.tritondigital.com",
       "resolved_host": "26033.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:26:54.396Z"
+      "checked_at": "2026-07-26T19:26:54.396Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.271,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "unexplained--s09e24-teresita-basa",
+            "episode": "Season 09 Episode 24: Audi Altarem Partem",
+            "declared_bytes": 32977117,
+            "delivered_bytes": 41928959,
+            "ratio": 1.271
+          },
+          {
+            "item_id": "unexplained--s09e20-gerry-irwin",
+            "episode": "Season 09 Episode 20: Over the Hills and Far Away",
+            "declared_bytes": 28877171,
+            "delivered_bytes": 41200270,
+            "ratio": 1.427
+          },
+          {
+            "item_id": "unexplained--s09e27-ted-binion",
+            "episode": "Season 09 Episode 27: Death in Vegas, the Ted Binion Mystery (Pt. 1 of 3)",
+            "declared_bytes": 34426128,
+            "delivered_bytes": 43305633,
+            "ratio": 1.258
+          },
+          {
+            "item_id": "unexplained--s09e27-ted-binion-pt2",
+            "episode": "Season 09 Episode 27: Death in Vegas, the Ted Binion Mystery (Pt. 2 of 3)",
+            "declared_bytes": 32606870,
+            "delivered_bytes": 41492229,
+            "ratio": 1.272
+          },
+          {
+            "item_id": "unexplained--s09e27-ted-binion-pt3",
+            "episode": "Season 09 Episode 27: Death in Vegas, the Ted Binion Mystery (Pt. 3 of 3)",
+            "declared_bytes": 43849494,
+            "delivered_bytes": 52734853,
+            "ratio": 1.203
+          }
+        ]
+      }
     },
     "1080036452": {
       "show": "the Sharp End Podcast",
@@ -629,7 +991,51 @@
       "dai": true,
       "reason": "host:27073.mc.tritondigital.com",
       "resolved_host": "27073.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:26:15.193Z"
+      "checked_at": "2026-07-26T19:26:15.193Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.17,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "las-culturistas--mindy-kaling",
+            "episode": "\"To Be Memed\" (w/ Mindy Kaling)",
+            "declared_bytes": 87979350,
+            "delivered_bytes": 102926219,
+            "ratio": 1.17
+          },
+          {
+            "item_id": "las-culturistas--darcy-carden",
+            "episode": "\"AT ONCE!\" (w/ D'Arcy Carden)",
+            "declared_bytes": 91186153,
+            "delivered_bytes": 106133022,
+            "ratio": 1.164
+          },
+          {
+            "item_id": "las-culturistas--adam-shankman",
+            "episode": "\"Gay Ang Lee\" (w/ Adam Shankman)",
+            "declared_bytes": 105383922,
+            "delivered_bytes": 120029442,
+            "ratio": 1.139
+          },
+          {
+            "item_id": "las-culturistas--everything-feet-w-gracie-abrams",
+            "episode": "\"Everything Feet\" (w/ Gracie Abrams)",
+            "declared_bytes": 79860408,
+            "delivered_bytes": 95108626,
+            "ratio": 1.191
+          },
+          {
+            "item_id": "las-culturistas--mixtape-w-slayyyter",
+            "episode": "“Mixtape” (w/ Slayyyter)",
+            "declared_bytes": 67489736,
+            "delivered_bytes": 82436605,
+            "ratio": 1.221
+          }
+        ]
+      }
     },
     "1095138637": {
       "show": "The Magnus Archives",
@@ -678,7 +1084,51 @@
       "dai": false,
       "reason": "unknown",
       "resolved_host": "content.blubrry.com",
-      "checked_at": "2026-07-26T19:22:02.059Z"
+      "checked_at": "2026-07-26T19:22:02.059Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "just-fly-performance-podcast--scott-leech",
+            "episode": "522: Scott Leech on Constraint-Led Speed Training, AI, and the Future of Coaching",
+            "declared_bytes": 79014772,
+            "delivered_bytes": 79014772,
+            "ratio": 1
+          },
+          {
+            "item_id": "just-fly-performance-podcast--chris-chase",
+            "episode": "515: Chris Chase on Plyometrics, Deceleration and Tendon Resilience",
+            "declared_bytes": 85846259,
+            "delivered_bytes": 85846259,
+            "ratio": 1
+          },
+          {
+            "item_id": "just-fly-performance-podcast--kevin-mulcahy-speed",
+            "episode": "524: Kevin Mulcahy on Playing Fast and Slow: Rethinking Team Sport Speed",
+            "declared_bytes": 87259884,
+            "delivered_bytes": 87259884,
+            "ratio": 1
+          },
+          {
+            "item_id": "just-fly-performance-podcast--525-ryan-paul-on-speed-training",
+            "episode": "525: Ryan Paul on Speed Training, Isometrics, and the Art of Intention",
+            "declared_bytes": 72641897,
+            "delivered_bytes": 72641897,
+            "ratio": 1
+          },
+          {
+            "item_id": "just-fly-performance-podcast--526-20-ideas-that-changed-my",
+            "episode": "526: 20 Ideas That Changed My Coaching Forever - Joel Smith",
+            "declared_bytes": 70799788,
+            "delivered_bytes": 70799788,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1141877104": {
       "show": "Founders",
@@ -720,7 +1170,37 @@
       "dai": true,
       "reason": "host:27083.mc.tritondigital.com",
       "resolved_host": "27083.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:27:31.110Z"
+      "checked_at": "2026-07-26T19:27:31.110Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.236,
+        "episodes_probed": 3,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "heavyweight--minneapolis",
+            "episode": "Minneapolis",
+            "declared_bytes": 31405967,
+            "delivered_bytes": 42837970,
+            "ratio": 1.364
+          },
+          {
+            "item_id": "heavyweight--julia",
+            "episode": "2026 Update: Julia",
+            "declared_bytes": 34899291,
+            "delivered_bytes": 42617475,
+            "ratio": 1.221
+          },
+          {
+            "item_id": "heavyweight--skye",
+            "episode": "2026 Update: Skye",
+            "declared_bytes": 48403299,
+            "delivered_bytes": 59835302,
+            "ratio": 1.236
+          }
+        ]
+      }
     },
     "1159251584": {
       "show": "Brady Heywood Podcast",
@@ -895,14 +1375,102 @@
       "dai": true,
       "reason": "host:26043.mc.tritondigital.com",
       "resolved_host": "26043.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:21:49.865Z"
+      "checked_at": "2026-07-26T19:21:49.865Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.105,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "this-podcast-will-kill-you--histoplasmosis",
+            "episode": "Ep 210 Histoplasmosis: Bats, birds, and budding yeast",
+            "declared_bytes": 75673961,
+            "delivered_bytes": 83482575,
+            "ratio": 1.103
+          },
+          {
+            "item_id": "this-podcast-will-kill-you--oropouche-virus",
+            "episode": "Ep 206 Oropouche Virus: More than a smidge worrisome",
+            "declared_bytes": 69775302,
+            "delivered_bytes": 77172227,
+            "ratio": 1.106
+          },
+          {
+            "item_id": "this-podcast-will-kill-you--cancer-part-1",
+            "episode": "Ep 202 Cancer Part 1: What is it?",
+            "declared_bytes": 92526488,
+            "delivered_bytes": 100323399,
+            "ratio": 1.084
+          },
+          {
+            "item_id": "this-podcast-will-kill-you--tear-gas",
+            "episode": "Ep 207 Tear Gas: How can a chemical weapon be “humane”?",
+            "declared_bytes": 72365820,
+            "delivered_bytes": 80214976,
+            "ratio": 1.108
+          },
+          {
+            "item_id": "this-podcast-will-kill-you--sleep-part-1",
+            "episode": "Ep 198 Sleep Part 1: Sleeping with one eye open",
+            "declared_bytes": 71081434,
+            "delivered_bytes": 78518901,
+            "ratio": 1.105
+          }
+        ]
+      }
     },
     "1311004083": {
       "show": "Broken Record with Rick Rubin, Malcolm Gladwell, Bruce Headlam and Justin Richmond",
       "dai": true,
       "reason": "host:27123.mc.tritondigital.com",
       "resolved_host": "27123.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:28:12.721Z"
+      "checked_at": "2026-07-26T19:28:12.721Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.132,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "broken-record--earth-wind-and-fire",
+            "episode": "Earth, Wind & Fire",
+            "declared_bytes": 51742710,
+            "delivered_bytes": 58799932,
+            "ratio": 1.136
+          },
+          {
+            "item_id": "broken-record--the-new-pornographers",
+            "episode": "The New Pornographers",
+            "declared_bytes": 51557557,
+            "delivered_bytes": 58638184,
+            "ratio": 1.137
+          },
+          {
+            "item_id": "broken-record--radiohead-ed-obrien",
+            "episode": "Radiohead’s Ed O’Brien",
+            "declared_bytes": 75562289,
+            "delivered_bytes": 82619511,
+            "ratio": 1.093
+          },
+          {
+            "item_id": "broken-record--daveed-diggs",
+            "episode": "Daveed Diggs on the Need for Artistic Expression | From Who's With Me? with W. Kamau Bell",
+            "declared_bytes": 75201132,
+            "delivered_bytes": 82354067,
+            "ratio": 1.095
+          },
+          {
+            "item_id": "broken-record--harvey-mason-jr",
+            "episode": "Harvey Mason Jr.",
+            "declared_bytes": 54242588,
+            "delivered_bytes": 61395523,
+            "ratio": 1.132
+          }
+        ]
+      }
     },
     "1322200189": {
       "show": "Crime Junkie",
@@ -1014,14 +1582,102 @@
       "dai": true,
       "reason": "host:audio.transistor.fm",
       "resolved_host": "audio.transistor.fm",
-      "checked_at": "2026-07-26T19:25:28.611Z"
+      "checked_at": "2026-07-26T19:25:28.611Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "practical-ai--black-forest-labs",
+            "episode": "Image Generation and Visual Intelligence with Black Forest Labs",
+            "declared_bytes": 46449510,
+            "delivered_bytes": 46449510,
+            "ratio": 1
+          },
+          {
+            "item_id": "practical-ai--mcp-kubernetes",
+            "episode": "Rebooting Enterprise AI with MCP and Kubernetes",
+            "declared_bytes": 46262132,
+            "delivered_bytes": 46262132,
+            "ratio": 1
+          },
+          {
+            "item_id": "practical-ai--comma-ai",
+            "episode": "Open Source Self-Driving with Comma AI",
+            "declared_bytes": 44269739,
+            "delivered_bytes": 44269739,
+            "ratio": 1
+          },
+          {
+            "item_id": "practical-ai--ai-policy-computing-power",
+            "episode": "AI policy and the battle for computing power",
+            "declared_bytes": 70437623,
+            "delivered_bytes": 70437623,
+            "ratio": 1
+          },
+          {
+            "item_id": "practical-ai--document-understanding",
+            "episode": "Technical advances in document understanding",
+            "declared_bytes": 47500643,
+            "delivered_bytes": 47500643,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1412947410": {
       "show": "The BBQ Central Show",
       "dai": false,
       "reason": "unknown",
       "resolved_host": "content.blubrry.com",
-      "checked_at": "2026-07-26T19:21:45.752Z"
+      "checked_at": "2026-07-26T19:21:45.752Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "the-bbq-central-show--grant-pinkerton",
+            "episode": "Grant Pinkerton: Pinkerton's Barbecue",
+            "declared_bytes": 90583570,
+            "delivered_bytes": 90590174,
+            "ratio": 1
+          },
+          {
+            "item_id": "the-bbq-central-show--steven-raichlen",
+            "episode": "Steven Raichlen Is A Man On Fire! Emma Nguyen Just Wins!",
+            "declared_bytes": 87050439,
+            "delivered_bytes": 87056057,
+            "ratio": 1
+          },
+          {
+            "item_id": "the-bbq-central-show--best-moments-meathead",
+            "episode": "The Best Moments of The BBQ Central Show in 10 Minutes or Less",
+            "declared_bytes": 13513373,
+            "delivered_bytes": 13513373,
+            "ratio": 1
+          },
+          {
+            "item_id": "the-bbq-central-show--sam-tours-japan-with-guests-ali",
+            "episode": "Sam Tours Japan With Guests & Ali Khan Spills On Fast Food Burgers!",
+            "declared_bytes": 99963146,
+            "delivered_bytes": 99969810,
+            "ratio": 1
+          },
+          {
+            "item_id": "the-bbq-central-show--jess-pryles-is-not-here-to",
+            "episode": "Jess Pryles Is Not Here To Fu*k Spiders!!",
+            "declared_bytes": 95210714,
+            "delivered_bytes": 95210714,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1418960261": {
       "show": "Call Her Daddy",
@@ -1133,7 +1789,51 @@
       "dai": true,
       "reason": "host:26043.mc.tritondigital.com",
       "resolved_host": "26043.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:25:34.985Z"
+      "checked_at": "2026-07-26T19:25:34.985Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.314,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "happiness-lab--no-regrets-bad-advice",
+            "episode": "Why “No Regrets” Is Bad Advice",
+            "declared_bytes": 29757859,
+            "delivered_bytes": 41241685,
+            "ratio": 1.386
+          },
+          {
+            "item_id": "happiness-lab--negative-emotions-signals",
+            "episode": "What Your Negative Emotions Are Trying to Tell You",
+            "declared_bytes": 43911660,
+            "delivered_bytes": 56073417,
+            "ratio": 1.277
+          },
+          {
+            "item_id": "happiness-lab--art-of-doing-nothing",
+            "episode": "The Art of Doing Nothing",
+            "declared_bytes": 33894406,
+            "delivered_bytes": 45791594,
+            "ratio": 1.351
+          },
+          {
+            "item_id": "happiness-lab--forget-small-talk-go-deep",
+            "episode": "Forget Small Talk: Go Deep Instead",
+            "declared_bytes": 36158068,
+            "delivered_bytes": 47498117,
+            "ratio": 1.314
+          },
+          {
+            "item_id": "happiness-lab--men-need-bromance",
+            "episode": "Men Don’t Just Need Friends. They Need Bromance.",
+            "declared_bytes": 42110240,
+            "delivered_bytes": 53854456,
+            "ratio": 1.279
+          }
+        ]
+      }
     },
     "1474857063": {
       "show": "Within Tolerance",
@@ -1196,7 +1896,37 @@
       "dai": true,
       "reason": "host:audio4.redcircle.com",
       "resolved_host": "audio4.redcircle.com",
-      "checked_at": "2026-07-26T19:24:22.043Z"
+      "checked_at": "2026-07-26T19:24:22.043Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.024,
+        "episodes_probed": 3,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "5-4-podcast--trump-v-barbara",
+            "episode": "Trump v. Barbara",
+            "declared_bytes": 63541080,
+            "delivered_bytes": 65094954,
+            "ratio": 1.024
+          },
+          {
+            "item_id": "5-4-podcast--250-years-of-bad-decisions-scotus-the-civil-war-and-the-end-",
+            "episode": "250 Years of Bad Decisions: SCOTUS, the Civil War, and the End of Reconstruction",
+            "declared_bytes": 52287947,
+            "delivered_bytes": 45752772,
+            "ratio": 0.875
+          },
+          {
+            "item_id": "5-4-podcast--the-most-destructive-chief-justice-in-my-lifetime-dissecting",
+            "episode": "\"The Most Destructive Chief Justice in My Lifetime\": Dissecting John Roberts with Lisa Gra",
+            "declared_bytes": 52223582,
+            "delivered_bytes": 55330582,
+            "ratio": 1.059
+          }
+        ]
+      }
     },
     "1503540842": {
       "show": "Black Box Down",
@@ -1217,14 +1947,81 @@
       "dai": true,
       "reason": "host:audio.buzzsprout.com",
       "resolved_host": "audio.buzzsprout.com",
-      "checked_at": "2026-07-26T19:20:37.400Z"
+      "checked_at": "2026-07-26T19:20:37.400Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "being-an-engineer--rittenhouse-engineering-school",
+            "episode": "S7E28 Justin Rittenhouse | What Engineering School Doesn't Teach You About Industry",
+            "declared_bytes": 35893593,
+            "delivered_bytes": 35894220,
+            "ratio": 1
+          },
+          {
+            "item_id": "being-an-engineer--coffee-tamper",
+            "episode": "S7E27 Daniel Kurnianto | The Engineering Journey Behind the World's First Electronic Coffe",
+            "declared_bytes": 36239435,
+            "delivered_bytes": 36240062,
+            "ratio": 1
+          },
+          {
+            "item_id": "being-an-engineer--rod-scholl-fea",
+            "episode": "S7E21 Rod Scholl | Pro Tips from 30-Year Analyst For Accurate Simulations (FEA & CFD)",
+            "declared_bytes": 34661221,
+            "delivered_bytes": 34661848,
+            "ratio": 1
+          },
+          {
+            "item_id": "being-an-engineer--heylands-lowry-continuous-improvement",
+            "episode": "S7E29 Heylands Lowry| Building an Engineering Culture of Continuous Improvement",
+            "declared_bytes": 28288913,
+            "delivered_bytes": 28289540,
+            "ratio": 1
+          },
+          {
+            "item_id": "being-an-engineer--steve-riley-factory-floor",
+            "episode": "S7E30 Steve Riley | Small Improvements, Big ROI: Lessons from the Factory Floor",
+            "declared_bytes": 26637817,
+            "delivered_bytes": 26638444,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1513823904": {
       "show": "Piano Tech Radio Hour",
       "dai": true,
       "reason": "host:audio.transistor.fm",
       "resolved_host": "audio.transistor.fm",
-      "checked_at": "2026-07-26T19:21:21.954Z"
+      "checked_at": "2026-07-26T19:21:21.954Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 2,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "piano-tech-radio-hour--mila-henry",
+            "episode": "The Consummate Collaborator w/Mila Henry",
+            "declared_bytes": 51621414,
+            "delivered_bytes": 51621414,
+            "ratio": 1
+          },
+          {
+            "item_id": "piano-tech-radio-hour--fandrich-legacy",
+            "episode": "The Fandrich Legacy of Innovation w/ Heather Fandrich",
+            "declared_bytes": 58309137,
+            "delivered_bytes": 58309137,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1514179611": {
       "show": "Camera Shake Photography Podcast",
@@ -1259,7 +2056,37 @@
       "dai": false,
       "reason": "unknown",
       "resolved_host": "d3ctxlq1ktw2nl.cloudfront.net",
-      "checked_at": "2026-07-26T19:22:47.002Z"
+      "checked_at": "2026-07-26T19:22:47.002Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 3,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "geology-bites--moons-magnetic-field",
+            "episode": "Sonia Tikoo on the Moon's Magnetic Field",
+            "declared_bytes": 26921471,
+            "delivered_bytes": 26921471,
+            "ratio": 1
+          },
+          {
+            "item_id": "geology-bites--dinosaurs-survived-asteroid",
+            "episode": "Steve Brusatte on the Dinosaurs That Survived the Asteroid",
+            "declared_bytes": 25121683,
+            "delivered_bytes": 25121683,
+            "ratio": 1
+          },
+          {
+            "item_id": "geology-bites--hotspots-fixed",
+            "episode": "Bernhard Steinberger on Whether Hotspots Are Fixed",
+            "declared_bytes": 22843440,
+            "delivered_bytes": 22843440,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1525689066": {
       "show": "Ask Lisa: The Psychology of Parenting",
@@ -1308,7 +2135,51 @@
       "dai": true,
       "reason": "host:26063.mc.tritondigital.com",
       "resolved_host": "26063.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:27:06.224Z"
+      "checked_at": "2026-07-26T19:27:06.224Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.126,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "wicked-words--highway-of-tears",
+            "episode": "Jessica McDiarmid: Highway of Tears",
+            "declared_bytes": 51344260,
+            "delivered_bytes": 59527366,
+            "ratio": 1.159
+          },
+          {
+            "item_id": "wicked-words--london-falling",
+            "episode": "Patrick Radden Keefe: London Falling",
+            "declared_bytes": 64697640,
+            "delivered_bytes": 72397165,
+            "ratio": 1.119
+          },
+          {
+            "item_id": "wicked-words--catch-the-devil",
+            "episode": "Pamela Colloff: Catch the Devil",
+            "declared_bytes": 63018692,
+            "delivered_bytes": 70727830,
+            "ratio": 1.122
+          },
+          {
+            "item_id": "wicked-words--emily-winslow-jane-doe-january",
+            "episode": "Emily Winslow: Jane Doe January",
+            "declared_bytes": 51190447,
+            "delivered_bytes": 58501689,
+            "ratio": 1.143
+          },
+          {
+            "item_id": "wicked-words--eva-benefield-ghost-girl",
+            "episode": "Eva Benefield: Ghost Girl",
+            "declared_bytes": 58125221,
+            "delivered_bytes": 65434373,
+            "ratio": 1.126
+          }
+        ]
+      }
     },
     "1545953110": {
       "show": "Huberman Lab",
@@ -1392,7 +2263,51 @@
       "dai": true,
       "reason": "host:audio.buzzsprout.com",
       "resolved_host": "audio.buzzsprout.com",
-      "checked_at": "2026-07-26T19:22:59.616Z"
+      "checked_at": "2026-07-26T19:22:59.616Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 5,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "tuned-in-hpa--mazda-fd3s-rx7",
+            "episode": "165: Pioneering the Mazda FD3S RX-7",
+            "declared_bytes": 89844775,
+            "delivered_bytes": 89844775,
+            "ratio": 1
+          },
+          {
+            "item_id": "tuned-in-hpa--cad-gateway-to-making-dreams",
+            "episode": "164: CAD: The Gateway to Making Dreams a Reality",
+            "declared_bytes": 57961916,
+            "delivered_bytes": 57961916,
+            "ratio": 1
+          },
+          {
+            "item_id": "tuned-in-hpa--zf-8hp-transmission",
+            "episode": "163: ZF 8HP: The Automatic Everyone Wants?",
+            "declared_bytes": 60948766,
+            "delivered_bytes": 60948766,
+            "ratio": 1
+          },
+          {
+            "item_id": "tuned-in-hpa--167-from-turbo-hondas-to-holley",
+            "episode": "167: From Turbo Hondas to Holley EFI Guru",
+            "declared_bytes": 87348547,
+            "delivered_bytes": 87348547,
+            "ratio": 1
+          },
+          {
+            "item_id": "tuned-in-hpa--168-how-do-you-make-3000",
+            "episode": "168: How Do You Make 3000+HP Survive Drag and Drive?",
+            "declared_bytes": 100094517,
+            "delivered_bytes": 100094517,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1593204897": {
       "show": "Catalyst with Shayle Kann",
@@ -1469,7 +2384,30 @@
       "dai": true,
       "reason": "host:27093.mc.tritondigital.com",
       "resolved_host": "27093.mc.tritondigital.com",
-      "checked_at": "2026-07-26T19:27:08.695Z"
+      "checked_at": "2026-07-26T19:27:08.695Z",
+      "ad_inflation": {
+        "verdict": "injected",
+        "median_ratio": 1.213,
+        "episodes_probed": 2,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "bone-valley--s5-criminal-mischief",
+            "episode": "Chapter 1 | Criminal Mischief",
+            "declared_bytes": 30641767,
+            "delivered_bytes": 37837654,
+            "ratio": 1.235
+          },
+          {
+            "item_id": "bone-valley--earwitness-behind-the-crown",
+            "episode": "Chapter 1 | Behind the Crown",
+            "declared_bytes": 41484342,
+            "delivered_bytes": 49427956,
+            "ratio": 1.191
+          }
+        ]
+      }
     },
     "1646101002": {
       "show": "The Mel Robbins Podcast",
@@ -1490,7 +2428,30 @@
       "dai": true,
       "reason": "host:s381.podbean.com",
       "resolved_host": "s381.podbean.com",
-      "checked_at": "2026-07-26T19:21:19.282Z"
+      "checked_at": "2026-07-26T19:21:19.282Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 2,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "violin-chronicles--amati-painted-violins",
+            "episode": "Ep 6. Andrea Amati Part 3 The painted Violins of Charles IX",
+            "declared_bytes": 68042754,
+            "delivered_bytes": 68042754,
+            "ratio": 1
+          },
+          {
+            "item_id": "violin-chronicles--gasparo-da-salo",
+            "episode": "Ep 1. The master craftsman: Gasparo Da Salo and his violins.",
+            "declared_bytes": 25802545,
+            "delivered_bytes": 25802545,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1702258458": {
       "show": "Handsome",
@@ -1511,14 +2472,81 @@
       "dai": true,
       "reason": "host:audio.buzzsprout.com",
       "resolved_host": "audio.buzzsprout.com",
-      "checked_at": "2026-07-26T19:20:28.187Z"
+      "checked_at": "2026-07-26T19:20:28.187Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 3,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "lab-to-market-leadership--hod-lipson-robotics",
+            "episode": "Why Great Labs Need Breadth | Professor Hod Lipson on Robotics, AI and the 2030s",
+            "declared_bytes": 42557184,
+            "delivered_bytes": 42557184,
+            "ratio": 1
+          },
+          {
+            "item_id": "lab-to-market-leadership--graphene-at-scale",
+            "episode": "Graphene at Scale: How Paragraf Is Realising the Wonder Material's Potential | Dr Simon Th",
+            "declared_bytes": 47194631,
+            "delivered_bytes": 47194631,
+            "ratio": 1
+          },
+          {
+            "item_id": "lab-to-market-leadership--why-great-scientists-don-39-t",
+            "episode": "Why Great Scientists Don&#39;t Always Build Great Startups with Antti Vasara",
+            "declared_bytes": 36894841,
+            "delivered_bytes": 36894841,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1755173852": {
       "show": "TechSurge: Deep Tech Podcast",
       "dai": true,
       "reason": "host:audio.transistor.fm",
       "resolved_host": "audio.transistor.fm",
-      "checked_at": "2026-07-26T19:21:14.927Z"
+      "checked_at": "2026-07-26T19:21:14.927Z",
+      "ad_inflation": {
+        "verdict": "ad-free",
+        "median_ratio": 1,
+        "episodes_probed": 4,
+        "measured_at": "2026-08-23T03:58:24.540Z",
+        "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "samples": [
+          {
+            "item_id": "techsurge-deep-tech-podcast--google-search",
+            "episode": "Google's Chief Technologist on Intelligent Search in the Age of AI",
+            "declared_bytes": 75083294,
+            "delivered_bytes": 75083294,
+            "ratio": 1
+          },
+          {
+            "item_id": "techsurge-deep-tech-podcast--pixels-to-intelligence",
+            "episode": "Pixels to Intelligence: The Next Era of Imaging",
+            "declared_bytes": 49209301,
+            "delivered_bytes": 49209301,
+            "ratio": 1
+          },
+          {
+            "item_id": "techsurge-deep-tech-podcast--the-moving-bottleneck-networking-power-memory",
+            "episode": "The Moving Bottleneck: Networking, Power, Memory, and the Race to Win AI",
+            "declared_bytes": 68446584,
+            "delivered_bytes": 68446584,
+            "ratio": 1
+          },
+          {
+            "item_id": "techsurge-deep-tech-podcast--intel-ceo-lip-bu-tan-on",
+            "episode": "Intel CEO Lip-Bu Tan on 40 Years of Contrarian Bets in Semiconductors",
+            "declared_bytes": 34337153,
+            "delivered_bytes": 34337153,
+            "ratio": 1
+          }
+        ]
+      }
     },
     "1795483480": {
       "show": "Good Hang with Amy Poehler",

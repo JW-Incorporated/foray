@@ -7,7 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { isDaiHost, DAI_HOSTS } from "./dai.mjs";
+import { isDaiHost, DAI_HOSTS, mergeShowEntry } from "./dai.mjs";
 
 test("matches known DAI platforms", () => {
   for (const h of ["megaphone.fm", "rss.art19.com", "sphinx.acast.com", "omny.fm", "cdn.simplecast.com"]) {
@@ -77,4 +77,45 @@ test("prefix trackers are never listed as origins", () => {
   for (const p of ["podtrac.com", "dts.podtrac.com", "pdst.fm", "pdrl.fm", "pscrb.fm", "mgln.ai", "chartable.com"]) {
     assert.equal(isDaiHost(p), false, `${p} is a prefix, not an origin`);
   }
+});
+
+
+/* MUTATION: restore the original assignment in classify-dai.mjs --
+   `cache.shows[cid] = { show, ...verdict }` -- or make mergeShowEntry drop the
+   spread of `existing`.
+
+   That is what --recheck did until 2026-08-23, and it is destructive in a way
+   nothing reports: a re-resolve rewrites the four fields this module owns and
+   deletes `ad_inflation`, the measured ad-load verdict plus the per-episode
+   byte samples behind it. The resolve costs one request; the measurement it
+   would have deleted cost 112, and the file would still look healthy. */
+test("a recheck updates the host verdict without deleting the measurement", () => {
+  const existing = {
+    show: "Tuned In",
+    dai: false,
+    reason: "unknown",
+    resolved_host: "old.example.com",
+    checked_at: "2026-01-01T00:00:00.000Z",
+    ad_inflation: { verdict: "ad-free", median_ratio: 1, episodes_probed: 5 },
+  };
+  const verdict = {
+    dai: true,
+    reason: "host:audio.buzzsprout.com",
+    resolved_host: "audio.buzzsprout.com",
+    checked_at: "2026-08-23T00:00:00.000Z",
+  };
+  const merged = mergeShowEntry(existing, "Tuned In", verdict);
+
+  // The host verdict still wins for its own fields -- a recheck that could not
+  // overwrite a stale flag would have no reason to exist.
+  assert.equal(merged.dai, true);
+  assert.equal(merged.resolved_host, "audio.buzzsprout.com");
+  assert.equal(merged.checked_at, "2026-08-23T00:00:00.000Z");
+  // ...and it does not get to speak for fields it knows nothing about.
+  assert.deepEqual(merged.ad_inflation, existing.ad_inflation);
+});
+
+test("mergeShowEntry handles a show seen for the first time", () => {
+  const merged = mergeShowEntry(undefined, "New Show", { dai: false, reason: "unknown" });
+  assert.deepEqual(merged, { show: "New Show", dai: false, reason: "unknown" });
 });

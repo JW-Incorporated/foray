@@ -78,6 +78,23 @@ export async function resolveHost(url, { userAgent = "Foray/0.1", timeoutMs = 15
   }
 }
 
+/** Fold a fresh host verdict into whatever the cache already holds for a show.
+
+    THE OBVIOUS VERSION SILENTLY DESTROYS EVIDENCE. `--recheck` used to do
+    `cache.shows[cid] = { show, ...verdict }`, which is correct for the four
+    fields this file owns and quietly deletes every field it does not — as of
+    2026-08-23 that is `ad_inflation`, the measured ad-load verdict and the
+    per-episode byte samples behind it (`tools/transcribe/ad-inflation.mjs`).
+    A re-resolve costs one HEAD-free ranged GET; re-earning the measurement it
+    threw away costs another 112, and nothing would have reported the loss.
+
+    The host verdict still WINS for its own four fields — a recheck that could
+    not overwrite a stale `dai` would be pointless. It just does not get to
+    speak for fields it knows nothing about. */
+export function mergeShowEntry(existing, show, verdict) {
+  return { ...(existing || {}), show, ...verdict };
+}
+
 /** Classify one show from a sample episode URL.
 
     Returns `{ dai, reason, resolved_host, checked_at }`.

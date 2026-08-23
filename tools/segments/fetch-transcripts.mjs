@@ -15,18 +15,27 @@
    trusting the call site, and the test suite pins it.
 
    WHY ONLY THE ANCHORABLE SHOWS BY DEFAULT. 7,571 timed transcripts exist in
-   the index, and 4,411 of them belong to shows measured injecting 8-11 minutes
-   of ads into the file we receive (docs/curation/transcription-scale-plan.md
-   §4). Their timestamps do not describe our audio, so a segment cut from them
-   points at the wrong moment — fetching them is bandwidth spent on transcripts
-   we cannot anchor. The default selection is therefore:
+   the index, and 6,625 of them belong to shows MEASURED injecting ads into the
+   file we receive — 8-11 minutes on the worst of them
+   (docs/curation/transcription-scale-plan.md §4). Their timestamps do not
+   describe our audio, so a segment cut from them points at the wrong moment;
+   fetching them is bandwidth spent on transcripts we cannot anchor. The default
+   selection is therefore:
 
      non-DAI shows          stable timeline by construction
      + AD_FREE_SHOWS        DAI-flagged but measured delivering byte-identical
 
-   `--all-timed` overrides this once the ad-inflation scan has a verdict for the
-   remaining 14 shows; until then those 2,573 transcripts are unmeasured, not
-   rejected, and the run summary says so rather than rounding them away.
+   THE UNMEASURED POOL IS GONE, and it did not pay out. As of 2026-08-23 all 27
+   transcript-shipping shows have been probed, so nothing here is waiting on a
+   verdict any more. The 2,573 transcripts that were unmeasured resolved to 89
+   anchorable, 2,183 injecting and 301 that still cannot be called — which moves
+   this default from 587 to 676 and closes the "one cheap scan from an answer"
+   line the scale plan had been carrying.
+
+   `--all-timed` still overrides the selection, and it is now the only way to
+   reach the 6,625 injecting ones. ADR-0008 is what governs whether that is ever
+   worth doing: ad load stopped being a sourcing gate there and became a
+   per-episode number that decides how a segment is anchored.
 
    WHERE THE BYTES GO — `data-local/transcripts/`, gitignored, same shape the
    research corpus settled on (#255): fetched third-party text lives outside the
@@ -87,12 +96,34 @@ export function spanImplausible(lastCueSec, feedDurationSec) {
   return lastCueSec > feedDurationSec * MAX_SPAN_RATIO;
 }
 
-/** Shows flagged `dai_suspected` whose delivered audio was MEASURED to be
-    byte-identical to the feed declaration, so publisher timestamps anchor.
-    Source: docs/curation/transcription-scale-plan.md §4 (2026-08-15), method
-    `tools/transcribe/ad-inflation.mjs`. This is a list of measurements, not
-    opinions — do not add a show to it without a ratio below AD_FREE_THRESHOLD. */
-export const AD_FREE_SHOWS = ["Being an Engineer", "Geology Bites", "Practical AI"];
+/** Shows whose delivered audio was MEASURED to match the feed declaration, so
+    publisher timestamps anchor. Not an opinion, and not maintained by hand:
+    this is a transcription of every ad_inflation.verdict === "ad-free" in
+    data/dai-classification.json, and tools/transcribe/ad-inflation.test.mjs
+    fails if the two ever disagree. To change it, re-run the scan:
+
+      node tools/transcribe/ad-inflation.mjs
+
+    Measured 2026-08-23 across all 27 transcript-shipping shows, 5 episodes
+    each by 2-byte ranged GET. Note what is NOT here: Around the House with
+    Eric G came back at a median 0.758 -- delivering a QUARTER FEWER bytes
+    than its feed declares -- which is "could not tell", not "clean". */
+export const AD_FREE_SHOWS = [
+  "Being an Engineer",
+  "Causality",
+  "Geology Bites",
+  "Inside Winemaking - the art and science of growing grapes and crafting wine",
+  "Just Fly Performance Podcast",
+  "Lab to Market Leadership",
+  "Piano Tech Radio Hour",
+  "Practical AI",
+  "Sigma Nutrition Radio",
+  "TechSurge: Deep Tech Podcast",
+  "The BBQ Central Show",
+  "The Enormocast: the climbing podcast",
+  "The Violin Chronicles Podcast",
+  "Tuned In",
+];
 
 export class FetchError extends Error {
   constructor(code, message) {

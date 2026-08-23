@@ -35,6 +35,53 @@
     rate limiter. */
 export const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 
+/** The AUDIO fetcher, for requests against an enclosure rather than a feed or
+    a transcript. Two tools make those -- `tools/foray/verify-source-audio.mjs`
+    and `tools/transcribe/ad-inflation.mjs` -- and it lives here for the same
+    reason the gate does: there were THREE copies of this string and the third
+    one was silently blocked.
+
+    MEASURED 2026-08-23, five requests to one Buzzsprout enclosure, alternating,
+    reproducible in both directions:
+
+      ForayBot/0.1 (+https://github.com/...)                     206
+      ForayBot/0.1 (ad-inflation scan; +https://github.com/...)  403
+      Foray/0.1 (personal podcast client; ...)                   206
+
+    The only difference is the extra `ad-inflation scan;` product token that
+    `ad-inflation.mjs` had drifted into its private copy, and Buzzsprout's edge
+    refuses it. Nothing announced this: a 403 has no body worth measuring, so
+    the scan simply reported "could not tell" for every Buzzsprout show -- which
+    is 423 timed transcripts, including the 337 of Being an Engineer that are
+    already being anchored on the strength of an earlier measurement.
+
+    So: do not add a product token, a mode name, or a run id to this string. The
+    contact address and the repo URL are the honest part and they are enough. */
+export const AUDIO_UA = "ForayBot/0.1 (+https://github.com/JW-Incorporated/foray; wjduvall@gmail.com)";
+
+/** Node's fetch sends `accept-language: *` by default, and Captivate's edge
+    answers THAT with `404 Missing redirect URL` on every one of its
+    `episodes.captivate.fm/episode/<guid>.mp3` redirectors. curl sends no
+    Accept-Language and gets the 302 -- which is exactly the "it worked when I
+    checked it by hand" that cost an afternoon in #226. The header cannot be
+    deleted through fetch, so it is overwritten with a real language tag.
+    Verified 2026-08-16 by `tools/foray/verify-source-audio.mjs`: `*` -> 404,
+    `en` -> 302. Re-verified 2026-08-23 by the ad-inflation scan, which had no
+    Accept-Language at all and drew 404 on every Captivate enclosure. */
+export const ACCEPT_LANGUAGE = "en";
+
+/** The complete way this project asks an audio host for two bytes.
+
+    Both facts above are invisible in the response: a 403 and a 404 each arrive
+    with no length to measure, so a probe missing either header does not crash
+    -- it quietly reports "could not tell" and the operator blames the host. One
+    definition, both fetchers, so a fix found by one is a fix the other has. */
+export const AUDIO_PROBE_HEADERS = Object.freeze({
+  range: "bytes=0-1",
+  "user-agent": AUDIO_UA,
+  "accept-language": ACCEPT_LANGUAGE,
+});
+
 /** Per host, not global. This catalogue's feeds cluster onto a handful of CDNs,
     so N workers are otherwise N simultaneous hits on one host. */
 export const MIN_HOST_INTERVAL_MS = 1200;

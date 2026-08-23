@@ -100,12 +100,17 @@ node tools/segments/fetch-transcripts.mjs --all-timed  # once ad-inflation has v
 ADR-0004 step 1, and the only file here that requests a transcript body.
 
 **Default selection is anchorable, not everything.** Of 7,571 timed transcripts
-in the index, 4,411 belong to shows measured injecting 8–11 minutes of ads into
-the file we receive, so their timestamps do not describe our audio and a segment
-cut from them points at the wrong moment. The default is therefore non-DAI shows
-plus `AD_FREE_SHOWS` — DAI-flagged shows *measured* delivering byte-identical.
-The remaining 2,573 are unmeasured rather than rejected; `--all-timed` takes
-them once `tools/transcribe/ad-inflation.mjs` has a verdict.
+in the index, 6,625 belong to shows *measured* injecting ads into the file we
+receive — 8–11 minutes on the worst — so their timestamps do not describe our
+audio and a segment cut from them points at the wrong moment. The default is
+therefore non-DAI shows plus `AD_FREE_SHOWS`, the DAI-flagged shows measured
+delivering byte-identical: **676 transcripts across 21 shows.**
+
+There is no longer an unmeasured pool. `tools/transcribe/ad-inflation.mjs`
+probed all 27 transcript-shipping shows on 2026-08-23; the 2,573 that had never
+been measured came back 89 anchorable, 2,183 injecting, and 301 unresolved
+(Around the House with Eric G, whose feed declares lengths ~25% larger than it
+delivers). `--all-timed` still reaches the rest, under ADR-0008.
 
 **Text lives outside the repo.** Bodies and normalised cues go to
 `data-local/transcripts/` (gitignored), the shape the research corpus settled on
