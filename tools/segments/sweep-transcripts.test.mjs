@@ -38,6 +38,7 @@ import {
   sweepShow,
   writeJsonAtomic,
 } from "./sweep-transcripts.mjs";
+import { pickEnclosure } from "../refresh/enclosure.mjs";
 
 const feed = (items) => `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
@@ -83,6 +84,40 @@ test("extracts every recorded field from one item", () => {
   assert.equal(ep.duration_sec, 4350);
   assert.equal(ep.chapters_url, "https://example.com/ep1-chapters.json");
   assert.deepEqual(ep.transcript_types, ["text/plain", "text/vtt", "application/json"]);
+});
+
+/* MUTATION: delete `enclosure_bytes` from the row `parseFeed` builds, or set it
+   to `attrOf(enclosure, "length")` without passing it through
+   `enclosureLengthBytes`. Verified failing on the first and third assertions
+   respectively.
+
+   THE MISSING DENOMINATOR. `ad-inflation.mjs` measures ad load as delivered
+   bytes / feed-declared length. The sweep read the `<enclosure>` tag and kept
+   only its `url`, so every one of the 500 breadth shows was unmeasurable — the
+   scan cannot even report "injected" or "ad-free", only "could not tell", for a
+   pool whose whole purpose is to be judged on exactly that. It costs no extra
+   request, and episode rows live in `data-local/` (#255), so nothing committed
+   grows.
+
+   ONE DEFINITION, TWO PARSERS. This file reads feeds with regexes and
+   `refresh/enclosure.mjs` reads them with fast-xml-parser, so they cannot share
+   a code path — but `length="0"` meaning "unknown" is a fact about RSS, not
+   about a parser, and the last four times a rule like that lived in two places
+   the copies drifted (#211/#219/#249, #313, #316, #318). The third assertion
+   drives both parsers over the same values and fails if they ever disagree. */
+test("parseFeed keeps the enclosure length, and agrees with the curated parser", () => {
+  const { episodes } = parseFeed(feed(ITEM_FULL + ITEM_BARE));
+  assert.equal(episodes[0].enclosure_bytes, 61000000);
+  // No length attribute at all is null, not 0 and not NaN.
+  assert.equal(episodes[1].enclosure_bytes, null);
+
+  for (const raw of ["61000000", "0", "unknown", "", "-5", "12.5"]) {
+    const viaSweep = parseFeed(feed(
+      `<item><guid>g</guid><enclosure url="https://static.example.org/e.mp3" length="${raw}"/></item>`,
+    )).episodes[0].enclosure_bytes;
+    const viaCurated = pickEnclosure({ enclosure: { "@_url": "https://static.example.org/e.mp3", "@_length": raw } }).bytes;
+    assert.equal(viaSweep, viaCurated, `the two feed parsers disagree on length="${raw}"`);
+  }
 });
 
 test("the enclosure of the first item is offered as the DAI sample", () => {

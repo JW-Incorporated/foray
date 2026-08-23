@@ -16,7 +16,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { classifyShow, isDaiHost, mergeShowEntry } from "./dai.mjs";
+import { classifyShow, daiHostIn, daiReason, mergeShowEntry } from "./dai.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
@@ -53,15 +53,30 @@ for (const e of Object.values(session.episodes)) {
   }
 }
 
+/** The hosts a cached entry lets us judge it on, WITHOUT a request.
+
+    An entry written before the chain fix has only `resolved_host` — the last
+    hop — so that is all `--reclassify` can offer it, and a Spreaker show cached
+    that way stays `unknown` until something re-resolves it. That is the honest
+    behaviour rather than a gap: this mode exists to apply the current host list
+    to the evidence on file, and inventing chain hops it never recorded would be
+    the opposite. `--recheck` is the mode that goes and gets the chain. */
+function cachedHosts(entry) {
+  if (Array.isArray(entry.resolved_chain) && entry.resolved_chain.length) return entry.resolved_chain;
+  return entry.resolved_host ? [entry.resolved_host] : [];
+}
+
 if (RECLASSIFY) {
   let flipped = 0;
   for (const [cid, entry] of Object.entries(cache.shows)) {
     if (!entry.resolved_host) continue;
-    const dai = isDaiHost(entry.resolved_host);
+    const via = daiHostIn(cachedHosts(entry));
+    const dai = !!via;
     if (dai !== entry.dai) {
-      console.log(`  ${entry.dai ? "DAI -> static" : "static -> DAI"}  ${entry.show.slice(0, 38).padEnd(39)} ${entry.resolved_host}`);
+      const where = via && via !== entry.resolved_host ? `${via} -> ${entry.resolved_host}` : entry.resolved_host;
+      console.log(`  ${entry.dai ? "DAI -> static" : "static -> DAI"}  ${entry.show.slice(0, 38).padEnd(39)} ${where}`);
       entry.dai = dai;
-      entry.reason = dai ? `host:${entry.resolved_host}` : "unknown";
+      entry.reason = daiReason(via, entry.resolved_host, null);
       flipped++;
     }
   }

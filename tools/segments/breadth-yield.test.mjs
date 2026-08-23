@@ -175,8 +175,22 @@ test("an index with no tranche still reports, with a null arm", () => {
    stay in gitignored data-local/ (#255). A single passed-through field
    reintroduces the size problem invisibly. Verified failing. */
 test("a summary row carries nothing that scales with episode count", () => {
-  const row = summaryRow({ ...rec(), episodes: [{ guid: "e1" }, { guid: "e2" }], transcript_types: { "text/vtt": 9 } });
+  const row = summaryRow({
+    ...rec(),
+    episodes: [{ guid: "e1" }, { guid: "e2" }],
+    transcript_types: { "text/vtt": 9 },
+    /* EVERY NON-SCALAR THE SWEEP CAN PRODUCE MUST BE FED IN HERE, or the loop
+       below asserts over a row that could not have violated it. `enclosure_chain`
+       arrives from `sweepShow` as an ARRAY and was added to `summaryRow`
+       without landing in this fixture — so this guard stayed green while the
+       real shape it exists to police went past it. That is the hollow-guard
+       failure #318 named, reproduced in the suite that was supposed to catch
+       it. `summaryRow` joins the chain to a string; the assertion below is
+       what makes that a requirement rather than a preference. */
+    enclosure_chain: ["dts.podtrac.com", "api.spreaker.com", "d1bxy2pveef3fq.cloudfront.net"],
+  });
   assert.equal(row.episodes, undefined, "episode rows must never reach the committed file");
+  assert.equal(row.enclosure_chain, "dts.podtrac.com > api.spreaker.com > d1bxy2pveef3fq.cloudfront.net");
   for (const v of Object.values(row)) {
     assert.ok(!Array.isArray(v) && (v === null || typeof v !== "object"), `summary rows must be flat scalars, got ${JSON.stringify(v)}`);
   }
