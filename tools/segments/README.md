@@ -100,12 +100,24 @@ node tools/segments/fetch-transcripts.mjs --all-timed  # once ad-inflation has v
 ADR-0004 step 1, and the only file here that requests a transcript body.
 
 **Default selection is anchorable, not everything.** Of 7,571 timed transcripts
-in the index, 4,411 belong to shows measured injecting 8–11 minutes of ads into
-the file we receive, so their timestamps do not describe our audio and a segment
-cut from them points at the wrong moment. The default is therefore non-DAI shows
-plus `AD_FREE_SHOWS` — DAI-flagged shows *measured* delivering byte-identical.
-The remaining 2,573 are unmeasured rather than rejected; `--all-timed` takes
-them once `tools/transcribe/ad-inflation.mjs` has a verdict.
+in the index, 6,625 belong to shows *measured* injecting ads into the file we
+receive — 8–11 minutes on the worst — so their timestamps do not describe our
+audio and a segment cut from them points at the wrong moment. The default is
+therefore non-DAI shows plus `AD_FREE_SHOWS`, the shows measured delivering
+byte-identical: **676 transcripts across 15 shows.**
+
+There is no longer an unmeasured pool. `tools/transcribe/ad-inflation.mjs`
+probed all 27 transcript-shipping shows on 2026-08-23; the 2,573 that had never
+been measured came back 89 anchorable, 2,183 injecting, and 301 unresolved
+(Around the House with Eric G, whose feed declares lengths ~25% larger than it
+delivers). `--all-timed` reaches the rest.
+
+**676 is not the same as "measured clean".** It is 645 measured ad-free plus 31
+measured *injecting* — Cider Chat, which is non-DAI and so passes the first
+clause without the measurement ever being consulted (median 1.013). Left in
+deliberately: ADR-0008 reversed a >1% rejection gate that had dropped eleven
+shows, so re-adding one here is an amendment to that ADR rather than a change
+to this directory. The verdict is recorded either way.
 
 **Text lives outside the repo.** Bodies and normalised cues go to
 `data-local/transcripts/` (gitignored), the shape the research corpus settled on

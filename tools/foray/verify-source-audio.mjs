@@ -26,19 +26,31 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { AUDIO_PROBE_HEADERS } from "../segments/politeness.mjs";
+import {
+  AD_FREE_FLOOR,
+  AD_FREE_THRESHOLD,
+  parseContentRangeTotal,
+} from "../transcribe/ad-inflation.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const UA = "ForayBot/0.1 (+https://github.com/JW-Incorporated/foray; wjduvall@gmail.com)";
-const RATIO_CEILING = 1.01;
 
-/* Node's fetch sends `accept-language: *` by default, and Captivate's edge
- * answers that with `404 Missing redirect URL` on every one of its
- * `episodes.captivate.fm/episode/<guid>.mp3` redirectors — three of our nine
- * sources. curl sends no Accept-Language and gets the 302, which is exactly the
- * kind of "it worked when I checked it by hand" that costs an afternoon. The
- * header cannot be deleted through fetch, so it is overwritten with a real
- * language tag. Verified 2026-08-16: `*` -> 404, `en` -> 302. */
-const HEADERS = { Range: "bytes=0-1", "User-Agent": UA, "Accept-Language": "en" };
+/* The band comes from `ad-inflation.mjs`, which is where it is derived and
+ * tested. It used to be a private `RATIO_CEILING = 1.01` here — a fourth copy
+ * of the same number, and a ONE-SIDED one. That mattered: the 2026-08-23 scan
+ * found Around the House delivering a median 0.758, a quarter FEWER bytes than
+ * its feed declares, and a `ratio > ceiling` test passes that as verified. A
+ * source whose delivered length does not match its declaration is not verified
+ * in either direction — the timestamps in `segment-sources.json` were authored
+ * against the declared file. */
+
+/* The Range, the User-Agent and the Accept-Language all come from
+ * `tools/segments/politeness.mjs`, which records why each one is load-bearing:
+ * Captivate 404s Node's default `accept-language: *`, and Buzzsprout 403s a
+ * User-Agent carrying an extra product token. This file used to hold its own
+ * copy of all three; `ad-inflation.mjs` held a second, drifted copy and was
+ * being refused by Buzzsprout because of it. One definition now. */
+const HEADERS = AUDIO_PROBE_HEADERS;
 
 const only = (() => {
   const i = process.argv.indexOf("--id");
@@ -57,15 +69,15 @@ for (const s of targets) {
   let line = `${s.id.padEnd(30)}`;
   try {
     const res = await fetch(s.audio_url, { headers: HEADERS, redirect: "follow" });
-    const range = res.headers.get("content-range");
-    const total = range ? Number(range.split("/").pop()) : NaN;
+    const total = parseContentRangeTotal(res.headers.get("content-range"));
     const ratio = Number.isFinite(total) && s.audio_bytes ? total / s.audio_bytes : NaN;
     line += ` HTTP ${res.status}  total=${Number.isFinite(total) ? total : "?"}  declared=${s.audio_bytes}  ratio=${Number.isFinite(ratio) ? ratio.toFixed(4) : "?"}`;
     // Drain so the socket closes rather than waiting on the agent's timeout.
     await res.arrayBuffer().catch(() => {});
     if (res.status !== 206) { line += "  <-- FAIL: not 206"; failures++; }
     else if (!Number.isFinite(ratio)) { line += "  <-- FAIL: no parsable Content-Range"; failures++; }
-    else if (ratio > RATIO_CEILING) { line += `  <-- FAIL: ad-inflated past ${RATIO_CEILING}`; failures++; }
+    else if (ratio >= AD_FREE_THRESHOLD) { line += `  <-- FAIL: ad-inflated past ${AD_FREE_THRESHOLD}`; failures++; }
+    else if (ratio < AD_FREE_FLOOR) { line += `  <-- FAIL: delivers short of the declared ${AD_FREE_FLOOR}`; failures++; }
   } catch (e) {
     line += `  <-- FAIL: ${e.message}`;
     failures++;

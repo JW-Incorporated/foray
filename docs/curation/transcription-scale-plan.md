@@ -314,12 +314,55 @@ undercounts the asset badly: Geology Bites contributes **1** episode to
 `discover.json` and **120 timed transcripts** to its feed. Sweeping all 220
 shows (2026-08-22: 219 ok, 1 NETWORK) gives the real picture:
 
+That was the picture on 2026-08-22, and the middle row was the whole
+opportunity — 2,573 transcripts on 14 shows nobody had ever measured:
+
 | pool | timed transcripts | shows | status |
 |---|---|---|---|
 | non-DAI + **measured** ad-free | **587** | 10 | **usable today, free** |
 | DAI-flagged, verdict unknown | 2,573 | 14 | **one cheap scan from an answer** |
 | measured injecting ads | 4,411 | 3 | dead for anchoring (§4) |
 | **total timed** | **7,571** | 27 | |
+
+### The scan ran on 2026-08-23, and the answer is mostly no
+
+All 27 transcript-shipping shows probed, 5 episodes each, 112 ranged GETs over
+2.1 minutes. **No host asked us to slow down** — zero 429s, zero retries. There
+is no unmeasured pool left:
+
+| pool | timed transcripts | shows | status |
+|---|---|---|---|
+| **measured** ad-free | **645** | 14 | **anchors for free** |
+| measured injecting ads | 6,625 | 12 | dead for anchoring (§4) |
+| measured, still cannot say | 301 | 1 | see "Around the House" below |
+| **total timed** | **7,571** | 27 | |
+
+The 2,573 split **89 anchorable / 2,183 injecting / 301 unresolved** — the
+hoped-for pool paid out at **3.5%**. Five shows came back clean (Tuned In 51,
+Lab to Market Leadership 35, and one transcript each from TechSurge, The Violin
+Chronicles and Piano Tech Radio Hour); eight came back injecting, including the
+four biggest (Las Culturistas 560, Unexplained 431, Broken Record 395, Wicked
+Words 292). **Either answer was worth having, and this one is worth having
+because it stops the ASR question being deferred any longer** — see §8.
+
+Two findings from the same run that were not what it went looking for:
+
+- **Around the House with Eric G (301) cannot be called.** Four of its five
+  sampled episodes deliver a QUARTER FEWER bytes than the feed declares
+  (0.691, 0.746, 0.758, 0.759; the fifth is exactly 1.000). The old one-sided
+  `ratio < 1.01` read that as ad-free and would have admitted all 301. Under-size
+  is not evidence of no ads — it is evidence the declared length does not
+  describe the file we receive, which disqualifies the transcript for the same
+  reason injection does. The threshold is two-sided now. **What would settle it:**
+  ADR-0008’s decode-and-compare — download one episode, decode its true duration,
+  and check it against the publisher transcript’s last cue rather than against a
+  feed length we have just caught being wrong.
+- **Cider Chat (31) was already in the 587 and is injecting** at a median 1.0125
+  (samples 1.000 / 1.011 / 1.014 / 1.046). It qualified on its non-DAI flag alone
+  and had never been probed. Small — tens of seconds, paddable under ADR-0008 —
+  but the "anchorable today" pool has been carrying 31 transcripts that are not
+  byte-stable. No behaviour is changed here: `isAnchorableShow` admits non-DAI
+  shows by construction, and narrowing that is an ADR-0008 call, not this scan’s.
 
 ### What that is worth in segments
 
@@ -330,7 +373,13 @@ episode.** Applying that rate:
 |---|---|---|
 | today | 19 | **69** |
 | the 587 free anchorable transcripts | 587 | **~2,100** |
-| if the 2,573 unmeasured are mostly ad-free | +2,573 | +~9,200 |
+| ~~if the 2,573 unmeasured are mostly ad-free~~ | ~~+2,573~~ | ~~+~9,200~~ |
+| **measured 2026-08-23: what the scan actually added** | **+89** | **+~320** |
+| **anchorable pool after the scan** | **676** | **~2,430** |
+
+The 3.6 rate is re-checked against `data/segments.json` and holds as a mean, but
+it is 19 episodes ranging 1–8 segments each (median 4), so treat any projection
+built on it as an order of magnitude, not a forecast.
 
 **So free publisher transcripts move the segment pool by roughly 30x, for zero
 dollars and zero ASR.** §3's "34 episodes scattered across five unrelated
@@ -377,9 +426,16 @@ ASR is still the only route to the **non-DAI pool's 25,254 episodes**, which is
 where subject depth on demand comes from — free transcripts are 587 episodes on
 whatever ten subjects those shows happen to cover, not on a subject we choose.
 What changed is the urgency and the ordering: nothing needs to be bought before
-the first several Forays are built, and **the ad-inflation scan over the 14
-unmeasured shows (§6 step 2) is still the cheapest content in the project** —
-under an hour of ranged GETs standing between us and up to 2,573 more.
+the first several Forays are built.
+
+**The cheapest content in the project has now been bought, and it was small.**
+The ad-inflation scan over the 14 unmeasured shows (§6 step 2) ran on 2026-08-23
+for 112 ranged GETs and added **89** transcripts, not the 2,573 the row above
+was holding open. That row can no longer be used to defer the ASR decision:
+free publisher transcripts top out at **676 episodes on 15 shows** (of which 645
+are measured clean and 31 are Cider Chat, measured injecting but admitted by the
+non-DAI clause — see `tools/segments/fetch-transcripts.mjs`), and every
+subject beyond what those shows happen to cover needs #108.
 
 ## 8. What this doc is not
 
