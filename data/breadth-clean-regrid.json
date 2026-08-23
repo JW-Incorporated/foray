@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-08-23T14:49:45.114Z",
+  "generated_at": "2026-08-23T15:13:14.392Z",
   "method": "tools/transcribe/decode-compare.mjs probeGrid (#323) re-run over every measured_clean show: for each probed episode, four requests for one URL's length — 2-byte ranged GET and unranged, under both outbound identities. No body is read; the unranged calls are aborted as their headers arrive.",
   "policy": "This file can move a show OFF measured_clean and can never move one onto it. See verdictNote: a grid that agrees with itself says this delivery path does not lie the way atelier.flightcast.com does, which is a statement about one instrument, not a clean bill.",
   "source": {
@@ -12,9 +12,9 @@
   },
   "episodes_per_show": 3,
   "requests": {
-    "feeds": 24,
-    "grid_requests": 288,
-    "elapsed_sec": 366
+    "feeds": 25,
+    "grid_requests": 300,
+    "elapsed_sec": 0
   },
   "summary": {
     "audited": {
@@ -33,7 +33,11 @@
       "shows": 1,
       "timed_transcripts": 84
     },
-    "note": "varies_by_request is positive evidence of per-request assembly and moves a show off measured_clean. stable_across_the_grid is NOT a clean bill: it means this delivery path does not lie in the way atelier.flightcast.com does, and stability across requests is consistent with a static file AND with a stitcher that did not vary for us. inconclusive rows never got the comparison made — a refused or headerless cell, most often an origin answering unranged requests chunked — and learned nothing."
+    "unclassified": {
+      "shows": 0,
+      "timed_transcripts": 0
+    },
+    "note": "varies_by_request is positive evidence of per-request assembly and moves a show off measured_clean. stable_across_the_grid is NOT a clean bill: it means this delivery path does not lie in the way atelier.flightcast.com does, and stability across requests is consistent with a static file AND with a stitcher that did not vary for us. inconclusive rows never got a length back in all four cells — a refusal under one identity, or an origin answering unranged requests chunked — and a grid missing any cell may be missing the one that would have condemned. unclassified must be zero: it counts rows carrying no verdict at all, and exists so the four buckets always sum to audited."
   },
   "results": [
     {
@@ -57,7 +61,7 @@
           56576979
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://audio.artbell.am/episodes/2015/1368-october-22-2015-nanotechnology-douglas-mulhall.mp3",
@@ -229,7 +233,7 @@
           197304039
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://feeds.fountain.fm/ZwwaDULvAj0yZvJ5kdB9/items/00dg7ceth1H4QYfTCgyK/files/VIDEO---DEFAULT---8e54f5ab-e6a4-4017-827b-30a13820a8db.mp4/ORIGINAL.mp3",
@@ -401,7 +405,7 @@
           36939300
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://media.blubrry.com/beckershealthcarepodcast/ins.blubrry.com/beckershealthcarepodcast/BKR_HC_Payer_Amanda_Free_P_8-20-26_RD1.mp3",
@@ -573,7 +577,7 @@
           65502845
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://talkpython.fm/episodes/download/559/12-things-you-should-and-shouldnt-do-in-aws.mp3",
@@ -745,7 +749,7 @@
           55120129
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/pdcn.co/e/pscrb.fm/rss/p/serve.podhome.fm/episode/98d1b634-3ead-490c-ade3-08dc4d9e1446/63922927351241373810d01dbd-c6a3-42ca-8083-3927d393f548.mp3",
@@ -917,7 +921,7 @@
           64013591
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://pp1.bbmpx.com/protect/mgg/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/www.macgeekgab.com/media/cachefly/MGG_20260817.mp3",
@@ -1089,7 +1093,7 @@
           79640329
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://pp1.bbmpx.com/protect/giggab/op3.dev/e,pg=d24e53de-df95-5e2d-9dee-2c0020edae0b/pscrb.fm/rss/p/media.blubrry.com/gig_gab/dts.podtrac.com/redirect.mp3/www.giggabpodcast.com/cdn/giggab/GG_20260817-547.mp3",
@@ -1261,7 +1265,7 @@
           130808333
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://feeds.fountain.fm/40huHEEF6JMPGYctMuUI/items/66C2G8oi639jHXaEQtYt/files/AUDIO---DEFAULT---ff9c701c-924b-44d9-b1fa-5d925feb024b.mp3",
@@ -1433,7 +1437,7 @@
           77881519
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/themoneysessions/Leah_Harlan_TMS_Episode.mp3?dest-id=1119794",
@@ -1592,24 +1596,10 @@
       "timed_transcripts": 84,
       "prior_verdict": "ad-free",
       "prior_n": 5,
-      "grid": {
-        "status": "inconclusive",
-        "varies_by_request": false,
-        "episodes_probed": 3,
-        "episodes_informative": 0,
-        "varying_episodes": 0,
-        "varying_totals": [],
-        "totals_seen": [
-          29348653,
-          33685591,
-          39157524
-        ]
-      },
-      "note": "PROBE GRID: inconclusive — only 0 of 3 attempted episode(s) (wanted 3) got a ranged and an unranged answer to compare. An origin that reports no length on one axis — an unranged reply sent chunked, or a refusal — cannot be asked the question at all, because the flightcast discrepancy appeared on exactly that axis. Nothing was learned about this show and its disposition is untouched; this is not a negative result",
       "grids": [
         {
           "url": "https://podcasts.beehiiv.com/d49fdcee-2974-496c-a979-86aec5ad0a33/019ef26a-ddd5-76f1-bfb9-ee587ed1fec9/01a00ad2-4ba8-7d1e-92f6-1e24f5a76cfa/01a00ae3-e675-77c8-b82d-5f03de1da49b.mp3",
-          "checked_at": "2026-08-23T14:45:56.585Z",
+          "checked_at": "2026-08-23T15:12:52.146Z",
           "cells": [
             {
               "identity": "probe",
@@ -1658,7 +1648,7 @@
         },
         {
           "url": "https://podcasts.beehiiv.com/d49fdcee-2974-496c-a979-86aec5ad0a33/019ef26a-ddd5-76f1-bfb9-ee587ed1fec9/019fc519-99c5-7d0d-b821-c18e69877d48/019fc519-9a65-7b4a-9383-7cc66b4cc01d.mp3",
-          "checked_at": "2026-08-23T14:46:01.394Z",
+          "checked_at": "2026-08-23T15:12:56.946Z",
           "cells": [
             {
               "identity": "probe",
@@ -1707,7 +1697,7 @@
         },
         {
           "url": "https://podcasts.beehiiv.com/d49fdcee-2974-496c-a979-86aec5ad0a33/019ef26a-ddd5-76f1-bfb9-ee587ed1fec9/019fc3b2-1615-7536-ab03-8dbc4f51ab3f/019fd25d-37d3-71e1-9070-1b4ce7e3ac8e.mp3",
-          "checked_at": "2026-08-23T14:46:06.184Z",
+          "checked_at": "2026-08-23T15:13:01.745Z",
           "cells": [
             {
               "identity": "probe",
@@ -1754,7 +1744,21 @@
           "episode": "50 Years & Still Building: A Chat with Garry Tallent of the E Street Band",
           "guid": "019fc3b2-1615-71da-8554-71a4cc548be0"
         }
-      ]
+      ],
+      "note": "PROBE GRID: inconclusive — only 0 of 3 attempted episode(s) (wanted 3) returned a length in all 4 cells. A grid missing any cell cannot be asked the question: on flightcast exactly one cell of the four carried the discrepancy and the other three agreed, so a missing cell may be the one that would have condemned. Common causes are a refusal under one identity and an unranged reply sent chunked with no Content-Length. Nothing was learned about this show and its disposition is untouched; this is not a negative result",
+      "grid": {
+        "status": "inconclusive",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 0,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          29348653,
+          33685591,
+          39157524
+        ]
+      }
     },
     {
       "show_id": "1170239851",
@@ -1777,7 +1781,7 @@
           87882137
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://traffic.libsyn.com/dclpodcast/Becky_UGWDW_8.26_final.mp3",
@@ -1949,7 +1953,7 @@
           65866184
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://media.blubrry.com/usa_firearm_training/content.blubrry.com/usa_firearm_training/CCP-S14E5-TopWaysBetterTraining.mp3",
@@ -2121,7 +2125,7 @@
           28147533
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://podcast.scotusstats.com/2025/24-856.mp3",
@@ -2293,7 +2297,7 @@
           35616558
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://tr.ausha.co/oZNjmS0J2YEV/api.soundcast.io/v1/stitch/ausha.mp3?tags=659C36ED,CCCCDAAE&apiKey=c1a94b3301c64853868548ac73233ca1&podcastUrl=https%3A%2F%2Faudio.ausha.co%2FoZNjmS0J2YEV.mp3%3Ft%3D1786822423",
@@ -2465,7 +2469,7 @@
           107276374
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://traffic.libsyn.com/secure/wcypodcast/721.mp3?dest-id=72040",
@@ -2637,7 +2641,7 @@
           55561098
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://audio.podigee-cdn.net/2552045-m-112e431cbec35f70dcc24aa09159fe09.mp3?source=feed",
@@ -2809,7 +2813,7 @@
           37756997
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://traffic.libsyn.com/secure/jasshow/JAS_EP340_mixdown_Track_1.mp3?dest-id=325386",
@@ -2981,7 +2985,7 @@
           17792025
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://media.blubrry.com/charlashispanas/content.blubrry.com/charlashispanas/Episodio_1187-Noticias_mezcla.mp3",
@@ -3153,7 +3157,7 @@
           78246308
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://media.blubrry.com/downtimepodcast/content.blubrry.com/downtimepodcast/GregCallaghan24FINAL.mp3",
@@ -3325,7 +3329,7 @@
           95348273
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://media.blubrry.com/mindy_diamond_on_independence/content.blubrry.com/mindy_diamond_on_independence/Diamond-Podcast-ep270-Matt_Brown-V3-080124.mp3",
@@ -3497,7 +3501,7 @@
           55097956
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://media.blubrry.com/workingcowspodcast/media.blubrry.com/workingcowspodcast/content.blubrry.com/workingcowspodcast/Working_Cows_Ep_374-Brian_Dougherty_and_Luke_Jones.mp3",
@@ -3669,7 +3673,7 @@
           26271242
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://audio.podigee-cdn.net/2515614-m-52e5bd4496d7c3d56cfc1e7198c39750.mp3?source=feed",
@@ -3841,7 +3845,7 @@
           81993443
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://audio.podigee-cdn.net/2488885-m-d4b84161b79bc4038975e3c3288aa859.mp3?source=feed",
@@ -4013,7 +4017,7 @@
           85401942
         ]
       },
-      "note": "PROBE GRID: 3 episode(s), each asked four ways (2-byte ranged GET and unranged, under both outbound identities), reported one length every time. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
       "grids": [
         {
           "url": "https://media.blubrry.com/rewildingearth/content.blubrry.com/rewildingearth/Austin_Alvorado.mp3",
@@ -4164,6 +4168,5 @@
         }
       ]
     }
-  ],
-  "rederived_at": "2026-08-23T14:52:09.514Z"
+  ]
 }

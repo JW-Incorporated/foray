@@ -540,7 +540,7 @@ const FLOORS = {
      erases: a grid nobody answered must never read as a grid that agreed with
      itself. That is ADR-0008's HEAD failure restated in a new unit, and it is
      the failure that would silently re-certify shows nothing has measured. */
-  "tools/segments/regrid-clean.test.mjs": 18,
+  "tools/segments/regrid-clean.test.mjs": 25,
   "tools/transcribe/fetch-audio.test.mjs": 64,
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV

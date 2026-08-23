@@ -491,11 +491,17 @@ Nothing here aggregates a result to a hostname or touches a host list.
 
 ### The 2026-08-23 run
 
-24 shows, 3 episodes each, **288 grid requests and 24 feed fetches in 366 s**,
-no bodies read. 288 cells, 288 answered at the HTTP level: 144 × `206` ranged and
-144 × `200` unranged, **zero 4xx, zero 429, zero 503** — the standing
-zero-throttle record holds. No `Content-Encoding` anywhere, so no compression
-confounds any cell.
+24 shows, 3 episodes each. **300 grid requests and 25 feed fetches**, no bodies
+read: 288 + 24 in the first pass (366 s), then 12 + 1 re-probing the one
+inconclusive show through `--resume` (14 s), whose cells superseded its earlier
+ones. The committed file therefore holds 72 grids / 288 cells while recording
+300 requests spent — the cost of the evidence, which is not the same as its size.
+
+Every retained cell answered at the HTTP level: 144 × `206` ranged and 144 ×
+`200` unranged, **zero 4xx, zero 429, zero 503** — the standing zero-throttle
+record holds. No `Content-Encoding` anywhere, so no compression confounds any
+cell. The only six cells reporting no length are beehiiv's unranged replies,
+observed twice independently.
 
 **No show varies by request. Nothing moved off `measured_clean`, and
 `measurement_coverage` is unchanged at 24 shows / 5,381 timed transcripts.**

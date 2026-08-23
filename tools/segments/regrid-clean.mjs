@@ -64,6 +64,11 @@
                                           [--yield FILE] [--measured F,F]
                                           [--out FILE] [--limit N]
                                           [--host SUBSTR,SUBSTR] [--resume]
+                                          [--rederive]
+
+     --rederive re-judges the committed rows from the grids already stored on
+     them and makes no request at all; it is how a change to the reading of a
+     grid reaches evidence that was already bought.
 */
 
 import { readFileSync, existsSync } from "node:fs";
@@ -114,6 +119,12 @@ export function answeredCells(grid) {
   return (grid?.cells || []).filter((c) => Number.isFinite(c.total));
 }
 
+/** The grid is two binary axes, so it is four cells. Named because
+    `gridIsInformative` and the artifact test both assert against it, and a
+    partial grid answering as though it were whole is this file's headline
+    failure. */
+export const GRID_CELLS = 4;
+
 /** Did this episode's grid actually ask the question it claims to have asked?
 
     THE FAILURE THIS EXISTS TO PREVENT is a show whose requests were refused
@@ -124,25 +135,39 @@ export function answeredCells(grid) {
     Buzzsprout edge answering 403 to one product token and 206 to another, so a
     partly-refused grid is a measured shape on this corpus, not a hypothetical.
 
-    THE FLOOR IS BOTH SIDES OF THE RANGE AXIS, NOT SIMPLY TWO ANSWERS, AND THAT
-    IS THE LESSON THIS RUN PAID FOR. An earlier version asked only for two
-    answered cells, and the first pass over the real pool found why that is too
-    forgiving: `podcasts.beehiiv.com` answers an unranged request CHUNKED, with
-    no `Content-Length` at all, so both its unranged cells report nothing and
-    the two survivors are both ranged. Under a bare count-of-two that show read
-    `stable` — while the flightcast discrepancy lives precisely on the cell it
-    did not answer, the unranged one. A grid that cannot compare a ranged
-    request against an unranged one has not asked the flightcast question at
-    all, and must not be allowed to answer it in the negative.
+    THE FLOOR IS ALL FOUR CELLS, AND ANYTHING LESS IS A DIFFERENT INSTRUMENT.
+    Two weaker rules were written before this one and both were wrong, in the
+    same direction, for the same reason.
+
+      - "two answered cells" — too forgiving on the RANGE axis, and the first
+        pass over the real pool caught it. `podcasts.beehiiv.com` answers an
+        unranged request CHUNKED, with no `Content-Length` at all, so both its
+        unranged cells report nothing and the two survivors are both ranged.
+        That is two answers that agree, from a grid that never once compared a
+        ranged request against an unranged one.
+
+      - "one of each on the range axis" — too forgiving on the IDENTITY axis,
+        and a reviewer caught it. A grid whose entire `client` identity was
+        refused still passed, which is worse than it sounds: `probe` ranged +
+        `probe` unranged + `client` ranged is exactly the three cells flightcast
+        answers HONESTLY. The missing fourth is the only one that lied.
+
+    THE DISCREPANCY WAS IN ONE CELL OF FOUR, so a grid missing any cell may be
+    missing the one that would have condemned it. There is no principled subset:
+    the instrument is the whole grid, and three quarters of it is not a weaker
+    version of the same measurement but a different measurement that happens to
+    agree with itself. `politeness.mjs` records a Buzzsprout edge answering 403
+    to one product token and 206 to another, reproducible both ways, so losing
+    exactly one identity is a measured shape on this corpus, not a hypothetical.
 
     (Note this is also the other half of `probeGrid`'s `Number(null) === 0`
-    guard earning its keep. Without it those two chunked cells would have
-    arrived as `total: 0`, joined `distinct_totals`, and condemned an innocent
-    show for the crime of not sending a header.) */
+    guard earning its keep. Without it those beehiiv cells would have arrived as
+    `total: 0`, joined `distinct_totals`, and condemned an innocent show for the
+    crime of not sending a header.) */
 export function gridIsInformative(grid) {
-  const answered = answeredCells(grid);
-  return answered.some((c) => c.ranged) && answered.some((c) => !c.ranged);
+  return (grid?.cells || []).length === GRID_CELLS && answeredCells(grid).length === GRID_CELLS;
 }
+
 
 /** The shows whose "clean" verdict this run is auditing, biggest asset first.
 
@@ -275,7 +300,7 @@ export function showGridVerdict(grids) {
 export function verdictNote(v, { perShow = EPISODES_PER_SHOW } = {}) {
   if (v.status === "varies") {
     return (
-      `PROBE GRID: ${v.varying_episodes} of ${v.episodes_probed} probed episode(s) were served ` +
+      `${NOTE_PREFIX} ${v.varying_episodes} of ${v.episodes_probed} probed episode(s) were served ` +
       `MORE THAN ONE LENGTH for a single URL depending on how the request was made ` +
       `(${v.varying_totals.join(" / ")} bytes). Two lengths for one URL mean two resources, which is ` +
       `per-request assembly — the #323 finding, on this show. The ranged-GET samples that produced this ` +
@@ -284,41 +309,57 @@ export function verdictNote(v, { perShow = EPISODES_PER_SHOW } = {}) {
   }
   if (v.status === "stable") {
     return (
-      `PROBE GRID: ${v.episodes_probed} episode(s), each asked four ways (2-byte ranged GET and unranged, ` +
-      `under both outbound identities), reported one length every time. This does NOT re-certify the show: ` +
-      `it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a ` +
-      `stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is ` +
-      `unchanged and still rests on its ranged-GET samples`
+      `${NOTE_PREFIX} ${v.episodes_probed} episode(s), each asked all four ways (2-byte ranged GET and ` +
+      `unranged, under both outbound identities), and all ${v.episodes_probed * GRID_CELLS} cells reported ` +
+      `the same length for their URL. This does NOT re-certify the show: it says only that this delivery ` +
+      `path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a ` +
+      `cache window looks exactly like this. The show's disposition is unchanged and still rests on its ` +
+      `ranged-GET samples`
     );
   }
   return (
-    `PROBE GRID: inconclusive — only ${v.episodes_informative} of ${v.episodes_probed} attempted episode(s) ` +
-    `(wanted ${perShow}) got a ranged and an unranged answer to compare. An origin that reports no length ` +
-    `on one axis — an unranged reply sent chunked, or a refusal — cannot be asked the question at all, ` +
-    `because the flightcast discrepancy appeared on exactly that axis. Nothing was learned about this ` +
-    `show and its disposition is untouched; this is not a negative result`
+    `${NOTE_PREFIX} inconclusive — only ${v.episodes_informative} of ${v.episodes_probed} attempted ` +
+    `episode(s) (wanted ${perShow}) returned a length in all ${GRID_CELLS} cells. A grid missing any cell ` +
+    `cannot be asked the question: on flightcast exactly one cell of the four carried the discrepancy and ` +
+    `the other three agreed, so a missing cell may be the one that would have condemned. Common causes are ` +
+    `a refusal under one identity and an unranged reply sent chunked with no Content-Length. Nothing was ` +
+    `learned about this show and its disposition is untouched; this is not a negative result`
   );
 }
 
 /** The audit's own arithmetic, so the PR body never has to be trusted.
 
     Counted over the pool this run actually probed rather than over the coverage
-    file, and the two are reconciled by `--dry-run` printing both. */
+    file, and the two are reconciled by `--dry-run` printing both.
+
+    `unclassified` EXISTS TO KEEP THE SUM HONEST, and a reviewer is why. The
+    three real buckets read `r.grid.status`, so a row that somehow carries no
+    `grid` at all was counted in `audited` and in nothing else — the buckets
+    silently stopped summing to the total, in a block the PR body quotes
+    verbatim. No code path emits such a row today and the suite pins that the
+    committed file has none. It is the SILENCE that was wrong: a fourth bucket
+    that is visibly non-zero is a bug report, where a total that quietly fails
+    to add up is a wrong number nobody notices. */
 export function summarise(rows) {
   const tally = (pred) => {
     const hit = (rows || []).filter(pred);
     return { shows: hit.length, timed_transcripts: hit.reduce((n, r) => n + (r.timed_transcripts || 0), 0) };
   };
+  const known = new Set(["varies", "stable", "inconclusive"]);
   return {
     audited: tally(() => true),
     varies_by_request: tally((r) => r.grid?.status === "varies"),
     stable_across_the_grid: tally((r) => r.grid?.status === "stable"),
     inconclusive: tally((r) => r.grid?.status === "inconclusive"),
+    unclassified: tally((r) => !known.has(r.grid?.status)),
     note:
       "varies_by_request is positive evidence of per-request assembly and moves a show off measured_clean. " +
       "stable_across_the_grid is NOT a clean bill: it means this delivery path does not lie in the way " +
       "atelier.flightcast.com does, and stability across requests is consistent with a static file AND " +
-      "with a stitcher that did not vary for us. inconclusive rows never got the comparison made — a refused or headerless cell, most often an origin answering unranged requests chunked — and learned nothing.",
+      "with a stitcher that did not vary for us. inconclusive rows never got a length back in all four " +
+      "cells — a refusal under one identity, or an origin answering unranged requests chunked — and a grid " +
+      "missing any cell may be missing the one that would have condemned. unclassified must be zero: it " +
+      "counts rows carrying no verdict at all, and exists so the four buckets always sum to audited.",
   };
 }
 
@@ -363,19 +404,69 @@ export function parseArgs(argv) {
     change a sentence would spend another 288 requests on origins that already
     answered, which is the opposite of politeness. */
 export function rederive(prev, { perShow = EPISODES_PER_SHOW } = {}) {
-  const results = (prev?.results || []).map((r) => {
-    const grid = showGridVerdict(r.grids);
-    /* THE FETCH NOTE STILL WINS, and survives re-derivation: "the feed would
-       not load" explains a row better than any verdict drawn from the grids
-       that failure prevented. It is recovered from the stored note's prefix
-       because it is the one fact on the row that no grid can reconstruct. */
-    const fetchNote = typeof r.note === "string" && r.note.includes(" — PROBE GRID:")
-      ? r.note.slice(0, r.note.indexOf(" — PROBE GRID:"))
-      : null;
-    const note = verdictNote(grid, { perShow });
-    return { ...r, grid, note: fetchNote ? `${fetchNote} — ${note}` : note };
-  });
+  const results = (prev?.results || []).map((r) => judgeRow(r, { perShow }));
   return { ...prev, results, summary: summarise(results), rederived_at: new Date().toISOString() };
+}
+
+/** How a row's fetch note and its grid note are joined, and split apart again.
+
+    ONE CONSTANT FOR BOTH DIRECTIONS, because `judgeRow` recovers the fetch note
+    by searching for exactly what it wrote. Derived from `NOTE_PREFIX`, which
+    every note `verdictNote` emits must open with, so the join and the split
+    cannot drift: renaming the prefix on one side alone would otherwise start
+    silently eating "feed unreadable: ..." on the next re-judgement, leaving a
+    row that still looks perfectly well-formed. The suite pins both the
+    round-trip and the prefix. */
+export const NOTE_PREFIX = "PROBE GRID:";
+export const NOTE_SEP = " — ";
+export const NOTE_JOIN = NOTE_SEP + NOTE_PREFIX;
+
+/** One row, re-judged from the grids stored on it. No request.
+
+    THE GRIDS ARE THE EVIDENCE AND EVERYTHING ELSE ON THE ROW IS AN OPINION
+    ABOUT THEM, so this is the ONLY place a row's `grid` and `note` are set —
+    the live pass, `--rederive` and `--resume` all go through it. `deriveRow`
+    earns the same rule in `measure-suspects.mjs` and a reviewer had to teach it
+    there: `--resume` used to copy prior rows verbatim, which let one file hold
+    rows judged by two standards with nothing on them saying which. That is not
+    hypothetical here. The first pass over this pool ran a weaker
+    `gridIsInformative` and called `podcasts.beehiiv.com` stable; a `--resume`
+    that copied rows would have carried exactly the row the fix existed to
+    correct, still saying `stable`, past the fix. */
+export function judgeRow(row, { perShow = EPISODES_PER_SHOW } = {}) {
+  const grid = showGridVerdict(row?.grids);
+  /* THE FETCH NOTE STILL WINS, and survives re-judgement: "the feed would not
+     load" explains a row better than any verdict drawn from the grids that
+     failure prevented, and it is the one fact on the row that no grid can
+     reconstruct. */
+  const prior = typeof row?.note === "string" ? row.note : "";
+  const fetchNote = prior.includes(NOTE_JOIN) ? prior.slice(0, prior.indexOf(NOTE_JOIN)) : null;
+  const note = verdictNote(grid, { perShow });
+  return { ...row, grid, note: fetchNote ? `${fetchNote}${NOTE_SEP}${note}` : note };
+}
+
+/** The report's provenance block, shared by the completed and stopped-early
+    writes. FACTORED BECAUSE THE STOPPED WRITE USED TO OMIT IT: a run cut short
+    by a throttle produced a file with no `method`, no `policy` and no `summary`,
+    which is the one file a later reader most needs to be able to interpret —
+    and which the artifact test would have rejected with an unhelpful
+    `undefined`. A partial measurement still has to say what it is. */
+export function reportShell(args, requests) {
+  return {
+    version: 1,
+    generated_at: new Date().toISOString(),
+    method:
+      "tools/transcribe/decode-compare.mjs probeGrid (#323) re-run over every measured_clean show: for each " +
+      "probed episode, four requests for one URL's length — 2-byte ranged GET and unranged, under both " +
+      "outbound identities. No body is read; the unranged calls are aborted as their headers arrive.",
+    policy:
+      "This file can move a show OFF measured_clean and can never move one onto it. See verdictNote: a grid " +
+      "that agrees with itself says this delivery path does not lie the way atelier.flightcast.com does, " +
+      "which is a statement about one instrument, not a clean bill.",
+    source: { yield: args.yieldPath, measured: args.measured },
+    episodes_per_show: args.perShow,
+    requests,
+  };
 }
 
 async function main() {
@@ -419,36 +510,61 @@ async function main() {
   }
 
   const outPath = resolvePath(process.cwd(), args.out);
-  const carried = new Map();
+  /* EVERY PRIOR ROW, keyed by show. `done` is the narrower set this run may
+     SKIP; `kept` is what the output must still contain. */
+  const kept = new Map();
+  const done = new Set();
   const priorRequests = { feeds: 0, grid_requests: 0 };
   if (args.resume && existsSync(outPath)) {
-    /* CARRIED FORWARD KEYED, and the request count carried with them. Both
-       rules are `measure-suspects.mjs`'s, learned there from a reviewer: a
-       resumed run that rewrites the file with only its own rows deletes
-       evidence, and one that reports only its own requests understates the
-       politeness cost of a two-pass measurement to anyone auditing it later. */
+    /* TWO RULES, BOTH `measure-suspects.mjs`'s AND BOTH TAUGHT IT BY A REVIEWER,
+       and an earlier version of this block cited them by name while obeying
+       neither.
+
+       EVERY PRIOR ROW IS KEPT, not only the ones this run considers settled and
+       not only the ones in today's pool. Run the full pool, then resume with
+       `--host` narrowed or `--limit` set, and rows outside that narrower pool
+       are neither carried nor re-probed: they simply vanish, while `requests`
+       goes on claiming the cost of evidence the file no longer holds. The rows
+       this run re-probes are replaced below, by `show_id`.
+
+       AND THEY ARE RE-JUDGED, NOT COPIED. See `judgeRow`: the grids are the
+       evidence and the verdict is an opinion about them, so a row measured by an
+       earlier pass must be re-judged by today's rules. This is not hypothetical
+       here — the first pass over this pool ran a weaker `gridIsInformative` and
+       called `podcasts.beehiiv.com` stable. No request is made: this reads
+       cells already committed. */
     const prior = JSON.parse(readFileSync(outPath, "utf8"));
     priorRequests.feeds = prior.requests?.feeds || 0;
     priorRequests.grid_requests = prior.requests?.grid_requests || 0;
     for (const r of prior.results || []) {
-      /* ONLY A SETTLED ROW IS CARRIED. An `inconclusive` row is precisely the
-         one a resumed run exists to re-attempt, so carrying it would make
+      if (r?.show_id == null) continue;
+      const judged = judgeRow(r, { perShow: args.perShow });
+      kept.set(String(r.show_id), judged);
+      /* ONLY A SETTLED ROW IS SKIPPED. An `inconclusive` row is precisely the
+         one a resumed run exists to re-attempt, so marking it done would make
          `--resume` permanently unable to improve the file. */
-      if (r?.show_id != null && (r.grid?.status === "stable" || r.grid?.status === "varies")) carried.set(String(r.show_id), r);
+      if (judged.grid.status === "stable" || judged.grid.status === "varies") done.add(String(r.show_id));
     }
-    console.log(`--resume: ${carried.size} prior row(s) already probed in ${args.out}\n`);
+    console.log(
+      `--resume: ${kept.size} prior row(s) in ${args.out}, ${done.size} settled ` +
+        `(${priorRequests.feeds} feed + ${priorRequests.grid_requests} grid request(s) already spent)\n`,
+    );
   }
 
   const started = Date.now();
   let feeds = 0;
   let gridRequests = 0;
-  const rows = [];
+  /* SEEDED WITH EVERY KEPT ROW, then replaced by `show_id` as this run measures.
+     Building the output from `pool` alone is what deleted the out-of-pool rows;
+     see the `--resume` block above. */
+  const byId = new Map(kept);
+  /* Written into every checkpoint below rather than derived from `pool`, so a
+     run that stops early records what it PROBED and not what it planned to. */
+  const rowsOut = () => pool.map((s) => byId.get(s.show_id)).filter(Boolean)
+    .concat([...byId.values()].filter((r) => !pool.some((s) => s.show_id === String(r.show_id))));
 
   for (const s of pool) {
-    if (carried.has(s.show_id)) {
-      rows.push(carried.get(s.show_id));
-      continue;
-    }
+    if (done.has(s.show_id)) continue;
     const feedUrl = feedById.get(s.show_id);
     let episodes = [];
     let note = null;
@@ -486,27 +602,33 @@ async function main() {
           `\nSTOPPING — ${stop[0].host || "an origin"} answered HTTP ${stop[0].status} ` +
             `(${stop[0].identity}, ${stop[0].ranged ? "ranged" : "unranged"}) on ${stop[0].url}`,
         );
-        console.error("No further requests were made. Re-run with --resume once the host is happy.");
+        /* HONEST ABOUT THE OVERSHOOT. `probeGrid` exposes no abort hook, so the
+           four cells of the episode in flight had already been sent when this
+           was read; up to three of them followed the throttle. Nothing further
+           is requested. Saying "no further requests were made" full stop would
+           be the kind of small inaccuracy that makes a politeness record
+           worthless. */
+        console.error(
+          `Up to ${GRID_CELLS - 1} further cell(s) of that episode were already in flight; nothing after it ` +
+            `was requested. Re-run with --resume once the host is happy.`,
+        );
+        const stoppedRows = byId.size ? rowsOut() : [];
         writeJsonAtomic(outPath, {
-          version: 1,
-          generated_at: new Date().toISOString(),
+          ...reportShell(args, { feeds: priorRequests.feeds + feeds, grid_requests: priorRequests.grid_requests + gridRequests }),
           stopped_early: { reason: `HTTP ${stop[0].status}`, host: stop[0].host, url: stop[0].url },
-          episodes_per_show: args.perShow,
-          requests: { feeds: priorRequests.feeds + feeds, grid_requests: priorRequests.grid_requests + gridRequests },
-          results: rows,
+          summary: summarise(stoppedRows),
+          results: stoppedRows,
         });
         return 2;
       }
     }
 
-    const verdict = showGridVerdict(grids);
-    const row = {
-      ...s,
-      grid: verdict,
-      note: note ? `${note} — ${verdictNote(verdict, { perShow: args.perShow })}` : verdictNote(verdict, { perShow: args.perShow }),
-      grids,
-    };
-    rows.push(row);
+    /* ONE PLACE SETS `grid` AND `note`, and it is the same one `--rederive` and
+       `--resume` use. The fetch note is handed in through the row so `judgeRow`
+       can recover it later; see `NOTE_JOIN`. */
+    const row = judgeRow({ ...s, grids, note: note ? `${note}${NOTE_JOIN}` : null }, { perShow: args.perShow });
+    const verdict = row.grid;
+    byId.set(s.show_id, row);
     console.log(
       `${String(s.timed_transcripts).padStart(5)} timed  ${String(s.enclosure_host).padEnd(28)} ` +
         `${verdict.status.padEnd(10)} ${verdict.episodes_informative}/${verdict.episodes_probed} informative  ` +
@@ -514,34 +636,23 @@ async function main() {
     );
   }
 
+  const rows = rowsOut();
   const summary = summarise(rows);
-  const out = {
-    version: 1,
-    generated_at: new Date().toISOString(),
-    method:
-      "tools/transcribe/decode-compare.mjs probeGrid (#323) re-run over every measured_clean show: for each " +
-      "probed episode, four requests for one URL's length — 2-byte ranged GET and unranged, under both " +
-      "outbound identities. No body is read; the unranged calls are aborted as their headers arrive.",
-    policy:
-      "This file can move a show OFF measured_clean and can never move one onto it. See verdictNote: a grid " +
-      "that agrees with itself says this delivery path does not lie the way atelier.flightcast.com does, " +
-      "which is a statement about one instrument, not a clean bill.",
-    source: { yield: args.yieldPath, measured: args.measured },
-    episodes_per_show: args.perShow,
-    requests: {
+  writeJsonAtomic(outPath, {
+    ...reportShell(args, {
       feeds: priorRequests.feeds + feeds,
       grid_requests: priorRequests.grid_requests + gridRequests,
       elapsed_sec: Math.round((Date.now() - started) / 1000),
-    },
+    }),
     summary,
     results: rows,
-  };
-  writeJsonAtomic(outPath, out);
+  });
 
   console.log(`\n  audited              ${String(summary.audited.timed_transcripts).padStart(5)} timed in ${String(summary.audited.shows).padStart(2)} show(s)`);
   console.log(`  VARIES BY REQUEST    ${String(summary.varies_by_request.timed_transcripts).padStart(5)} timed in ${String(summary.varies_by_request.shows).padStart(2)} show(s)`);
   console.log(`  stable across grid   ${String(summary.stable_across_the_grid.timed_transcripts).padStart(5)} timed in ${String(summary.stable_across_the_grid.shows).padStart(2)} show(s)  (NOT a clean bill)`);
   console.log(`  inconclusive         ${String(summary.inconclusive.timed_transcripts).padStart(5)} timed in ${String(summary.inconclusive.shows).padStart(2)} show(s)`);
+  if (summary.unclassified.shows) console.log(`  UNCLASSIFIED         ${String(summary.unclassified.timed_transcripts).padStart(5)} timed in ${String(summary.unclassified.shows).padStart(2)} show(s)  <-- rows with no verdict; this is a bug`);
   console.log(`\nwrote ${args.out} — ${feeds} feed + ${gridRequests} grid request(s) this pass`);
   return 0;
 }

@@ -432,7 +432,7 @@ downloads can move them.
 platform lies this way, the question is how many others do, and every
 `measured_clean` verdict in the repo was reached with the instrument now known to
 be spoofable. `tools/segments/regrid-clean.mjs` re-ran `probeGrid` over all 24 of
-them — 288 requests, no bodies — and **no show varies by request**: 23 stable,
+them — 300 requests, no bodies — and **no show varies by request**: 23 stable,
 one inconclusive, zero condemned, `measurement_coverage` unchanged. See
 `tools/segments/README.md` for the run and for the one origin (`beehiiv`) that
 answers unranged requests chunked and therefore cannot be asked this question at
