@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { hostOf, normalizeAudioUrl } from "./enclosure.mjs";
+import { NIGHTLY_UA } from "../segments/politeness.mjs";
 
 const root = new URL("../../", import.meta.url);
 const p = (rel) => new URL(rel, root);
@@ -57,7 +58,7 @@ async function lookup(collectionId) {
   let data = { results: [] };
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(url, { headers: { "User-Agent": "foray-nightly/1.0" } });
+      const res = await fetch(url, { headers: { "User-Agent": NIGHTLY_UA } });
       if (res.ok) { data = await res.json(); break; }
     } catch (e) { /* retry */ }
     await new Promise((r) => setTimeout(r, 800));

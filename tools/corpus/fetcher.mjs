@@ -5,7 +5,11 @@
  *   Crawl-delay, whichever is larger). Requests to different hosts may
  *   interleave; requests to one host never do.
  * - robots.txt respected per host (cached for the process lifetime).
- * - Honest User-Agent naming the project and a contact address.
+ * - Honest User-Agent naming the project and a contact address. The token is
+ *   deliberately distinct from the podcast client's (a research crawler is not
+ *   a podcast client, and robots.txt has to be able to tell them apart); the
+ *   contact address deliberately is not. Both come from
+ *   tools/segments/politeness.mjs, which is the only place either is written.
  * - Retries: up to 3 attempts on 429/5xx/network errors, exponential backoff
  *   with jitter, honoring a sane Retry-After.
  * - Redirects followed manually (max 5) so every hop gets the same rate
@@ -18,9 +22,14 @@
  */
 
 import { parseRobots } from "./robots.mjs";
+import { CORPUS_UA } from "../segments/politeness.mjs";
 
-export const USER_AGENT =
-  "ForayCorpusBot/1.0 (+https://github.com/JW-Incorporated/foray; internal research corpus, one-shot fetches; contact: sffan15@gmail.com)";
+export const USER_AGENT = CORPUS_UA;
+/* The bare token robots.txt groups are matched on. It MUST stay the leading
+   product token of USER_AGENT — a mismatch would silently make every
+   `User-agent: ForayCorpusBot` group in the wild stop applying to us, which is
+   the failure mode of respecting robots.txt while getting the name wrong.
+   politeness.test.mjs asserts the two agree. */
 export const AGENT_TOKEN = "ForayCorpusBot";
 
 const DEFAULT_DELAY_MS = 2000;

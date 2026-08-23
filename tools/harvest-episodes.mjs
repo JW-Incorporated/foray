@@ -9,13 +9,13 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { gzipSync } from "node:zlib";
+import { UA } from "./segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // reuse the backend's battle-tested lenient XML parser
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
 const { XMLParser } = backendRequire("fast-xml-parser");
 
-const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 const THROTTLE_MS = 2500;
 const args = process.argv.slice(2);
 const TOP_N = args.includes("--top") ? Number(args[args.indexOf("--top") + 1]) : 100;

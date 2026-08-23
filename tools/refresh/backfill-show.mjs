@@ -59,10 +59,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
 import { audioFieldsFrom } from "./enclosure.mjs";
+import { UA } from "../segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-export const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+/* Re-exported, not re-declared: this module's public surface has carried `UA`
+   since before `politeness.mjs` owned the string. */
+export { UA };
 const THROTTLE_MS = 1500;
 export const DEFAULT_NEWEST = 25;
 

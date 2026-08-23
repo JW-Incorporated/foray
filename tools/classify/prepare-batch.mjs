@@ -66,10 +66,10 @@ import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import { parseShard, transcriptLabelsFromXml, emptyTranscriptLabels, LABEL_SCHEMA_VERSION } from "./labels.mjs";
 import { selectFreshCandidates, selectEscalateCandidates } from "./select.mjs";
+import { UA } from "../segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 const FETCH_TIMEOUT_MS = 15_000;
 const THROTTLE_MS = 1500; // between feed requests — different hosts per show, so lighter than scan.mjs's single-host throttle
 const RETRY_COOLDOWN_MS = 6 * 3600_000; // 6h between retry attempts on the same failed feed
