@@ -460,7 +460,7 @@ const FLOORS = {
      stall the pipeline with no documented way to clear it and that the digest
      fetch failed OPEN on any API error that was not a 404. */
   "tools/refresh/watch-nightly.test.mjs": 62,
-  "tools/segments/sweep-transcripts.test.mjs": 35,
+  "tools/segments/sweep-transcripts.test.mjs": 38,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
   /* The free-transcript acquisition step (#104 follow-up): the join that
@@ -522,8 +522,8 @@ const FLOORS = {
 
      Both suites were mutation-run before commit; each test names the mutation
      it kills, per this file's own standard. */
-  "tools/segments/rank-breadth.test.mjs": 21,
-  "tools/segments/breadth-yield.test.mjs": 21,
+  "tools/segments/rank-breadth.test.mjs": 22,
+  "tools/segments/breadth-yield.test.mjs": 36,
   /* The scan that settled tranche 1's seven suspects — 2,821 timed
      transcripts, 71% of that tranche's anchorable haul, previously dropped on a
      hostname heuristic. Its arithmetic decides supply, so every step of it is

@@ -72,11 +72,26 @@
        [--dry-run] [--out DIR] [--digests PATH]                                */
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath, sep } from "node:path";
 import { UA, awaitHostSlot, waitBeforeRetry } from "./politeness.mjs";
 import { normalize } from "./transcript-normalize.mjs";
+/* IMPORTED, NOT RESTATED. This file carried its own three-line
+   `writeJsonAtomic` — the sixth duplicated implementation found in this repo,
+   after four matchers (#211/#219/#249), two throttles (#313), three header
+   copies (#316), ten User-Agents (#318) and `AD_FREE_SHOWS` (#317). It was
+   byte-identical to the sweep's, which is what made it invisible, and it stopped
+   being harmless the moment the sweep's copy learned to retry a Windows lock:
+   the fix would have landed in the checkpoint writer and not in the writer that
+   commits transcript digests and normalised cues, so this file would have gone
+   on dying on the same EPERM.
+
+   Importing the sweep's MODULE is not importing its fetcher — the same
+   distinction `breadth-yield.mjs` draws when it takes `AD_FREE_SHOWS` from this
+   one, and a named import is what keeps it that way. No cycle: the sweep does
+   not import this file. */
+import { writeJsonAtomic } from "./sweep-transcripts.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -316,13 +331,6 @@ export function digestOf(target, body, normalized) {
     speakers: cues.some((c) => c.speaker) ? [...new Set(cues.map((c) => c.speaker).filter(Boolean))].length : 0,
     warnings: normalized.warnings,
   };
-}
-
-function writeJsonAtomic(path, value) {
-  mkdirSync(dirname(path), { recursive: true });
-  const tmp = `${path}.tmp`;
-  writeFileSync(tmp, JSON.stringify(value, null, 2) + "\n");
-  renameSync(tmp, path);
 }
 
 const extFor = (type) =>

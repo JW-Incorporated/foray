@@ -45,12 +45,16 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { dirname, join, resolve as resolvePath } from "node:path";
+import { dirname, join, relative, resolve as resolvePath } from "node:path";
 import { isDaiHost } from "../refresh/dai.mjs";
 import { AD_FREE_SHOWS } from "./fetch-transcripts.mjs";
 import { hostKeyOf } from "./rank-breadth.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+/** Either platform's path separator — this module reads paths written on one
+    and renders them on the other. */
+const SEP = /[\\/]/;
 
 /** Shows flagged DAI whose delivered audio was MEASURED byte-identical, so
     their publisher timestamps still anchor.
@@ -151,6 +155,36 @@ export function isAnchorable(show) {
 /** Substrings that name an ad-tech vendor in a resolved enclosure host. */
 export const AD_TECH_HOST_MARKERS = ["adswizz", "adbarker", "adtonos", "adcontext", "targetspot"];
 
+/** The MEASURED disposition of each suspect, keyed on show_id, from
+    `data/breadth-suspect-inflation.json` (#319's scan).
+
+    WHY THIS HAS TO BE READ HERE AND WAS NOT. #319 spent 7 feeds and 54 ranged
+    GETs settling tranche 1's seven suspects and committed every byte count it
+    measured — and then nothing read the file. `suspectAnchorable` below stayed
+    a pure hostname heuristic, so the tool went on reporting 1,131 net while the
+    measurement beside it said 1,145, and the only place the measured number
+    existed was a PR body. A committed measurement that no tool consults is a
+    number that decays into folklore, which is the exact failure the stale
+    `anchorable_timed_transcripts: 3952` in this file's own output already was.
+
+    `disposition` is the field to read, NOT `verdict`. Four of the seven carry
+    `verdict: "ad-free"` — a median ratio over five episodes — while inserting
+    into some of those five; `dispositionOf` in `measure-suspects.mjs` is the
+    one that looks at whether ANY sample was caught mid-insert, and reading
+    `verdict` here would readmit 481 transcripts from shows measured injecting.
+
+    ABSENCE IS NOT A RECOVERY. A show with no entry keeps whatever the heuristic
+    said about it. The other default — unmeasured means clean — is the single
+    most expensive mistake available in this file, because the unmeasured set is
+    the whole rest of the catalogue. */
+export function measuredDispositions(report) {
+  const out = new Map();
+  for (const r of report?.results || []) {
+    if (r?.show_id != null && r.disposition) out.set(String(r.show_id), r.disposition);
+  }
+  return out;
+}
+
 /** Anchorable shows whose "not DAI" verdict is contradicted by something we
     already know. Each entry carries WHY, because the two reasons want different
     follow-ups: `dai-host-lost-in-redirect` is a fix to `dai.mjs` (match the feed
@@ -160,10 +194,31 @@ export const AD_TECH_HOST_MARKERS = ["adswizz", "adbarker", "adtonos", "adcontex
     `isDaiHost` is injected rather than imported at the call site so the suite can
     exercise both reasons without depending on the contents of a data file that
     is expected to change. */
-export function suspectAnchorable(rows, { isDaiHost = () => false, hostOfFeed = hostKeyOf } = {}) {
+export function suspectAnchorable(rows, { isDaiHost = () => false, hostOfFeed = hostKeyOf, measured = new Map() } = {}) {
   const out = [];
   for (const r of rows) {
     if (!r.anchorable) continue;
+    /* A MEASUREMENT OUTRANKS THE HEURISTIC — the same rule `AD_FREE_SHOWS`
+       already gets two lines below, applied to the shows somebody measured
+       since. `recover` means the delivered bytes matched the declared ones on
+       every episode probed, so the hostname that made this row suspicious has
+       been answered and the row is no longer one to net out. `drop` keeps it
+       suspect and upgrades the REASON from a guess to a measurement, which
+       matters when someone re-reads the shortlist to decide what to probe next:
+       a row that has already been settled should not read as an open question. */
+    const disposition = measured.get(String(r.show_id));
+    if (disposition === "recover") continue;
+    /* ORDER MATTERS, AND IT IS MEASURED-DROP FIRST. `AD_FREE_SHOWS` is itself a
+       measurement, but an older one and keyed on TITLE; a show that appears in
+       both is one that has since been caught injecting, and letting the title
+       list `continue` past this would treat it as clean on the strength of the
+       measurement that was superseded. No show is in both today — this is the
+       precedence the comment above claims, made true in the code rather than in
+       prose. */
+    if (disposition === "drop") {
+      out.push(suspectRow(r, hostOfFeed, "measured-injecting"));
+      continue;
+    }
     // A MEASUREMENT OUTRANKS THIS HEURISTIC, and skipping that check was a real
     // bug: run against the curated baseline, the feed-host rule flagged Being an
     // Engineer, Geology Bites and Practical AI — which are `AD_FREE_SHOWS`,
@@ -172,21 +227,46 @@ export function suspectAnchorable(rows, { isDaiHost = () => false, hostOfFeed = 
     // transcripts to 67 and made every breadth-vs-curated comparison in the
     // report meaningless, in the flattering direction.
     if (AD_FREE_SHOWS.includes(r.title)) continue;
+    /* THE WHOLE CHAIN, NOT THE LAST HOP — which is the bug #319 fixed one
+       level down, left standing in its sibling. `classifyShow` used to judge
+       only where a redirect landed, so `api.spreaker.com` in the middle of a
+       chain was discarded and five shows worth 2,470 transcripts read as clean;
+       this check had the identical shape, matching ad-tech markers against
+       `enclosure_host` alone. An insertion vendor is no more obliged to be the
+       last hop than a DAI platform is.
+
+       MEASURED ACROSS BOTH TRANCHES: 0 additional rows. That is the honest
+       result and it is the reason to land the change now rather than when it
+       finally costs something — the markers list is expected to grow (see
+       `_adswizz_note` in dai-hosts.json), and a marker added later would
+       otherwise only be looked for in one position.
+
+       The chain arrives on a summary row as the joined string `summaryRow`
+       writes, so a substring test over it covers every hop including the last;
+       `origin` is kept for rows swept before #319, which have no chain at all. */
     const origin = String(r.enclosure_host || "").toLowerCase();
+    const chain = String(r.enclosure_chain || "").toLowerCase();
+    const adTech = [origin, chain].some((s) => s && AD_TECH_HOST_MARKERS.some((m) => s.includes(m)));
     let reason = null;
     if (isDaiHost(hostOfFeed(r.feed_url))) reason = "dai-host-lost-in-redirect";
-    else if (origin && AD_TECH_HOST_MARKERS.some((m) => origin.includes(m))) reason = "ad-tech-origin";
+    else if (adTech) reason = "ad-tech-origin";
     if (!reason) continue;
-    out.push({
-      show_id: r.show_id,
-      title: r.title,
-      feed_host: hostOfFeed(r.feed_url),
-      enclosure_host: r.enclosure_host,
-      reason,
-      timed_transcripts: r.episodes_with_timed_transcript,
-    });
+    out.push(suspectRow(r, hostOfFeed, reason));
   }
   return out.sort((a, b) => b.timed_transcripts - a.timed_transcripts);
+}
+
+/** One shortlist entry. Extracted only so the measured-drop branch above and
+    the heuristic branch cannot drift in what they report. */
+function suspectRow(r, hostOfFeed, reason) {
+  return {
+    show_id: r.show_id,
+    title: r.title,
+    feed_host: hostOfFeed(r.feed_url),
+    enclosure_host: r.enclosure_host,
+    reason,
+    timed_transcripts: r.episodes_with_timed_transcript,
+  };
 }
 
 /** The anchorable count with every suspect row removed — the conservative read,
@@ -209,9 +289,22 @@ export function summaryRow(show) {
     feed_url: show.feed_url,
     host_key: hostKeyOf(show.feed_url),
     arm: show.arm ?? null,
+    /* Both flat scalars, both O(1) in episodes, so the file's one size rule
+       holds. `tranche` is what makes a multi-tranche report readable at all;
+       `rank_position` is the depth axis `byRankBucket` reads. */
+    tranche: show.tranche ?? null,
+    rank_position: show.rank_position ?? null,
     status: show.status,
     error_code: show.error_code ?? null,
     dai_suspected: show.dai_suspected ?? null,
+    /* CARRIED because the headline caveat is about this field and nothing else
+       can express it: every anchorable row in both tranches reads "unknown",
+       i.e. "no host anywhere in this chain is on the list", not "verified
+       static". Without it that claim is only checkable against a gitignored
+       index, which for a caveat attached to five figures of supply is the wrong
+       place for the evidence to live. A short scalar; `enclosure_chain` beside
+       it is the longer half of the same evidence. */
+    dai_reason: show.dai_reason ?? null,
     enclosure_host: show.enclosure_host ?? null,
     /* CARRIED, and it is the one field here that grows the committed file for a
        reason other than counting: it is the EVIDENCE for `dai_suspected`. A row
@@ -298,6 +391,58 @@ export function byHost(rows, suspects = []) {
     .sort((a, b) => b.shows_swept - a.shows_swept || b.timed_transcripts - a.timed_transcripts);
 }
 
+/** Yield by DEPTH DOWN THE RANKING — does the ordering keep paying?
+
+    THE QUESTION THIS ANSWERS IS WHERE TO STOP, and nothing else in this file
+    can answer it. `byHost` says which platform paid; the arm split says whether
+    ranking beat random. Neither says whether rank 600 was still worth a request
+    when rank 1 clearly was, and that is the number that decides how much of the
+    remaining catalogue to sweep. A ranked head whose yield is flat says sweep
+    on; one that decays to the explore arm's rate says the ordering has been
+    exhausted and the rest of the catalogue is a uniform sample wearing a rank.
+
+    EQUAL COUNTS OF FEEDS, NOT OF TRANSCRIPTS. The budget is denominated in
+    requests, so a bucket is a fixed number of requests and the transcripts are
+    what varies. Bucketing on equal transcript counts would put the first three
+    shows in bucket one and hide the entire decay inside it.
+
+    ROWS MUST ALREADY CARRY `rank_position`, i.e. they must come from ONE
+    tranche's exploit arm. Explore rows are dropped rather than ranked, and
+    mixing two tranches is the caller's error to avoid — see `attachArms`.
+
+    `suspects` is threaded through for the same reason `yieldOf` takes it: the
+    suspect rows are concentrated, so a bucket containing one of them reports a
+    gross number several times its net one, and a decay curve drawn on gross
+    figures measures where the suspects happened to land. */
+export function byRankBucket(rows, suspects = [], { buckets = 6 } = {}) {
+  const ranked = rows
+    .filter((r) => Number.isFinite(r.rank_position))
+    .sort((a, b) => a.rank_position - b.rank_position);
+  if (!ranked.length || !Number.isInteger(buckets) || buckets < 1) return [];
+
+  /* THE REMAINDER IS SPREAD, NOT DUMPED IN A TAIL. `ceil(n/buckets)` then
+     slicing does not produce `buckets` buckets: 10 rows into 6 gives FIVE
+     buckets of 2, and 7 into 3 gives 3+3+1 — a one-feed bucket plotted on the
+     same axis as two three-feed ones, which is a rate computed from a single
+     feed presented as a comparable point. Invisible on this tranche only
+     because 300 and 600 divide by 6 evenly. Sizes now differ by at most one. */
+  const n = Math.min(buckets, ranked.length);
+  const base = Math.floor(ranked.length / n);
+  const extra = ranked.length % n;
+  const out = [];
+  let i = 0;
+  for (let b = 0; b < n; b++) {
+    const slice = ranked.slice(i, i + base + (b < extra ? 1 : 0));
+    i += slice.length;
+    out.push({
+      rank_from: slice[0].rank_position,
+      rank_to: slice[slice.length - 1].rank_position,
+      ...yieldOf(slice, suspects),
+    });
+  }
+  return out;
+}
+
 /** What the committed file would cost at full catalogue scale, measured rather
     than guessed: bytes per swept show from this run, times the pool. Reported
     so nobody has to discover the number by committing it. */
@@ -332,13 +477,62 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+/** A path as this repository would name it: relative to the repo root, forward
+    slashes on every platform. Falls back to what was passed when the file lives
+    outside the tree, which is legitimate — `data-local/` is often a sibling
+    checkout — but says so rather than emitting a drive letter. */
+export function repoRelative(p) {
+  const raw = String(p);
+  const rel = relative(ROOT, resolvePath(process.cwd(), raw)).split(SEP).join("/");
+  /* A DRIVE LETTER SURVIVING `relative()` MEANS "OUTSIDE", and testing for it is
+     what makes this behave the same on both platforms. On POSIX a Windows
+     absolute path is not absolute at all — `resolve()` reads `C:/x` as a
+     directory literally named `C:` under the cwd, so `relative()` hands it back
+     nearly unchanged, it does not begin with `../`, and the drive letter sails
+     into the committed file. That is only reachable when a path recorded on
+     Windows is re-rendered somewhere else, which is precisely the case this
+     function exists for — and it is how the first version of it passed on the
+     machine that wrote it and failed in CI. */
+  const inside = rel && !rel.startsWith("../") && !/^[A-Za-z]:/.test(rel);
+  if (inside) return rel;
+  return raw
+    .split(SEP)
+    .filter((seg) => seg && !/^[A-Za-z]:$/.test(seg))
+    .slice(-3)
+    .join("/");
+}
+
 /** The tranche file carries `arm`; the swept index does not, because the sweep
     is generic and knows nothing about arms. Joined here on show_id rather than
     threaded through the sweep, so the sweep stays a tool that reads any
-    catalogue. */
-export function attachArms(showRecords, tranche) {
-  const arms = new Map((tranche?.shows || []).map((s) => [String(s.show_id), s.arm]));
-  return showRecords.map((s) => ({ ...s, arm: arms.get(String(s.show_id)) ?? null }));
+    catalogue.
+
+    IT ALSO CARRIES RANK, AND RANK IS THE FILE'S ORDER RATHER THAN A FIELD IN IT.
+    `rank-breadth.mjs` writes the exploit arm in descending expected yield and
+    documents `rankShows` as a TOTAL order, so position N of the exploit rows is
+    exactly "the Nth show we would have swept". Deriving it here rather than
+    adding a column to the tranche file is what lets tranche 1 — already written,
+    before anyone wanted this number — be bucketed by depth on the same rule as
+    tranche 2. `rank_position` is null on the explore arm, which is not a
+    ranking and must never be bucketed as one.
+
+    `name` labels which tranche a row came from. Two tranches ranked on
+    different priors are two different orderings, so depth may only be compared
+    WITHIN a tranche; the label is what keeps `byRankBucket` from silently
+    concatenating them into one axis that does not exist. */
+export function attachArms(showRecords, tranche, { name = null } = {}) {
+  const meta = new Map();
+  let rank = 0;
+  for (const s of tranche?.shows || []) {
+    const exploit = s.arm === "exploit";
+    if (exploit) rank++;
+    meta.set(String(s.show_id), { arm: s.arm ?? null, rank_position: exploit ? rank : null });
+  }
+  return showRecords.map((s) => ({
+    ...s,
+    ...(meta.get(String(s.show_id)) || { arm: null, rank_position: null }),
+    tranche: name,
+  }));
 }
 
 function parseArgs(argv) {
@@ -346,10 +540,19 @@ function parseArgs(argv) {
     const i = argv.indexOf(flag);
     return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : fallback;
   };
+  /* COMMA-SEPARATED AND POSITIONALLY PAIRED, matching `rank-breadth.mjs`'s
+     `--availability`. The committed yield file describes everything we have
+     swept, and after tranche 2 that is two indexes; reporting one of them would
+     either overwrite the other tranche's numbers or fork the file people quote
+     into two files that disagree. The Nth `--breadth` index is joined to the
+     Nth `--tranche` file, so the pairing is explicit rather than inferred from
+     a filename. */
+  const list = (flag, fallback) => String(get(flag, fallback)).split(",").map((s) => s.trim()).filter(Boolean);
   return {
-    breadth: get("--breadth", "data-local/breadth/availability-breadth.json"),
-    tranche: get("--tranche", "data-local/breadth/tranche-01.json"),
+    breadth: list("--breadth", "data-local/breadth/availability-breadth.json"),
+    tranche: list("--tranche", "data-local/breadth/tranche-01.json"),
     baseline: get("--baseline", "data/transcript-availability.json"),
+    measured: get("--measured", "data/breadth-suspect-inflation.json"),
     out: get("--out", null),
     poolSize: Number(get("--pool-size", "19436")),
   };
@@ -365,15 +568,57 @@ function line(label, y) {
   );
 }
 
+/** The label a row's `tranche` field carries: the tranche file's basename
+    without its extension, so `data-local/breadth/tranche-02.json` reads as
+    `tranche-02` wherever the file is kept. Falls back to the index's own name
+    when a tranche file was not supplied, because an unlabelled row in a
+    two-tranche report is worse than a slightly ugly label. */
+export function trancheLabel(tranchePath, breadthPath) {
+  const base = (p) => String(p).split(/[\\/]/).pop().replace(/\.json$/i, "");
+  return tranchePath ? base(tranchePath) : base(breadthPath);
+}
+
+/** The `--breadth` / `--tranche` pairing, checked before a single file is read.
+
+    THE SAME SILENT FAILURE THIS BRANCH MADE FATAL IN `rank-breadth.mjs`, and it
+    was left standing here — in the tool that writes the number people quote.
+    The arms are joined out of the tranche file, so a list that is short by one,
+    or one entry of which does not resolve, gives 500 rows `arm: null`: they
+    drop out of BOTH arm yields, stay in `breadth_all`, and vanish from the
+    depth report, while every printed rate still looks like a rate. The trigger
+    is not hypothetical — a shell mangling a comma-separated path list is
+    exactly how the ranker was mis-fed on this branch.
+
+    Passing NO `--tranche` at all stays legal: an index with no tranche file
+    reports with a null arm on purpose, and that is separately tested. What is
+    refused is a pairing that is present and wrong. */
+export function checkTranchePairing(breadth, tranche, { exists = existsSync, resolve = (p) => p } = {}) {
+  if (tranche.length && tranche.length !== breadth.length) {
+    throw new Error(
+      `--tranche has ${tranche.length} path(s) and --breadth has ${breadth.length}; they are paired positionally, ` +
+        `and an unpaired index silently reports every one of its shows under a null arm`,
+    );
+  }
+  const missing = tranche.filter((p) => !exists(resolve(p)));
+  if (missing.length) {
+    throw new Error(`tranche file not found: ${missing.join(", ")} — its shows would report under a null arm rather than in an arm`);
+  }
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const breadthPath = resolvePath(process.cwd(), args.breadth);
   const baselinePath = resolvePath(process.cwd(), args.baseline);
-  const tranchePath = resolvePath(process.cwd(), args.tranche);
+  checkTranchePairing(args.breadth, args.tranche, { resolve: (p) => resolvePath(process.cwd(), p) });
 
-  const breadth = readJson(breadthPath);
-  const tranche = existsSync(tranchePath) ? readJson(tranchePath) : null;
-  const rows = attachArms(breadth.shows || [], tranche).map(summaryRow);
+  const indexes = args.breadth.map((b, i) => {
+    const breadthPath = resolvePath(process.cwd(), b);
+    const tranchePath = args.tranche[i] ? resolvePath(process.cwd(), args.tranche[i]) : null;
+    const breadth = readJson(breadthPath);
+    const tranche = tranchePath ? readJson(tranchePath) : null;
+    const name = trancheLabel(args.tranche[i] || null, b);
+    return { name, breadth, rows: attachArms(breadth.shows || [], tranche, { name }).map(summaryRow) };
+  });
+  const rows = indexes.flatMap((x) => x.rows);
   const baselineRows = (readJson(baselinePath).shows || []).map(summaryRow);
 
   const exploit = rows.filter((r) => r.arm === "exploit");
@@ -382,14 +627,36 @@ function main() {
   // The same contradiction check is applied to the BASELINE as well as to the
   // tranche. Comparing a net breadth number against a gross curated one would
   // manufacture the finding rather than measure it.
-  const suspects = suspectAnchorable(rows, { isDaiHost });
-  const baselineSuspects = suspectAnchorable(baselineRows, { isDaiHost });
+  /* Missing is tolerated here, unlike `rank-breadth.mjs`'s indexes: a repo that
+     has not run the scan yet must still be able to produce a report, and the
+     fallback is the strictly more conservative heuristic rather than a silently
+     different denominator. Which side each row landed on is visible in its
+     `reason`. */
+  const measuredPath = resolvePath(process.cwd(), args.measured);
+  const measured = existsSync(measuredPath) ? measuredDispositions(readJson(measuredPath)) : new Map();
+
+  const suspects = suspectAnchorable(rows, { isDaiHost, measured });
+  const baselineSuspects = suspectAnchorable(baselineRows, { isDaiHost, measured });
 
   console.log("yield per feed swept — the number the budget is denominated in\n");
   line("baseline", yieldOf(baselineRows, baselineSuspects));
   line("exploit", yieldOf(exploit, suspects));
   line("explore", yieldOf(explore, suspects));
   line("breadth", yieldOf(rows, suspects));
+
+  console.log("\nyield by depth down the ranking — where the ordering stops paying:");
+  for (const x of indexes) {
+    const bucketsFor = byRankBucket(x.rows, suspects);
+    if (!bucketsFor.length) continue;
+    for (const b of bucketsFor) {
+      console.log(
+        `  ${x.name.padEnd(11)} ranks ${String(b.rank_from).padStart(4)}-${String(b.rank_to).padStart(4)}  ` +
+          `${String(b.shows_with_timed).padStart(3)}/${String(b.shows_swept).padStart(3)} with timed  ` +
+          `${String(b.timed_transcripts).padStart(7)} timed ${String(b.timed_per_show_swept).padStart(7)}/feed  ` +
+          `${String(b.anchorable_net_of_suspects).padStart(5)} net ${String(b.net_anchorable_per_show_swept).padStart(5)}/feed`,
+      );
+    }
+  }
 
   console.log("\nplatforms measured this tranche (top 15 by feeds swept):");
   for (const h of byHost(rows, suspects).slice(0, 15)) {
@@ -416,11 +683,25 @@ function main() {
     generated_at: new Date().toISOString(),
     policy: policyString(null),
     source: {
-      breadth_index: args.breadth,
-      tranche: args.tranche,
-      baseline: args.baseline,
-      swept_at: breadth.generated_at ?? null,
-      max_episode_rows: breadth.max_episode_rows ?? null,
+      /* RELATIVE, because these are committed. Absolute paths would put one
+         machine's directory layout into a file everyone reads — the same
+         objection `trancheLabel` is built around one screen up — and they
+         would be wrong for every other checkout besides. */
+      breadth_index: args.breadth.map(repoRelative),
+      tranche: args.tranche.map(repoRelative),
+      baseline: repoRelative(args.baseline),
+      measured: existsSync(measuredPath) ? repoRelative(args.measured) : null,
+      /* `swept_at` and `max_episode_rows` are NOT here, and their absence is
+         the fix: they used to be scalars taken from the first index, sitting
+         beside a `breadth_index` that is now a list of two swept on different
+         days. A single date labelled "swept_at" next to two inputs reads as a
+         property of the file. Per index, below, where it is true. */
+      tranches: indexes.map((x) => ({
+        name: x.name,
+        shows: x.rows.length,
+        swept_at: x.breadth.generated_at ?? null,
+        max_episode_rows: x.breadth.max_episode_rows ?? null,
+      })),
     },
     yield: {
       baseline_curated: yieldOf(baselineRows, baselineSuspects),
@@ -429,6 +710,9 @@ function main() {
       breadth_all: yieldOf(rows, suspects),
     },
     by_host: byHost(rows, suspects),
+    /* Per tranche, never pooled: see `attachArms`. Two tranches are two
+       orderings, and a concatenated depth axis would read as one. */
+    by_rank_bucket: indexes.map((x) => ({ tranche: x.name, buckets: byRankBucket(x.rows, suspects) })),
     suspect_anchorable: suspects,
     anchorable_net_of_suspects: net,
     shows: rows.sort((a, b) => String(a.show_id).localeCompare(String(b.show_id))),
