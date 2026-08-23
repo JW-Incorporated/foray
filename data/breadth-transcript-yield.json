@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generated_at": "2026-08-23T13:32:44.056Z",
-  "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is 914 bytes/show (measured), ~16.9MB across 19436 feeds, and stays committable.",
+  "generated_at": "2026-08-23T16:22:36.566Z",
+  "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is 915 bytes/show (measured), ~17MB across 19436 feeds, and stays committable.",
   "source": {
     "breadth_index": [
       "data-local/breadth/availability-breadth.json",
@@ -61,10 +61,10 @@
       "transcripts": 340781,
       "timed_transcripts": 330840,
       "anchorable_timed_transcripts": 11237,
-      "anchorable_net_of_suspects": 10332,
+      "anchorable_net_of_suspects": 8418,
       "timed_per_show_swept": 367.6,
       "anchorable_per_show_swept": 12.5,
-      "net_anchorable_per_show_swept": 11.5
+      "net_anchorable_per_show_swept": 9.4
     },
     "breadth_explore": {
       "shows_swept": 600,
@@ -95,10 +95,10 @@
       "transcripts": 349986,
       "timed_transcripts": 339290,
       "anchorable_timed_transcripts": 11667,
-      "anchorable_net_of_suspects": 10747,
+      "anchorable_net_of_suspects": 8833,
       "timed_per_show_swept": 226.2,
       "anchorable_per_show_swept": 7.8,
-      "net_anchorable_per_show_swept": 7.2
+      "net_anchorable_per_show_swept": 5.9
     }
   },
   "by_host": [
@@ -637,10 +637,10 @@
       "transcripts": 5461,
       "timed_transcripts": 5461,
       "anchorable_timed_transcripts": 5461,
-      "anchorable_net_of_suspects": 5320,
+      "anchorable_net_of_suspects": 3406,
       "timed_per_show_swept": 780.1,
       "anchorable_per_show_swept": 780.1,
-      "net_anchorable_per_show_swept": 760
+      "net_anchorable_per_show_swept": 486.6
     },
     {
       "host": "ivoox.com",
@@ -4255,10 +4255,10 @@
           "transcripts": 7275,
           "timed_transcripts": 7271,
           "anchorable_timed_transcripts": 4502,
-          "anchorable_net_of_suspects": 4173,
+          "anchorable_net_of_suspects": 2909,
           "timed_per_show_swept": 72.7,
           "anchorable_per_show_swept": 45,
-          "net_anchorable_per_show_swept": 41.7
+          "net_anchorable_per_show_swept": 29.1
         },
         {
           "rank_from": 201,
@@ -4293,10 +4293,10 @@
           "transcripts": 5613,
           "timed_transcripts": 4836,
           "anchorable_timed_transcripts": 650,
-          "anchorable_net_of_suspects": 650,
+          "anchorable_net_of_suspects": 0,
           "timed_per_show_swept": 48.4,
           "anchorable_per_show_swept": 6.5,
-          "net_anchorable_per_show_swept": 6.5
+          "net_anchorable_per_show_swept": 0
         },
         {
           "rank_from": 401,
@@ -4340,6 +4340,22 @@
     }
   ],
   "suspect_anchorable": [
+    {
+      "show_id": "1484783544",
+      "title": "Success Story with Scott D. Clary",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "reason": "measured-injecting",
+      "timed_transcripts": 1264
+    },
+    {
+      "show_id": "1346054199",
+      "title": "Right About Now - Legendary Business Advice",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "reason": "measured-injecting",
+      "timed_transcripts": 650
+    },
     {
       "show_id": "1411449986",
       "title": "Auf den Punkt",
@@ -4429,30 +4445,30 @@
       "timed_transcripts": 1
     }
   ],
-  "anchorable_net_of_suspects": 10747,
+  "anchorable_net_of_suspects": 8833,
   "measurement_coverage": {
     "measured_clean": {
       "shows": 24,
       "timed_transcripts": 5381
     },
     "measured_unresolved": {
-      "shows": 11,
-      "timed_transcripts": 5366
+      "shows": 9,
+      "timed_transcripts": 3452
     },
     "inferred": {
       "shows": 0,
       "timed_transcripts": 0
     },
     "excluded_measured_injecting": {
-      "shows": 8,
-      "timed_transcripts": 523
+      "shows": 10,
+      "timed_transcripts": 2437
     },
     "excluded_by_heuristic": {
       "shows": 3,
       "timed_transcripts": 397
     },
-    "anchorable_net_of_suspects": 10747,
-    "measured_pct_of_net": 50.1,
+    "anchorable_net_of_suspects": 8833,
+    "measured_pct_of_net": 60.9,
     "note": "measured_clean is the only bucket a measurement admitted; measured_unresolved was probed and could not be settled, inferred was never probed, and both remain in the net count on the label-never-exclude rule rather than on evidence"
   },
   "shows": [
@@ -38958,9 +38974,9 @@
     }
   ],
   "footprint": {
-    "bytes_per_show": 914,
+    "bytes_per_show": 915,
     "shows_remaining": 19436,
-    "projected_bytes": 17772900,
-    "projected_mb": 16.9
+    "projected_bytes": 17779496,
+    "projected_mb": 17
   }
 }

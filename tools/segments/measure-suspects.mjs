@@ -297,7 +297,7 @@ export function fetchNoteOf(row) {
     means "no decode evidence", which is the state of every row this scan has
     ever produced until one is downloaded — and it must leave the screen's
     verdict exactly as it found it. */
-export function deriveRow(base, { note = null, decodes = null } = {}) {
+export function deriveRow(base, { note = null, decodes = null, grids = null } = {}) {
   const samples = base.samples || [];
   const summary = summariseShow(samples.map((x) => x.ratio));
   const undersized = undersizedSamples(samples);
@@ -323,7 +323,14 @@ export function deriveRow(base, { note = null, decodes = null } = {}) {
      are kept on the row when they differ, because "the bytes said recover and
      the decode said drop" is the single most useful thing a later reader of
      this file can be told. */
-  const override = decodeOverride({ show_id: base.show_id, enclosure_host: base.enclosure_host }, decodes);
+  /* AND THE GRID JOINS THEM — see `combineOverrides` for which wins when both
+     speak. `grids` is null for every pool nobody has gridded, and a null index
+     leaves the pair exactly as `decodeOverride` left it. */
+  const override = combineOverrides(
+    decodeOverride({ show_id: base.show_id, enclosure_host: base.enclosure_host }, decodes),
+    gridOverride({ show_id: base.show_id }, grids),
+  );
+  const gridStatus = grids?.byShow.get(String(base.show_id))?.grid?.status ?? null;
   const disposition = override ? override.disposition : screened;
   const worst = maxDeltaSec(samples);
 
@@ -371,8 +378,17 @@ export function deriveRow(base, { note = null, decodes = null } = {}) {
     verdict: summary.verdict,
     disposition,
     ...(override && override.disposition !== screened
-      ? { screened_disposition: screened, decided_by: "decode-and-compare" }
+      ? { screened_disposition: screened, decided_by: override.decided_by || "decode-and-compare" }
       : {}),
+    /* WAS THE GRID SPENT ON THIS ROW, AND WHAT DID IT SEE — recorded as data
+       and given no power over anything. `gridOverride` is condemn-only by
+       construction, so a `stable` grid leaves no trace in `disposition` or in
+       `note`, and without this field the four flightcast shows the grid did NOT
+       condemn are indistinguishable from four nobody asked. #324's whole point
+       about `inconclusive` is that an unspent question and a spent one that
+       came back negative are opposite facts a single absence renders
+       identically. */
+    ...(gridStatus ? { grid_status: gridStatus } : {}),
     median: summary.median,
     n: summary.n,
     inserted_samples: inserted,
@@ -597,7 +613,15 @@ export function decodeOverride(row, index) {
         (clean.length
           ? clean.length + " episode decoded clean, below the " + MIN_SAMPLES_FOR_AD_FREE + "-sample floor"
           : "no episode of this show has been decoded") +
-        " — ADR-0008 decode-and-compare is the only instrument that can settle it",
+        /* NAMES BOTH INSTRUMENTS, and the sentence was false in two directions
+           until it did. It read "decode-and-compare is the ONLY instrument that
+           can settle it", which (a) `combineOverrides` then concatenated
+           directly after a probe grid that had just settled it, producing a row
+           that contradicted itself inside one sentence, and (b) was already
+           wrong the moment #323 shipped `probeGrid` — four requests and no body
+           against a 60 MB download. It stays accurate standing alone, which is
+           the form the shows the grid did NOT condemn still carry. */
+        " — settling it needs ADR-0008 decode-and-compare, or a probe grid that catches the assembly",
     };
   }
 
@@ -623,6 +647,170 @@ export function decodeOverride(row, index) {
     };
   }
   return null;
+}
+
+/* ------------------------------------------------------------- the grid
+
+   A THIRD INSTRUMENT, AND THE CHEAPEST OF THE THREE. The screen above divides a
+   delivered length by a declared one. The decode downloads the file and counts
+   the audio. `probeGrid` (#323, driven over a pool by `regrid-clean.mjs`) does
+   neither: it asks ONE URL for its length four ways — 2-byte ranged GET and
+   unranged, under each of the two outbound identities — and reports whether the
+   answers agree. Four requests, no body, no download.
+
+   IT CAN ONLY EVER CONDEMN, and that asymmetry is the whole of its licence.
+   Two different lengths for one URL mean two resources, and a file assembled
+   per request is what dynamic insertion IS — the same reasoning `varyingSamples`
+   and `dispositionOf`'s first branch already run on. Agreement proves only that
+   this delivery path does not lie the way `atelier.flightcast.com` does, which
+   `regrid-clean.mjs`'s own `verdictNote` says in words; #323's bare-chain
+   control returns four identical cells ON THE LYING ORIGIN and stays
+   `unresolved`. So `gridOverride` returns `drop` or null and has no third
+   branch, by construction rather than by policy.
+
+   AGAIN AS DATA, NOT AS AN IMPORT, for the reason `DECODE_REPORT_REL` gives:
+   `regrid-clean.mjs` imports `probeTargets` from this module, so importing it
+   back would be a cycle. */
+
+/** Where the probe-grid ledgers live, relative to the repo root.
+
+    TWO FILES BECAUSE THEY ARE TWO POOLS OF ONE INSTRUMENT, not two instruments:
+    #324 gridded the `recover` shows and found none varying; the flightcast pass
+    gridded the six `unresolved` shows #323 left open. Same `probeGrid`, same
+    four-cell floor, same reading. Listing both here rather than merging the
+    artifacts keeps each pass's request count attached to the evidence it
+    bought. */
+export const GRID_REPORT_RELS = Object.freeze([
+  join("data", "breadth-clean-regrid.json"),
+  join("data", "flightcast-settle-regrid.json"),
+]);
+
+/** The grid ledgers, indexed by show. Later files win on a repeated `show_id`.
+
+    KEYED ON `show_id` AND NEVER ON HOST, and on this pool that is not a
+    formality. `_adswizz_note` in `dai-hosts.json` sets the rule — "one insert on
+    one show is evidence about that show, not a platform-wide claim" — and the
+    flightcast pass MEASURED it: of the six shows on `atelier.flightcast.com`,
+    two are served a longer file on the client/unranged cell and four are served
+    one length in all four cells. A host-keyed index would have condemned all
+    six on the strength of two, which is precisely the aggregation #321 found
+    wrong on blubrry (9 clean / 1 dirty) and libsyn (4/4).
+
+    LAST FILE WINS so a later, narrower pass supersedes an earlier one for the
+    shows it re-probed, matching how `--resume` replaces rows by `show_id`.
+    "Last" means LAST IN `GRID_REPORT_RELS`, not most recently written: the
+    order is the hand-maintained array below and nothing here reads a timestamp.
+    A new ledger therefore has to be APPENDED — inserted above an existing one
+    it would be silently overruled by older evidence for any show they share. */
+export function gridIndex(reports) {
+  const byShow = new Map();
+  for (const report of reports || []) {
+    for (const r of report?.results || []) {
+      if (r?.show_id == null || !r.grid) continue;
+      byShow.set(String(r.show_id), r);
+    }
+  }
+  return { byShow };
+}
+
+/** What the grid says about a row's disposition, or null to leave it alone.
+
+    ONE RULE AND NO OTHERS. `grid.status === "varies"` means at least one probed
+    episode was served more than one length for a single URL. Everything else —
+    `stable`, `inconclusive`, no row at all — returns null, because none of them
+    is evidence about the show in the direction that could move it. A null index
+    changes nothing, which is the state of every pool nobody has gridded. */
+export function gridOverride(row, index) {
+  if (!index) return null;
+  const r = index.byShow.get(String(row?.show_id));
+  if (r?.grid?.status !== "varies") return null;
+  /* PAIRS, NOT THE UNION. `varying_pairs` is one entry per varying episode and
+     each entry is the two lengths ONE url was served; `varying_totals` pools
+     them, so a three-episode show reads as a single URL with six lengths. See
+     `showGridVerdict`. The fallback is for rows written before the field
+     existed — none of which vary, so it is unreachable on today's evidence and
+     is here so a stale artifact degrades to the pooled form rather than to a
+     note with no numbers in it at all. */
+  const pairs = r.grid.varying_pairs?.length ? r.grid.varying_pairs : [(r.grid.varying_totals || []).join(" / ")];
+  return {
+    disposition: "drop",
+    /* NAMED ON THE OVERRIDE rather than stamped by the row builder, which used
+       to hardcode `decided_by: "decode-and-compare"` for whatever moved a row.
+       With a second instrument that string would have credited 1,914
+       transcripts of grid evidence to a download that was never spent — and
+       `decided_by` is the field a reader consults to find out what to re-run. */
+    decided_by: "probe-grid",
+    note:
+      "PROBE GRID: " + r.grid.varying_episodes + " of " + r.grid.episodes_probed +
+      " probed episode(s) were served MORE THAN ONE LENGTH for a single URL depending only on how the " +
+      "request was made (" + pairs.join("; ") + " bytes — one entry per episode, each entry the distinct " +
+      "lengths ONE url was served). More than one length for one URL means more than one resource, " +
+      "which is per-request assembly — #323's finding, measured on this show. No body was read: four " +
+      "requests per episode and the unranged calls aborted at their headers",
+  };
+}
+
+/** How the decode and the grid are combined when both have something to say.
+
+    THEY CANNOT SIMPLY BE OR-ed, and the order matters in one direction only.
+
+    THE GRID NEVER OVERTURNS A DECODE THAT ALSO CONDEMNS — it corroborates it,
+    and the decode's note is the one worth keeping because it is denominated in
+    SECONDS OF AUDIO against the show's own transcript, which is the thing a
+    later reader needs. The grid's contribution is recorded beside it rather
+    than replacing it.
+
+    THE GRID SETTLES A DECODE THAT SAID `unresolved`, and this is the branch
+    every row on today's evidence takes. `decodeOverride`'s rule 2 withholds
+    every show on a host caught under-reporting — that is why six flightcast
+    shows sat `unresolved` — while saying "decode-and-compare is the only
+    instrument that can settle it". The grid is a second one, four requests
+    instead of a 60 MB download, and where it sees the mechanism it has settled
+    exactly that. Calling this an override would misdescribe it: `unresolved` is
+    not a finding to be overturned.
+
+    THE GRID DOES OVERTURN A DECODE THAT ACQUITS, which is the one genuinely
+    contested case. `decodeOverride`'s rule 3 admits a show on one clean decode
+    of one episode; if the grid then catches that show's URLs being assembled
+    per request, the decoded copy was ONE ASSEMBLY and the acquittal rested on a
+    sample of one drawn from a distribution. Positive evidence of a mechanism
+    outranks an acquittal built on its absence — the asymmetry stated in
+    `decodeOverride`'s own header and in `varyingSamples`. Nothing in today's
+    evidence hits this branch (no show carries both), and it is written down
+    rather than left to whichever `||` happened to come first. */
+export function combineOverrides(decode, grid) {
+  if (!grid) return decode || null;
+  if (!decode) return grid;
+  if (decode.disposition === "drop") {
+    return {
+      ...decode,
+      decided_by: "decode-and-compare (probe grid corroborating)",
+      note: `${decode.note} — CORROBORATED by the probe grid: ${grid.note}`,
+    };
+  }
+  if (decode.disposition === "unresolved") {
+    return {
+      ...grid,
+      decided_by: "probe-grid",
+      note: `${grid.note}. This SETTLES what the decode ledger could not: ${decode.note}`,
+    };
+  }
+  return {
+    ...grid,
+    decided_by: "probe-grid (over decode-and-compare)",
+    /* THE OVERRULED DECODE'S NOTE IS KEPT, NOT PARAPHRASED. An earlier version
+       interpolated only `decode.disposition` into a sentence and dropped the
+       note, which lost the decode's seconds-of-audio entirely — and on this
+       branch `screened_disposition` records the SCREEN, so the decode's finding
+       would have left no trace on the row at all. `deriveRow` states the rule
+       this violates: "the bytes said recover and the decode said drop" is the
+       single most useful thing a later reader can be told, and the branch that
+       DISAGREES with a decode is the one where that is most true. */
+    note:
+      `${grid.note}. This OVERRIDES the decode ledger's "${decode.disposition}" for this show — ` +
+      `a decode reads one assembly, and the grid caught the assembling. The overruled decode said: ` +
+      `${decode.note}`,
+  };
 }
 
 /** Has this row already cost the requests that would answer it?
@@ -1210,6 +1398,19 @@ async function main() {
     );
   }
 
+  /* THE GRID LEDGERS, LOADED THE SAME WAY AND FOR THE SAME REASON. Absent on a
+     fresh checkout; `gridOverride` is written so a null index changes nothing,
+     and the suite pins that. */
+  const gridPaths = GRID_REPORT_RELS.map((rel) => join(ROOT, rel)).filter((p) => existsSync(p));
+  const grids = gridPaths.length ? gridIndex(gridPaths.map((p) => JSON.parse(readFileSync(p, "utf8")))) : null;
+  if (grids) {
+    const varying = [...grids.byShow.values()].filter((r) => r.grid?.status === "varies");
+    console.log(
+      `probe grids: ${grids.byShow.size} show(s) asked how big one URL is four ways; ` +
+        `${varying.length} served more than one length for a single URL`,
+    );
+  }
+
   const outPath = resolvePath(process.cwd(), args.out);
   const settled = new Set();
   for (const p of args.settled) {
@@ -1266,7 +1467,7 @@ async function main() {
          judged by two standards, with nothing on them saying which — and it
          would silently freeze out any signal added since. No request is made:
          this reads bytes already committed. */
-      carried.set(String(r.show_id), deriveRow(r, { note: fetchNoteOf(r), decodes }));
+      carried.set(String(r.show_id), deriveRow(r, { note: fetchNoteOf(r), decodes, grids }));
       if (isSettled(r) && !args.reprobe) done.add(String(r.show_id));
     }
     console.log(
@@ -1389,7 +1590,7 @@ async function main() {
         resolved_chain: chain ? chain.hosts : [],
         samples,
       },
-      { note, decodes },
+      { note, decodes, grids },
     );
     carried.set(String(s.show_id), row);
 

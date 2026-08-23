@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-/* Re-validate every `measured_clean` show with #323's four-cell probe grid.
+/* Ask a bucket of shows #323's four-cell probe grid: is one URL assembled per
+   request? Defaults to the `measured_clean` bucket; `--disposition` names another.
    ============================================================================
 
    WHY THIS EXISTS. ADR-0008 adopted the 2-byte ranged GET *because HEAD
@@ -24,6 +25,16 @@
    transcripts across 24 shows rest on it. If another platform lies the way
    flightcast does, some of those shows are not clean, and segments may already
    be planned against them. This asks each of them the flightcast question.
+
+   AND THEN THE OTHER BUCKET, WHICH IS WHERE IT PAID. #324 asked all 24
+   `recover` shows and none varied. The pool the finding actually pointed at was
+   `unresolved`: #323 left six flightcast shows there, 5,320 timed transcripts,
+   settleable only by another 60 MB download. `--disposition unresolved --host
+   flightcast` asked them for 72 requests and no bodies, and condemned two —
+   1,914 transcripts out of the anchorable count. The pool is a flag and
+   NOTHING ELSE IN THIS FILE KNOWS WHICH ONE IT IS: same `probeGrid`, same
+   four-cell floor, same reading of a grid. That is the point of it being a
+   flag rather than a second tool.
 
    NOTHING HERE REIMPLEMENTS THE GRID. `probeGrid` is imported from
    `tools/transcribe/decode-compare.mjs`, the pool comes from the same measured
@@ -64,7 +75,20 @@
                                           [--yield FILE] [--measured F,F]
                                           [--out FILE] [--limit N]
                                           [--host SUBSTR,SUBSTR] [--resume]
-                                          [--rederive]
+                                          [--rederive] [--disposition D,D]
+
+     --disposition selects which coverage bucket is audited and defaults to
+     `recover`, i.e. #324's pool exactly. `--disposition unresolved --host
+     flightcast` is the pass that settled the six shows #323 left open.
+
+     RE-RUNNING A PASS NEEDS --resume, and `main` refuses without it. This tool
+     changes the field it selects on, so a pool narrows every time it condemns
+     something; see the refusal in `main` for what that would otherwise delete.
+
+     --rederive takes its path from --out, whose default follows --disposition.
+     The flightcast ledger is committed under a narrower name than that default
+     (its pass was also narrowed by --host), so re-judging it wants
+     `--rederive --out data/flightcast-settle-regrid.json`.
 
      --rederive re-judges the committed rows from the grids already stored on
      them and makes no request at all; it is how a change to the reading of a
@@ -169,13 +193,51 @@ export function gridIsInformative(grid) {
 }
 
 
-/** The shows whose "clean" verdict this run is auditing, biggest asset first.
+/** The dispositions this harness audits when nothing says otherwise.
 
-    THE POOL IS `disposition: "recover"` AND NOTHING ELSE, read from the same
-    measured files `breadth-yield.mjs` consumes, because "which shows are
-    measured_clean" must have exactly one definition in this repo. Re-deriving
-    the bucket from verdicts here would let this audit disagree with the number
-    it is auditing.
+    `recover` ALONE IS THE DEFAULT because that is the bucket #324 was opened to
+    audit — `measured_clean`, the only bucket a measurement has admitted. Every
+    invocation that does not pass `--disposition` gets exactly #324's pool, so
+    re-running the committed pass cannot silently widen underneath it. */
+export const DEFAULT_POOL_DISPOSITIONS = Object.freeze(["recover"]);
+
+/** Every disposition `measure-suspects.mjs` can write, and therefore every
+    bucket this harness can be pointed at.
+
+    VALIDATED SO A TYPO IS AN ERROR RATHER THAN AN EMPTY PASS. `--disposition
+    unresolve` silently selected nothing, printed `0 show(s)`, and wrote a
+    zero-row artifact under a path derived from the typo — a committed file
+    that looks like a measurement and is the absence of one. */
+export const KNOWN_DISPOSITIONS = Object.freeze(["recover", "unresolved", "drop"]);
+
+export function assertKnownDispositions(dispositions) {
+  const bad = dispositions.filter((d) => !KNOWN_DISPOSITIONS.includes(d));
+  if (bad.length) {
+    throw new Error(
+      `--disposition: unknown value(s) ${bad.join(", ")}; measure-suspects.mjs writes only ${KNOWN_DISPOSITIONS.join(", ")}`,
+    );
+  }
+  return dispositions;
+}
+
+/** The shows whose disposition this run is auditing, biggest asset first.
+
+    THE POOL IS SELECTED ON `disposition` AND NOTHING ELSE, read from the same
+    measured files `breadth-yield.mjs` consumes, because "which shows are in
+    which coverage bucket" must have exactly one definition in this repo.
+    Re-deriving the bucket from verdicts here would let this audit disagree with
+    the number it is auditing.
+
+    WHICH DISPOSITIONS, AND WHY IT IS A PARAMETER RATHER THAN A CONSTANT. #324
+    asked the `recover` shows the flightcast question and none of them varied.
+    The pool that finding actually points at is the OTHER one: #323 caught
+    `atelier.flightcast.com` assembling per request and left six of its seven
+    shows `unresolved` for a stated reason, 5,320 timed transcripts that the
+    coverage figure still counts. Those rows need the identical instrument, the
+    identical floor and the identical reading of a grid — so the pool is a
+    parameter and everything downstream of it is untouched. Selecting them by
+    re-implementing the grid against a different pool is the failure this repo
+    has already paid for seven times.
 
     ORDERED BY THE SHOW'S OWN TRANSCRIPT COUNT, which is deliberately NOT the
     host-total ordering `measure-suspects.mjs` uses and the difference is worth
@@ -185,12 +247,13 @@ export function gridIsInformative(grid) {
     request buys the most certainty when it is spent on the show carrying the
     most transcripts, so an interrupted run has re-validated the largest
     possible share of the 5,381. */
-export function cleanShows(reports, { limit = null, hosts = [] } = {}) {
+export function poolShows(reports, { limit = null, hosts = [], dispositions = DEFAULT_POOL_DISPOSITIONS } = {}) {
   const rows = [];
   const seen = new Set();
+  const wanted = new Set(dispositions);
   for (const report of reports || []) {
     for (const r of report?.results || []) {
-      if (r?.disposition !== "recover" || r.show_id == null) continue;
+      if (!wanted.has(r?.disposition) || r.show_id == null) continue;
       const id = String(r.show_id);
       /* KEYED, because the two measured files are two POOLS of the same scan
          and a show could in principle appear in both. Counting it twice would
@@ -206,6 +269,12 @@ export function cleanShows(reports, { limit = null, hosts = [] } = {}) {
         timed_transcripts: r.timed_transcripts || 0,
         prior_verdict: r.verdict ?? null,
         prior_n: r.n ?? null,
+        /* CARRIED ONTO THE ROW because `verdictNote` has to say something
+           different about a show that was already `unresolved` than about one
+           sitting in `measured_clean`, and the row is the only place that fact
+           survives to `--rederive`, which re-judges from the file alone and
+           never re-reads the measured pool. */
+        prior_disposition: r.disposition ?? null,
       });
     }
   }
@@ -283,6 +352,22 @@ export function showGridVerdict(grids) {
        THEMSELVES, i.e. the two lengths one URL was served. That is the #323
        shape and it is the only one the note may quote. */
     varying_totals: seen(varying),
+    /* THE SAME EVIDENCE, UNPOOLED, AND THE POOLED FORM IS ACTIVELY MISLEADING
+       ONCE A SHOW HAS MORE THAN ONE VARYING EPISODE. `varying_totals` unions
+       three episodes' pairs into `a / b / c / d / e / f`, which reads as one URL
+       having been served six lengths — the exact conflation the comment above
+       warns about for `totals_seen`, reintroduced one field lower. The finding
+       is per URL and has to be rendered per URL: `["a vs b", "c vs d"]`, one
+       entry per episode, each entry the DISTINCT lengths ONE url was served.
+       Two is what every varying grid on this corpus has shown and it is what
+       the mechanism produces, but nothing here assumes it — a grid served three
+       distinct lengths renders `a vs b vs c`, which is why the prose downstream
+       says "distinct lengths" and not "the two lengths".
+       `varying_totals` is kept because it is the union the summary line prints
+       and #324's committed rows carry it. */
+    varying_pairs: varying.map((g) => answeredCells(g).map((c) => c.total))
+      .map((totals) => [...new Set(totals)].sort((a, b) => a - b).join(" vs "))
+      .filter(Boolean),
     totals_seen: seen(list),
   };
 }
@@ -297,14 +382,29 @@ export function showGridVerdict(grids) {
     the discrepancy flightcast shows is not present here. That is a strictly
     narrower claim than clean and this text has to keep it narrow, because the
     note is what a later reader will quote. */
-export function verdictNote(v, { perShow = EPISODES_PER_SHOW } = {}) {
+export function verdictNote(v, { perShow = EPISODES_PER_SHOW, priorDisposition = "recover" } = {}) {
+  /* WHICH POOL THE ROW CAME FROM CHANGES WHAT THERE IS TO SAY, and only for the
+     two settled outcomes. A `recover` row is being AUDITED: something admitted
+     it, and the note has to name what that something was. An `unresolved` row
+     was never admitted by anything, so "the verdict does not stand" would
+     describe a verdict that was never issued, and "still rests on its
+     ranged-GET samples" would credit samples this repo has already voided.
+     Defaulting to `recover` keeps every note #324 committed byte-identical
+     under `--rederive`, since those rows predate the field. */
+  const clean = priorDisposition === "recover";
   if (v.status === "varies") {
     return (
       `${NOTE_PREFIX} ${v.varying_episodes} of ${v.episodes_probed} probed episode(s) were served ` +
       `MORE THAN ONE LENGTH for a single URL depending on how the request was made ` +
-      `(${v.varying_totals.join(" / ")} bytes). Two lengths for one URL mean two resources, which is ` +
-      `per-request assembly — the #323 finding, on this show. The ranged-GET samples that produced this ` +
-      `show's ad-free verdict cannot be read as deliveries, so the verdict does not stand`
+      `(${v.varying_pairs.join("; ")} bytes — one entry per episode, each entry the distinct lengths ONE url ` +
+      `was served). More than one length for one URL means more than one resource, which is ` +
+      `per-request assembly — the #323 finding, on this show. ` +
+      (clean
+        ? `The ranged-GET samples that produced this show's ad-free verdict cannot be read as deliveries, ` +
+          `so the verdict does not stand`
+        : `This show was already unresolved for want of an instrument that could speak; the grid is one, and ` +
+          `what it observed is the mechanism itself. That is positive evidence and it condemns — the show ` +
+          `leaves the anchorable count rather than sitting in it awaiting a download`)
     );
   }
   if (v.status === "stable") {
@@ -313,8 +413,21 @@ export function verdictNote(v, { perShow = EPISODES_PER_SHOW } = {}) {
       `unranged, under both outbound identities), and all ${v.episodes_probed * GRID_CELLS} cells reported ` +
       `the same length for their URL. This does NOT re-certify the show: it says only that this delivery ` +
       `path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a ` +
-      `cache window looks exactly like this. The show's disposition is unchanged and still rests on its ` +
-      `ranged-GET samples`
+      `cache window looks exactly like this. ` +
+      (clean
+        ? `The show's disposition is unchanged and still rests on its ranged-GET samples`
+        /* NEITHER CIRCULAR NOR SELF-CONTRADICTING, and it was briefly both. It
+           cited #323's bare-chain control by name as corroboration — which on
+           that show's own row cited the row itself — and it ended "only
+           ADR-0008 decode-and-compare can settle it", the exact claim
+           `decodeOverride`'s sibling sentence drops one file over, for the exact
+           reason: a grid settled two of these shows for 72 requests and no
+           download. Two committed files asserting opposite things about the
+           same four show_ids is the failure two reviewer rounds have already
+           caught here. */
+        : `The show's disposition is unchanged and remains unresolved: a grid that agrees with itself ` +
+          `admits nothing, because four identical cells are also what a stitcher that did not vary for us ` +
+          `looks like. Settling it needs ADR-0008 decode-and-compare, or a grid that does catch an assembly`)
     );
   }
   return (
@@ -353,7 +466,9 @@ export function summarise(rows) {
     inconclusive: tally((r) => r.grid?.status === "inconclusive"),
     unclassified: tally((r) => !known.has(r.grid?.status)),
     note:
-      "varies_by_request is positive evidence of per-request assembly and moves a show off measured_clean. " +
+      "varies_by_request is positive evidence of per-request assembly and moves a show DOWN out of whichever " +
+      "bucket it was in — off measured_clean, or out of the anchorable count altogether for a show that was " +
+      "already unresolved. " +
       "stable_across_the_grid is NOT a clean bill: it means this delivery path does not lie in the way " +
       "atelier.flightcast.com does, and stability across requests is consistent with a static file AND " +
       "with a stitcher that did not vary for us. inconclusive rows never got a length back in all four " +
@@ -375,16 +490,36 @@ function list(argv, name, fallback) {
     .filter(Boolean);
 }
 
+/** The artifact a pool writes to when `--out` does not name one.
+
+    THE DEFAULT PATH HAS TO FOLLOW THE POOL, and a reviewer found why. `--out`
+    defaulted to `data/breadth-clean-regrid.json` unconditionally, so
+    `--disposition unresolved` with no `--out` would overwrite #324's committed
+    evidence with a different pool's rows — and `GRID_REPORT_RELS` in
+    `measure-suspects.mjs` would then go on consuming that file as the
+    clean-pool ledger. One committed artifact per pool, chosen by the same flag
+    that chooses the pool, is the cheap guard; naming `--out` explicitly still
+    wins, because a caller who names a path has said what they mean. */
+export function defaultOutFor(dispositions) {
+  const key = [...dispositions].sort().join("-");
+  return key === "recover" ? "data/breadth-clean-regrid.json" : `data/${key}-regrid.json`;
+}
+
 export function parseArgs(argv) {
   const n = Number(arg(argv, "--per-show", String(EPISODES_PER_SHOW)));
   const limit = Number(arg(argv, "--limit", ""));
+  const dispositions = assertKnownDispositions(list(argv, "--disposition", DEFAULT_POOL_DISPOSITIONS.join(",")));
   return {
     perShow: Number.isFinite(n) && n > 0 ? Math.floor(n) : EPISODES_PER_SHOW,
     limit: Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : null,
     hosts: list(argv, "--host", ""),
+    /* DEFAULTS TO #324'S POOL. An invocation that names no disposition gets
+       `recover` and nothing else, so re-running the committed pass cannot
+       widen underneath it. */
+    dispositions,
     yieldPath: arg(argv, "--yield", "data/breadth-transcript-yield.json"),
     measured: list(argv, "--measured", "data/breadth-suspect-inflation.json,data/breadth-anchorable-inflation.json"),
-    out: arg(argv, "--out", "data/breadth-clean-regrid.json"),
+    out: arg(argv, "--out", defaultOutFor(dispositions)),
     dryRun: argv.includes("--dry-run"),
     resume: argv.includes("--resume"),
     rederive: argv.includes("--rederive"),
@@ -405,7 +540,43 @@ export function parseArgs(argv) {
     answered, which is the opposite of politeness. */
 export function rederive(prev, { perShow = EPISODES_PER_SHOW } = {}) {
   const results = (prev?.results || []).map((r) => judgeRow(r, { perShow }));
-  return { ...prev, results, summary: summarise(results), rederived_at: new Date().toISOString() };
+  /* `policy` IS RE-STAMPED, `source` IS NOT, and `method` IS RE-DERIVED FROM
+     `source`. The split is the point.
+
+     `policy` states what a reader may conclude from this file — the tool's
+     current rule — so a re-judged file must carry the current wording for the
+     same reason its rows must carry the current verdict: two ledgers describing
+     themselves in different vocabularies is the prose form of "rows judged by
+     two standards".
+
+     `source` is PROVENANCE — what was asked, of whom, when — and re-stamping it
+     would let a zero-request re-judgement rewrite the history of a pass it did
+     not make. So it is copied untouched.
+
+     `method` is a SENTENCE ABOUT `source`, and that is why it is recomputed
+     from `prev.source` rather than from today's argv. Recomputing it from argv
+     would let `--rederive` (which takes no `--disposition`) relabel a pass's
+     pool; leaving it alone froze the bug it had — the flightcast file claiming
+     `measured_clean`. Reading the pool off the file's own record fixes the
+     sentence without inventing a fact. Files written before the field default
+     to `recover`, which is the pool they were run against. */
+  /* AND THE POOL IS BACKFILLED ONTO `source` THE FIRST TIME IT IS INFERRED, so
+     the inference happens exactly once. A file written before the field defaults
+     to `recover` — correct, because that was the only pool that existed — but
+     leaving the key absent means every future `--rederive` re-infers it from
+     `DEFAULT_POOL_DISPOSITIONS`, and changing that constant would silently
+     relabel the pass. Writing it down converts a standing assumption into a
+     recorded fact. */
+  const dispositions = prev?.source?.dispositions || [...DEFAULT_POOL_DISPOSITIONS];
+  return {
+    ...prev,
+    method: methodFor(dispositions),
+    policy: POLICY,
+    source: { ...(prev?.source || {}), dispositions },
+    results,
+    summary: summarise(results),
+    rederived_at: new Date().toISOString(),
+  };
 }
 
 /** How a row's fetch note and its grid note are joined, and split apart again.
@@ -417,6 +588,31 @@ export function rederive(prev, { perShow = EPISODES_PER_SHOW } = {}) {
     silently eating "feed unreadable: ..." on the next re-judgement, leaving a
     row that still looks perfectly well-formed. The suite pins both the
     round-trip and the prefix. */
+/** What was asked, of which bucket. Named because it must NAME THE POOL IT
+    ACTUALLY AUDITED.
+
+    This string was hardcoded to "over every measured_clean show", so the
+    flightcast artifact opened by claiming a bucket it had not touched and then
+    listed `"dispositions": ["unresolved"]` three keys later — a provenance
+    block that could not be reconciled with the evidence attached to it, which
+    is `measure-suspects.mjs`'s own `source.passes` lesson. */
+export function methodFor(dispositions) {
+  return (
+    `tools/transcribe/decode-compare.mjs probeGrid (#323) re-run over every show whose disposition is ` +
+    `[${[...dispositions].join(", ")}]: for each probed episode, four requests for one URL's length — ` +
+    "2-byte ranged GET and unranged, under both outbound identities. No body is read; the unranged calls " +
+    "are aborted as their headers arrive."
+  );
+}
+
+/** What a reader may conclude from either grid ledger. Re-stamped by
+    `--rederive` so both files say it in the same words; see `rederive`. */
+export const POLICY =
+  "This file can only ever move a show DOWN — off measured_clean, or out of the anchorable count " +
+  "altogether — and can never move one up. See verdictNote: a grid that agrees with itself says this " +
+  "delivery path does not lie the way atelier.flightcast.com does, which is a statement about one " +
+  "instrument, not a clean bill, and it leaves an already-unresolved show unresolved.";
+
 export const NOTE_PREFIX = "PROBE GRID:";
 export const NOTE_SEP = " — ";
 export const NOTE_JOIN = NOTE_SEP + NOTE_PREFIX;
@@ -441,7 +637,11 @@ export function judgeRow(row, { perShow = EPISODES_PER_SHOW } = {}) {
      reconstruct. */
   const prior = typeof row?.note === "string" ? row.note : "";
   const fetchNote = prior.includes(NOTE_JOIN) ? prior.slice(0, prior.indexOf(NOTE_JOIN)) : null;
-  const note = verdictNote(grid, { perShow });
+  /* `?? undefined`, NOT `|| "recover"`. The row carries `prior_disposition:
+     null` only for rows written before the field existed, and letting
+     `verdictNote`'s own default supply the fallback keeps that default stated
+     in exactly one place. */
+  const note = verdictNote(grid, { perShow, priorDisposition: row?.prior_disposition ?? undefined });
   return { ...row, grid, note: fetchNote ? `${fetchNote}${NOTE_SEP}${note}` : note };
 }
 
@@ -455,15 +655,9 @@ export function reportShell(args, requests) {
   return {
     version: 1,
     generated_at: new Date().toISOString(),
-    method:
-      "tools/transcribe/decode-compare.mjs probeGrid (#323) re-run over every measured_clean show: for each " +
-      "probed episode, four requests for one URL's length — 2-byte ranged GET and unranged, under both " +
-      "outbound identities. No body is read; the unranged calls are aborted as their headers arrive.",
-    policy:
-      "This file can move a show OFF measured_clean and can never move one onto it. See verdictNote: a grid " +
-      "that agrees with itself says this delivery path does not lie the way atelier.flightcast.com does, " +
-      "which is a statement about one instrument, not a clean bill.",
-    source: { yield: args.yieldPath, measured: args.measured },
+    method: methodFor(args.dispositions),
+    policy: POLICY,
+    source: { yield: args.yieldPath, measured: args.measured, dispositions: args.dispositions },
     episodes_per_show: args.perShow,
     requests,
   };
@@ -474,6 +668,21 @@ async function main() {
   const readJson = (p) => JSON.parse(readFileSync(resolvePath(process.cwd(), p), "utf8"));
   if (args.rederive) {
     const p = resolvePath(process.cwd(), args.out);
+    /* NAMES THE FILE, because `--rederive` takes its path from `--out`, whose
+       default follows `--disposition` — so `--rederive --disposition
+       unresolved` looks for `data/unresolved-regrid.json` and the flightcast
+       ledger is committed under a narrower, more honest name (that pass was
+       also narrowed by `--host`). A bare ENOENT stack trace does not tell a
+       reader that, and a reviewer hit it. */
+    if (!existsSync(p)) {
+      console.error(
+        `no such ledger: ${args.out}\n` +
+          `--rederive re-judges an existing file and its path comes from --out, which defaults to ` +
+          `${defaultOutFor(args.dispositions)} for this --disposition. Pass --out explicitly, e.g.\n` +
+          `  node tools/segments/regrid-clean.mjs --rederive --out data/flightcast-settle-regrid.json`,
+      );
+      return 2;
+    }
     const out = rederive(JSON.parse(readFileSync(p, "utf8")), { perShow: args.perShow });
     writeJsonAtomic(p, out);
     for (const r of out.results) {
@@ -490,15 +699,21 @@ async function main() {
   const feedById = new Map((report.shows || []).map((s) => [String(s.show_id), s.feed_url]));
   const coverage = report.measurement_coverage?.measured_clean || null;
 
-  const pool = cleanShows(
+  const pool = poolShows(
     args.measured.filter((p) => existsSync(resolvePath(process.cwd(), p))).map(readJson),
-    { limit: args.limit, hosts: args.hosts },
+    { limit: args.limit, hosts: args.hosts, dispositions: args.dispositions },
   );
   const poolTranscripts = pool.reduce((n, r) => n + r.timed_transcripts, 0);
 
+  /* THE COVERAGE CROSS-CHECK IS ONLY MEANINGFUL FOR THE `recover` POOL, because
+     `measured_clean` is the bucket that disposition maps onto. Printing it
+     beside an `unresolved` pool would invite exactly the misreading the line
+     exists to prevent — two unrelated numbers side by side reading as a
+     reconciliation. */
+  const reconcilable = args.dispositions.length === 1 && args.dispositions[0] === "recover";
   console.log(
-    `measured_clean pool: ${pool.length} show(s), ${poolTranscripts} timed transcripts` +
-      (coverage ? ` (coverage file says ${coverage.shows} / ${coverage.timed_transcripts})` : ""),
+    `pool [${args.dispositions.join(", ")}]: ${pool.length} show(s), ${poolTranscripts} timed transcripts` +
+      (coverage && reconcilable ? ` (coverage file says measured_clean is ${coverage.shows} / ${coverage.timed_transcripts})` : ""),
   );
   console.log(`${args.perShow} episode(s) per show, 4 requests each — at most ${pool.length * args.perShow * 4} requests, no bodies\n`);
 
@@ -510,6 +725,41 @@ async function main() {
   }
 
   const outPath = resolvePath(process.cwd(), args.out);
+
+  /* REFUSE TO DELETE EVIDENCE, AND THE POOL IS WHY THIS IS NEEDED AT ALL.
+
+     THE POOL IS A FLAG OVER A FIELD THIS PASS MUTATES. `--disposition
+     unresolved` selected six flightcast shows; the two it condemned are now
+     `drop`, so the identical command today selects FOUR. Re-run without
+     `--resume` and the artifact is rewritten with four rows — the two `varies`
+     grids are gone, `gridOverride` goes null for those shows, and 1,914
+     transcripts silently return to the anchorable count. The evidence for a
+     verdict would be destroyed by re-running the command that produced it.
+
+     `recover` never showed this because #324 condemned nobody, so the pool was
+     a fixed point. It is not one in general, and a reviewer found the
+     reproduction block in the README walking straight into it.
+
+     `--resume` is the correct form and it already keeps every prior row (see
+     the block below); this only refuses the form that does not. It compares
+     show_ids rather than counts, because a pool that changed membership without
+     changing size is the same loss and would slip a count check. */
+  const orphaned = existsSync(outPath) && !args.resume
+    ? (JSON.parse(readFileSync(outPath, "utf8")).results || [])
+        .filter((r) => r?.show_id != null && !pool.some((s) => s.show_id === String(r.show_id)))
+    : [];
+  if (orphaned.length) {
+    console.error(
+      `\nREFUSING TO WRITE ${args.out}: it holds ${orphaned.length} row(s) for shows outside today's pool, ` +
+        `and this run would delete them.\n` +
+        orphaned.map((r) => `  ${String(r.timed_transcripts).padStart(5)} timed  ${r.grid?.status ?? "?"}  ${r.title}`).join("\n") +
+        `\n\nThis pass CHANGES the dispositions it selects on, so re-running it narrows its own pool. ` +
+        `Re-run with --resume (keeps every prior row and re-judges it, re-probing only the unsettled ones), ` +
+        `or --rederive (re-judges the stored grids and makes no request), or --out a different path.`,
+    );
+    return 2;
+  }
+
   /* EVERY PRIOR ROW, keyed by show. `done` is the narrower set this run may
      SKIP; `kept` is what the output must still contain. */
   const kept = new Map();

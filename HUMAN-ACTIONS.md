@@ -1457,8 +1457,16 @@ fraction of a second.
 screen and records both verdicts, and every flightcast show is back to
 `unresolved` except the one measured carrying undeclared audio, which is
 `drop`. Nothing is
-admitted on evidence now known to be blind. Corpus figures: `measured_clean`
-5,381, `measured_unresolved` 5,366, net 10,747, 50.1% measured.
+admitted on evidence now known to be blind.
+
+**Updated after the probe grid was run over the six shows this item left open
+(#324 follow-up).** Two of them — Success Story and Right About Now — are served
+a longer file on the `client`/unranged cell and are now `drop`; the other four
+returned one length in each of their episodes' four cells and stay `unresolved`.
+Corpus figures:
+`measured_clean` **5,381** (unchanged), `measured_unresolved` **3,452**, net
+**8,833**, **60.9%** measured. The net fell by 1,914. Read the percentage with
+care: the numerator did not move, the denominator shrank.
 
 **A note on wording.** Below, "carries undeclared audio" is meant literally and
 is all that was measured. Nothing in this work detects, locates or classifies an
@@ -1477,10 +1485,19 @@ them.
    `length="0"`, only a decode works"); what it does not say is that a length a
    host *does* report can be the master's.
 
-2. **What do we spend to settle the other six flightcast shows?** Success Story
-   (1,264), Bankless (1,150), The Game with Alex Hormozi (1,141), Right About Now
-   (650), The Wild Sovereign Soul Show (551) **and The Secret To Success (564)** —
-   5,320 transcripts.
+2. **What do we spend to settle the other four flightcast shows?** ~~Six~~
+   **Four**: Bankless (1,150), The Game with Alex Hormozi (1,141), The Wild
+   Sovereign Soul Show (551) **and The Secret To Success (564)** — **3,406**
+   transcripts.
+
+   **The cheaper option below was run, and it answered two of the six.** The
+   probe grid caught Success Story (1,264) and Right About Now (650) being
+   served a longer file on the `client`/unranged cell, on 3 of 3 episodes each —
+   #323's signature exactly. Both are `drop`; 1,914 transcripts left the
+   anchorable count for 72 requests and no downloads. **This question is now
+   about 3,406 transcripts, not 5,320, and the four that remain are the ones the
+   grid could NOT settle** — their cells agree, which admits nothing on a host
+   whose byte figures are master lengths.
 
    That last one is the surprise and it is the clearest illustration of what the
    instrument failure costs. The Secret To Success has a probe-corroborated
@@ -1488,21 +1505,25 @@ them.
    caught delivering more than it declares, so its five ranged-GET samples are
    master lengths that cannot admit anything, and a single clean decode is below
    the two-sample floor. One more download of that show would recover 564
-   transcripts on evidence we already know how to read. The only
+   transcripts on evidence we already know how to read. The remaining
    instrument that works is a full download, ADR-0008 wants **N ≥ 2 of the same
    episode**, and the committed override needs **2 decoded-clean episodes**
-   before a show on this host can be admitted. That is ~20 downloads, roughly
-   1.2 GB, and it is the whole question of whether half the corpus is anchorable.
-   The alternative is leaving 5,320 transcripts permanently `unresolved`, which
+   before a show on this host can be admitted — so 4 downloads a show. That is
+   **~16 downloads for the four, roughly 1 GB**, against ~24 (~1.2 GB) for the
+   original six; The Secret To Success already has one of its four, so ~15 in
+   practice. The grid removed a third of the shows, not two thirds of the
+   budget, and the two figures are stated the same way on purpose.
+   The alternative is leaving 3,406 transcripts permanently `unresolved`, which
    is honest, costs nothing, and never ends.
 
-   Cheaper option worth pricing first: `--probe-grid` is four tiny requests and
-   no audio, and it detected the discrepancy on its own. Running it across all
-   35 flightcast episodes costs 140 requests and would say *which* shows are
-   being served two different lengths — not how much audio, but a per-show
-   answer for the price of a rounding error. It cannot replace the downloads
-   (a show whose four cells agree is still only screened, not measured), but it
-   would tell us how many downloads to buy.
+   ~~Cheaper option worth pricing first:~~ **Spent, and it is why the number
+   above is 3,406.** `--probe-grid`, driven over the bucket by
+   `regrid-clean.mjs --disposition unresolved --host flightcast`, cost 72
+   requests and no audio and gave a per-show answer: 2 vary, 4 do not. As
+   predicted it could not replace the downloads for the four whose cells agree —
+   a grid that agrees is still only screened, not measured — but it removed 1,914
+   transcripts from the question for the price of a rounding error, and it tells
+   us how many downloads are left to buy.
 
 3. **Do we now distrust the ranged GET everywhere, or only where it has been
    caught?** The shipped code takes the narrow reading: a host is blind only once
@@ -1514,6 +1535,15 @@ them.
    is what a cautious reading of *two consecutive instrument failures* (HEAD,
    then ranged GET) would justify. Note the probe grid makes the wide reading
    much cheaper than it was when this question was first framed.
+
+   **New evidence, and it does not decide this — it prices it.** The grid has
+   now been run over 30 shows across both buckets (24 `recover` in #324, 6
+   `unresolved` here). Two vary; 27 do not; one origin cannot be asked. Every
+   varying show is on `atelier.flightcast.com`, the host already caught — so
+   nothing yet argues for widening beyond it. But *within* that host the split
+   is 2 of 6, which is the sharpest available argument that "caught" has to mean
+   caught **per show** and not per hostname, whichever reading you take. This
+   ruling is still yours.
 
 4. **Around the House with Eric G carries 313 s of undeclared audio, and
    nothing consumes that fact.** Decoded 2593.33 s against a feed declaring
@@ -1530,7 +1560,7 @@ them.
 **What to do.** Read `tools/transcribe/README.md` §5 (six downloads, the numbers,
 the probe grid, and the two controls that separate the origin from its ad-tech
 chain), then rule on 1–4. Nothing is blocked on this: the corpus figures are
-already correct and conservative. What is blocked is knowing whether 5,320
+already correct and conservative. What is blocked is knowing whether **3,406**
 transcripts are usable — and one download of The Secret To Success would settle
 564 of them.
 

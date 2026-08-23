@@ -14,7 +14,7 @@ import {
   EPISODES_PER_SHOW,
   answeredCells,
   gridIsInformative,
-  cleanShows,
+  poolShows,
   showGridVerdict,
   slowDownSignals,
   verdictNote,
@@ -26,6 +26,11 @@ import {
   GRID_CELLS,
   NOTE_PREFIX,
   NOTE_JOIN,
+  DEFAULT_POOL_DISPOSITIONS,
+  KNOWN_DISPOSITIONS,
+  defaultOutFor,
+  methodFor,
+  POLICY,
 } from "./regrid-clean.mjs";
 
 /** One grid cell, field-for-field as `probeGrid` emits it.
@@ -89,7 +94,7 @@ const showRow = (over = {}) => ({
 
 /* --------------------------------------------------------------- the pool */
 
-/* MUTATION: delete the `.sort()` in `cleanShows`, or flip its sign. Verified
+/* MUTATION: delete the `.sort()` in `poolShows`, or flip its sign. Verified
    failing (both directions).
 
    The brief's instruction is "order the work by transcript count, so each
@@ -98,10 +103,10 @@ const showRow = (over = {}) => ({
    fewer — so a run stopped by a host asking us to slow down has either
    re-validated a quarter of the corpus or almost none of it, decided entirely
    by this line. Note this is deliberately NOT `measure-suspects.mjs`'s
-   host-total ordering; see `cleanShows`' docstring for why the two scans want
+   host-total ordering; see `poolShows`' docstring for why the two scans want
    opposite orders. */
 test("shows are audited biggest-asset-first", () => {
-  const pool = cleanShows([
+  const pool = poolShows([
     { results: [showRow({ show_id: "small", timed_transcripts: 3 }), showRow({ show_id: "big", timed_transcripts: 1368 })] },
   ]);
   assert.deepEqual(pool.map((r) => r.show_id), ["big", "small"]);
@@ -115,7 +120,7 @@ test("shows are audited biggest-asset-first", () => {
    `measurement_coverage.measured_clean`, which is the number this whole exercise
    exists to either confirm or correct. */
 test("only measured_clean shows are in the pool", () => {
-  const pool = cleanShows([
+  const pool = poolShows([
     {
       results: [
         showRow({ show_id: "clean", disposition: "recover" }),
@@ -127,6 +132,92 @@ test("only measured_clean shows are in the pool", () => {
   assert.deepEqual(pool.map((r) => r.show_id), ["clean"]);
 });
 
+/* MUTATION: default `dispositions` to `["recover", "unresolved"]`, or drop the
+   `wanted` set and match everything. Verified failing (both).
+
+   THE DEFAULT IS THE GUARD. #324's committed pass, its summary block and its
+   reconciliation against `measurement_coverage.measured_clean` all assume the
+   pool is `recover` and nothing else. A widened default would silently change
+   what the committed file means on the next `--resume`, with no flag in the
+   invocation to say so. */
+test("the pool defaults to measured_clean and nothing else", () => {
+  assert.deepEqual([...DEFAULT_POOL_DISPOSITIONS], ["recover"]);
+  assert.deepEqual(parseArgs([]).dispositions, ["recover"]);
+});
+
+/* MUTATION: have `poolShows` ignore `dispositions` and hardcode `recover`.
+   Verified failing.
+
+   This is the line that made the flightcast pass possible without a second
+   grid implementation: the six shows #323 left open are `unresolved`, the
+   instrument that must ask them is byte-for-byte the one that asked the
+   `recover` pool, and the only thing that legitimately differs is which rows
+   are handed to it. */
+test("the audited bucket is selectable, and only the named one is audited", () => {
+  const reports = [
+    {
+      results: [
+        showRow({ show_id: "clean", disposition: "recover" }),
+        showRow({ show_id: "dirty", disposition: "drop" }),
+        showRow({ show_id: "dunno", disposition: "unresolved", timed_transcripts: 999 }),
+      ],
+    },
+  ];
+  assert.deepEqual(poolShows(reports, { dispositions: ["unresolved"] }).map((r) => r.show_id), ["dunno"]);
+  assert.deepEqual(
+    poolShows(reports, { dispositions: ["recover", "unresolved"] }).map((r) => r.show_id),
+    ["dunno", "clean"],
+    "still biggest-asset-first across a widened pool",
+  );
+  /* `drop` is selectable too and deliberately not special-cased: a settled
+     condemnation is not this file's business, but refusing it in code would be
+     a policy hidden in a filter rather than in an invocation. */
+  assert.deepEqual(poolShows(reports, { dispositions: ["drop"] }).map((r) => r.show_id), ["dirty"]);
+});
+
+/* MUTATION: drop `prior_disposition` from the row `poolShows` builds. Verified
+   failing.
+
+   `--rederive` re-judges from the committed file ALONE and never re-reads the
+   measured pool, so if the row does not carry which bucket it was drawn from,
+   every note in a re-judged flightcast artifact silently reverts to the
+   `measured_clean` wording — telling a reader that an `unresolved` show "still
+   rests on its ranged-GET samples", which on this host is precisely the claim
+   #323 destroyed. */
+test("a row remembers which bucket it was drawn from", () => {
+  const pool = poolShows([{ results: [showRow({ show_id: "u", disposition: "unresolved" })] }], {
+    dispositions: ["unresolved"],
+  });
+  assert.equal(pool[0].prior_disposition, "unresolved");
+});
+
+/* MUTATION: have `judgeRow` call `verdictNote(grid, { perShow })` and drop
+   `priorDisposition`. SURVIVED the first mutation run, and this test is why it
+   no longer does.
+
+   THE HOLE WAS THE JOIN, WHICH IS THE PART THAT ACTUALLY RUNS. One test pinned
+   that `poolShows` writes `prior_disposition`; another pinned that
+   `verdictNote` reads it. Neither pinned that anything connects them — so
+   deleting the argument left both green while every note in a re-judged
+   flightcast artifact silently reverted to the `measured_clean` wording. That
+   is exactly the failure `--rederive` exists to prevent, arriving through
+   `--rederive` itself: it re-judges from the committed file alone, so this is
+   the only path by which the field is ever read. */
+test("a re-judged row is judged as the bucket it was drawn from", () => {
+  const grids = [grid([100, 100, 100, 100])];
+  const open = judgeRow({ show_id: "u", prior_disposition: "unresolved", grids });
+  assert.match(open.note, /remains unresolved/);
+  assert.ok(!/rests on its ranged-GET samples/.test(open.note), "an unresolved show rests on nothing");
+
+  /* #324's rows predate the field and must keep their wording exactly. */
+  assert.match(judgeRow({ show_id: "c", grids }).note, /still rests on its ranged-GET samples/);
+  assert.match(judgeRow({ show_id: "c", prior_disposition: "recover", grids }).note, /still rests on its ranged-GET samples/);
+
+  /* AND IT SURVIVES A ROUND TRIP, which is the operation that would lose it. */
+  const rejudged = rederive({ results: [open] });
+  assert.equal(rejudged.results[0].note, open.note);
+});
+
 /* MUTATION: remove the `seen` set. Verified failing.
 
    The two measured files are two POOLS of one scan (suspects, then everyone
@@ -134,7 +225,7 @@ test("only measured_clean shows are in the pool", () => {
    it would report more transcripts audited than exist, which is the exact
    direction of error that makes an audit worthless. */
 test("a show present in both measured files is audited once", () => {
-  const pool = cleanShows([
+  const pool = poolShows([
     { results: [showRow({ show_id: "dup", timed_transcripts: 100 })] },
     { results: [showRow({ show_id: "dup", timed_transcripts: 100 })] },
   ]);
@@ -309,7 +400,12 @@ test("the condemning number is one URL's two lengths, not three episodes' sizes"
   ]);
   assert.deepEqual(v.varying_totals, [100, 200]);
   assert.deepEqual(v.totals_seen, [100, 200, 500, 900], "the union is still recorded, just not as the headline");
-  assert.ok(verdictNote(v).includes("100 / 200"));
+  /* THE NOTE QUOTES THE PAIR, and quoting `varying_totals` here instead was
+     itself a (smaller) version of this bug — see "the condemning evidence is
+     one pair per URL". With a single varying episode the two renderings differ
+     only by the separator; with three they differ by a factor of three in how
+     many lengths one URL appears to have been served. */
+  assert.ok(verdictNote(v).includes("100 vs 200"));
   assert.ok(!verdictNote(v).includes("900"), "an unrelated episode's size never appears in the finding");
 });
 
@@ -339,6 +435,71 @@ test("an unspent probe says so", () => {
   const note = verdictNote(showGridVerdict([grid([null, null, null, null])]));
   assert.match(note, /inconclusive/);
   assert.match(note, /not a negative result/);
+});
+
+/* MUTATION: delete the `clean` branch in `verdictNote` so both pools share the
+   `recover` wording. Verified failing on both halves.
+
+   A NOTE THAT DESCRIBES THE WRONG POOL IS THE FAILURE MODE THIS FILE EXISTS TO
+   PREVENT, one layer up from the grid. On a `recover` row the note may say the
+   show "still rests on its ranged-GET samples", because something admitted it
+   and that something was the ranged GET. On an `unresolved` flightcast row the
+   same sentence would credit samples #323 proved are master lengths rather
+   than deliveries — the exact assertion the whole sequence has been correcting
+   — and "the verdict does not stand" would name a verdict that was never
+   issued. The note is what a later reader quotes, so it has to be true of the
+   row it is attached to. */
+test("a note never describes a bucket the row did not come from", () => {
+  const stable = showGridVerdict([grid([100, 100, 100, 100])]);
+  const varies = showGridVerdict([grid([100, 100, 100, 140])]);
+
+  const cleanStable = verdictNote(stable, { priorDisposition: "recover" });
+  const openStable = verdictNote(stable, { priorDisposition: "unresolved" });
+  assert.match(cleanStable, /still rests on its ranged-GET samples/);
+  assert.ok(
+    !/rests on its ranged-GET samples/.test(openStable),
+    "an unresolved show rests on nothing; saying otherwise credits the samples #323 voided",
+  );
+  assert.match(openStable, /remains unresolved/);
+  /* WHY STABILITY CANNOT ADMIT IT, stated as the reason rather than as a
+     citation. An earlier version named #323's bare-chain control here — which,
+     on that show's own row, cited the row itself as its own corroboration. */
+  assert.match(openStable, /did not vary for us/);
+
+  const cleanVaries = verdictNote(varies, { priorDisposition: "recover" });
+  const openVaries = verdictNote(varies, { priorDisposition: "unresolved" });
+  assert.match(cleanVaries, /the verdict does not stand/);
+  assert.ok(!/the verdict does not stand/.test(openVaries), "there was no verdict to overturn");
+  assert.match(openVaries, /leaves the anchorable count/);
+
+  /* THE DEFAULT IS `recover`, which is what keeps #324's committed notes
+     byte-identical under `--rederive`: those rows predate the field. */
+  assert.equal(verdictNote(stable), cleanStable);
+});
+
+/* MUTATION: make `varying_pairs` read `varying_totals` (the pooled union).
+   Verified failing.
+
+   THE POOLED FORM IS ACTIVELY MISLEADING ONCE A SHOW HAS MORE THAN ONE VARYING
+   EPISODE, and this file already says so about `totals_seen`: three episodes
+   are three different files, so three distinct numbers there mean nothing. The
+   condemning claim is "ONE url, two lengths". Unioned across three episodes it
+   renders as `a / b / c / d / e / f`, which reads as a single URL served six
+   lengths — an overstatement of the finding sitting inside the note that
+   reports it. Per-episode pairs are the shape the evidence actually has, and
+   `data/breadth-anchorable-inflation.json` quotes them verbatim. */
+test("the condemning evidence is one pair per URL, never a pool of them", () => {
+  const v = showGridVerdict([grid([10, 10, 10, 14]), grid([20, 20, 20, 26])]);
+  assert.deepEqual(v.varying_pairs, ["10 vs 14", "20 vs 26"]);
+  /* The pooled field still exists and still pools — the point is that they are
+     different numbers and the note must quote the right one. */
+  assert.deepEqual(v.varying_totals, [10, 14, 20, 26]);
+  assert.match(verdictNote(v), /10 vs 14; 20 vs 26/);
+  assert.ok(!/10 \/ 14 \/ 20 \/ 26/.test(verdictNote(v)), "the note must not restate the union as one URL's lengths");
+
+  /* A STABLE SHOW HAS NO PAIRS AT ALL, which is what keeps the field from
+     becoming a second `totals_seen`. */
+  assert.deepEqual(showGridVerdict([grid([10, 10, 10, 10])]).varying_pairs, []);
 });
 
 /* ---------------------------------------------------------- slowing down */
@@ -553,4 +714,225 @@ test("the committed re-validation covers exactly the measured_clean bucket", () 
   const varies = summarise(re.results).varies_by_request;
   assert.equal(audited.shows, clean.shows + varies.shows, "audited pool == the measured_clean bucket it was drawn from");
   assert.equal(audited.timed_transcripts, clean.timed_transcripts + varies.timed_transcripts);
+});
+
+/* MUTATION: flip one stored cell's `total` in the committed flightcast file so
+   a `stable` row's grid disagrees with its own evidence; and separately, edit
+   `summary.varies_by_request.timed_transcripts` by hand. Verified failing, and
+   verified changing bytes on disk first (#319/#324: an untracked file makes
+   `git diff` report a no-op that never happened).
+
+   WHAT THIS FILE DECIDES. 5,320 timed transcripts — the six shows #323 left
+   open on the one origin it caught assembling per request — and through
+   `gridOverride` it is what moved 1,914 of them out of the anchorable count.
+   The number in the founder's hands rests on these cells, so the verdicts have
+   to be re-derivable from them and the pool has to be exactly the six. */
+test("the committed flightcast pass covers exactly the six shows #323 left open", () => {
+  const re = JSON.parse(readFileSync(new URL("../../data/flightcast-settle-regrid.json", import.meta.url), "utf8"));
+  const measured = JSON.parse(
+    readFileSync(new URL("../../data/breadth-anchorable-inflation.json", import.meta.url), "utf8"),
+  );
+
+  assert.deepEqual(summarise(re.results), re.summary, "the summary block is recomputed, not narrated");
+  assert.equal(re.results.length, 6);
+  assert.equal(summarise(re.results).audited.timed_transcripts, 5320);
+
+  for (const r of re.results) {
+    assert.equal(r.enclosure_host, "atelier.flightcast.com");
+    assert.equal(r.prior_disposition, "unresolved", "every audited row was unresolved when it was probed");
+    assert.deepEqual(showGridVerdict(r.grids), r.grid, `${r.title}: the verdict is derived from the stored grids`);
+    for (const g of r.grids || []) {
+      assert.equal(g.cells.length, GRID_CELLS, `${r.title}: a partial grid is a different instrument`);
+      assert.equal(answeredCells(g).length, GRID_CELLS, `${r.title}: all four cells answered`);
+      /* NO HOST ASKED US TO SLOW DOWN, pinned against the cells rather than
+         restated from the PR body. */
+      for (const c of g.cells) assert.ok(!SLOW_DOWN_STATUSES.has(c.status), `${r.title}: HTTP ${c.status}`);
+    }
+  }
+
+  /* A PLATFORM VERDICT IS NOT A SHOW VERDICT, and on this pool that is a
+     measured fact rather than a caution. All six rows share one enclosure host
+     and they do not share one answer: two were served a longer file on the
+     client/unranged cell and four were served one length in all four. A change
+     that aggregated to the hostname would make this fail, which is the point —
+     `_adswizz_note` and #321's blubrry 9/1 and libsyn 4/4 splits say the same
+     thing and nothing here may quietly stop obeying them. */
+  const byStatus = (s) => re.results.filter((r) => r.grid.status === s);
+  assert.equal(byStatus("varies").length, 2, "two of six — not a platform verdict");
+  assert.equal(byStatus("stable").length, 4);
+  assert.equal(byStatus("inconclusive").length, 0);
+
+  /* THE FLIGHTCAST SIGNATURE, cell by cell. #323's finding is specific: three
+     cells agree and ONLY `client`/unranged is served the assembled file. A
+     `varies` row whose discrepancy sat anywhere else would be a different
+     phenomenon wearing this one's verdict. */
+  for (const r of byStatus("varies")) {
+    for (const g of r.grids) {
+      const long = g.cells.find((c) => c.identity === "client" && !c.ranged);
+      const others = g.cells.filter((c) => c !== long);
+      assert.ok(long.total > others[0].total, `${r.title}: the client/unranged cell is the long one`);
+      assert.equal(new Set(others.map((c) => c.total)).size, 1, `${r.title}: the other three agree`);
+    }
+  }
+
+  /* THE ROWS THIS EVIDENCE MOVED. `gridOverride` is condemn-only, so a `varies`
+     row must be `drop` in the measured file and a `stable` row must be exactly
+     as unresolved as it was — stability admits nothing, which is the whole of
+     what #323's bare-chain control established. */
+  const dispositionOfShow = (id) => measured.results.find((x) => String(x.show_id) === String(id));
+  for (const r of re.results) {
+    const row = dispositionOfShow(r.show_id);
+    assert.ok(row, `${r.title}: audited but absent from the measured file`);
+    assert.equal(row.grid_status, r.grid.status, `${r.title}: the measured row records what the grid saw`);
+    assert.equal(
+      row.disposition,
+      r.grid.status === "varies" ? "drop" : "unresolved",
+      `${r.title}: stability never moves a row, and variance always does`,
+    );
+  }
+});
+
+/* MUTATION: make `defaultOutFor` ignore its argument and always return
+   `data/breadth-clean-regrid.json`. Verified failing.
+
+   THE FOOTGUN A REVIEWER FOUND. `--out` defaulted to the clean-pool path
+   unconditionally, so `--disposition unresolved` with no `--out` would
+   overwrite #324's committed evidence with a different pool's rows — and
+   `GRID_REPORT_RELS` in `measure-suspects.mjs` would go on consuming that file
+   as the clean-pool ledger. One artifact per pool, chosen by the same flag that
+   chooses the pool. */
+test("a pool cannot silently overwrite another pool's committed evidence", () => {
+  assert.equal(defaultOutFor(["recover"]), "data/breadth-clean-regrid.json");
+  assert.notEqual(defaultOutFor(["unresolved"]), defaultOutFor(["recover"]));
+  assert.notEqual(defaultOutFor(["recover", "unresolved"]), defaultOutFor(["recover"]));
+  assert.equal(parseArgs([]).out, "data/breadth-clean-regrid.json", "#324's invocation is unchanged");
+  assert.notEqual(parseArgs(["--disposition", "unresolved"]).out, "data/breadth-clean-regrid.json");
+  /* An explicit path still wins: a caller who names one has said what they mean. */
+  assert.equal(parseArgs(["--disposition", "unresolved", "--out", "data/x.json"]).out, "data/x.json");
+});
+
+/* MUTATION: hardcode `method` back to "over every measured_clean show", or make
+   `rederive` recompute it from `DEFAULT_POOL_DISPOSITIONS` instead of from
+   `prev.source.dispositions`. Verified failing (both).
+
+   A PROVENANCE BLOCK THAT CONTRADICTS ITSELF IS WORSE THAN NONE. The flightcast
+   artifact opened by claiming it had audited `measured_clean` and then listed
+   `"dispositions": ["unresolved"]` three keys later — the same defect
+   `measure-suspects.mjs` records against its own `source.passes`, where a
+   provenance block could not be reconciled with the evidence attached to it.
+
+   AND `--rederive` MUST READ THE POOL OFF THE FILE, not off argv: it takes no
+   `--disposition`, so recomputing from today's flags would let a zero-request
+   re-judgement relabel a pass's pool. */
+test("a ledger's method names the pool that ledger actually audited", () => {
+  assert.match(methodFor(["unresolved"]), /\[unresolved\]/);
+  assert.match(methodFor(["recover"]), /\[recover\]/);
+  assert.ok(!/measured_clean/.test(methodFor(["unresolved"])), "it must not name a bucket it did not touch");
+
+  const prev = { source: { dispositions: ["unresolved"] }, policy: "stale", results: [] };
+  assert.match(rederive(prev).method, /\[unresolved\]/, "re-judging reads the pool off the file, not off argv");
+  /* A file written before the field was recorded was run against `recover`. */
+  assert.match(rederive({ source: {}, results: [] }).method, /\[recover\]/);
+  /* PROVENANCE IS COPIED, NEVER INVENTED. */
+  assert.deepEqual(rederive(prev).source, prev.source);
+});
+
+/* MUTATION: drop `policy: POLICY` from `rederive`. Verified failing.
+
+   `policy` states what a reader may conclude from the file. Two committed grid
+   ledgers stating it in different words is the prose form of "rows judged by
+   two standards" — the failure `--rederive` exists to prevent, one level up
+   from the verdicts. */
+test("re-judging restates the current policy, and both ledgers carry the same one", () => {
+  assert.equal(rederive({ policy: "an older, looser claim", results: [] }).policy, POLICY);
+  /* THE POLICY MAY MENTION "clean bill" ONLY TO DENY IT. A reviewer caught the
+     first version of this line stripping the one occurrence with `.replace()`
+     before testing for it, and pairing that with a lookahead that pointed the
+     wrong way — an assertion that could not fail. Every occurrence must be
+     negated in place. */
+  for (const m of POLICY.matchAll(/(.{0,12})clean bill/g)) {
+    assert.match(m[1], /\bnot a $/, `"clean bill" must be denied where it appears, got "${m[0]}"`);
+  }
+  assert.ok(POLICY.includes("clean bill"), "the denial is the point; a policy that never says it cannot deny it");
+  assert.match(POLICY, /can never move one up/);
+
+  const clean = JSON.parse(readFileSync(new URL("../../data/breadth-clean-regrid.json", import.meta.url), "utf8"));
+  const flight = JSON.parse(readFileSync(new URL("../../data/flightcast-settle-regrid.json", import.meta.url), "utf8"));
+  assert.equal(clean.policy, POLICY);
+  assert.equal(flight.policy, POLICY);
+  /* ...and each still names its own pool, which is the part that must DIFFER. */
+  assert.match(clean.method, /\[recover\]/);
+  assert.match(flight.method, /\[unresolved\]/);
+});
+
+/* MUTATION: restore "Only ADR-0008 decode-and-compare can settle it" to
+   `verdictNote`'s unresolved/stable branch. Verified failing.
+
+   IT WAS FALSE, AND IT CONTRADICTED A SIBLING FILE. `measure-suspects.mjs`
+   drops exactly this claim from `decodeOverride`'s blind-host note, on the
+   grounds that a grid settled two of these shows for 72 requests and no
+   download — so leaving it here produced two committed files asserting opposite
+   things about the same four show_ids. The regex matches the CLAIM rather than
+   one phrasing of it: the first version of the guard next door tested
+   `/only instrument/` and this wording walked straight past it. */
+test("no note claims one instrument is the only way to settle a row", () => {
+  const claimsSoleInstrument = /\bonly\b[^.]*\bsettle\b|\bsettle\b[^.]*\bonly\b/i;
+  const stable = showGridVerdict([grid([100, 100, 100, 100])]);
+  assert.ok(!claimsSoleInstrument.test(verdictNote(stable, { priorDisposition: "unresolved" })));
+  assert.ok(!claimsSoleInstrument.test(verdictNote(stable, { priorDisposition: "recover" })));
+
+  /* AND IT MUST NOT CITE ITSELF. The sentence used to name #323's bare-chain
+     control as corroboration, which on that show's own row cited the row. */
+  assert.ok(
+    !/Secret To Success/.test(verdictNote(stable, { priorDisposition: "unresolved" })),
+    "a row must not be its own corroboration",
+  );
+
+  for (const rel of ["breadth-clean-regrid", "flightcast-settle-regrid"]) {
+    const f = JSON.parse(readFileSync(new URL(`../../data/${rel}.json`, import.meta.url), "utf8"));
+    for (const r of f.results) {
+      assert.ok(!claimsSoleInstrument.test(r.note), `${rel} / ${r.title}`);
+    }
+  }
+});
+
+/* MUTATION: drop the `assertKnownDispositions` call from `parseArgs`, or add
+   the typo to `KNOWN_DISPOSITIONS`. Verified failing.
+
+   A TYPO SELECTED NOTHING AND WROTE A FILE ANYWAY. `--disposition unresolve`
+   produced an empty pool, printed `0 show(s)`, and committed a zero-row
+   artifact under a path derived from the typo — a file that looks like a
+   measurement and is the absence of one. */
+test("a misspelled bucket is an error, not an empty measurement", () => {
+  assert.throws(() => parseArgs(["--disposition", "unresolve"]), /unknown value/);
+  assert.throws(() => parseArgs(["--disposition", "recover,dropped"]), /dropped/);
+  for (const d of KNOWN_DISPOSITIONS) assert.deepEqual(parseArgs(["--disposition", d]).dispositions, [d]);
+  /* The known set is exactly what the other tool can write; if `dispositionOf`
+     ever grows a fourth, this fails and someone has to decide. */
+  assert.deepEqual([...KNOWN_DISPOSITIONS].sort(), ["drop", "recover", "unresolved"]);
+});
+
+/* MUTATION: drop `source` from `rederive`'s returned object. Verified failing.
+
+   THE INFERENCE MUST HAPPEN ONCE. A file written before `source.dispositions`
+   existed has its pool inferred from `DEFAULT_POOL_DISPOSITIONS` — correct,
+   because `recover` was the only pool there was — but leaving the key absent
+   means every future `--rederive` re-infers it, so changing that constant would
+   silently relabel a pass. Backfilling converts a standing assumption into a
+   recorded fact. */
+test("re-judging records the pool it inferred, so it is never inferred twice", () => {
+  const backfilled = rederive({ source: { yield: "y" }, results: [] });
+  assert.deepEqual(backfilled.source.dispositions, ["recover"]);
+  assert.equal(backfilled.source.yield, "y", "the rest of the provenance is untouched");
+
+  /* AND A RECORDED POOL IS NEVER OVERWRITTEN. */
+  const recorded = rederive({ source: { dispositions: ["unresolved"] }, results: [] });
+  assert.deepEqual(recorded.source.dispositions, ["unresolved"]);
+  assert.match(recorded.method, /\[unresolved\]/);
+
+  /* Both committed ledgers now carry it, so neither is inferred again. */
+  for (const [rel, want] of [["breadth-clean-regrid", "recover"], ["flightcast-settle-regrid", "unresolved"]]) {
+    const f = JSON.parse(readFileSync(new URL(`../../data/${rel}.json`, import.meta.url), "utf8"));
+    assert.deepEqual(f.source.dispositions, [want], rel);
+  }
 });

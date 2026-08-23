@@ -419,14 +419,32 @@ prefixes changed nothing — same bytes, same frames — so whatever the origin 
 keying on, it is not a prefix rewriting a length. Two flightcast shows are now
 measured and they disagree with each other.
 
+**And the grid has since measured that split across the whole platform: of the
+six remaining flightcast shows, two vary and four do not.** One enclosure host,
+two answers, which is `_adswizz_note`'s rule — "one insert on one show is
+evidence about that show" — observed directly rather than assumed. Condemning
+all six on the strength of two would have been wrong about 3,406 transcripts.
+
 **And the clean one did not recover, which is the counter-intuitive part worth
 stating.** The Secret To Success has a probe-corroborated decode showing no
 excess audio at all, and it is still `unresolved` (564 transcripts) — because
 its host has been caught delivering more than it declares, so its five
 ranged-GET samples are master lengths that cannot admit anything, and one clean
 decode is below the two-sample floor `summariseShow` already applies to ratios.
-**Six** flightcast shows are `unresolved`, 5,320 transcripts, and only more
-downloads can move them.
+**Six** flightcast shows were left `unresolved`, 5,320 transcripts.
+
+**The grid then moved two of them, for 72 requests and no downloads.** Run over
+that bucket (`--disposition unresolved --host flightcast`), it caught **Success
+Story with Scott D. Clary** and **Right About Now** being served a longer file
+on the `client`/unranged cell — #323's signature exactly, on 3 of 3 episodes
+each — and both are now `drop`: **1,914 transcripts out of the anchorable
+count**, which fell 10,747 → 8,833. The other four, The Secret To Success among
+them, were served one length in each probed episode's four cells and **stay
+`unresolved`**, because
+stability admits nothing on a host whose byte figures are master lengths. Their
+rows carry `grid_status: "stable"` so a later reader can tell the question was
+spent rather than never asked. Settling those four still needs a decode, or a
+grid that does catch an assembly. See `tools/segments/README.md`.
 
 **The grid has since been pointed at every show this repo calls clean.** If one
 platform lies this way, the question is how many others do, and every

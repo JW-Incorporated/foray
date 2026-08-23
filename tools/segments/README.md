@@ -519,6 +519,132 @@ Success returns one identical length in all four cells, on the very origin
 caught lying, and is still `unresolved`. A grid that agrees with itself is
 consistent with a static file *and* with a stitcher that did not vary for us.
 
+### Settling the flightcast six (2026-08-23, second pass)
+
+The pool above is `measured_clean`. The pool #323 actually pointed at is the
+other one: it caught `atelier.flightcast.com` assembling per request and left
+**six of its seven shows `unresolved`, 5,320 timed transcripts** — nearly half of
+what `measurement_coverage` was counting — settleable only by another download.
+The grid settles them for four requests an episode instead.
+
+The pool is a flag, and everything downstream of it is untouched:
+
+```bash
+node tools/segments/regrid-clean.mjs --disposition unresolved --host flightcast --dry-run
+node tools/segments/regrid-clean.mjs --disposition unresolved --host flightcast \
+  --out data/flightcast-settle-regrid.json --resume    # the original pass had no --resume
+node tools/segments/regrid-clean.mjs --rederive --out data/flightcast-settle-regrid.json
+```
+
+`--disposition` defaults to `recover`, so every invocation that does not name a
+bucket gets #324's pool exactly and the committed audit cannot widen underneath
+itself. `--out` follows `--disposition` too, so a second pool cannot overwrite
+the first one's committed ledger by default.
+
+> **`--resume` is not optional on a re-run, and the tool now refuses without
+> it.** This pass changes the very field it selects on: `--disposition
+> unresolved` picked six shows, the two it condemned are now `drop`, and the
+> identical command today picks **four**. Re-run without `--resume` and the
+> artifact would be rewritten with four rows — the two `varies` grids gone,
+> `gridOverride` null for those shows, and 1,914 transcripts silently back in
+> the anchorable count. `main` compares the prior file's `show_id`s against
+> today's pool and exits `2` rather than let that happen. `recover` never showed
+> this because #324 condemned nobody, so that pool was a fixed point; it is not
+> one in general.
+
+**6 shows × 3 episodes = 72 grid requests + 6 feed fetches, 121 s, no bodies.**
+All 72 cells answered — 36 × `206` ranged, 36 × `200` unranged, **zero 4xx, zero
+429, zero 503**, no `Content-Encoding` anywhere. The zero-throttle record holds.
+
+**Two of the six vary. Four do not.**
+
+Read the `stable` column precisely: the four cells of *each* episode agree with
+**each other**, which is the only comparison the grid makes. Three episodes of
+one show are three different files and their lengths differ — that is ordinary
+and means nothing.
+
+| timed | show | result | signature |
+|---|---|---|---|
+| 1,264 | Success Story with Scott D. Clary | **varies** | 3/3 episodes, client/unranged long |
+| 1,150 | Bankless | stable | 3/3 episodes, 4 cells agreeing per URL |
+| 1,141 | The Game with Alex Hormozi | stable | 3/3 episodes, 4 cells agreeing per URL |
+| 650 | Right About Now | **varies** | 3/3 episodes, client/unranged long |
+| 564 | The Secret To Success | stable | 3/3 (#323's bare-chain control) |
+| 551 | The Wild Sovereign Soul Show | stable | 3/3 episodes, 4 cells agreeing per URL |
+
+Both condemned shows reproduce #323's signature exactly, on every episode
+probed: `probe`/ranged, `probe`/unranged and `client`/ranged agree, and only
+`client`/unranged is served the longer file.
+
+**This is the `_adswizz_note` rule measured on flightcast itself.** Six shows,
+one enclosure host, two answers. #321 already found blubrry splitting 9 clean to
+1 dirty and libsyn 4/4 by origin; this is the same shape on the one platform
+whose lie is documented, and it is why `gridIndex` is keyed on `show_id` and
+never on a hostname. Condemning all six on the evidence of two would have been
+wrong about 3,406 transcripts.
+
+**The four `stable` shows are not acquitted and did not move.** They stay
+`unresolved`, because the host's byte figures are still master lengths and a
+grid that agrees with itself admits nothing — The Secret To Success is in that
+column, and it is #323's own control: four identical cells on the very origin
+caught lying. What changed for them is only that the question is now *spent*
+rather than *unasked*, which their rows record as `grid_status: "stable"`.
+
+### The grid as a third instrument
+
+`measure-suspects.mjs` now reads the grid ledgers the way it reads the decode
+ledger — as data, not as an import, since `regrid-clean.mjs` imports
+`probeTargets` from it and the dependency has to stay one-way.
+
+| instrument | cost | can condemn | can admit |
+|---|---|---|---|
+| ranged-GET ratio (the screen) | 1 request/episode | yes | yes |
+| decode-and-compare | a full download | yes | yes |
+| **probe grid** | **4 requests/episode, no body** | **yes** | **never** |
+
+`gridOverride` returns `drop` or `null` and has no third branch, *by
+construction rather than by policy*: agreement across four cells proves only
+that a delivery path does not lie the way flightcast does. When both the decode
+and the grid speak, `combineOverrides` decides:
+
+- decode **drops** → the decode's note wins and the grid is recorded as
+  corroborating it. The decode is denominated in *seconds of audio against the
+  show's own transcript*, which is what a later reader needs.
+- decode says **unresolved** → the grid *settles* what the decode could not.
+  This is the branch both flightcast condemnations actually take. `unresolved`
+  is not a finding to be overturned.
+- decode **acquits** → the grid overturns it. One clean decode is one assembly;
+  if the URLs are assembled per request, that acquittal rested on a sample of
+  one drawn from a distribution. Unreached on today's evidence, and written down
+  rather than left to whichever `||` came first.
+
+A row whose override *disagrees* with the screen records `decided_by`
+(`probe-grid`, not the download that was never spent) and keeps
+`screened_disposition`, so the byte evidence still has to add up on its own
+terms. When an override and the screen agree there is nothing to record and the
+row carries neither. Separately, every gridded row carries `grid_status` —
+including the ones the grid left alone, so "asked and answered negative" is
+distinguishable from "never asked".
+
+#### What it cost the corpus
+
+`measurement_coverage`, regenerated by `breadth-yield.mjs` rather than edited:
+
+| bucket | before | after |
+|---|---|---|
+| `measured_clean` | 24 / 5,381 | **24 / 5,381** — unchanged |
+| `measured_unresolved` | 11 / 5,366 | **9 / 3,452** |
+| `inferred` | 0 / 0 | 0 / 0 |
+| `excluded_measured_injecting` | 8 / 523 | 10 / 2,437 |
+| **`anchorable_net_of_suspects`** | **10,747** | **8,833** |
+| `measured_pct_of_net` | 50.1% | 60.9% |
+
+**The net went down by 1,914 and that is the point.** Read `measured_pct_of_net`
+carefully: 50.1% → 60.9% is *not* more breadth. The numerator did not move at
+all; the denominator shrank because 1,914 transcripts stopped being counted as
+anchorable. An honest 8,833 is worth more than a hopeful 10,747.
+
+
 ## `merge-segments.mjs`
 
 The merge stage of the extraction pipeline: it distrusts the agent, validates
