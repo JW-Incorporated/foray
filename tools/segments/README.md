@@ -422,6 +422,103 @@ every yield number is computed over the whole feed before anything is sliced,
 and `episode_rows_available` / `episode_rows_dropped` record exactly what was
 left behind. It defaults to Infinity, so the curated index is unchanged.
 
+## `regrid-clean.mjs` — auditing our own acquittals
+
+Everything above measures with a **2-byte ranged GET**, which ADR-0008 adopted
+*because HEAD requests lie*. #323 then caught the replacement being lied to the
+same way: on one `atelier.flightcast.com` enclosure, four requests for one URL's
+length returned 67,510,022 three times and **68,884,898** once — only under an
+unranged request from the client identity — and `67,510,022 × 8 ÷ 96,000 =
+5,625.8 s` against a feed declaring 5,626 s says the short number is the ad-free
+master to a fraction of a second. The difference is in a header, before any body
+is read.
+
+Every `measured_clean` verdict in this repo was reached with that instrument.
+This tool re-asks each of those shows the flightcast question, using #323's
+`probeGrid` **imported, never reimplemented**:
+
+```bash
+node tools/segments/regrid-clean.mjs --dry-run     # the pool, biggest asset first
+node tools/segments/regrid-clean.mjs               # 3 episodes/show, 4 requests each
+node tools/segments/regrid-clean.mjs --resume      # after a stop
+node tools/segments/regrid-clean.mjs --rederive    # re-judge stored grids, no request
+```
+
+**It can only ever move a show OFF `measured_clean`.** Three statuses, and the
+third is the reason the second is trustworthy:
+
+| status | what it means |
+|---|---|
+| `varies` | one URL was served two lengths. Two lengths mean two resources, and a file assembled per request is what insertion *is*. Condemns. |
+| `stable` | every probed episode compared a **ranged** answer against an **unranged** one and got the same length. **Not a clean bill** — it says only that this delivery path does not lie *the way flightcast does*. |
+| `inconclusive` | at least one episode never got that comparison: feed unreadable, requests refused, or an origin that reports no length on one axis. Nothing learned; the row is untouched. |
+
+`inconclusive` exists because four refused requests produce zero totals, an
+empty `distinct_totals` and `varies_by_request: false` — a row byte-for-byte
+indistinguishable from a file that answered four times identically. Filing that
+as `stable` would be ADR-0008's own cautionary tale in a new unit: *"the first
+version of this scan used HEAD, reported 18 of 18 shows byte-stable, and was
+completely wrong."*
+
+**And it is not hypothetical — the first pass over the real pool found one.**
+`podcasts.beehiiv.com` answers an unranged request **chunked**, with no
+`Content-Length` at all, so both of that show's unranged cells report nothing and
+the two cells that do answer are *both ranged*. An earlier version of the rule
+asked only for two answered cells, and under it Curious Goldfish Podcast (84
+transcripts) read `stable` — from a grid that never once compared a ranged
+request against an unranged one, which is the exact comparison the flightcast
+discrepancy showed up in and the only one that matters. The rule now requires
+both sides of the range axis, and that show is `inconclusive`.
+
+The same origin also demonstrates why `probeGrid` refuses to read
+`Number(null)` as `0`: without that guard those two headerless cells would have
+arrived as `total: 0`, joined `distinct_totals`, and condemned an innocent show
+for not sending a header.
+
+**Three episodes a show, not five.** `MIN_SAMPLES_FOR_AD_FREE` is five because
+that scan *admits* shows and an acquittal needs a floor. This one admits
+nothing, so draws four and five could only re-confirm something that was never a
+clean bill. Three is the hedge against #319's measured finding that insertion
+runs on *some* episodes and not others. Ordered by the show's own transcript
+count — deliberately **not** `measure-suspects.mjs`'s host-total ordering,
+because this audits a per-show verdict against a per-show risk, and a run cut
+short should have re-validated the largest possible share of the corpus.
+
+**A platform verdict is still not a show verdict.** Six of these shows sit on
+`content.blubrry.com` and four on `content.libsyn.com`; #321 already measured
+blubrry splitting 9 clean to 1 dirty and libsyn splitting 4/4 by final origin.
+Nothing here aggregates a result to a hostname or touches a host list.
+
+### The 2026-08-23 run
+
+24 shows, 3 episodes each. **300 grid requests and 25 feed fetches**, no bodies
+read: 288 + 24 in the first pass (366 s), then 12 + 1 re-probing the one
+inconclusive show through `--resume` (14 s), whose cells superseded its earlier
+ones. The committed file therefore holds 72 grids / 288 cells while recording
+300 requests spent — the cost of the evidence, which is not the same as its size.
+
+Every retained cell answered at the HTTP level: 144 × `206` ranged and 144 ×
+`200` unranged, **zero 4xx, zero 429, zero 503** — the standing zero-throttle
+record holds. No `Content-Encoding` anywhere, so no compression confounds any
+cell. The only six cells reporting no length are beehiiv's unranged replies,
+observed twice independently.
+
+**No show varies by request. Nothing moved off `measured_clean`, and
+`measurement_coverage` is unchanged at 24 shows / 5,381 timed transcripts.**
+
+| result | shows | timed transcripts |
+|---|---|---|
+| `varies` | **0** | **0** |
+| `stable` | 23 | 5,297 |
+| `inconclusive` | 1 | 84 |
+
+Read that precisely. It does **not** say the 5,297 are clean. It says 23 delivery
+paths do not lie in the way `atelier.flightcast.com` does — and #323's own
+bare-chain control is the reason to keep the claim that narrow: The Secret To
+Success returns one identical length in all four cells, on the very origin
+caught lying, and is still `unresolved`. A grid that agrees with itself is
+consistent with a static file *and* with a stitcher that did not vary for us.
+
 ## `merge-segments.mjs`
 
 The merge stage of the extraction pipeline: it distrusts the agent, validates

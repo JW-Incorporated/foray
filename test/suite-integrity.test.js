@@ -532,6 +532,15 @@ const FLOORS = {
      both sides, and a recomputation of all seven committed verdicts from the
      byte counts filed beside them. */
   "tools/segments/measure-suspects.test.mjs": 57,
+  /* The audit of that scan's own acquittals (#323 follow-up). It re-asks every
+     `measured_clean` show — 5,381 timed transcripts, half the anchorable corpus
+     — the question the four-cell probe grid asked flightcast, because the
+     ranged GET those acquittals rest on is now known to be spoofable. Floored
+     because the suite's centre of gravity is one distinction that a single edit
+     erases: a grid nobody answered must never read as a grid that agreed with
+     itself. That is ADR-0008's HEAD failure restated in a new unit, and it is
+     the failure that would silently re-certify shows nothing has measured. */
+  "tools/segments/regrid-clean.test.mjs": 25,
   "tools/transcribe/fetch-audio.test.mjs": 64,
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV

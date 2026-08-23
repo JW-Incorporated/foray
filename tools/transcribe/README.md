@@ -428,6 +428,17 @@ decode is below the two-sample floor `summariseShow` already applies to ratios.
 **Six** flightcast shows are `unresolved`, 5,320 transcripts, and only more
 downloads can move them.
 
+**The grid has since been pointed at every show this repo calls clean.** If one
+platform lies this way, the question is how many others do, and every
+`measured_clean` verdict in the repo was reached with the instrument now known to
+be spoofable. `tools/segments/regrid-clean.mjs` re-ran `probeGrid` over all 24 of
+them — 300 requests, no bodies — and **no show varies by request**: 23 stable,
+one inconclusive, zero condemned, `measurement_coverage` unchanged. See
+`tools/segments/README.md` for the run and for the one origin (`beehiiv`) that
+answers unranged requests chunked and therefore cannot be asked this question at
+all. This narrows the blast radius of the finding above; it does not clear
+anybody, for the same reason The Secret To Success is still `unresolved`.
+
 ### The other two answers
 
 **Art Bell: the file served today is clean, and the original question is now

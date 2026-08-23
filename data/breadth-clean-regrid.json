@@ -1,0 +1,4172 @@
+{
+  "version": 1,
+  "generated_at": "2026-08-23T15:13:14.392Z",
+  "method": "tools/transcribe/decode-compare.mjs probeGrid (#323) re-run over every measured_clean show: for each probed episode, four requests for one URL's length — 2-byte ranged GET and unranged, under both outbound identities. No body is read; the unranged calls are aborted as their headers arrive.",
+  "policy": "This file can move a show OFF measured_clean and can never move one onto it. See verdictNote: a grid that agrees with itself says this delivery path does not lie the way atelier.flightcast.com does, which is a statement about one instrument, not a clean bill.",
+  "source": {
+    "yield": "data/breadth-transcript-yield.json",
+    "measured": [
+      "data/breadth-suspect-inflation.json",
+      "data/breadth-anchorable-inflation.json"
+    ]
+  },
+  "episodes_per_show": 3,
+  "requests": {
+    "feeds": 25,
+    "grid_requests": 300,
+    "elapsed_sec": 0
+  },
+  "summary": {
+    "audited": {
+      "shows": 24,
+      "timed_transcripts": 5381
+    },
+    "varies_by_request": {
+      "shows": 0,
+      "timed_transcripts": 0
+    },
+    "stable_across_the_grid": {
+      "shows": 23,
+      "timed_transcripts": 5297
+    },
+    "inconclusive": {
+      "shows": 1,
+      "timed_transcripts": 84
+    },
+    "unclassified": {
+      "shows": 0,
+      "timed_transcripts": 0
+    },
+    "note": "varies_by_request is positive evidence of per-request assembly and moves a show off measured_clean. stable_across_the_grid is NOT a clean bill: it means this delivery path does not lie in the way atelier.flightcast.com does, and stability across requests is consistent with a static file AND with a stitcher that did not vary for us. inconclusive rows never got a length back in all four cells — a refusal under one identity, or an origin answering unranged requests chunked — and a grid missing any cell may be missing the one that would have condemned. unclassified must be zero: it counts rows carrying no verdict at all, and exists so the four buckets always sum to audited."
+  },
+  "results": [
+    {
+      "show_id": "1737303645",
+      "title": "The Art Bell Archive",
+      "feed_host": "artbellarchive.org",
+      "enclosure_host": "dn720303.ca.archive.org",
+      "timed_transcripts": 1368,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          53187868,
+          53922789,
+          56576979
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://audio.artbell.am/episodes/2015/1368-october-22-2015-nanotechnology-douglas-mulhall.mp3",
+          "checked_at": "2026-08-23T14:43:43.954Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 53922789,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 53922789,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 53922789,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 53922789,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            }
+          ],
+          "distinct_totals": [
+            53922789
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "October 22, 2015: Nanotechnology - Douglas Mulhall",
+          "guid": "https://artbellarchive.org/episode/october-22-2015-nanotechnology-douglas-mulhall"
+        },
+        {
+          "url": "https://audio.artbell.am/episodes/2015/1367-october-21-2015-space-elevator-and-emps-dr-william-forstchen.mp3",
+          "checked_at": "2026-08-23T14:43:48.718Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 53187868,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 53187868,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 53187868,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 53187868,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            }
+          ],
+          "distinct_totals": [
+            53187868
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "October 21, 2015: Space Elevator & EMPs - Dr. William Forstchen",
+          "guid": "https://artbellarchive.org/episode/october-21-2015-space-elevator-and-emps-dr-william-forstchen"
+        },
+        {
+          "url": "https://audio.artbell.am/episodes/2015/1366-october-20-2015-hubrids-part-ii-david-jacobs.mp3",
+          "checked_at": "2026-08-23T14:43:53.520Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 56576979,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 56576979,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 56576979,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 56576979,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.artbell.am"
+            }
+          ],
+          "distinct_totals": [
+            56576979
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "October 20, 2015: Hubrids Part II - David Jacobs",
+          "guid": "https://artbellarchive.org/episode/october-20-2015-hubrids-part-ii-david-jacobs"
+        }
+      ]
+    },
+    {
+      "show_id": "1292381204",
+      "title": "TFTC: A Bitcoin Podcast",
+      "feed_host": "fountain.fm",
+      "enclosure_host": "feeds.fountain.fm",
+      "timed_transcripts": 1035,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          79304757,
+          173126145,
+          197304039
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://feeds.fountain.fm/ZwwaDULvAj0yZvJ5kdB9/items/00dg7ceth1H4QYfTCgyK/files/VIDEO---DEFAULT---8e54f5ab-e6a4-4017-827b-30a13820a8db.mp4/ORIGINAL.mp3",
+          "checked_at": "2026-08-23T14:43:58.366Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 173126145,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 173126145,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 173126145,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 173126145,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            }
+          ],
+          "distinct_totals": [
+            173126145
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "#784: The Billionaire Playbook with Chase Koch",
+          "guid": "76acd65a-083e-4cdb-8de6-96f3793f1e83"
+        },
+        {
+          "url": "https://feeds.fountain.fm/ZwwaDULvAj0yZvJ5kdB9/items/5cBuIxFxKtuOXXHbsYpH/files/VIDEO---DEFAULT---e86d16f8-6b6f-4992-92c5-4fc6136ea4ac.mp4/ORIGINAL.mp3",
+          "checked_at": "2026-08-23T14:44:03.301Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 79304757,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 79304757,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 79304757,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 79304757,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            }
+          ],
+          "distinct_totals": [
+            79304757
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Ten31 Timestamp: Dog Days",
+          "guid": "78dc6d40-691d-4d07-9afa-fa6a1bf04efd"
+        },
+        {
+          "url": "https://feeds.fountain.fm/ZwwaDULvAj0yZvJ5kdB9/items/JIgfKGXhFouRdUypBV6d/files/VIDEO---DEFAULT---b3180678-3ee2-4e13-bce0-d927d2e56253.mp4/ORIGINAL.mp3",
+          "checked_at": "2026-08-23T14:44:08.139Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 197304039,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 197304039,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 197304039,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 197304039,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            }
+          ],
+          "distinct_totals": [
+            197304039
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "#783: Trump Is Throwing The Midterms with Mark Mitchell",
+          "guid": "5ed2302f-433d-4e85-970d-49cee32906c6"
+        }
+      ]
+    },
+    {
+      "show_id": "1452376188",
+      "title": "Becker’s Healthcare Podcast",
+      "feed_host": "blubrry.com",
+      "enclosure_host": "content.blubrry.com",
+      "timed_transcripts": 995,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          24057177,
+          27367829,
+          36939300
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://media.blubrry.com/beckershealthcarepodcast/ins.blubrry.com/beckershealthcarepodcast/BKR_HC_Payer_Amanda_Free_P_8-20-26_RD1.mp3",
+          "checked_at": "2026-08-23T14:44:14.238Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 24057177,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 24057177,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 24057177,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 24057177,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            24057177
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Amanda Free on Affordability and Access in Georgia’s Commercial Market",
+          "guid": "https://blubrry.com/beckershealthcarepodcast/155070047/amanda-free-on-affordability-and-access-in-georgias-commercial-market/"
+        },
+        {
+          "url": "https://media.blubrry.com/beckershealthcarepodcast/ins.blubrry.com/beckershealthcarepodcast/BKR_HC_Clinical_Amir_Barzin_P_8-18-26_RD1.mp3",
+          "checked_at": "2026-08-23T14:44:18.782Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 36939300,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 36939300,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 36939300,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 36939300,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            36939300
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Amir Barzin, DO, President of UNC Health Faculty Physicians and Chief Operating Officer of UNC Health Physicians",
+          "guid": "https://blubrry.com/beckershealthcarepodcast/155048231/amir-barzin-do-president-of-unc-health-faculty-physicians-and-chief-operating-officer-of-unc-health-physicians/"
+        },
+        {
+          "url": "https://media.blubrry.com/beckershealthcarepodcast/ins.blubrry.com/beckershealthcarepodcast/BKR_HC_Naveen_Mehrotra_P_8-21-26_RD1.mp3",
+          "checked_at": "2026-08-23T14:44:23.975Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 27367829,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 27367829,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 27367829,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 27367829,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            27367829
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Leading With Purpose in Pediatric Care with Dr. Naveen Mehrotra",
+          "guid": "https://blubrry.com/beckershealthcarepodcast/155070082/leading-with-purpose-in-pediatric-care-with-dr-naveen-mehrotra/"
+        }
+      ]
+    },
+    {
+      "show_id": "979020229",
+      "title": "Talk Python To Me",
+      "feed_host": "talkpython.fm",
+      "enclosure_host": "download-cdn.talkpython.fm",
+      "timed_transcripts": 558,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          59948455,
+          65353394,
+          65502845
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://talkpython.fm/episodes/download/559/12-things-you-should-and-shouldnt-do-in-aws.mp3",
+          "checked_at": "2026-08-23T14:44:28.911Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 65353394,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 65353394,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 65353394,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 65353394,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            }
+          ],
+          "distinct_totals": [
+            65353394
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "#559: 12 Things You Should (and Shouldn't) Do in AWS",
+          "guid": "56b7e80e-442f-4988-8299-f04aa9dd5398"
+        },
+        {
+          "url": "https://talkpython.fm/episodes/download/558/hyper-personal-software-with-python.mp3",
+          "checked_at": "2026-08-23T14:44:33.709Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 59948455,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 59948455,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 59948455,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 59948455,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            }
+          ],
+          "distinct_totals": [
+            59948455
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "#558: Hyper-Personal Software with Python",
+          "guid": "feee3df7-8579-4f93-b882-4ce893bbbc90"
+        },
+        {
+          "url": "https://talkpython.fm/episodes/download/557/security-of-everything-at-pycon-2026.mp3",
+          "checked_at": "2026-08-23T14:44:38.506Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 65502845,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 65502845,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 65502845,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 65502845,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "download-cdn.talkpython.fm"
+            }
+          ],
+          "distinct_totals": [
+            65502845
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "#557: Security of everything at PyCon 2026",
+          "guid": "07175995-241e-467a-b7e7-9984404cee58"
+        }
+      ]
+    },
+    {
+      "show_id": "1438789088",
+      "title": "Bitcoin And | Bitcoin & Economic News",
+      "feed_host": "podhome.fm",
+      "enclosure_host": "assets.podhome.fm",
+      "timed_transcripts": 525,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          48449918,
+          50010578,
+          55120129
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/pdcn.co/e/pscrb.fm/rss/p/serve.podhome.fm/episode/98d1b634-3ead-490c-ade3-08dc4d9e1446/63922927351241373810d01dbd-c6a3-42ca-8083-3927d393f548.mp3",
+          "checked_at": "2026-08-23T14:44:43.543Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 48449918,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 48449918,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 48449918,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 48449918,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            }
+          ],
+          "distinct_totals": [
+            48449918
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "It's AI, Stupid | Bitcoin News",
+          "guid": "10d01dbd-c6a3-42ca-8083-3927d393f548"
+        },
+        {
+          "url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/pdcn.co/e/pscrb.fm/rss/p/serve.podhome.fm/episode/98d1b634-3ead-490c-ade3-08dc4d9e1446/639228430576240592df93ed57-cb3f-4b0a-9495-284eb7f94426.mp3",
+          "checked_at": "2026-08-23T14:44:48.757Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 55120129,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 55120129,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 55120129,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 55120129,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            }
+          ],
+          "distinct_totals": [
+            55120129
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "FBI's ColdCard Case | Bitcoin News",
+          "guid": "df93ed57-cb3f-4b0a-9495-284eb7f94426"
+        },
+        {
+          "url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/pdcn.co/e/pscrb.fm/rss/p/serve.podhome.fm/episode/98d1b634-3ead-490c-ade3-08dc4d9e1446/639226659066969714466ae4d4-0e7f-436f-8cc1-54f7d3c19b7f.mp3",
+          "checked_at": "2026-08-23T14:44:54.307Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 50010578,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 50010578,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 50010578,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 50010578,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "assets.podhome.fm"
+            }
+          ],
+          "distinct_totals": [
+            50010578
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Jane: Street Walker | Bitcoin News",
+          "guid": "466ae4d4-0e7f-436f-8cc1-54f7d3c19b7f"
+        }
+      ]
+    },
+    {
+      "show_id": "73330785",
+      "title": "Mac Geek Gab — Apple Tips, Tricks, and Troubleshooting",
+      "feed_host": "macgeekgab.com",
+      "enclosure_host": "pp1.bbmpx.com",
+      "timed_transcripts": 189,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          58644574,
+          62603420,
+          64013591
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://pp1.bbmpx.com/protect/mgg/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/www.macgeekgab.com/media/cachefly/MGG_20260817.mp3",
+          "checked_at": "2026-08-23T14:44:58.867Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 62603420,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 62603420,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 62603420,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 62603420,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            }
+          ],
+          "distinct_totals": [
+            62603420
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "When Your Group Chat Tells You to Fork Off",
+          "guid": "https://www.macgeekgab.com/?p=137017"
+        },
+        {
+          "url": "https://pp1.bbmpx.com/protect/mgg/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/www.macgeekgab.com/media/cachefly/MGG_20260810.mp3",
+          "checked_at": "2026-08-23T14:45:03.611Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 58644574,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 58644574,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 58644574,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 58644574,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            }
+          ],
+          "distinct_totals": [
+            58644574
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Don't Start Half Fresh",
+          "guid": "https://www.macgeekgab.com/?p=137006"
+        },
+        {
+          "url": "https://pp1.bbmpx.com/protect/mgg/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/www.macgeekgab.com/media/cachefly/MGG_20260803.mp3",
+          "checked_at": "2026-08-23T14:45:08.370Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 64013591,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 64013591,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 64013591,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 64013591,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            }
+          ],
+          "distinct_totals": [
+            64013591
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Take a Photo to Find Your Photos",
+          "guid": "https://www.macgeekgab.com/?p=136977"
+        }
+      ]
+    },
+    {
+      "show_id": "979363821",
+      "title": "Gig Gab - The Working Musician's Podcast",
+      "feed_host": "giggabpodcast.com",
+      "enclosure_host": "pp1.bbmpx.com",
+      "timed_transcripts": 169,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          58795698,
+          70835749,
+          79640329
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://pp1.bbmpx.com/protect/giggab/op3.dev/e,pg=d24e53de-df95-5e2d-9dee-2c0020edae0b/pscrb.fm/rss/p/media.blubrry.com/gig_gab/dts.podtrac.com/redirect.mp3/www.giggabpodcast.com/cdn/giggab/GG_20260817-547.mp3",
+          "checked_at": "2026-08-23T14:45:13.973Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 70835749,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 70835749,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 70835749,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 70835749,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            }
+          ],
+          "distinct_totals": [
+            70835749
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Matt Beck on Matchbox Twenty, The Outsiders, Hot Cocoa and a Green Tartan Suit",
+          "guid": "https://www.giggabpodcast.com/?p=3791"
+        },
+        {
+          "url": "https://pp1.bbmpx.com/protect/giggab/op3.dev/e,pg=d24e53de-df95-5e2d-9dee-2c0020edae0b/pscrb.fm/rss/p/media.blubrry.com/gig_gab/dts.podtrac.com/redirect.mp3/www.giggabpodcast.com/cdn/giggab/GG_20260810-546.mp3",
+          "checked_at": "2026-08-23T14:45:18.523Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 79640329,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 79640329,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 79640329,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 79640329,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            }
+          ],
+          "distinct_totals": [
+            79640329
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Hired From an 11-View Video: Sean Mullaney on Opportunity and Owning the Stage",
+          "guid": "https://www.giggabpodcast.com/?p=3789"
+        },
+        {
+          "url": "https://pp1.bbmpx.com/protect/giggab/op3.dev/e,pg=d24e53de-df95-5e2d-9dee-2c0020edae0b/pscrb.fm/rss/p/media.blubrry.com/gig_gab/dts.podtrac.com/redirect.mp3/www.giggabpodcast.com/cdn/giggab/GG_20260804-545.mp3",
+          "checked_at": "2026-08-23T14:45:23.242Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 58795698,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 58795698,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 58795698,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 58795698,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "pp1.bbmpx.com"
+            }
+          ],
+          "distinct_totals": [
+            58795698
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Nobody Bought a Ticket to Watch Load-In",
+          "guid": "https://www.giggabpodcast.com/?p=3783"
+        }
+      ]
+    },
+    {
+      "show_id": "1733733790",
+      "title": "This Week in Bitcoin",
+      "feed_host": "fountain.fm",
+      "enclosure_host": "feeds.fountain.fm",
+      "timed_transcripts": 121,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          89441507,
+          129396432,
+          130808333
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://feeds.fountain.fm/40huHEEF6JMPGYctMuUI/items/66C2G8oi639jHXaEQtYt/files/AUDIO---DEFAULT---ff9c701c-924b-44d9-b1fa-5d925feb024b.mp3",
+          "checked_at": "2026-08-23T14:45:28.183Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 89441507,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 89441507,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 89441507,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 89441507,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            }
+          ],
+          "distinct_totals": [
+            89441507
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "119: Debt Always Wins",
+          "guid": "f85a90f2-4a64-4525-bc79-b9dae7999a9b"
+        },
+        {
+          "url": "https://feeds.fountain.fm/40huHEEF6JMPGYctMuUI/items/XqRoTG73hs02FohjeFrS/files/AUDIO---DEFAULT---A9USL2hI08SXr4o2ggqu.mp3",
+          "checked_at": "2026-08-23T14:45:33.011Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 130808333,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 130808333,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 130808333,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 130808333,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            }
+          ],
+          "distinct_totals": [
+            130808333
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Why BIP-110 Failed",
+          "guid": "8c07b3da-bcc6-43ee-b3ee-11c323ea4768"
+        },
+        {
+          "url": "https://feeds.fountain.fm/40huHEEF6JMPGYctMuUI/items/9j62Z5QP2IhqcXMQCKa2/files/AUDIO---DEFAULT---eTqc321JryUvxBRs6LQY.mp3",
+          "checked_at": "2026-08-23T14:45:37.684Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 129396432,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 129396432,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 129396432,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 129396432,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "feeds.fountain.fm"
+            }
+          ],
+          "distinct_totals": [
+            129396432
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "117: Coldcard Fallout",
+          "guid": "3e85d258-8986-495d-a606-a322d9a3e90c"
+        }
+      ]
+    },
+    {
+      "show_id": "1454957630",
+      "title": "The Money Sessions",
+      "feed_host": "libsyn.com",
+      "enclosure_host": "content.libsyn.com",
+      "timed_transcripts": 107,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          22030678,
+          70430352,
+          77881519
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/themoneysessions/Leah_Harlan_TMS_Episode.mp3?dest-id=1119794",
+          "checked_at": "2026-08-23T14:45:42.480Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 77881519,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 77881519,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 77881519,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 77881519,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            77881519
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Rural Virginia: 8 Months to $40K Revenue Boost with Half the Caseload",
+          "guid": "0d516963-a6a6-4af4-bbbd-8505810f6e73"
+        },
+        {
+          "url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/themoneysessions/Aug_9th_TMS_Solo_Episode.mp3?dest-id=1119794",
+          "checked_at": "2026-08-23T14:45:47.656Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 22030678,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 22030678,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 22030678,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 22030678,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            22030678
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Get Good Enough to Charge $600/Session",
+          "guid": "632851a4-cefc-45d5-8baa-c978cbf44586"
+        },
+        {
+          "url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/themoneysessions/Mystery_Guest_TMS_Episode.mp3?dest-id=1119794",
+          "checked_at": "2026-08-23T14:45:52.309Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 70430352,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 70430352,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 70430352,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 70430352,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            70430352
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "$600/Session: A Mystery Guest You Cannot Miss",
+          "guid": "26775d9f-8c74-4ad1-98b0-98f228e56a37"
+        }
+      ]
+    },
+    {
+      "show_id": "6783386839",
+      "title": "Curious Goldfish Podcast",
+      "feed_host": "beehiiv.com",
+      "enclosure_host": "podcasts.beehiiv.com",
+      "timed_transcripts": 84,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grids": [
+        {
+          "url": "https://podcasts.beehiiv.com/d49fdcee-2974-496c-a979-86aec5ad0a33/019ef26a-ddd5-76f1-bfb9-ee587ed1fec9/01a00ad2-4ba8-7d1e-92f6-1e24f5a76cfa/01a00ae3-e675-77c8-b82d-5f03de1da49b.mp3",
+          "checked_at": "2026-08-23T15:12:52.146Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 39157524,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": null,
+              "content_encoding": null,
+              "transfer_encoding": "chunked",
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 39157524,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": null,
+              "content_encoding": null,
+              "transfer_encoding": "chunked",
+              "resolved_host": "podcasts.beehiiv.com"
+            }
+          ],
+          "distinct_totals": [
+            39157524
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "The CEO Who Hid His Guitar: A Chat with George Barrett",
+          "guid": "01a00ad2-4ba8-7a8d-9813-d539dd45e628"
+        },
+        {
+          "url": "https://podcasts.beehiiv.com/d49fdcee-2974-496c-a979-86aec5ad0a33/019ef26a-ddd5-76f1-bfb9-ee587ed1fec9/019fc519-99c5-7d0d-b821-c18e69877d48/019fc519-9a65-7b4a-9383-7cc66b4cc01d.mp3",
+          "checked_at": "2026-08-23T15:12:56.946Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 33685591,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": null,
+              "content_encoding": null,
+              "transfer_encoding": "chunked",
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 33685591,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": null,
+              "content_encoding": null,
+              "transfer_encoding": "chunked",
+              "resolved_host": "podcasts.beehiiv.com"
+            }
+          ],
+          "distinct_totals": [
+            33685591
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Voiceless No More: A Chat with Alicia Blue",
+          "guid": "019fc519-99c5-7f4f-aadc-0db47f5cf586"
+        },
+        {
+          "url": "https://podcasts.beehiiv.com/d49fdcee-2974-496c-a979-86aec5ad0a33/019ef26a-ddd5-76f1-bfb9-ee587ed1fec9/019fc3b2-1615-7536-ab03-8dbc4f51ab3f/019fd25d-37d3-71e1-9070-1b4ce7e3ac8e.mp3",
+          "checked_at": "2026-08-23T15:13:01.745Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 29348653,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": null,
+              "content_encoding": null,
+              "transfer_encoding": "chunked",
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 29348653,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcasts.beehiiv.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": null,
+              "content_encoding": null,
+              "transfer_encoding": "chunked",
+              "resolved_host": "podcasts.beehiiv.com"
+            }
+          ],
+          "distinct_totals": [
+            29348653
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "50 Years & Still Building: A Chat with Garry Tallent of the E Street Band",
+          "guid": "019fc3b2-1615-71da-8554-71a4cc548be0"
+        }
+      ],
+      "note": "PROBE GRID: inconclusive — only 0 of 3 attempted episode(s) (wanted 3) returned a length in all 4 cells. A grid missing any cell cannot be asked the question: on flightcast exactly one cell of the four carried the discrepancy and the other three agreed, so a missing cell may be the one that would have condemned. Common causes are a refusal under one identity and an unranged reply sent chunked with no Content-Length. Nothing was learned about this show and its disposition is untouched; this is not a negative result",
+      "grid": {
+        "status": "inconclusive",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 0,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          29348653,
+          33685591,
+          39157524
+        ]
+      }
+    },
+    {
+      "show_id": "1170239851",
+      "title": "DCL Podcast",
+      "feed_host": "dclpodcast.com",
+      "enclosure_host": "content.libsyn.com",
+      "timed_transcripts": 57,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          69652205,
+          75197327,
+          87882137
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://traffic.libsyn.com/dclpodcast/Becky_UGWDW_8.26_final.mp3",
+          "checked_at": "2026-08-23T14:46:10.465Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 75197327,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 75197327,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 75197327,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 75197327,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            75197327
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "551 Discussing the Unofficial Guide to Walt Disney World 2027 with Author Becky Gandillon",
+          "guid": "https://dclpodcast.com/?p=2811"
+        },
+        {
+          "url": "https://traffic.libsyn.com/dclpodcast/Christy_Europe_8.26_final.mp3",
+          "checked_at": "2026-08-23T14:46:15.031Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 87882137,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 87882137,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 87882137,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 87882137,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            87882137
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "550 Christy’s Epic European Vacation | Adventures By Disney Italy",
+          "guid": "https://dclpodcast.com/?p=2808"
+        },
+        {
+          "url": "https://traffic.libsyn.com/dclpodcast/Alexis_Wish_8.26_final.mp3",
+          "checked_at": "2026-08-23T14:46:19.900Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 69652205,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 69652205,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 69652205,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 69652205,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            69652205
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "549 Disney Wish with a Toddler: 4-Night Family Cruise Review",
+          "guid": "https://dclpodcast.com/?p=2800"
+        }
+      ]
+    },
+    {
+      "show_id": "1030846817",
+      "title": "Concealed Carry Podcast - Guns | Training | Defense | CCW",
+      "feed_host": "concealedcarry.com",
+      "enclosure_host": "content.blubrry.com",
+      "timed_transcripts": 48,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          46615817,
+          49660801,
+          65866184
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://media.blubrry.com/usa_firearm_training/content.blubrry.com/usa_firearm_training/CCP-S14E5-TopWaysBetterTraining.mp3",
+          "checked_at": "2026-08-23T14:46:25.525Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 49660801,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 49660801,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 49660801,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 49660801,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            49660801
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "S14E5: Top Ways to Get More Out of Your Next Training Class",
+          "guid": "https://www.concealedcarry.com/?p=4255348"
+        },
+        {
+          "url": "https://media.blubrry.com/usa_firearm_training/content.blubrry.com/usa_firearm_training/CCP-S14E4-JustifiedSavesInNOut.mp3",
+          "checked_at": "2026-08-23T14:46:30.322Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 65866184,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 65866184,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 65866184,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 65866184,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            65866184
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "S14E4: JUSTIFIED SAVES – Our Take on the In-N-Out Shooting",
+          "guid": "https://www.concealedcarry.com/?p=4255039"
+        },
+        {
+          "url": "https://media.blubrry.com/usa_firearm_training/content.blubrry.com/usa_firearm_training/CCP-S14E3-OldIronNewIron.mp3",
+          "checked_at": "2026-08-23T14:46:35.124Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 46615817,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 46615817,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 46615817,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 46615817,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            46615817
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "S14E3: Old Iron, New Iron & Remembering a Giant",
+          "guid": "https://www.concealedcarry.com/?p=4254631"
+        }
+      ]
+    },
+    {
+      "show_id": "1734053538",
+      "title": "Supreme Court Oral Arguments",
+      "feed_host": "scotusstats.com",
+      "enclosure_host": "podcast.scotusstats.com",
+      "timed_transcripts": 27,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          20291060,
+          21496840,
+          28147533
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://podcast.scotusstats.com/2025/24-856.mp3",
+          "checked_at": "2026-08-23T14:46:40.955Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 28147533,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 28147533,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 28147533,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 28147533,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            }
+          ],
+          "distinct_totals": [
+            28147533
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "[24-856] Cisco Systems, Inc. v. Doe I",
+          "guid": "scotus_2025_24-856_v0"
+        },
+        {
+          "url": "https://podcast.scotusstats.com/2025/25-429.mp3",
+          "checked_at": "2026-08-23T14:46:46.057Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 21496840,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 21496840,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 21496840,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 21496840,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            }
+          ],
+          "distinct_totals": [
+            21496840
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "[25-429] Blanche v. Lau",
+          "guid": "scotus_2025_25-429_v0"
+        },
+        {
+          "url": "https://podcast.scotusstats.com/2025/25-406.mp3",
+          "checked_at": "2026-08-23T14:46:50.567Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 20291060,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 20291060,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 20291060,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 20291060,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "podcast.scotusstats.com"
+            }
+          ],
+          "distinct_totals": [
+            20291060
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "[25-406] Federal Communications Commission v. AT&T, Inc.",
+          "guid": "scotus_2025_25-406_v0"
+        }
+      ]
+    },
+    {
+      "show_id": "1561967744",
+      "title": "T'as qui en Histoire ?",
+      "feed_host": "ausha.co",
+      "enclosure_host": "s0.audiofiles.ausha.co",
+      "timed_transcripts": 19,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          14422266,
+          22561966,
+          35616558
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://tr.ausha.co/oZNjmS0J2YEV/api.soundcast.io/v1/stitch/ausha.mp3?tags=659C36ED,CCCCDAAE&apiKey=c1a94b3301c64853868548ac73233ca1&podcastUrl=https%3A%2F%2Faudio.ausha.co%2FoZNjmS0J2YEV.mp3%3Ft%3D1786822423",
+          "checked_at": "2026-08-23T14:46:56.161Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 22561966,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 22561966,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 22561966,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 22561966,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            }
+          ],
+          "distinct_totals": [
+            22561966
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Tours, ville royale et trois fois capitale [Hors-série]",
+          "guid": "f64381db4d56fc5461aeafc2e86e50397914740c"
+        },
+        {
+          "url": "https://tr.ausha.co/yXm2nfVxQEP8/api.soundcast.io/v1/stitch/ausha.mp3?tags=659C36ED,CCCCDAAE&apiKey=c1a94b3301c64853868548ac73233ca1&podcastUrl=https%3A%2F%2Faudio.ausha.co%2FyXm2nfVxQEP8.mp3%3Ft%3D1784555100",
+          "checked_at": "2026-08-23T14:47:00.957Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 35616558,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 35616558,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 35616558,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 35616558,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            }
+          ],
+          "distinct_totals": [
+            35616558
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Germaine Kanova, photographe de guerre et les fonds de l'ECPAD [Hors-série]",
+          "guid": "666df1e7721cd2a6d8b1ff394d44b6f2e4c0d6e9"
+        },
+        {
+          "url": "https://tr.ausha.co/BME8qcR4Vgap/api.soundcast.io/v1/stitch/ausha.mp3?tags=659C36ED,CCCCDAAE&apiKey=c1a94b3301c64853868548ac73233ca1&podcastUrl=https%3A%2F%2Faudio.ausha.co%2FBME8qcR4Vgap.mp3%3Ft%3D1781941846",
+          "checked_at": "2026-08-23T14:47:05.783Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 14422266,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 14422266,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 14422266,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 14422266,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "s0.audiofiles.ausha.co"
+            }
+          ],
+          "distinct_totals": [
+            14422266
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "138. Marc Bloch : l'historien qui entre au panthéon",
+          "guid": "70172c4a837a027e88483264a2b74955c05bde47"
+        }
+      ]
+    },
+    {
+      "show_id": "449451010",
+      "title": "Whence Came You? - Freemasonry discussed and Masonic research for today's Freemason",
+      "feed_host": "libsyn.com",
+      "enclosure_host": "content.libsyn.com",
+      "timed_transcripts": 16,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          68842906,
+          70813772,
+          107276374
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://traffic.libsyn.com/secure/wcypodcast/721.mp3?dest-id=72040",
+          "checked_at": "2026-08-23T14:47:10.654Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 70813772,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 70813772,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 70813772,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 70813772,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            70813772
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Whence Came You? - 0721 - Why the Secrets of the Universe Are Hidden in Your Blood",
+          "guid": "230b874e-493e-4113-8e49-d77b8b6c0a3b"
+        },
+        {
+          "url": "https://traffic.libsyn.com/secure/wcypodcast/720.mp3?dest-id=72040",
+          "checked_at": "2026-08-23T14:47:15.444Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 107276374,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 107276374,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 107276374,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 107276374,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            107276374
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Whence Came You? - 0720 - From Preacher's Son to Apophatic Mystic: Josh Kelley's Wild Ride",
+          "guid": "9dace908-19c2-4386-8124-82d54ae79762"
+        },
+        {
+          "url": "https://traffic.libsyn.com/secure/wcypodcast/719a.mp3?dest-id=72040",
+          "checked_at": "2026-08-23T14:47:20.182Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 68842906,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 68842906,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 68842906,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 68842906,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            68842906
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Whence Came You? - 0719 - The Egyptian Shadow on the Winding Stairs: Decoding Our Golden Legends",
+          "guid": "abc68812-6366-41ff-b833-3acdfe2c4188"
+        }
+      ]
+    },
+    {
+      "show_id": "1505993848",
+      "title": "Apokalypse & Filterkaffee",
+      "feed_host": "podigee.io",
+      "enclosure_host": "adswizz.podigee-cdn.net",
+      "timed_transcripts": 14,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          46201678,
+          50873142,
+          55561098
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://audio.podigee-cdn.net/2552045-m-112e431cbec35f70dcc24aa09159fe09.mp3?source=feed",
+          "checked_at": "2026-08-23T14:47:28.443Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 50873142,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 50873142,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 50873142,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 50873142,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            50873142
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Searching for Linnemann (mit Annika Prigge)",
+          "guid": "25dcba63994438eff069293708a88bec"
+        },
+        {
+          "url": "https://audio.podigee-cdn.net/2552044-m-fe5e462f4dc09ae6c3f300d3d0fbdb0a.mp3?source=feed",
+          "checked_at": "2026-08-23T14:47:33.395Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 55561098,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 55561098,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 55561098,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 55561098,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            55561098
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Kemenatenblues (mit Richard David Precht)",
+          "guid": "9c30d6e7cb878b10eed61df620051775"
+        },
+        {
+          "url": "https://audio.podigee-cdn.net/2545483-m-de50a848d4de505d38823745a95a2f86.mp3?source=feed",
+          "checked_at": "2026-08-23T14:47:38.015Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 46201678,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 46201678,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 46201678,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 46201678,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "adswizz.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            46201678
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Viva Espahña (mit Nikki Hassan-Nia)",
+          "guid": "65aaed643ebd51d9d47d411a5072eb6e"
+        }
+      ]
+    },
+    {
+      "show_id": "1058718804",
+      "title": "The Jason & Scot Show - E-Commerce And Retail News",
+      "feed_host": "libsyn.com",
+      "enclosure_host": "content.libsyn.com",
+      "timed_transcripts": 12,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          25589907,
+          32044747,
+          37756997
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://traffic.libsyn.com/secure/jasshow/JAS_EP340_mixdown_Track_1.mp3?dest-id=325386",
+          "checked_at": "2026-08-23T14:47:43.066Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 25589907,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 25589907,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 25589907,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 25589907,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            25589907
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "EP 340 — Ron Johnson, the Man Who Built the Apple Store",
+          "guid": "b1634290-4527-4f7a-aa0d-31e513400d61"
+        },
+        {
+          "url": "https://traffic.libsyn.com/secure/jasshow/JAS_EP338_Track_1338.mp3?dest-id=325386",
+          "checked_at": "2026-08-23T14:47:47.869Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 32044747,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 32044747,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 32044747,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 32044747,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            32044747
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "EP338 - Amazon Q1 2026 Earnings",
+          "guid": "0c048024-e8de-4c44-a748-3978ee34cb2a"
+        },
+        {
+          "url": "https://traffic.libsyn.com/secure/jasshow/JAS_EP336_mixdown_Track_1336.mp3?dest-id=325386",
+          "checked_at": "2026-08-23T14:47:52.703Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 37756997,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 37756997,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 37756997,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 37756997,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.libsyn.com"
+            }
+          ],
+          "distinct_totals": [
+            37756997
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "EP336 - Amazon Q4 Earnings",
+          "guid": "4a70d822-9d85-45ad-97cd-3ae2c2734a88"
+        }
+      ]
+    },
+    {
+      "show_id": "1496665566",
+      "title": "Charlas Hispanas: Aprende Español | Learn Spanish",
+      "feed_host": "charlashispanas.com",
+      "enclosure_host": "content.blubrry.com",
+      "timed_transcripts": 11,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          14629447,
+          15602249,
+          17792025
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://media.blubrry.com/charlashispanas/content.blubrry.com/charlashispanas/Episodio_1187-Noticias_mezcla.mp3",
+          "checked_at": "2026-08-23T14:47:59.991Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 15602249,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 15602249,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 15602249,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 15602249,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            15602249
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "1187. Noticias en español",
+          "guid": "https://charlashispanas.com/?p=15936"
+        },
+        {
+          "url": "https://media.blubrry.com/charlashispanas/content.blubrry.com/charlashispanas/Episodio_1185-El_heldo_y_las_paletas_mezcla.mp3",
+          "checked_at": "2026-08-23T14:48:04.383Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 17792025,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 17792025,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 17792025,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 17792025,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            17792025
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "1185. El helado y las paletas",
+          "guid": "https://charlashispanas.com/?p=15929"
+        },
+        {
+          "url": "https://media.blubrry.com/charlashispanas/content.blubrry.com/charlashispanas/Episodio_1184-Cartelera_mezcla.mp3",
+          "checked_at": "2026-08-23T14:48:09.168Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 14629447,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 14629447,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 14629447,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 14629447,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            14629447
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "1184. Cartelera de próximos eventos",
+          "guid": "https://charlashispanas.com/?p=15923"
+        }
+      ]
+    },
+    {
+      "show_id": "1202593158",
+      "title": "Downtime - The Mountain Bike Podcast",
+      "feed_host": "downtimepodcast.com",
+      "enclosure_host": "content.blubrry.com",
+      "timed_transcripts": 7,
+      "prior_verdict": "ad-free",
+      "prior_n": 5,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          48716555,
+          49828415,
+          78246308
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://media.blubrry.com/downtimepodcast/content.blubrry.com/downtimepodcast/GregCallaghan24FINAL.mp3",
+          "checked_at": "2026-08-23T14:48:14.136Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 48716555,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 48716555,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 48716555,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 48716555,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            48716555
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Adapting to Change – Greg Callaghan On Staying Competitive in Enduro",
+          "guid": "https://www.downtimepodcast.com/?p=5629"
+        },
+        {
+          "url": "https://media.blubrry.com/downtimepodcast/content.blubrry.com/downtimepodcast/TexiFINAL.mp3",
+          "checked_at": "2026-08-23T14:48:18.916Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 78246308,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 78246308,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 78246308,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 78246308,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            78246308
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Christian Textor Proves You Can Be a Parent and an Amazing Racer",
+          "guid": "https://www.downtimepodcast.com/?p=5620"
+        },
+        {
+          "url": "https://media.blubrry.com/downtimepodcast/content.blubrry.com/downtimepodcast/ALN24FINAL.mp3",
+          "checked_at": "2026-08-23T14:48:23.693Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 49828415,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 49828415,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 49828415,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 49828415,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            49828415
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "ALN – Losing Faith in the Process and How To Fix It",
+          "guid": "https://www.downtimepodcast.com/?p=5615"
+        }
+      ]
+    },
+    {
+      "show_id": "1305878240",
+      "title": "The Diamond Podcast for Financial Advisors",
+      "feed_host": "diamond-consultants.com",
+      "enclosure_host": "content.blubrry.com",
+      "timed_transcripts": 4,
+      "prior_verdict": "ad-free",
+      "prior_n": 4,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          81339287,
+          82953043,
+          95348273
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://media.blubrry.com/mindy_diamond_on_independence/content.blubrry.com/mindy_diamond_on_independence/Diamond-Podcast-ep270-Matt_Brown-V3-080124.mp3",
+          "checked_at": "2026-08-23T14:48:29.219Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 82953043,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 82953043,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 82953043,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 82953043,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            82953043
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Democratizing Wealth Management: How the Founder of $6T CAIS Helped Drive Growth in the Alts Space",
+          "guid": "https://www.diamond-consultants.com/?p=27437"
+        },
+        {
+          "url": "https://media.blubrry.com/mindy_diamond_on_independence/content.blubrry.com/mindy_diamond_on_independence/Diamond-Podcast-ep269-Beacon_Pointe-V2-072524.mp3",
+          "checked_at": "2026-08-23T14:48:34.352Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 95348273,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 95348273,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 95348273,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 95348273,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            95348273
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Becoming the Clients’ Financial Concierge: $2B UBS Breakaways Set Their Sights on Being Fiduciaries for the Long-Term",
+          "guid": "https://www.diamond-consultants.com/?p=27438"
+        },
+        {
+          "url": "https://media.blubrry.com/mindy_diamond_on_independence/content.blubrry.com/mindy_diamond_on_independence/Diamond-Podcast-ep268-LPL_Succession-071824.mp3",
+          "checked_at": "2026-08-23T14:48:39.424Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 81339287,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 81339287,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 81339287,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 81339287,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            81339287
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Succession and Liquidity: Key Considerations and Options for Founders and Next Gens",
+          "guid": "https://www.diamond-consultants.com/?p=27436"
+        }
+      ]
+    },
+    {
+      "show_id": "1307361758",
+      "title": "Working Cows - Regenerative Ranching to Maximize Profitability and Soil Health",
+      "feed_host": "blubrry.com",
+      "enclosure_host": "content.blubrry.com",
+      "timed_transcripts": 4,
+      "prior_verdict": "ad-free",
+      "prior_n": 4,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          44451402,
+          48948079,
+          55097956
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://media.blubrry.com/workingcowspodcast/media.blubrry.com/workingcowspodcast/content.blubrry.com/workingcowspodcast/Working_Cows_Ep_374-Brian_Dougherty_and_Luke_Jones.mp3",
+          "checked_at": "2026-08-23T14:48:44.642Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 55097956,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 55097956,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 55097956,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 55097956,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            55097956
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Ep. 374 – Brian Dougherty and Luke Jones – Thinking About Cover Crops",
+          "guid": "https://workingcows.net/?p=8691"
+        },
+        {
+          "url": "https://media.blubrry.com/workingcowspodcast/media.blubrry.com/workingcowspodcast/content.blubrry.com/workingcowspodcast/Working_Cows_Ep_373-Leanne_Fuchs.mp3",
+          "checked_at": "2026-08-23T14:48:49.099Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 48948079,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 48948079,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 48948079,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 48948079,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            48948079
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Ep. 373 – Leanne Fuchs – Challenging Human Health Paradigms",
+          "guid": "https://workingcows.net/?p=8671"
+        },
+        {
+          "url": "https://media.blubrry.com/workingcowspodcast/media.blubrry.com/workingcowspodcast/content.blubrry.com/workingcowspodcast/Working_Cows_Ep_372-Dallas_Mount.mp3",
+          "checked_at": "2026-08-23T14:48:53.901Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 44451402,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 44451402,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 44451402,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 44451402,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            44451402
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Ep. 372 – Dallas Mount – Using Business Language",
+          "guid": "https://workingcows.net/?p=8629"
+        }
+      ]
+    },
+    {
+      "show_id": "1428670057",
+      "title": "The Pioneer Morning Briefing - Nachrichten aus Politik und Wirtschaft",
+      "feed_host": "podigee.io",
+      "enclosure_host": "audio.podigee-cdn.net",
+      "timed_transcripts": 4,
+      "prior_verdict": "ad-free",
+      "prior_n": 4,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          6870099,
+          8545245,
+          26271242
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://audio.podigee-cdn.net/2515614-m-52e5bd4496d7c3d56cfc1e7198c39750.mp3?source=feed",
+          "checked_at": "2026-08-23T14:48:59.701Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 26271242,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 26271242,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 26271242,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 26271242,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            26271242
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "CSU-Landesgruppenchef warnt Bas | Wohlstand für alle in 2026? | Neues von Apple",
+          "guid": "0a4f6941b539329fc266880f6e6f4683"
+        },
+        {
+          "url": "https://audio.podigee-cdn.net/2491274-m-aabf5be670e54de9c6432664d933065c.mp3?source=feed",
+          "checked_at": "2026-08-23T14:49:04.474Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 6870099,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 6870099,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 6870099,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 6870099,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            6870099
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Zwischen DGB und Dauerurlaub – der deutsche Protestkomfort",
+          "guid": "4b9bac39244172811589132112ff85f7"
+        },
+        {
+          "url": "https://audio.podigee-cdn.net/2490925-m-b30a8ff1c7db914750486d8ff5a80e2a.mp3?source=feed",
+          "checked_at": "2026-08-23T14:49:10.540Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 8545245,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 8545245,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 8545245,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 8545245,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            8545245
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Zwischen Neugier und Naivität – der Plausch mit Höcke",
+          "guid": "995bf1a5cb8500da316fd449d3d2803f"
+        }
+      ]
+    },
+    {
+      "show_id": "545679111",
+      "title": "Bahnhofskino – Der Filmpodcast von A bis Sleaze",
+      "feed_host": "podigee.io",
+      "enclosure_host": "audio.podigee-cdn.net",
+      "timed_transcripts": 4,
+      "prior_verdict": "ad-free",
+      "prior_n": 4,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          55533025,
+          65121234,
+          81993443
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://audio.podigee-cdn.net/2488885-m-d4b84161b79bc4038975e3c3288aa859.mp3?source=feed",
+          "checked_at": "2026-08-23T14:49:18.535Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 81993443,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 81993443,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 81993443,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 81993443,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            81993443
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Das Airport-Quartett – Teil 1/2: Airport (1970) & Airport 1975: Giganten am Himmel (1974) mit Franz Köhne",
+          "guid": "0b73bc50ee9c1fea35b53db5ec657392"
+        },
+        {
+          "url": "https://audio.podigee-cdn.net/2505836-m-dd29f38966ea3895901a161e596fc338.mp3?source=feed",
+          "checked_at": "2026-08-23T14:49:23.182Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 55533025,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 55533025,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 55533025,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 55533025,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            55533025
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "BEEzilla #6 (Classic): Frankensteins Kampf gegen die Teufelsmonster (1971) mit André Wentzel",
+          "guid": "63869688430b5f8e61933553e4a1db52"
+        },
+        {
+          "url": "https://audio.podigee-cdn.net/2490374-m-262b4cc73d98cd66b66954ce261fc51e.mp3?source=feed",
+          "checked_at": "2026-08-23T14:49:27.764Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 65121234,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 65121234,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 65121234,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 65121234,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "audio.podigee-cdn.net"
+            }
+          ],
+          "distinct_totals": [
+            65121234
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Sleepy Hollow (1999) mit Michael Tierse",
+          "guid": "e5491375c7707c8b10b1209725611f26"
+        }
+      ]
+    },
+    {
+      "show_id": "1434744385",
+      "title": "Rewilding Earth Podcast",
+      "feed_host": "rewilding.org",
+      "enclosure_host": "content.blubrry.com",
+      "timed_transcripts": 3,
+      "prior_verdict": "ad-free",
+      "prior_n": 3,
+      "grid": {
+        "status": "stable",
+        "varies_by_request": false,
+        "episodes_probed": 3,
+        "episodes_informative": 3,
+        "varying_episodes": 0,
+        "varying_totals": [],
+        "totals_seen": [
+          32866664,
+          41338685,
+          85401942
+        ]
+      },
+      "note": "PROBE GRID: 3 episode(s), each asked all four ways (2-byte ranged GET and unranged, under both outbound identities), and all 12 cells reported the same length for their URL. This does NOT re-certify the show: it says only that this delivery path does not lie in the way atelier.flightcast.com does, and a stitcher that did not vary inside a cache window looks exactly like this. The show's disposition is unchanged and still rests on its ranged-GET samples",
+      "grids": [
+        {
+          "url": "https://media.blubrry.com/rewildingearth/content.blubrry.com/rewildingearth/Austin_Alvorado.mp3",
+          "checked_at": "2026-08-23T14:49:35.489Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 32866664,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 32866664,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 32866664,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 32866664,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            32866664
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Episode 165: Filming the Elusive El Tigre for “Borderlands Jaguar” with Austin Alvarado",
+          "guid": "https://rewilding.org/?p=26378"
+        },
+        {
+          "url": "https://media.blubrry.com/rewildingearth/media.blubrry.com/rewildingearth/content.blubrry.com/rewildingearth/Steve_Carver.mp3",
+          "checked_at": "2026-08-23T14:49:40.660Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 41338685,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 41338685,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 41338685,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 41338685,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            41338685
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Episode 163: Steve Carver on the Challenges of Implementing Rewilding Goals Across Fragmented Geographic, Cultural, and Political Landscapes",
+          "guid": "https://rewilding.org/?p=26265"
+        },
+        {
+          "url": "https://media.blubrry.com/rewildingearth/content.blubrry.com/rewildingearth/Liz_Hillard.mp3",
+          "checked_at": "2026-08-23T14:49:45.114Z",
+          "cells": [
+            {
+              "identity": "probe",
+              "ranged": true,
+              "status": 206,
+              "total": 85401942,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "probe",
+              "ranged": false,
+              "status": 200,
+              "total": 85401942,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": true,
+              "status": 206,
+              "total": 85401942,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            },
+            {
+              "identity": "client",
+              "ranged": false,
+              "status": 200,
+              "total": 85401942,
+              "content_encoding": null,
+              "transfer_encoding": null,
+              "resolved_host": "content.blubrry.com"
+            }
+          ],
+          "distinct_totals": [
+            85401942
+          ],
+          "varies_by_request": false,
+          "compressed": false,
+          "episode": "Episode 95: Liz Hillard On Wildlife Connectivity In The Pigeon River Gorge – Interstate 40 corridor",
+          "guid": "https://rewilding.org/?p=19810"
+        }
+      ]
+    }
+  ]
+}
