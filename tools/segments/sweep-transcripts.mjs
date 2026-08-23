@@ -49,6 +49,30 @@
    feeds. The breadth tier (19,787 shows) is hours of wall-clock; checkpointing
    is what makes that fine.
 
+   ...AND `--max-episode-rows` IS WHAT MAKES THAT CHECKPOINT SURVIVABLE (#114).
+   The checkpoint is rewritten in full after every show, so its cost is the
+   index size, and the index size is driven by EPISODE ROWS rather than by
+   shows. On the curated 220 that is 7.7MB and the quadratic is invisible. On
+   breadth it is not: the first 20 shows of the ranked tranche are iHeart feeds
+   averaging 2,900 transcribed episodes each and produced a 55MB index — 951
+   bytes per row — so a 500-show run rewrites tens of GB and a full-catalogue
+   run would hand `JSON.stringify` a string longer than V8 will allocate. The
+   run does not get slow, it throws.
+
+   The cap bounds ROWS, never COUNTS: `episodes_with_transcript` and friends are
+   computed over every episode in the feed before anything is sliced, so the
+   yield numbers are exact at any cap. What a cap costs is fetch targets, and
+   `episode_rows_available`/`episode_rows_dropped` on each record say exactly how
+   many were dropped, so a truncated show is a re-queue rather than a silent
+   ceiling: `pendingShows` puts one back in the queue when a later run raises the
+   cap above what it kept, and leaves it alone otherwise.
+
+   Default is Infinity, so the rows kept with the flag absent are exactly the
+   rows kept before it existed. Not byte-identical, though — each `ok` record
+   gains the two provenance fields above, and the output gains
+   `max_episode_rows: null`. A re-run of the curated sweep therefore diffs, and
+   the diff is fields rather than data.
+
    POLITENESS. Concurrency 6 across shows, plus a per-host minimum interval, so
    the many shows sharing one CDN cannot burst it. Honest User-Agent with a
    contact address, backoff that honours `Retry-After` on 429/5xx, hard timeout.
@@ -56,7 +80,7 @@
    Usage:
      node tools/segments/sweep-transcripts.mjs
        [--limit N] [--concurrency 6] [--all-episodes] [--retry-failed] [--reset]
-       [--catalog PATH] [--out PATH] [--progress PATH]
+       [--max-episode-rows N] [--catalog PATH] [--out PATH] [--progress PATH]
 
    Env overrides (mirrors tools/refresh/'s cloud-path-split convention):
      CATALOG_PATH, AVAILABILITY_PATH, TRANSCRIPT_PROGRESS_PATH                */
@@ -295,14 +319,53 @@ export function loadProgress(path) {
   return { version: p.version ?? 1, started_at: p.started_at ?? new Date().toISOString(), updated_at: p.updated_at ?? null, shows: p.shows };
 }
 
+/** A re-sweep must never be able to LOSE data.
+
+    This guard exists because `--max-episode-rows` created the situation that
+    needs it. Before the cap, an `ok` show was never swept twice, so
+    `progress.shows[id] = record` was safe by construction. Now raising the cap
+    re-queues a truncated show — and if that second read 404s, times out, or the
+    publisher is briefly down, an unconditional assignment replaces a good
+    200-row `ok` record with an `error` one carrying zeroed counts. The show
+    would then report as failed in the index, its transcripts would vanish from
+    every yield number, and the only recovery would be a third request. The five
+    shows this branch re-swept uncapped went through exactly this path.
+
+    So a failure is recorded ALONGSIDE the good record rather than on top of it,
+    and `requeue_failed` stops the next run retrying it forever — same posture as
+    the error-skip rule below, and `--retry-failed` still overrides. A first-ever
+    failure (no prior record) is stored normally: there is nothing to protect. */
+export function keepBetterRecord(prior, next) {
+  if (next.status === "ok" || !prior || prior.status !== "ok") return next;
+  return {
+    ...prior,
+    requeue_failed: true,
+    requeue_error: next.error,
+    requeue_error_code: next.error_code,
+    requeue_attempted_at: next.swept_at,
+  };
+}
+
 /** The resume rule: a show already recorded `ok` is done. A show recorded as
     an error is also skipped by default — otherwise every run re-hammers the
     same dead feeds — but `--retry-failed` puts them back in. */
-export function pendingShows(shows, progress, { retryFailed = false } = {}) {
+export function pendingShows(shows, progress, { retryFailed = false, maxEpisodeRows = Infinity } = {}) {
   return shows.filter((s) => {
     const done = progress.shows[String(s.show_id ?? s.apple_collection_id)];
     if (!done) return true;
-    return retryFailed && done.status === "error";
+    if (done.status === "error") return retryFailed;
+    /* A show truncated by a LOWER cap than this run is asking for is not done.
+       Without this, `--max-episode-rows 3000` after a 200-row run re-sweeps
+       nothing — every record says `ok` — and the only way to get the deeper rows
+       is `--reset`, i.e. re-requesting all 500 feeds to deepen five of them. The
+       comparison is against the rows actually KEPT, not against the cap that
+       produced them, so raising the cap on a show that had nothing more to give
+       (`dropped: 0`) correctly still skips it. */
+    // A re-queue that already failed is not retried by default, for the same
+    // reason a failed show is not: otherwise every future run spends requests
+    // on a feed that has stopped answering.
+    if (done.requeue_failed && !retryFailed) return false;
+    return (done.episode_rows_dropped || 0) > 0 && maxEpisodeRows > (done.episodes?.length ?? 0);
   });
 }
 
@@ -355,7 +418,7 @@ export function summarizeShow(show, episodes) {
     transcript nor chapters, so storing them would inflate a 2MB index to 12MB
     of rows no downstream lane can do anything with. Counts for every episode
     are kept regardless, which is what the coverage numbers are computed from. */
-export async function sweepShow(show, { allEpisodes = false, log = () => {} } = {}) {
+export async function sweepShow(show, { allEpisodes = false, maxEpisodeRows = Infinity, log = () => {} } = {}) {
   const base = {
     show_id: show.show_id ?? String(show.apple_collection_id),
     apple_collection_id: show.apple_collection_id ?? null,
@@ -367,10 +430,15 @@ export async function sweepShow(show, { allEpisodes = false, log = () => {} } = 
     const xml = await fetchFeed(show.feed_url, { log });
     const { episodes, sample_enclosure_url } = parseFeed(xml);
     const dai = await resolveDai(sample_enclosure_url);
-    const kept = allEpisodes ? episodes : episodes.filter((e) => e.transcript_url || e.chapters_url);
+    const eligible = allEpisodes ? episodes : episodes.filter((e) => e.transcript_url || e.chapters_url);
+    // Newest first, because feeds are: a truncated tail is the oldest episodes,
+    // which are the likeliest to have a dead transcript URL anyway.
+    const kept = Number.isFinite(maxEpisodeRows) ? eligible.slice(0, Math.max(0, maxEpisodeRows)) : eligible;
     return {
       ...summarizeShow({ ...base, status: "ok", error: null, error_code: null, ...dai }, episodes),
       episode_scope: allEpisodes ? "all" : "with_transcript_or_chapters",
+      episode_rows_available: eligible.length,
+      episode_rows_dropped: eligible.length - kept.length,
       episodes: kept,
     };
   } catch (e) {
@@ -389,6 +457,8 @@ export async function sweepShow(show, { allEpisodes = false, log = () => {} } = 
       episodes_with_chapters: 0,
       transcript_tags: 0,
       transcript_types: {},
+      episode_rows_available: 0,
+      episode_rows_dropped: 0,
       episodes: [],
     };
   }
@@ -448,6 +518,20 @@ export function summarizeRun(showRecords) {
 
 // -------------------------------------------------------------------- main --
 
+export function episodeRowsArg(raw) {
+  if (raw === "Infinity") return Infinity;
+  /* The empty string is checked BEFORE Number(), because `Number("")` is 0, not
+     NaN. `--max-episode-rows` with nothing after it would otherwise mean "keep
+     zero episode rows" — a run that fetches every feed, reports every count
+     correctly, and stores nothing anything downstream can fetch from. */
+  const text = String(raw ?? "").trim();
+  const n = text === "" ? NaN : Number(text);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new SweepError("BAD_ARG", `--max-episode-rows expects a non-negative number or Infinity, got ${JSON.stringify(raw)}`);
+  }
+  return n;
+}
+
 function parseArgs(argv) {
   const get = (flag, fallback) => {
     const i = argv.indexOf(flag);
@@ -457,6 +541,12 @@ function parseArgs(argv) {
     limit: Number(get("--limit", "Infinity")),
     concurrency: Math.max(1, Number(get("--concurrency", "6"))),
     allEpisodes: argv.includes("--all-episodes"),
+    /* Validated rather than coerced. `Number("20O")` is NaN, `Number.isFinite`
+       rejects it, and the slice is skipped — so a typo would silently run the
+       whole tranche UNCAPPED, which is the exact failure the flag exists to
+       prevent, discovered hours in. Same posture as fetch-transcripts.mjs's
+       `numericArg`. */
+    maxEpisodeRows: episodeRowsArg(get("--max-episode-rows", "Infinity")),
     retryFailed: argv.includes("--retry-failed"),
     reset: argv.includes("--reset"),
     catalog: get("--catalog", null),
@@ -482,7 +572,7 @@ async function main() {
   if (shows.length === 0) throw new SweepError("NO_SHOWS", `${catalogPath} yielded zero shows with a feed_url`);
 
   const progress = args.reset ? emptyProgress() : loadProgress(progressPath);
-  const queue = pendingShows(shows, progress, { retryFailed: args.retryFailed });
+  const queue = pendingShows(shows, progress, { retryFailed: args.retryFailed, maxEpisodeRows: args.maxEpisodeRows });
   console.log(`sweeping ${queue.length} show(s) of ${shows.length} (${shows.length - queue.length} already checkpointed), concurrency ${args.concurrency}`);
 
   let done = 0;
@@ -491,8 +581,12 @@ async function main() {
     for (;;) {
       const show = queue.shift();
       if (!show) return;
-      const record = await sweepShow(show, { allEpisodes: args.allEpisodes, log: (m) => console.log(m) });
-      progress.shows[record.show_id] = record;
+      const record = await sweepShow(show, {
+        allEpisodes: args.allEpisodes,
+        maxEpisodeRows: args.maxEpisodeRows,
+        log: (m) => console.log(m),
+      });
+      progress.shows[record.show_id] = keepBetterRecord(progress.shows[record.show_id], record);
       progress.updated_at = new Date().toISOString();
       writeJsonAtomic(progressPath, progress); // checkpoint after EVERY show — this is the resume guarantee
       done++;
@@ -517,6 +611,7 @@ async function main() {
     source_catalog: catalogPath.slice(ROOT.length + 1).replace(/\\/g, "/"),
     policy: "availability index only — transcript bodies are never fetched or stored (issue #104)",
     episode_scope: args.allEpisodes ? "all" : "with_transcript_or_chapters",
+    max_episode_rows: Number.isFinite(args.maxEpisodeRows) ? args.maxEpisodeRows : null,
     summary,
     shows: records,
   });

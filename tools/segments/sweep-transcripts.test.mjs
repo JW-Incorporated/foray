@@ -25,7 +25,9 @@ import {
   attrOf,
   decodeEntities,
   emptyProgress,
+  episodeRowsArg,
   hasTimestamps,
+  keepBetterRecord,
   loadProgress,
   normalizeMimeType,
   parseFeed,
@@ -33,6 +35,7 @@ import {
   pickTranscript,
   summarizeRun,
   summarizeShow,
+  sweepShow,
   writeJsonAtomic,
 } from "./sweep-transcripts.mjs";
 
@@ -308,4 +311,179 @@ test("the committed index carries no transcript bodies", () => {
     .split("\n")
     .filter((l) => !l.trimStart().startsWith("*") && /\bfetch\w*\(/.test(l) && /transcript/i.test(l));
   assert.deepEqual(fetchLinesMentioningTranscripts, []);
+});
+
+/* ------------------------------------------------- --max-episode-rows (#114)
+
+   These four are the only tests in this file that exercise `sweepShow`, and
+   they still touch no network: `globalThis.fetch` is replaced with a stub that
+   returns a fixture, and the fixture declares no `<enclosure>`, which is what
+   makes `resolveDai` return "no enclosure url in feed" without a request.
+
+   The cap exists because the checkpoint is rewritten in full after every show,
+   so its cost is the whole index, and the index is driven by episode ROWS. The
+   first 20 shows of the ranked breadth tranche produced 55MB at 951 bytes per
+   row; a full-catalogue run at that shape hands `JSON.stringify` a string
+   longer than V8 will allocate and throws rather than slowing down. */
+
+const manyItems = (n) =>
+  Array.from(
+    { length: n },
+    (_, i) => `<item><title>Ep ${i}</title><guid>ep-${i}</guid>
+      <podcast:transcript url="https://cdn.example/${i}.vtt" type="text/vtt"/></item>`,
+  ).join("");
+
+async function withStubbedFeed(xml, fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: { get: () => null },
+    text: async () => xml,
+  });
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+/* MUTATION: apply the cap to `episodes` before `summarizeShow` instead of
+   after. The counts are then computed over the truncated list, so a 2,900-
+   transcript show reports 200 and every yield number in the run — the one
+   number the breadth sweep exists to produce — is silently floored at the cap.
+   Verified failing. */
+test("--max-episode-rows caps stored rows and never the counts", async () => {
+  await withStubbedFeed(feed(manyItems(500)), async () => {
+    const rec = await sweepShow({ show_id: "capped", feed_url: "https://feeds.cap-test-a.example/f" }, { maxEpisodeRows: 50 });
+    assert.equal(rec.status, "ok");
+    assert.equal(rec.episodes_total, 500, "counts must be computed over the whole feed");
+    assert.equal(rec.episodes_with_transcript, 500);
+    assert.equal(rec.episodes_with_timed_transcript, 500);
+    assert.equal(rec.episodes.length, 50, "only the rows are capped");
+  });
+});
+
+/* MUTATION: omit `episode_rows_available`/`episode_rows_dropped`. A truncated
+   show then looks identical to a show that only ever had 50 transcripts, so a
+   later fetch pass cannot tell "this show has no more" from "we stopped
+   recording" — a silent ceiling, which is the failure mode this pipeline's
+   other files go out of their way to avoid. Verified failing. */
+test("a truncated show says how much it dropped", async () => {
+  await withStubbedFeed(feed(manyItems(500)), async () => {
+    const rec = await sweepShow({ show_id: "counted", feed_url: "https://feeds.cap-test-b.example/f" }, { maxEpisodeRows: 50 });
+    assert.equal(rec.episode_rows_available, 500);
+    assert.equal(rec.episode_rows_dropped, 450);
+  });
+});
+
+/* MUTATION: default `maxEpisodeRows` to some finite number rather than
+   Infinity. Every existing caller — including the curated sweep that produces
+   the committed `data/transcript-availability.json` — would then silently lose
+   episode rows on the next run, and `transcript-coverage.mjs`'s join would
+   start reporting a collapse it would attribute to the publishers.
+   Verified failing. */
+test("the cap is absent by default, so existing runs are unchanged", async () => {
+  await withStubbedFeed(feed(manyItems(300)), async () => {
+    const rec = await sweepShow({ show_id: "uncapped", feed_url: "https://feeds.cap-test-c.example/f" });
+    assert.equal(rec.episodes.length, 300);
+    assert.equal(rec.episode_rows_dropped, 0);
+    assert.equal(rec.episode_rows_available, 300);
+  });
+});
+
+/* MUTATION: `eligible.slice(-maxEpisodeRows)` instead of `slice(0, n)`. Feeds
+   are newest-first, so that keeps the OLDEST episodes — the ones likeliest to
+   have a transcript URL the publisher has since taken down — and quietly
+   maximises the 404 rate of the fetch stage that reads these rows.
+   Verified failing. */
+test("the rows kept are the newest ones the feed lists first", async () => {
+  await withStubbedFeed(feed(manyItems(20)), async () => {
+    const rec = await sweepShow({ show_id: "order", feed_url: "https://feeds.cap-test-d.example/f" }, { maxEpisodeRows: 3 });
+    assert.deepEqual(rec.episodes.map((e) => e.guid), ["ep-0", "ep-1", "ep-2"]);
+  });
+});
+
+/* MUTATION: drop the truncation branch from `pendingShows` and go back to
+   "any `ok` record is done". Raising `--max-episode-rows` on a later run then
+   re-sweeps NOTHING — every truncated record still says `ok` — and the only way
+   to deepen five shows is `--reset`, which re-requests all 500 feeds. The
+   header claims a truncated show is "a re-queue rather than a silent ceiling";
+   this is the line that makes that true. Verified failing. */
+test("raising the cap re-queues the shows that were truncated, and only those", () => {
+  const progress = emptyProgress();
+  progress.shows["truncated"] = { status: "ok", episode_rows_dropped: 795, episodes: new Array(200) };
+  progress.shows["complete"] = { status: "ok", episode_rows_dropped: 0, episodes: new Array(7) };
+  const shows = [{ show_id: "truncated", feed_url: "a" }, { show_id: "complete", feed_url: "b" }];
+
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000 }).map((s) => s.show_id), ["truncated"]);
+  // Same cap as last time: nothing to gain, so nothing is re-requested.
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 200 }).map((s) => s.show_id), []);
+  // And the default (no cap) still skips everything already done.
+  assert.deepEqual(pendingShows(shows, progress).map((s) => s.show_id), ["truncated"]);
+});
+
+/* MUTATION: revert `--max-episode-rows` to a bare `Number(...)`. `Number("20O")`
+   is NaN, `Number.isFinite(NaN)` is false, the slice is skipped, and the run
+   proceeds UNCAPPED — silently doing the one thing the flag exists to prevent,
+   on a run that takes hours and whose failure mode is an unwritable checkpoint.
+   Verified failing. */
+test("--max-episode-rows refuses a value it cannot honour", () => {
+  assert.equal(episodeRowsArg("Infinity"), Infinity);
+  assert.equal(episodeRowsArg("200"), 200);
+  assert.equal(episodeRowsArg("0"), 0);
+  for (const bad of ["20O", "abc", "-5", "", "NaN"]) {
+    assert.throws(() => episodeRowsArg(bad), (e) => e instanceof SweepError && e.code === "BAD_ARG", `${JSON.stringify(bad)} should be rejected`);
+  }
+
+  /* And that `parseArgs` actually ROUTES THROUGH IT. Pinning the helper alone
+     left the real mutation alive: swapping the call site back to a bare
+     `Number(get(...))` kept this suite green, because nothing connected the
+     validator to the flag. `parseArgs` is not exported (nor should it be, for
+     one assertion), so this is a source check — the same shape as the
+     transcript-bodies guard at the end of this file. */
+  const src = readFileSync(new URL("./sweep-transcripts.mjs", import.meta.url), "utf8");
+  assert.match(src, /maxEpisodeRows:\s*episodeRowsArg\(get\("--max-episode-rows"/);
+  assert.deepEqual(src.match(/Number\(get\("--max-episode-rows"/g), null);
+});
+
+/* MUTATION: revert the checkpoint write to `progress.shows[id] = record`. The
+   cap's re-queue path made this a DATA-LOSS bug where it previously could not
+   be one: an `ok` show used to be swept exactly once, so an unconditional
+   assignment was safe. Now a re-queued show whose second read 404s or times out
+   replaces a good 200-row record with a zeroed `error` one — the show reports
+   as failed, its transcripts vanish from every yield number, and recovery costs
+   a third request. The five shows re-swept uncapped in this branch went through
+   this exact path. Verified failing. */
+test("a failed re-sweep never overwrites a good record", () => {
+  const good = { show_id: "s", status: "ok", episodes_with_timed_transcript: 995, episode_rows_dropped: 795, episodes: new Array(200) };
+  const failed = { show_id: "s", status: "error", error: "HTTP_404: gone", error_code: "HTTP_404", swept_at: "2026-08-22T12:00:00Z", episodes: [] };
+
+  const kept = keepBetterRecord(good, failed);
+  assert.equal(kept.status, "ok", "the good record survives");
+  assert.equal(kept.episodes_with_timed_transcript, 995);
+  assert.equal(kept.episodes.length, 200);
+  assert.equal(kept.requeue_failed, true, "and the failure is still visible");
+  assert.equal(kept.requeue_error_code, "HTTP_404");
+
+  // A successful re-sweep replaces freely — that is the whole point of the cap.
+  const better = { show_id: "s", status: "ok", episodes_with_timed_transcript: 995, episode_rows_dropped: 0, episodes: new Array(995) };
+  assert.equal(keepBetterRecord(good, better).episodes.length, 995);
+  // A first-ever failure has nothing to protect and is stored as-is.
+  assert.equal(keepBetterRecord(undefined, failed).status, "error");
+  assert.equal(keepBetterRecord({ show_id: "s", status: "error" }, failed).status, "error");
+});
+
+/* MUTATION: drop the `requeue_failed` check from `pendingShows`. A truncated
+   show whose re-sweep fails still has `episode_rows_dropped > 0`, so every
+   future run re-queues it — spending requests forever on a feed that has
+   stopped answering, which is the behaviour the error-skip rule already exists
+   to prevent. Verified failing. */
+test("a re-queue that failed is not retried on every subsequent run", () => {
+  const progress = emptyProgress();
+  progress.shows["s"] = { status: "ok", episode_rows_dropped: 795, episodes: new Array(200), requeue_failed: true };
+  const shows = [{ show_id: "s", feed_url: "a" }];
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000 }), []);
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000, retryFailed: true }).map((x) => x.show_id), ["s"]);
 });

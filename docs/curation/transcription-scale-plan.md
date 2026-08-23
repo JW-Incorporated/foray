@@ -31,8 +31,9 @@ timeouts from CPU starvation), and two concurrent runs starve each other to
 0.23 effective threads with neither finishing.
 
 **But the more useful finding is that we do not need thousands.**
-`data/segments.json` holds **9 segments** as of 2026-08-16 — the first ever, cut
-from two self-transcribed episodes (`docs/curation/grilling-foray-batch-1.md`).
+`data/segments.json` holds **69 segments** as of 2026-08-22, cut from 19 source
+episodes; the first 9 were self-transcribed
+(`docs/curation/grilling-foray-batch-1.md`).
 The next milestone is the first 3 Foray subjects (#112), which needs tens of
 episodes, not thousands. Transcription volume should be **demand-driven** —
 transcribe what we are about to publish, not the catalogue.
@@ -437,9 +438,213 @@ are measured clean and 31 are Cider Chat, measured injecting but admitted by the
 non-DAI clause — see `tools/segments/fetch-transcripts.mjs`), and every
 subject beyond what those shows happen to cover needs #108.
 
-## 8. What this doc is not
+## 8. MEASURED, 2026-08-22 — the breadth sweep, and the number it actually returns
+
+§7 counted the curated 220. `data/catalog-breadth.json` holds **19,436 more
+uncurated feeds** we had never read — 1.1% of reachable shows swept. Tranche 1
+read 500 of them (`tools/segments/rank-breadth.mjs`, then the sweep). The
+headline is genuinely large and the usable number is genuinely small, and the
+gap between them is the finding.
+
+### What it was ranked on, and why not genre
+
+A `<podcast:transcript>` tag is a feature of the **hosting platform**, not a
+choice the publisher makes per episode, so the feed's host predicts it far
+better than the subject does. Ranked on a per-platform hit rate learned from the
+219 curated feeds, shrunk toward the global rate by a pseudo-count in shows so a
+1-of-1 host cannot lead, times `episode_count` — because the budget is spent per
+**feed**, not per episode. Genre was measured and discarded:
+`data/breadth-classification.json` files Odd Lots under `sports/soccer` and 5-4
+under `engineering/ai-robotics`, so a topic-weighted rank is a rank on a
+classifier's mistakes.
+
+The tranche is deliberately **two arms**: a ranked EXPLOIT head of 300 (capped at
+40 feeds per platform, because ranked purely on yield the top 300 rows of the
+catalogue are 300 omnycontent feeds and the run would price one host and
+discover nothing), and an EXPLORE arm of 200 drawn uniformly at random from the
+same pool. A greedy tranche measures the shows we predicted would win; only the
+random arm estimates the population, which is the question "is the rest of the
+catalogue worth the requests?" actually asks.
+
+### The yield, per feed swept
+
+**Net** applies the contradiction check in the next section, to the baseline as
+well as to the tranche — comparing a net breadth number against a gross curated
+one would manufacture the finding rather than measure it.
+
+| arm | feeds | with ≥1 timed | timed | per feed | anchorable | per feed | **net** | **per feed** |
+|---|---|---|---|---|---|---|---|---|
+| baseline (curated 220) | 220 | 27 (12.3%) | 7,571 | 34.4 | 676 | 3.1 | 676 | **3.1** |
+| **exploit** (ranked) | 300 | 114 (38.4%) | **175,348** | **584.5** | 2,397 | 8.0 | 995 | **3.3** |
+| **explore** (random) | 200 | 28 (14.1%) | 2,843 | 14.2 | 1,555 | 7.8 | 136 | **0.7** |
+| tranche 1 total | 500 | 142 (28.6%) | 178,191 | 356.4 | 3,952 | 7.9 | 1,131 | **2.3** |
+
+**On raw supply, breadth is enormous: 500 feeds returned 178,191 timed
+transcripts — 23.5x the entire curated catalogue's 7,571, from 2.3x the
+requests.** The ranking is nearly all of that; the exploit arm beat the random
+arm **41x per feed**, which is the whole argument for #114 existing.
+
+**On anchorable supply — the only kind that becomes a Foray — the founder's
+hypothesis is confirmed, and this is the finding.** The random arm is the one
+that estimates the population, and it returns **0.7 net-anchorable transcripts
+per feed against the curated set's 3.1 — 4.4x WORSE.** The curated 220 really
+were the good part. Blind breadth is a bad use of the request budget.
+
+**Ranking pulls it back to par, and no further.** The exploit arm returns **3.3
+per feed against the baseline's 3.1** — a 6% edge, which is within the noise of
+a single tranche and should not be read as breadth being better. What it does
+say is that the choice is not "sweep breadth or don't", it is "sweep breadth *in
+the right order* or don't": unranked, the remaining catalogue is worth **under a
+quarter** (23%) of what the curated set was per request; ranked, it is worth
+roughly the same.
+
+*(The baseline moved under this branch while it was open. #316 measured the 14
+never-probed shows and found 89 of their 2,573 transcripts clean, taking the
+curated pool from 587 to 676 and its rate from 2.7 to 3.1 per feed — which makes
+breadth look **worse**, not better, than the first draft of this section said.
+The number is recomputed from `data/transcript-availability.json` on every run
+rather than transcribed, so it tracks that list automatically.)*
+
+*(An earlier draft of this section reported the explore arm at 7.8 anchorable
+per feed and concluded breadth was 2.9x BETTER than curated. That number was
+computed by subtracting the suspects below pooled across both arms, and the
+explore arm's own suspects are 91% of its haul against the pooled 71%. Same
+rows, same arithmetic, opposite conclusion — `yieldOf()` now takes the suspect
+list per arm and the suite pins that it is not pooled.)*
+
+### The finding underneath it: "not DAI" almost always means "unrecognised"
+
+Of 178,191 timed transcripts, **3,952 are anchorable as classified** — a 45x
+haircut, because transcripts cluster on exactly the big networks that inject ads
+(ADR-0007). That was expected. What was not:
+
+**Every anchorable show in the tranche carries `dai_reason: "unknown"`.** Not one
+was positively verified as delivering a static file. `classifyShow` follows the
+enclosure's redirects and matches the ORIGIN against `tools/refresh/dai.mjs`'s
+host list; that list was built from the hosts 220 curated shows use, and breadth
+immediately produced origins it has never seen. Unrecognised returns
+`{dai: false}`, and false reads downstream as "anchorable".
+
+Two contradictions were measurable from data already in hand:
+
+- **Resolution throws away a positive identification.** `spreaker.com` **is** on
+  the DAI host list. Its enclosures redirect to `d1bxy2pveef3fq.cloudfront.net`,
+  an anonymous CloudFront distribution that is not. So the redirect-following
+  that `dai.mjs` added specifically to *see through* prefixes like pdst.fm
+  discards the identification the feed URL already carried. **Five Spreaker
+  shows, 2,470 timed transcripts, 62% of the tranche's anchorable haul** — and
+  three of the five are in the explore arm, which is why the population estimate
+  moves so far.
+- **The origin names an ad vendor and is still unlisted.**
+  `adswizz.podigee-cdn.net` is AdsWizz, an ad-insertion company. Two shows, 351.
+
+| | timed transcripts |
+|---|---|
+| anchorable as classified | 3,952 |
+| suspect (`suspectAnchorable()`) | 2,821 |
+| **survive both checks** | **1,131** |
+
+Reported and labelled rather than excluded, per the standing rule.
+`isAnchorable()` tracks `fetch-transcripts.mjs`'s selection predicate — with one
+deliberate exception, an unresolved verdict, where the report is the stricter of
+the two — and the suite drives both over the whole
+{null, true, false} x {on-list, off-list} grid so the relationship cannot drift.
+
+**A measurement outranks the heuristic**, and leaving that out was a bug caught
+in review: run without the exemption, the feed-host rule fires on Being an
+Engineer, Geology Bites and Practical AI — the three `AD_FREE_SHOWS`, the only
+shows anyone had measured at the time — and cut the curated baseline from 587 to
+67, flattering every breadth comparison above. The list is now 14 shows and is
+re-exported from `fetch-transcripts.mjs` rather than restated, after a copy of
+it here went stale against #316 and CI caught the two files disagreeing.
+
+**The cheap follow-up this creates.** `dai.mjs` should match the FEED host as
+well as the resolved one — a known-DAI platform behind an anonymous CDN is
+evidence, not an exoneration — and `adswizz.podigee-cdn.net` should be measured
+with `tools/transcribe/ad-inflation.mjs`. Between them they decide the status of
+2,821 transcripts, and the first is a few lines. Neither is done here, because
+`AD_FREE_SHOWS` says in as many words that these lists hold measurements rather
+than opinions, and adding a host on suspicion would break that.
+
+### Acquired
+
+The **1,131** that survive both checks were fetched in one polite pass — the
+five shows re-swept uncapped first, which is what `--max-episode-rows`'s
+re-queue path is for. **1,126 succeeded, 5 failed (all `NETWORK`, none a 429).**
+Bodies went into `data-local/transcripts/` alongside #313's 587; digests are in
+`data/breadth-transcript-digests.json`.
+
+| | |
+|---|---|
+| transcripts | **1,126** across 5 shows |
+| cues | **460,178** |
+| anchored speech | **331.1 hours** |
+| span-implausible | 0 |
+| empty after normalise | 0 |
+| **placeholders (see below)** | **66** |
+| **usable** | **1,060** |
+
+**66 of the 1,126 are Blubrry "Transcription in progress." stubs** — a
+structurally valid SRT with one 5-second cue and 58 bytes of nothing, all from
+Becker's Healthcare Podcast. They pass every guard this pipeline has: non-empty
+after normalise, cue count above zero, span entirely plausible. §7's degenerate
+cases were a 100-hour cue and a 9-byte file; this is the third shape, and the
+only one that looks completely healthy in the digest.
+
+**Not auto-detected here, deliberately.** The obvious structural test — cue span
+against feed duration, the mirror of `spanImplausible()` — does not separate
+them cleanly: the stubs sit at a 0.005 coverage ratio and the lowest legitimate
+transcript in this corpus sits at 0.015, three times apart rather than the
+eighty-five-fold gap that made `MAX_SPAN_RATIO` safe. A threshold in that gap
+would start silently discarding real short transcripts, which is a worse failure
+than carrying 66 rows that an extractor will reject in one pass. Recorded here
+so the next tranche counts them rather than rediscovering them.
+
+So the corpus actually **held on disk** is now **1,643 usable transcripts across
+15 shows, ~759 hours** (583 usable of #313's 587, plus 1,060 here) — 2.8x
+#313's, and none of it cost a dollar or an ASR-second. At `data/segments.json`'s
+measured 3.6 segments per episode that is a **~5,900 segment** pool, against 69
+today. (The 676-transcript figure above is what the curated catalogue *offers*
+after #316's scan; 587 of those were fetched in #313, and the 89 #316 newly
+cleared have not been.)
+
+### Politeness
+
+**500 feeds, 4 failures (3x HTTP 404, 1 timeout), zero retries, zero 429s, and no
+host asked us to slow down** at concurrency 4 through the shared
+`tools/segments/politeness.mjs` gate. Two Apple-listed anchor.fm feeds are dead.
+
+### The projection, and the storage rule it forces
+
+The random arm is the estimator, so it sets the floor. The remaining **18,936
+unswept feeds** hold on the order of **269,000 timed transcripts** — and, at the
+explore arm's net 0.7 per feed, roughly **13,000 net-anchorable ones.** Swept in
+ranked order at the exploit arm's 3.3 per feed the same feeds are worth closer to
+**62,000**, and that gap — a factor of five, decided entirely by ordering — is
+the practical argument for #114.
+
+Both numbers are large enough that **the classifier's accuracy, not the sweep's
+reach, is now the binding constraint**: 71% of tranche 1's apparently anchorable
+haul is waiting on a DAI verdict that two small fixes would settle.
+
+Storage settles the shape:
+
+| shape | tranche 1 (500 feeds) | projected, 19,436 feeds |
+|---|---|---|
+| episode rows (~951 B each) | 170MB uncapped / 16MB capped | **~6.4GB** |
+| one row per show | **359KB** | **~13.6MB** |
+
+Episode rows and bodies stay in gitignored `data-local/`; only
+`data/breadth-transcript-yield.json`'s per-show shape is committed. The sweep's
+checkpoint is rewritten in full after every show, so uncapped it is quadratic in
+episode rows and a full-catalogue run hands `JSON.stringify` a string longer than
+V8 will allocate — it throws rather than slowing down. `--max-episode-rows` caps
+rows and never counts; every number in this section is exact at any cap.
+
+## 9. What this doc is not
 
 It is not a decision. It is the arithmetic that was missing, so the decisions in
 §5 can be made against measured numbers instead of instinct. The measurements
 are in `tools/transcribe/README.md` and issue #116; the pool counts are in
-`data/transcript-availability.json` and `data/discover.json`.
+`data/transcript-availability.json` (curated), `data/breadth-transcript-yield.json`
+(breadth, §8) and `data/discover.json`.

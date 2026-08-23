@@ -452,7 +452,7 @@ const FLOORS = {
      stall the pipeline with no documented way to clear it and that the digest
      fetch failed OPEN on any API error that was not a 404. */
   "tools/refresh/watch-nightly.test.mjs": 62,
-  "tools/segments/sweep-transcripts.test.mjs": 26,
+  "tools/segments/sweep-transcripts.test.mjs": 34,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
   /* The free-transcript acquisition step (#104 follow-up): the join that
@@ -497,6 +497,25 @@ const FLOORS = {
   "tools/segments/transcript-coverage.test.mjs": 12,
   "tools/segments/fetch-transcripts.test.mjs": 11,
   "tools/segments/politeness.test.mjs": 7,
+  /* The breadth prioritiser and its yield report (#114). Floored for the same
+     reason politeness.test.mjs is, and the reason is not hypothetical here
+     either: the first draft of `rank-breadth.mjs` had a seed hash that produced
+     a 20x skew across the explore arm's first draws, and it was invisible in
+     every sample it produced. The two things worth protecting are the ones
+     nobody can eyeball —
+
+       rank-breadth   the SHRINKAGE (a 1-of-1 host must not outrank a 10-of-12
+                      one) and the SAMPLER (the explore arm must be uniform, or
+                      the run's only unbiased estimate silently is not one).
+       breadth-yield  the DENOMINATOR (per feed swept, failures included) and
+                      the DAI classification. Every way the yield number can be
+                      wrong makes it bigger, and the number gets multiplied by
+                      19,000 to decide whether to spend the rest of the budget.
+
+     Both suites were mutation-run before commit; each test names the mutation
+     it kills, per this file's own standard. */
+  "tools/segments/rank-breadth.test.mjs": 21,
+  "tools/segments/breadth-yield.test.mjs": 21,
   "tools/transcribe/fetch-audio.test.mjs": 64,
   "tools/transcribe/ad-inflation.test.mjs": 20,
   "tools/corpus/fetcher.test.mjs": 23,
