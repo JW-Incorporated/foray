@@ -1,5 +1,102 @@
 {
-  "in_flight": {},
+  "in_flight": {
+    "1234320525": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1386509499": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1475422095": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1489934613": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1496623191": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1522570191": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1533813057": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1550576421": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1568289153": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1612307679": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1715029209": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1744976367": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1757439969": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1774315545": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1781109213": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1846845573": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1854256395": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1871936541": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1876872213": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1880892843": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1884962409": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1894866069": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1894953687": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    },
+    "1896928941": {
+      "batch_id": "fresh-2026-08-23-d6949c4f",
+      "reserved_at": "2026-08-23T16:13:50.174Z"
+    }
+  },
   "failed_fetch": {
     "118796495": {
       "attempts": 1,
@@ -42,14 +139,14 @@
       "last_attempt_at": "2026-07-25T05:07:28.864Z"
     },
     "1234320525": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1386509499": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 500",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1386640017": {
       "attempts": 1,
@@ -62,109 +159,109 @@
       "last_attempt_at": "2026-08-18T08:14:19.396Z"
     },
     "1475422095": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 503",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1489934613": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1496623191": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1522570191": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1533813057": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1550576421": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1568289153": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1612307679": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1715029209": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1744976367": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1757439969": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1774315545": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1781109213": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1846845573": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1854256395": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 410",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1871936541": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1876872213": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "feed has zero <item> entries",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1880892843": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1884962409": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1894866069": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1894953687": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     },
     "1895554521": {
       "attempts": 1,
@@ -172,9 +269,9 @@
       "last_attempt_at": "2026-08-18T08:14:19.396Z"
     },
     "1896928941": {
-      "attempts": 2,
+      "attempts": 3,
       "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-21T16:15:08.590Z"
+      "last_attempt_at": "2026-08-23T16:13:50.174Z"
     }
   }
 }
