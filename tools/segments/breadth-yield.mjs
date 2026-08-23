@@ -25,8 +25,9 @@
    measured one, into a `data/` that is already 62MB. So episode rows stay in
    `data-local/` with the transcript bodies (#255's rule), and what lands in
    git is one row per show: the counts, the DAI verdict, the arm, and nothing
-   that scales with episodes. At 19,436 feeds that file is ~4MB, which is a
-   size `data/` can hold.
+   that scales with episodes. Measured on tranche 1: 721 bytes per show, so
+   ~13MB if every feed in the catalogue is eventually swept — a size `data/` can
+   hold, where the episode-row shape (~6.4GB on the same projection) cannot.
 
    ANCHORABILITY IS REPORTED SEPARATELY FROM SUPPLY, BECAUSE THEY DIVERGE.
    Transcripts cluster on the big networks, and the big networks inject ads
@@ -65,7 +66,19 @@ export const MEASURED_AD_FREE = ["Being an Engineer", "Geology Bites", "Practica
     one: an unresolved show is an unknown, and reporting unknowns as wins is
     how a yield number becomes a promise the corpus cannot keep. They are
     counted separately as `unresolved` so the number is visible rather than
-    quietly absorbed. */
+    quietly absorbed.
+
+    THIS IS THE ONE PLACE THIS FILE DELIBERATELY DISAGREES WITH THE FETCHER, and
+    saying so precisely matters more than the agreement would. `isAnchorableShow`
+    in `fetch-transcripts.mjs` reads `dai_suspected !== true`, so a null is
+    anchorable TO IT and not anchorable here. On every other input the two agree,
+    and `breadth-yield.test.mjs` drives both predicates over the full
+    {null, true, false} x {on-list, off-list} grid so the relationship is pinned
+    rather than asserted in prose. The divergence is invisible on tranche 1
+    (`shows_dai_unresolved` is 0 in all four arms) and would show up the moment a
+    tranche contains a feed whose enclosure will not resolve — as a report that
+    is stricter than the fetch, which is the safe direction for a number that
+    gets multiplied by 19,000. */
 export function isAnchorable(show) {
   if ((show.episodes_with_timed_transcript || 0) === 0) return false;
   if (show.dai_suspected === false) return true;
@@ -100,13 +113,20 @@ export function isAnchorable(show) {
      on the list. Two shows, 351 transcripts.
 
    LABELLED, NOT EXCLUDED, per the standing rule — and for a substantive reason
-   too. `isAnchorable` above is deliberately the same predicate
-   `fetch-transcripts.mjs` selects on, and the suite pins that they agree; a
-   private, stricter definition here would mean the report and the fetcher
-   silently disagreed about what the corpus contains. So the rows stay
-   anchorable, stay in every count, and are ALSO reported as a named shortlist
-   with the number they represent. What the caller does with that is a decision,
-   and it should be made with the number in front of it. */
+   too. `isAnchorable` above tracks the predicate `fetch-transcripts.mjs`
+   selects on (see its header for the one deliberate exception, and the test
+   that pins the whole grid); folding this heuristic into it would mean the
+   report and the fetcher silently disagreed about what the corpus contains. So
+   the rows stay anchorable, stay in every count, and are ALSO reported as a
+   named shortlist with the number they represent.
+
+   AND A MEASUREMENT OUTRANKS THE HEURISTIC. `MEASURED_AD_FREE` shows are
+   skipped: run against the curated baseline without that exemption, the
+   feed-host rule flags Being an Engineer, Geology Bites and Practical AI —
+   precisely the three shows somebody measured delivering byte-identical audio
+   — and cuts the curated baseline from 587 anchorable transcripts to 67. Every
+   breadth-vs-curated comparison in the report would then be against a baseline
+   this file had just invented, in the flattering direction. */
 
 /** Substrings that name an ad-tech vendor in a resolved enclosure host. */
 export const AD_TECH_HOST_MARKERS = ["adswizz", "adbarker", "adtonos", "adcontext", "targetspot"];
@@ -124,6 +144,14 @@ export function suspectAnchorable(rows, { isDaiHost = () => false, hostOfFeed = 
   const out = [];
   for (const r of rows) {
     if (!r.anchorable) continue;
+    // A MEASUREMENT OUTRANKS THIS HEURISTIC, and skipping that check was a real
+    // bug: run against the curated baseline, the feed-host rule flagged Being an
+    // Engineer, Geology Bites and Practical AI — which are `AD_FREE_SHOWS`,
+    // i.e. the three shows someone actually measured delivering byte-identical
+    // audio. It would have cut the curated baseline from 587 anchorable
+    // transcripts to 67 and made every breadth-vs-curated comparison in the
+    // report meaningless, in the flattering direction.
+    if (MEASURED_AD_FREE.includes(r.title)) continue;
     const origin = String(r.enclosure_host || "").toLowerCase();
     let reason = null;
     if (isDaiHost(hostOfFeed(r.feed_url))) reason = "dai-host-lost-in-redirect";
@@ -183,11 +211,12 @@ const per = (n, d) => (d ? Math.round((n / d) * 10) / 10 : 0);
     fact — the retry ladder), so excluding failures from the denominator would
     quietly inflate every projection built on this number. `shows_ok` is
     reported alongside so the failure rate is visible rather than buried. */
-export function yieldOf(rows) {
+export function yieldOf(rows, suspects = []) {
   const ok = rows.filter((r) => r.status === "ok");
   const timed = ok.reduce((n, r) => n + r.episodes_with_timed_transcript, 0);
   const anchorableRows = ok.filter((r) => r.anchorable);
   const anchorableTimed = anchorableRows.reduce((n, r) => n + r.episodes_with_timed_transcript, 0);
+  const net = anchorableNetOfSuspects(ok, suspects);
   return {
     shows_swept: rows.length,
     shows_ok: ok.length,
@@ -200,9 +229,20 @@ export function yieldOf(rows) {
     transcripts: ok.reduce((n, r) => n + r.episodes_with_transcript, 0),
     timed_transcripts: timed,
     anchorable_timed_transcripts: anchorableTimed,
-    /* The decision numbers. Per FEED SWEPT, not per feed that worked. */
+    anchorable_net_of_suspects: net,
+    /* The decision numbers. Per FEED SWEPT, not per feed that worked.
+
+       `net_anchorable_per_show_swept` IS THE ONE TO QUOTE, and computing it per
+       arm rather than once over the pool is the entire reason `suspects` is a
+       parameter here. Pooled, tranche 1's suspects are 71% of the anchorable
+       haul and the explore arm reads as 7.8/feed against a curated 2.7 — 2.9x
+       better. Per arm, the explore arm's suspects are 91% of ITS haul, it lands
+       at 0.68/feed, and the true comparison is 3.9x WORSE. Same rows, same
+       arithmetic, opposite conclusion, and the second one is the one that
+       generalises to the unswept catalogue. */
     timed_per_show_swept: per(timed, rows.length),
     anchorable_per_show_swept: per(anchorableTimed, rows.length),
+    net_anchorable_per_show_swept: per(net, rows.length),
   };
 }
 
@@ -210,7 +250,7 @@ export function yieldOf(rows) {
     NEXT tranche better than this one: `rank-breadth.mjs` reads its priors from
     the swept index, so every host measured here is a host that stops being
     guessed at. */
-export function byHost(rows) {
+export function byHost(rows, suspects = []) {
   const hosts = new Map();
   for (const r of rows) {
     const h = hosts.get(r.host_key) || { host: r.host_key, rows: [] };
@@ -218,7 +258,7 @@ export function byHost(rows) {
     hosts.set(r.host_key, h);
   }
   return [...hosts.values()]
-    .map((h) => ({ host: h.host, ...yieldOf(h.rows) }))
+    .map((h) => ({ host: h.host, ...yieldOf(h.rows, suspects) }))
     .sort((a, b) => b.shows_swept - a.shows_swept || b.timed_transcripts - a.timed_transcripts);
 }
 
@@ -234,6 +274,20 @@ export function projectFootprint(bytes, showsMeasured, poolSize) {
     projected_bytes: Math.round(perShow * poolSize),
     projected_mb: Math.round((perShow * poolSize) / 1024 / 1024 * 10) / 10,
   };
+}
+
+/** The committed file describes its own size, from its own bytes. `footprint`
+    is null on the first pass, because the number cannot exist until the object
+    has been serialised once. */
+export function policyString(footprint) {
+  const perShow = footprint ? `${footprint.bytes_per_show} bytes/show (measured)` : "a few hundred bytes/show";
+  return (
+    "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies " +
+    "live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; " +
+    `this shape is ${perShow}` +
+    (footprint ? `, ~${footprint.projected_mb}MB across ${footprint.shows_remaining} feeds` : "") +
+    ", and stays committable."
+  );
 }
 
 /* -------------------------------------------------------------------- main */
@@ -270,7 +324,8 @@ function line(label, y) {
     `  ${label.padEnd(10)} ${String(y.shows_swept).padStart(4)} swept  ` +
       `${String(y.shows_with_timed).padStart(4)} with timed (${String(y.shows_with_timed_pct).padStart(5)}%)  ` +
       `${String(y.timed_transcripts).padStart(7)} timed  ${String(y.timed_per_show_swept).padStart(7)}/feed  ` +
-      `${String(y.anchorable_timed_transcripts).padStart(6)} anchorable  ${String(y.anchorable_per_show_swept).padStart(6)}/feed`,
+      `${String(y.anchorable_timed_transcripts).padStart(6)} anch  ${String(y.anchorable_per_show_swept).padStart(5)}/feed  ` +
+      `${String(y.anchorable_net_of_suspects).padStart(6)} net  ${String(y.net_anchorable_per_show_swept).padStart(5)}/feed`,
   );
 }
 
@@ -288,21 +343,26 @@ function main() {
   const exploit = rows.filter((r) => r.arm === "exploit");
   const explore = rows.filter((r) => r.arm === "explore");
 
+  // The same contradiction check is applied to the BASELINE as well as to the
+  // tranche. Comparing a net breadth number against a gross curated one would
+  // manufacture the finding rather than measure it.
+  const suspects = suspectAnchorable(rows, { isDaiHost });
+  const baselineSuspects = suspectAnchorable(baselineRows, { isDaiHost });
+
   console.log("yield per feed swept — the number the budget is denominated in\n");
-  line("baseline", yieldOf(baselineRows));
-  line("exploit", yieldOf(exploit));
-  line("explore", yieldOf(explore));
-  line("breadth", yieldOf(rows));
+  line("baseline", yieldOf(baselineRows, baselineSuspects));
+  line("exploit", yieldOf(exploit, suspects));
+  line("explore", yieldOf(explore, suspects));
+  line("breadth", yieldOf(rows, suspects));
 
   console.log("\nplatforms measured this tranche (top 15 by feeds swept):");
-  for (const h of byHost(rows).slice(0, 15)) {
+  for (const h of byHost(rows, suspects).slice(0, 15)) {
     console.log(
       `  ${h.host.padEnd(22)} ${String(h.shows_swept).padStart(3)} swept  ${String(h.shows_with_timed).padStart(3)} hit  ` +
         `${String(h.shows_with_timed_pct).padStart(5)}%  ${String(h.timed_transcripts).padStart(7)} timed  ${String(h.anchorable_timed_transcripts).padStart(5)} anchorable`,
     );
   }
 
-  const suspects = suspectAnchorable(rows, { isDaiHost });
   const net = anchorableNetOfSuspects(rows, suspects);
   if (suspects.length) {
     console.log(`\ncounted anchorable, but the "not DAI" verdict is contradicted — measure before trusting:`);
@@ -318,10 +378,7 @@ function main() {
   const out = {
     version: 1,
     generated_at: new Date().toISOString(),
-    policy:
-      "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies " +
-      "live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; " +
-      "this shape is ~200 bytes/show and stays committable.",
+    policy: policyString(null),
     source: {
       breadth_index: args.breadth,
       tranche: args.tranche,
@@ -330,12 +387,12 @@ function main() {
       max_episode_rows: breadth.max_episode_rows ?? null,
     },
     yield: {
-      baseline_curated: yieldOf(baselineRows),
-      breadth_exploit: yieldOf(exploit),
-      breadth_explore: yieldOf(explore),
-      breadth_all: yieldOf(rows),
+      baseline_curated: yieldOf(baselineRows, baselineSuspects),
+      breadth_exploit: yieldOf(exploit, suspects),
+      breadth_explore: yieldOf(explore, suspects),
+      breadth_all: yieldOf(rows, suspects),
     },
-    by_host: byHost(rows),
+    by_host: byHost(rows, suspects),
     suspect_anchorable: suspects,
     anchorable_net_of_suspects: net,
     shows: rows.sort((a, b) => String(a.show_id).localeCompare(String(b.show_id))),
@@ -344,11 +401,18 @@ function main() {
   if (args.out) {
     const outPath = resolvePath(process.cwd(), args.out);
     mkdirSync(dirname(outPath), { recursive: true });
+    // Two passes: the policy string quotes the file's OWN measured
+    // bytes-per-show, and that is only knowable once it has been serialised.
+    // Serialising twice is cheaper than shipping a hardcoded number that drifts
+    // from the file it describes — which is exactly how a "~200 bytes/show"
+    // claim ended up in a file measuring 721.
+    const footprint = projectFootprint(Buffer.byteLength(JSON.stringify(out, null, 2), "utf8"), rows.length, args.poolSize);
+    out.policy = policyString(footprint);
+    out.footprint = footprint;
     const body = JSON.stringify(out, null, 2) + "\n";
     writeFileSync(outPath, body);
-    const proj = projectFootprint(Buffer.byteLength(body, "utf8"), rows.length, args.poolSize);
     console.log(`\ncommitted summary: ${Math.round(Buffer.byteLength(body, "utf8") / 1024)} KB for ${rows.length} show(s)`);
-    console.log(`  projected at full scale (${proj.shows_remaining} feeds): ${proj.projected_mb} MB in this shape`);
+    console.log(`  projected at full scale (${footprint.shows_remaining} feeds): ${footprint.projected_mb} MB in this shape`);
     console.log(`YIELD_COMPLETE: ${outPath}`);
   }
 }

@@ -62,10 +62,16 @@
    The cap bounds ROWS, never COUNTS: `episodes_with_transcript` and friends are
    computed over every episode in the feed before anything is sliced, so the
    yield numbers are exact at any cap. What a cap costs is fetch targets, and
-   `episode_rows_available`/`episode_rows_dropped` on each record say exactly
-   how many were dropped, so a show worth fetching deeper is one re-sweep away
-   rather than a silent ceiling. Default is Infinity — the curated index is
-   byte-identical with the flag absent.
+   `episode_rows_available`/`episode_rows_dropped` on each record say exactly how
+   many were dropped, so a truncated show is a re-queue rather than a silent
+   ceiling: `pendingShows` puts one back in the queue when a later run raises the
+   cap above what it kept, and leaves it alone otherwise.
+
+   Default is Infinity, so the rows kept with the flag absent are exactly the
+   rows kept before it existed. Not byte-identical, though — each `ok` record
+   gains the two provenance fields above, and the output gains
+   `max_episode_rows: null`. A re-run of the curated sweep therefore diffs, and
+   the diff is fields rather than data.
 
    POLITENESS. Concurrency 6 across shows, plus a per-host minimum interval, so
    the many shows sharing one CDN cannot burst it. Honest User-Agent with a
@@ -316,11 +322,19 @@ export function loadProgress(path) {
 /** The resume rule: a show already recorded `ok` is done. A show recorded as
     an error is also skipped by default — otherwise every run re-hammers the
     same dead feeds — but `--retry-failed` puts them back in. */
-export function pendingShows(shows, progress, { retryFailed = false } = {}) {
+export function pendingShows(shows, progress, { retryFailed = false, maxEpisodeRows = Infinity } = {}) {
   return shows.filter((s) => {
     const done = progress.shows[String(s.show_id ?? s.apple_collection_id)];
     if (!done) return true;
-    return retryFailed && done.status === "error";
+    if (done.status === "error") return retryFailed;
+    /* A show truncated by a LOWER cap than this run is asking for is not done.
+       Without this, `--max-episode-rows 3000` after a 200-row run re-sweeps
+       nothing — every record says `ok` — and the only way to get the deeper rows
+       is `--reset`, i.e. re-requesting all 500 feeds to deepen five of them. The
+       comparison is against the rows actually KEPT, not against the cap that
+       produced them, so raising the cap on a show that had nothing more to give
+       (`dropped: 0`) correctly still skips it. */
+    return (done.episode_rows_dropped || 0) > 0 && maxEpisodeRows > (done.episodes?.length ?? 0);
   });
 }
 
@@ -412,6 +426,8 @@ export async function sweepShow(show, { allEpisodes = false, maxEpisodeRows = In
       episodes_with_chapters: 0,
       transcript_tags: 0,
       transcript_types: {},
+      episode_rows_available: 0,
+      episode_rows_dropped: 0,
       episodes: [],
     };
   }
@@ -471,6 +487,20 @@ export function summarizeRun(showRecords) {
 
 // -------------------------------------------------------------------- main --
 
+export function episodeRowsArg(raw) {
+  if (raw === "Infinity") return Infinity;
+  /* The empty string is checked BEFORE Number(), because `Number("")` is 0, not
+     NaN. `--max-episode-rows` with nothing after it would otherwise mean "keep
+     zero episode rows" — a run that fetches every feed, reports every count
+     correctly, and stores nothing anything downstream can fetch from. */
+  const text = String(raw ?? "").trim();
+  const n = text === "" ? NaN : Number(text);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new SweepError("BAD_ARG", `--max-episode-rows expects a non-negative number or Infinity, got ${JSON.stringify(raw)}`);
+  }
+  return n;
+}
+
 function parseArgs(argv) {
   const get = (flag, fallback) => {
     const i = argv.indexOf(flag);
@@ -480,7 +510,12 @@ function parseArgs(argv) {
     limit: Number(get("--limit", "Infinity")),
     concurrency: Math.max(1, Number(get("--concurrency", "6"))),
     allEpisodes: argv.includes("--all-episodes"),
-    maxEpisodeRows: Number(get("--max-episode-rows", "Infinity")),
+    /* Validated rather than coerced. `Number("20O")` is NaN, `Number.isFinite`
+       rejects it, and the slice is skipped — so a typo would silently run the
+       whole tranche UNCAPPED, which is the exact failure the flag exists to
+       prevent, discovered hours in. Same posture as fetch-transcripts.mjs's
+       `numericArg`. */
+    maxEpisodeRows: episodeRowsArg(get("--max-episode-rows", "Infinity")),
     retryFailed: argv.includes("--retry-failed"),
     reset: argv.includes("--reset"),
     catalog: get("--catalog", null),
@@ -506,7 +541,7 @@ async function main() {
   if (shows.length === 0) throw new SweepError("NO_SHOWS", `${catalogPath} yielded zero shows with a feed_url`);
 
   const progress = args.reset ? emptyProgress() : loadProgress(progressPath);
-  const queue = pendingShows(shows, progress, { retryFailed: args.retryFailed });
+  const queue = pendingShows(shows, progress, { retryFailed: args.retryFailed, maxEpisodeRows: args.maxEpisodeRows });
   console.log(`sweeping ${queue.length} show(s) of ${shows.length} (${shows.length - queue.length} already checkpointed), concurrency ${args.concurrency}`);
 
   let done = 0;

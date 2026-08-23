@@ -1,4 +1,4 @@
-/* Breadth prioritisation — which of the 19,623 uncurated feeds to sweep first
+/* Breadth prioritisation — which of the 19,436 uncurated feeds to sweep first
    (issue #114, epic #102). STATIC, keyless, no LLM, no dependencies, no network.
 
    WHY THIS EXISTS. `sweep-transcripts.mjs` will read any catalogue you hand it,
@@ -69,10 +69,18 @@
    win, so its yield is an upper bound on breadth and a biased estimate of the
    population. `stratifiedTranche()` therefore emits an EXPLOIT arm (the ranked
    head, which is what #114 asks for) and an EXPLORE arm (a uniform random
-   sample of the same pool, which is the unbiased estimator). Both are labelled
-   in the output with `arm`, so `breadth-yield.mjs` can report them separately
-   and neither number can be quoted as the other. The sampling is seeded, so a
-   killed run resumes onto the same tranche rather than a fresh random one.
+   sample of everything the head did NOT take, which is the estimator). Both are
+   labelled in the output with `arm`, so `breadth-yield.mjs` can report them
+   separately and neither number can be quoted as the other. The sampling is
+   seeded, so a killed run resumes onto the same tranche rather than a fresh one.
+
+   Stated honestly, the explore arm is uniform over the pool MINUS the exploit
+   head, not over the pool: it is the top-scoring 300 of 19,373 that are removed,
+   so the estimate is biased slightly DOWNWARD, by about 1.5% of the pool. That
+   is the right direction for a number used to justify spending requests, and it
+   is the price of keeping the arms disjoint — an overlapping explore arm would
+   be contaminated with the shows we hand-picked as winners, which is a much
+   larger error in the flattering direction.
 
    NEVER FETCHES ANYTHING. This file reads JSON and writes JSON. The politeness
    budget belongs to `sweep-transcripts.mjs`; a ranker that made requests would
@@ -368,6 +376,12 @@ export function rankShows(shows, priors, opts = {}) {
 }
 
 /** The exploit head, subject to a per-platform cap.
+
+    `hostCap` defaults to Infinity HERE and to 40 at the CLI, deliberately: this
+    is the library entry point and an uncapped call is a legitimate thing to
+    want, while the tool that spends a real request budget should never make
+    that choice by accident. The argument below is about the tool's default, not
+    about the parameter's.
 
     WHY THE CAP IS NOT OPTIONAL. Ranked purely on expected yield, the first 300
     rows of this catalogue are 300 omnycontent.com shows — the whole arm on one

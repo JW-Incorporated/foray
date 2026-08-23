@@ -191,8 +191,18 @@ Spreaker shows (a platform that IS on the DAI host list, whose enclosures
 redirect to an anonymous CloudFront distribution that is not, so following the
 redirect discards the identification) and two shows served from
 `adswizz.podigee-cdn.net`. **1,131 survive both checks.** Labelled, never
-excluded — `isAnchorable` stays identical to the predicate
-`fetch-transcripts.mjs` selects on, and the suite pins that they agree.
+excluded — `isAnchorable` tracks the predicate `fetch-transcripts.mjs` selects
+on, and the suite drives both over the whole {null, true, false} x {on-list,
+off-list} grid rather than asserting agreement in prose.
+
+**Compute that per arm or the conclusion inverts.** `yieldOf(rows, suspects)`
+takes the suspect list so each arm is netted against its own. Pooled, tranche 1's
+suspects are 71% of the anchorable haul and the random arm reads 7.8 per feed
+against the curated 2.7 — "breadth is 2.9x better". Per arm, the random arm's own
+suspects are 91% of its haul, it lands at **0.7 per feed, and breadth is 3.9x
+worse**. The ranked arm returns 3.3, slightly better than curated. Same rows,
+same arithmetic; the per-arm number is the one that generalises, and the suite
+pins that it is not pooled.
 
 **What gets committed is one row per SHOW.** Episode rows measure ~951 bytes
 each. Tranche 1's 500 feeds advertised **187,049** rows worth keeping — ~170MB

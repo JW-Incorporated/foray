@@ -25,6 +25,7 @@ import {
   attrOf,
   decodeEntities,
   emptyProgress,
+  episodeRowsArg,
   hasTimestamps,
   loadProgress,
   normalizeMimeType,
@@ -401,4 +402,47 @@ test("the rows kept are the newest ones the feed lists first", async () => {
     const rec = await sweepShow({ show_id: "order", feed_url: "https://feeds.cap-test-d.example/f" }, { maxEpisodeRows: 3 });
     assert.deepEqual(rec.episodes.map((e) => e.guid), ["ep-0", "ep-1", "ep-2"]);
   });
+});
+
+/* MUTATION: drop the truncation branch from `pendingShows` and go back to
+   "any `ok` record is done". Raising `--max-episode-rows` on a later run then
+   re-sweeps NOTHING — every truncated record still says `ok` — and the only way
+   to deepen five shows is `--reset`, which re-requests all 500 feeds. The
+   header claims a truncated show is "a re-queue rather than a silent ceiling";
+   this is the line that makes that true. Verified failing. */
+test("raising the cap re-queues the shows that were truncated, and only those", () => {
+  const progress = emptyProgress();
+  progress.shows["truncated"] = { status: "ok", episode_rows_dropped: 795, episodes: new Array(200) };
+  progress.shows["complete"] = { status: "ok", episode_rows_dropped: 0, episodes: new Array(7) };
+  const shows = [{ show_id: "truncated", feed_url: "a" }, { show_id: "complete", feed_url: "b" }];
+
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000 }).map((s) => s.show_id), ["truncated"]);
+  // Same cap as last time: nothing to gain, so nothing is re-requested.
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 200 }).map((s) => s.show_id), []);
+  // And the default (no cap) still skips everything already done.
+  assert.deepEqual(pendingShows(shows, progress).map((s) => s.show_id), ["truncated"]);
+});
+
+/* MUTATION: revert `--max-episode-rows` to a bare `Number(...)`. `Number("20O")`
+   is NaN, `Number.isFinite(NaN)` is false, the slice is skipped, and the run
+   proceeds UNCAPPED — silently doing the one thing the flag exists to prevent,
+   on a run that takes hours and whose failure mode is an unwritable checkpoint.
+   Verified failing. */
+test("--max-episode-rows refuses a value it cannot honour", () => {
+  assert.equal(episodeRowsArg("Infinity"), Infinity);
+  assert.equal(episodeRowsArg("200"), 200);
+  assert.equal(episodeRowsArg("0"), 0);
+  for (const bad of ["20O", "abc", "-5", "", "NaN"]) {
+    assert.throws(() => episodeRowsArg(bad), (e) => e instanceof SweepError && e.code === "BAD_ARG", `${JSON.stringify(bad)} should be rejected`);
+  }
+
+  /* And that `parseArgs` actually ROUTES THROUGH IT. Pinning the helper alone
+     left the real mutation alive: swapping the call site back to a bare
+     `Number(get(...))` kept this suite green, because nothing connected the
+     validator to the flag. `parseArgs` is not exported (nor should it be, for
+     one assertion), so this is a source check — the same shape as the
+     transcript-bodies guard at the end of this file. */
+  const src = readFileSync(new URL("./sweep-transcripts.mjs", import.meta.url), "utf8");
+  assert.match(src, /maxEpisodeRows:\s*episodeRowsArg\(get\("--max-episode-rows"/);
+  assert.deepEqual(src.match(/Number\(get\("--max-episode-rows"/g), null);
 });

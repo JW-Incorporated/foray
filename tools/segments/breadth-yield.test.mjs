@@ -21,6 +21,7 @@ import { readFileSync } from "node:fs";
 import {
   MEASURED_AD_FREE,
   anchorableNetOfSuspects,
+  policyString,
   attachArms,
   byHost,
   isAnchorable,
@@ -29,7 +30,7 @@ import {
   summaryRow,
   yieldOf,
 } from "./breadth-yield.mjs";
-import { AD_FREE_SHOWS } from "./fetch-transcripts.mjs";
+import { AD_FREE_SHOWS, isAnchorableShow } from "./fetch-transcripts.mjs";
 
 const rec = (over = {}) => ({
   show_id: over.show_id ?? "s1",
@@ -206,7 +207,14 @@ test("the footprint projection scales linearly from what was measured", () => {
    politeness gate every other file here routes through. Verified failing. */
 test("the report has no network path at all", () => {
   const src = readFileSync(new URL("./breadth-yield.mjs", import.meta.url), "utf8");
-  assert.deepEqual(src.match(/(?<![\w.])fetch\s*\(/g), null);
+  /* The lookbehind excludes `\w` only. An earlier version excluded `.` as well,
+     to let identifiers like `fetchBody(` through — and that also blinded it to
+     every QUALIFIED call: a reviewer added `globalThis.fetch(u)` to this module
+     and the assertion stayed green. It was the one mutation of 42 that survived
+     a full pass over these suites, in the test whose stated claim is "no network
+     path at all". Verified failing against `globalThis.fetch(`. */
+  assert.deepEqual(src.match(/(?<!\w)fetch\s*\(/g), null);
+  assert.deepEqual(src.match(/(?<!\w)(?:request|get)\s*\(\s*["'`]?https?:/g), null);
   assert.equal(/politeness\.mjs/.test(src), false, "nothing to be polite about — it makes no requests");
   // dai.mjs also exports `classifyShow`, which DOES fetch. Importing the whole
   // module and calling the pure predicate is fine; importing the fetcher into a
@@ -298,4 +306,93 @@ test("the conservative count is a filter over rows, not a subtraction", () => {
   // A suspect naming a show that is not in `rows` must not change the answer.
   assert.equal(anchorableNetOfSuspects(rows, [{ show_id: "zz", timed_transcripts: 999 }]), 30);
   assert.equal(anchorableNetOfSuspects(rows, [{ show_id: "b", timed_transcripts: 20 }]), 10);
+});
+
+/* MUTATION: flag `MEASURED_AD_FREE` shows like any other. This was a live bug,
+   not a hypothetical: the feed-host rule fires on Being an Engineer, Geology
+   Bites and Practical AI — which are exactly the shows someone MEASURED
+   delivering byte-identical audio — and flagging them cuts the curated baseline
+   from 587 anchorable transcripts to 67. Every breadth-vs-curated comparison in
+   the report would then be against a baseline this file had just invented, in
+   the flattering direction. A measurement outranks a hostname heuristic.
+   Verified failing. */
+test("a measured ad-free show is never flagged by a hostname heuristic", () => {
+  const rows = [
+    summaryRow(rec({ show_id: "meas", title: AD_FREE_SHOWS[0], dai_suspected: true, feed_url: "https://feeds.transistor.fm/x", enclosure_host: "adswizz.example.net", episodes_with_timed_transcript: 337 })),
+    summaryRow(rec({ show_id: "guess", title: "Unmeasured", dai_suspected: false, feed_url: "https://feeds.transistor.fm/y", enclosure_host: "adswizz.example.net", episodes_with_timed_transcript: 10 })),
+  ];
+  const suspects = suspectAnchorable(rows, { isDaiHost: (h) => h === "transistor.fm" });
+  assert.deepEqual(suspects.map((x) => x.show_id), ["guess"]);
+  assert.equal(anchorableNetOfSuspects(rows, suspects), 337);
+});
+
+/* MUTATION: compute the net-of-suspects figure once over the pooled rows and
+   reuse it for every arm — which is what the first version of this file did.
+   THE ARITHMETIC IS THE SAME AND THE CONCLUSION REVERSES. On tranche 1 the
+   suspects are 71% of the pooled anchorable haul, which leaves the explore arm
+   reading 7.8 anchorable per feed against a curated 2.7 — "breadth is 2.9x
+   better". Per arm, the explore arm's OWN suspects are 91% of ITS haul, it
+   lands at 0.68/feed, and breadth is 3.9x WORSE. The per-arm number is the one
+   that generalises to the unswept catalogue, so it has to be computed per arm.
+   Verified failing. */
+test("the net-of-suspects rate is computed per arm, not pooled", () => {
+  const exploitRows = [summaryRow(rec({ show_id: "e1", dai_suspected: false, episodes_with_timed_transcript: 100 }))];
+  const exploreRows = [
+    summaryRow(rec({ show_id: "x1", dai_suspected: false, feed_url: "https://www.spreaker.com/a", enclosure_host: "anon.cloudfront.net", episodes_with_timed_transcript: 900 })),
+    summaryRow(rec({ show_id: "x2", dai_suspected: false, episodes_with_timed_transcript: 10 })),
+  ];
+  const all = [...exploitRows, ...exploreRows];
+  const suspects = suspectAnchorable(all, { isDaiHost: (h) => h === "spreaker.com" });
+
+  const explore = yieldOf(exploreRows, suspects);
+  assert.equal(explore.anchorable_timed_transcripts, 910, "gross is unchanged");
+  assert.equal(explore.anchorable_net_of_suspects, 10, "the arm's own suspects come off the arm");
+  assert.equal(explore.net_anchorable_per_show_swept, 5);
+
+  const exploit = yieldOf(exploitRows, suspects);
+  assert.equal(exploit.anchorable_net_of_suspects, 100, "an arm with no suspects loses nothing");
+  // Pooling would have charged the exploit arm for the explore arm's suspects.
+  assert.notEqual(exploit.anchorable_net_of_suspects, yieldOf(all, suspects).anchorable_net_of_suspects);
+});
+
+/* MUTATION: change either predicate so the two disagree somewhere other than
+   `null`. `isAnchorable` here is deliberately STRICTER than the fetcher on an
+   unresolved DAI verdict and identical everywhere else; the previous version of
+   this suite only compared the two ad-free NAME ARRAYS, which is why the
+   divergence went undocumented while three files claimed the predicates were
+   identical. This drives the whole grid so the relationship is pinned rather
+   than asserted in prose. Verified failing. */
+test("the report's anchorable predicate tracks the fetcher's, strictly", () => {
+  for (const title of [AD_FREE_SHOWS[0], "Some Other Show"]) {
+    for (const dai of [null, true, false]) {
+      const show = { title, dai_suspected: dai, episodes_with_timed_transcript: 5 };
+      const report = isAnchorable(show);
+      const fetcher = isAnchorableShow(show);
+      if (dai === null) {
+        assert.equal(fetcher, true, `fetcher treats null as anchorable (${title})`);
+        assert.equal(report, false, `report is deliberately stricter on null (${title})`);
+      } else {
+        assert.equal(report, fetcher, `predicates must agree for dai=${dai}, title=${title}`);
+      }
+      if (report) assert.ok(fetcher, "the report must never be LOOSER than the fetcher");
+    }
+  }
+  // Both agree that no timed transcript means nothing to anchor.
+  assert.equal(isAnchorable({ title: "x", dai_suspected: false, episodes_with_timed_transcript: 0 }), false);
+  assert.equal(isAnchorableShow({ title: "x", dai_suspected: false, episodes_with_timed_transcript: 0 }), false);
+});
+
+/* MUTATION: hardcode a bytes-per-show constant in the policy string again. The
+   committed file described itself as "~200 bytes/show" while measuring 721 — a
+   3.4x error in the one number that decides whether this shape may be committed
+   at full scale, sitting inside the file that disproves it. Deriving it from the
+   file's own serialised length is what makes that unable to drift.
+   Verified failing. */
+test("the policy string quotes the file's own measured size", () => {
+  const measured = policyString({ bytes_per_show: 721, projected_mb: 13.4, shows_remaining: 19436 });
+  assert.match(measured, /721 bytes\/show/);
+  assert.match(measured, /13\.4MB/);
+  assert.match(measured, /19436 feeds/);
+  // First pass, before the object has a length: no number rather than a wrong one.
+  assert.doesNotMatch(policyString(null), /\d+ bytes\/show/);
 });

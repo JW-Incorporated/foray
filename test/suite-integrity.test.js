@@ -452,7 +452,7 @@ const FLOORS = {
      stall the pipeline with no documented way to clear it and that the digest
      fetch failed OPEN on any API error that was not a 404. */
   "tools/refresh/watch-nightly.test.mjs": 62,
-  "tools/segments/sweep-transcripts.test.mjs": 30,
+  "tools/segments/sweep-transcripts.test.mjs": 32,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
   /* The free-transcript acquisition step (#104 follow-up): the join that
@@ -514,8 +514,8 @@ const FLOORS = {
 
      Both suites were mutation-run before commit; each test names the mutation
      it kills, per this file's own standard. */
-  "tools/segments/rank-breadth.test.mjs": 20,
-  "tools/segments/breadth-yield.test.mjs": 17,
+  "tools/segments/rank-breadth.test.mjs": 21,
+  "tools/segments/breadth-yield.test.mjs": 21,
   "tools/transcribe/fetch-audio.test.mjs": 64,
   "tools/transcribe/ad-inflation.test.mjs": 20,
   "tools/corpus/fetcher.test.mjs": 23,

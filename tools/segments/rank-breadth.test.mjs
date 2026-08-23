@@ -17,6 +17,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   RATE_PRIOR_STRENGTH,
   SHOW_PRIOR_STRENGTH,
@@ -391,4 +392,21 @@ test("ranking is descending and total", () => {
   // Equal scores AND equal episode counts fall back to the id, so the file is
   // byte-stable across runs.
   assert.deepEqual(ranked.slice(1).map((r) => r.show.apple_collection_id), ["b", "c"]);
+});
+
+/* MUTATION: add `await fetch(url)` — bare or qualified — anywhere in
+   rank-breadth.mjs. The header spends a paragraph on why a ranker with a
+   network path would be a second, unthrottled route into publishers' hosts,
+   outside the shared politeness gate, and until this test existed that
+   paragraph was the only thing enforcing it. The sibling report has the same
+   guard; this one was the gap a reviewer found. Verified failing against both
+   `fetch(` and `globalThis.fetch(`. */
+test("the ranker has no network path at all", () => {
+  const src = readFileSync(new URL("./rank-breadth.mjs", import.meta.url), "utf8");
+  assert.deepEqual(src.match(/(?<!\w)fetch\s*\(/g), null);
+  assert.deepEqual(src.match(/(?<!\w)(?:request|get)\s*\(\s*["'`]?https?:/g), null);
+  assert.equal(/politeness\.mjs/.test(src), false, "nothing to be polite about — it makes no requests");
+  // Only node builtins. A transitive import is a transitive network path.
+  const imports = [...src.matchAll(/^import .*? from "([^"]+)";$/gm)].map((m) => m[1]);
+  assert.deepEqual(imports, ["node:fs", "node:url", "node:path"]);
 });

@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generated_at": "2026-08-23T04:14:19.954Z",
-  "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is ~200 bytes/show and stays committable.",
+  "generated_at": "2026-08-23T04:41:14.733Z",
+  "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is 734 bytes/show (measured), ~13.6MB across 19436 feeds, and stays committable.",
   "source": {
     "breadth_index": "data-local/breadth/availability-breadth.json",
     "tranche": "data-local/breadth/tranche-01.json",
@@ -22,8 +22,10 @@
       "transcripts": 8070,
       "timed_transcripts": 7571,
       "anchorable_timed_transcripts": 587,
+      "anchorable_net_of_suspects": 587,
       "timed_per_show_swept": 34.4,
-      "anchorable_per_show_swept": 2.7
+      "anchorable_per_show_swept": 2.7,
+      "net_anchorable_per_show_swept": 2.7
     },
     "breadth_exploit": {
       "shows_swept": 300,
@@ -37,8 +39,10 @@
       "transcripts": 181305,
       "timed_transcripts": 175348,
       "anchorable_timed_transcripts": 2397,
+      "anchorable_net_of_suspects": 995,
       "timed_per_show_swept": 584.5,
-      "anchorable_per_show_swept": 8
+      "anchorable_per_show_swept": 8,
+      "net_anchorable_per_show_swept": 3.3
     },
     "breadth_explore": {
       "shows_swept": 200,
@@ -52,8 +56,10 @@
       "transcripts": 3195,
       "timed_transcripts": 2843,
       "anchorable_timed_transcripts": 1555,
+      "anchorable_net_of_suspects": 136,
       "timed_per_show_swept": 14.2,
-      "anchorable_per_show_swept": 7.8
+      "anchorable_per_show_swept": 7.8,
+      "net_anchorable_per_show_swept": 0.7
     },
     "breadth_all": {
       "shows_swept": 500,
@@ -67,8 +73,10 @@
       "transcripts": 184500,
       "timed_transcripts": 178191,
       "anchorable_timed_transcripts": 3952,
+      "anchorable_net_of_suspects": 1131,
       "timed_per_show_swept": 356.4,
-      "anchorable_per_show_swept": 7.9
+      "anchorable_per_show_swept": 7.9,
+      "net_anchorable_per_show_swept": 2.3
     }
   },
   "by_host": [
@@ -85,8 +93,10 @@
       "transcripts": 6102,
       "timed_transcripts": 6102,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 70.1,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "buzzsprout.com",
@@ -101,8 +111,10 @@
       "transcripts": 5329,
       "timed_transcripts": 2674,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 47.8,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "redcircle.com",
@@ -117,8 +129,10 @@
       "transcripts": 4615,
       "timed_transcripts": 4606,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 107.1,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "omnycontent.com",
@@ -133,8 +147,10 @@
       "transcripts": 156953,
       "timed_transcripts": 156953,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 3737,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "captivate.fm",
@@ -149,8 +165,10 @@
       "transcripts": 1506,
       "timed_transcripts": 1349,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 56.2,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "transistor.fm",
@@ -165,8 +183,10 @@
       "transcripts": 2225,
       "timed_transcripts": 1293,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 56.2,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "megaphone.fm",
@@ -181,8 +201,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "amperwave.net",
@@ -197,8 +219,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "libsyn.com",
@@ -213,8 +237,10 @@
       "transcripts": 6,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "podbean.com",
@@ -229,8 +255,10 @@
       "transcripts": 43,
       "timed_transcripts": 43,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 3.9,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "ximalaya.com",
@@ -245,8 +273,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "co.uk",
@@ -261,8 +291,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "art19.com",
@@ -277,8 +309,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "acast.com",
@@ -293,8 +327,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "simplecast.com",
@@ -309,8 +345,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "streamguys1.com",
@@ -325,8 +363,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "pdrl.fm",
@@ -341,8 +381,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "spreaker.com",
@@ -357,8 +399,10 @@
       "transcripts": 2476,
       "timed_transcripts": 2470,
       "anchorable_timed_transcripts": 2470,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 352.9,
-      "anchorable_per_show_swept": 352.9
+      "anchorable_per_show_swept": 352.9,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "rss.com",
@@ -373,8 +417,10 @@
       "transcripts": 1219,
       "timed_transcripts": 1219,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 174.1,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "audioboom.com",
@@ -389,8 +435,10 @@
       "transcripts": 44,
       "timed_transcripts": 42,
       "anchorable_timed_transcripts": 42,
+      "anchorable_net_of_suspects": 42,
       "timed_per_show_swept": 8.4,
-      "anchorable_per_show_swept": 8.4
+      "anchorable_per_show_swept": 8.4,
+      "net_anchorable_per_show_swept": 8.4
     },
     {
       "host": "cdnstream1.com",
@@ -405,8 +453,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "net.au",
@@ -421,8 +471,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "podomatic.com",
@@ -437,8 +489,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "ivoox.com",
@@ -453,8 +507,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "podigee.io",
@@ -469,8 +525,10 @@
       "transcripts": 351,
       "timed_transcripts": 351,
       "anchorable_timed_transcripts": 351,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 175.5,
-      "anchorable_per_show_swept": 175.5
+      "anchorable_per_show_swept": 175.5,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "podcastmirror.com",
@@ -485,8 +543,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "podplaystudio.com",
@@ -501,8 +561,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "muslimcentral.com",
@@ -517,8 +579,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "byuradio.org",
@@ -533,8 +597,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "cohostpodcasting.com",
@@ -549,8 +615,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "fangraphs.com",
@@ -565,8 +633,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "pinecast.com",
@@ -581,8 +651,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "castos.com",
@@ -597,8 +669,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "npr.org",
@@ -613,8 +687,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "lizhi.fm",
@@ -629,8 +705,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "barstoolsports.com",
@@ -645,8 +723,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "kajabi.com",
@@ -661,8 +741,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "blubrry.com",
@@ -677,8 +759,10 @@
       "transcripts": 995,
       "timed_transcripts": 995,
       "anchorable_timed_transcripts": 995,
+      "anchorable_net_of_suspects": 995,
       "timed_per_show_swept": 995,
-      "anchorable_per_show_swept": 995
+      "anchorable_per_show_swept": 995,
+      "net_anchorable_per_show_swept": 995
     },
     {
       "host": "beehiiv.com",
@@ -693,8 +777,10 @@
       "transcripts": 84,
       "timed_transcripts": 84,
       "anchorable_timed_transcripts": 84,
+      "anchorable_net_of_suspects": 84,
       "timed_per_show_swept": 84,
-      "anchorable_per_show_swept": 84
+      "anchorable_per_show_swept": 84,
+      "net_anchorable_per_show_swept": 84
     },
     {
       "host": "downtimepodcast.com",
@@ -709,8 +795,10 @@
       "transcripts": 7,
       "timed_transcripts": 7,
       "anchorable_timed_transcripts": 7,
+      "anchorable_net_of_suspects": 7,
       "timed_per_show_swept": 7,
-      "anchorable_per_show_swept": 7
+      "anchorable_per_show_swept": 7,
+      "net_anchorable_per_show_swept": 7
     },
     {
       "host": "rewilding.org",
@@ -725,8 +813,10 @@
       "transcripts": 3,
       "timed_transcripts": 3,
       "anchorable_timed_transcripts": 3,
+      "anchorable_net_of_suspects": 3,
       "timed_per_show_swept": 3,
-      "anchorable_per_show_swept": 3
+      "anchorable_per_show_swept": 3,
+      "net_anchorable_per_show_swept": 3
     },
     {
       "host": "warroom.org",
@@ -741,8 +831,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "feedpress.me",
@@ -757,8 +849,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "reviveourhearts.com",
@@ -773,8 +867,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "mave.digital",
@@ -789,8 +885,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "futurimedia.com",
@@ -805,8 +903,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "bards.fm",
@@ -821,8 +921,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "podcastics.com",
@@ -837,8 +939,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "firstory.me",
@@ -853,8 +957,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "dshield.org",
@@ -869,8 +975,10 @@
       "transcripts": 2502,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "pulpmx.com",
@@ -885,8 +993,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "org.il",
@@ -901,8 +1011,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "posttv.com",
@@ -917,8 +1029,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "throughtheword.org",
@@ -933,8 +1047,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "audioarguendo.com",
@@ -949,8 +1065,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "slate.com",
@@ -965,8 +1083,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "nihongoconteppei.com",
@@ -981,8 +1101,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "patreon.com",
@@ -997,8 +1119,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "jewishpodcasts.fm",
@@ -1013,8 +1137,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "kuow.org",
@@ -1029,8 +1155,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "introcast.io",
@@ -1045,8 +1173,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "dropwave.io",
@@ -1061,8 +1191,10 @@
       "transcripts": 40,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "chabad.org",
@@ -1077,8 +1209,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "zencast.fm",
@@ -1093,8 +1227,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "audiomeans.fr",
@@ -1109,8 +1245,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "belowtheline.biz",
@@ -1125,8 +1263,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "radiodiaries.org",
@@ -1141,8 +1281,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "koelab.fun",
@@ -1157,8 +1299,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "hs-sites.com",
@@ -1173,8 +1317,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "mp3quran.net",
@@ -1189,8 +1335,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "substack.com",
@@ -1205,8 +1353,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "fastcast.ai",
@@ -1221,8 +1371,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "imayberry.com",
@@ -1237,8 +1389,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "zmm.org",
@@ -1253,8 +1407,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "qurancentral.com",
@@ -1269,8 +1425,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     },
     {
       "host": "theguardian.com",
@@ -1285,8 +1443,10 @@
       "transcripts": 0,
       "timed_transcripts": 0,
       "anchorable_timed_transcripts": 0,
+      "anchorable_net_of_suspects": 0,
       "timed_per_show_swept": 0,
-      "anchorable_per_show_swept": 0
+      "anchorable_per_show_swept": 0,
+      "net_anchorable_per_show_swept": 0
     }
   ],
   "suspect_anchorable": [
@@ -10849,5 +11009,11 @@
       "anchorable": false,
       "swept_at": "2026-08-23T04:02:00.358Z"
     }
-  ]
+  ],
+  "footprint": {
+    "bytes_per_show": 734,
+    "shows_remaining": 19436,
+    "projected_bytes": 14273837,
+    "projected_mb": 13.6
+  }
 }
