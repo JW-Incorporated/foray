@@ -25,8 +25,8 @@
    measured one, into a `data/` that is already 62MB. So episode rows stay in
    `data-local/` with the transcript bodies (#255's rule), and what lands in
    git is one row per show: the counts, the DAI verdict, the arm, and nothing
-   that scales with episodes. Measured on tranche 1: 721 bytes per show, so
-   ~13MB if every feed in the catalogue is eventually swept — a size `data/` can
+   that scales with episodes. Measured on tranche 1: 734 bytes per show, so
+   ~13.6MB if every feed in the catalogue is eventually swept — a size `data/` can
    hold, where the episode-row shape (~6.4GB on the same projection) cannot.
 
    ANCHORABILITY IS REPORTED SEPARATELY FROM SUPPLY, BECAUSE THEY DIVERGE.
@@ -57,6 +57,17 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
     because this file only reads and must not import a fetcher to do arithmetic.
     If one moves, move both — `breadth-yield.test.mjs` pins that they agree. */
 export const MEASURED_AD_FREE = ["Being an Engineer", "Geology Bites", "Practical AI"];
+
+/* KEYED ON TITLE, which is a known weakness rather than an oversight. Titles are
+   unique enough across 220 curated shows; across 19,436 breadth feeds they are
+   not, so a breadth show that happens to share a name with one of these three
+   would be silently exempted from both the anchorable test and the suspect
+   check. The fetcher's `AD_FREE_SHOWS` has the same shape and the same exposure,
+   which is why this mirrors it rather than quietly diverging — a stricter key
+   here would make the two files disagree about the corpus, which is the failure
+   they are written to avoid. The fix is to re-key BOTH on `show_id` when
+   `tools/transcribe/ad-inflation.mjs` next writes to that list, not to fork it
+   here. Measured today: no breadth title in tranche 1 collides. */
 
 /** Anchorable = the timeline in the transcript describes the audio we receive.
     Non-DAI by construction, or DAI-flagged and measured otherwise.

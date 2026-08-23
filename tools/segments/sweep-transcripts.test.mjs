@@ -27,6 +27,7 @@ import {
   emptyProgress,
   episodeRowsArg,
   hasTimestamps,
+  keepBetterRecord,
   loadProgress,
   normalizeMimeType,
   parseFeed,
@@ -445,4 +446,44 @@ test("--max-episode-rows refuses a value it cannot honour", () => {
   const src = readFileSync(new URL("./sweep-transcripts.mjs", import.meta.url), "utf8");
   assert.match(src, /maxEpisodeRows:\s*episodeRowsArg\(get\("--max-episode-rows"/);
   assert.deepEqual(src.match(/Number\(get\("--max-episode-rows"/g), null);
+});
+
+/* MUTATION: revert the checkpoint write to `progress.shows[id] = record`. The
+   cap's re-queue path made this a DATA-LOSS bug where it previously could not
+   be one: an `ok` show used to be swept exactly once, so an unconditional
+   assignment was safe. Now a re-queued show whose second read 404s or times out
+   replaces a good 200-row record with a zeroed `error` one — the show reports
+   as failed, its transcripts vanish from every yield number, and recovery costs
+   a third request. The five shows re-swept uncapped in this branch went through
+   this exact path. Verified failing. */
+test("a failed re-sweep never overwrites a good record", () => {
+  const good = { show_id: "s", status: "ok", episodes_with_timed_transcript: 995, episode_rows_dropped: 795, episodes: new Array(200) };
+  const failed = { show_id: "s", status: "error", error: "HTTP_404: gone", error_code: "HTTP_404", swept_at: "2026-08-22T12:00:00Z", episodes: [] };
+
+  const kept = keepBetterRecord(good, failed);
+  assert.equal(kept.status, "ok", "the good record survives");
+  assert.equal(kept.episodes_with_timed_transcript, 995);
+  assert.equal(kept.episodes.length, 200);
+  assert.equal(kept.requeue_failed, true, "and the failure is still visible");
+  assert.equal(kept.requeue_error_code, "HTTP_404");
+
+  // A successful re-sweep replaces freely — that is the whole point of the cap.
+  const better = { show_id: "s", status: "ok", episodes_with_timed_transcript: 995, episode_rows_dropped: 0, episodes: new Array(995) };
+  assert.equal(keepBetterRecord(good, better).episodes.length, 995);
+  // A first-ever failure has nothing to protect and is stored as-is.
+  assert.equal(keepBetterRecord(undefined, failed).status, "error");
+  assert.equal(keepBetterRecord({ show_id: "s", status: "error" }, failed).status, "error");
+});
+
+/* MUTATION: drop the `requeue_failed` check from `pendingShows`. A truncated
+   show whose re-sweep fails still has `episode_rows_dropped > 0`, so every
+   future run re-queues it — spending requests forever on a feed that has
+   stopped answering, which is the behaviour the error-skip rule already exists
+   to prevent. Verified failing. */
+test("a re-queue that failed is not retried on every subsequent run", () => {
+  const progress = emptyProgress();
+  progress.shows["s"] = { status: "ok", episode_rows_dropped: 795, episodes: new Array(200), requeue_failed: true };
+  const shows = [{ show_id: "s", feed_url: "a" }];
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000 }), []);
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000, retryFailed: true }).map((x) => x.show_id), ["s"]);
 });

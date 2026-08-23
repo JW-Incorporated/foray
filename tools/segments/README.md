@@ -211,8 +211,8 @@ show the same index is 16MB, which is what `data-local/` actually holds.
 
 Bodies and episode rows stay in gitignored `data-local/` (#255's rule).
 `data/breadth-transcript-yield.json` carries counts, the DAI verdict and the
-arm, and nothing that scales with episodes: **measured at 352KB for 500 shows,
-so ~13.4MB if every feed in the catalogue is eventually swept.** That is a size
+arm, and nothing that scales with episodes: **measured at 359KB for 500 shows,
+so ~13.6MB if every feed in the catalogue is eventually swept.** That is a size
 `data/` can hold. The episode-row shape is not, at any cap.
 
 ### `--max-episode-rows`, and why the sweep needed it

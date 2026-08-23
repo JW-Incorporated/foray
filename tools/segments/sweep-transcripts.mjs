@@ -319,6 +319,33 @@ export function loadProgress(path) {
   return { version: p.version ?? 1, started_at: p.started_at ?? new Date().toISOString(), updated_at: p.updated_at ?? null, shows: p.shows };
 }
 
+/** A re-sweep must never be able to LOSE data.
+
+    This guard exists because `--max-episode-rows` created the situation that
+    needs it. Before the cap, an `ok` show was never swept twice, so
+    `progress.shows[id] = record` was safe by construction. Now raising the cap
+    re-queues a truncated show — and if that second read 404s, times out, or the
+    publisher is briefly down, an unconditional assignment replaces a good
+    200-row `ok` record with an `error` one carrying zeroed counts. The show
+    would then report as failed in the index, its transcripts would vanish from
+    every yield number, and the only recovery would be a third request. The five
+    shows this branch re-swept uncapped went through exactly this path.
+
+    So a failure is recorded ALONGSIDE the good record rather than on top of it,
+    and `requeue_failed` stops the next run retrying it forever — same posture as
+    the error-skip rule below, and `--retry-failed` still overrides. A first-ever
+    failure (no prior record) is stored normally: there is nothing to protect. */
+export function keepBetterRecord(prior, next) {
+  if (next.status === "ok" || !prior || prior.status !== "ok") return next;
+  return {
+    ...prior,
+    requeue_failed: true,
+    requeue_error: next.error,
+    requeue_error_code: next.error_code,
+    requeue_attempted_at: next.swept_at,
+  };
+}
+
 /** The resume rule: a show already recorded `ok` is done. A show recorded as
     an error is also skipped by default — otherwise every run re-hammers the
     same dead feeds — but `--retry-failed` puts them back in. */
@@ -334,6 +361,10 @@ export function pendingShows(shows, progress, { retryFailed = false, maxEpisodeR
        comparison is against the rows actually KEPT, not against the cap that
        produced them, so raising the cap on a show that had nothing more to give
        (`dropped: 0`) correctly still skips it. */
+    // A re-queue that already failed is not retried by default, for the same
+    // reason a failed show is not: otherwise every future run spends requests
+    // on a feed that has stopped answering.
+    if (done.requeue_failed && !retryFailed) return false;
     return (done.episode_rows_dropped || 0) > 0 && maxEpisodeRows > (done.episodes?.length ?? 0);
   });
 }
@@ -555,7 +586,7 @@ async function main() {
         maxEpisodeRows: args.maxEpisodeRows,
         log: (m) => console.log(m),
       });
-      progress.shows[record.show_id] = record;
+      progress.shows[record.show_id] = keepBetterRecord(progress.shows[record.show_id], record);
       progress.updated_at = new Date().toISOString();
       writeJsonAtomic(progressPath, progress); // checkpoint after EVERY show — this is the resume guarantee
       done++;

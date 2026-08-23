@@ -106,6 +106,11 @@ test("the per-request rate is denominated in feeds SWEPT, failures included", ()
   assert.equal(y.shows_failed, 1);
   assert.equal(y.timed_per_show_swept, 50, "100 transcripts over 2 requests, not over 1");
   assert.equal(y.anchorable_per_show_swept, 50);
+  /* And the NET rate, which the module's own comment calls "the one to quote".
+     It had no denominator assertion: mutating it to `per(net, ok.length)` left
+     the suite green, and on tranche 1 the two differ by 0.003 — invisible there,
+     and not invisible on a tranche with a real failure rate. Verified failing. */
+  assert.equal(y.net_anchorable_per_show_swept, 50, "net is per feed SWEPT too, not per feed that worked");
 });
 
 /* MUTATION: have `yieldOf` include errored shows' zeroed counts in the

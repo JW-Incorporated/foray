@@ -452,7 +452,7 @@ const FLOORS = {
      stall the pipeline with no documented way to clear it and that the digest
      fetch failed OPEN on any API error that was not a 404. */
   "tools/refresh/watch-nightly.test.mjs": 62,
-  "tools/segments/sweep-transcripts.test.mjs": 32,
+  "tools/segments/sweep-transcripts.test.mjs": 34,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
   /* The free-transcript acquisition step (#104 follow-up): the join that
