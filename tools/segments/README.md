@@ -8,6 +8,7 @@ step, so any of it runs from a bare checkout in a keyless GitHub Action.
 | File | Role | Network |
 |------|------|---------|
 | `transcript-normalize.mjs` | Any timestamped transcript format → one cue list (#105) | no |
+| `prepare-segment-batch.mjs` | Held transcripts → one extraction batch, gated on the #315 timeline-overrun check; also lints authored candidates against the §9 length rules | no |
 | `merge-segments.mjs` | Agent-authored candidate segments → validated `data/segments.json` (#106) | no |
 | `transcript-coverage.mjs` | Joins the availability index to `data/discover.json` — the coverage number (#104) | no |
 | `sweep-transcripts.mjs` | Which episodes *advertise* a transcript, indexed per show (#104) | reads feeds |

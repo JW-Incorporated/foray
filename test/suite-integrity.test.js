@@ -463,6 +463,7 @@ const FLOORS = {
   "tools/segments/sweep-transcripts.test.mjs": 38,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
+  "tools/segments/prepare-segment-batch.test.mjs": 78,
   /* The free-transcript acquisition step (#104 follow-up): the join that
      produces the coverage number, the fetcher that acquires what it finds, and
      the host gate they share. Floored together because they fail together in
