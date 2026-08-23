@@ -24,10 +24,15 @@ import {
   policyString,
   attachArms,
   byHost,
+  byRankBucket,
+  checkTranchePairing,
   isAnchorable,
+  measuredDispositions,
   projectFootprint,
   suspectAnchorable,
+  repoRelative,
   summaryRow,
+  trancheLabel,
   yieldOf,
 } from "./breadth-yield.mjs";
 import { AD_FREE_SHOWS, isAnchorableShow } from "./fetch-transcripts.mjs";
@@ -429,4 +434,311 @@ test("the policy string quotes the file's own measured size", () => {
   assert.match(measured, /19436 feeds/);
   // First pass, before the object has a length: no number rather than a wrong one.
   assert.doesNotMatch(policyString(null), /\d+ bytes\/show/);
+});
+
+/* --------------------------------------------- depth down the ranking (#320)
+
+   These four are about the number that decides WHERE TO STOP sweeping, and
+   every one of them fails in the direction of a flatter, more encouraging
+   curve. */
+
+/* MUTATION: in `attachArms`, advance the rank counter for every tranche row
+   rather than only for exploit rows — i.e. use the array index. The explore arm
+   is a uniform random sample and has no rank; giving it one splices random rows
+   into the depth axis at whatever positions they occupy in the file, which on
+   tranche 2 would put 400 random feeds after rank 600 and produce a "decay"
+   that is entirely the arm change. Verified failing. */
+test("rank_position is the exploit arm's order, and the explore arm has none", () => {
+  const tranche = {
+    shows: [
+      { show_id: "a", arm: "exploit" },
+      { show_id: "b", arm: "exploit" },
+      { show_id: "r", arm: "explore" },
+      { show_id: "c", arm: "exploit" },
+    ],
+  };
+  const rows = attachArms([rec({ show_id: "c" }), rec({ show_id: "r" }), rec({ show_id: "a" }), rec({ show_id: "b" })], tranche).map(summaryRow);
+  const byId = new Map(rows.map((r) => [r.show_id, r]));
+  // Position comes from the TRANCHE file's order, not from the swept index's.
+  assert.equal(byId.get("a").rank_position, 1);
+  assert.equal(byId.get("b").rank_position, 2);
+  assert.equal(byId.get("c").rank_position, 3, "an explore row in between must not consume a rank");
+  assert.equal(byId.get("r").rank_position, null);
+});
+
+/* MUTATION: sort `byRankBucket`'s rows by yield instead of by
+   `rank_position`. The output then decays monotonically for ANY input — the
+   curve is the sort, not the ranking — and it is indistinguishable from a real
+   finding at a glance, which is exactly what makes it worth a test.
+   Verified failing. */
+test("depth buckets follow the ranking, not the yield", () => {
+  const rows = [
+    summaryRow(rec({ show_id: "d", rank_position: 4, dai_suspected: false, episodes_with_timed_transcript: 400 })),
+    summaryRow(rec({ show_id: "a", rank_position: 1, dai_suspected: false, episodes_with_timed_transcript: 10 })),
+    summaryRow(rec({ show_id: "c", rank_position: 3, dai_suspected: false, episodes_with_timed_transcript: 20 })),
+    summaryRow(rec({ show_id: "b", rank_position: 2, dai_suspected: false, episodes_with_timed_transcript: 30 })),
+  ];
+  const buckets = byRankBucket(rows, [], { buckets: 2 });
+  assert.deepEqual(buckets.map((b) => [b.rank_from, b.rank_to]), [[1, 2], [3, 4]]);
+  // Ranks 1-2 hold 40 transcripts and ranks 3-4 hold 420. A yield sort would
+  // report the buckets the other way round and call it decay.
+  assert.deepEqual(buckets.map((b) => b.timed_transcripts), [40, 420]);
+});
+
+/* MUTATION: bucket on equal TRANSCRIPT counts instead of equal feed counts.
+   The budget is denominated in requests, so a bucket has to be a fixed number
+   of requests; equal-transcript buckets put the two enormous shows in bucket
+   one on their own and hide the whole of the decay inside it. Verified
+   failing. */
+test("a depth bucket is a fixed number of requests, not of transcripts", () => {
+  const rows = [];
+  for (let i = 1; i <= 6; i++) {
+    rows.push(summaryRow(rec({ show_id: `s${i}`, rank_position: i, dai_suspected: false, episodes_with_timed_transcript: i <= 2 ? 500 : 1 })));
+  }
+  const buckets = byRankBucket(rows, [], { buckets: 3 });
+  assert.deepEqual(buckets.map((b) => b.shows_swept), [2, 2, 2]);
+  assert.deepEqual(buckets.map((b) => b.timed_per_show_swept), [500, 1, 1]);
+});
+
+/* MUTATION: drop the `suspects` argument from the `yieldOf` call inside
+   `byRankBucket`. Suspect rows are concentrated — five Spreaker shows were 62%
+   of tranche 1's entire anchorable haul — so a bucket that happens to contain
+   one reports a gross figure many times its net one, and the decay curve then
+   measures where the suspects landed rather than where the ranking stopped
+   paying. Verified failing. */
+test("depth buckets are netted of suspects, the same as the arms are", () => {
+  const rows = [
+    summaryRow(rec({ show_id: "a", rank_position: 1, feed_url: "https://www.spreaker.com/x", dai_suspected: false, enclosure_host: "anon.cloudfront.net", episodes_with_timed_transcript: 900 })),
+    summaryRow(rec({ show_id: "b", rank_position: 2, dai_suspected: false, episodes_with_timed_transcript: 10 })),
+  ];
+  const suspects = suspectAnchorable(rows, { isDaiHost: (h) => h === "spreaker.com" });
+  assert.equal(suspects.length, 1, "sanity: the fixture must actually produce a suspect");
+  const [bucket] = byRankBucket(rows, suspects, { buckets: 1 });
+  assert.equal(bucket.anchorable_timed_transcripts, 910, "the gross figure stays visible");
+  assert.equal(bucket.anchorable_net_of_suspects, 10, "the net figure is the one the curve is read from");
+});
+
+/* MUTATION: default a missing `rank_position` to 0 rather than dropping the
+   row. Explore rows and baseline rows then all pile into bucket one at rank 0,
+   which both invents a first bucket and drags every later bucket's boundary.
+   Verified failing. */
+test("rows with no rank are not bucketed at all", () => {
+  const rows = [
+    summaryRow(rec({ show_id: "x", dai_suspected: false, episodes_with_timed_transcript: 900 })),
+    summaryRow(rec({ show_id: "y", dai_suspected: false, episodes_with_timed_transcript: 900 })),
+  ];
+  assert.deepEqual(byRankBucket(rows, [], { buckets: 3 }), [], "no ranked rows means no depth report, not a fabricated one");
+  assert.deepEqual(byRankBucket([], [], { buckets: 3 }), []);
+});
+
+/* MUTATION: label every row from the tranche file's own `shows` array instead
+   of from the pairing, or drop `tranche` from the summary row. Two tranches
+   are ranked on DIFFERENT priors, so their rank axes are different orderings;
+   without a label the two depth curves concatenate into one axis that does not
+   exist, and tranche 2's rank 1 reads as a continuation of tranche 1's rank
+   300. Verified failing. */
+test("rows are labelled with the tranche they came from", () => {
+  const rows = [
+    ...attachArms([rec({ show_id: "a" })], { shows: [{ show_id: "a", arm: "exploit" }] }, { name: "tranche-01" }),
+    ...attachArms([rec({ show_id: "b" })], { shows: [{ show_id: "b", arm: "exploit" }] }, { name: "tranche-02" }),
+  ].map(summaryRow);
+  assert.deepEqual(rows.map((r) => r.tranche), ["tranche-01", "tranche-02"]);
+  // Both are rank 1 OF THEIR OWN TRANCHE. That is only meaningful with the label.
+  assert.deepEqual(rows.map((r) => r.rank_position), [1, 1]);
+  assert.equal(attachArms([rec({ show_id: "c" })], null)[0].tranche, null, "an unpaired index still reports");
+});
+
+/* MUTATION: strip the directory but not the extension in `trancheLabel`, or
+   return the whole path. The label ends up in every one of ~1,500 committed
+   rows, so a path there is both noise and a leak of one machine's directory
+   layout into a file everyone reads. Verified failing. */
+test("the tranche label is the file's basename, on either separator", () => {
+  assert.equal(trancheLabel("data-local/breadth/tranche-02.json"), "tranche-02");
+  assert.equal(trancheLabel("C:\\x\\data-local\\breadth\\tranche-02.json"), "tranche-02");
+  // No tranche file: fall back to the index's name rather than leaving it null.
+  assert.equal(trancheLabel(null, "data-local/breadth/availability-breadth.json"), "availability-breadth");
+});
+
+/* ------------------------------------------- measured suspects (#319, #320) */
+
+const adTech = (over) =>
+  summaryRow(rec({ feed_url: "https://x.podigee.io/feed/mp3", dai_suspected: false, enclosure_host: "adswizz.podigee-cdn.net", ...over }));
+
+/* MUTATION: key `measuredDispositions` on `verdict` instead of `disposition`.
+   The two DISAGREE on four of the seven shows #319 measured: `verdict` is a
+   median ratio over five episodes and reads "ad-free" for shows caught
+   inserting into some of those five, while `dispositionOf` looks at whether any
+   sample was caught mid-insert. Reading `verdict` here readmits 481 timed
+   transcripts from shows already measured injecting — and it reads as a
+   recovery, i.e. as good news. Verified failing. */
+test("a measured disposition outranks the hostname heuristic, and it is not the verdict", () => {
+  const rows = [
+    adTech({ show_id: "clean", episodes_with_timed_transcript: 14 }),
+    adTech({ show_id: "dirty", episodes_with_timed_transcript: 337 }),
+  ];
+  // The real file's shape: 'dirty' is Baseball-Prospectus-like — median says
+  // ad-free, one of five probes caught an insert, so the disposition is drop.
+  const measured = measuredDispositions({
+    results: [
+      { show_id: "clean", verdict: "ad-free", disposition: "recover" },
+      { show_id: "dirty", verdict: "ad-free", disposition: "drop" },
+    ],
+  });
+  const suspects = suspectAnchorable(rows, { measured });
+  assert.deepEqual(suspects.map((s) => s.show_id), ["dirty"], "the measured-clean show stops being a suspect");
+  assert.equal(suspects[0].reason, "measured-injecting", "a settled row must not read as an open question");
+  assert.equal(anchorableNetOfSuspects(rows, suspects), 14);
+
+  // Without the measurement both are suspect on the hostname alone — which is
+  // the conservative fallback, and the number the tool reported before #320.
+  assert.equal(anchorableNetOfSuspects(rows, suspectAnchorable(rows, {})), 0);
+});
+
+/* MUTATION: default an absent entry to "recover" — i.e. treat "nobody has
+   measured this" as "measured clean". The unmeasured set is the entire rest of
+   the catalogue, so this is the largest single overstatement available in this
+   file, and it produces a bigger number that still looks like arithmetic.
+   Verified failing. */
+test("a show nobody measured keeps its heuristic verdict", () => {
+  const rows = [adTech({ show_id: "unmeasured", episodes_with_timed_transcript: 500 })];
+  const measured = measuredDispositions({ results: [{ show_id: "someone-else", disposition: "recover" }] });
+  assert.deepEqual(suspectAnchorable(rows, { measured }).map((s) => s.reason), ["ad-tech-origin"]);
+  assert.equal(anchorableNetOfSuspects(rows, suspectAnchorable(rows, { measured })), 0);
+  // A missing or malformed report is the same as no report, never a recovery.
+  assert.equal(measuredDispositions(null).size, 0);
+  assert.equal(measuredDispositions({ results: [{ show_id: "x" }] }).size, 0, "an entry with no disposition is not a verdict");
+});
+
+/* MUTATION: match `AD_TECH_HOST_MARKERS` against `enclosure_host` only, which
+   is what this did until #320 — and is precisely the defect #319 removed from
+   `classifyShow` one level down. A vendor is under no obligation to be the last
+   hop: spreaker sat in the MIDDLE of five chains and was discarded for exactly
+   this reason, worth 2,470 transcripts. Measured across both tranches the chain
+   scan catches 0 extra rows today, so this test is the only thing holding the
+   fix in place until the markers list next grows. Verified failing. */
+test("an ad-tech vendor anywhere in the chain is a suspect, not only at the last hop", () => {
+  const midChain = summaryRow(rec({
+    show_id: "mid",
+    dai_suspected: false,
+    episodes_with_timed_transcript: 400,
+    enclosure_host: "cdn.example.net",                       // clean-looking landing
+    enclosure_chain: ["prefix.example", "adswizz.example.net", "cdn.example.net"],
+  }));
+  assert.deepEqual(suspectAnchorable([midChain], {}).map((s) => s.reason), ["ad-tech-origin"]);
+
+  // A chain with no vendor in it anywhere stays clean — the scan must not
+  // flag every row that merely has a chain.
+  const clean = summaryRow(rec({
+    show_id: "clean", dai_suspected: false, episodes_with_timed_transcript: 400,
+    enclosure_host: "cdn.example.net", enclosure_chain: ["dts.podtrac.com", "cdn.example.net"],
+  }));
+  assert.deepEqual(suspectAnchorable([clean], {}), []);
+
+  // And a row swept before #319 has no chain at all; the last hop still counts.
+  const noChain = summaryRow(rec({
+    show_id: "old", dai_suspected: false, episodes_with_timed_transcript: 400,
+    enclosure_host: "adswizz.podigee-cdn.net",
+  }));
+  assert.deepEqual(suspectAnchorable([noChain], {}).map((s) => s.reason), ["ad-tech-origin"]);
+});
+
+/* ------------------------------------------- what a reviewer found (#320) */
+
+/* MUTATION: delete `checkTranchePairing` from `main`, or make either branch of
+   it a warning. This is the SAME silent failure this branch made fatal in
+   `rank-breadth.mjs`, and it was left standing in the tool that writes the
+   number people quote. The arms are joined out of the tranche file, so a list
+   short by one gives an entire index `arm: null`: those rows drop out of BOTH
+   arm yields, stay in `breadth_all`, and vanish from the depth report — while
+   every printed rate still looks like a rate. Verified failing. */
+test("a --tranche list that does not pair with --breadth is fatal", () => {
+  const exists = () => true;
+  // Short by one — the shape a mangled comma-separated list actually produces.
+  assert.throws(
+    () => checkTranchePairing(["a.json", "b.json"], ["t1.json"], { exists }),
+    /paired positionally/,
+  );
+  assert.throws(() => checkTranchePairing(["a.json"], ["t1.json", "t2.json"], { exists }), /1/);
+  // Present but absent from disk.
+  assert.throws(
+    () => checkTranchePairing(["a.json"], ["gone.json"], { exists: (p) => p !== "gone.json" }),
+    (e) => e.message.includes("gone.json"),
+  );
+  // NO --tranche at all stays legal: an index with no tranche reports under a
+  // null arm on purpose, which the test above this one pins.
+  assert.doesNotThrow(() => checkTranchePairing(["a.json", "b.json"], [], { exists }));
+  assert.doesNotThrow(() => checkTranchePairing(["a.json"], ["t1.json"], { exists }));
+});
+
+/* MUTATION: go back to `size = Math.ceil(n / buckets)` and slicing by `size`.
+   That does not produce `buckets` buckets — 10 rows into 6 gives FIVE of 2, and
+   7 into 3 gives 3+3+1, putting a rate computed from ONE feed on the same axis
+   as two computed from three. It divides evenly on this tranche's 300 and 600,
+   which is the only reason it looked right. Verified failing. */
+test("depth buckets are equal to within one feed, and there are as many as asked for", () => {
+  const rows = [];
+  for (let i = 1; i <= 10; i++) rows.push(summaryRow(rec({ show_id: `s${i}`, rank_position: i, dai_suspected: false, episodes_with_timed_transcript: 1 })));
+
+  const six = byRankBucket(rows, [], { buckets: 6 });
+  assert.equal(six.length, 6, "six asked for, six returned");
+  assert.deepEqual(six.map((b) => b.shows_swept), [2, 2, 2, 2, 1, 1], "the remainder is spread, not dumped in a tail");
+  assert.deepEqual(six.map((b) => [b.rank_from, b.rank_to]), [[1, 2], [3, 4], [5, 6], [7, 8], [9, 9], [10, 10]]);
+  // Every feed lands in exactly one bucket.
+  assert.equal(six.reduce((n, b) => n + b.shows_swept, 0), rows.length);
+
+  // More buckets than rows is one bucket per row, not empty buckets that would
+  // each report a 0/feed rate over nothing.
+  assert.equal(byRankBucket(rows, [], { buckets: 25 }).length, 10);
+  assert.deepEqual(byRankBucket(rows.slice(0, 1), [], { buckets: 6 }).map((b) => b.shows_swept), [1]);
+});
+
+/* MUTATION: keep `buckets < 1` as the only guard. A non-integer then reaches
+   the arithmetic — `Math.floor(n / NaN)` is NaN, the slice is empty, and the
+   loop dereferences `slice[0].rank_position` on undefined. A report that throws
+   is better than one that lies, but a report that neither throws nor lies is
+   better than both. Verified failing. */
+test("a bucket count that is not a whole number returns nothing rather than throwing", () => {
+  const rows = [summaryRow(rec({ rank_position: 1, dai_suspected: false, episodes_with_timed_transcript: 5 }))];
+  for (const bad of [NaN, 1.5, 0, -3, undefined]) {
+    assert.deepEqual(byRankBucket(rows, [], { buckets: bad === undefined ? 0 : bad }), []);
+  }
+});
+
+/* MUTATION: put the `AD_FREE_SHOWS` short-circuit back ahead of the measured
+   `drop` branch, which is the order this file shipped in. `AD_FREE_SHOWS` is a
+   measurement too, but an older one keyed on TITLE — so a show appearing in
+   both lists is one that has SINCE been caught injecting, and letting the title
+   list win readmits it on the strength of the measurement that was superseded.
+   The doc-comment claimed this precedence in prose before the code had it.
+   Verified failing. */
+test("a fresh measured injection outranks the older ad-free title list", () => {
+  const row = summaryRow(rec({
+    show_id: "both",
+    title: AD_FREE_SHOWS[0],
+    dai_suspected: false,
+    enclosure_host: "adswizz.example.net",
+    episodes_with_timed_transcript: 400,
+  }));
+  const measured = measuredDispositions({ results: [{ show_id: "both", disposition: "drop" }] });
+  assert.deepEqual(suspectAnchorable([row], { measured }).map((s) => s.reason), ["measured-injecting"]);
+  // With no measurement the title list still wins, which is the existing rule.
+  assert.deepEqual(suspectAnchorable([row], {}), []);
+});
+
+/* MUTATION: drop `dai_reason` from `summaryRow`, or store `args.breadth`
+   verbatim instead of through `repoRelative`. The first makes the headline
+   caveat — every anchorable row reads "unknown", not "verified static" —
+   checkable only against a gitignored index, which is the wrong place for the
+   evidence behind five figures of supply. The second puts one machine's drive
+   letter into a committed file, the objection `trancheLabel` exists to avoid.
+   Verified failing. */
+test("the committed row carries its DAI reason, and committed paths are repo-relative", () => {
+  const row = summaryRow(rec({ dai_suspected: false, dai_reason: "unknown (resolve failed: HTTP 403)" }));
+  assert.equal(row.dai_reason, "unknown (resolve failed: HTTP 403)");
+  assert.equal(summaryRow(rec({})).dai_reason, null, "absent is null, not undefined");
+
+  assert.equal(repoRelative("data/transcript-availability.json"), "data/transcript-availability.json");
+  const outside = repoRelative("C:/somewhere/else/entirely/data-local/breadth/tranche-02.json");
+  assert.doesNotMatch(outside, /^[A-Za-z]:/, "no drive letter may reach the committed file");
+  assert.equal(outside, "data-local/breadth/tranche-02.json");
 });

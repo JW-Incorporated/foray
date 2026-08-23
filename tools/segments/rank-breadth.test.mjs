@@ -28,6 +28,7 @@ import {
   hostKeyOf,
   hostPriors,
   hostTimedFraction,
+  readAvailabilities,
   rankShows,
   rng,
   scoreShow,
@@ -409,4 +410,27 @@ test("the ranker has no network path at all", () => {
   // Only node builtins. A transitive import is a transitive network path.
   const imports = [...src.matchAll(/^import .*? from "([^"]+)";$/gm)].map((m) => m[1]);
   assert.deepEqual(imports, ["node:fs", "node:url", "node:path"]);
+});
+
+/* MUTATION: go back to `avPaths.filter(existsSync).map(readJson)`, which is
+   what this file did until #320. A path that does not resolve was silently
+   dropped and the run carried on with whatever loaded — printing an entirely
+   ordinary priors line and an entirely ordinary pool size. It happened: tranche
+   2 was ranked with the breadth index passed and mangled in transit, and the
+   only symptom was a pool of 19,373 (tranche 1's pool) where 18,873 was
+   correct. Sweeping that tranche would have re-requested up to 500 feeds
+   already read, which is both a wasted request budget and the end of the
+   zero-overlap property #317 verified by hand. Verified failing. */
+test("a missing availability index is fatal, not skipped", () => {
+  const present = { "a.json": { shows: [] }, "b.json": { shows: [] } };
+  const exists = (p) => Object.hasOwn(present, p);
+  const read = (p) => present[p];
+
+  assert.deepEqual(readAvailabilities(["a.json", "b.json"], { exists, read }), [{ shows: [] }, { shows: [] }]);
+
+  assert.throws(
+    () => readAvailabilities(["a.json", "gone.json"], { exists, read }),
+    (e) => e.message.includes("gone.json") && !e.message.includes("a.json"),
+    "the error must name the path that is missing, and only that one",
+  );
 });

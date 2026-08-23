@@ -16,6 +16,17 @@ step, so any of it runs from a bare checkout in a keyless GitHub Action.
 | `breadth-yield.mjs` | What a breadth tranche returned per request, and what it projects to (#114) | no |
 | `politeness.mjs` | The per-host gate both fetchers share: throttle, backoff, `Retry-After` | n/a |
 
+`writeJsonAtomic` lives in `sweep-transcripts.mjs` and `fetch-transcripts.mjs`
+imports it. It was copied, byte-identical, until #320 — the sixth duplicated
+implementation this repo has found — and the copy stopped being harmless the
+moment the original learned to retry a Windows lock. Its rename is refused with
+`EPERM` while any other process holds the file open for READING, which is fine
+on POSIX and is not on Win32; a 1,000-feed sweep died at feed 788 for exactly
+that reason, with an intact checkpoint and nothing lost but the run. Six
+attempts (one, plus five retries, pausing 100ms…500ms — 1.5s of patience) with
+the temp file removed if the ladder is exhausted; any error that is not a lock
+still throws at once.
+
 The two fetchers are the only ones that touch the network, and they are polite
 in the same way because they share `politeness.mjs` rather than each carrying a
 copy: honest User-Agent with a contact address, a per-host minimum
@@ -138,12 +149,41 @@ network.
 
 ```
 node tools/segments/rank-breadth.mjs --report                 # the priors, no file
-node tools/segments/rank-breadth.mjs --exploit 300 --explore 200   --host-cap 40 --out data-local/breadth/tranche-01.json
 
-CATALOG_PATH=data-local/breadth/tranche-01.json AVAILABILITY_PATH=data-local/breadth/availability-breadth.json TRANSCRIPT_PROGRESS_PATH=data-local/breadth/progress.json   node tools/segments/sweep-transcripts.mjs --concurrency 4 --max-episode-rows 200
+# Tranche N is ranked on every index swept so far, which is also what makes its
+# pool disjoint from them. Both flags take a comma-separated list.
+node tools/segments/rank-breadth.mjs --exploit 600 --explore 400 --host-cap 40 --seed breadth-02 \
+  --availability data/transcript-availability.json,data-local/breadth/availability-breadth.json \
+  --out data-local/breadth/tranche-02.json
 
-node tools/segments/breadth-yield.mjs --out data/breadth-transcript-yield.json
+CATALOG_PATH=data-local/breadth/tranche-02.json AVAILABILITY_PATH=data-local/breadth/availability-tranche-02.json TRANSCRIPT_PROGRESS_PATH=data-local/breadth/progress-02.json   node tools/segments/sweep-transcripts.mjs --concurrency 4 --max-episode-rows 200
+
+# The committed report covers everything swept, so --breadth and --tranche are
+# lists too, paired positionally.
+node tools/segments/breadth-yield.mjs \
+  --breadth data-local/breadth/availability-breadth.json,data-local/breadth/availability-tranche-02.json \
+  --tranche data-local/breadth/tranche-01.json,data-local/breadth/tranche-02.json \
+  --out data/breadth-transcript-yield.json
 ```
+
+**A path you passed and that is not there is FATAL in both tools, not skipped.**
+`readAvailabilities()` used to be `filter(existsSync).map(readJson)`, and that
+cost a tranche: a shell mangled the comma-separated list, the second index
+silently vanished, and the run printed an entirely ordinary "priors: 219 swept
+show(s), 46 host(s)" and an entirely ordinary pool of 19,373 — which was tranche
+1's pool, i.e. a tranche that would have re-requested up to 500 feeds already
+read and ranked them on priors that had never seen those 500 feeds. Nothing about
+the output looked wrong. A tool that spends a request budget does not get to
+guess which of its inputs it managed to read.
+
+`breadth-yield.mjs` had the identical hole and a reviewer caught it: its
+`--breadth` and `--tranche` lists are paired POSITIONALLY, and a list short by
+one gave a whole index `arm: null` — those rows fell out of BOTH arm yields,
+stayed in `breadth_all`, and vanished from the depth report, while every rate
+printed still looked like a rate. `checkTranchePairing()` now refuses a pairing
+that is present and wrong, before a file is opened. Passing no `--tranche` at
+all is still legal: an index with no tranche reports under a null arm on
+purpose.
 
 **Rank on the hosting platform, not the genre.** A `<podcast:transcript>` tag
 is a feature of the platform the publisher pays for, not a choice the publisher
@@ -178,31 +218,84 @@ host we know" into "harvest it and price the others".
 **Supply and anchorability are different numbers, and on breadth they diverge
 by 45x.** Transcripts cluster on the big networks and the big networks inject
 ads, so a timed transcript on a DAI show describes a timeline that is not the
-one we receive (ADR-0007). Tranche 1 read 500 feeds, found **178,191** timed
-transcripts and **3,952** anchorable ones. The report prints both, and counts an
-unresolved DAI verdict as *not* anchorable — an unknown reported as a win is how
-a yield rate becomes a promise the corpus cannot keep.
+one we receive (ADR-0007). Across two tranches, 1,500 feeds returned
+**339,290** timed transcripts and **11,667** anchorable ones. The report prints
+both, and counts an unresolved DAI verdict as *not* anchorable — an unknown
+reported as a win is how a yield rate becomes a promise the corpus cannot keep.
 
-**And "not DAI" mostly means "unrecognised".** Every anchorable show in tranche
-1 carries `dai_reason: "unknown"` — none was positively verified as static.
+**Tranche 1's own numbers moved after it was published, and not because it was
+re-swept for supply.** #319 taught `classifyShow` to match the DAI host list
+against the WHOLE redirect chain rather than its last hop, and tranche 1 was
+swept the day before that landed. Re-resolving the only 12 rows whose verdict
+could change — the classifier is monotone, so a row already DAI stays DAI and
+only an anchorable row can move — flipped five Spreaker shows and took tranche 1
+from **3,952 anchorable to 1,482**. Every figure below is post-#319; anything
+quoting 3,952 is pre-#319 and not comparable.
+
+**And "not DAI" still means "unrecognised", for all of it.** All **46**
+anchorable shows across both tranches carry `dai_reason: "unknown"`. Not one was
+positively verified as static; they are all "we did not recognise any host in
+this chain", filed as a pass. That caveat now sits under 11,667 transcripts
+instead of 3,952, which makes it larger rather than smaller.
+
 `suspectAnchorable()` reports the rows where that verdict is contradicted by
-something already known, which on tranche 1 was **2,821 of the 3,952**: five
-Spreaker shows (a platform that IS on the DAI host list, whose enclosures
-redirect to an anonymous CloudFront distribution that is not, so following the
-redirect discards the identification) and two shows served from
-`adswizz.podigee-cdn.net`. **1,131 survive both checks.** Labelled, never
-excluded — `isAnchorable` tracks the predicate `fetch-transcripts.mjs` selects
-on, and the suite drives both over the whole {null, true, false} x {on-list,
-off-list} grid rather than asserting agreement in prose.
+something already known — and it now checks the **whole chain**, not the last
+hop, which is the same defect #319 removed from `classifyShow`. An insertion
+vendor is no more obliged to be the final host than a DAI platform is. Measured
+across both tranches the chain scan catches **0** extra rows today; it is landed
+now because the markers list is expected to grow and a marker added later would
+otherwise be looked for in one position only.
+
+**A MEASUREMENT OUTRANKS THE HEURISTIC, and the measurement is now read.** #319
+spent 7 feeds and 54 ranged GETs settling tranche 1's seven suspects into
+`data/breadth-suspect-inflation.json` — and nothing consulted the file, so this
+tool went on reporting 1,131 net while the measurement beside it said 1,145.
+`measuredDispositions()` reads it: `disposition: "recover"` un-suspects a row,
+`"drop"` keeps it and relabels the reason `measured-injecting`. Read
+`disposition`, never `verdict` — `verdict` is a median over five episodes and
+says "ad-free" for four shows caught inserting into some of those five. Absence
+is not a recovery: a show with no entry keeps whatever the heuristic said.
+
+**734 timed transcripts are netted out across both tranches; 10,933 survive both
+checks.** Labelled, never excluded — `isAnchorable` tracks the predicate
+`fetch-transcripts.mjs` selects on, and the suite drives both over the whole
+{null, true, false} x {on-list, off-list} grid rather than asserting agreement in
+prose.
 
 **Compute that per arm or the conclusion inverts.** `yieldOf(rows, suspects)`
-takes the suspect list so each arm is netted against its own. Pooled, tranche 1's
-suspects are 71% of the anchorable haul and the random arm reads 7.8 per feed
-against the curated baseline — "breadth is better". Per arm, the random arm's own
-suspects are 91% of its haul, it lands at **0.7 per feed against the baseline's
-3.1 — 4.4x worse**. The ranked arm returns 3.3, i.e. par. Same rows, same
-arithmetic; the per-arm number is the one that generalises, and the suite pins
-that it is not pooled.
+takes the suspect list so each arm is netted against its own. Pooled, a tranche's
+suspects and its two arms average into a number that is true of neither and reads
+as both; the suite pins that the headline is not pooled.
+
+Net anchorable transcripts per feed swept, both tranches, post-#319:
+
+| arm | tranche 1 (500) | tranche 2 (1,000) |
+|---|---|---|
+| ranked EXPLOIT | 300 feeds, **3.4**/feed | 600 feeds, **15.8**/feed |
+| random EXPLORE | 200 feeds, **0.7**/feed | 400 feeds, **0.7**/feed |
+
+against a curated baseline of **3.1**/feed.
+
+**The explore arm did not move and the exploit arm went up 4.6x, which is the
+whole finding.** The population rate is what it was — 0.68 then, 0.74 now — so
+none of the gain is the catalogue getting better. All of it is the ordering, and
+the ordering got better for a reason the design predicted: tranche 1 ranked on
+priors covering 46 hosts and its exploit head was 42 omnycontent feeds, all DAI;
+tranche 2 ranked on 101 hosts and spread 600 feeds across 159 platforms, which is
+what found flightcast.com (5,461 net anchorable across 7 shows), fountain.fm and
+podhome.fm. `--host-cap` is what converts "harvest the one host we know" into
+"price the others", and this is the tranche where that paid.
+
+**The ranked yield is not decaying with depth.** `byRankBucket()` splits the
+exploit arm into equal counts of FEEDS — the budget is requests, so a bucket is a
+fixed number of requests — and nets each bucket against the suspects, because the
+suspects are concentrated enough that a gross curve would measure where they
+landed. Tranche 2's six buckets read 25.2, 43.3, 0.1, 6.5, 16.7, 3.2 net per
+feed. That is lumpy, not monotone: the best bucket is ranks 101-200, ranks
+401-500 still return 16.7/feed, and rank 600 is nowhere near the explore arm's
+0.7. The variance is between PLATFORMS, not down the ranking, so there is no
+depth at which this sweep should have stopped — and no evidence yet for where it
+should.
 
 The baseline itself is recomputed from `data/transcript-availability.json` on
 every run rather than transcribed, which is why it tracked #316 moving the
@@ -215,9 +308,17 @@ show the same index is 16MB, which is what `data-local/` actually holds.
 
 Bodies and episode rows stay in gitignored `data-local/` (#255's rule).
 `data/breadth-transcript-yield.json` carries counts, the DAI verdict and the
-arm, and nothing that scales with episodes: **measured at 359KB for 500 shows,
-so ~13.6MB if every feed in the catalogue is eventually swept.** That is a size
-`data/` can hold. The episode-row shape is not, at any cap.
+reason behind it, the arm, the tranche, the row's rank within its tranche and
+the resolved chain — and nothing that scales with episodes: **measured at
+1,337KB for 1,500 shows, so ~16.9MB if every feed in the catalogue is eventually
+swept.** That is up from 734 bytes/show to 913, and every field that did it is
+load-bearing: `enclosure_chain` and `dai_reason` are the EVIDENCE for
+`dai_suspected` — a row holding only its last hop cannot be re-judged when the
+host list moves, which is exactly why tranche 1 had to be re-SWEPT rather than
+recomputed, and the "all of it says unknown" caveat above is checkable from this
+file only because the reason is in it. `tranche` and `rank_position` are the
+depth axis. Still a size `data/` can hold. The episode-row shape is not, at any
+cap.
 
 ### `--max-episode-rows`, and why the sweep needed it
 

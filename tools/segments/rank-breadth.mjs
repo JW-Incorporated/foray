@@ -478,6 +478,34 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+/** Reads every availability index, and REFUSES A PATH THAT IS NOT THERE.
+
+    THIS SILENTLY COST A TRANCHE. The previous line was
+    `avPaths.filter(existsSync).map(readJson)`, which drops a path that does not
+    resolve and carries on with whatever is left. Tranche 2 was ranked with
+    `--availability curated,breadth` where the second path had been mangled in
+    transit (a shell rewrote the comma-separated list), and the run printed a
+    perfectly ordinary "priors: 219 swept show(s), 46 host(s)" and a pool of
+    19,373 — the SAME pool tranche 1 drew from. Nothing looked wrong. Had that
+    file been swept, it would have re-requested up to 500 feeds already read,
+    ranked on priors that had never seen those 500 feeds, and broken
+    the zero-overlap property #317 verified by hand.
+
+    A missing default is still a fatal error with the same message; the default
+    (`data/transcript-availability.json`) is committed, so its absence means a
+    broken checkout rather than a tolerable one. Fails closed: the tool that
+    spends a request budget does not get to guess which of its inputs it read. */
+export function readAvailabilities(paths, { exists = existsSync, read = readJson } = {}) {
+  const missing = paths.filter((p) => !exists(p));
+  if (missing.length) {
+    throw new Error(
+      `availability index not found: ${missing.join(", ")} — ranking on the indexes that DID load would ` +
+        `re-sweep feeds already read and rank them on stale priors, so this is fatal rather than skipped`,
+    );
+  }
+  return paths.map(read);
+}
+
 function parseArgs(argv) {
   const get = (flag, fallback) => {
     const i = argv.indexOf(flag);
@@ -508,8 +536,9 @@ function main() {
     ? args.availability.map((p) => resolvePath(process.cwd(), p))
     : [join(ROOT, "data", "transcript-availability.json")];
 
-  const availabilities = avPaths.filter((p) => existsSync(p)).map(readJson);
-  if (availabilities.length === 0) throw new Error(`no availability index found at ${avPaths.join(", ")} — nothing to learn priors from`);
+  // No length check follows: `readAvailabilities` either throws naming the path or
+  // returns one entry per path, and `avPaths` always holds at least the default.
+  const availabilities = readAvailabilities(avPaths);
 
   const priors = hostPriors(availabilities);
   const dai = daiRatesFrom(availabilities);

@@ -85,7 +85,7 @@
    Env overrides (mirrors tools/refresh/'s cloud-path-split convention):
      CATALOG_PATH, AVAILABILITY_PATH, TRANSCRIPT_PROGRESS_PATH                */
 
-import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { durationSeconds, enclosureLengthBytes, hostOf } from "../refresh/enclosure.mjs";
@@ -313,13 +313,71 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
 
+/** A synchronous pause, for the retry below. `Atomics.wait` rather than a spin
+    loop: this runs on the checkpoint path after every show, and a busy-wait
+    would burn a core for the exact interval something else is trying to finish
+    reading the file. */
+function sleepSync(ms) {
+  if (ms > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** Errors that mean "someone else has this file open right now" rather than
+    "this write cannot succeed". Windows only, effectively: POSIX renames over
+    an open file happily. */
+const LOCK_CODES = new Set(["EPERM", "EACCES", "EBUSY"]);
+
 /** Write via a temp file + rename so a kill mid-write cannot leave a truncated
-    checkpoint — the one corruption that would turn "resumes" into "restarts". */
-export function writeJsonAtomic(path, value) {
+    checkpoint — the one corruption that would turn "resumes" into "restarts".
+
+    AND RETRY THE RENAME, BECAUSE ON WINDOWS A READER IS ENOUGH TO BREAK IT.
+    This cost a run. A 1,000-feed sweep died at feed 788 of 1,000 with
+
+      EPERM: operation not permitted, rename 'progress-02.json.tmp' ->
+      'progress-02.json'
+
+    because another process had the checkpoint open for READING at that
+    instant — nothing was writing it, nothing was corrupt. `rename(2)` over an
+    open file is fine on POSIX and is refused by Win32 while a handle is out, so
+    the file this function exists to protect is also the file most likely to be
+    open: it is 33MB of the only record of a two-hour sweep, which is exactly
+    what an operator inspects mid-run. The failure surfaces as a FATAL that
+    throws away nothing (the checkpoint is intact and the run resumes) and costs
+    however long it takes someone to notice.
+
+    One attempt plus `retries` more — six in all by default, pausing 100ms,
+    200ms … 500ms between them, 1.5s of patience — which covers a reader; a lock
+    held longer than that is a different problem and still throws, with the
+    original error rather than a summary of it. ANY OTHER ERROR IS RAISED
+    IMMEDIATELY — a bad path or a full disk does not get better if you wait, and
+    retrying it would turn a clear failure into a slow one.
+
+    THE TEMP FILE IS REMOVED ON A TERMINAL FAILURE. Leaving it was harmless when
+    the only way out was one `renameSync` throwing; with a ladder that can be
+    exhausted it means a 33MB orphan sitting beside the checkpoint it failed to
+    become, which is exactly the kind of debris that gets mistaken for the real
+    file at 2am. The successful path never reaches it — `rename` consumed it. */
+export function writeJsonAtomic(path, value, { retries = 5, pauseMs = 100, rename = renameSync, sleep = sleepSync } = {}) {
   mkdirSync(dirname(path), { recursive: true });
   const tmp = `${path}.tmp`;
   writeFileSync(tmp, JSON.stringify(value, null, 2) + "\n");
-  renameSync(tmp, path);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      rename(tmp, path);
+      return attempt;
+    } catch (e) {
+      // `attempt <= retries` rather than `attempt > retries`, so a NaN or a
+      // missing bound falls out of the loop instead of spinning in it forever.
+      if (!LOCK_CODES.has(e?.code) || !(attempt <= retries)) {
+        try {
+          if (existsSync(tmp)) unlinkSync(tmp);
+        } catch {
+          /* the write failed; failing to tidy up after it is not the report */
+        }
+        throw e;
+      }
+      sleep(pauseMs * attempt);
+    }
+  }
 }
 
 export function emptyProgress() {

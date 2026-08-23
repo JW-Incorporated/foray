@@ -15,9 +15,10 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, readdirSync, renameSync as renameSyncReal } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   SweepError,
   TIMED_TRANSCRIPT_TYPES,
@@ -521,4 +522,89 @@ test("a re-queue that failed is not retried on every subsequent run", () => {
   const shows = [{ show_id: "s", feed_url: "a" }];
   assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000 }), []);
   assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000, retryFailed: true }).map((x) => x.show_id), ["s"]);
+});
+
+/* ------------------------------------- the checkpoint's one Windows failure */
+
+/* MUTATION: drop the retry — `renameSync(tmp, path)` with nothing around it,
+   which is what this was until #320. IT COST A RUN: a 1,000-feed sweep died at
+   feed 788 with `EPERM: operation not permitted, rename` because another
+   process had the 33MB checkpoint open for READING at that instant. Nothing was
+   corrupt and nothing was lost — the checkpoint is atomic and the sweep resumed
+   — but the run stopped, and on Windows any reader is enough to stop it, which
+   makes the file this function protects the one most likely to be open.
+   Verified failing. */
+test("a checkpoint write waits out a reader holding the file", () => {
+  const path = tmpFile("locked-progress.json");
+  let calls = 0;
+  const waits = [];
+  const attempts = writeJsonAtomic(path, { version: 1, shows: { a: 1 } }, {
+    // Two refusals then success — a reader that let go, which is the case that
+    // actually happens.
+    rename: (from, to) => {
+      calls++;
+      if (calls <= 2) {
+        const e = new Error("EPERM: operation not permitted, rename");
+        e.code = "EPERM";
+        throw e;
+      }
+      return renameSyncReal(from, to);
+    },
+    sleep: (ms) => waits.push(ms),
+  });
+  assert.equal(attempts, 3, "it must actually have retried, not silently swallowed the error");
+  assert.deepEqual(waits, [100, 200], "the pause grows, so a slower reader still gets out of the way");
+  assert.equal(JSON.parse(readFileSync(path, "utf8")).shows.a, 1, "and the file must really be there afterwards");
+  assert.equal(existsSync(path + ".tmp"), false);
+});
+
+/* MUTATION: retry on every error rather than only on the lock codes. A bad
+   path, a full disk or a read-only volume does not improve if you wait; the run
+   then spends the whole retry ladder before reporting the identical failure,
+   and the operator reads the delay as progress. Verified failing. */
+test("a rename failure that is not a lock is raised at once", () => {
+  const path = tmpFile("broken-progress.json");
+  let calls = 0;
+  assert.throws(
+    () =>
+      writeJsonAtomic(path, { version: 1, shows: {} }, {
+        rename: () => {
+          calls++;
+          const e = new Error("ENOSPC: no space left on device, rename");
+          e.code = "ENOSPC";
+          throw e;
+        },
+        sleep: () => assert.fail("a non-lock error must not be slept on"),
+      }),
+    /ENOSPC/,
+  );
+  assert.equal(calls, 1, "exactly one attempt");
+});
+
+/* MUTATION: give `fetch-transcripts.mjs` its own `function writeJsonAtomic`
+   back. IT HAD ONE — byte-identical to this file's, which is exactly why nobody
+   saw it, and it is the sixth duplicated implementation this repo has found
+   after four matchers, two throttles, three header copies, ten User-Agents and
+   `AD_FREE_SHOWS`. The cost is not abstract: the lock retry above landed in the
+   checkpoint writer, and the copy that writes transcript digests and normalised
+   cues would have gone on failing on the same EPERM.
+
+   A BLUNT SCAN, on purpose, for the reason #318's guard had to become one: it
+   matches the declaration anywhere in the bytes, so it cannot be blinded by
+   whatever else a file happens to contain. A future file that legitimately
+   needs its own must add itself here with a reason. Verified failing against a
+   restored copy. */
+test("writeJsonAtomic is defined exactly once in this directory", () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  /* Suites are excluded, and finding that out was the point. This suite trips
+     its own scan: the mutation named in the comment above contains the literal
+     "function writeJsonAtomic", so a scan over every .mjs in the directory
+     reports THIS FILE as a second definition and stays red no matter what the
+     source does. That is the #318 failure with the sign flipped — prose in the
+     guards own file deciding the guards verdict — and the fix is to scan the
+     files that can actually ship the function. */
+  const sources = readdirSync(dir).filter((f) => f.endsWith(".mjs") && !f.endsWith(".test.mjs"));
+  assert.ok(sources.length >= 5, "the filter must not be able to make this pass by matching nothing");
+  const owners = sources.filter((f) => readFileSync(join(dir, f), "utf8").includes("function writeJsonAtomic"));
+  assert.deepEqual(owners, ["sweep-transcripts.mjs"], "one definition; every other caller imports it");
 });

@@ -468,6 +468,17 @@ catalogue worth the requests?" actually asks.
 
 ### The yield, per feed swept
 
+> **The anchorable columns in this section are PRE-#319 and are not comparable
+> to anything measured after it.** #319 rewrote the DAI classifier to judge the
+> whole redirect chain instead of its last hop, one day after this tranche was
+> swept. Re-resolving tranche 1's 12 anchorable rows under it — the only rows
+> whose verdict can move, because the chain is a superset of the last hop —
+> flipped five Spreaker shows and took this tranche from **3,952 anchorable to
+> 1,482**, and its net from 1,131 to **1,145** once #319's own measurements are
+> read. The tranche-2 section below is post-#319 throughout, and
+> `data/breadth-transcript-yield.json` has been regenerated. The **timed**
+> columns are untouched: nothing about supply changed.
+
 **Net** applies the contradiction check in the next section, to the baseline as
 well as to the tranche — comparing a net breadth number against a gross curated
 one would manufacture the finding rather than measure it.
@@ -614,6 +625,93 @@ cleared have not been.)
 host asked us to slow down** at concurrency 4 through the shared
 `tools/segments/politeness.mjs` gate. Two Apple-listed anchor.fm feeds are dead.
 
+## Tranche 2 — 1,000 feeds, ranked on 101 hosts instead of 46 (#320)
+
+Ranked from tranche 1's own index, so the pool excluded all 500 feeds already
+read (18,873 eligible, verified disjoint) and the priors covered 101 platforms
+rather than 46. 600 exploit at `--host-cap 40` across **159 platforms**, 400
+explore, seed `breadth-02`. All figures post-#319.
+
+| arm | feeds | with ≥1 timed | timed | per feed | anchorable | **net** | **per feed** |
+|---|---|---|---|---|---|---|---|
+| baseline (curated 220) | 220 | 27 (12.3%) | 7,571 | 34.4 | 676 | 676 | **3.1** |
+| **exploit** (ranked) | 600 | 185 (30.9%) | 155,492 | 259.2 | 9,891 | 9,494 | **15.8** |
+| **explore** (random) | 400 | 69 (17.3%) | 5,607 | 14.0 | 294 | 294 | **0.7** |
+| tranche 2 total | 1,000 | 254 (25.5%) | 161,099 | 161.1 | 10,185 | 9,788 | **9.8** |
+
+**The explore arm did not move and the exploit arm went up 4.6x.** The
+population rate is 0.74 against tranche 1's 0.68, so none of the gain is the
+catalogue; all of it is the ordering, and the ordering improved because the
+priors did. Tranche 1's exploit head was 42 omnycontent feeds — the biggest
+supply on earth and every one of them DAI. Tranche 2's 600 spread over 159
+platforms and found the ones that are both transcribed and static:
+
+Net anchorable transcripts contributed by **tranche 2's exploit arm alone** —
+27 shows, 9,494 transcripts. (An earlier draft of this table quoted `by_host`
+figures, which pool both tranches and both arms; that credited *Becker's
+Healthcare Podcast* — tranche 1, rank 300 — to tranche 2's ranking, overstating
+blubrry 167x, and counted a fountain.fm show the RANDOM arm found as evidence
+the ranked arm found it. A reviewer caught it. The per-arm number is the one
+that generalises, which is the same lesson as the arm split itself.)
+
+| platform | net anchorable | shows |
+|---|---|---|
+| flightcast.com | 5,461 | 7 |
+| artbellarchive.org | 1,368 | 1 |
+| fountain.fm | 1,035 | 1 |
+| talkpython.fm | 558 | 1 |
+| podhome.fm | 525 | 1 |
+| macgeekgab.com | 189 | 1 |
+
+**`--host-cap` is what paid here**, exactly as its own comment predicted: an
+uncapped ranked head would have been 600 more omnycontent feeds and would have
+discovered flightcast.com never.
+
+### Does the ranking stop paying? Not by rank 600
+
+`byRankBucket()` splits the exploit arm into equal counts of feeds — the budget
+is requests — and nets each bucket against its own suspects. Tranche 2, six
+buckets of 100:
+
+| ranks | with timed | timed/feed | **net/feed** |
+|---|---|---|---|
+| 1-100 | 76 | 1,254.7 | **25.2** |
+| 101-200 | 19 | 72.7 | **43.3** |
+| 201-300 | 27 | 98.0 | **0.1** |
+| 301-400 | 18 | 48.4 | **6.5** |
+| 401-500 | 21 | 57.4 | **16.7** |
+| 501-600 | 24 | 23.7 | **3.2** |
+
+Lumpy, not decaying. The best bucket is 101-200, ranks 401-500 still return
+16.7/feed, and the worst bucket is in the middle. **There is no depth at which
+this sweep should have stopped**, and the variance is between platforms rather
+than down the ranking — which is the same finding as the platform table above,
+seen from the other side. A tranche 3 has no evidence against it from here.
+
+### The caveat is now larger, not smaller
+
+**All 46 anchorable shows across both tranches carry `dai_reason: "unknown"`.**
+Not one is positively verified static; every one is "no host anywhere in this
+chain is on the list", filed as a pass. 10,933 net-anchorable transcripts rest on
+that, against 1,145 before, and 5,461 of them are one platform. If flightcast.com
+turns out to insert, half the haul goes with it — which is precisely what
+happened to the 2,470 Spreaker transcripts between #317 and #319.
+`tools/segments/measure-suspects.mjs` is the tool that would settle it, and it
+costs about five ranged GETs a show.
+
+### Politeness
+
+**1,000 feeds, 3 failures (HTTP 404, HTTP 410, EMPTY_FEED), zero retries, zero
+429s, and no host asked us to slow down** at concurrency 4, plus 12 re-swept
+feeds for the #319 recheck at concurrency 2. Zero retries is the strong form: the
+sweep logs a line for every 429 and every 5xx it backs off from, and there are
+none.
+
+The run did die once, at feed 788 of 1,000, on `EPERM: rename` — Windows
+refusing to rename over a checkpoint another process had open for READING.
+Nothing was lost (the checkpoint is atomic and the sweep resumed onto feed 789),
+and `writeJsonAtomic` now retries a lock rather than aborting a two-hour run.
+
 ### The projection, and the storage rule it forces
 
 The random arm is the estimator, so it sets the floor. The remaining **18,936
@@ -633,6 +731,13 @@ Storage settles the shape:
 |---|---|---|
 | episode rows (~951 B each) | 170MB uncapped / 16MB capped | **~6.4GB** |
 | one row per show | **359KB** | **~13.6MB** |
+
+Re-measured over both tranches: **1,337KB for 1,500 shows, ~16.9MB projected.**
+The per-show row grew from 734 bytes to 913 because it now also carries
+`enclosure_chain` and `dai_reason` (the evidence for `dai_suspected`, without
+which tranche 1 had to be re-swept rather than recomputed — and without which
+the "all 46 read unknown" caveat below could only be checked against a
+gitignored file), plus `tranche` and `rank_position`.
 
 Episode rows and bodies stay in gitignored `data-local/`; only
 `data/breadth-transcript-yield.json`'s per-show shape is committed. The sweep's
