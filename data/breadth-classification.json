@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-21T16:08:38.010Z",
+  "built_at": "2026-08-23T16:08:44.603Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-21-4a02f910",
+    "last_batch_id": "fresh-2026-08-23-b376cc1c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -197903,10 +197903,40 @@
     },
     "1868265702": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "architecture",
+        "architecture/infrastructure",
+        "cities/urbanism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "architecture",
+          "confidence": 0.75
+        },
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.65
+        },
+        {
+          "node": "cities/urbanism",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design podcast examining how spaces, systems, and objects shape everyday life through interviews and case studies.",
+      "display_title": "Anthony Burke's By Design",
+      "blurb": "Hosted by architect Anthony Burke, examining clever design ideas behind spaces and systems—from toilet paper to infrastructure—and how they impact daily life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-23-b376cc1c",
+      "classified_at": "2026-08-23T16:08:44.603Z"
     },
     "1868380648": {
       "topics": [
