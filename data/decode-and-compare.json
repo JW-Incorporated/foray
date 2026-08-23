@@ -1,0 +1,572 @@
+{
+  "version": 1,
+  "measured_at": "2026-08-23T12:09:33.394Z",
+  "method": "full enclosure download, PyAV demux (tools/transcribe/decode-duration.py), decoded duration compared against the publisher transcript's last cue — ADR-0008 decode-and-compare",
+  "downloads": {
+    "files": 5,
+    "bytes": 261265669
+  },
+  "results": [
+    {
+      "id": "flightcast-doac",
+      "question": "flightcast: is the byte-stable, length-less enclosure a static file or an unvaried stitch?",
+      "show": "The Diary Of A CEO with Steven Bartlett",
+      "show_id": "1291423644",
+      "guid": "flightcast:01M011YXPMA7EXR82JB7CMWHJN",
+      "episode": "Financial Crash Expert: He Predicted The 2008 Crash, Now He Says Capitalism Failed, It's Too Late!",
+      "why_this_episode": "longest ad-tech redirect chain in the flightcast pool (6 hops); leanest full-length episode of that show",
+      "downloaded_bytes": 68884898,
+      "resolved_host": "atelier.flightcast.com",
+      "transcript": {
+        "cues": 1488,
+        "first_cue_sec": 0.151,
+        "last_cue_sec": 5601.253,
+        "span_implausible": false,
+        "bytes": 156964,
+        "warnings": [
+          "9 cue(s) repeated the previous cue verbatim (rolling captions); merged",
+          "5 cue(s) began by repeating the previous cue's tail (rolling captions); trimmed"
+        ]
+      },
+      "decode": {
+        "container_duration_sec": 5748.793469,
+        "packet_duration_sec": 5740.3820408163265,
+        "frame_geometry_sec": 5740.3820408163265,
+        "frames": 219749,
+        "packets": 219749,
+        "first_packet_pos": 314,
+        "codec": "mp3float",
+        "sample_rate": 44100,
+        "channels": 2,
+        "container_format": "mp3",
+        "metadata_keys": [],
+        "duration_source": "packet_duration_sec",
+        "duration_spread_sec": 0,
+        "duration_agrees": true,
+        "header_claimed_sec": 5748.793469,
+        "header_delta_sec": 8.411,
+        "id3v2_tag_bytes": 0,
+        "tag_boundary_agrees": null,
+        "lead_in_unaccounted_bytes": null
+      },
+      "comparison": {
+        "verdict": "excess-audio",
+        "reason": "decoded 5740.38s runs 139.13s past the transcript's last cue at 5601.25s, which is more than the 30s an outro explains",
+        "decoded_sec": 5740.38,
+        "last_cue_sec": 5601.25,
+        "feed_duration_sec": 5626,
+        "beyond_transcript_sec": 139.13,
+        "beyond_feed_sec": 114.38,
+        "declared_bytes": null,
+        "delivered_bytes": 68884898,
+        "tag_bytes": 0,
+        "audio_bytes": 68884898,
+        "gap_bytes": null,
+        "gap_explained_by_tag": null,
+        "implied_bitrate_bps": 96000,
+        "allowance_sec": 30
+      },
+      "probe_recorded_bytes": 67510022,
+      "probe_delivered_delta_bytes": 1374876,
+      "probe_recorded_source": "probe-grid"
+    },
+    {
+      "id": "flightcast-doac-origin",
+      "question": "flightcast: the SAME DOAC episode fetched from the bare origin — do the extra 1,374,876 bytes come from the flightcast origin or from the six ad-tech hops in front of it?",
+      "show": "The Diary Of A CEO with Steven Bartlett",
+      "show_id": "1291423644",
+      "guid": "flightcast:01M011YXPMA7EXR82JB7CMWHJN",
+      "episode": "Financial Crash Expert: He Predicted The 2008 Crash, Now He Says Capitalism Failed, It's Too Late!",
+      "why_this_episode": "the flightcast-doac episode with its six ad-tech hops removed — isolates chain from origin with the show held constant",
+      "downloaded_bytes": 68884898,
+      "resolved_host": "atelier.flightcast.com",
+      "transcript": {
+        "cues": 1488,
+        "first_cue_sec": 0.151,
+        "last_cue_sec": 5601.253,
+        "span_implausible": false,
+        "bytes": 156964,
+        "warnings": [
+          "9 cue(s) repeated the previous cue verbatim (rolling captions); merged",
+          "5 cue(s) began by repeating the previous cue's tail (rolling captions); trimmed"
+        ]
+      },
+      "decode": {
+        "container_duration_sec": 5748.793469,
+        "packet_duration_sec": 5740.3820408163265,
+        "frame_geometry_sec": 5740.3820408163265,
+        "frames": 219749,
+        "packets": 219749,
+        "first_packet_pos": 314,
+        "codec": "mp3float",
+        "sample_rate": 44100,
+        "channels": 2,
+        "container_format": "mp3",
+        "metadata_keys": [],
+        "duration_source": "packet_duration_sec",
+        "duration_spread_sec": 0,
+        "duration_agrees": true,
+        "header_claimed_sec": 5748.793469,
+        "header_delta_sec": 8.411,
+        "id3v2_tag_bytes": 0,
+        "tag_boundary_agrees": null,
+        "lead_in_unaccounted_bytes": null
+      },
+      "comparison": {
+        "verdict": "excess-audio",
+        "reason": "decoded 5740.38s runs 139.13s past the transcript's last cue at 5601.25s, which is more than the 30s an outro explains",
+        "decoded_sec": 5740.38,
+        "last_cue_sec": 5601.25,
+        "feed_duration_sec": 5626,
+        "beyond_transcript_sec": 139.13,
+        "beyond_feed_sec": 114.38,
+        "declared_bytes": null,
+        "delivered_bytes": 68884898,
+        "tag_bytes": 0,
+        "audio_bytes": 68884898,
+        "gap_bytes": null,
+        "gap_explained_by_tag": null,
+        "implied_bitrate_bps": 96000,
+        "allowance_sec": 30
+      },
+      "probe_recorded_bytes": 67510022,
+      "probe_delivered_delta_bytes": 1374876,
+      "diagnostic": true,
+      "probe_recorded_source": "probe-grid"
+    },
+    {
+      "id": "flightcast-bare",
+      "question": "flightcast: does the origin under-declare its own length for a show with NO ad-tech prefix, or was that a property of the six-hop chain?",
+      "show": "The Secret To Success with CJ, Karl, Jemal & Eric Thomas",
+      "show_id": "844102142",
+      "guid": "flightcast:01KY03B0FNC3GJZAA2AE4GNMVY",
+      "episode": "Prayed About It But Still Stuck? Here's Why | S2S 551",
+      "why_this_episode": "same flightcast origin reached through a chain with NO ad-tech prefix — separates an origin-level under-declaration from a prefix-level one",
+      "downloaded_bytes": 30112183,
+      "resolved_host": "atelier.flightcast.com",
+      "transcript": {
+        "cues": 112,
+        "first_cue_sec": 0.824,
+        "last_cue_sec": 2507.015,
+        "span_implausible": false,
+        "bytes": 47350,
+        "warnings": [
+          "1 cue(s) began by repeating the previous cue's tail (rolling captions); trimmed"
+        ]
+      },
+      "decode": {
+        "container_duration_sec": 2513.084082,
+        "packet_duration_sec": 2509.3224489795916,
+        "frame_geometry_sec": 2509.3224489795916,
+        "frames": 96060,
+        "packets": 96060,
+        "first_packet_pos": 314,
+        "codec": "mp3float",
+        "sample_rate": 44100,
+        "channels": 2,
+        "container_format": "mp3",
+        "metadata_keys": [],
+        "duration_source": "packet_duration_sec",
+        "duration_spread_sec": 0,
+        "duration_agrees": true,
+        "header_claimed_sec": 2513.084082,
+        "header_delta_sec": 3.762,
+        "id3v2_tag_bytes": 0,
+        "tag_boundary_agrees": null,
+        "lead_in_unaccounted_bytes": null
+      },
+      "comparison": {
+        "verdict": "matches-transcript",
+        "reason": "decoded 2509.32s against a last cue at 2507.01s — 2.31s of trailing audio, inside the 30s allowance",
+        "decoded_sec": 2509.32,
+        "last_cue_sec": 2507.01,
+        "feed_duration_sec": 2509,
+        "beyond_transcript_sec": 2.31,
+        "beyond_feed_sec": 0.32,
+        "declared_bytes": null,
+        "delivered_bytes": 30112183,
+        "tag_bytes": 0,
+        "audio_bytes": 30112183,
+        "gap_bytes": null,
+        "gap_explained_by_tag": null,
+        "implied_bitrate_bps": 96001,
+        "allowance_sec": 30
+      },
+      "probe_recorded_bytes": 30112183,
+      "probe_delivered_delta_bytes": 0,
+      "probe_recorded_source": "probe-grid"
+    },
+    {
+      "id": "art-bell",
+      "question": "Art Bell: is the constant ~99KB gap an ID3 artwork block or a fixed house pre-roll? (UNANSWERABLE as of 2026-08-23 — that copy is no longer served; see the note below for what this row does settle)",
+      "show": "The Art Bell Archive",
+      "show_id": "1737303645",
+      "guid": "https://artbellarchive.org/episode/october-16-2015-open-lines-super-power-line",
+      "episode": "October 16, 2015: Open Lines - Super Power Line",
+      "why_this_episode": "smallest of the five episodes that carried the identical constant gap; establishes that the copy served today matches its transcript, not what the withdrawn copy contained",
+      "downloaded_bytes": 51890380,
+      "resolved_host": "dn720303.ca.archive.org",
+      "transcript": {
+        "cues": 15841,
+        "first_cue_sec": 0,
+        "last_cue_sec": 8625.44,
+        "span_implausible": false,
+        "bytes": 676209,
+        "warnings": [
+          "3 cue(s) repeated the previous cue verbatim (rolling captions); merged",
+          "2 cue(s) began by repeating the previous cue's tail (rolling captions); trimmed"
+        ]
+      },
+      "decode": {
+        "container_duration_sec": 8625.476984,
+        "packet_duration_sec": 8625.528163265306,
+        "frame_geometry_sec": 8625.528163265306,
+        "frames": 330196,
+        "packets": 330196,
+        "first_packet_pos": 2465,
+        "codec": "mp3float",
+        "sample_rate": 44100,
+        "channels": 2,
+        "container_format": "mp3",
+        "metadata_keys": [
+          "album",
+          "artist",
+          "date",
+          "encoder",
+          "title"
+        ],
+        "duration_source": "packet_duration_sec",
+        "duration_spread_sec": 0,
+        "duration_agrees": true,
+        "header_claimed_sec": 8625.476984,
+        "header_delta_sec": -0.051,
+        "id3v2_tag_bytes": 2048,
+        "tag_boundary_agrees": true,
+        "lead_in_unaccounted_bytes": 417
+      },
+      "comparison": {
+        "verdict": "matches-transcript",
+        "reason": "decoded 8625.53s against a last cue at 8625.44s — 0.09s of trailing audio, inside the 30s allowance",
+        "decoded_sec": 8625.53,
+        "last_cue_sec": 8625.44,
+        "feed_duration_sec": 8625,
+        "beyond_transcript_sec": 0.09,
+        "beyond_feed_sec": 0.53,
+        "declared_bytes": 51890380,
+        "delivered_bytes": 51890380,
+        "tag_bytes": 2048,
+        "audio_bytes": 51888332,
+        "gap_bytes": 0,
+        "gap_explained_by_tag": null,
+        "implied_bitrate_bps": 48125,
+        "allowance_sec": 30
+      },
+      "probe_recorded_bytes": 51890380,
+      "probe_delivered_delta_bytes": 0,
+      "probe_recorded_source": "probe-grid"
+    },
+    {
+      "id": "around-the-house",
+      "question": "Around the House: is a 0.758 delivered/declared ratio a truncated file or a junk declaration?",
+      "show": "Around the House with Eric G",
+      "show_id": "around-the-house-eric-g",
+      "guid": "b9167a1a-77a9-41e1-9cfc-804f0571f6b8",
+      "episode": "From Drips to Disasters: Stop Water Damage Before It Starts!",
+      "why_this_episode": "the episode that produced the show's median 0.758, and the one whose declared length lands exactly on the 192kbps line",
+      "downloaded_bytes": 41493310,
+      "resolved_host": "podcasts.captivate.fm",
+      "transcript": {
+        "cues": 863,
+        "first_cue_sec": 0.24,
+        "last_cue_sec": 2279.2,
+        "span_implausible": false,
+        "bytes": 71508,
+        "warnings": [
+          "1 cue(s) repeated the previous cue verbatim (rolling captions); merged",
+          "2 cue(s) began by repeating the previous cue's tail (rolling captions); trimmed"
+        ]
+      },
+      "decode": {
+        "container_duration_sec": 2593.331875,
+        "packet_duration_sec": 2593.3322448979593,
+        "frame_geometry_sec": 2593.3322448979593,
+        "frames": 99276,
+        "packets": 99276,
+        "first_packet_pos": 0,
+        "codec": "mp3float",
+        "sample_rate": 44100,
+        "channels": 2,
+        "container_format": "mp3",
+        "metadata_keys": [],
+        "duration_source": "packet_duration_sec",
+        "duration_spread_sec": 0,
+        "duration_agrees": true,
+        "header_claimed_sec": 2593.331875,
+        "header_delta_sec": 0,
+        "id3v2_tag_bytes": 0,
+        "tag_boundary_agrees": null,
+        "lead_in_unaccounted_bytes": null
+      },
+      "comparison": {
+        "verdict": "excess-audio",
+        "reason": "decoded 2593.33s runs 314.13s past the transcript's last cue at 2279.2s, which is more than the 30s an outro explains",
+        "decoded_sec": 2593.33,
+        "last_cue_sec": 2279.2,
+        "feed_duration_sec": 2280,
+        "beyond_transcript_sec": 314.13,
+        "beyond_feed_sec": 313.33,
+        "declared_bytes": 54729590,
+        "delivered_bytes": 41493310,
+        "tag_bytes": 0,
+        "audio_bytes": 41493310,
+        "gap_bytes": -13236280,
+        "gap_explained_by_tag": null,
+        "implied_bitrate_bps": 128000,
+        "allowance_sec": 30
+      },
+      "probe_recorded_bytes": 41493310,
+      "probe_delivered_delta_bytes": 0,
+      "probe_recorded_source": "probe-grid"
+    }
+  ],
+  "recompared_at": "2026-08-23T13:32:06.529Z",
+  "probe_grid": {
+    "flightcast-doac": {
+      "url": "https://pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/1390/claritaspod.com/measure/p.podderapp.com/2544644999/mgln.ai/e/1651/episode.flightcast.com/01M011YXPMDDJ8TWA1RB7X36R7.mp3?fcv=zvf5r7i63yvx7ohhgxyiv4jz",
+      "checked_at": "2026-08-23T13:32:13.530Z",
+      "cells": [
+        {
+          "identity": "probe",
+          "ranged": true,
+          "status": 206,
+          "total": 67510022,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "probe",
+          "ranged": false,
+          "status": 200,
+          "total": 67510022,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "client",
+          "ranged": true,
+          "status": 206,
+          "total": 67510022,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "client",
+          "ranged": false,
+          "status": 200,
+          "total": 68884898,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        }
+      ],
+      "distinct_totals": [
+        67510022,
+        68884898
+      ],
+      "varies_by_request": true,
+      "compressed": false
+    },
+    "flightcast-doac-origin": {
+      "url": "https://episode.flightcast.com/01M011YXPMDDJ8TWA1RB7X36R7.mp3",
+      "checked_at": "2026-08-23T13:32:17.554Z",
+      "cells": [
+        {
+          "identity": "probe",
+          "ranged": true,
+          "status": 206,
+          "total": 67510022,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "probe",
+          "ranged": false,
+          "status": 200,
+          "total": 67510022,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "client",
+          "ranged": true,
+          "status": 206,
+          "total": 67510022,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "client",
+          "ranged": false,
+          "status": 200,
+          "total": 68884898,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        }
+      ],
+      "distinct_totals": [
+        67510022,
+        68884898
+      ],
+      "varies_by_request": true,
+      "compressed": false
+    },
+    "flightcast-bare": {
+      "url": "https://episode.flightcast.com/01KY03B0FNFNM0K1G6HHVM1QZT.mp3",
+      "checked_at": "2026-08-23T13:32:22.693Z",
+      "cells": [
+        {
+          "identity": "probe",
+          "ranged": true,
+          "status": 206,
+          "total": 30112183,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "probe",
+          "ranged": false,
+          "status": 200,
+          "total": 30112183,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "client",
+          "ranged": true,
+          "status": 206,
+          "total": 30112183,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        },
+        {
+          "identity": "client",
+          "ranged": false,
+          "status": 200,
+          "total": 30112183,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "atelier.flightcast.com"
+        }
+      ],
+      "distinct_totals": [
+        30112183
+      ],
+      "varies_by_request": false,
+      "compressed": false
+    },
+    "art-bell": {
+      "url": "https://audio.artbell.am/episodes/2015/1365-october-16-2015-open-lines-super-power-line.mp3",
+      "checked_at": "2026-08-23T13:32:27.797Z",
+      "cells": [
+        {
+          "identity": "probe",
+          "ranged": true,
+          "status": 206,
+          "total": 51890380,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "dn720303.ca.archive.org"
+        },
+        {
+          "identity": "probe",
+          "ranged": false,
+          "status": 200,
+          "total": 51890380,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "dn720303.ca.archive.org"
+        },
+        {
+          "identity": "client",
+          "ranged": true,
+          "status": 206,
+          "total": 51890380,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "dn720303.ca.archive.org"
+        },
+        {
+          "identity": "client",
+          "ranged": false,
+          "status": 200,
+          "total": 51890380,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "dn720303.ca.archive.org"
+        }
+      ],
+      "distinct_totals": [
+        51890380
+      ],
+      "varies_by_request": false,
+      "compressed": false
+    },
+    "around-the-house": {
+      "url": "https://episodes.captivate.fm/episode/b9167a1a-77a9-41e1-9cfc-804f0571f6b8.mp3",
+      "checked_at": "2026-08-23T13:32:31.575Z",
+      "cells": [
+        {
+          "identity": "probe",
+          "ranged": true,
+          "status": 206,
+          "total": 41493310,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "podcasts.captivate.fm"
+        },
+        {
+          "identity": "probe",
+          "ranged": false,
+          "status": 200,
+          "total": 41493310,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "podcasts.captivate.fm"
+        },
+        {
+          "identity": "client",
+          "ranged": true,
+          "status": 206,
+          "total": 41493310,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "podcasts.captivate.fm"
+        },
+        {
+          "identity": "client",
+          "ranged": false,
+          "status": 200,
+          "total": 41493310,
+          "content_encoding": null,
+          "transfer_encoding": null,
+          "resolved_host": "podcasts.captivate.fm"
+        }
+      ],
+      "distinct_totals": [
+        41493310
+      ],
+      "varies_by_request": false,
+      "compressed": false
+    }
+  }
+}

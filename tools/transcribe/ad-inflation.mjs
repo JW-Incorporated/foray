@@ -312,7 +312,16 @@ export async function probeEpisode(url, declaredBytes, {
       delivered_bytes: Number.isFinite(delivered) && delivered > 0 ? delivered : null,
       status,
       attempts: attempt,
-      error: usableLength ? error || null : error || 'no usable length in the response',
+      /* A RETRY THAT SUCCEEDED IS NOT AN ERROR. `error` is loop-scoped, so a
+         503 on attempt 1 followed by a clean 206 on attempt 2 used to return
+         `{ratio: 1, error: 'HTTP 503'}` — a sample that measured perfectly and
+         reads as a failure. It landed in committed evidence: the Art Bell
+         re-probe that recovers 1,368 transcripts carries `ratio: 1, status:
+         206, error: 'HTTP 500'` on one of its five samples, which invites
+         exactly the `!s.error` filter that would silently drop it. `attempts`
+         already records that retries happened, which is the fact worth
+         keeping; the stale message is not. */
+      error: usableLength ? null : error || 'no usable length in the response',
     };
   }
 

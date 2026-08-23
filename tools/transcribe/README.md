@@ -320,3 +320,191 @@ capacity, which is part of why `medium.en` is often the better pick than
 
 The last line of stdout is a single JSON object with every field needed for the
 comparison table — pipe it straight into a results file.
+
+---
+
+## 5. `decode-compare.mjs` — ADR-0008's instrument of last resort
+
+A second, much smaller thing lives in this directory and shares only its PyAV
+dependency with the benchmark above: **download one episode, decode it, and
+compare its true duration against the publisher transcript's last cue.**
+
+```bash
+node tools/transcribe/decode-compare.mjs --list
+node tools/transcribe/decode-compare.mjs --episode art-bell --python D:\scratch\venv\Scripts\python.exe
+node tools/transcribe/decode-compare.mjs --probe-grid          # 4 tiny requests per target, no audio
+node tools/transcribe/decode-compare.mjs --recompare           # re-judge stored measurements, no download
+node tools/transcribe/decode-compare.mjs --cleanup             # delete the audio
+```
+
+It needs only `av==18.0.0` from `requirements.txt`, not `faster-whisper`. The
+decode itself is `decode-duration.py`; the verdict logic is in the `.mjs` and is
+where the tests are. Results are committed to `data/decode-and-compare.json`.
+
+### Why it exists
+
+`ad-inflation.mjs` reads a file's length out of `Content-Range` on a 2-byte
+ranged GET. That is the right screen, it costs kilobytes, and it is blind in
+three places worth thousands of transcripts each — no declared length to divide
+by, a constant byte offset that metadata and a pre-roll fit equally well, and a
+declared length that is simply wrong. Decoding produces a length nobody has to
+take on trust. The comparison is against the **transcript**, never the feed:
+two of the three questions are questions about whether the feed's own numbers
+are trustworthy, so answering them with the feed's numbers would be circular.
+
+### The 2026-08-23 run
+
+**Six full downloads, 330,150,567 bytes (314.9 MiB).** Five of them are the
+target rows in `data/decode-and-compare.json`, which records
+`downloads: {files: 5, bytes: 261265669}`. The sixth was a repeat of the DOAC
+episode (68,884,898 bytes) run by hand to check the first was not a fluke, and
+it left no artifact beyond this sentence — the probe grid below is what makes
+that check unnecessary, so nothing rests on it. Also spent: a five-episode
+re-probe of Art Bell (1 feed + 9 ranged GETs, recorded in
+`breadth-anchorable-inflation.json`'s `source.passes`) and 20 probe-grid
+requests. Zero 429s across every sweep. All audio deleted.
+
+| target | decoded | feed says | transcript ends | verdict |
+|---|---|---|---|---|
+| The Diary Of A CEO (flightcast, 6 ad-tech hops) | **5740.38 s** | 5626 s | 5601.25 s | **excess-audio, +139.13 s** |
+| …the same episode, prefixes stripped | **5740.38 s** | 5626 s | 5601.25 s | **excess-audio, +139.13 s** — byte-identical |
+| The Secret To Success (flightcast, no prefix) | 2509.32 s | 2509 s | 2507.01 s | matches-transcript, +2.31 s |
+| The Art Bell Archive | 8625.53 s | 8625 s | 8625.44 s | matches-transcript, **+0.09 s** |
+| Around the House with Eric G | **2593.33 s** | 2280 s | 2279.20 s | **excess-audio, +314.13 s** |
+
+### THE FINDING THAT MATTERS MOST — a ranged GET can lie too
+
+ADR-0008 opens by recording that **HEAD requests lie** on ad-inserting hosts:
+they return the ad-free master's `Content-Length` while a real GET delivers the
+assembled file. The 2-byte ranged GET was adopted as the honest replacement.
+**On `atelier.flightcast.com` it is lied to in exactly the same way.**
+
+`--probe-grid` asks one URL how big it is four ways — ranged and unranged, under
+the probe identity (`ForayBot/0.1`) and the client one (`Foray/0.1`). For the
+DOAC episode:
+
+| identity | request | reported length |
+|---|---|---|
+| probe | ranged | 67,510,022 |
+| probe | unranged | 67,510,022 |
+| client | ranged | 67,510,022 |
+| **client** | **unranged** | **68,884,898** |
+
+Three cells report the master. Only an **unranged request from a client
+identity** is served the assembled file, and two independent full downloads
+under that identity delivered exactly 68,884,898 bytes — 1,374,876 bytes,
+**114.6 s** at the file's 96 kbps. (The decoded file separately runs 114.38 s
+past the feed's declared duration; the two numbers are close because they
+measure nearly the same thing, and they are not the same measurement.)
+
+**This is a header-level finding, so every download-side explanation is excluded
+by construction.** The two lengths differ in `Content-Length` before any body is
+read: no `Content-Encoding`, no `Transfer-Encoding`, no resume, no append. And
+the short number is not a compressed representation of the long one —
+`67,510,022 × 8 ÷ 96,000 = 5,625.8 s` against a feed declaring **5,626 s**. It
+is the ad-free master's length to a fraction of a second.
+
+What it costs: `#321` probed all seven flightcast shows, 35 episodes, three
+requests each, and got 105 byte-identical answers. It correctly refused to call
+them clean and filed them `repeat_stable_no_denominator`. The decode shows the
+refusal was righter than it knew — the repeats were stable because they were all
+reading **a number the origin declares and does not deliver**. Byte-stability
+across repeats measured the stability of the *declaration*, not of the file.
+Every flightcast byte figure in this repo is a master length.
+
+**It is not a platform verdict.** The bare-chain control (The Secret To Success,
+same origin, no ad-tech prefix) returns one identical length in all four grid
+cells and decoded to within 2.31 s of its transcript. Stripping DOAC's six
+prefixes changed nothing — same bytes, same frames — so whatever the origin is
+keying on, it is not a prefix rewriting a length. Two flightcast shows are now
+measured and they disagree with each other.
+
+**And the clean one did not recover, which is the counter-intuitive part worth
+stating.** The Secret To Success has a probe-corroborated decode showing no
+excess audio at all, and it is still `unresolved` (564 transcripts) — because
+its host has been caught delivering more than it declares, so its five
+ranged-GET samples are master lengths that cannot admit anything, and one clean
+decode is below the two-sample floor `summariseShow` already applies to ratios.
+**Six** flightcast shows are `unresolved`, 5,320 transcripts, and only more
+downloads can move them.
+
+### The other two answers
+
+**Art Bell: the file served today is clean, and the original question is now
+unanswerable.** The decode landed 0.09 s past a transcript that runs the full
+declared duration, and a re-probe of all five sampled episodes through
+`measure-suspects.mjs --reprobe` returned the declared length **exactly** on
+every one (+0 bytes, five for five, committed with its pass record). All four
+probe-grid cells agree. 1,368 transcripts move `drop` → `recover`.
+
+Be precise about what that does **not** settle. The row was opened to decide
+whether the recorded +99,345-byte constant gap was ID3 artwork or a house
+pre-roll, and **that question can no longer be answered**: the enclosure now
+307-redirects to an archive.org master whose ID3v2 tag is **2,048 bytes** — which
+does not account for 99,345 and is evidence *against* the artwork hypothesis, not
+for it — and the copy that carried those bytes is no longer served by anyone.
+The 2026-08-23 row's `resolved_chain` shows `audio.artbell.am` answering
+directly, with no archive.org hop. The recovery rests on today's file matching
+today's transcript, which is what anchoring needs; it does not rest on an
+explanation of the withdrawn one, and nothing here supplies that explanation.
+
+Note also that the whole coverage gain below is this one show. Nothing about the
+other 22 clean shows changed.
+
+**Around the House was neither of the two hypotheses.** Its 0.758 ratio is the
+product of two independent errors, and the file is not truncated — it is
+**longer**. The declared `length` is `duration × exactly 192.03 kbps` on four of
+five episodes, a computed placeholder in the #319 Enormocast `5242880` mould,
+while the file is a real 128 kbps encode. `(2593.33 × 128) / (2280 × 192) =
+0.7583`, the recorded median exactly. Underneath that junk the episode carries
+**313 s more audio than the feed declares and 314 s more than its own transcript
+describes** — 2.6× the ADR-0008 ceiling, which a sub-1.0 ratio had been hiding.
+A ratio below the floor is not a smaller problem than one above it.
+
+**This finding currently changes nothing anywhere**, and that is worth stating
+rather than leaving to be discovered: `around-the-house-eric-g` is a curated
+`data/catalog.json` show and appears in neither breadth measurement file, so the
+`decodeOverride` path in `measure-suspects.mjs` never sees it. It is already
+excluded from transcript selection by `dai: true` plus `verdict: unknown`, so
+nothing is admitted wrongly — but the decode is a fact without a consumer. See
+HUMAN-ACTIONS item 24.
+
+### The rules in here, and which of them a measurement forced
+
+1. **The container's duration is a CLAIM and never a reading.** For an MP3 it is
+   the Xing/LAME header; where there is none, FFmpeg derives it from the byte
+   count, which makes it circular for every question this tool asks. An early
+   draft counted it as a third vote and flightcast's headers over-declare on
+   clean and inserting files alike (+3.76 s and +8.41 s) — producing a false
+   `undecidable` on a file that was in perfect order. It is reported as
+   `header_claimed_sec` and gates nothing.
+2. **A decode acquits only where the probe corroborated its bytes.** If the
+   ranged GET and the wire disagree about the file's size in *either* direction,
+   the decode measured a different object and cannot speak for the show's other
+   episodes — it returns no verdict at all rather than a wrong one. On a host
+   caught under-*declaring*, a show additionally needs `MIN_SAMPLES_FOR_AD_FREE`
+   decoded-clean episodes, because there the byte evidence is worthless however
+   clean it looks. A decode **condemns** on one observation, matching the
+   asymmetry `varyingSamples` already runs on.
+3. **The decode may not acquit at a delta the byte screen would condemn.**
+   `TRAILING_ALLOWANCE_SEC` is 30 s and `INSERT_EVIDENCE_SEC` is 10 s, so the
+   override applies the stricter of the two. An instrument that outranks another
+   must not also be more permissive than it.
+4. **`--recompare` exists because thresholds are wrong sometimes.** The decode's
+   output is small and the download is the expensive half, so every constant is
+   a pure function of numbers already committed. Re-downloading 250 MB to
+   re-apply arithmetic is not politeness this repo spends.
+
+### One thing that was built and deleted
+
+The plan was for a single decode to calibrate a **bitrate residual screen** —
+once the encode is known to be constant-bitrate, `bytes × 8 ÷ bitrate` turns
+every already-collected byte count into a duration, which against
+`itunes:duration` is the denominator the flightcast feeds never publish. It was
+written and unit-tested. Then the first download falsified it: the screen
+consumes exactly the byte counts that host reports, so it read −0.4 s to +3.3 s
+across all 35 flightcast samples — including the five belonging to the episode
+carrying 114.4 s of undeclared audio. It has been deleted rather than shipped
+dark, because an exported, tested, unused helper is one a future reader wires up
+on the strength of its tests. Nothing replaced it: five shows are `unresolved`
+and only another download can move them.

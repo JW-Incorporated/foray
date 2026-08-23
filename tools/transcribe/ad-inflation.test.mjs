@@ -161,6 +161,43 @@ test('probeEpisode asks for two bytes, follows redirects, and identifies itself'
    scan does not fail -- it reports "could not tell" for every Buzzsprout show,
    which is 423 timed transcripts including the 337 already being anchored on
    Being an Engineer. */
+/* A RETRY THAT SUCCEEDED IS NOT AN ERROR, and this is a regression test for a
+   sample that reached committed evidence. `error` is loop-scoped, so a 503 on
+   attempt 1 followed by a clean 206 on attempt 2 returned
+   `{ratio: 1, error: 'HTTP 503'}` -- a measurement that worked, wearing a
+   failure's clothes. It landed in `breadth-anchorable-inflation.json`: the Art
+   Bell re-probe that recovers 1,368 transcripts carried `ratio: 1, status: 206,
+   error: 'HTTP 500'` on one of its five samples, which invites exactly the
+   `!s.error` filter that would silently drop it.
+
+   MUTATION: restore `error: usableLength ? error || null : ...`.
+   Verified failing (byte diff confirmed):
+     a retry that succeeded reports no error
+   Reverted. */
+test('a retry that succeeded reports no error', async () => {
+  let n = 0;
+  const fetchImpl = async () => {
+    n += 1;
+    if (n === 1) return new Response('', { status: 503 });
+    return new Response('xx', { status: 206, headers: { 'content-range': 'bytes 0-1/2000000' } });
+  };
+  const out = await probeEpisode('https://example.test/ep.mp3', 2000000, {
+    fetchImpl, gate: async () => 0, retryWait: () => 0, sleep: async () => {},
+  });
+  assert.equal(out.delivered_bytes, 2000000);
+  assert.equal(out.ratio, 1);
+  assert.equal(out.attempts, 2, 'the retry is still recorded — that is the fact worth keeping');
+  assert.equal(out.error, null, 'a stale message from an attempt that was superseded is not a finding');
+
+  // The other direction is untouched: a genuine failure still says so.
+  const dead = await probeEpisode('https://example.test/ep.mp3', 2000000, {
+    fetchImpl: async () => new Response('', { status: 503 }),
+    gate: async () => 0, retryWait: () => 0, sleep: async () => {},
+  });
+  assert.equal(dead.ratio, null);
+  assert.match(dead.error, /HTTP 503/);
+});
+
 test('probeEpisode sends the shared audio User-Agent with no extra product token', async () => {
   let seen;
   const fetchImpl = async (url, opts) => { seen = opts; return res({ 'content-range': 'bytes 0-1/2000000' }); };

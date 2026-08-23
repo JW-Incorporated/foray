@@ -27,6 +27,11 @@ import {
   isSettled,
   plausibleDeliveries,
   fetchNoteOf,
+  decodeIndex,
+  decodeOverride,
+  decodeUnderreports,
+  probeCorroborated,
+  CONSTANT_OFFSET_TOLERANCE_BYTES,
   INSERT_EVIDENCE_SEC,
   PADDABLE_CEILING_SEC,
   NO_DECLARED_LENGTH_REASON,
@@ -269,7 +274,7 @@ test("a DAI platform alone does not condemn a show that never injects", () => {
      positive fact first, so a scanner that has stopped seeing the file says so
      instead of passing quietly. */
   const src = readFileSync(new URL("./measure-suspects.mjs", import.meta.url), "utf8");
-  assert.match(src, /const disposition = dispositionOf\(/, "the scanner has lost sight of the call site");
+  assert.match(src, /const screened = dispositionOf\(/, "the scanner has lost sight of the call site");
   const call = src.match(/dispositionOf\(summary\.verdict, \{([^}]*)\}\)/);
   assert.ok(call, "dispositionOf is not called the way this guard expects");
   for (const forbidden of ["dai", "chain", "via"]) {
@@ -278,6 +283,320 @@ test("a DAI platform alone does not condemn a show that never injects", () => {
       `the chain reached dispositionOf via "${forbidden}" — it is corroboration, not a vote`,
     );
   }
+
+  /* THE DECODE IS THE ONE THING ALLOWED TO OVERRULE IT, and it does so AFTER
+     `dispositionOf` has spoken rather than by voting inside it. The distinction
+     matters for the same reason the chain is kept out: `dispositionOf` is the
+     byte screen's verdict and has to stay readable as exactly that. The
+     override sits beside it, both values are committed when they differ, and
+     `decodeOverride` is where the precedence is argued. */
+  assert.match(src, /const disposition = override \? override\.disposition : screened;/,
+    "the decode override must sit outside dispositionOf, not inside it");
+  assert.ok(!call[1].includes("decode"), "the decode must not become a vote inside the byte screen");
+});
+
+
+/* ------------------------------------------------ the decode, which outranks
+
+   These guard the one place in this file where a full download is allowed to
+   overrule five ranged GETs. The rules are asymmetric on purpose and the
+   asymmetry is the thing worth pinning: a decode that FOUND something is proof
+   and settles the show on one observation, while a decode that found nothing is
+   a sample of one and settles nothing on a host whose byte figures have already
+   been caught being master lengths.
+
+   MUTATION-TESTED, each verified to have changed the file on disk first. */
+
+/** A decode row in the shape `decode-compare.mjs` commits. */
+const decodeRow = (over = {}) => ({
+  id: "t",
+  show_id: "S1",
+  episode: "An Episode",
+  resolved_host: "cdn.example.com",
+  downloaded_bytes: 1_000_000,
+  probe_recorded_bytes: 1_000_000,
+  transcript: { last_cue_sec: 1000 },
+  comparison: {
+    verdict: "matches-transcript",
+    decoded_sec: 1002,
+    last_cue_sec: 1000,
+    feed_duration_sec: 1000,
+    beyond_transcript_sec: 2,
+    declared_bytes: 1_000_000,
+    delivered_bytes: 1_000_000,
+  },
+  ...over,
+});
+
+/* MUTATION: `delivered - probed > toleranceBytes` -> `>= -toleranceBytes`.
+   Verified failing:
+     a host is only blind when it DELIVERED more than it declared
+   Reverted. */
+test("a host is only blind when it DELIVERED more than it declared", () => {
+  // The flightcast finding, in its real numbers.
+  assert.equal(
+    decodeUnderreports(decodeRow({ probe_recorded_bytes: 67_510_022, comparison: { delivered_bytes: 68_884_898 } })),
+    true,
+  );
+  // Delivering exactly what was declared is the honest case. Delivering LESS is
+  // NOT this function's question — an under-delivery is a stale or wrong probe
+  // figure, not an origin hiding bytes — but it is not "agreement" either, and
+  // `probeCorroborated` below is what refuses to acquit on it. Splitting the
+  // two was a reviewer's correction: one function answering both questions had
+  // to be one-sided, and the side it took was the one that kept transcripts.
+  assert.equal(decodeUnderreports(decodeRow({ probe_recorded_bytes: 30_112_183, comparison: { delivered_bytes: 30_112_183 } })), false);
+  assert.equal(decodeUnderreports(decodeRow({ probe_recorded_bytes: 51_989_683, comparison: { delivered_bytes: 51_890_380 } })), false);
+
+  // No fallback to the feed's declared length. A DAI show added to TARGETS with
+  // no probe figure delivers more than its feed declares by definition, and the
+  // old fallback would have marked its whole CDN blind on that alone.
+  assert.equal(
+    decodeUnderreports({ probe_recorded_bytes: null, comparison: { declared_bytes: 1000, delivered_bytes: 9_000_000 } }),
+    false,
+    "a feed declaration is not a Content-Range total",
+  );
+
+  // One frame of slack, the same band `constantOffsetBytes` uses.
+  assert.equal(decodeUnderreports(decodeRow({ probe_recorded_bytes: 1000, comparison: { delivered_bytes: 1000 + CONSTANT_OFFSET_TOLERANCE_BYTES } })), false);
+  assert.equal(decodeUnderreports(decodeRow({ probe_recorded_bytes: 1000, comparison: { delivered_bytes: 1001 + CONSTANT_OFFSET_TOLERANCE_BYTES } })), true);
+
+  // Missing inputs say "no", never "yes": an absent number must not condemn a host.
+  assert.equal(decodeUnderreports(decodeRow({ probe_recorded_bytes: null, comparison: { delivered_bytes: 9e9, declared_bytes: null } })), false);
+  assert.equal(decodeUnderreports(null), false);
+});
+
+/* MUTATION: `if (id && !row.diagnostic)` -> `if (id)`. Verified failing:
+     a diagnostic row is evidence about an instrument, not about a show
+   Reverted. */
+test("a diagnostic row is evidence about an instrument, not about a show", () => {
+  const diag = decodeRow({
+    show_id: "S1", resolved_host: "atelier.flightcast.com", diagnostic: true,
+    probe_recorded_bytes: 67_510_022,
+    comparison: { verdict: "excess-audio", decoded_sec: 9, last_cue_sec: 1, feed_duration_sec: 1, beyond_transcript_sec: 8, delivered_bytes: 68_884_898 },
+  });
+  const index = decodeIndex({ results: [diag] });
+
+  // It must not be able to speak for the show...
+  assert.equal(index.byShow.has("S1"), false);
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "cdn.example.com" }, index), null);
+
+  // ...but what it observed about the HOST is exactly what it was fetched for.
+  assert.deepEqual([...index.blindHosts], ["atelier.flightcast.com"]);
+});
+
+test("an incoming fetch note still wins over the override's", () => {
+  // The docstring on `deriveRow` promises it: "the feed would not load"
+  // explains a row better than any verdict drawn from the samples that failure
+  // prevented. Both are kept, so nothing is lost either way.
+  const base = { show_id: "S1", title: "t", enclosure_host: "h", samples: [] };
+  const decodes = decodeIndex({
+    results: [decodeRow({ show_id: "S1", resolved_host: "h", probe_recorded_bytes: 1, comparison: { verdict: "excess-audio", decoded_sec: 9, last_cue_sec: 1, feed_duration_sec: 1, beyond_transcript_sec: 8, delivered_bytes: 1 } })],
+  });
+  const row = deriveRow(base, { note: "feed unreadable: socket hang up", decodes });
+  assert.match(row.note, /^feed unreadable: socket hang up/);
+  assert.match(row.note, /also: DECODED/);
+});
+
+test("the condemning note reads correctly when the file is SHORT, not long", () => {
+  const index = decodeIndex({
+    results: [decodeRow({ show_id: "S1", resolved_host: "h", probe_recorded_bytes: 1, episode: "Ep",
+      comparison: { verdict: "short-of-transcript", decoded_sec: 10, last_cue_sec: 500, feed_duration_sec: 500, beyond_transcript_sec: -490, delivered_bytes: 1 } })],
+  });
+  const out = decodeOverride({ show_id: "S1", enclosure_host: "h" }, index);
+  assert.equal(out.disposition, "drop");
+  assert.match(out.note, /490s SHORTER than the timeline/);
+  assert.doesNotMatch(out.note, /-490s this show's own transcript does not describe/);
+});
+
+/* MUTATION: `Math.abs(delivered - probed) <= tol` -> `delivered - probed <= tol`.
+   Verified failing:
+     acquitting needs the probe and the wire to have measured the same object
+   Reverted — that mutation is precisely the one-sided version a reviewer
+   caught, which treated a 99,303-byte under-delivery as agreement. */
+test("acquitting needs the probe and the wire to have measured the same object", () => {
+  assert.equal(probeCorroborated(decodeRow({ probe_recorded_bytes: 100_000, comparison: { delivered_bytes: 100_000 } })), true);
+  assert.equal(probeCorroborated(decodeRow({ probe_recorded_bytes: 51_989_683, comparison: { delivered_bytes: 51_890_380 } })), false, "99,303 bytes apart is a different object");
+  assert.equal(probeCorroborated(decodeRow({ probe_recorded_bytes: 67_510_022, comparison: { delivered_bytes: 68_884_898 } })), false);
+  assert.equal(probeCorroborated(decodeRow({ probe_recorded_bytes: null, comparison: { delivered_bytes: 1 } })), null, "unknown is not disagreement");
+});
+
+/* A DECODE OF A DIFFERENT OBJECT IS NOT EVIDENCE EITHER WAY, so the override
+   stands aside entirely rather than downgrading a show whose own byte screen is
+   fine. Returning `unresolved` here would let a stale probe figure demote a
+   show the samples settled — punishing the row for a measurement we chose to
+   take. */
+test("a clean decode whose bytes the probe did not corroborate changes nothing", () => {
+  const index = decodeIndex({
+    results: [decodeRow({ show_id: "S1", resolved_host: "cdn.example.com", probe_recorded_bytes: 51_989_683, comparison: { verdict: "matches-transcript", decoded_sec: 8625.53, last_cue_sec: 8625.44, feed_duration_sec: 8625, beyond_transcript_sec: 0.09, delivered_bytes: 51_890_380 } })],
+  });
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "cdn.example.com" }, index), null);
+});
+
+/* THE TWO INSTRUMENTS MUST NOT DISAGREE ABOUT HOW MANY SECONDS ARE TOO MANY.
+   `TRAILING_ALLOWANCE_SEC` is 30s and this file's `INSERT_EVIDENCE_SEC` is 10s,
+   so without the stricter clause a decode landing 11-30s past the transcript
+   would acquit a show over a screen that condemns the identical delta — the
+   override being the route by which the looser threshold wins.
+
+   MUTATION: drop the `< INSERT_EVIDENCE_SEC` clause from `clean`.
+   Verified failing:
+     a decode cannot acquit at a delta the byte screen would condemn
+   Reverted. */
+test("a decode cannot acquit at a delta the byte screen would condemn", () => {
+  const at = (sec) => decodeIndex({
+    results: [decodeRow({ show_id: "S1", resolved_host: "cdn.example.com", probe_recorded_bytes: 100, comparison: { verdict: "matches-transcript", decoded_sec: 1000 + sec, last_cue_sec: 1000, feed_duration_sec: 1000, beyond_transcript_sec: sec, delivered_bytes: 100 } })],
+  });
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "cdn.example.com" }, at(0.09)).disposition, "recover");
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "cdn.example.com" }, at(2.31)).disposition, "recover");
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "cdn.example.com" }, at(INSERT_EVIDENCE_SEC - 0.01)).disposition, "recover");
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "cdn.example.com" }, at(INSERT_EVIDENCE_SEC)), null, "at the screen's own condemning delta, the decode may not acquit");
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "cdn.example.com" }, at(25)), null);
+});
+
+test("decodeIndex groups by show and collects the hosts caught under-declaring", () => {
+  const index = decodeIndex({
+    results: [
+      decodeRow({ show_id: "S1", resolved_host: "atelier.flightcast.com", probe_recorded_bytes: 67_510_022, comparison: { verdict: "excess-audio", delivered_bytes: 68_884_898 } }),
+      decodeRow({ show_id: "S2", resolved_host: "atelier.flightcast.com" }),
+      decodeRow({ show_id: "S2", resolved_host: "atelier.flightcast.com" }),
+    ],
+  });
+  assert.equal(index.byShow.get("S1").length, 1);
+  assert.equal(index.byShow.get("S2").length, 2);
+  assert.deepEqual([...index.blindHosts], ["atelier.flightcast.com"]);
+  assert.deepEqual([...decodeIndex(null).blindHosts], [], "no ledger is not a blind host");
+  assert.equal(decodeIndex({ results: [] }).byShow.size, 0);
+});
+
+/* MUTATION: reorder `decodeOverride` so the `blindHosts` branch runs before the
+   `bad` branch. Verified failing:
+     a decode that found excess audio condemns whatever the bytes said
+   Reverted. That order is the whole rule: a host being blind is a reason we
+   cannot ACQUIT on its bytes, never a reason to withhold a condemnation we
+   already have in hand. */
+test("a decode that found excess audio condemns whatever the bytes said", () => {
+  const index = decodeIndex({
+    results: [decodeRow({
+      show_id: "S1", resolved_host: "atelier.flightcast.com", probe_recorded_bytes: 67_510_022,
+      episode: "Financial Crash Expert",
+      comparison: { verdict: "excess-audio", decoded_sec: 5740.38, last_cue_sec: 5601.25, feed_duration_sec: 5626, beyond_transcript_sec: 139.13, delivered_bytes: 68_884_898 },
+    })],
+  });
+  const out = decodeOverride({ show_id: "S1", enclosure_host: "atelier.flightcast.com" }, index);
+  assert.equal(out.disposition, "drop");
+  assert.match(out.note, /139\.13s this show's own transcript does not describe/);
+  assert.match(out.note, /the ranged-GET screen above did not see it/);
+
+  // `short-of-transcript` is the same disqualification from the other side.
+  const short = decodeIndex({ results: [decodeRow({ comparison: { verdict: "short-of-transcript", decoded_sec: 10, last_cue_sec: 500, feed_duration_sec: 500, beyond_transcript_sec: -490, delivered_bytes: 1 } })] });
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "cdn.example.com" }, short).disposition, "drop");
+});
+
+/* THE EXPENSIVE RULE, and the one a future reader will want to relax. Do not:
+   all five DOAC samples read within 0.5s of the feed's own duration while the
+   delivered file carried 114s more, so "the bytes look clean" is precisely the
+   output the failure produces.
+
+   MUTATION: drop the `index.blindHosts.has(host)` branch entirely.
+   Verified failing:
+     one clean decode cannot acquit a show on a host caught under-declaring
+   Reverted. */
+test("one clean decode cannot acquit a show on a host caught under-declaring", () => {
+  const blind = decodeRow({ show_id: "DIRTY", resolved_host: "atelier.flightcast.com", probe_recorded_bytes: 67_510_022, comparison: { verdict: "excess-audio", decoded_sec: 1, last_cue_sec: 1, feed_duration_sec: 1, beyond_transcript_sec: 0, delivered_bytes: 68_884_898 } });
+  const clean = decodeRow({ show_id: "CLEAN", resolved_host: "atelier.flightcast.com" });
+  const index = decodeIndex({ results: [blind, clean] });
+
+  const out = decodeOverride({ show_id: "CLEAN", enclosure_host: "atelier.flightcast.com" }, index);
+  assert.equal(out.disposition, "unresolved");
+  assert.match(out.note, /more bytes than its Content-Range declares/);
+  assert.match(out.note, /1 episode decoded clean, below the 2-sample floor/);
+
+  /* Two decoded-clean episodes clear the same floor `summariseShow` applies to
+     ratios, and then the DECODES issue the verdict themselves. Returning null
+     here — letting the screen decide — was the earlier behaviour and it was
+     wrong in the direction that costs: the screen's byte figures for this host
+     are master lengths, which is the whole reason it is on the blind list, so
+     handing back to it would let two real measurements merely unblock evidence
+     this function had just finished voiding. */
+  const two = decodeIndex({ results: [blind, clean, decodeRow({ show_id: "CLEAN", resolved_host: "atelier.flightcast.com" })] });
+  const admitted = decodeOverride({ show_id: "CLEAN", enclosure_host: "atelier.flightcast.com" }, two);
+  assert.equal(admitted.disposition, "recover");
+  assert.match(admitted.note, /DECODED CLEAN 2x/);
+  assert.match(admitted.note, /this host's byte figures are master lengths and took no part/);
+
+  /* AND THE FLOOR IS A FLOOR. One clean decode plus one that found excess is
+     not two clean ones. */
+  const mixed = decodeIndex({ results: [blind, clean, decodeRow({ show_id: "CLEAN", resolved_host: "atelier.flightcast.com", comparison: { verdict: "excess-audio", decoded_sec: 9, last_cue_sec: 1, feed_duration_sec: 1, beyond_transcript_sec: 8, delivered_bytes: 1 } })] });
+  assert.equal(decodeOverride({ show_id: "CLEAN", enclosure_host: "atelier.flightcast.com" }, mixed).disposition, "drop");
+
+  // A show on the blind host that nobody decoded at all says so in as many words.
+  const none = decodeOverride({ show_id: "UNSEEN", enclosure_host: "atelier.flightcast.com" }, index);
+  assert.equal(none.disposition, "unresolved");
+  assert.match(none.note, /no episode of this show has been decoded/);
+});
+
+/* MUTATION: return `{ disposition: "recover" }` before the blindHosts branch.
+   Verified failing (it is the test above). This one pins the other direction:
+   on a host nobody has caught lying, a clean decode is allowed to settle the
+   thing the ratio could not — the Art Bell case, worth 1,368 transcripts. */
+test("a clean decode acquits on a host whose bytes were corroborated", () => {
+  const index = decodeIndex({
+    results: [decodeRow({
+      show_id: "ARTBELL", resolved_host: "dn720303.ca.archive.org",
+      episode: "October 16, 2015: Open Lines",
+      probe_recorded_bytes: 51_890_380,
+      comparison: { verdict: "matches-transcript", decoded_sec: 8625.53, last_cue_sec: 8625.44, feed_duration_sec: 8625, beyond_transcript_sec: 0.09, delivered_bytes: 51_890_380 },
+    })],
+  });
+  const out = decodeOverride({ show_id: "ARTBELL", enclosure_host: "dn720303.ca.archive.org" }, index);
+  assert.equal(out.disposition, "recover");
+  assert.match(out.note, /DECODED CLEAN: 8625\.53s/);
+  assert.match(out.note, /0\.09s of trailing audio/);
+});
+
+test("no decode ledger changes nothing at all", () => {
+  // The common case: nobody has spent a download on this pool. Every assertion
+  // in this suite about the byte screen has to keep holding, so the override
+  // must be a strict no-op rather than a default.
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "h" }, null), null);
+  assert.equal(decodeOverride({ show_id: "S1", enclosure_host: "h" }, decodeIndex({ results: [] })), null);
+  assert.equal(decodeOverride({ show_id: "UNKNOWN", enclosure_host: "h" }, decodeIndex({ results: [decodeRow()] })), null);
+
+  const base = { show_id: "S1", title: "t", samples: [{ ratio: 1, delivered_bytes: 5_000_000, declared_bytes: 5_000_000, duration_sec: 100, delta_sec_implied: 0 }, { ratio: 1, delivered_bytes: 6_000_000, declared_bytes: 6_000_000, duration_sec: 100, delta_sec_implied: 0 }] };
+  assert.equal(deriveRow(base).disposition, "recover");
+  assert.equal(deriveRow(base, { decodes: null }).disposition, "recover");
+  assert.equal(deriveRow(base).screened_disposition, undefined, "no override means no second opinion to record");
+});
+
+/* MUTATION: `const disposition = override ? override.disposition : screened;`
+   -> `= screened;`. Verified failing:
+     deriveRow lets the decode overrule the byte screen, and records both
+   Reverted. */
+test("deriveRow lets the decode overrule the byte screen, and records both", () => {
+  const base = {
+    show_id: "S1",
+    title: "t",
+    enclosure_host: "atelier.flightcast.com",
+    samples: [{ ratio: 1, delivered_bytes: 5_000_000, declared_bytes: 5_000_000, duration_sec: 100, delta_sec_implied: 0 },
+              { ratio: 1, delivered_bytes: 6_000_000, declared_bytes: 6_000_000, duration_sec: 100, delta_sec_implied: 0 }],
+  };
+  assert.equal(deriveRow(base).disposition, "recover", "the byte screen on its own admits this show");
+
+  const decodes = decodeIndex({
+    results: [decodeRow({
+      show_id: "S1", resolved_host: "atelier.flightcast.com", probe_recorded_bytes: 5_000_000,
+      comparison: { verdict: "excess-audio", decoded_sec: 500, last_cue_sec: 100, feed_duration_sec: 100, beyond_transcript_sec: 400, delivered_bytes: 9_000_000 },
+    })],
+  });
+  const row = deriveRow(base, { decodes });
+  assert.equal(row.disposition, "drop");
+  assert.equal(row.screened_disposition, "recover", "the overruled verdict is kept, not erased");
+  assert.equal(row.decided_by, "decode-and-compare");
+  assert.match(row.note, /DECODED/);
+  // The measurement itself is untouched — an override changes the judgement,
+  // never the evidence.
+  assert.equal(row.verdict, "ad-free");
+  assert.equal(row.samples.length, 2);
 });
 
 /* ---------------------------------------------------------- the arithmetic */
@@ -691,16 +1010,24 @@ test("every committed anchorable verdict is reproducible from its own samples", 
     assert.equal(unmeasuredSamples(r.samples), r.unmeasured_samples ?? 0, `${r.title}: unmeasured samples`);
     assert.equal(undersizedSamples(r.samples), r.undersized_samples ?? 0, `${r.title}: undersized samples`);
     assert.equal(constantOffsetBytes(r.samples), r.constant_offset_bytes ?? null, `${r.title}: constant offset`);
-    assert.equal(
-      dispositionOf(r.verdict, {
-        inserted: r.inserted_samples,
-        undersized: r.undersized_samples ?? 0,
-        unmeasured: r.unmeasured_samples ?? 0,
-        varying: r.varying_samples ?? 0,
-      }),
-      r.disposition,
-      `${r.title}: disposition`,
-    );
+    /* THE SCREEN'S VERDICT IS STILL REPRODUCIBLE FROM THE SAMPLES — but on a
+       row the decode overruled it is `screened_disposition` that reproduces,
+       not `disposition`. That is the whole point of committing both: the byte
+       evidence still has to add up on its own terms, and the row has to say so
+       in a field this test can check, or "a download said otherwise" becomes an
+       unfalsifiable escape hatch for any row whose numbers do not work. */
+    const screened = dispositionOf(r.verdict, {
+      inserted: r.inserted_samples,
+      undersized: r.undersized_samples ?? 0,
+      unmeasured: r.unmeasured_samples ?? 0,
+      varying: r.varying_samples ?? 0,
+    });
+    assert.equal(screened, r.screened_disposition ?? r.disposition, `${r.title}: disposition`);
+    if (r.screened_disposition) {
+      assert.equal(r.decided_by, "decode-and-compare", `${r.title}: an overruled row must name what overruled it`);
+      assert.notEqual(r.disposition, r.screened_disposition, `${r.title}: nothing to record if they agree`);
+      assert.match(r.note || "", /DECODED/, `${r.title}: an overruled row must carry the decode's numbers`);
+    }
     assert.equal(maxDeltaSec(r.samples), r.max_delta_sec_implied, `${r.title}: worst delta`);
     assert.equal(adrTier(r.max_delta_sec_implied), r.tier, `${r.title}: ADR-0008 tier`);
 
@@ -903,7 +1230,12 @@ test("the resume path re-derives a carried-forward row rather than copying it", 
      note is filled with `NO_DECLARED_LENGTH_REASON` — rewriting "retry this"
      as "do not retry this" in committed evidence. `fetchNoteOf` has its own
      unit test; only a scan pins that the resume path calls it. */
-  assert.match(src, /deriveRow\(r, \{ note: fetchNoteOf\(r\) \}\)/, "a carried row keeps a note the samples cannot re-derive");
+  assert.match(src, /deriveRow\(r, \{ note: fetchNoteOf\(r\)[^)]*\}\)/, "a carried row keeps a note the samples cannot re-derive");
+  /* AND the decode ledger. A resumed row that skipped it would be re-judged by
+     the ranged-GET screen alone while a freshly probed one was judged by the
+     decode — the same "two standards in one file" failure this test exists to
+     prevent, one instrument further up. */
+  assert.match(src, /deriveRow\(r, \{ note: fetchNoteOf\(r\), decodes \}\)/, "a carried row is re-judged against the decode ledger too");
 });
 
 /* MUTATION: filter `deliveries` on `n > 0` instead of `isPlausibleAudioSize`.

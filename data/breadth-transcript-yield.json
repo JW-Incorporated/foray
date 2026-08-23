@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-08-23T10:22:21.874Z",
+  "generated_at": "2026-08-23T13:32:44.056Z",
   "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is 914 bytes/show (measured), ~16.9MB across 19436 feeds, and stays committable.",
   "source": {
     "breadth_index": [
@@ -61,10 +61,10 @@
       "transcripts": 340781,
       "timed_transcripts": 330840,
       "anchorable_timed_transcripts": 11237,
-      "anchorable_net_of_suspects": 9105,
+      "anchorable_net_of_suspects": 10332,
       "timed_per_show_swept": 367.6,
       "anchorable_per_show_swept": 12.5,
-      "net_anchorable_per_show_swept": 10.1
+      "net_anchorable_per_show_swept": 11.5
     },
     "breadth_explore": {
       "shows_swept": 600,
@@ -95,10 +95,10 @@
       "transcripts": 349986,
       "timed_transcripts": 339290,
       "anchorable_timed_transcripts": 11667,
-      "anchorable_net_of_suspects": 9520,
+      "anchorable_net_of_suspects": 10747,
       "timed_per_show_swept": 226.2,
       "anchorable_per_show_swept": 7.8,
-      "net_anchorable_per_show_swept": 6.3
+      "net_anchorable_per_show_swept": 7.2
     }
   },
   "by_host": [
@@ -637,10 +637,10 @@
       "transcripts": 5461,
       "timed_transcripts": 5461,
       "anchorable_timed_transcripts": 5461,
-      "anchorable_net_of_suspects": 5461,
+      "anchorable_net_of_suspects": 5320,
       "timed_per_show_swept": 780.1,
       "anchorable_per_show_swept": 780.1,
-      "net_anchorable_per_show_swept": 780.1
+      "net_anchorable_per_show_swept": 760
     },
     {
       "host": "ivoox.com",
@@ -1483,10 +1483,10 @@
       "transcripts": 1368,
       "timed_transcripts": 1368,
       "anchorable_timed_transcripts": 1368,
-      "anchorable_net_of_suspects": 0,
+      "anchorable_net_of_suspects": 1368,
       "timed_per_show_swept": 1368,
       "anchorable_per_show_swept": 1368,
-      "net_anchorable_per_show_swept": 0
+      "net_anchorable_per_show_swept": 1368
     },
     {
       "host": "talkpython.fm",
@@ -4236,10 +4236,10 @@
           "transcripts": 126515,
           "timed_transcripts": 125470,
           "anchorable_timed_transcripts": 2519,
-          "anchorable_net_of_suspects": 1151,
+          "anchorable_net_of_suspects": 2519,
           "timed_per_show_swept": 1254.7,
           "anchorable_per_show_swept": 25.2,
-          "net_anchorable_per_show_swept": 11.5
+          "net_anchorable_per_show_swept": 25.2
         },
         {
           "rank_from": 101,
@@ -4255,10 +4255,10 @@
           "transcripts": 7275,
           "timed_transcripts": 7271,
           "anchorable_timed_transcripts": 4502,
-          "anchorable_net_of_suspects": 4314,
+          "anchorable_net_of_suspects": 4173,
           "timed_per_show_swept": 72.7,
           "anchorable_per_show_swept": 45,
-          "net_anchorable_per_show_swept": 43.1
+          "net_anchorable_per_show_swept": 41.7
         },
         {
           "rank_from": 201,
@@ -4341,14 +4341,6 @@
   ],
   "suspect_anchorable": [
     {
-      "show_id": "1737303645",
-      "title": "The Art Bell Archive",
-      "feed_host": "artbellarchive.org",
-      "enclosure_host": "dn720303.ca.archive.org",
-      "reason": "measured-injecting",
-      "timed_transcripts": 1368
-    },
-    {
       "show_id": "1411449986",
       "title": "Auf den Punkt",
       "feed_host": "podigee.io",
@@ -4371,6 +4363,14 @@
       "enclosure_host": "adswizz.podigee-cdn.net",
       "reason": "ad-tech-origin",
       "timed_transcripts": 175
+    },
+    {
+      "show_id": "1291423644",
+      "title": "The Diary Of A CEO with Steven Bartlett",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "reason": "measured-injecting",
+      "timed_transcripts": 141
     },
     {
       "show_id": "1498637804",
@@ -4429,15 +4429,15 @@
       "timed_transcripts": 1
     }
   ],
-  "anchorable_net_of_suspects": 9520,
+  "anchorable_net_of_suspects": 10747,
   "measurement_coverage": {
     "measured_clean": {
-      "shows": 23,
-      "timed_transcripts": 4013
+      "shows": 24,
+      "timed_transcripts": 5381
     },
     "measured_unresolved": {
-      "shows": 12,
-      "timed_transcripts": 5507
+      "shows": 11,
+      "timed_transcripts": 5366
     },
     "inferred": {
       "shows": 0,
@@ -4445,14 +4445,14 @@
     },
     "excluded_measured_injecting": {
       "shows": 8,
-      "timed_transcripts": 1750
+      "timed_transcripts": 523
     },
     "excluded_by_heuristic": {
       "shows": 3,
       "timed_transcripts": 397
     },
-    "anchorable_net_of_suspects": 9520,
-    "measured_pct_of_net": 42.2,
+    "anchorable_net_of_suspects": 10747,
+    "measured_pct_of_net": 50.1,
     "note": "measured_clean is the only bucket a measurement admitted; measured_unresolved was probed and could not be settled, inferred was never probed, and both remain in the net count on the label-never-exclude rule rather than on evidence"
   },
   "shows": [
@@ -38960,7 +38960,7 @@
   "footprint": {
     "bytes_per_show": 914,
     "shows_remaining": 19436,
-    "projected_bytes": 17772641,
+    "projected_bytes": 17772900,
     "projected_mb": 16.9
   }
 }
