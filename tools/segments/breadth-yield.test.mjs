@@ -738,7 +738,21 @@ test("the committed row carries its DAI reason, and committed paths are repo-rel
   assert.equal(summaryRow(rec({})).dai_reason, null, "absent is null, not undefined");
 
   assert.equal(repoRelative("data/transcript-availability.json"), "data/transcript-availability.json");
-  const outside = repoRelative("C:/somewhere/else/entirely/data-local/breadth/tranche-02.json");
-  assert.doesNotMatch(outside, /^[A-Za-z]:/, "no drive letter may reach the committed file");
-  assert.equal(outside, "data-local/breadth/tranche-02.json");
+
+  /* BOTH SHAPES OF "OUTSIDE", because this assertion is itself where the first
+     version went wrong: it only tried a Windows path, which on POSIX is not an
+     absolute path at all, so `relative()` returned it verbatim, the "outside"
+     branch never ran, and the drive letter went straight through. Green on the
+     machine that wrote it, red in CI. `data-local/` is routinely a sibling
+     checkout, so both spellings are real inputs. */
+  for (const outsideRaw of [
+    "C:/somewhere/else/entirely/data-local/breadth/tranche-02.json",
+    "C:\\somewhere\\else\\data-local\\breadth\\tranche-02.json",
+    "/somewhere/else/entirely/data-local/breadth/tranche-02.json",
+  ]) {
+    const outside = repoRelative(outsideRaw);
+    assert.doesNotMatch(outside, /^[A-Za-z]:/, `no drive letter may reach the committed file: ${outsideRaw}`);
+    assert.doesNotMatch(outside, /\\/, "no backslashes either — one spelling in the file");
+    assert.equal(outside, "data-local/breadth/tranche-02.json");
+  }
 });

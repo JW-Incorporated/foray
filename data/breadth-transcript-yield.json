@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-08-23T08:26:24.941Z",
+  "generated_at": "2026-08-23T08:42:43.310Z",
   "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is 913 bytes/show (measured), ~16.9MB across 19436 feeds, and stays committable.",
   "source": {
     "breadth_index": [

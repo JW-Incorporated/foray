@@ -52,6 +52,10 @@ import { hostKeyOf } from "./rank-breadth.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
+/** Either platform's path separator — this module reads paths written on one
+    and renders them on the other. */
+const SEP = /[\\/]/;
+
 /** Shows flagged DAI whose delivered audio was MEASURED byte-identical, so
     their publisher timestamps still anchor.
 
@@ -478,9 +482,24 @@ function readJson(path) {
     outside the tree, which is legitimate — `data-local/` is often a sibling
     checkout — but says so rather than emitting a drive letter. */
 export function repoRelative(p) {
-  const abs = resolvePath(process.cwd(), String(p));
-  const rel = relative(ROOT, abs).split(/[\\/]/).join("/");
-  return rel && !rel.startsWith("../") ? rel : String(p).split(/[\\/]/).slice(-3).join("/");
+  const raw = String(p);
+  const rel = relative(ROOT, resolvePath(process.cwd(), raw)).split(SEP).join("/");
+  /* A DRIVE LETTER SURVIVING `relative()` MEANS "OUTSIDE", and testing for it is
+     what makes this behave the same on both platforms. On POSIX a Windows
+     absolute path is not absolute at all — `resolve()` reads `C:/x` as a
+     directory literally named `C:` under the cwd, so `relative()` hands it back
+     nearly unchanged, it does not begin with `../`, and the drive letter sails
+     into the committed file. That is only reachable when a path recorded on
+     Windows is re-rendered somewhere else, which is precisely the case this
+     function exists for — and it is how the first version of it passed on the
+     machine that wrote it and failed in CI. */
+  const inside = rel && !rel.startsWith("../") && !/^[A-Za-z]:/.test(rel);
+  if (inside) return rel;
+  return raw
+    .split(SEP)
+    .filter((seg) => seg && !/^[A-Za-z]:$/.test(seg))
+    .slice(-3)
+    .join("/");
 }
 
 /** The tranche file carries `arm`; the swept index does not, because the sweep
