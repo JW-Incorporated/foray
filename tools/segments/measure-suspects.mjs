@@ -63,6 +63,11 @@ import { ANCHOR_TIME_TOLERANCE_SEC } from "./merge-segments.mjs";
 import { classifyShow, daiHostIn } from "../refresh/dai.mjs";
 import { fetchFeed, parseFeed, writeJsonAtomic } from "./sweep-transcripts.mjs";
 import { hostKeyOf } from "./rank-breadth.mjs";
+/* The two lists of committed ledgers. They live in a module of their own
+   because `breadth-yield.mjs` needs them too and must not import THIS file —
+   see `ledgers.mjs`'s header. Re-exported below so every existing importer of
+   `GRID_REPORT_RELS` keeps working. */
+import { GRID_REPORT_RELS, MEASURED_REPORT_RELS } from "./ledgers.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -672,18 +677,11 @@ export function decodeOverride(row, index) {
    `regrid-clean.mjs` imports `probeTargets` from this module, so importing it
    back would be a cycle. */
 
-/** Where the probe-grid ledgers live, relative to the repo root.
-
-    TWO FILES BECAUSE THEY ARE TWO POOLS OF ONE INSTRUMENT, not two instruments:
-    #324 gridded the `recover` shows and found none varying; the flightcast pass
-    gridded the six `unresolved` shows #323 left open. Same `probeGrid`, same
-    four-cell floor, same reading. Listing both here rather than merging the
-    artifacts keeps each pass's request count attached to the evidence it
-    bought. */
-export const GRID_REPORT_RELS = Object.freeze([
-  join("data", "breadth-clean-regrid.json"),
-  join("data", "flightcast-settle-regrid.json"),
-]);
+/** Where the probe-grid ledgers live, relative to the repo root — see
+    `ledgers.mjs`, which now owns the list. Re-exported rather than moved out of
+    this module's surface, because `measure-suspects.test.mjs` imports it from
+    here and the list's readers should not have to know which file holds it. */
+export { GRID_REPORT_RELS, MEASURED_REPORT_RELS };
 
 /** The grid ledgers, indexed by show. Later files win on a repeated `show_id`.
 
@@ -1334,10 +1332,24 @@ function parseArgs(argv) {
     repeat: intOrNull("--repeat") ?? 1,
     hosts: String(get("--host", "")).split(",").map((s) => s.trim()).filter(Boolean),
     /* Measurement files whose settled shows this run must not re-probe — see
-       `selectPool`. Defaults to #319's, which is the one that exists; a missing
-       path is skipped rather than fatal, because a checkout that has never run
-       the suspect scan must still be able to run this one. */
-    settled: String(get("--settled", "data/breadth-suspect-inflation.json")).split(",").map((s) => s.trim()).filter(Boolean),
+       `selectPool`. A missing path is skipped rather than fatal, because a
+       checkout that has never run either scan must still be able to run this
+       one.
+
+       DEFAULTS TO EVERY COMMITTED LEDGER, which is a fix rather than a
+       widening. It used to name #319's file alone, so `--pool anchorable`
+       taking its defaults treated the 41 shows #321 settled as unmeasured and
+       re-spent their probes; the pool that has to be skipped is "everything
+       anybody has measured", and that is exactly what `MEASURED_REPORT_RELS`
+       is.
+
+       NARROW IT WITH `--settled` ITSELF WHEN RE-MEASURING IS THE INTENT, and
+       NOT with `--reprobe`, which cannot reach these rows. `--reprobe` only
+       keeps the `--resume` `done` set empty; `settled` removes shows from
+       `selectPool` before that set is ever consulted, so a show settled in a
+       DIFFERENT ledger is filtered out and no amount of `--reprobe` brings it
+       back. Pass the narrower `--settled` list explicitly. */
+    settled: String(get("--settled", MEASURED_REPORT_RELS.join(","))).split(",").map((s) => s.trim()).filter(Boolean),
     /* An interrupted run must not cost the requests it already spent. The
        output is rewritten after every show, so `--resume` reads back what
        landed and skips those show_ids.
@@ -1495,6 +1507,32 @@ async function main() {
     console.log("");
   }
 
+  /* --dry-run STOPS HERE, BEFORE THE FIRST REQUEST, and until #326 it did not.
+     It gated only `writeReport()` at the bottom of the loop, so a "dry" run
+     fetched every feed and spent every ranged GET and then threw the answers
+     away — the most expensive way to ask a question this repo has. The flag was
+     reached for to preview this exact pool and cost ~3 minutes of a publisher's
+     patience for nothing.
+
+     THE NAME ALREADY PROMISED THIS, and its sibling already delivers it:
+     `regrid-clean.mjs --dry-run` prints the pool and returns 0 without opening a
+     socket. Two files in one directory, one flag name, opposite costs, and the
+     expensive one is the one you would reach for to check before spending. A
+     preview that spends the budget is not a preview.
+
+     The pool, its host totals and the `todo` count are all printed above, which
+     is everything the flag was ever used to see. */
+  if (args.dryRun) {
+    for (const s of todo) {
+      console.log(`  ${String(s.timed_transcripts).padStart(5)} timed  ${String(s.enclosure_host).padEnd(28)} ${s.title}`);
+    }
+    console.log(
+      `\n--dry-run: ${todo.length} show(s) would be probed at up to ${args.perShow} episode(s) each` +
+        `${args.repeat > 1 ? ` x${args.repeat} repeats` : ""} — no request made, no file written.`,
+    );
+    return;
+  }
+
   const started = Date.now();
   let requests = 0;
   let feedRequests = 0;
@@ -1617,7 +1655,7 @@ async function main() {
        re-implemented — it is the SIXTH duplicated implementation this repo
        found (#320) and it carries the Windows `EPERM`-on-rename retry that a
        fresh copy would not. */
-    if (!args.dryRun) writeReport();
+    writeReport();
   }
 
   const elapsedMin = (Date.now() - started) / 60000;
@@ -1673,10 +1711,6 @@ async function main() {
     );
   }
 
-  if (args.dryRun) {
-    console.log("\n--dry-run: no files written.");
-    return;
-  }
   writeReport();
   console.log(`SUSPECTS_MEASURED: ${outPath}`);
 

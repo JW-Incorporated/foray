@@ -13,6 +13,8 @@ import { readFileSync } from "node:fs";
 import {
   EPISODES_PER_SHOW,
   answeredCells,
+  /* Not re-listed here: `GRID_REPORT_RELS` comes from `ledgers.mjs` below,
+     which owns it. */
   gridIsInformative,
   poolShows,
   showGridVerdict,
@@ -32,6 +34,7 @@ import {
   methodFor,
   POLICY,
 } from "./regrid-clean.mjs";
+import { GRID_REPORT_RELS } from "./ledgers.mjs";
 
 /** One grid cell, field-for-field as `probeGrid` emits it.
 
@@ -676,45 +679,109 @@ test("rederive re-judges the rows and the summary together", () => {
    MUTATION: edit `summary.audited.timed_transcripts` in the committed JSON by
    hand. Verified failing — and verified changing bytes first, since a
    whitespace-only edit to a CRLF working tree is a no-op (#319). */
-test("the committed re-validation covers exactly the measured_clean bucket", () => {
-  const re = JSON.parse(readFileSync(new URL("../../data/breadth-clean-regrid.json", import.meta.url), "utf8"));
+test("every committed grid ledger is internally sound, and together they cover measured_clean", () => {
   const yieldReport = JSON.parse(
     readFileSync(new URL("../../data/breadth-transcript-yield.json", import.meta.url), "utf8"),
   );
   const clean = yieldReport.measurement_coverage.measured_clean;
 
-  /* RECOMPUTED FROM THE ROWS, not restated from the file's own summary block —
-     `measure-suspects.test.mjs` learned this by mutation: asserting an internal
-     sum identity while never comparing it to the committed block left a
-     hand-edited 999999 green across 39 tests. */
-  assert.deepEqual(summarise(re.results), re.summary, "the summary block is recomputed, not narrated");
+  const ledgers = GRID_REPORT_RELS.map((rel) => ({
+    rel,
+    doc: JSON.parse(readFileSync(new URL(`../../${rel.replaceAll("\\", "/")}`, import.meta.url), "utf8")),
+  }));
 
-  /* Every audited row keeps the grids its verdict was drawn from, so
-     `varies_by_request: false` is falsifiable by a later reader. */
-  for (const r of re.results) {
-    assert.deepEqual(showGridVerdict(r.grids), r.grid, `${r.title}: the verdict is derived from the stored grids`);
-    for (const g of r.grids || []) {
-      assert.equal(g.cells.length, GRID_CELLS, `${r.title}: four cells, two axes — a partial grid is a different instrument`);
-      /* NO BODY WAS READ is pinned upstream, not here: `decode-compare.test.mjs`
-         counts body reads through a stub, which is a real check. An earlier
-         version of this line asserted `!("bytes" in g)` and looked like
-         corroboration — but `probeGrid` cannot emit a `bytes` key under any
-         circumstance, so it passed whether or not audio had been downloaded.
-         Deleted rather than left: an assertion that cannot fail, sitting under
-         a comment about an expired download exception, is worse than no
-         assertion, because it reads as evidence. What this file CAN check about
-         cost is the request count, and it does, below. */
+  /* THE PER-LEDGER CHECKS RUN OVER ALL OF THEM, and until #326 they ran over
+     one. This test asserted an arithmetic identity — audited == measured_clean +
+     varies — that was true only while a single pass covered the whole bucket.
+     It broke the moment a second pool was gridded, and the fix is not to widen
+     the arithmetic but to assert the invariant that was actually meant: every
+     show counted as measured byte-stable has a grid behind it, and nothing the
+     grid condemned is in that bucket. That claim survives any number of passes. */
+  const gridded = new Set();
+  const condemned = new Set();
+
+  for (const { rel, doc: re } of ledgers) {
+    /* RECOMPUTED FROM THE ROWS, not restated from the file's own summary block —
+       `measure-suspects.test.mjs` learned this by mutation: asserting an internal
+       sum identity while never comparing it to the committed block left a
+       hand-edited 999999 green across 39 tests. */
+    assert.deepEqual(summarise(re.results), re.summary, `${rel}: the summary block is recomputed, not narrated`);
+
+    /* Every audited row keeps the grids its verdict was drawn from, so
+       `varies_by_request: false` is falsifiable by a later reader. */
+    for (const r of re.results) {
+      gridded.add(String(r.show_id));
+      if (r.grid.status === "varies") condemned.add(String(r.show_id));
+      assert.deepEqual(showGridVerdict(r.grids), r.grid, `${r.title}: the verdict is derived from the stored grids`);
+      for (const g of r.grids || []) {
+        assert.equal(g.cells.length, GRID_CELLS, `${r.title}: four cells, two axes — a partial grid is a different instrument`);
+        /* NO BODY WAS READ is pinned upstream, not here: `decode-compare.test.mjs`
+           counts body reads through a stub, which is a real check. An earlier
+           version of this line asserted `!("bytes" in g)` and looked like
+           corroboration — but `probeGrid` cannot emit a `bytes` key under any
+           circumstance, so it passed whether or not audio had been downloaded.
+           Deleted rather than left: an assertion that cannot fail, sitting under
+           a comment about an expired download exception, is worse than no
+           assertion, because it reads as evidence. What this file CAN check about
+           cost is the request count, and it does, below. */
+      }
     }
   }
 
-  /* THE RECONCILIATION. If these disagree, either the audit missed shows or the
-     coverage file moved underneath it, and both are reasons to distrust every
-     number in the PR body. */
-  const audited = summarise(re.results).audited;
-  const varies = summarise(re.results).varies_by_request;
-  assert.equal(audited.shows, clean.shows + varies.shows, "audited pool == the measured_clean bucket it was drawn from");
-  assert.equal(audited.timed_transcripts, clean.timed_transcripts + varies.timed_transcripts);
+  /* THE RECONCILIATION, and it is the whole point of #326's design change.
+     `measured_clean` is the bucket the founder's number rests on, and a row can
+     only be in it because a measurement admitted it. Every one of those rows
+     must have a grid behind it — otherwise the corpus is once again carrying
+     transcripts whose delivery nobody asked about, which is exactly the debt
+     #324 and #325 were spent repaying.
+
+     Counted in SHOWS rather than summed in transcripts on purpose: the ledgers
+     audit overlapping pools (#325 re-gridded shows #323 had left unresolved, not
+     shows #324 had cleared), so a transcript total across ledgers double-counts
+     while a set of show_ids does not. */
+  const cleanIds = measuredCleanShowIds(yieldReport);
+  assert.equal(cleanIds.size, clean.shows, "the bucket recomputed from the rows is the bucket the file reports");
+  const ungridded = [...cleanIds].filter((id) => !gridded.has(id));
+  assert.deepEqual(ungridded, [], "every measured_clean show has a probe grid behind it");
+
+  /* AND THE GRID'S CONDEMNATIONS STUCK. A show the grid caught assembling per
+     request must not be sitting in the bucket that means "measured byte-stable"
+     — that is the one direction `gridOverride` exists to enforce, and the one
+     that moves the number the founder is handed. */
+  for (const id of condemned) {
+    assert.ok(!cleanIds.has(id), `show ${id}: condemned by the grid but counted as measured clean`);
+  }
+
+  /* THE OTHER DIRECTION, which the arithmetic identity used to cover for free
+     and set membership does not: nothing was gridded that the report has never
+     heard of. A ledger row for a show absent from `y.shows` is four requests
+     per episode spent on something outside the corpus — either a stale pool or
+     a show that has since been dropped from the sweep — and it would otherwise
+     sit in `data/` looking like evidence for a number it cannot affect. */
+  const known = new Set((yieldReport.shows || []).map((s) => String(s.show_id)));
+  assert.deepEqual([...gridded].filter((id) => !known.has(id)), [], "every gridded show is one the report covers");
 });
+
+/** The `measured_clean` show_ids, rebuilt from the committed rows the same way
+    `measurementCoverage` builds the bucket — anchorable, not netted out as a
+    suspect, disposition `recover`. Recomputed rather than read off the yield
+    file's summary so the two can disagree and be caught. */
+function measuredCleanShowIds(yieldReport) {
+  const disposition = new Map();
+  for (const p of yieldReport.source.measured || []) {
+    const doc = JSON.parse(readFileSync(new URL(`../../${p.replaceAll("\\", "/")}`, import.meta.url), "utf8"));
+    for (const r of doc.results || []) {
+      if (r?.show_id != null && r.disposition) disposition.set(String(r.show_id), r.disposition);
+    }
+  }
+  const suspect = new Set((yieldReport.suspect_anchorable || []).map((s) => String(s.show_id)));
+  const out = new Set();
+  for (const s of yieldReport.shows || []) {
+    const id = String(s.show_id);
+    if (s.anchorable && !suspect.has(id) && disposition.get(id) === "recover") out.add(id);
+  }
+  return out;
+}
 
 /* MUTATION: flip one stored cell's `total` in the committed flightcast file so
    a `stable` row's grid disagrees with its own evidence; and separately, edit
