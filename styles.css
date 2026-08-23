@@ -620,31 +620,165 @@ body.fp-open.fp-expanded { padding-bottom: 340px; }
   padding: 10px 0 12px;
   margin-bottom: 8px;
 }
+/* ---------- SegmentStrip (#128) ----------
+   The signature element: one Foray at a glance. Structure and every class name
+   below are produced by player/segment-strip.js — read that file's header
+   before changing any of this, because the geometry is the argument.
+
+   THE SEAM IS NOT A COLOUR. Consecutive segments from the same episode butt
+   together with a 1px hairline and are rounded on the outside only, so a run of
+   them reads as ONE CAPSULE. A cross-episode seam is a real gap. Greyscale the
+   whole strip and "seven episodes, stitched, in this order" still reads, which
+   is the requirement: hue names WHICH show and never carries the distinction on
+   its own.
+
+   THE PALETTE IS MEASURED. Each tone is a graphical object on --bg, so WCAG
+   1.4.11 wants 3:1. The dark set is the mockup's (docs/ux/foray-mockup.jsx) and
+   ranges 4.9:1 to 8.4:1 on #0d1117. Those same values only reach 2.1:1 on the
+   light theme's #faf7f2, so light gets darkened variants, each measured to at
+   least 3.25:1. Changing a hex here without re-measuring both themes is how the
+   strip becomes invisible for half the users on a sunny morning. */
+:root {
+  --seg-c0: #2A9D8F; --seg-c1: #E76F51; --seg-c2: #8E6FD8; --seg-c3: #4C8DF5;
+  --seg-c4: #D9A441; --seg-c5: #5FB4C9; --seg-c6: #C46BAE; --seg-c7: #7BA05B;
+  --seg-narration: #A78BFA;
+  /* The narration hatch, and it always pushes AWAY from the page rather than
+     towards it. A hatch is paint over the tone, so the stripe is what the eye
+     actually measures — and a stripe drawn towards the background undoes the
+     contrast the palette above was tuned for. Measured: on the dark theme a
+     white stripe over #A78BFA is 9.7:1 against #0d1117 while a black one at the
+     alpha this shipped with was 2.8:1; on the light theme the polarity reverses,
+     and a white stripe over #9179d9 is 2.0:1 on #faf7f2 while a black one is
+     6.6:1. So there is one stripe per theme, in the direction that raises the
+     ratio, alternating with the bare tone. */
+  --seg-hatch: rgba(255, 255, 255, 0.30);
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --seg-c0: #29988b; --seg-c1: #d7674b; --seg-c2: #8e6fd8; --seg-c3: #4987eb;
+    --seg-c4: #ab8233; --seg-c5: #4d92a3; --seg-c6: #c26aac; --seg-c7: #719354;
+    --seg-narration: #9179d9;
+    --seg-hatch: rgba(0, 0, 0, 0.34);
+  }
+}
+
 /* The strip is a scrubber: a click anywhere on it is a position in the hour,
    and each bar is one segment, sized by its share of the runtime. */
-.fy-strip { display: flex; gap: 2px; width: 100%; height: 10px; cursor: pointer; }
+.fy-strip {
+  display: flex;
+  gap: 1px;                 /* the WITHIN-episode hairline */
+  width: 100%;
+  height: var(--strip-h);
+  cursor: pointer;
+  /* The base values are the fallback for a strip mounted with no size class;
+     each size below restates all three, because the seam and the floor are only
+     legible in proportion to the height. */
+  --strip-h: 10px;
+  --seam: 5px;              /* the CROSS-episode gap */
+  /* NO BAR MAY BE NARROWER THAN A GAP, at any size. A 14 s narrator
+     bridge inside a 51-minute Foray sits on this floor, and at a 3px floor
+     against a 6px seam it read as a WIDER-THAN-USUAL GAP rather than as an
+     item — narration rendering as absence, which is the one thing the strip
+     must not do to it. The floor must beat the WHOLE break, which is
+     `gap` + `--seam`, not `--seam` alone. Measured in Chrome at a 362px strip
+     (a 390px phone less the page's padding) rather than reasoned about. */
+  --seg-min: 7px;
+}
+/* Three sizes (#128): a list row, a card, the player. The seam scales with the
+   height so the break still reads on a 5px strip, where a 5px gap would be a
+   square hole and a 1px one would be the hairline again. */
+.fy-strip--sm { --strip-h: 5px; --seam: 3px; --seg-min: 5px; }
+.fy-strip--md { --strip-h: 8px; --seam: 4px; --seg-min: 6px; }
+.fy-strip--lg { --strip-h: 12px; --seam: 5px; --seg-min: 7px; }
 .fy-seg {
   flex-basis: 0;
-  border-radius: 2px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  /* A 6 s narrator bridge inside a 51-minute Foray is 0.2% of the row. Floored
+     here rather than in the flex units, because a floor expressed as flex would
+     have to be paid for by distorting every other bar. */
+  min-width: var(--seg-min);
+  /* The fallback tone is --text-dim, not --surface-2: a bar with no tone class
+     is what an older cached module's plain markup renders (see mountForayStrip
+     in app.js), and --surface-2 is 1.2:1 against the page — an invisible strip.
+     The bordered bar this replaced was legible because of its border, which the
+     coloured version has no use for. */
+  background: var(--seg-tone, var(--text-dim));
   overflow: hidden;
-  transition: border-color 0.25s, opacity 0.25s;
+  /* FULL OPACITY WHILE BROWSING, not the mockup's 0.9. The mockup is dark-only,
+     and 0.9 over the light theme's #faf7f2 drops eight of the nine tones under
+     3:1 — the contrast the palette above is measured for is the contrast of the
+     colour as PAINTED, so a state that composites it away is a state that fails
+     WCAG 1.4.11. The 0.28 below is the exception and is deliberate: an upcoming
+     bar is the unfilled part of a progress meter, carrying no information the
+     played and current bars do not. */
+  opacity: 1;
+  transition: opacity 0.25s;
 }
-/* The bar the listener is inside fills left to right as it plays; the bars
-   behind them are full and the ones ahead are empty. The width is written as a
-   DOM property in app.js, never as a style attribute — CSP `style-src 'self'`.
-   No transition on width: this moves 4x a second and an easing curve would
-   lag the audio. */
-.fy-seg-fill { display: block; height: 100%; width: 0; background: var(--text-dim); }
-.fy-seg.is-played { border-color: var(--text-dim); }
-.fy-seg.is-playing { border-color: var(--accent); }
-.fy-seg.is-playing .fy-seg-fill { background: var(--accent); }
+.fy-seg.fy-t0 { --seg-tone: var(--seg-c0); }
+.fy-seg.fy-t1 { --seg-tone: var(--seg-c1); }
+.fy-seg.fy-t2 { --seg-tone: var(--seg-c2); }
+.fy-seg.fy-t3 { --seg-tone: var(--seg-c3); }
+.fy-seg.fy-t4 { --seg-tone: var(--seg-c4); }
+.fy-seg.fy-t5 { --seg-tone: var(--seg-c5); }
+.fy-seg.fy-t6 { --seg-tone: var(--seg-c6); }
+.fy-seg.fy-t7 { --seg-tone: var(--seg-c7); }
+/* The capsule. Rounded on the outside of a run only, so the ends of an episode
+   are shaped and its internal cuts are not. */
+.fy-seg.is-run-start {
+  margin-left: var(--seam);
+  border-top-left-radius: 3px; border-bottom-left-radius: 3px;
+}
+.fy-seg.is-run-end { border-top-right-radius: 3px; border-bottom-right-radius: 3px; }
+.fy-seg:first-child { margin-left: 0; }
+/* A narrator bridge is ours, not tape (#287). Violet AND hatched: at 5px tall a
+   3px sliver cannot carry a hue difference, and the hatch survives greyscale,
+   which the seam rule above requires of every distinction that matters. */
+.fy-seg--narration {
+  --seg-tone: var(--seg-narration);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 2px,
+    var(--seg-hatch) 2px 4px
+  );
+}
+/* Position (#128): past is full-opacity colour, upcoming is dimmed, current is
+   full-opacity with a moving fill (and a ring, when audio is actually running).
+   Only inside `.has-position` — with nobody listening every bar stays at full
+   opacity and the strip is a picture of the Foray, not a progress meter. */
+.fy-strip.has-position .fy-seg { opacity: 0.28; }
+.fy-strip.has-position .fy-seg.is-played,
+.fy-strip.has-position .fy-seg.is-here { opacity: 1; }
+/* The ring, not a hue change: it is what marks the current bar for anyone who
+   cannot separate the tones. `outline` rather than `border` because a border
+   would resize the bar and shift every proportion by a pixel. On `.is-playing`
+   rather than `.is-here` on purpose — the ring means audio is running, and a
+   ring around a stopped Foray's resume point would be the page claiming to play. */
+.fy-seg.is-playing {
+  position: relative;
+  z-index: 1;
+  outline: 1.5px solid var(--text);
+  outline-offset: 1px;
+}
+/* The bar the listener is inside fills left to right as it plays. The width is
+   written as a DOM property in app.js and segment-strip.js, never as a style
+   attribute — CSP `style-src 'self'`. No transition on width: this moves 4x a
+   second and an easing curve would lag the audio.
+
+   HIDDEN ON EVERY OTHER BAR. app.js's painter writes 100% onto each past bar,
+   which used to be the whole progress display; now that a bar carries its
+   show's colour, a filled past bar would paint over the half of the strip that
+   has already made the element's point. */
+.fy-seg-fill { display: block; height: 100%; width: 0; background: var(--text); opacity: 0; }
+/* `.is-here`, not `.is-playing`. On a cold load with a stored position the page
+   knows which bar the listener is inside and paints its width, but nothing is
+   playing — keying the fill on `is-playing` made that bar the one dark, empty
+   thing on a page whose banner says "Jump back in at 19:40". */
+.fy-seg.is-here .fy-seg-fill { opacity: 0.78; }
 /* The 2.0 s seam beat between two unbridged segments: the strip holds still at
    a boundary and the next bar has not started filling. Said quietly on purpose
    — the silence is the message, and a bar flashing over the top of it would be
    competing with the thing it is trying to explain. */
-.fy-strip.is-seam .fy-seg.is-playing { border-color: var(--text-dim); }
+.fy-strip.is-seam .fy-seg.is-playing { outline-color: var(--text-dim); }
+@media (prefers-reduced-motion: reduce) { .fy-seg { transition: none; } }
 .fy-times {
   display: flex; justify-content: space-between;
   font-size: 0.72rem; color: var(--text-dim);

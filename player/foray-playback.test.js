@@ -1849,6 +1849,22 @@ test("a stored position makes the cold press a resume, and Start over clears it"
   assert.ok(dom.rows[8].classList.contains("is-played"), "everything before the resume point is behind them");
   assert.ok(!dom.rows[9].classList.contains("is-played"));
 
+  /* THE STRIP HAS TO SHOW THE SAME THING (#128). The bar the listener is inside
+     is `is-here`; nothing is `is-playing`, because nothing is playing. Those two
+     were one class until the strip carried show colours, and merging them cost
+     exactly this case: `has-position` dims every bar that is neither played nor
+     here, and the fill inside a bar only shows on the bar the listener is in, so
+     the resume point rendered as the one dark, empty bar on a page whose banner
+     offers to jump back into it.
+
+     Mutation: in `paintForay`, drop the `is-here` toggle. Both assertions below
+     fail, and the page contradicts its own resume banner. */
+  assert.ok(dom.el("fy-strip").classList.contains("has-position"), "a stored position IS a position");
+  assert.ok(dom.segs[9].classList.contains("is-here"), "the strip must mark the bar being resumed into");
+  assert.equal(dom.segs[9].classList.contains("is-playing"), false, "nothing is playing yet");
+  assert.ok(dom.segs[8].classList.contains("is-played"));
+  assert.equal(dom.segs[10].classList.contains("is-here"), false);
+
   await dom.el("fy-play").click();
   const opts = bridge.calls.find((c) => c.name === "playForay").args[1];
   assert.equal(opts.startElapsedSec, 1180, "the press must resume, not restart");
