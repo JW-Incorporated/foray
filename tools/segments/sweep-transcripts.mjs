@@ -49,6 +49,24 @@
    feeds. The breadth tier (19,787 shows) is hours of wall-clock; checkpointing
    is what makes that fine.
 
+   ...AND `--max-episode-rows` IS WHAT MAKES THAT CHECKPOINT SURVIVABLE (#114).
+   The checkpoint is rewritten in full after every show, so its cost is the
+   index size, and the index size is driven by EPISODE ROWS rather than by
+   shows. On the curated 220 that is 7.7MB and the quadratic is invisible. On
+   breadth it is not: the first 20 shows of the ranked tranche are iHeart feeds
+   averaging 2,900 transcribed episodes each and produced a 55MB index — 951
+   bytes per row — so a 500-show run rewrites tens of GB and a full-catalogue
+   run would hand `JSON.stringify` a string longer than V8 will allocate. The
+   run does not get slow, it throws.
+
+   The cap bounds ROWS, never COUNTS: `episodes_with_transcript` and friends are
+   computed over every episode in the feed before anything is sliced, so the
+   yield numbers are exact at any cap. What a cap costs is fetch targets, and
+   `episode_rows_available`/`episode_rows_dropped` on each record say exactly
+   how many were dropped, so a show worth fetching deeper is one re-sweep away
+   rather than a silent ceiling. Default is Infinity — the curated index is
+   byte-identical with the flag absent.
+
    POLITENESS. Concurrency 6 across shows, plus a per-host minimum interval, so
    the many shows sharing one CDN cannot burst it. Honest User-Agent with a
    contact address, backoff that honours `Retry-After` on 429/5xx, hard timeout.
@@ -56,7 +74,7 @@
    Usage:
      node tools/segments/sweep-transcripts.mjs
        [--limit N] [--concurrency 6] [--all-episodes] [--retry-failed] [--reset]
-       [--catalog PATH] [--out PATH] [--progress PATH]
+       [--max-episode-rows N] [--catalog PATH] [--out PATH] [--progress PATH]
 
    Env overrides (mirrors tools/refresh/'s cloud-path-split convention):
      CATALOG_PATH, AVAILABILITY_PATH, TRANSCRIPT_PROGRESS_PATH                */
@@ -355,7 +373,7 @@ export function summarizeShow(show, episodes) {
     transcript nor chapters, so storing them would inflate a 2MB index to 12MB
     of rows no downstream lane can do anything with. Counts for every episode
     are kept regardless, which is what the coverage numbers are computed from. */
-export async function sweepShow(show, { allEpisodes = false, log = () => {} } = {}) {
+export async function sweepShow(show, { allEpisodes = false, maxEpisodeRows = Infinity, log = () => {} } = {}) {
   const base = {
     show_id: show.show_id ?? String(show.apple_collection_id),
     apple_collection_id: show.apple_collection_id ?? null,
@@ -367,10 +385,15 @@ export async function sweepShow(show, { allEpisodes = false, log = () => {} } = 
     const xml = await fetchFeed(show.feed_url, { log });
     const { episodes, sample_enclosure_url } = parseFeed(xml);
     const dai = await resolveDai(sample_enclosure_url);
-    const kept = allEpisodes ? episodes : episodes.filter((e) => e.transcript_url || e.chapters_url);
+    const eligible = allEpisodes ? episodes : episodes.filter((e) => e.transcript_url || e.chapters_url);
+    // Newest first, because feeds are: a truncated tail is the oldest episodes,
+    // which are the likeliest to have a dead transcript URL anyway.
+    const kept = Number.isFinite(maxEpisodeRows) ? eligible.slice(0, Math.max(0, maxEpisodeRows)) : eligible;
     return {
       ...summarizeShow({ ...base, status: "ok", error: null, error_code: null, ...dai }, episodes),
       episode_scope: allEpisodes ? "all" : "with_transcript_or_chapters",
+      episode_rows_available: eligible.length,
+      episode_rows_dropped: eligible.length - kept.length,
       episodes: kept,
     };
   } catch (e) {
@@ -457,6 +480,7 @@ function parseArgs(argv) {
     limit: Number(get("--limit", "Infinity")),
     concurrency: Math.max(1, Number(get("--concurrency", "6"))),
     allEpisodes: argv.includes("--all-episodes"),
+    maxEpisodeRows: Number(get("--max-episode-rows", "Infinity")),
     retryFailed: argv.includes("--retry-failed"),
     reset: argv.includes("--reset"),
     catalog: get("--catalog", null),
@@ -491,7 +515,11 @@ async function main() {
     for (;;) {
       const show = queue.shift();
       if (!show) return;
-      const record = await sweepShow(show, { allEpisodes: args.allEpisodes, log: (m) => console.log(m) });
+      const record = await sweepShow(show, {
+        allEpisodes: args.allEpisodes,
+        maxEpisodeRows: args.maxEpisodeRows,
+        log: (m) => console.log(m),
+      });
       progress.shows[record.show_id] = record;
       progress.updated_at = new Date().toISOString();
       writeJsonAtomic(progressPath, progress); // checkpoint after EVERY show — this is the resume guarantee
@@ -517,6 +545,7 @@ async function main() {
     source_catalog: catalogPath.slice(ROOT.length + 1).replace(/\\/g, "/"),
     policy: "availability index only — transcript bodies are never fetched or stored (issue #104)",
     episode_scope: args.allEpisodes ? "all" : "with_transcript_or_chapters",
+    max_episode_rows: Number.isFinite(args.maxEpisodeRows) ? args.maxEpisodeRows : null,
     summary,
     shows: records,
   });

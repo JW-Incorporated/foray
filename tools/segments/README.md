@@ -12,6 +12,8 @@ step, so any of it runs from a bare checkout in a keyless GitHub Action.
 | `transcript-coverage.mjs` | Joins the availability index to `data/discover.json` — the coverage number (#104) | no |
 | `sweep-transcripts.mjs` | Which episodes *advertise* a transcript, indexed per show (#104) | reads feeds |
 | `fetch-transcripts.mjs` | Fetches and normalises the free, anchorable transcripts (#104) | reads transcripts |
+| `rank-breadth.mjs` | Which of the 19,436 uncurated feeds to sweep first (#114) | no |
+| `breadth-yield.mjs` | What a breadth tranche returned per request, and what it projects to (#114) | no |
 | `politeness.mjs` | The per-host gate both fetchers share: throttle, backoff, `Retry-After` | n/a |
 
 The two fetchers are the only ones that touch the network, and they are polite
@@ -125,6 +127,95 @@ in #255; only `data/transcript-digests.json` is committed — hash, cue count an
 covered span per transcript, enough to notice a publisher silently rewriting a
 transcript we already cut segments from, without putting ~30MB of third-party
 text into git history. Re-runs skip what is already on disk.
+
+## `rank-breadth.mjs` and `breadth-yield.mjs` — running the sweep wide
+
+The sweep will read any catalogue. #313 gave it the 220 curated shows;
+`data/catalog-breadth.json` holds 19,436 more uncurated feeds, and the budget
+that binds is polite requests rather than time, so the ORDER is the decision.
+These two files are that decision and its scorecard. Neither touches the
+network.
+
+```
+node tools/segments/rank-breadth.mjs --report                 # the priors, no file
+node tools/segments/rank-breadth.mjs --exploit 300 --explore 200   --host-cap 40 --out data-local/breadth/tranche-01.json
+
+CATALOG_PATH=data-local/breadth/tranche-01.json AVAILABILITY_PATH=data-local/breadth/availability-breadth.json TRANSCRIPT_PROGRESS_PATH=data-local/breadth/progress.json   node tools/segments/sweep-transcripts.mjs --concurrency 4 --max-episode-rows 200
+
+node tools/segments/breadth-yield.mjs --out data/breadth-transcript-yield.json
+```
+
+**Rank on the hosting platform, not the genre.** A `<podcast:transcript>` tag
+is a feature of the platform the publisher pays for, not a choice the publisher
+makes per episode, so the feed's host predicts it far better than the subject
+does. Measured over the 219 curated feeds we have read: omnycontent 10 of 12
+shows carry timed transcripts, buzzsprout 3 of 8, transistor 3 of 4 — and
+megaphone, simplecast, art19 and acast are 87 shows with **zero** between them,
+which is 26% of the breadth catalogue that can be deprioritised on evidence.
+Genre is close to noise by comparison: `data/breadth-classification.json` files
+Odd Lots under `sports/soccer`, so a topic-weighted rank is a rank on a
+classifier's mistakes. `TOPIC_WEIGHT` is 0 and says so.
+
+**The priors are recomputed, never listed.** `hostPriors()` reads whatever
+availability indexes it is handed, so each tranche is ranked on what the last
+one measured, and a platform stops being guessed at the moment it is swept.
+
+**Two arms, because one cannot answer the question.** A purely greedy tranche
+measures the shows we predicted would win, so its yield is an upper bound and
+not a population estimate — and "are the remaining 19,000 feeds worth the
+requests?" is a question about the population. So the tranche is a ranked
+EXPLOIT head plus a uniform-random EXPLORE arm over the same pool, disjoint and
+labelled, and `breadth-yield.mjs` refuses to print a pooled headline without the
+split. The sampling is seeded so an interrupted run resumes onto the same
+tranche rather than a fresh one.
+
+**`--host-cap` is not tuning.** Ranked purely on expected yield the first 300
+rows of the real catalogue are 300 omnycontent feeds: one platform, chosen on a
+sample of twelve, discovering nothing about the other 6,000 shows on platforms
+we have never read. The cap is what turns the exploit arm from "harvest the one
+host we know" into "harvest it and price the others".
+
+**Supply and anchorability are different numbers, and on breadth they diverge
+by 45x.** Transcripts cluster on the big networks and the big networks inject
+ads, so a timed transcript on a DAI show describes a timeline that is not the
+one we receive (ADR-0007). Tranche 1 read 500 feeds, found **178,191** timed
+transcripts and **3,952** anchorable ones. The report prints both, and counts an
+unresolved DAI verdict as *not* anchorable — an unknown reported as a win is how
+a yield rate becomes a promise the corpus cannot keep.
+
+**And "not DAI" mostly means "unrecognised".** Every anchorable show in tranche
+1 carries `dai_reason: "unknown"` — none was positively verified as static.
+`suspectAnchorable()` reports the rows where that verdict is contradicted by
+something already known, which on tranche 1 was **2,821 of the 3,952**: five
+Spreaker shows (a platform that IS on the DAI host list, whose enclosures
+redirect to an anonymous CloudFront distribution that is not, so following the
+redirect discards the identification) and two shows served from
+`adswizz.podigee-cdn.net`. **1,131 survive both checks.** Labelled, never
+excluded — `isAnchorable` stays identical to the predicate
+`fetch-transcripts.mjs` selects on, and the suite pins that they agree.
+
+**What gets committed is one row per SHOW.** Episode rows measure ~951 bytes
+each. Tranche 1's 500 feeds advertised **187,049** rows worth keeping — ~170MB
+uncapped, and ~6.4GB projected across the whole catalogue. Capped at 200 rows a
+show the same index is 16MB, which is what `data-local/` actually holds.
+
+Bodies and episode rows stay in gitignored `data-local/` (#255's rule).
+`data/breadth-transcript-yield.json` carries counts, the DAI verdict and the
+arm, and nothing that scales with episodes: **measured at 352KB for 500 shows,
+so ~13.4MB if every feed in the catalogue is eventually swept.** That is a size
+`data/` can hold. The episode-row shape is not, at any cap.
+
+### `--max-episode-rows`, and why the sweep needed it
+
+`sweep-transcripts.mjs` rewrites its checkpoint in full after every show. On the
+curated 220 that is a 7.7MB write and the quadratic is invisible; on breadth it
+is not, because the index is driven by episode rows and the ranked tranche's
+head is iHeart feeds averaging 2,900 transcribed episodes each. Uncapped, a
+full-catalogue run hands `JSON.stringify` a string longer than V8 will allocate
+— it throws rather than slowing down. The cap bounds rows and never counts:
+every yield number is computed over the whole feed before anything is sliced,
+and `episode_rows_available` / `episode_rows_dropped` record exactly what was
+left behind. It defaults to Infinity, so the curated index is unchanged.
 
 ## `merge-segments.mjs`
 

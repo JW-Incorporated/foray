@@ -33,6 +33,7 @@ import {
   pickTranscript,
   summarizeRun,
   summarizeShow,
+  sweepShow,
   writeJsonAtomic,
 } from "./sweep-transcripts.mjs";
 
@@ -308,4 +309,96 @@ test("the committed index carries no transcript bodies", () => {
     .split("\n")
     .filter((l) => !l.trimStart().startsWith("*") && /\bfetch\w*\(/.test(l) && /transcript/i.test(l));
   assert.deepEqual(fetchLinesMentioningTranscripts, []);
+});
+
+/* ------------------------------------------------- --max-episode-rows (#114)
+
+   These four are the only tests in this file that exercise `sweepShow`, and
+   they still touch no network: `globalThis.fetch` is replaced with a stub that
+   returns a fixture, and the fixture declares no `<enclosure>`, which is what
+   makes `resolveDai` return "no enclosure url in feed" without a request.
+
+   The cap exists because the checkpoint is rewritten in full after every show,
+   so its cost is the whole index, and the index is driven by episode ROWS. The
+   first 20 shows of the ranked breadth tranche produced 55MB at 951 bytes per
+   row; a full-catalogue run at that shape hands `JSON.stringify` a string
+   longer than V8 will allocate and throws rather than slowing down. */
+
+const manyItems = (n) =>
+  Array.from(
+    { length: n },
+    (_, i) => `<item><title>Ep ${i}</title><guid>ep-${i}</guid>
+      <podcast:transcript url="https://cdn.example/${i}.vtt" type="text/vtt"/></item>`,
+  ).join("");
+
+async function withStubbedFeed(xml, fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: { get: () => null },
+    text: async () => xml,
+  });
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+/* MUTATION: apply the cap to `episodes` before `summarizeShow` instead of
+   after. The counts are then computed over the truncated list, so a 2,900-
+   transcript show reports 200 and every yield number in the run — the one
+   number the breadth sweep exists to produce — is silently floored at the cap.
+   Verified failing. */
+test("--max-episode-rows caps stored rows and never the counts", async () => {
+  await withStubbedFeed(feed(manyItems(500)), async () => {
+    const rec = await sweepShow({ show_id: "capped", feed_url: "https://feeds.cap-test-a.example/f" }, { maxEpisodeRows: 50 });
+    assert.equal(rec.status, "ok");
+    assert.equal(rec.episodes_total, 500, "counts must be computed over the whole feed");
+    assert.equal(rec.episodes_with_transcript, 500);
+    assert.equal(rec.episodes_with_timed_transcript, 500);
+    assert.equal(rec.episodes.length, 50, "only the rows are capped");
+  });
+});
+
+/* MUTATION: omit `episode_rows_available`/`episode_rows_dropped`. A truncated
+   show then looks identical to a show that only ever had 50 transcripts, so a
+   later fetch pass cannot tell "this show has no more" from "we stopped
+   recording" — a silent ceiling, which is the failure mode this pipeline's
+   other files go out of their way to avoid. Verified failing. */
+test("a truncated show says how much it dropped", async () => {
+  await withStubbedFeed(feed(manyItems(500)), async () => {
+    const rec = await sweepShow({ show_id: "counted", feed_url: "https://feeds.cap-test-b.example/f" }, { maxEpisodeRows: 50 });
+    assert.equal(rec.episode_rows_available, 500);
+    assert.equal(rec.episode_rows_dropped, 450);
+  });
+});
+
+/* MUTATION: default `maxEpisodeRows` to some finite number rather than
+   Infinity. Every existing caller — including the curated sweep that produces
+   the committed `data/transcript-availability.json` — would then silently lose
+   episode rows on the next run, and `transcript-coverage.mjs`'s join would
+   start reporting a collapse it would attribute to the publishers.
+   Verified failing. */
+test("the cap is absent by default, so existing runs are unchanged", async () => {
+  await withStubbedFeed(feed(manyItems(300)), async () => {
+    const rec = await sweepShow({ show_id: "uncapped", feed_url: "https://feeds.cap-test-c.example/f" });
+    assert.equal(rec.episodes.length, 300);
+    assert.equal(rec.episode_rows_dropped, 0);
+    assert.equal(rec.episode_rows_available, 300);
+  });
+});
+
+/* MUTATION: `eligible.slice(-maxEpisodeRows)` instead of `slice(0, n)`. Feeds
+   are newest-first, so that keeps the OLDEST episodes — the ones likeliest to
+   have a transcript URL the publisher has since taken down — and quietly
+   maximises the 404 rate of the fetch stage that reads these rows.
+   Verified failing. */
+test("the rows kept are the newest ones the feed lists first", async () => {
+  await withStubbedFeed(feed(manyItems(20)), async () => {
+    const rec = await sweepShow({ show_id: "order", feed_url: "https://feeds.cap-test-d.example/f" }, { maxEpisodeRows: 3 });
+    assert.deepEqual(rec.episodes.map((e) => e.guid), ["ep-0", "ep-1", "ep-2"]);
+  });
 });
