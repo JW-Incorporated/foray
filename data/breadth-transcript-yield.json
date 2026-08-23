@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-08-23T04:41:14.733Z",
+  "generated_at": "2026-08-23T05:04:44.188Z",
   "policy": "summary rows only — one row per SHOW, never per episode. Episode rows and transcript bodies live in data-local/ (#255). At ~951 bytes/episode-row a full-catalogue episode index is GBs; this shape is 734 bytes/show (measured), ~13.6MB across 19436 feeds, and stays committable.",
   "source": {
     "breadth_index": "data-local/breadth/availability-breadth.json",
@@ -16,16 +16,16 @@
       "shows_failed": 1,
       "shows_with_timed": 27,
       "shows_with_timed_pct": 12.3,
-      "shows_anchorable": 10,
+      "shows_anchorable": 15,
       "shows_dai_unresolved": 0,
       "episodes_total": 86923,
       "transcripts": 8070,
       "timed_transcripts": 7571,
-      "anchorable_timed_transcripts": 587,
-      "anchorable_net_of_suspects": 587,
+      "anchorable_timed_transcripts": 676,
+      "anchorable_net_of_suspects": 676,
       "timed_per_show_swept": 34.4,
-      "anchorable_per_show_swept": 2.7,
-      "net_anchorable_per_show_swept": 2.7
+      "anchorable_per_show_swept": 3.1,
+      "net_anchorable_per_show_swept": 3.1
     },
     "breadth_exploit": {
       "shows_swept": 300,

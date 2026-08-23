@@ -474,7 +474,7 @@ one would manufacture the finding rather than measure it.
 
 | arm | feeds | with ≥1 timed | timed | per feed | anchorable | per feed | **net** | **per feed** |
 |---|---|---|---|---|---|---|---|---|
-| baseline (curated 220) | 220 | 27 (12.3%) | 7,571 | 34.4 | 587 | 2.7 | 587 | **2.7** |
+| baseline (curated 220) | 220 | 27 (12.3%) | 7,571 | 34.4 | 676 | 3.1 | 676 | **3.1** |
 | **exploit** (ranked) | 300 | 114 (38.4%) | **175,348** | **584.5** | 2,397 | 8.0 | 995 | **3.3** |
 | **explore** (random) | 200 | 28 (14.1%) | 2,843 | 14.2 | 1,555 | 7.8 | 136 | **0.7** |
 | tranche 1 total | 500 | 142 (28.6%) | 178,191 | 356.4 | 3,952 | 7.9 | 1,131 | **2.3** |
@@ -487,14 +487,23 @@ arm **41x per feed**, which is the whole argument for #114 existing.
 **On anchorable supply — the only kind that becomes a Foray — the founder's
 hypothesis is confirmed, and this is the finding.** The random arm is the one
 that estimates the population, and it returns **0.7 net-anchorable transcripts
-per feed against the curated set's 2.7 — 3.9x WORSE.** The curated 220 really
+per feed against the curated set's 3.1 — 4.4x WORSE.** The curated 220 really
 were the good part. Blind breadth is a bad use of the request budget.
 
-**But ranking rescues it.** The exploit arm returns **3.3 per feed, slightly
-better than the curated baseline.** So the choice is not "sweep breadth or
-don't" — it is "sweep breadth *in the right order* or don't". Unranked, the
-remaining catalogue is worth about a quarter of what the curated set was per
-request; ranked, it is worth slightly more.
+**Ranking pulls it back to par, and no further.** The exploit arm returns **3.3
+per feed against the baseline's 3.1** — a 6% edge, which is within the noise of
+a single tranche and should not be read as breadth being better. What it does
+say is that the choice is not "sweep breadth or don't", it is "sweep breadth *in
+the right order* or don't": unranked, the remaining catalogue is worth **under a
+quarter** (23%) of what the curated set was per request; ranked, it is worth
+roughly the same.
+
+*(The baseline moved under this branch while it was open. #316 measured the 14
+never-probed shows and found 89 of their 2,573 transcripts clean, taking the
+curated pool from 587 to 676 and its rate from 2.7 to 3.1 per feed — which makes
+breadth look **worse**, not better, than the first draft of this section said.
+The number is recomputed from `data/transcript-availability.json` on every run
+rather than transcribed, so it tracks that list automatically.)*
 
 *(An earlier draft of this section reported the explore arm at 7.8 anchorable
 per feed and concluded breadth was 2.9x BETTER than curated. That number was
@@ -544,8 +553,10 @@ the two — and the suite drives both over the whole
 **A measurement outranks the heuristic**, and leaving that out was a bug caught
 in review: run without the exemption, the feed-host rule fires on Being an
 Engineer, Geology Bites and Practical AI — the three `AD_FREE_SHOWS`, the only
-shows anyone has actually measured — and cuts the curated baseline from 587 to
-67, flattering every breadth comparison above.
+shows anyone had measured at the time — and cut the curated baseline from 587 to
+67, flattering every breadth comparison above. The list is now 14 shows and is
+re-exported from `fetch-transcripts.mjs` rather than restated, after a copy of
+it here went stale against #316 and CI caught the two files disagreeing.
 
 **The cheap follow-up this creates.** `dai.mjs` should match the FEED host as
 well as the resolved one — a known-DAI platform behind an anonymous CDN is
@@ -589,10 +600,13 @@ would start silently discarding real short transcripts, which is a worse failure
 than carrying 66 rows that an extractor will reject in one pass. Recorded here
 so the next tranche counts them rather than rediscovering them.
 
-So the free anchorable corpus is now **1,643 usable transcripts across 15 shows,
-~759 hours** (583 usable of #313's 587, plus 1,060 here) — 2.8x #313's, and none
-of it cost a dollar or an ASR-second. At `data/segments.json`'s measured 3.6
-segments per episode that is a **~5,900 segment** pool, against 69 today.
+So the corpus actually **held on disk** is now **1,643 usable transcripts across
+15 shows, ~759 hours** (583 usable of #313's 587, plus 1,060 here) — 2.8x
+#313's, and none of it cost a dollar or an ASR-second. At `data/segments.json`'s
+measured 3.6 segments per episode that is a **~5,900 segment** pool, against 69
+today. (The 676-transcript figure above is what the curated catalogue *offers*
+after #316's scan; 587 of those were fetched in #313, and the 89 #316 newly
+cleared have not been.)
 
 ### Politeness
 
@@ -604,7 +618,7 @@ host asked us to slow down** at concurrency 4 through the shared
 
 The random arm is the estimator, so it sets the floor. The remaining **18,936
 unswept feeds** hold on the order of **269,000 timed transcripts** — and, at the
-explore arm's net 0.7 per feed, roughly **12,900 net-anchorable ones.** Swept in
+explore arm's net 0.7 per feed, roughly **13,000 net-anchorable ones.** Swept in
 ranked order at the exploit arm's 3.3 per feed the same feeds are worth closer to
 **62,000**, and that gap — a factor of five, decided entirely by ordering — is
 the practical argument for #114.

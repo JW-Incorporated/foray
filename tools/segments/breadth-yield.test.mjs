@@ -70,13 +70,18 @@ test("an unresolved DAI verdict counts as not anchorable, and stays visible", ()
   assert.equal(y.shows_dai_unresolved, 1, "unresolved must be reported, not just excluded");
 });
 
-/* MUTATION: delete a name from MEASURED_AD_FREE, or let it drift from
-   fetch-transcripts.mjs's AD_FREE_SHOWS. Those three shows are DAI-flagged and
-   MEASURED delivering byte-identical audio, so they are the only reason the
-   DAI flag is a haircut rather than a wall — and this file and the fetcher
-   would then disagree about which transcripts exist. Verified failing. */
-test("the measured ad-free list matches the fetcher's, exactly", () => {
-  assert.deepEqual([...MEASURED_AD_FREE].sort(), [...AD_FREE_SHOWS].sort());
+/* MUTATION: give `MEASURED_AD_FREE` its own array literal again instead of
+   re-exporting the fetcher's. THIS ALREADY HAPPENED: the first version of this
+   file restated the list as three names, #316's ad-inflation scan grew the real
+   one to 14, and CI caught the report and the fetcher disagreeing about which
+   transcripts are anchorable. `deepEqual` on two copies only tells you they have
+   drifted; a re-export makes drifting impossible, so this test now pins the
+   IDENTITY rather than the contents. Verified failing against a copy. */
+test("the measured ad-free list IS the fetcher's, not a copy of it", () => {
+  assert.equal(MEASURED_AD_FREE, AD_FREE_SHOWS, "must be the same array, not an equal one");
+  assert.ok(AD_FREE_SHOWS.length >= 3, "sanity: the list is not empty");
+  const src = readFileSync(new URL("./breadth-yield.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /MEASURED_AD_FREE\s*=\s*\[/, "no local array literal may shadow the re-export");
   assert.equal(isAnchorable(rec({ title: AD_FREE_SHOWS[0], dai_suspected: true, episodes_with_timed_transcript: 10 })), true);
   assert.equal(isAnchorable(rec({ title: "Not On The List", dai_suspected: true, episodes_with_timed_transcript: 10 })), false);
 });
@@ -220,7 +225,11 @@ test("the report has no network path at all", () => {
      path at all". Verified failing against `globalThis.fetch(`. */
   assert.deepEqual(src.match(/(?<!\w)fetch\s*\(/g), null);
   assert.deepEqual(src.match(/(?<!\w)(?:request|get)\s*\(\s*["'`]?https?:/g), null);
-  assert.equal(/politeness\.mjs/.test(src), false, "nothing to be polite about — it makes no requests");
+  /* An IMPORT of the politeness layer, not a mention of it: the first version
+     matched the bare string and failed the moment a comment explained why this
+     module needs no throttle. A guard that forbids discussing the rule is a
+     guard people delete. */
+  assert.doesNotMatch(src, /^import .*politeness\.mjs/m, "nothing to be polite about — it makes no requests");
   // dai.mjs also exports `classifyShow`, which DOES fetch. Importing the whole
   // module and calling the pure predicate is fine; importing the fetcher into a
   // reporting tool would be a second, unthrottled route into publishers' hosts
@@ -228,6 +237,12 @@ test("the report has no network path at all", () => {
   const daiImport = /import\s*\{([^}]*)\}\s*from\s*"\.\.\/refresh\/dai\.mjs"/.exec(src);
   assert.ok(daiImport, "the dai import should be a named import, not a namespace one");
   assert.deepEqual(daiImport[1].split(",").map((x) => x.trim()).filter(Boolean), ["isDaiHost"]);
+  /* Same rule for the fetcher: `fetch-transcripts.mjs` is the only file in this
+     directory allowed to request a transcript body, so this may import its
+     measured LIST and nothing that makes a request. */
+  const fetchImport = /import\s*\{([^}]*)\}\s*from\s*"\.\/fetch-transcripts\.mjs"/.exec(src);
+  assert.ok(fetchImport, "the fetcher import should be a named import, not a namespace one");
+  assert.deepEqual(fetchImport[1].split(",").map((x) => x.trim()).filter(Boolean), ["AD_FREE_SHOWS"]);
 });
 
 /* -------------------------------------------------- contradicted verdicts */

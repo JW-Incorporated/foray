@@ -47,27 +47,36 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { isDaiHost } from "../refresh/dai.mjs";
+import { AD_FREE_SHOWS } from "./fetch-transcripts.mjs";
 import { hostKeyOf } from "./rank-breadth.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /** Shows flagged DAI whose delivered audio was MEASURED byte-identical, so
-    their publisher timestamps still anchor. Mirrors `AD_FREE_SHOWS` in
-    `fetch-transcripts.mjs`, which is the file that acts on it; restated here
-    because this file only reads and must not import a fetcher to do arithmetic.
-    If one moves, move both — `breadth-yield.test.mjs` pins that they agree. */
-export const MEASURED_AD_FREE = ["Being an Engineer", "Geology Bites", "Practical AI"];
+    their publisher timestamps still anchor.
 
-/* KEYED ON TITLE, which is a known weakness rather than an oversight. Titles are
-   unique enough across 220 curated shows; across 19,436 breadth feeds they are
-   not, so a breadth show that happens to share a name with one of these three
-   would be silently exempted from both the anchorable test and the suspect
-   check. The fetcher's `AD_FREE_SHOWS` has the same shape and the same exposure,
-   which is why this mirrors it rather than quietly diverging — a stricter key
-   here would make the two files disagree about the corpus, which is the failure
-   they are written to avoid. The fix is to re-key BOTH on `show_id` when
-   `tools/transcribe/ad-inflation.mjs` next writes to that list, not to fork it
-   here. Measured today: no breadth title in tranche 1 collides. */
+    RE-EXPORTED, NOT RESTATED, and the first version of this file got that
+    wrong. It carried its own copy — `["Being an Engineer", "Geology Bites",
+    "Practical AI"]` — with a comment explaining that a reporting tool should
+    not import a fetcher. The list then grew to 14 on main when the ad-inflation
+    scan landed (#316), this copy did not, and CI caught the two disagreeing
+    about which transcripts are anchorable. That is the same two-copies failure
+    `politeness.mjs` was extracted to end, reintroduced in the same directory
+    by the same reasoning.
+
+    Importing the fetcher's module is fine; importing its FETCHER is not. The
+    named import below is what keeps that distinction, and the suite pins that
+    this stays a named import so `fetchBody` cannot drift in beside it — exactly
+    the arrangement already used for `isDaiHost` from `dai.mjs`.
+
+    KEYED ON TITLE, which is a known weakness rather than an oversight. Titles
+    are unique enough across 220 curated shows; across 19,436 breadth feeds they
+    are not, so a breadth show sharing a name with a measured one would be
+    silently exempted from both the anchorable test and the suspect check. The
+    right fix is to re-key on `show_id` in `fetch-transcripts.mjs`, where the
+    list lives, rather than to fork a stricter key here. Measured today: no
+    breadth title in tranche 1 collides. */
+export { AD_FREE_SHOWS as MEASURED_AD_FREE };
 
 /** Anchorable = the timeline in the transcript describes the audio we receive.
     Non-DAI by construction, or DAI-flagged and measured otherwise.
@@ -93,7 +102,7 @@ export const MEASURED_AD_FREE = ["Being an Engineer", "Geology Bites", "Practica
 export function isAnchorable(show) {
   if ((show.episodes_with_timed_transcript || 0) === 0) return false;
   if (show.dai_suspected === false) return true;
-  return show.dai_suspected === true && MEASURED_AD_FREE.includes(show.title);
+  return show.dai_suspected === true && AD_FREE_SHOWS.includes(show.title);
 }
 
 /* ------------------------------------------- when "not DAI" means "unknown"
@@ -162,7 +171,7 @@ export function suspectAnchorable(rows, { isDaiHost = () => false, hostOfFeed = 
     // audio. It would have cut the curated baseline from 587 anchorable
     // transcripts to 67 and made every breadth-vs-curated comparison in the
     // report meaningless, in the flattering direction.
-    if (MEASURED_AD_FREE.includes(r.title)) continue;
+    if (AD_FREE_SHOWS.includes(r.title)) continue;
     const origin = String(r.enclosure_host || "").toLowerCase();
     let reason = null;
     if (isDaiHost(hostOfFeed(r.feed_url))) reason = "dai-host-lost-in-redirect";

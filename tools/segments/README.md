@@ -198,11 +198,15 @@ off-list} grid rather than asserting agreement in prose.
 **Compute that per arm or the conclusion inverts.** `yieldOf(rows, suspects)`
 takes the suspect list so each arm is netted against its own. Pooled, tranche 1's
 suspects are 71% of the anchorable haul and the random arm reads 7.8 per feed
-against the curated 2.7 — "breadth is 2.9x better". Per arm, the random arm's own
-suspects are 91% of its haul, it lands at **0.7 per feed, and breadth is 3.9x
-worse**. The ranked arm returns 3.3, slightly better than curated. Same rows,
-same arithmetic; the per-arm number is the one that generalises, and the suite
-pins that it is not pooled.
+against the curated baseline — "breadth is better". Per arm, the random arm's own
+suspects are 91% of its haul, it lands at **0.7 per feed against the baseline's
+3.1 — 4.4x worse**. The ranked arm returns 3.3, i.e. par. Same rows, same
+arithmetic; the per-arm number is the one that generalises, and the suite pins
+that it is not pooled.
+
+The baseline itself is recomputed from `data/transcript-availability.json` on
+every run rather than transcribed, which is why it tracked #316 moving the
+curated pool from 587 to 676 without anyone editing this file.
 
 **What gets committed is one row per SHOW.** Episode rows measure ~951 bytes
 each. Tranche 1's 500 feeds advertised **187,049** rows worth keeping — ~170MB
