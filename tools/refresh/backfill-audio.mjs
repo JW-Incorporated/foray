@@ -30,12 +30,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { audioFieldsFrom, hostOf, normalizeAudioUrl } from "./enclosure.mjs";
+import { UA, NIGHTLY_UA } from "../segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
 const { XMLParser } = backendRequire("fast-xml-parser");
 
-const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 const THROTTLE_MS = 1500;
 
 const args = process.argv.slice(2);
@@ -98,7 +98,7 @@ async function itunesEpisodes(collectionId) {
   let eps = [];
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(url, { headers: { "User-Agent": "foray-nightly/1.0" } });
+      const res = await fetch(url, { headers: { "User-Agent": NIGHTLY_UA } });
       if (res.ok) {
         const data = await res.json();
         eps = (data.results || []).filter((r) => r.wrapperType === "podcastEpisode");

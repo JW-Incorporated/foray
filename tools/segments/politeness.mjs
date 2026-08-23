@@ -28,12 +28,43 @@
    Pure except for `Date.now()` and the sleep, both injectable, so the tests
    below run in milliseconds instead of minutes.                              */
 
-/** Honest, with a contact address. Do not change this without changing it in
-    `tools/refresh/` too — publishers who block us will block on this string.
+/** THE CONTACT ADDRESS, written once. Three of the four User-Agents below carry
+    it — `NIGHTLY_UA` has never had one, see its note — and it is the entire
+    reason a publisher who dislikes us can write to us instead of silently
+    blocking us. Which makes an address that is merely COPIED into three
+    User-Agents a liability: it was already wrong in one of them. `tools/corpus/`
+    shipped `sffan15@gmail.com`, an address that appears nowhere else in this
+    repository except CLAUDE.md's note that `sffan15-sys` is a personal,
+    separate-quota AWS account — an infrastructure login, not a contact. Every
+    other contact address in this repository is this one. Ruled stale and folded
+    onto this constant; see the PR body. */
+export const CONTACT = "wjduvall@gmail.com";
+
+/** Named by two of the four User-Agents below. */
+export const REPO_URL = "https://github.com/JW-Incorporated/foray";
+
+/** THE CLIENT. Feeds, transcripts, and anything else fetched on behalf of a
+    listener. Honest, with a contact address.
+
+    ONE DEFINITION, TEN DECLARATIONS REMOVED. This string was spelled out ten
+    separate times — here, `tools/refresh/{scan,backfill-show,backfill-audio}.mjs`,
+    `tools/classify/prepare-batch.mjs`, `tools/transcribe/fetch-audio.mjs`,
+    `tools/harvest-{catalog,episodes}.mjs`, `tools/refresh-feeds.mjs` and
+    `backend/src/config/env.ts` — and an eleventh site, `tools/refresh/dai.mjs`,
+    had already drifted to a bare `Foray/0.1` with no way to reach us at all. The
+    backend one is still where it was: `backend/src/` is a DENIED path in
+    `tools/ci/path-policy.mjs` and a separately built service, so it is pinned to
+    this constant by a test rather than made to import it. Publishers block on
+    this string;
+    #316 measured a Buzzsprout edge answering 403 to a copy carrying one extra
+    product token and 206 to this one, which silently made 423 transcripts
+    unmeasurable. So: one definition, and a scan in `politeness.test.mjs` that
+    fails when a tracked file under `tools/` spells a User-Agent out for itself.
+
     It says Foray rather than 4a deliberately: it is the name every request from
     this repo has carried, and a User-Agent that changes is a new client to a
-    rate limiter. */
-export const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+    rate limiter. #302 renamed the app and left this alone on purpose. */
+export const UA = `Foray/0.1 (personal podcast client; contact ${CONTACT})`;
 
 /** The AUDIO fetcher, for requests against an enclosure rather than a feed or
     a transcript. Two tools make those -- `tools/foray/verify-source-audio.mjs`
@@ -57,7 +88,39 @@ export const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.co
 
     So: do not add a product token, a mode name, or a run id to this string. The
     contact address and the repo URL are the honest part and they are enough. */
-export const AUDIO_UA = "ForayBot/0.1 (+https://github.com/JW-Incorporated/foray; wjduvall@gmail.com)";
+export const AUDIO_UA = `ForayBot/0.1 (+${REPO_URL}; ${CONTACT})`;
+
+/** THE RESEARCH CORPUS fetcher (`tools/corpus/fetcher.mjs`). A DELIBERATELY
+    DISTINCT TOKEN, kept distinct: it reads court PDFs and articles once each,
+    obeys robots.txt, and is selected out of a robots file by the bare token
+    `ForayCorpusBot` (`AGENT_TOKEN` in that module, which must keep matching the
+    product token here). A publisher who wants to allow the corpus and refuse the
+    client — or the reverse — can only express that if the tokens differ, and a
+    research crawler honestly announcing itself as a research crawler is the
+    politeness this project claims. Distinct ACTIVITY, distinct token.
+
+    Its CONTACT ADDRESS was distinct too, and that part was simply a mistake; see
+    CONTACT above. Nothing keys on the address — robots matching uses the token
+    alone, and #316's 403 was a product token, not a comment field — so this is
+    the safe half of the string to correct and the half that has to be right. */
+export const CORPUS_UA = `ForayCorpusBot/1.0 (+${REPO_URL}; internal research corpus, one-shot fetches; contact: ${CONTACT})`;
+
+/** Apple's public lookup API only — `itunes.apple.com/lookup` — never a
+    publisher's host. Two copies of it existed, in `tools/refresh/resolve.mjs` and
+    `tools/refresh/backfill-audio.mjs`; this is now the only one.
+
+    BYTES DELIBERATELY UNCHANGED, and it CARRIES NO CONTACT ADDRESS. That is the
+    same defect this change fixed in `dai.mjs`, and the two are not the same call.
+    `dai.mjs` sent a TRUNCATION of UA — same product token, same version, contact
+    field lopped off — to publisher hosts, which is unambiguously drift and was
+    repaired. This is a distinct token aimed at one first-party API, so changing
+    what it says is a decision about identity rather than a repair, and it is left
+    for a founder rather than made silently here.
+
+    The evidence that nobody chose it deliberately, recorded for whoever decides:
+    `tools/harvest-catalog.mjs` calls THE SAME Apple endpoint under `UA`. Two
+    identities for one endpoint is not a policy. */
+export const NIGHTLY_UA = "foray-nightly/1.0";
 
 /** Node's fetch sends `accept-language: *` by default, and Captivate's edge
     answers THAT with `404 Missing redirect URL` on every one of its

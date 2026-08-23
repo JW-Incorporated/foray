@@ -8,9 +8,9 @@
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { UA } from "./segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 const THROTTLE_MS = 3000;
 const CHART_LIMIT = 200;
 const LOOKUP_BATCH = 150;

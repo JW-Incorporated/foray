@@ -42,6 +42,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { UA } from "../segments/politeness.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const list = JSON.parse(readFileSync(join(HERE, "dai-hosts.json"), "utf8"));
@@ -60,8 +61,17 @@ export function isDaiHost(host) {
 
     Uses `GET` with `Range: bytes=0-0` rather than `HEAD` — corner case #1
     records that some prefix hosts reject HEAD outright. One byte is enough to
-    learn where we landed. */
-export async function resolveHost(url, { userAgent = "Foray/0.1", timeoutMs = 15000 } = {}) {
+    learn where we landed.
+
+    THE DEFAULT USED TO BE THE BARE PRODUCT TOKEN AND VERSION, WITH NO CONTACT
+    ADDRESS AT ALL. That is
+    the one change in this consolidation that alters what a host receives, and it
+    is a repair rather than a rename: same product token, same version, with the
+    contact field that had been lopped off put back. This function resolves ~38%
+    of the catalogue through download-measurement prefixes, so it is one of the
+    tools a publisher is most likely to notice — and it was the one giving them
+    no way to reach us. A blocked host is a host that could not ask first. */
+export async function resolveHost(url, { userAgent = UA, timeoutMs = 15000 } = {}) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {

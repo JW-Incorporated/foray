@@ -66,6 +66,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { UA } from "../segments/politeness.mjs";
 
 /* ------------------------------------------------------------------ config */
 
@@ -79,7 +80,9 @@ export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..")
 export const DOWNLOAD_DIR = join(ROOT, "audio-cache");
 export const CHECKPOINT_PATH = join(DOWNLOAD_DIR, "checkpoint.json");
 
-export const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+/* Re-exported, not re-declared: `fetch-audio.test.mjs` imports `UA` from here,
+   and the bytes are `politeness.mjs`'s. */
+export { UA };
 
 export const GIB = 1024 * 1024 * 1024;
 

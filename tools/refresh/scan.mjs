@@ -15,12 +15,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { audioFieldsFrom } from "./enclosure.mjs";
+import { UA } from "../segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
 const { XMLParser } = backendRequire("fast-xml-parser");
 
-const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 const THROTTLE_MS = 1800;
 const args = process.argv.slice(2);
 const LIMIT = args.includes("--limit") ? Number(args[args.indexOf("--limit") + 1]) : Infinity;
