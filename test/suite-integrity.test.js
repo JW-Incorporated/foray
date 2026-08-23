@@ -531,9 +531,21 @@ const FLOORS = {
      (deliberately NOT the median the verdict uses), the insert threshold from
      both sides, and a recomputation of all seven committed verdicts from the
      byte counts filed beside them. */
-  "tools/segments/measure-suspects.test.mjs": 15,
+  "tools/segments/measure-suspects.test.mjs": 57,
   "tools/transcribe/fetch-audio.test.mjs": 64,
-  "tools/transcribe/ad-inflation.test.mjs": 20,
+  /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
+     Floored because everything expensive about it — the download, the PyAV
+     demux — is deliberately OUTSIDE CI, so what remains is the arithmetic that
+     turns a decoded duration into a verdict, and there is nothing above it to
+     catch a mistake there. The two rules most worth keeping are the ones a
+     measurement forced rather than a design chose: the container's own duration
+     is a CLAIM and never a reading (flightcast's headers over-declare by 3.8s
+     on a clean file and 8.4s on an inserting one, so counting it produced a
+     false `undecidable` on a 30MB answer), and a decode is allowed to condemn a
+     show on one observation while never acquitting one on a host already caught
+     under-declaring. */
+  "tools/transcribe/decode-compare.test.mjs": 31,
+  "tools/transcribe/ad-inflation.test.mjs": 43,
   "tools/corpus/fetcher.test.mjs": 23,
   "tools/corpus/extract.test.mjs": 21,
   "tools/corpus/db.test.mjs": 20,

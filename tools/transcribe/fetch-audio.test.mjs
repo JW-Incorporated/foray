@@ -30,6 +30,10 @@ import {
   partPathFor, provenance, resumePlan, safeFileName, saveCheckpoint, selectEpisodes, updateCheckpoint,
   shouldRetryStatus, targetPath, verifyResumeResponse,
 } from "./fetch-audio.mjs";
+/* Imported from the owner rather than restated — the same rule the module
+   under test follows for `UA`. A literal "en" here would be a copy of a header
+   value whose whole point is that one definition serves every fetcher. */
+import { ACCEPT_LANGUAGE } from "../segments/politeness.mjs";
 
 const item = (over = {}) => ({ id: "show--ep", audio_url: "https://cdn.example.com/a.mp3", topics: ["science/physics"], ...over });
 
@@ -175,6 +179,64 @@ test("hostOf tolerates junk", () => {
 test("the User-Agent is honest and carries contact info (corner case #8)", () => {
   assert.match(UA, /Foray/);
   assert.match(UA, /@/, "a UA with no way to reach us is not an honest one");
+});
+
+/* THE ONE EXCEPTION TO "NOTHING HERE TOUCHES THE NETWORK", and it does not: it
+   replaces `globalThis.fetch` and asserts on the request that WOULD have gone
+   out. There is no other seam — `fetchEpisode` calls the global directly — and
+   the header below is worth a stubbed fetch because its absence is invisible
+   from inside this module and fatal from outside it.
+
+   WHAT IT GUARDS. Node's fetch sends `accept-language: *` by default, and
+   Captivate's edge answers THAT with `404 Missing redirect URL` on every
+   `episodes.captivate.fm/episode/<guid>.mp3` redirector. `politeness.mjs`
+   records the header being verified both ways (`*` -> 404, `en` -> 302) after
+   it cost an afternoon in #226, and re-verified when an ad-inflation scan
+   without it drew 404 on every Captivate enclosure (#316).
+
+   THIS DOWNLOADER DID NOT SEND IT until decode-and-compare asked it for a
+   Captivate episode. The probes had sent it since #316 and this file never
+   did, so the two disagreed about how to ask one host for one file — and a 404
+   here is not a soft failure: `shouldRetryStatus` does not retry a 404, so the
+   whole of Captivate was un-downloadable by the transcription pipeline,
+   silently, on a missing header. That is the #316 shape exactly, one directory
+   over.
+
+   MUTATION: delete the `"Accept-Language": ACCEPT_LANGUAGE` line from
+   `fetchEpisode`. Verified failing (byte diff confirmed):
+     the downloader sends Accept-Language, or Captivate 404s every enclosure
+   Reverted. */
+test("the downloader sends Accept-Language, or Captivate 404s every enclosure", async () => {
+  const seen = [];
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    seen.push({ url, headers: init?.headers || {} });
+    return new Response(Buffer.alloc(4096, 0x61), {
+      status: 200,
+      headers: { "content-length": "4096", etag: '"abc"' },
+    });
+  };
+  try {
+    await withTempDir(async (dir) => {
+      const url = "https://episodes.captivate.fm/episode/95c360e7.mp3";
+      const got = await fetchEpisode(
+        { id: "captivate--ep", audio_url: url, audio_bytes: 4096 },
+        { dir, checkpointPath: join(dir, "checkpoint.json") },
+      );
+      assert.equal(got.bytes, 4096);
+    });
+  } finally {
+    globalThis.fetch = real;
+  }
+
+  assert.equal(seen.length, 1, "one request, one episode");
+  const headers = seen[0].headers;
+  assert.equal(headers["Accept-Language"], ACCEPT_LANGUAGE);
+  assert.equal(ACCEPT_LANGUAGE, "en", "the value Captivate was verified to accept");
+  assert.equal(headers["User-Agent"], UA, "still the honest identity, unchanged");
+
+  // Corner case #1: the publisher's declared URL, never a resolved CDN one.
+  assert.equal(seen[0].url, "https://episodes.captivate.fm/episode/95c360e7.mp3");
 });
 
 /* --------------------------------------------------------- disk arithmetic */

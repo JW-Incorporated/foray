@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measured_at": "2026-08-23T10:22:14.285Z",
+  "measured_at": "2026-08-23T13:32:43.716Z",
   "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs via tools/segments/measure-suspects.mjs",
   "pool": "anchorable",
   "source": {
@@ -23,29 +23,40 @@
         "feeds": 8,
         "ranged_gets": 150,
         "at": "2026-08-23T09:57:19.735Z"
+      },
+      {
+        "per_show": 5,
+        "hosts": [
+          "archive.org"
+        ],
+        "reprobe": true,
+        "shows_probed": 1,
+        "feeds": 1,
+        "ranged_gets": 9,
+        "at": "2026-08-23T12:53:37.518Z"
       }
     ]
   },
   "requests": {
-    "feeds": 57,
-    "ranged_gets": 517
+    "feeds": 58,
+    "ranged_gets": 526
   },
   "measurement": {
     "measured_clean": {
-      "shows": 22,
-      "timed_transcripts": 3999
+      "shows": 23,
+      "timed_transcripts": 5367
     },
     "measured_injecting": {
       "shows": 7,
-      "timed_transcripts": 1413
+      "timed_transcripts": 186
     },
     "unresolved": {
-      "shows": 12,
-      "timed_transcripts": 5507
+      "shows": 11,
+      "timed_transcripts": 5366
     },
     "repeat_stable_no_denominator": {
-      "shows": 8,
-      "timed_transcripts": 5503
+      "shows": 7,
+      "timed_transcripts": 5362
     },
     "note": "unresolved is neither a clean bill nor evidence of ads: the show keeps whatever its pre-measurement status was, and stays inferred rather than becoming measured. repeat_stable_no_denominator is the subset of it that was probed N times and never varied — no sign of insertion, and no declared length with which to confirm its absence"
   },
@@ -58,64 +69,67 @@
       "suspect_reason": "inferred-static",
       "timed_transcripts": 1368,
       "verdict": "ad-free",
-      "disposition": "drop",
-      "median": 1.002,
+      "disposition": "recover",
+      "median": 1,
       "n": 5,
-      "inserted_samples": 5,
-      "constant_offset_bytes": 99345,
-      "max_delta_sec_implied": 17,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
       "tier": "paddable-screened",
       "dai_by_chain": false,
       "dai_via": null,
       "resolved_chain": [
-        "audio.artbell.am"
+        "audio.artbell.am",
+        "archive.org",
+        "dn601202.us.archive.org"
       ],
-      "note": "every sampled episode differs from its declared length by the same 99345 bytes, across a much wider spread of episode sizes — a CONSTANT gap, not one proportional to the episode, which is not the shape most ad load has. It does not follow that the gap is innocent: ADR-0008 lists pre-roll-only as a real DAI configuration and a fixed-length pre-roll is also a constant offset, so a fixed metadata block (ID3v2 artwork is typically ~100KB) and a short house pre-roll fit these bytes equally well. impliedDeltaSec converts the gap at the audio bitrate because it assumes every byte is audio. Disposition left at drop deliberately — ADR-0008 decode-and-compare on one episode is what chooses",
+      "note": "DECODED CLEAN: 8625.53s of audio against a transcript ending at 8625.44s — 0.09s of trailing audio, and the delivered bytes matched what the ranged GET declared. ADR-0008 decode-and-compare on \"October 16, 2015: Open Lines - Super Power Line\"",
       "samples": [
         {
           "guid": "https://artbellarchive.org/episode/october-22-2015-nanotechnology-douglas-mulhall",
           "episode": "October 22, 2015: Nanotechnology - Douglas Mulhall",
           "declared_bytes": 53823465,
-          "delivered_bytes": 53922789,
+          "delivered_bytes": 53823465,
           "duration_sec": 8565,
-          "ratio": 1.002,
-          "delta_sec_implied": 16
+          "ratio": 1,
+          "delta_sec_implied": 0
         },
         {
           "guid": "https://artbellarchive.org/episode/october-21-2015-space-elevator-and-emps-dr-william-forstchen",
           "episode": "October 21, 2015: Space Elevator & EMPs - Dr. William Forstchen",
           "declared_bytes": 53088481,
-          "delivered_bytes": 53187868,
+          "delivered_bytes": 53088481,
           "duration_sec": 8325,
-          "ratio": 1.002,
-          "delta_sec_implied": 16
+          "ratio": 1,
+          "delta_sec_implied": 0,
+          "error": "HTTP 500",
+          "status": 206
         },
         {
           "guid": "https://artbellarchive.org/episode/october-20-2015-hubrids-part-ii-david-jacobs",
           "episode": "October 20, 2015: Hubrids Part II - David Jacobs",
           "declared_bytes": 56477648,
-          "delivered_bytes": 56576979,
+          "delivered_bytes": 56477648,
           "duration_sec": 8504,
-          "ratio": 1.002,
-          "delta_sec_implied": 15
+          "ratio": 1,
+          "delta_sec_implied": 0
         },
         {
           "guid": "https://artbellarchive.org/episode/october-16-2015-open-lines-super-power-line",
           "episode": "October 16, 2015: Open Lines - Super Power Line",
           "declared_bytes": 51890380,
-          "delivered_bytes": 51989683,
+          "delivered_bytes": 51890380,
           "duration_sec": 8625,
-          "ratio": 1.002,
-          "delta_sec_implied": 17
+          "ratio": 1,
+          "delta_sec_implied": 0
         },
         {
           "guid": "https://artbellarchive.org/episode/october-15-2015-reality-shifting-cynthia-larson",
           "episode": "October 15, 2015: Reality Shifting - Cynthia Larson",
           "declared_bytes": 53066960,
-          "delivered_bytes": 53166279,
+          "delivered_bytes": 53066960,
           "duration_sec": 8434,
-          "ratio": 1.002,
-          "delta_sec_implied": 16
+          "ratio": 1,
+          "delta_sec_implied": 0
         }
       ]
     },
@@ -2095,7 +2109,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
       "samples": [
         {
           "guid": "flightcast:01M0PZ6QRAJ7SQT990K5P0TVK7",
@@ -2193,7 +2207,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
       "samples": [
         {
           "guid": "flightcast:01M0GSBGR85QKK504HPGJJVZ43",
@@ -2291,7 +2305,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
       "samples": [
         {
           "guid": "flightcast:01M093XD5BVB7XKVNW4XVS4AJ6",
@@ -2389,7 +2403,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
       "samples": [
         {
           "guid": "flightcast:01M0HW8VWXCVJ00KFBA8KT94RG",
@@ -2485,7 +2499,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. 1 episode decoded clean, below the 2-sample floor — ADR-0008 decode-and-compare is the only instrument that can settle it",
       "samples": [
         {
           "guid": "flightcast:01M084K1JPC2Q3R245QXPVNC82",
@@ -2581,7 +2595,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
       "samples": [
         {
           "guid": "flightcast:01KZ6BNBDA885P19CKT7C6VX6T",
@@ -2663,7 +2677,9 @@
       "suspect_reason": "inferred-static",
       "timed_transcripts": 141,
       "verdict": "unknown",
-      "disposition": "unresolved",
+      "disposition": "drop",
+      "screened_disposition": "unresolved",
+      "decided_by": "decode-and-compare",
       "median": null,
       "n": 0,
       "inserted_samples": 0,
@@ -2683,7 +2699,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "note": "DECODED: 5740.38s of audio against a transcript ending at 5601.25s and a feed declaring 5626s — 139.13s this show's own transcript does not describe. ADR-0008 decode-and-compare on \"Financial Crash Expert: He Predicted The 2008 Crash, Now He Says Capitalism Failed, It's Too Late!\"; the ranged-GET screen above did not see it",
       "samples": [
         {
           "guid": "flightcast:01M08555EDJDXY5E3VGD5B9BPA",

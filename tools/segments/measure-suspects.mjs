@@ -57,6 +57,7 @@ import {
   undersizedSamples,
   AD_FREE_FLOOR,
   AD_FREE_THRESHOLD,
+  MIN_SAMPLES_FOR_AD_FREE,
 } from "../transcribe/ad-inflation.mjs";
 import { ANCHOR_TIME_TOLERANCE_SEC } from "./merge-segments.mjs";
 import { classifyShow, daiHostIn } from "../refresh/dai.mjs";
@@ -287,8 +288,16 @@ export function fetchNoteOf(row) {
     samples cannot show — an unreadable feed, a missing feed URL. Notes that ARE
     derivable from the samples are computed here, so a resumed row gets them
     too. An incoming note wins: "the feed would not load" explains a row's empty
-    samples better than any inference drawn from their absence. */
-export function deriveRow(base, { note = null } = {}) {
+    samples better than any inference drawn from their absence.
+
+    `decodes` IS THE `decodeIndex` OF THE DECODE LEDGER, injected rather than
+    read from disk here for the same reason `isDaiHost` is injected into
+    `suspectAnchorable`: this function is pure and its suite must be able to
+    exercise the override without a data file that is expected to change. Null
+    means "no decode evidence", which is the state of every row this scan has
+    ever produced until one is downloaded — and it must leave the screen's
+    verdict exactly as it found it. */
+export function deriveRow(base, { note = null, decodes = null } = {}) {
   const samples = base.samples || [];
   const summary = summariseShow(samples.map((x) => x.ratio));
   const undersized = undersizedSamples(samples);
@@ -309,10 +318,21 @@ export function deriveRow(base, { note = null } = {}) {
   const repeats = counts.length && counts.every((n) => n === counts[0] && n >= 2) ? counts[0] : null;
   const spread = maxDeliverySpread(samples);
   const constantOffset = constantOffsetBytes(samples);
-  const disposition = dispositionOf(summary.verdict, { inserted, undersized, unmeasured, varying });
+  const screened = dispositionOf(summary.verdict, { inserted, undersized, unmeasured, varying });
+  /* THE DECODE OUTRANKS THE SCREEN — see `decodeOverride`. Both dispositions
+     are kept on the row when they differ, because "the bytes said recover and
+     the decode said drop" is the single most useful thing a later reader of
+     this file can be told. */
+  const override = decodeOverride({ show_id: base.show_id, enclosure_host: base.enclosure_host }, decodes);
+  const disposition = override ? override.disposition : screened;
   const worst = maxDeltaSec(samples);
 
-  let why = note;
+  /* AN INCOMING NOTE STILL WINS, which the docstring above promises and an
+     earlier version of this line broke: "the feed would not load" explains a
+     row better than any verdict drawn from the samples that failure prevented.
+     The override's note is appended rather than dropped, so a row with both
+     carries both. */
+  let why = note && override ? `${note} — also: ${override.note}` : override ? override.note : note;
   if (!why && samples.length === 0) why = NO_DECLARED_LENGTH_REASON;
   /* A drop whose gap never changes size is the one drop most likely to be
      wrong, and the row has to say so — see `constantOffsetBytes`. Left as a
@@ -350,6 +370,9 @@ export function deriveRow(base, { note = null } = {}) {
     timed_transcripts: base.timed_transcripts,
     verdict: summary.verdict,
     disposition,
+    ...(override && override.disposition !== screened
+      ? { screened_disposition: screened, decided_by: "decode-and-compare" }
+      : {}),
     median: summary.median,
     n: summary.n,
     inserted_samples: inserted,
@@ -366,6 +389,240 @@ export function deriveRow(base, { note = null } = {}) {
     ...(why ? { note: why } : {}),
     samples,
   };
+}
+
+/* ------------------------------------------------ the decode, which outranks
+
+   ADR-0008: "Where we can afford the download, decode-and-compare is the
+   instrument; the ranged-GET ratio is a screen." Everything above this line is
+   the screen. `tools/transcribe/decode-compare.mjs` is the instrument, and when
+   the two disagree the instrument wins -- but ONLY in the specific ways below,
+   because "a full download said so" is exactly the kind of authority that gets
+   over-applied.
+
+   THE READ IS OF A DATA FILE, NOT AN IMPORT. `decode-compare.mjs` imports
+   `CONSTANT_OFFSET_TOLERANCE_BYTES` from this module, so importing it back
+   would be a cycle. The decode ledger is JSON with a stable shape; consuming it
+   as data keeps the dependency one-way and keeps these functions pure. */
+
+/** Where the decode ledger lives, relative to the repo root. */
+export const DECODE_REPORT_REL = join("data", "decode-and-compare.json");
+
+/** A decode row proves the ranged GET wrong about THIS HOST when the bytes that
+    actually arrived exceed the total the probe read out of `Content-Range`.
+
+    THIS IS THE FINDING THAT FORCED THE FUNCTION, and it is worth stating in
+    full because the whole scan above rests on the opposite assumption.
+    ADR-0008 opens by recording that HEAD REQUESTS LIE on ad-inserting hosts --
+    they return the ad-free master's `Content-Length` while a real GET delivers
+    the assembled file -- and the 2-byte ranged GET was adopted precisely
+    because it does not. On `atelier.flightcast.com` it does. The DOAC episode's
+    `Content-Range` total read 67,510,022 on eleven separate probes across three
+    days, and two independent unranged GETs each delivered 68,884,898 bytes:
+    1,374,876 bytes, 114.4 s at the file's 96kbps, that the origin declares and
+    does not send. An unranged GET declares the same short `Content-Length`, and
+    a Range past the declared end 416s -- so the extra bytes are unreachable by
+    ANY ranged request and invisible to this entire scan.
+
+    WHAT IT COSTS: every byte figure this scan holds for that host is a master
+    length rather than a delivery, so no show on it can be admitted on those
+    bytes -- not even one whose numbers look perfect, because looking perfect is
+    exactly what the lie produces. Hence `blindHosts` below. */
+export function decodeUnderreports(row, toleranceBytes = CONSTANT_OFFSET_TOLERANCE_BYTES) {
+  /* `probe_recorded_bytes` ONLY, with no fallback to the feed's declared
+     length. A reviewer caught the fallback and it was a wide, silent hazard:
+     `declared_bytes` is the publisher's `<enclosure length>`, not anything a
+     ranged GET ever said, so an ordinary DAI show added to the target list
+     without a probe figure -- delivering more than its feed declares, which is
+     what injection LOOKS like -- would have marked its entire CDN blind and
+     forced every other show on that host to `unresolved`. The two numbers
+     answer different questions and only one of them is about the instrument. */
+  const probed = row?.probe_recorded_bytes;
+  const delivered = row?.comparison?.delivered_bytes;
+  if (!Number.isFinite(probed) || !Number.isFinite(delivered)) return false;
+  return delivered - probed > toleranceBytes;
+}
+
+/** Did the ranged GET and the wire agree about how big this file is?
+
+    TRUE means the decode measured THE SAME OBJECT the screen measured, which is
+    the precondition for a decode being allowed to speak for a show's other,
+    un-downloaded episodes. Null when there is no probe figure to compare.
+
+    TWO-SIDED, AND A REVIEWER WAS RIGHT TO INSIST. `decodeUnderreports` above is
+    one-sided because it answers a different question -- "is this host sending
+    more than it admits", the specific failure that makes byte evidence
+    worthless. But for ACQUITTING a show, a disagreement in either direction is
+    disqualifying for the same reason: the probe and the download did not fetch
+    the same bytes, so whatever the download proves, it does not prove it about
+    the object the screen judged. The first draft checked only the expensive
+    direction, which meant an under-delivery was quietly treated as agreement --
+    reasoning from the outcome we wanted rather than from the rule. */
+export function probeCorroborated(row, toleranceBytes = CONSTANT_OFFSET_TOLERANCE_BYTES) {
+  /* `probe_recorded_bytes` is copied from a hand-maintained constant in
+     `decode-compare.mjs`'s TARGETS unless a `--probe-grid` run has refreshed it
+     from an actual request, in which case the row records
+     `probe_recorded_source: "probe-grid"`. Both are read the same way here --
+     the field is the field -- but the distinction is worth naming, because a
+     gate that guards every acquittal should not be satisfiable by editing a
+     literal, and the grid is what makes it a measurement instead. */
+  const probed = row?.probe_recorded_bytes;
+  const delivered = row?.comparison?.delivered_bytes;
+  if (!Number.isFinite(probed) || !Number.isFinite(delivered)) return null;
+  return Math.abs(delivered - probed) <= toleranceBytes;
+}
+
+/** The decode ledger, indexed for the two questions the row builder asks. */
+export function decodeIndex(report) {
+  const byShow = new Map();
+  const blindHosts = new Set();
+  for (const row of report?.results || []) {
+    const id = String(row.show_id ?? "");
+    /* A DIAGNOSTIC ROW IS EVIDENCE ABOUT AN INSTRUMENT, NOT ABOUT A SHOW.
+       `decode-compare.mjs` marks a target `diagnostic` when it deliberately
+       fetches something other than the publisher's DECLARED enclosure URL --
+       corner case #1's one sanctioned violation, used to ask which hop in a
+       redirect chain changes a length. Keyed on `show_id` alone such a row
+       would sit in the same bucket as the real one and be eligible to condemn
+       or acquit the show on the strength of a URL no listener is ever served.
+       It still counts toward `blindHosts` below, because what it observed
+       about the HOST is exactly what it was fetched to observe. */
+    if (id && !row.diagnostic) {
+      if (!byShow.has(id)) byShow.set(id, []);
+      byShow.get(id).push(row);
+    }
+    /* KEYED ON THE RESOLVED HOST, which for some CDNs is a per-NODE name
+       (`dn720303.ca.archive.org`). That is deliberately narrow: marking a host
+       blind withholds every show on it, so the key should name the thing
+       actually observed and not a guess at how far the behaviour generalises.
+       The cost is that a sibling node would have to be caught separately. */
+    if (decodeUnderreports(row) && row.resolved_host) blindHosts.add(String(row.resolved_host).toLowerCase());
+  }
+  return { byShow, blindHosts };
+}
+
+/** What the decode says a row's disposition should be, or null to leave it.
+
+    THREE RULES, and the asymmetry between them is deliberate -- it is the same
+    asymmetry `dispositionOf` and `varyingSamples` already run on: positive
+    evidence of a mechanism is proof, absence of it is a sample size.
+
+    1. A DECODE THAT FOUND EXCESS OR SHORTFALL CONDEMNS, immediately and
+       whatever the median said. `excess-audio` means the delivered file carries
+       audio the publisher's own transcript does not describe, so every
+       timestamp authored from that transcript is wrong by that much; a
+       `short-of-transcript` file is a timeline describing a copy we are not
+       receiving, which `AD_FREE_FLOOR` already calls disqualifying "for exactly
+       the reason injection does". One observation is enough for both.
+
+    2. A HOST CAUGHT UNDER-REPORTING TAKES ITS SHOWS' BYTE EVIDENCE WITH IT.
+       The scan's samples for such a host are master lengths, not deliveries, so
+       a show on it cannot be admitted on them however clean they look -- and
+       "however clean they look" is not hypothetical: all five DOAC samples read
+       within 0.5 s of the feed's own duration while the file carried 114 s
+       more. Such a show needs `MIN_SAMPLES_FOR_AD_FREE` DECODED-clean episodes
+       of its own, the same floor `summariseShow` already applies to ratios, and
+       one is not two. Until then it is `unresolved` -- not a demotion, but the
+       first honest statement of what is known about it.
+
+    3. A CLEAN DECODE ON A TRUSTED HOST ACQUITS, because there the decode
+       corroborates the screen rather than replacing it: the bytes that arrived
+       matched the bytes the probe was told to expect, so the show's other
+       samples mean what they say and the decode has settled the one thing the
+       ratio could not. This is the Art Bell case exactly. */
+export function decodeOverride(row, index) {
+  if (!index) return null;
+  const rows = index.byShow.get(String(row.show_id)) || [];
+  const host = String(row.enclosure_host || "").toLowerCase();
+
+  const bad = rows.find((r) => ["excess-audio", "short-of-transcript"].includes(r?.comparison?.verdict));
+  if (bad) {
+    const c = bad.comparison;
+    /* WORDED FOR BOTH DIRECTIONS. A `short-of-transcript` row has a NEGATIVE
+       `beyond_transcript_sec`, and the excess-only phrasing rendered it as
+       "-490s this show's own transcript does not describe", which is not
+       English and not the finding. */
+    const short = c.beyond_transcript_sec < 0;
+    return {
+      disposition: "drop",
+      note:
+        "DECODED: " + c.decoded_sec + "s of audio against a transcript ending at " + c.last_cue_sec +
+        "s and a feed declaring " + c.feed_duration_sec + "s — " +
+        (short
+          ? Math.abs(c.beyond_transcript_sec) + "s SHORTER than the timeline this show's own transcript describes"
+          : c.beyond_transcript_sec + "s this show's own transcript does not describe") +
+        ". ADR-0008 decode-and-compare on \"" + bad.episode +
+        "\"; the ranged-GET screen above did not see it",
+    };
+  }
+
+  /* CLEAN BY THE STRICTER OF THE TWO THRESHOLDS, which a reviewer caught and
+     which was a real inconsistency rather than a nitpick. `TRAILING_ALLOWANCE_SEC`
+     is 30 s -- audio past the last spoken cue that an outro explains -- while
+     this file's own `INSERT_EVIDENCE_SEC` condemns a sample at 10 s. Left alone,
+     a decode landing 11-30 s past the transcript would have ACQUITTED a show
+     over a screen that condemns the identical delta, with the override being
+     the path by which the looser number won. An instrument that outranks
+     another must not also be more permissive than it. */
+  const clean = rows.filter(
+    (r) =>
+      r?.comparison?.verdict === "matches-transcript" &&
+      Math.abs(r?.comparison?.beyond_transcript_sec ?? Infinity) < INSERT_EVIDENCE_SEC,
+  );
+  if (index.blindHosts.has(host)) {
+    /* ISSUES THE VERDICT RATHER THAN HANDING BACK, and an earlier version
+       returned null here, which was wrong in the one direction that costs. Null
+       means "the screen decides" -- and the screen's byte figures for this host
+       are master lengths rather than deliveries, which is the entire reason the
+       host is on this list. So two decoded-clean episodes would have UNBLOCKED
+       evidence this function had just finished voiding, instead of standing on
+       their own. On a blind host the decodes are the only witnesses there are;
+       if there are enough of them they speak, and if there are not the row
+       stays unresolved. */
+    if (clean.length >= MIN_SAMPLES_FOR_AD_FREE) {
+      const ok = clean[0];
+      return {
+        disposition: "recover",
+        note:
+          `DECODED CLEAN ${clean.length}x on a host whose Content-Range cannot be trusted (${host}): ` +
+          `${ok.comparison.decoded_sec}s of audio against a transcript ending at ${ok.comparison.last_cue_sec}s. ` +
+          `Admitted on the decodes alone — this host's byte figures are master lengths and took no part`,
+      };
+    }
+    return {
+      disposition: "unresolved",
+      note:
+        host + " was caught delivering more bytes than its Content-Range declares, so every byte figure above " +
+        "is a master length rather than a delivery and cannot admit this show. " +
+        (clean.length
+          ? clean.length + " episode decoded clean, below the " + MIN_SAMPLES_FOR_AD_FREE + "-sample floor"
+          : "no episode of this show has been decoded") +
+        " — ADR-0008 decode-and-compare is the only instrument that can settle it",
+    };
+  }
+
+  /* AND ONLY ON A ROW WHOSE BYTES THE PROBE CORROBORATED. Without this, a
+     decode is allowed to acquit a show on the strength of an object the screen
+     never saw -- which is exactly the Art Bell trap: that row's probe figure
+     was 99,303 bytes away from what the wire delivered, because the enclosure
+     had stopped resolving to the host the scan measured. Returning null rather
+     than a verdict is deliberate: a decode of a different object is not
+     evidence against the show either, so the screen's own conclusion stands
+     untouched and the decode stays on the record in
+     `data/decode-and-compare.json` for a human to read. */
+  const corroborated = clean.filter((r) => probeCorroborated(r) === true);
+  if (corroborated.length > 0) {
+    const ok = corroborated[0];
+    return {
+      disposition: "recover",
+      note:
+        "DECODED CLEAN: " + ok.comparison.decoded_sec + "s of audio against a transcript ending at " +
+        ok.comparison.last_cue_sec + "s — " + ok.comparison.beyond_transcript_sec +
+        "s of trailing audio, and the delivered bytes matched what the ranged GET declared. " +
+        "ADR-0008 decode-and-compare on \"" + ok.episode + "\"",
+    };
+  }
+  return null;
 }
 
 /** Has this row already cost the requests that would answer it?
@@ -938,6 +1195,21 @@ async function main() {
   const gross = report.yield?.breadth_all?.anchorable_timed_transcripts ?? null;
   const net = report.anchorable_net_of_suspects ?? null;
 
+  /* THE DECODE LEDGER, LOADED ONCE AND INJECTED. Absent on a fresh checkout and
+     absent for every pool nobody has spent a download on, which is the common
+     case — `decodeOverride` is written so that a null index changes nothing at
+     all, and the suite pins that. */
+  const decodePath = join(ROOT, DECODE_REPORT_REL);
+  const decodes = existsSync(decodePath)
+    ? decodeIndex(JSON.parse(readFileSync(decodePath, "utf8")))
+    : null;
+  if (decodes) {
+    console.log(
+      `decode ledger: ${decodes.byShow.size} show(s) measured by full download` +
+        (decodes.blindHosts.size ? `; ranged GET proven blind on ${[...decodes.blindHosts].join(", ")}` : ""),
+    );
+  }
+
   const outPath = resolvePath(process.cwd(), args.out);
   const settled = new Set();
   for (const p of args.settled) {
@@ -994,7 +1266,7 @@ async function main() {
          judged by two standards, with nothing on them saying which — and it
          would silently freeze out any signal added since. No request is made:
          this reads bytes already committed. */
-      carried.set(String(r.show_id), deriveRow(r, { note: fetchNoteOf(r) }));
+      carried.set(String(r.show_id), deriveRow(r, { note: fetchNoteOf(r), decodes }));
       if (isSettled(r) && !args.reprobe) done.add(String(r.show_id));
     }
     console.log(
@@ -1117,7 +1389,7 @@ async function main() {
         resolved_chain: chain ? chain.hosts : [],
         samples,
       },
-      { note },
+      { note, decodes },
     );
     carried.set(String(s.show_id), row);
 

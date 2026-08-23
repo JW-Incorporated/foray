@@ -66,7 +66,20 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { UA } from "../segments/politeness.mjs";
+/* `ACCEPT_LANGUAGE` alongside `UA` because Node's fetch otherwise sends
+   `accept-language: *`, and Captivate's edge answers THAT with
+   `404 Missing redirect URL` on every `episodes.captivate.fm/episode/<guid>.mp3`
+   redirector -- politeness.mjs records the header being verified both ways
+   (`*` -> 404, `en` -> 302) and re-verified when an ad-inflation scan without it
+   drew 404 on every Captivate enclosure.
+
+   THIS FILE WAS MISSING IT, which was not visible until something asked it for
+   a Captivate episode: the probes have sent it since #316 and this downloader
+   never did, so the two disagreed about how to ask the same host for the same
+   file. A 404 here is not a soft failure either -- `fetchEpisode` treats a
+   non-retryable status as fatal for that episode, so the whole of Captivate was
+   simply un-downloadable by the pipeline, silently, on a header. */
+import { ACCEPT_LANGUAGE, UA } from "../segments/politeness.mjs";
 
 /* ------------------------------------------------------------------ config */
 
@@ -652,7 +665,11 @@ export async function fetchEpisode(item, opts = {}) {
       try {
         const res = await gate.run(host, () =>
           fetch(url, {
-            headers: { "User-Agent": userAgent, ...(plan.header ? { Range: plan.header } : {}) },
+            headers: {
+              "User-Agent": userAgent,
+              "Accept-Language": ACCEPT_LANGUAGE,   // see the import — Captivate 404s without it
+              ...(plan.header ? { Range: plan.header } : {}),
+            },
             redirect: "follow",     // resolve only to look — see the header
             signal: ctl.signal,
           }));

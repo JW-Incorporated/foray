@@ -1412,6 +1412,132 @@ failing run prints the recovery steps, including the branch name that clears it.
 
 ---
 
+### 24. Amend ADR-0008: a ranged GET can be lied to as well, and 5,461 transcripts rest on that
+
+**Tag:** `[DECISION]` · **Time:** ~15 minutes to read, four rulings · **Owner:** Wyatt
+
+**Why it matters.** ADR-0008 §"What is actually measured, and how" says, in as
+many words: *"**HEAD requests lie** on ad-inserting hosts: they return the
+ad-free master's `Content-Length` while a real GET delivers the assembled file.
+The first version of this scan used HEAD, reported 18 of 18 shows byte-stable,
+and was completely wrong… **No conclusion in this ADR rests on a HEAD
+request.**"* The 2-byte ranged GET was adopted as the honest replacement, and
+every measurement since — 526 ranged GETs across 58 feeds — has been read as if
+it cannot be lied to.
+
+**It can.** On 2026-08-23 a decode-and-compare run (PR for #114) asked one Diary
+Of A CEO enclosure how big it is four ways. Three cells agree; one does not:
+
+| identity | request | reported length |
+|---|---|---|
+| `ForayBot/0.1` (our probe) | ranged | 67,510,022 |
+| `ForayBot/0.1` | unranged | 67,510,022 |
+| `Foray/0.1` (our client) | ranged | 67,510,022 |
+| **`Foray/0.1`** | **unranged** | **68,884,898** |
+
+Only an unranged request from a client identity is served the assembled file,
+and two independent full downloads under that identity delivered exactly
+68,884,898 bytes — 1,374,876 bytes, **114.6 s of audio at the file's 96 kbps**,
+that the origin declares and does not send. The decoded file runs 139 s past its
+own publisher transcript's last cue.
+
+Two things make this hard to argue with. The difference is in the
+`Content-Length` **header**, before any body is read, with no `Content-Encoding`
+and no `Transfer-Encoding` — so it is not a download bug. And the short number
+is not a compressed version of the long one: `67,510,022 × 8 ÷ 96,000 =
+5,625.8 s` against a feed declaring **5,626 s**. It is the ad-free master, to a
+fraction of a second.
+
+**Our probe identity is the one being shown the master.** That host carries
+**5,461 timed transcripts, 47% of the anchorable corpus.**
+
+**What is already done and needs no ruling.** The measurement is committed
+(`data/decode-and-compare.json`, including the four-cell grid, reproducible with
+`--probe-grid`), `measure-suspects.mjs` now lets a decode overrule the byte
+screen and records both verdicts, and every flightcast show is back to
+`unresolved` except the one measured carrying undeclared audio, which is
+`drop`. Nothing is
+admitted on evidence now known to be blind. Corpus figures: `measured_clean`
+5,381, `measured_unresolved` 5,366, net 10,747, 50.1% measured.
+
+**A note on wording.** Below, "carries undeclared audio" is meant literally and
+is all that was measured. Nothing in this work detects, locates or classifies an
+advertisement, and it cannot — it counts frames (R11, product principle 3). The
+extra seconds could be ads, a longer outro, a bonus segment or a different cut;
+what makes them matter is that our authored timestamps do not account for
+them.
+
+**The four things only a founder should decide.**
+
+1. **Does ADR-0008 get amended, and by whom?** `docs/adr/` is a governed path, so
+   no agent can touch it. The sentence at risk is "No conclusion in this ADR
+   rests on a HEAD request" — still true as written, and now misleading, because
+   the reader's takeaway was "ranged GETs are safe" and on at least one platform
+   they are not. The ADR's §3 remedy half-covers it ("where the feed declares
+   `length="0"`, only a decode works"); what it does not say is that a length a
+   host *does* report can be the master's.
+
+2. **What do we spend to settle the other six flightcast shows?** Success Story
+   (1,264), Bankless (1,150), The Game with Alex Hormozi (1,141), Right About Now
+   (650), The Wild Sovereign Soul Show (551) **and The Secret To Success (564)** —
+   5,320 transcripts.
+
+   That last one is the surprise and it is the clearest illustration of what the
+   instrument failure costs. The Secret To Success has a probe-corroborated
+   decode showing **no excess audio**, and it is still `unresolved`: its host was
+   caught delivering more than it declares, so its five ranged-GET samples are
+   master lengths that cannot admit anything, and a single clean decode is below
+   the two-sample floor. One more download of that show would recover 564
+   transcripts on evidence we already know how to read. The only
+   instrument that works is a full download, ADR-0008 wants **N ≥ 2 of the same
+   episode**, and the committed override needs **2 decoded-clean episodes**
+   before a show on this host can be admitted. That is ~20 downloads, roughly
+   1.2 GB, and it is the whole question of whether half the corpus is anchorable.
+   The alternative is leaving 5,320 transcripts permanently `unresolved`, which
+   is honest, costs nothing, and never ends.
+
+   Cheaper option worth pricing first: `--probe-grid` is four tiny requests and
+   no audio, and it detected the discrepancy on its own. Running it across all
+   35 flightcast episodes costs 140 requests and would say *which* shows are
+   being served two different lengths — not how much audio, but a per-show
+   answer for the price of a rounding error. It cannot replace the downloads
+   (a show whose four cells agree is still only screened, not measured), but it
+   would tell us how many downloads to buy.
+
+3. **Do we now distrust the ranged GET everywhere, or only where it has been
+   caught?** The shipped code takes the narrow reading: a host is blind only once
+   a decode has caught it delivering more than it declared, and every other host
+   keeps its byte evidence. The wide reading — treat every `Content-Range` total
+   as unverified until a download or a probe grid corroborates it — would put
+   ~4,000 more transcripts back into `unresolved` and turn a kilobyte scan into a
+   gigabyte one. The narrow reading is what the evidence supports; the wide one
+   is what a cautious reading of *two consecutive instrument failures* (HEAD,
+   then ranged GET) would justify. Note the probe grid makes the wide reading
+   much cheaper than it was when this question was first framed.
+
+4. **Around the House with Eric G carries 313 s of undeclared audio, and
+   nothing consumes that fact.** Decoded 2593.33 s against a feed declaring
+   2280 s and a transcript ending at 2279.2 s — 2.6× the ADR-0008 120 s ceiling,
+   on a show whose feed-declared `length` is a computed 192 kbps placeholder (the
+   #319 Enormocast `5242880` shape) that made the byte ratio read **0.758** and
+   put the discrepancy underneath the floor rather than above the ceiling. The show is a curated `data/catalog.json`
+   entry, so it is in neither breadth measurement file and the decode override
+   never sees it. It is already excluded from transcript selection by
+   `dai: true` plus `verdict: unknown`, so nothing is wrongly admitted today —
+   but the finding should be routed into `data/dai-classification.json` or the
+   show should be dropped explicitly, rather than being correct by accident.
+
+**What to do.** Read `tools/transcribe/README.md` §5 (six downloads, the numbers,
+the probe grid, and the two controls that separate the origin from its ad-tech
+chain), then rule on 1–4. Nothing is blocked on this: the corpus figures are
+already correct and conservative. What is blocked is knowing whether 5,320
+transcripts are usable — and one download of The Secret To Success would settle
+564 of them.
+
+**Status:** OPEN
+
+---
+
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and
