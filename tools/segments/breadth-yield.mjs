@@ -49,6 +49,14 @@ import { dirname, join, relative, resolve as resolvePath } from "node:path";
 import { isDaiHost } from "../refresh/dai.mjs";
 import { AD_FREE_SHOWS } from "./fetch-transcripts.mjs";
 import { hostKeyOf } from "./rank-breadth.mjs";
+/* The list of committed measurement ledgers — from `ledgers.mjs`, which holds
+   nothing but two frozen arrays of strings, and NOT from `measure-suspects.mjs`,
+   which writes them and carries `ad-inflation.mjs`'s whole fetch stack. That
+   import would have put a network path one autocomplete away from a module
+   whose suite asserts it has none, to save copying three strings. The same
+   distinction `MEASURED_AD_FREE` below draws about importing
+   `fetch-transcripts.mjs`'s module without importing its fetcher. */
+import { MEASURED_REPORT_RELS } from "./ledgers.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -648,12 +656,15 @@ function parseArgs(argv) {
     tranche: list("--tranche", "data-local/breadth/tranche-01.json"),
     baseline: get("--baseline", "data/transcript-availability.json"),
     /* COMMA-SEPARATED, like `--breadth` above and for a sharper reason: there
-       are two measurement files now (see `measuredDispositions`) and quoting
-       one of them would report a corpus number contradicted by evidence sitting
-       in the repository beside it. Unlike the tranche pairing, a path that does
-       not resolve is skipped rather than fatal — a checkout that has run
-       neither scan must still be able to produce a report. */
-    measured: list("--measured", "data/breadth-suspect-inflation.json,data/breadth-anchorable-inflation.json"),
+       are several measurement files (see `measuredDispositions`) and quoting a
+       subset of them would report a corpus number contradicted by evidence
+       sitting in the repository beside it. The default is not a list written
+       out here — it IS `MEASURED_REPORT_RELS`, so this file cannot fall behind
+       the ledgers the way it did when the pair was typed in three places.
+       Unlike the tranche pairing, a path that does not resolve is skipped
+       rather than fatal — a checkout that has run no scan must still be able
+       to produce a report. */
+    measured: list("--measured", MEASURED_REPORT_RELS.join(",")),
     out: get("--out", null),
     poolSize: Number(get("--pool-size", "19436")),
   };

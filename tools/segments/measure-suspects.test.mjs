@@ -31,6 +31,7 @@ import {
   decodeOverride,
   gridIndex,
   GRID_REPORT_RELS,
+  MEASURED_REPORT_RELS,
   gridOverride,
   combineOverrides,
   decodeUnderreports,
@@ -1692,6 +1693,84 @@ test("the committed drops are the shows the committed grids condemned", () => {
    of the list (`defaultOutFor` produces a path from the pool; the flightcast
    pass was also narrowed by `--host` and is committed under a narrower name),
    so the two can only be kept in step by asserting it. */
+/* MUTATION: drop `data/breadth-tranche-03-inflation.json` from
+   `MEASURED_REPORT_RELS`. Verified failing.
+
+   THE SAME HAZARD AS THE GRID LIST, ONE LAYER OUT, AND IT IS THE QUIETER OF THE
+   TWO. `MEASURED_REPORT_RELS` is hand-maintained and feeds three CLI defaults —
+   `--measured` in `breadth-yield.mjs` and `regrid-clean.mjs`, `--settled` here.
+   A committed ledger missing from it does not error anywhere: `breadth-yield.mjs`
+   simply finds no disposition for those show_ids and files them under
+   `inferred`, so a tranche that was measured on arrival reports as never
+   probed, and the corpus number contradicts evidence sitting in `data/` beside
+   it. That is the exact failure #326 exists to stop happening again, so it is
+   asserted rather than remembered.
+
+   BOTH DIRECTIONS, like the grid test below it: a ledger on disk that nothing
+   reads is bought-and-ignored evidence, and a path in the list with no file
+   behind it is a default that makes every documented command fail. */
+/* MUTATION: move the `args.dryRun` early return back below the probe loop, or
+   restore `if (!args.dryRun) writeReport()`. Verified failing.
+
+   A PREVIEW THAT SPENDS THE BUDGET IS NOT A PREVIEW. `--dry-run` used to gate
+   only the WRITE: it fetched every feed, spent every ranged GET, printed the
+   verdicts and then discarded them. `regrid-clean.mjs` in the same directory
+   uses the same flag name to mean "print the pool and make no request", and
+   that is what the name promises. The asymmetry cost real requests during #326
+   — the flag was reached for to preview the tranche-3 pool and measured it
+   instead.
+
+   ASSERTED ON THE SOURCE because the alternative is standing up a fake network
+   for a whole `main()`. The two things that can regress are structural and both
+   are visible in the text: the early return must sit ABOVE the loop that makes
+   requests, and `writeReport()` must no longer be conditional on the flag. */
+test("--dry-run returns before the first request, not after the last", () => {
+  const src = readFileSync(new URL("./measure-suspects.mjs", import.meta.url), "utf8");
+
+  assert.doesNotMatch(src, /if\s*\(\s*!\s*args\.dryRun\s*\)\s*writeReport\s*\(\s*\)/, "the write is no longer what --dry-run gates");
+
+  const guard = src.indexOf("if (args.dryRun) {");
+  assert.ok(guard > 0, "the flag is still handled");
+  /* `fetchFeed(` is the first outbound call in the probe loop, and `probeEpisode(`
+     is the ranged GET. Both must come AFTER the early return, or a dry run
+     reaches them. */
+  for (const call of ["await fetchFeed(", "await probeEpisode("]) {
+    const at = src.indexOf(call, guard);
+    assert.ok(at > guard, `${call} should sit after the --dry-run return, not before it`);
+  }
+  /* And nothing outbound may sit between the pool print and the guard. */
+  const poolPrint = src.indexOf('pool "${args.pool}"');
+  assert.ok(poolPrint > 0 && guard > poolPrint, "the guard comes after the pool is printed, so the preview still prints");
+  assert.doesNotMatch(src.slice(poolPrint, guard), /await\s+(?:fetchFeed|probeEpisode|classifyShow)\s*\(/);
+});
+
+test("every committed measurement ledger is one the tools actually read", () => {
+  const dir = new URL("../../data/", import.meta.url);
+  const committed = readdirSync(dir).filter((f) => f.endsWith("-inflation.json"));
+  assert.ok(committed.length >= 3, "all three measurement passes are committed");
+  for (const f of committed) {
+    assert.ok(
+      MEASURED_REPORT_RELS.some((rel) => rel.replaceAll("\\", "/").endsWith(`data/${f}`)),
+      `data/${f} is committed but MEASURED_REPORT_RELS does not read it`,
+    );
+  }
+  for (const rel of MEASURED_REPORT_RELS) {
+    assert.ok(existsSync(new URL(`../../${rel.replaceAll("\\", "/")}`, import.meta.url)), `${rel} is listed but missing`);
+  }
+  /* AND THE THREE CLI DEFAULTS ARE THE LIST, not a copy of it that happens to
+     agree today. This is what the constant was extracted for; a file that
+     reverted to a literal would still pass every assertion above. */
+  for (const rel of ["breadth-yield.mjs", "regrid-clean.mjs", "measure-suspects.mjs"]) {
+    const src = readFileSync(new URL(`./${rel}`, import.meta.url), "utf8");
+    assert.match(src, /MEASURED_REPORT_RELS\.join\(","\)/, `${rel}: its default should BE the shared list`);
+    assert.doesNotMatch(
+      src,
+      /"data\/breadth-suspect-inflation\.json,data\/breadth-anchorable-inflation\.json"/,
+      `${rel}: the hand-written pair is back`,
+    );
+  }
+});
+
 test("every committed grid ledger is one the scan actually reads", () => {
   const dir = new URL("../../data/", import.meta.url);
   const committed = readdirSync(dir).filter((f) => f.endsWith("-regrid.json"));
@@ -1712,9 +1791,10 @@ test("every committed grid ledger is one the scan actually reads", () => {
    `data/breadth-suspect-inflation.json` that disagrees with its grid. Verified
    failing.
 
-   BOTH MEASURED LEDGERS, NOT ONE. The suspects file and the anchorable file are
-   two pools of one scan and `deriveRow` writes both, so a guard scoped to one
-   of them checks half the corpus. It is written to tolerate a MISSING
+   EVERY MEASURED LEDGER, NOT SOME. They are pools of one scan and `deriveRow`
+   writes all of them, so a guard scoped to a subset checks a fraction of the
+   corpus — which is why it now iterates `MEASURED_REPORT_RELS` rather than a
+   pair written out by hand. It is written to tolerate a MISSING
    `grid_status` — `data/breadth-suspect-inflation.json` predates the field and
    regenerating it would drag twelve unrelated shows and their re-probes into a
    flightcast change — but never a WRONG one, which is the failure that could
@@ -1725,14 +1805,19 @@ test("no measured row claims a grid result its grid did not produce", () => {
       JSON.parse(readFileSync(new URL(`../../${rel.replaceAll("\\", "/")}`, import.meta.url), "utf8")),
     ),
   );
-  for (const rel of ["breadth-anchorable-inflation", "breadth-suspect-inflation"]) {
-    const f = JSON.parse(readFileSync(new URL(`../../data/${rel}.json`, import.meta.url), "utf8"));
+  /* EVERY LEDGER, FROM THE LIST, not the two this test was written against.
+     The claim in the name is "no measured row", and a hardcoded pair stops
+     being that the moment a third ledger is committed — which #326 did. The
+     enclosing rule is the one the docstring already states: a guard scoped to
+     some of the ledgers checks some of the corpus. */
+  for (const rel of MEASURED_REPORT_RELS) {
+    const f = JSON.parse(readFileSync(new URL(`../../${rel.replaceAll("\\", "/")}`, import.meta.url), "utf8"));
     for (const r of f.results || []) {
       if (r.grid_status == null) continue;
       const evidence = grids.byShow.get(String(r.show_id));
       assert.equal(r.grid_status, evidence?.grid?.status, `${rel} / ${r.title}: grid_status has no grid behind it`);
     }
-    /* AND A CONDEMNING GRID IS NEVER IGNORED IN EITHER FILE. This is the half
+    /* AND A CONDEMNING GRID IS NEVER IGNORED IN ANY OF THEM. This is the half
        that can move a number, so it is checked unconditionally. */
     for (const r of f.results || []) {
       if (grids.byShow.get(String(r.show_id))?.grid?.status === "varies") {

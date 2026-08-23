@@ -159,13 +159,24 @@ node tools/segments/rank-breadth.mjs --exploit 600 --explore 400 --host-cap 40 -
 
 CATALOG_PATH=data-local/breadth/tranche-02.json AVAILABILITY_PATH=data-local/breadth/availability-tranche-02.json TRANSCRIPT_PROGRESS_PATH=data-local/breadth/progress-02.json   node tools/segments/sweep-transcripts.mjs --concurrency 4 --max-episode-rows 200
 
-# The committed report covers everything swept, so --breadth and --tranche are
-# lists too, paired positionally.
+# The committed report covers EVERYTHING swept, so --breadth and --tranche are
+# lists too, paired positionally — one entry per tranche, every tranche, or the
+# report silently describes a smaller corpus than the repo holds. The committed
+# file's own `source.breadth_index` / `source.tranche` are the authority on what
+# that list currently is; today it is three.
 node tools/segments/breadth-yield.mjs \
-  --breadth data-local/breadth/availability-breadth.json,data-local/breadth/availability-tranche-02.json \
-  --tranche data-local/breadth/tranche-01.json,data-local/breadth/tranche-02.json \
+  --breadth data-local/breadth/availability-breadth.json,data-local/breadth/availability-tranche-02.json,data-local/breadth/availability-tranche-03.json \
+  --tranche data-local/breadth/tranche-01.json,data-local/breadth/tranche-02.json,data-local/breadth/tranche-03.json \
+  --pool-size 16873 \
   --out data/breadth-transcript-yield.json
 ```
+
+**A tranche left off that pairing does not error.** It regenerates the committed
+report over fewer feeds, and every rate in it still looks like a rate — the same
+failure mode `readAvailabilities()` was hardened against below, in the one place
+the hardening cannot reach, because a SHORTER list is a legal list. Regenerating
+from two of three indexes today would drop tranche 3 and quietly invalidate the
+`inferred: 0` claim this file makes 160 lines down.
 
 **A path you passed and that is not there is FATAL in both tools, not skipped.**
 `readAvailabilities()` used to be `filter(existsSync).map(readJson)`, and that
@@ -201,11 +212,18 @@ node tools/segments/measure-suspects.mjs --pool anchorable --resume
 node tools/segments/measure-suspects.mjs --pool anchorable --resume --repeat 3 \
   --host atelier.flightcast.com
 
-# Then re-report. --measured is a LIST: both files, or the corpus number
-# contradicts evidence sitting in the repo beside it.
-node tools/segments/breadth-yield.mjs ... \
-  --measured data/breadth-suspect-inflation.json,data/breadth-anchorable-inflation.json
+# Then re-report. --measured is a LIST, and its default IS that list:
+# `MEASURED_REPORT_RELS` in tools/segments/ledgers.mjs. Pass it only to narrow
+# the set deliberately — a hand-typed list short by one file does not error, it
+# moves that pass's shows into `inferred` and reports a corpus number
+# contradicted by evidence sitting in the repo beside it.
+node tools/segments/breadth-yield.mjs ...
 ```
+
+**`--dry-run` costs nothing, and until #326 it cost everything.** It gated only
+the write, so a "dry" run fetched every feed and spent every ranged GET before
+discarding the answers — while `regrid-clean.mjs`'s identically named flag has
+always returned before opening a socket. Both now print the pool and stop.
 
 **`dai_reason: "unknown"` is not `dai_reason: "static"`.** It means
 `classifyShow` walked the redirect chain and recognised no host on it — a
@@ -308,10 +326,24 @@ host we know" into "harvest it and price the others".
 **Supply and anchorability are different numbers, and on breadth they diverge
 by 45x.** Transcripts cluster on the big networks and the big networks inject
 ads, so a timed transcript on a DAI show describes a timeline that is not the
-one we receive (ADR-0007). Across two tranches, 1,500 feeds returned
-**339,290** timed transcripts and **11,667** anchorable ones. The report prints
-both, and counts an unresolved DAI verdict as *not* anchorable — an unknown
+one we receive (ADR-0007). Across three tranches, 2,500 feeds returned
+**419,775** timed transcripts and **17,652** anchorable ones, of which
+**13,524** survive the suspect and measurement checks. The report prints all
+three, and counts an unresolved DAI verdict as *not* anchorable — an unknown
 reported as a win is how a yield rate becomes a promise the corpus cannot keep.
+
+**Tranche 3 was gridded during the sweep, and that is the point of it (#326).**
+Tranches 1 and 2 emitted `anchorable` on a hostname inference and were repaired
+afterwards, over four PRs that took the corpus from 10,933 to 8,833. Tranche 3
+measured every show it marked anchorable *before* reporting a number: 57 shows,
+**69 feed + 263 ranged GET** for the byte ratio (57 feeds, then 12 more on the
+re-derive pass), then **57 feed + 636 grid requests** for `probeGrid`. That is
+**1,025 requests, 1.02 per feed swept**, on top of the sweep — counted across
+both passes, because quoting the grid alone would read as though the evidence
+were a third cheaper to obtain than it was. It moved the tranche's own headline
+from 5,904 net-anchorable to **4,691** —
+a 20.5% correction made on arrival instead of in a fifth repair PR. `inferred`
+is **0** and stays 0.
 
 **Tranche 1's own numbers moved after it was published, and not because it was
 re-swept for supply.** #319 taught `classifyShow` to match the DAI host list
@@ -322,11 +354,15 @@ only an anchorable row can move — flipped five Spreaker shows and took tranche
 from **3,952 anchorable to 1,482**. Every figure below is post-#319; anything
 quoting 3,952 is pre-#319 and not comparable.
 
-**And "not DAI" still means "unrecognised", for all of it.** All **46**
-anchorable shows across both tranches carry `dai_reason: "unknown"`. Not one was
-positively verified as static; they are all "we did not recognise any host in
-this chain", filed as a pass. That caveat now sits under 11,667 transcripts
-instead of 3,952, which makes it larger rather than smaller.
+**And "not DAI" still means "unrecognised" at sweep time, for all of it.** Every
+anchorable show across all three tranches is marked on `dai_reason: "unknown"` —
+"we did not recognise any host in this chain", filed as a pass. What changed in
+#326 is not that inference; it is that the inference no longer survives to the
+report. Of the **105** anchorable shows, **100** have been measured, and the
+five that have not are netted out on the hostname heuristic rather than counted
+— so no unmeasured show is inside the number. The `measurement_coverage` block
+is what says so: of the 81 shows still in the corpus, 56 are `measured_clean`,
+25 are `measured_unresolved`, and **0 are `inferred`**.
 
 `suspectAnchorable()` reports the rows where that verdict is contradicted by
 something already known — and it now checks the **whole chain**, not the last

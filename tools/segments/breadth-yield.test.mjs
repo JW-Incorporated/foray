@@ -37,6 +37,7 @@ import {
   yieldOf,
 } from "./breadth-yield.mjs";
 import { AD_FREE_SHOWS, isAnchorableShow } from "./fetch-transcripts.mjs";
+import { MEASURED_REPORT_RELS } from "./ledgers.mjs";
 
 const rec = (over = {}) => ({
   show_id: over.show_id ?? "s1",
@@ -250,6 +251,15 @@ test("the report has no network path at all", () => {
      module needs no throttle. A guard that forbids discussing the rule is a
      guard people delete. */
   assert.doesNotMatch(src, /^import .*politeness\.mjs/m, "nothing to be polite about — it makes no requests");
+  /* AND THE ONE MODULE THIS FILE IMPORTS FOR DATA STAYS EMPTY. `ledgers.mjs`
+     exists so that this report can share the ledger list with the SCANNER
+     without importing the scanner's fetch stack, and that argument holds only
+     while `ledgers.mjs` imports nothing itself. The whitelist below names the
+     imports this file may have; it cannot see one added a level down, which is
+     precisely where the boundary would break silently. */
+  const ledgers = readFileSync(new URL("./ledgers.mjs", import.meta.url), "utf8");
+  assert.deepEqual(ledgers.match(/^import\s/m), null, "ledgers.mjs holds two frozen arrays and must import nothing");
+  assert.deepEqual(ledgers.match(/(?<!\w)fetch\s*\(/g), null);
   // dai.mjs also exports `classifyShow`, which DOES fetch. Importing the whole
   // module and calling the pure predicate is fine; importing the fetcher into a
   // reporting tool would be a second, unthrottled route into publishers' hosts
@@ -927,6 +937,17 @@ test("the yield report's coverage block matches the measurement files it cites",
       cov.inferred.timed_transcripts,
     y.anchorable_net_of_suspects,
   );
-  // Both measurement files are cited, not just one.
-  assert.equal((y.source.measured || []).length, 2, "the report reads every measurement file that exists");
+  /* EVERY measurement file is cited, not just the ones that existed when this
+     test was written. The count used to be the literal `2`, which made the
+     assertion's own message false the moment #326 committed a third ledger: a
+     report that read two of three would have filed a whole tranche under
+     `inferred` and this line would have called that "every measurement file
+     that exists". Compared against `MEASURED_REPORT_RELS` — the same list the
+     tools default to — so the report and the tools cannot disagree about what
+     the evidence is. */
+  assert.deepEqual(
+    (y.source.measured || []).map((p) => p.replaceAll("\\", "/")),
+    [...MEASURED_REPORT_RELS],
+    "the report reads every measurement file that exists",
+  );
 });

@@ -101,6 +101,11 @@ import { dirname, join, resolve as resolvePath } from "node:path";
 
 import { probeGrid } from "../transcribe/decode-compare.mjs";
 import { probeTargets } from "./measure-suspects.mjs";
+/* The ledger list from `ledgers.mjs` rather than through `measure-suspects.mjs`,
+   which re-exports it: this file already imports that module for `probeTargets`,
+   so either would work, but taking a constant from the module that owns it keeps
+   the re-export a compatibility shim rather than a second supply route. */
+import { MEASURED_REPORT_RELS } from "./ledgers.mjs";
 import { fetchFeed, parseFeed, writeJsonAtomic } from "./sweep-transcripts.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -518,7 +523,7 @@ export function parseArgs(argv) {
        widen underneath it. */
     dispositions,
     yieldPath: arg(argv, "--yield", "data/breadth-transcript-yield.json"),
-    measured: list(argv, "--measured", "data/breadth-suspect-inflation.json,data/breadth-anchorable-inflation.json"),
+    measured: list(argv, "--measured", MEASURED_REPORT_RELS.join(",")),
     out: arg(argv, "--out", defaultOutFor(dispositions)),
     dryRun: argv.includes("--dry-run"),
     resume: argv.includes("--resume"),
