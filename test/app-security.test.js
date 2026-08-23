@@ -341,6 +341,195 @@ test("segLenOf measures a narration bridge, so a strip click cannot land off its
   assert.strictEqual(units, 200, "the bars must sum to the clock a click is mapped onto");
 });
 
+/* ---------- the SegmentStrip bridge (#128) ----------
+
+   The strip is built in `player/segment-strip.js` and reaches this page through
+   `window.ForayPlayer.stripInto`, because app.js is a classic script and cannot
+   import a module. That bridge is the seam where the signature element can go
+   missing without anything turning red: `player/segment-strip.test.js` proves
+   the component, `player/foray-playback.test.js` drives the page through a fake
+   bridge that has no `stripInto` at all, and neither of them would notice
+   `mountForayStrip` handing over the wrong list — or nothing.
+
+   This harness is the only one in the repo that can reach an app.js internal
+   directly, which is why the two tests live here rather than next to the
+   component. */
+
+test("mountForayStrip hands the PLAYING QUEUE to the component, not the entry list", () => {
+  /* `r.playable` and `r.entries` are different lists the moment a segment fails
+     to resolve — `entries` carries the unplayable one so the page can say so.
+     A strip built from `entries` draws a bar for audio that never plays, and
+     every index after it is off by one against `paintForay`, which walks
+     `strip.children[i]` keyed on the QUEUE. The two lists are the same length
+     on healthy data, so this is invisible until the day it matters.
+
+     Mutation: `player.stripInto(strip, r.playable, …)` -> `r.entries`. The
+     deepStrictEqual below fails on the id list. */
+  const calls = [];
+  const strip = { id: "fy-strip" };
+  const resolved = {
+    playable: [{ id: "q#0" }, { id: "q#1" }],
+    entries: [{ id: "q#0" }, { id: "q#1" }, { id: "dropped", playable: false }],
+  };
+  const bridge = { stripInto: (el, items, opts) => calls.push({ el, items, opts }) };
+
+  app.window.ForayPlayer = bridge;
+  try {
+    withStrip(strip, () => app.mountForayStrip(resolved, bridge));
+  } finally {
+    delete app.window.ForayPlayer;
+  }
+
+  assert.strictEqual(calls.length, 1, "the component was never mounted");
+  assert.strictEqual(calls[0].el, strip, "mounted into something other than #fy-strip");
+  assert.deepStrictEqual(calls[0].items.map((i) => i.id), ["q#0", "q#1"]);
+  assert.strictEqual(calls[0].opts.size, "lg", "the player is the large size (#128)");
+});
+
+test("an older cached module costs the show colours, never the strip", () => {
+  /* app.js and the ES module are separate cache entries, so a page can run
+     against a module with no `stripInto`. The fallback is the sizing this page
+     has always done over the bars its own template emitted — a strip with no
+     capsules, which is what shipped before #128, rather than an empty bar.
+
+     Mutation: delete the `sizeForayStrip(r)` fallback line in
+     `mountForayStrip`. `flexGrow` stays undefined, and the transport renders a
+     row of equal 3px slivers on every page paired with an older module. */
+  const bars = [
+    { style: {}, children: [{ style: {} }] },
+    { style: {}, children: [{ style: {} }] },
+  ];
+  const strip = { id: "fy-strip", children: bars };
+  const resolved = {
+    playable: [
+      { kind: "episode", start_sec: 0, end_sec: 120 },
+      { kind: "tts", duration_sec: 40 },
+    ],
+  };
+
+  withStrip(strip, () => app.mountForayStrip(resolved, { /* older bridge: no stripInto */ }));
+
+  assert.deepStrictEqual(bars.map((b) => b.style.flexGrow), ["120", "40"]);
+});
+
+/* ---------- the strip is a scrubber, and #128 changed its geometry ----------
+
+   `stripElapsedAt` used to be `frac * totalSec` over the whole row, which was
+   defensible while every bar was separated by the same 2px. #128 spends a wider
+   break on a CROSS-episode seam than on a within-episode one, and the seams fall
+   where the episodes change rather than evenly along the row, so the error stopped
+   cancelling. On `capital-types-1` at a 362px strip the separators are a fifth of
+   the width and the flat map lands up to two minutes from the pointer — far enough
+   to be a different segment, in a control whose stated contract is "the position
+   under the pointer is the position you get".
+
+   The fixture below is the real shape of that: three bars of very different
+   lengths with a fat break before the third, i.e. exactly the geometry a flat map
+   gets wrong. */
+
+/** Every test below stubs `#fy-strip`; this puts the harness back afterwards so
+    a test appended later does not silently inherit a strip fixture. */
+function withStrip(strip, fn) {
+  const real = app.document.querySelector;
+  app.document.querySelector = (sel) => (sel === "#fy-strip" ? strip : null);
+  try { return fn(); } finally { app.document.querySelector = real; }
+}
+
+function stripFixture(boxes) {
+  const bars = boxes.map((box) => ({
+    style: {}, children: [{ style: {} }],
+    getBoundingClientRect: () => box,
+  }));
+  return {
+    id: "fy-strip", children: bars,
+    getBoundingClientRect: () => ({ left: 0, width: 300, top: 0, height: 12 }),
+  };
+}
+
+test("a click on the strip lands where the pointer is, not where an even row would put it", () => {
+  /* 100 s + 100 s + 100 s of audio in bars of 100px, 100px and 60px, with a 40px
+     seam before the third — the shape a cross-episode break makes. Clicking the
+     middle of the last bar is 250/300 = 83% of the ROW but 50% of the last
+     SEGMENT, i.e. 250 s of a 300 s Foray. The flat map answers 250 s only by
+     coincidence here, so the case that separates them is the START of that bar:
+     the row says 80% (240 s), the bar says the segment begins (200 s).
+
+     Mutation: delete the `stripElapsedFromBars` call in `stripElapsedAt`. The
+     first two assertions come back 240 and 270. */
+  const strip = stripFixture([
+    { left: 0, width: 100 }, { left: 100, width: 100 }, { left: 240, width: 60 },
+  ]);
+  const r = {
+    totalSec: 300,
+    playable: [
+      { kind: "episode", start_sec: 0, end_sec: 100 },
+      { kind: "episode", start_sec: 0, end_sec: 100 },
+      { kind: "episode", start_sec: 0, end_sec: 100 },
+    ],
+  };
+  withStrip(strip, () => {
+    assert.strictEqual(app.stripElapsedAt({ clientX: 240 }, r), 200, "the third segment starts where its bar does");
+    assert.strictEqual(app.stripElapsedAt({ clientX: 270 }, r), 250, "halfway along the last bar is halfway through it");
+    // A click inside the seam is the boundary, which is the honest reading of a gap.
+    assert.strictEqual(app.stripElapsedAt({ clientX: 220 }, r), 200);
+    // Both ends, and past both ends, stay inside the Foray. A scrub that leaves
+    // the strip must clamp rather than seek somewhere that does not exist.
+    assert.strictEqual(app.stripElapsedAt({ clientX: 0 }, r), 0);
+    assert.strictEqual(app.stripElapsedAt({ clientX: -50 }, r), 0);
+    assert.strictEqual(app.stripElapsedAt({ clientX: 300 }, r), 300);
+    assert.strictEqual(app.stripElapsedAt({ clientX: 9999 }, r), 300);
+  });
+});
+
+test("bars that cannot report their own geometry fall back to the flat map", () => {
+  /* A DOM stub, a strip mid-layout, or a bar count that disagrees with the queue.
+     A per-bar answer read off any of those would be wrong WITH CONFIDENCE, and
+     the flat map is approximate but never nonsense. This is also what keeps the
+     scrub tests in player/foray-playback.test.js meaningful: its stub answers one
+     320px box for every element it owns.
+
+     Mutation: drop the `spanned > rect.width + 1` guard in
+     `stripElapsedFromBars`. Every overlapping box is then treated as bar 0 and
+     the answer collapses to a position inside the first segment — 100 instead
+     of 150. */
+  const overlapping = stripFixture([
+    { left: 0, width: 300 }, { left: 0, width: 300 }, { left: 0, width: 300 },
+  ]);
+  const r = {
+    totalSec: 300,
+    playable: [
+      { kind: "episode", start_sec: 0, end_sec: 100 },
+      { kind: "episode", start_sec: 0, end_sec: 100 },
+      { kind: "episode", start_sec: 0, end_sec: 100 },
+    ],
+  };
+  withStrip(overlapping, () => {
+    assert.strictEqual(app.stripElapsedAt({ clientX: 150 }, r), 150, "half the row is half the Foray");
+    // No coordinate is still null — the caller falls back to the bar that was hit.
+    assert.strictEqual(app.stripElapsedAt({}, r), null);
+  });
+
+  // And a strip whose bar count no longer matches the queue is not measured either.
+  const short = stripFixture([{ left: 0, width: 100 }]);
+  withStrip(short, () => {
+    assert.strictEqual(app.stripElapsedAt({ clientX: 150 }, r), 150);
+  });
+
+  /* Bars in the right ORDER that nonetheless do not fit the strip: a layout that
+     has not settled, or content wider than its box. Ordering alone cannot see
+     this, which is why the width guard is separate from the overlap guard.
+
+     Mutation: drop `if (spanned > rect.width + 1) return null;`. The boxes below
+     are perfectly ordered, so the overlap check waves them through and a click at
+     x=150 is read as a position inside bar 0 — 50 instead of 150. */
+  const oversized = stripFixture([
+    { left: 0, width: 300 }, { left: 300, width: 300 }, { left: 600, width: 300 },
+  ]);
+  withStrip(oversized, () => {
+    assert.strictEqual(app.stripElapsedAt({ clientX: 150 }, r), 150);
+  });
+});
+
 /* ---------- smoke ----------
    Not a substitute for real render coverage; see the header. This only proves
    the escaping primitives compose the way the render path assumes. */

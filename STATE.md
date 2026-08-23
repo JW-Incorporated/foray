@@ -7,6 +7,50 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### SegmentStrip, the signature element (#128) — `feat/128-segment-strip`
+
+- **What:** the Foray-page strip stops being a row of grey bars and becomes the
+  thing #128 asks for: one capsule per SOURCE EPISODE, so a cross-episode seam is
+  a visible break rather than nothing; a show tone per episode; narrator bridges
+  as first-class hatched bars; three sizes; and an accessible name. Built as
+  `player/segment-strip.js` — a pure model plus a renderer — so #133 mounts the
+  same component in Now Playing instead of a second copy of it.
+- **Branch prefix:** `feat/128-segment-strip` — PR only, never main.
+- **Owned files:** `player/segment-strip.js`, `player/segment-strip.test.js` (both new).
+- **Shared files it touches:** `app.js` (the strip now mounts through the bridge;
+  `stripElapsedAt` measures the bars), `player/client.js` (+`stripInto`/`stripModel`/`stripSummary`),
+  `styles.css` (the `.fy-seg` block and a new `--seg-*` palette),
+  `test/app-security.test.js` (+4), `player/foray-playback.test.js` (+5 asserts in
+  the existing resume test), `test/suite-integrity.test.js` (floors).
+
+**HEADS-UP — the strip's DOM and its CSS contract both changed.** Still flat
+children in queue order with one `.fy-seg-fill` each (`paintSegFill` and the
+`[data-seg]` click are untouched), but:
+
+- `.fy-seg` now carries a **tone class** (`fy-t0`..`fy-t7`) or `fy-seg--narration`,
+  plus `is-run-start` / `is-run-end` for the capsule ends. Anything generating
+  `.fy-seg` markup by hand will render uncoloured and uncapsuled.
+- **New class `is-here`** = "the bar the listener is inside", which is NOT
+  `is-playing`. On a cold resume the page knows where the listener is and nothing
+  is playing; the progress fill and the full opacity hang on `is-here`, the ring
+  hangs on `is-playing`. `paintForay` writes both.
+- **New container class `has-position`**, written by `paintForay`. Without it the
+  strip renders the browsing state (every bar at full opacity) rather than a
+  progress meter.
+- `.fy-seg-fill` is invisible except on `.is-here`. A past bar shows its show
+  colour instead of a white fill, which is the point of the colours.
+
+**Live finding:** `stripElapsedAt` used to map a click linearly across the row.
+That was fine at a uniform 2px gap and is not fine now — separators are ~20% of a
+362px strip and fall where the EPISODES change, so a flat map lands up to two
+minutes from the pointer on `capital-types-1`. It now measures the bars, with the
+flat map kept as the fallback for a DOM that cannot report per-bar geometry
+(which is what `player/foray-playback.test.js`'s stub does, deliberately).
+
+**Explicitly out of scope:** #133 (the strip in the Now Playing sheet), and making
+the strip itself keyboard-operable — that means `role="slider"` with arrow keys
+and belongs with #133's live position, not behind a `tabindex` on a `role="img"`.
+
 ### #301's strong bar is measured and DOCUMENTED, not changed (2026-08-21, one PR, auto-mergeable, no follow-up) — `fix/301-strong-bar`
 
 - **What:** improving a query's best match can empty that query, because the strong

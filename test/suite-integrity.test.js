@@ -157,6 +157,16 @@ const FLOORS = {
   "player/queue-manager.test.js": 99,
   "player/queue-state.test.js": 56,
   "player/seam-gap.test.js": 16,
+  /* The SegmentStrip (#128) — the element that makes a Foray legible as
+     something other than a playlist. Floored with no slack because what it
+     holds down is a set of DESIGN decisions, each a single line from its
+     opposite and none of them visible in a passing render: that a capsule is a
+     source EPISODE and not a show (two episodes of one podcast are two hard
+     cuts the listener hears), that the seam survives greyscale, that a narrator
+     bridge is an item rather than a gap, that no two touching capsules share a
+     tone, and that both themes' palettes clear 3:1. Every test names the
+     mutation that kills it. */
+  "player/segment-strip.test.js": 27,
   "player/seek-policy.test.js": 33,
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
@@ -166,7 +176,7 @@ const FLOORS = {
      each is exactly one careless edit from its opposite, and #302 exists because
      reverting one of them passed the whole suite. */
   "test/app-name.test.js": 21,
-  "test/app-security.test.js": 22,
+  "test/app-security.test.js": 26,
   /* "Delete my data" (#42). Zero slack, like media-session above and for the same
      reason: what this suite guards is a PROMISE — both tiers cleared, the server
      rows really deleted, no success message over a failure, and a confirmation a

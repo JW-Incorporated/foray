@@ -1663,6 +1663,10 @@ async function renderForay(id) {
           </p>
           <button type="button" class="fy-restart" id="fy-restart">Start over</button>
         </div>` : ""}
+        <!-- Plain bars, replaced wholesale by the SegmentStrip component in
+             mountForayStrip below (#128). They stay in the markup as the
+             fallback for a page paired with an older cached module, and are the
+             only reason this element is never empty. -->
         <div class="fy-strip" id="fy-strip">${r.playable.map((_, i) =>
           `<span class="fy-seg" data-seg="${i}"><i class="fy-seg-fill"></i></span>`).join("")}</div>
         <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
@@ -1689,7 +1693,7 @@ async function renderForay(id) {
     </div>`;
 
   $("#fy-total").textContent = player.fmtClock(r.totalSec);
-  sizeForayStrip(r);
+  mountForayStrip(r, player);
   // Optional-chained deliberately. This runs BEFORE every binder, so if the
   // markup and this line ever disagree the throw would take the whole transport
   // down with it — an unfilled progress bar is a far better failure. CI catches
@@ -1698,6 +1702,36 @@ async function renderForay(id) {
   bindFeedback(r);
   bindSourceLinks(r);
   bindForayTransport(r, player, resume);
+}
+
+/* The strip is the signature element (#128) and it is BUILT IN THE PLAYER
+   MODULE, `player/segment-strip.js` — show colours, the capsule per source
+   episode, the gap that makes a cross-episode seam visible, the narrator
+   bridges and the accessible label all live there, and the Now Playing sheet
+   (#133) will mount the same component rather than a second copy of it.
+
+   No position is passed. The bars this page renders are handed straight over to
+   `paintForay`/`paintSegFill`, which repaint past/current/upcoming four times a
+   second from the live clock; mounting with a position too would mean two
+   writers for one set of classes, disagreeing for one frame on every load.
+
+   The fallback is not defensive noise. `renderForay` reaches this line only
+   because `player.resolve` answered, so the module IS evaluated — but app.js
+   and the module are separate cache entries and a page can be paired with an
+   older module that has no `stripInto`. That one gets the template's plain bars
+   and the sizing this function has always done — proportional, uncoloured and
+   uncapsuled, which is what shipped before this change, rather than an empty
+   strip. `.fy-seg`'s fallback tone in styles.css exists for exactly those bars:
+   they carry no tone class, and the bordered grey they used to be would now be
+   invisible, since the coloured bar has no border. */
+function mountForayStrip(r, player) {
+  const strip = $("#fy-strip");
+  if (!strip) return;
+  if (typeof player?.stripInto === "function") {
+    player.stripInto(strip, r.playable, { size: "lg" });
+    return;
+  }
+  sizeForayStrip(r);
 }
 
 /* Each segment's share of the strip is its share of the runtime. Set as a DOM
@@ -1743,17 +1777,69 @@ function segLenOf(item) {
    when the geometry cannot answer (no pointer coordinates, a strip with no
    width yet). Null is a real answer here, not a failure — the caller falls back
    to the segment that was hit, which is what the strip did before it could
-   scrub. Gap widths between the bars are counted as playable time; at 32 bars
-   across a phone that is a fraction of a second, and pretending otherwise would
-   need a per-bar measurement for no audible gain. */
+   scrub.
+
+   THE BARS ARE MEASURED, not assumed to tile the row evenly. This used to be a
+   flat `frac * totalSec`, justified by a comment saying the gaps between the
+   bars were "a fraction of a second". That was true of a uniform 2px gap and
+   stopped being true with #128: a cross-episode seam is a wider break than a
+   within-episode one and the seams fall where the EPISODES change, so the error
+   no longer cancels along the row. Measured on `capital-types-1` at a 362px
+   strip, separators are 20% of the width and a flat map lands up to 120 s from
+   the pointer — far enough to be a different segment, in a control whose whole
+   contract is "the position under the pointer is the position you get".
+
+   So: find the bar the pointer is over and take the position INSIDE it. A click
+   in a seam resolves to the boundary, which is the honest reading of a gap. */
 function stripElapsedAt(e, r) {
   const strip = $("#fy-strip");
   if (!strip || typeof strip.getBoundingClientRect !== "function") return null;
   const rect = strip.getBoundingClientRect();
   const x = e && typeof e.clientX === "number" ? e.clientX : null;
   if (x == null || !rect || !(rect.width > 0)) return null;
+  const measured = stripElapsedFromBars(strip, x, rect, r);
+  if (measured != null) return measured;
   const frac = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
   return frac * r.totalSec;
+}
+
+/* The same question answered from the bars' own boxes, or null when they cannot
+   answer it — a strip that has not been laid out, a bar count that disagrees
+   with the queue, or a DOM whose elements do not report distinct geometry. Null
+   rather than a confident wrong answer: the caller still has the flat map, which
+   is approximate but never nonsense. */
+function stripElapsedFromBars(strip, x, rect, r) {
+  const bars = strip.children ? [...strip.children] : [];
+  if (bars.length !== r.playable.length || bars.length === 0) return null;
+
+  const boxes = [];
+  let spanned = 0;
+  for (const bar of bars) {
+    if (typeof bar.getBoundingClientRect !== "function") return null;
+    const box = bar.getBoundingClientRect();
+    if (!box || !(box.width > 0)) return null;
+    boxes.push(box);
+    spanned += box.width;
+  }
+  // The bars have to actually TILE the row: each one starting at or after the
+  // end of the last, and the whole set no wider than the strip. Anything else
+  // is a DOM that is not laying out (or a stub reporting one box for every
+  // element), and a per-bar answer read off it would be wrong with confidence.
+  if (spanned > rect.width + 1) return null;
+  for (let i = 1; i < boxes.length; i++) {
+    if (boxes[i].left + 0.5 < boxes[i - 1].left + boxes[i - 1].width) return null;
+  }
+
+  let acc = 0;
+  for (let i = 0; i < boxes.length; i++) {
+    const len = segLenOf(r.playable[i]);
+    if (x < boxes[i].left) return acc;                     // in the seam before it
+    if (x <= boxes[i].left + boxes[i].width) {
+      return acc + ((x - boxes[i].left) / boxes[i].width) * len;
+    }
+    acc += len;
+  }
+  return acc;                                               // past the last bar
 }
 
 /* The fill inside the bar the listener is currently inside — the one thing on
@@ -2194,6 +2280,13 @@ function paintForay(s) {
   // The beat, for CSS: the strip holds still at a boundary for 2.0 s and this
   // is how a stylesheet can say so without the page inventing new copy.
   $("#fy-strip")?.classList.toggle("is-seam", Boolean(s.gap));
+  /* Whether anybody is IN this Foray, for CSS. Without it the strip has no way
+     to tell "nobody has started" from "every segment is still ahead of you",
+     and the browsing state — the shape of the Foray, every bar at full
+     opacity — would render as a strip dimmed to 0.28 from end to end. `mark` is the same
+     index the row highlights use, so the strip and the running order agree
+     about whether the listener is anywhere. */
+  $("#fy-strip")?.classList.toggle("has-position", mark >= 0);
 
   /* The speed, relabelled from the snapshot (#242), so a change made in the
      mini-player's Now Playing sheet reaches this button too — there is one speed
@@ -2240,6 +2333,13 @@ function paintForay(s) {
   if (strip) {
     [...strip.children].forEach((seg, i) => {
       seg.classList.toggle("is-playing", i === liveIndex);
+      /* WHERE THE LISTENER IS, which is not the same claim as "audio is
+         running" and comes apart on a cold load: `mark` is then the STORED
+         position and `liveIndex` is -1. The strip dims everything that is
+         neither played nor here, and the fill inside a bar is only shown on the
+         bar the listener is in, so without this the resume point rendered as a
+         dim empty bar under a banner offering to jump back into it. */
+      seg.classList.toggle("is-here", i === mark);
       seg.classList.toggle("is-played", mark >= 0 && i < mark);
       // A bar the listener has passed is full; one they have not reached is
       // empty. The bar they are INSIDE is left alone — paintSegFill already

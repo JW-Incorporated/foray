@@ -105,6 +105,7 @@ import {
   DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport,
 } from "./diagnostic-log.js";
 import { forayCredits, collectionIdsByShow, creditsSummary, artworkUrlsByShow } from "./foray-sources.js";
+import { mountStrip, stripModel, stripSummary } from "./segment-strip.js";
 import { createDurableStore } from "./durable-store.js";
 import { makeIdbTier } from "./idb-tier.js";
 import {
@@ -1285,6 +1286,26 @@ const ForayPlayer = {
 
   fmtClock,
   fmtSpan,
+
+  /* ---------- the SegmentStrip (#128) ----------
+
+     The strip is DOM, and app.js is a classic browser script that cannot import
+     an ES module — the same reason `resolve` and `fmtClock` are bridged. Bridged
+     as a MOUNT rather than as a model plus a copy of the renderer in app.js:
+     two renderers for one element is how the strip and the running order would
+     come to disagree about which segment is which.
+
+     `document` is closed over here rather than passed in, so app.js never has
+     to hand a global to the player. */
+  stripInto(el, items, opts = {}) {
+    return mountStrip(el, items, { ...opts, document });
+  },
+
+  /** The strip as data, for a caller that wants the numbers without the DOM —
+      and for the accessible sentence, which the Now Playing sheet (#133) will
+      want next to a strip it renders itself. */
+  stripModel,
+  stripSummary,
 
   /* ---------- playback speed (#242) ---------- */
 
