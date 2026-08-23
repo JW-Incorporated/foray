@@ -28,6 +28,7 @@ import {
   checkTranchePairing,
   isAnchorable,
   measuredDispositions,
+  measurementCoverage,
   projectFootprint,
   suspectAnchorable,
   repoRelative,
@@ -755,4 +756,177 @@ test("the committed row carries its DAI reason, and committed paths are repo-rel
     assert.doesNotMatch(outside, /\\/, "no backslashes either — one spelling in the file");
     assert.equal(outside, "data-local/breadth/tranche-02.json");
   }
+});
+
+/* ============================= #321: measured, or merely not recognised
+
+   `anchorable_net_of_suspects` has always been printed without saying what it
+   rests on. Every show behind it carries `dai_reason: "unknown"` — not
+   "verified static" but "no host on this redirect chain was recognised", a
+   negative filed as a pass. These pin the split that tells the two apart. */
+
+/* MUTATION: make `measuredDispositions` read only the first report when given
+   an array. Verified failing.
+
+   There are two measurement files now: #319's settles the shortlist, #321's
+   settles the shows the shortlist never flagged. Reading one is how #320 found
+   this function — a committed measurement no tool consults decays into
+   folklore. Reading only the newer one silently un-drops the five shows #319
+   caught injecting. */
+test("dispositions merge across every measurement file, not just one", () => {
+  const merged = measuredDispositions([
+    { results: [{ show_id: "suspect-dirty", disposition: "drop" }] },
+    { results: [{ show_id: "anchorable-dirty", disposition: "drop" }] },
+  ]);
+  assert.equal(merged.get("suspect-dirty"), "drop");
+  assert.equal(merged.get("anchorable-dirty"), "drop");
+  assert.equal(merged.size, 2);
+});
+
+/* MUTATION: let the EARLIER report win a show_id collision. Verified failing.
+   The only reason to measure a show twice is that the first answer is stale, so
+   an ordering that prefers the stale one inverts the purpose of re-measuring. */
+test("a later measurement supersedes an earlier one for the same show", () => {
+  const merged = measuredDispositions([
+    { results: [{ show_id: "s", disposition: "recover" }] },
+    { results: [{ show_id: "s", disposition: "drop" }] },
+  ]);
+  assert.equal(merged.get("s"), "drop");
+});
+
+/* A single report still works unwrapped — #319's call site, and every test
+   above, passes one object rather than a list. */
+test("a single report is still accepted on its own", () => {
+  assert.equal(measuredDispositions({ results: [{ show_id: "s", disposition: "recover" }] }).get("s"), "recover");
+  assert.equal(measuredDispositions([]).size, 0);
+});
+
+const anch = (over = {}) =>
+  summaryRow(rec({ dai_suspected: false, episodes_with_timed_transcript: 100, ...over }));
+
+/* MUTATION: fold `measured_unresolved` into `measured_clean`. Verified failing.
+
+   This is the whole deliverable. A show is unresolved when the probe RAN and
+   could not conclude — no declared length to divide by, a sample too thin,
+   delivered bytes short of the declaration. Counting it as measured turns
+   "10,933, all inferred" into a report that reads like "10,933, measured", and
+   on the real corpus it would claim 5,507 transcripts as evidence-backed when
+   the evidence is precisely that we could not tell. */
+test("probed-but-unsettled is never counted as measured", () => {
+  const rows = [
+    anch({ show_id: "clean", episodes_with_timed_transcript: 995 }),
+    anch({ show_id: "cannot-tell", episodes_with_timed_transcript: 5461 }),
+    anch({ show_id: "never-probed", episodes_with_timed_transcript: 525 }),
+  ];
+  const measured = measuredDispositions({
+    results: [
+      { show_id: "clean", disposition: "recover" },
+      { show_id: "cannot-tell", disposition: "unresolved" },
+    ],
+  });
+  const cov = measurementCoverage(rows, [], measured);
+  assert.deepEqual(cov.measured_clean, { shows: 1, timed_transcripts: 995 });
+  assert.deepEqual(cov.measured_unresolved, { shows: 1, timed_transcripts: 5461 });
+  assert.deepEqual(cov.inferred, { shows: 1, timed_transcripts: 525 });
+  assert.equal(cov.measured_pct_of_net, 14.3, "995 of 6,981");
+});
+
+/* MUTATION: in `measurementCoverage`, test the disposition BEFORE suspect
+   membership. Verified failing.
+
+   A row's disposition says what the bytes showed; `suspects` says whether this
+   report counts it. A heuristic suspect that was probed and came back
+   `unresolved` is still netted OUT, so filing it under `measured_unresolved`
+   would put a row outside the headline number into a bucket that is required to
+   sum to it — and the identity below would quietly stop holding. */
+test("the three in-corpus buckets reconstruct the headline number exactly", () => {
+  const rows = [
+    anch({ show_id: "clean", episodes_with_timed_transcript: 995 }),
+    anch({ show_id: "cannot-tell", episodes_with_timed_transcript: 5461 }),
+    anch({ show_id: "never-probed", episodes_with_timed_transcript: 525 }),
+    anch({ show_id: "caught", episodes_with_timed_transcript: 1368 }),
+    anch({ show_id: "suspect-unprobed", episodes_with_timed_transcript: 337 }),
+    anch({ show_id: "suspect-unsettled", episodes_with_timed_transcript: 42 }),
+  ];
+  const measured = measuredDispositions({
+    results: [
+      { show_id: "clean", disposition: "recover" },
+      { show_id: "cannot-tell", disposition: "unresolved" },
+      { show_id: "caught", disposition: "drop" },
+      { show_id: "suspect-unsettled", disposition: "unresolved" },
+    ],
+  });
+  const suspects = [
+    { show_id: "caught" },
+    { show_id: "suspect-unprobed" },
+    { show_id: "suspect-unsettled" },
+  ];
+  const cov = measurementCoverage(rows, suspects, measured);
+
+  assert.equal(
+    cov.measured_clean.timed_transcripts + cov.measured_unresolved.timed_transcripts + cov.inferred.timed_transcripts,
+    cov.anchorable_net_of_suspects,
+  );
+  assert.equal(cov.anchorable_net_of_suspects, anchorableNetOfSuspects(rows, suspects));
+  assert.deepEqual(cov.excluded_measured_injecting, { shows: 1, timed_transcripts: 1368 });
+  assert.deepEqual(cov.excluded_by_heuristic, { shows: 2, timed_transcripts: 379 });
+  assert.equal(cov.measured_unresolved.timed_transcripts, 5461, "the netted-out unresolved suspect is not in here");
+});
+
+/* MUTATION: add a `status !== "ok"` test to `measurementCoverage`'s filter, or
+   drop the `r.anchorable` test. Verified failing on both.
+
+   The buckets must sum to `anchorableNetOfSuspects`, and that function reads
+   `r.anchorable` and nothing else — `isAnchorable` never consults `status`. So
+   a coverage filter that ALSO screens on status disagrees with the number it is
+   required to reconstruct, and the yield file would carry two different values
+   under one key. The earlier version of this test asserted 100 for both and so
+   encoded the divergence rather than the agreement its name claims: it passed
+   because the fixture had no row that was anchorable AND failed. This one has
+   one. */
+test("coverage counts exactly the anchorable rows the headline counts", () => {
+  const rows = [
+    anch({ show_id: "ok" }),
+    /* Not reachable from a real sweep — a failed row has no timed transcripts,
+       so `isAnchorable` rejects it — but the two predicates must agree because
+       they are the same predicate, not because of what today's data holds. */
+    anch({ show_id: "anchorable-but-failed", status: "error", episodes_with_timed_transcript: 55 }),
+    summaryRow(rec({ show_id: "prose", dai_suspected: false, episodes_with_timed_transcript: 0 })),
+  ];
+  const cov = measurementCoverage(rows, [], new Map());
+  assert.equal(cov.inferred.shows, 2, "the non-anchorable row is excluded; the failed anchorable one is not");
+  assert.equal(cov.anchorable_net_of_suspects, anchorableNetOfSuspects(rows, []));
+  assert.equal(cov.anchorable_net_of_suspects, 155);
+});
+
+/* THE COMMITTED FILES AGREE WITH EACH OTHER. Two measurement files and one
+   yield report; if the report's coverage block were computed from a different
+   set of dispositions than the files contain, nothing else would notice.
+
+   MUTATION: change a disposition in either inflation file, or the coverage
+   block in the yield file, by hand. Verified failing. */
+test("the yield report's coverage block matches the measurement files it cites", () => {
+  const y = JSON.parse(readFileSync(new URL("../../data/breadth-transcript-yield.json", import.meta.url), "utf8"));
+  const cov = y.measurement_coverage;
+  assert.ok(cov, "the yield report says what its corpus rests on");
+
+  const measured = measuredDispositions(
+    (y.source.measured || []).map((p) =>
+      JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")),
+    ),
+  );
+  assert.deepEqual(
+    measurementCoverage(y.shows, y.suspect_anchorable, measured),
+    cov,
+    "the committed coverage block is reproducible from the committed evidence",
+  );
+  assert.equal(cov.anchorable_net_of_suspects, y.anchorable_net_of_suspects);
+  assert.equal(
+    cov.measured_clean.timed_transcripts +
+      cov.measured_unresolved.timed_transcripts +
+      cov.inferred.timed_transcripts,
+    y.anchorable_net_of_suspects,
+  );
+  // Both measurement files are cited, not just one.
+  assert.equal((y.source.measured || []).length, 2, "the report reads every measurement file that exists");
 });

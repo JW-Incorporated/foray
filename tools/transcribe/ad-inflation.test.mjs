@@ -236,12 +236,18 @@ test('the default probe path waits on the shared per-host gate', async () => {
   const sleep = async (ms) => { slept.push(ms); };
   const fetchImpl = async () => res({ 'content-range': 'bytes 0-1/2000000' });
 
+  /* A FROZEN CLOCK, so this asserts the gate rather than the machine. It used
+     to read `Date.now()` and allow 50ms of slop; a stall between the two probes
+     -- which a 78-suite run produces -- pushed the computed wait under the
+     floor and reddened CI for a reason unrelated to politeness. */
+  const now = () => 1_000_000;
+
   // Two different URLs, ONE host -- which is the case the gate exists for.
-  await probeEpisode('https://one-host.test/a.mp3', 2000000, { fetchImpl, sleep });
-  await probeEpisode('https://one-host.test/b.mp3', 2000000, { fetchImpl, sleep });
+  await probeEpisode('https://one-host.test/a.mp3', 2000000, { fetchImpl, sleep, now });
+  await probeEpisode('https://one-host.test/b.mp3', 2000000, { fetchImpl, sleep, now });
 
   assert.equal(slept.length, 1, 'the first probe claims a free slot; the second must wait');
-  assert.ok(slept[0] >= MIN_HOST_INTERVAL_MS - 50, `waited ${slept[0]}ms, expected ~${MIN_HOST_INTERVAL_MS}`);
+  assert.equal(slept[0], MIN_HOST_INTERVAL_MS, 'the second probe waits exactly one interval');
 });
 
 /* MUTATION: replace `retryWait(url, res, attempt, gateOpts)` with a local

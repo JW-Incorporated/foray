@@ -1,0 +1,2858 @@
+{
+  "version": 1,
+  "measured_at": "2026-08-23T10:22:14.285Z",
+  "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs via tools/segments/measure-suspects.mjs",
+  "pool": "anchorable",
+  "source": {
+    "yield_report": "data/breadth-transcript-yield.json",
+    "passes": [
+      {
+        "note": "earlier pass(es), recorded before this field existed",
+        "feeds": 49,
+        "ranged_gets": 367
+      },
+      {
+        "per_show": 5,
+        "repeat": 3,
+        "hosts": [
+          "atelier.flightcast.com",
+          "d11untcg2uthr3.cloudfront.net"
+        ],
+        "reprobe": true,
+        "shows_probed": 8,
+        "feeds": 8,
+        "ranged_gets": 150,
+        "at": "2026-08-23T09:57:19.735Z"
+      }
+    ]
+  },
+  "requests": {
+    "feeds": 57,
+    "ranged_gets": 517
+  },
+  "measurement": {
+    "measured_clean": {
+      "shows": 22,
+      "timed_transcripts": 3999
+    },
+    "measured_injecting": {
+      "shows": 7,
+      "timed_transcripts": 1413
+    },
+    "unresolved": {
+      "shows": 12,
+      "timed_transcripts": 5507
+    },
+    "repeat_stable_no_denominator": {
+      "shows": 8,
+      "timed_transcripts": 5503
+    },
+    "note": "unresolved is neither a clean bill nor evidence of ads: the show keeps whatever its pre-measurement status was, and stays inferred rather than becoming measured. repeat_stable_no_denominator is the subset of it that was probed N times and never varied — no sign of insertion, and no declared length with which to confirm its absence"
+  },
+  "results": [
+    {
+      "show_id": "1737303645",
+      "title": "The Art Bell Archive",
+      "feed_host": "artbellarchive.org",
+      "enclosure_host": "dn720303.ca.archive.org",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1368,
+      "verdict": "ad-free",
+      "disposition": "drop",
+      "median": 1.002,
+      "n": 5,
+      "inserted_samples": 5,
+      "constant_offset_bytes": 99345,
+      "max_delta_sec_implied": 17,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "audio.artbell.am"
+      ],
+      "note": "every sampled episode differs from its declared length by the same 99345 bytes, across a much wider spread of episode sizes — a CONSTANT gap, not one proportional to the episode, which is not the shape most ad load has. It does not follow that the gap is innocent: ADR-0008 lists pre-roll-only as a real DAI configuration and a fixed-length pre-roll is also a constant offset, so a fixed metadata block (ID3v2 artwork is typically ~100KB) and a short house pre-roll fit these bytes equally well. impliedDeltaSec converts the gap at the audio bitrate because it assumes every byte is audio. Disposition left at drop deliberately — ADR-0008 decode-and-compare on one episode is what chooses",
+      "samples": [
+        {
+          "guid": "https://artbellarchive.org/episode/october-22-2015-nanotechnology-douglas-mulhall",
+          "episode": "October 22, 2015: Nanotechnology - Douglas Mulhall",
+          "declared_bytes": 53823465,
+          "delivered_bytes": 53922789,
+          "duration_sec": 8565,
+          "ratio": 1.002,
+          "delta_sec_implied": 16
+        },
+        {
+          "guid": "https://artbellarchive.org/episode/october-21-2015-space-elevator-and-emps-dr-william-forstchen",
+          "episode": "October 21, 2015: Space Elevator & EMPs - Dr. William Forstchen",
+          "declared_bytes": 53088481,
+          "delivered_bytes": 53187868,
+          "duration_sec": 8325,
+          "ratio": 1.002,
+          "delta_sec_implied": 16
+        },
+        {
+          "guid": "https://artbellarchive.org/episode/october-20-2015-hubrids-part-ii-david-jacobs",
+          "episode": "October 20, 2015: Hubrids Part II - David Jacobs",
+          "declared_bytes": 56477648,
+          "delivered_bytes": 56576979,
+          "duration_sec": 8504,
+          "ratio": 1.002,
+          "delta_sec_implied": 15
+        },
+        {
+          "guid": "https://artbellarchive.org/episode/october-16-2015-open-lines-super-power-line",
+          "episode": "October 16, 2015: Open Lines - Super Power Line",
+          "declared_bytes": 51890380,
+          "delivered_bytes": 51989683,
+          "duration_sec": 8625,
+          "ratio": 1.002,
+          "delta_sec_implied": 17
+        },
+        {
+          "guid": "https://artbellarchive.org/episode/october-15-2015-reality-shifting-cynthia-larson",
+          "episode": "October 15, 2015: Reality Shifting - Cynthia Larson",
+          "declared_bytes": 53066960,
+          "delivered_bytes": 53166279,
+          "duration_sec": 8434,
+          "ratio": 1.002,
+          "delta_sec_implied": 16
+        }
+      ]
+    },
+    {
+      "show_id": "1292381204",
+      "title": "TFTC: A Bitcoin Podcast",
+      "feed_host": "fountain.fm",
+      "enclosure_host": "feeds.fountain.fm",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1035,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "feeds.fountain.fm"
+      ],
+      "samples": [
+        {
+          "guid": "76acd65a-083e-4cdb-8de6-96f3793f1e83",
+          "episode": "#784: The Billionaire Playbook with Chase Koch",
+          "declared_bytes": 173126145,
+          "delivered_bytes": 173126145,
+          "duration_sec": 4328,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "78dc6d40-691d-4d07-9afa-fa6a1bf04efd",
+          "episode": "Ten31 Timestamp: Dog Days",
+          "declared_bytes": 79304757,
+          "delivered_bytes": 79304757,
+          "duration_sec": 1983,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "5ed2302f-433d-4e85-970d-49cee32906c6",
+          "episode": "#783: Trump Is Throwing The Midterms with Mark Mitchell",
+          "declared_bytes": 197304039,
+          "delivered_bytes": 197304039,
+          "duration_sec": 4933,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "6eee424a-2582-44d6-8af7-0cd844f1c9b6",
+          "episode": "#782: Fiat Food Is Destroying America with Will Harris",
+          "declared_bytes": 139135614,
+          "delivered_bytes": 139135614,
+          "duration_sec": 3478,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "591d0a9b-ef08-45d9-8e4e-59c035fdf6d6",
+          "episode": "#781: The Truth About Fauci with Jessica Rose",
+          "declared_bytes": 237673671,
+          "delivered_bytes": 237673671,
+          "duration_sec": 5942,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1733733790",
+      "title": "This Week in Bitcoin",
+      "feed_host": "fountain.fm",
+      "enclosure_host": "feeds.fountain.fm",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 121,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "feeds.fountain.fm"
+      ],
+      "samples": [
+        {
+          "guid": "f85a90f2-4a64-4525-bc79-b9dae7999a9b",
+          "episode": "119: Debt Always Wins",
+          "declared_bytes": 89441507,
+          "delivered_bytes": 89441507,
+          "duration_sec": 3708,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "8c07b3da-bcc6-43ee-b3ee-11c323ea4768",
+          "episode": "Why BIP-110 Failed",
+          "declared_bytes": 130808333,
+          "delivered_bytes": 130808333,
+          "duration_sec": 5430,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "3e85d258-8986-495d-a606-a322d9a3e90c",
+          "episode": "117: Coldcard Fallout",
+          "declared_bytes": 129396432,
+          "delivered_bytes": 129396432,
+          "duration_sec": 5379,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "776b31f5-fc17-4a44-b273-ce072e9e3131",
+          "episode": "116: Coldcard Wallets Compromised",
+          "declared_bytes": 19242596,
+          "delivered_bytes": 19242596,
+          "duration_sec": 782,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "ee069143-c879-42a4-9f5d-70b9e5ced9a5",
+          "episode": "115: Before Satoshi",
+          "declared_bytes": 48971344,
+          "delivered_bytes": 48971344,
+          "duration_sec": 2030,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1452376188",
+      "title": "Becker’s Healthcare Podcast",
+      "feed_host": "blubrry.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 995,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "ins.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://blubrry.com/beckershealthcarepodcast/155070047/amanda-free-on-affordability-and-access-in-georgias-commercial-market/",
+          "episode": "Amanda Free on Affordability and Access in Georgia’s Commercial Market",
+          "declared_bytes": 24057177,
+          "delivered_bytes": 24057177,
+          "duration_sec": 734,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://blubrry.com/beckershealthcarepodcast/155048231/amir-barzin-do-president-of-unc-health-faculty-physicians-and-chief-operating-officer-of-unc-health-physicians/",
+          "episode": "Amir Barzin, DO, President of UNC Health Faculty Physicians and Chief Operating Officer of",
+          "declared_bytes": 36939300,
+          "delivered_bytes": 36939300,
+          "duration_sec": 1144,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://blubrry.com/beckershealthcarepodcast/155070082/leading-with-purpose-in-pediatric-care-with-dr-naveen-mehrotra/",
+          "episode": "Leading With Purpose in Pediatric Care with Dr. Naveen Mehrotra",
+          "declared_bytes": 27367829,
+          "delivered_bytes": 27367829,
+          "duration_sec": 836,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://blubrry.com/beckershealthcarepodcast/155070094/building-stronger-rehab-care-through-culture-and-innovation-with-dr-john-wood-ii/",
+          "episode": "Building Stronger Rehab Care Through Culture and Innovation with Dr. John Wood II",
+          "declared_bytes": 28849013,
+          "delivered_bytes": 28849013,
+          "duration_sec": 879,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://blubrry.com/beckershealthcarepodcast/155070414/jakob-emerson-on-medicare-advantage-pullbacks-and-scans-costco-partnership/",
+          "episode": "Jakob Emerson on Medicare Advantage Pullbacks and SCAN’s Costco Partnership",
+          "declared_bytes": 26675393,
+          "delivered_bytes": 26675393,
+          "duration_sec": 814,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1030846817",
+      "title": "Concealed Carry Podcast - Guns | Training | Defense | CCW",
+      "feed_host": "concealedcarry.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 48,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://www.concealedcarry.com/?p=4255348",
+          "episode": "S14E5: Top Ways to Get More Out of Your Next Training Class",
+          "declared_bytes": 49660801,
+          "delivered_bytes": 49660801,
+          "duration_sec": 3516,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.concealedcarry.com/?p=4255039",
+          "episode": "S14E4: JUSTIFIED SAVES – Our Take on the In-N-Out Shooting",
+          "declared_bytes": 65866184,
+          "delivered_bytes": 65866184,
+          "duration_sec": 4674,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.concealedcarry.com/?p=4254631",
+          "episode": "S14E3: Old Iron, New Iron & Remembering a Giant",
+          "declared_bytes": 46615817,
+          "delivered_bytes": 46615817,
+          "duration_sec": 3329,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.concealedcarry.com/?p=4254014",
+          "episode": "S14E2: Shot First, So He Fired Back – This FedEx Driver’s Justified Save",
+          "declared_bytes": 81682032,
+          "delivered_bytes": 81682032,
+          "duration_sec": 5803,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.concealedcarry.com/?p=4252472",
+          "episode": "S14E1: Freedom Bought, Freedom Maintained – 700 Years of Receipts",
+          "declared_bytes": 111016010,
+          "delivered_bytes": 111016010,
+          "duration_sec": 7899,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1458675998",
+      "title": "Snail Trail 4x4 Offroad Podcast",
+      "feed_host": "snailtrail4x4.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 13,
+      "verdict": "injected",
+      "disposition": "drop",
+      "median": 1.014,
+      "n": 5,
+      "inserted_samples": 4,
+      "max_delta_sec_implied": 94,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "dts.podtrac.com",
+        "media.blubrry.com",
+        "ins.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "undersized_samples": 1,
+      "samples": [
+        {
+          "guid": "https://www.snailtrail4x4.com/?p=10307",
+          "episode": "524: Shaver Lakes High Points",
+          "declared_bytes": 56322639,
+          "delivered_bytes": 57133704,
+          "duration_sec": 3520,
+          "ratio": 1.014,
+          "delta_sec_implied": 51
+        },
+        {
+          "guid": "https://www.snailtrail4x4.com/?p=10301",
+          "episode": "SnailMail: Rubicon Dog",
+          "declared_bytes": 36051203,
+          "delivered_bytes": 37549440,
+          "duration_sec": 2253,
+          "ratio": 1.042,
+          "delta_sec_implied": 94
+        },
+        {
+          "guid": "https://www.snailtrail4x4.com/?p=10298",
+          "episode": "523: Rollercoasters and Whalebones",
+          "declared_bytes": 74823188,
+          "delivered_bytes": 73953120,
+          "duration_sec": 6235,
+          "ratio": 0.988,
+          "delta_sec_implied": -73
+        },
+        {
+          "guid": "https://www.snailtrail4x4.com/?p=10294",
+          "episode": "522: AMC Speed Pacer Colt Builds It OnX Off-Road Build Challange 2.0",
+          "declared_bytes": 92623230,
+          "delivered_bytes": 93434295,
+          "duration_sec": 5789,
+          "ratio": 1.009,
+          "delta_sec_implied": 51
+        },
+        {
+          "guid": "https://www.snailtrail4x4.com/?p=10284",
+          "episode": "SnailMail: No More Photos In National Parks",
+          "declared_bytes": 47596163,
+          "delivered_bytes": 48407024,
+          "duration_sec": 2975,
+          "ratio": 1.017,
+          "delta_sec_implied": 51
+        }
+      ]
+    },
+    {
+      "show_id": "1496665566",
+      "title": "Charlas Hispanas: Aprende Español | Learn Spanish",
+      "feed_host": "charlashispanas.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 11,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://charlashispanas.com/?p=15936",
+          "episode": "1187. Noticias en español",
+          "declared_bytes": 15602249,
+          "delivered_bytes": 15602249,
+          "duration_sec": 650,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://charlashispanas.com/?p=15929",
+          "episode": "1185. El helado y las paletas",
+          "declared_bytes": 17792025,
+          "delivered_bytes": 17792025,
+          "duration_sec": 741,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://charlashispanas.com/?p=15923",
+          "episode": "1184. Cartelera de próximos eventos",
+          "declared_bytes": 14629447,
+          "delivered_bytes": 14629447,
+          "duration_sec": 609,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://charlashispanas.com/?p=15910",
+          "episode": "1182. Noticias en español",
+          "declared_bytes": 15669857,
+          "delivered_bytes": 15669857,
+          "duration_sec": 653,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://charlashispanas.com/?p=16024",
+          "episode": "1181. El modo imperativo #3",
+          "declared_bytes": 14849801,
+          "delivered_bytes": 14849801,
+          "duration_sec": 618,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1202593158",
+      "title": "Downtime - The Mountain Bike Podcast",
+      "feed_host": "downtimepodcast.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 7,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://www.downtimepodcast.com/?p=5629",
+          "episode": "Adapting to Change – Greg Callaghan On Staying Competitive in Enduro",
+          "declared_bytes": 48716113,
+          "delivered_bytes": 48716555,
+          "duration_sec": 4054,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.downtimepodcast.com/?p=5620",
+          "episode": "Christian Textor Proves You Can Be a Parent and an Amazing Racer",
+          "declared_bytes": 78245870,
+          "delivered_bytes": 78246308,
+          "duration_sec": 6515,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.downtimepodcast.com/?p=5615",
+          "episode": "ALN – Losing Faith in the Process and How To Fix It",
+          "declared_bytes": 49827989,
+          "delivered_bytes": 49828415,
+          "duration_sec": 4147,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.downtimepodcast.com/?p=5610",
+          "episode": "Sven Martin – The Changing Face of Mountain Bike Racing",
+          "declared_bytes": 74298663,
+          "delivered_bytes": 74299092,
+          "duration_sec": 6186,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.downtimepodcast.com/?p=5599",
+          "episode": "Jesse Melamed – Staying at the Sharp End of World Enduro",
+          "declared_bytes": 57934621,
+          "delivered_bytes": 57935051,
+          "duration_sec": 4822,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1305878240",
+      "title": "The Diamond Podcast for Financial Advisors",
+      "feed_host": "diamond-consultants.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 4,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 4,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://www.diamond-consultants.com/?p=27437",
+          "episode": "Democratizing Wealth Management: How the Founder of $6T CAIS Helped Drive Growth in the Al",
+          "declared_bytes": 82953043,
+          "delivered_bytes": 82953043,
+          "duration_sec": 3456,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.diamond-consultants.com/?p=27438",
+          "episode": "Becoming the Clients’ Financial Concierge: $2B UBS Breakaways Set Their Sights on Being Fi",
+          "declared_bytes": 95348273,
+          "delivered_bytes": 95348273,
+          "duration_sec": 3973,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.diamond-consultants.com/?p=27436",
+          "episode": "Succession and Liquidity: Key Considerations and Options for Founders and Next Gens",
+          "declared_bytes": 81339287,
+          "delivered_bytes": 81339287,
+          "duration_sec": 3389,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.diamond-consultants.com/?p=27417",
+          "episode": "Playing the Long Game: Why a Former Wirehouse Advisor Built and Sold a $1.5B Independent F",
+          "declared_bytes": 67711529,
+          "delivered_bytes": 67711529,
+          "duration_sec": 2821,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1307361758",
+      "title": "Working Cows - Regenerative Ranching to Maximize Profitability and Soil Health",
+      "feed_host": "blubrry.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 4,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 4,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://workingcows.net/?p=8691",
+          "episode": "Ep. 374 – Brian Dougherty and Luke Jones – Thinking About Cover Crops",
+          "declared_bytes": 55097956,
+          "delivered_bytes": 55097956,
+          "duration_sec": 3935,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://workingcows.net/?p=8671",
+          "episode": "Ep. 373 – Leanne Fuchs – Challenging Human Health Paradigms",
+          "declared_bytes": 48948079,
+          "delivered_bytes": 48948079,
+          "duration_sec": 3492,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://workingcows.net/?p=8629",
+          "episode": "Ep. 372 – Dallas Mount – Using Business Language",
+          "declared_bytes": 44451402,
+          "delivered_bytes": 44451402,
+          "duration_sec": 3171,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://workingcows.net/?p=8605",
+          "episode": "Ep. 371 – Ellen Bench – Implementing Homeopathic Livestock Health",
+          "declared_bytes": 56134258,
+          "delivered_bytes": 56134258,
+          "duration_sec": 4007,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1434744385",
+      "title": "Rewilding Earth Podcast",
+      "feed_host": "rewilding.org",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 3,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 3,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://rewilding.org/?p=26378",
+          "episode": "Episode 165: Filming the Elusive El Tigre for “Borderlands Jaguar” with Austin Alvarado",
+          "declared_bytes": 32866664,
+          "delivered_bytes": 32866664,
+          "duration_sec": 2054,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://rewilding.org/?p=26265",
+          "episode": "Episode 163: Steve Carver on the Challenges of Implementing Rewilding Goals Across Fragmen",
+          "declared_bytes": 41338685,
+          "delivered_bytes": 41338685,
+          "duration_sec": 2584,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://rewilding.org/?p=19810",
+          "episode": "Episode 95: Liz Hillard On Wildlife Connectivity In The Pigeon River Gorge – Interstate 40",
+          "declared_bytes": 85401942,
+          "delivered_bytes": 85401942,
+          "duration_sec": 2135,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1050535625",
+      "title": "The Ted and Austin Broer Show - MP3 Edition",
+      "feed_host": "blubrry.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": 1,
+      "n": 1,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "note": "the probes that returned a length agree the file is byte-stable, but there are too few of them to admit a show on",
+      "samples": [
+        {
+          "guid": "https://blubrry.com/ted_and_austin_broer/133008549/07-15-24/",
+          "episode": "07-15-24",
+          "declared_bytes": 28064640,
+          "delivered_bytes": 28064640,
+          "duration_sec": 3508,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1297439270",
+      "title": "I Don't Have Enough FAITH to Be an ATHEIST",
+      "feed_host": "blubrry.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": 1,
+      "n": 1,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "note": "the probes that returned a length agree the file is byte-stable, but there are too few of them to admit a show on",
+      "samples": [
+        {
+          "guid": "https://blubrry.com/cross_examined/133447581/why-didnt-god-create-a-universe-where-everyone-believed/",
+          "episode": "Why Didn't God Create a Universe Where Everyone Believed?",
+          "declared_bytes": 46877927,
+          "delivered_bytes": 46877927,
+          "duration_sec": 1950,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "867199020",
+      "title": "Amazing Spider-Talk: A Spider-Man Podcast",
+      "feed_host": "amazingspidertalk.com",
+      "enclosure_host": "content.blubrry.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": 1,
+      "n": 1,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "media.blubrry.com",
+        "content.blubrry.com"
+      ],
+      "note": "the probes that returned a length agree the file is byte-stable, but there are too few of them to admit a show on",
+      "samples": [
+        {
+          "guid": "https://amazingspidertalk.com/?p=24973",
+          "episode": "The Amazing Spider-Man (vol. 6) #52 – REVIEW",
+          "declared_bytes": 58712442,
+          "delivered_bytes": 58712442,
+          "duration_sec": 3665,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "979020229",
+      "title": "Talk Python To Me",
+      "feed_host": "talkpython.fm",
+      "enclosure_host": "download-cdn.talkpython.fm",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 558,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "talkpython.fm",
+        "download-cdn.talkpython.fm"
+      ],
+      "samples": [
+        {
+          "guid": "56b7e80e-442f-4988-8299-f04aa9dd5398",
+          "episode": "#559: 12 Things You Should (and Shouldn't) Do in AWS",
+          "declared_bytes": 65353394,
+          "delivered_bytes": 65353394,
+          "duration_sec": 4071,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "feee3df7-8579-4f93-b882-4ce893bbbc90",
+          "episode": "#558: Hyper-Personal Software with Python",
+          "declared_bytes": 59948455,
+          "delivered_bytes": 59948455,
+          "duration_sec": 3733,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "07175995-241e-467a-b7e7-9984404cee58",
+          "episode": "#557: Security of everything at PyCon 2026",
+          "declared_bytes": 65502845,
+          "delivered_bytes": 65502845,
+          "duration_sec": 4080,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "8f34633d-ca82-4bf6-9787-deb8237824a0",
+          "episode": "#556: Updates on Django's Async Story",
+          "declared_bytes": 62553593,
+          "delivered_bytes": 62553593,
+          "duration_sec": 3896,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "cbc86335-3bdb-4b4f-b894-006ee4467d32",
+          "episode": "#555: Marimo Pair - A Canvas for Agent + Developers Collaboration",
+          "declared_bytes": 62604521,
+          "delivered_bytes": 62604521,
+          "duration_sec": 3899,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1438789088",
+      "title": "Bitcoin And | Bitcoin & Economic News",
+      "feed_host": "podhome.fm",
+      "enclosure_host": "assets.podhome.fm",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 525,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "op3.dev",
+        "dts.podtrac.com",
+        "pdcn.co",
+        "pscrb.fm",
+        "prefix-v4.pscrb.fm",
+        "serve.podhome.fm",
+        "assets.podhome.fm"
+      ],
+      "samples": [
+        {
+          "guid": "10d01dbd-c6a3-42ca-8083-3927d393f548",
+          "episode": "It's AI, Stupid | Bitcoin News",
+          "declared_bytes": 48449061,
+          "delivered_bytes": 48449918,
+          "duration_sec": 3028,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "df93ed57-cb3f-4b0a-9495-284eb7f94426",
+          "episode": "FBI's ColdCard Case | Bitcoin News",
+          "declared_bytes": 55120129,
+          "delivered_bytes": 55120129,
+          "duration_sec": 3445,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "466ae4d4-0e7f-436f-8cc1-54f7d3c19b7f",
+          "episode": "Jane: Street Walker | Bitcoin News",
+          "declared_bytes": 50010578,
+          "delivered_bytes": 50010578,
+          "duration_sec": 3126,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "ebbfbb8c-c978-4aee-b1a5-a4beed955d97",
+          "episode": "A Wrenching Development | Bitcoin News",
+          "declared_bytes": 58232671,
+          "delivered_bytes": 58232671,
+          "duration_sec": 3639,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "d1fabfe9-ad51-4348-9f21-3744f18c5946",
+          "episode": "The Audit Drops! | Bitcoin News",
+          "declared_bytes": 57860687,
+          "delivered_bytes": 57860687,
+          "duration_sec": 3616,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "73330785",
+      "title": "Mac Geek Gab — Apple Tips, Tricks, and Troubleshooting",
+      "feed_host": "macgeekgab.com",
+      "enclosure_host": "pp1.bbmpx.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 189,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "pp1.bbmpx.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://www.macgeekgab.com/?p=137017",
+          "episode": "When Your Group Chat Tells You to Fork Off",
+          "declared_bytes": 62603420,
+          "delivered_bytes": 62603420,
+          "duration_sec": 5160,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.macgeekgab.com/?p=137006",
+          "episode": "Don't Start Half Fresh",
+          "declared_bytes": 58644574,
+          "delivered_bytes": 58644574,
+          "duration_sec": 4836,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.macgeekgab.com/?p=136977",
+          "episode": "Take a Photo to Find Your Photos",
+          "declared_bytes": 64013591,
+          "delivered_bytes": 64013591,
+          "duration_sec": 5287,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.macgeekgab.com/?p=136962",
+          "episode": "A Wonderful Opportunity to Get Super Confused",
+          "declared_bytes": 59104960,
+          "delivered_bytes": 59104960,
+          "duration_sec": 4849,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.macgeekgab.com/?p=136950",
+          "episode": "The Green Light Never Lies",
+          "declared_bytes": 58626800,
+          "delivered_bytes": 58626800,
+          "duration_sec": 4835,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "979363821",
+      "title": "Gig Gab - The Working Musician's Podcast",
+      "feed_host": "giggabpodcast.com",
+      "enclosure_host": "pp1.bbmpx.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 169,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "pp1.bbmpx.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://www.giggabpodcast.com/?p=3791",
+          "episode": "Matt Beck on Matchbox Twenty, The Outsiders, Hot Cocoa and a Green Tartan Suit",
+          "declared_bytes": 70835749,
+          "delivered_bytes": 70835749,
+          "duration_sec": 4395,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.giggabpodcast.com/?p=3789",
+          "episode": "Hired From an 11-View Video: Sean Mullaney on Opportunity and Owning the Stage",
+          "declared_bytes": 79640329,
+          "delivered_bytes": 79640329,
+          "duration_sec": 4942,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.giggabpodcast.com/?p=3783",
+          "episode": "Nobody Bought a Ticket to Watch Load-In",
+          "declared_bytes": 58795698,
+          "delivered_bytes": 58795698,
+          "duration_sec": 3638,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.giggabpodcast.com/?p=3775",
+          "episode": "When Your Worlds Collide...and the Drummer Becomes the Sound Guy",
+          "declared_bytes": 85238736,
+          "delivered_bytes": 85238736,
+          "duration_sec": 5269,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://www.giggabpodcast.com/?p=3764",
+          "episode": "The Wrong Audience Is Still an Audience: Freddy Vinehill-Cliffe on the Gigging Life",
+          "declared_bytes": 66860512,
+          "delivered_bytes": 66860512,
+          "duration_sec": 4151,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1454957630",
+      "title": "The Money Sessions",
+      "feed_host": "libsyn.com",
+      "enclosure_host": "content.libsyn.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 107,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "pscrb.fm",
+        "prefix-v4.pscrb.fm",
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "samples": [
+        {
+          "guid": "0d516963-a6a6-4af4-bbbd-8505810f6e73",
+          "episode": "Rural Virginia: 8 Months to $40K Revenue Boost with Half the Caseload",
+          "declared_bytes": 77881519,
+          "delivered_bytes": 77881519,
+          "duration_sec": 3246,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "632851a4-cefc-45d5-8baa-c978cbf44586",
+          "episode": "Get Good Enough to Charge $600/Session",
+          "declared_bytes": 22030678,
+          "delivered_bytes": 22030678,
+          "duration_sec": 918,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "26775d9f-8c74-4ad1-98b0-98f228e56a37",
+          "episode": "$600/Session: A Mystery Guest You Cannot Miss",
+          "declared_bytes": 70430352,
+          "delivered_bytes": 70430352,
+          "duration_sec": 2935,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "72b7183c-b4ad-4126-a9c4-e8324fe3e6dd",
+          "episode": "The Myth of the Insurance Boogeyman",
+          "declared_bytes": 20443896,
+          "delivered_bytes": 20443896,
+          "duration_sec": 852,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "545ab54b-a72e-4c5f-8485-e8a04a9d1404",
+          "episode": "Danielle's Journey to $255 & Full: A Journey through the VERY Messy Middle",
+          "declared_bytes": 81379210,
+          "delivered_bytes": 81379210,
+          "duration_sec": 3391,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1170239851",
+      "title": "DCL Podcast",
+      "feed_host": "dclpodcast.com",
+      "enclosure_host": "content.libsyn.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 57,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://dclpodcast.com/?p=2811",
+          "episode": "551 Discussing the Unofficial Guide to Walt Disney World 2027 with Author Becky Gandillon",
+          "declared_bytes": 75197327,
+          "delivered_bytes": 75197327,
+          "duration_sec": 3125,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://dclpodcast.com/?p=2808",
+          "episode": "550 Christy’s Epic European Vacation | Adventures By Disney Italy",
+          "declared_bytes": 87882137,
+          "delivered_bytes": 87882137,
+          "duration_sec": 3653,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://dclpodcast.com/?p=2800",
+          "episode": "549 Disney Wish with a Toddler: 4-Night Family Cruise Review",
+          "declared_bytes": 69652205,
+          "delivered_bytes": 69652205,
+          "duration_sec": 2894,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://dclpodcast.com/?p=2790",
+          "episode": "548 Cruising Alaska on the Disney Magic",
+          "declared_bytes": 77653646,
+          "delivered_bytes": 77653646,
+          "duration_sec": 3227,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "https://dclpodcast.com/?p=2783",
+          "episode": "547 The First Ever DCL Podcast Group Cruise Recap",
+          "declared_bytes": 102395083,
+          "delivered_bytes": 102395083,
+          "duration_sec": 4246,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "449451010",
+      "title": "Whence Came You? - Freemasonry discussed and Masonic research for today's Freemason",
+      "feed_host": "libsyn.com",
+      "enclosure_host": "content.libsyn.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 16,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "samples": [
+        {
+          "guid": "230b874e-493e-4113-8e49-d77b8b6c0a3b",
+          "episode": "Whence Came You? - 0721 - Why the Secrets of the Universe Are Hidden in Your Blood",
+          "declared_bytes": 70813772,
+          "delivered_bytes": 70813772,
+          "duration_sec": 1771,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "9dace908-19c2-4386-8124-82d54ae79762",
+          "episode": "Whence Came You? - 0720 - From Preacher's Son to Apophatic Mystic: Josh Kelley's Wild Ride",
+          "declared_bytes": 107276374,
+          "delivered_bytes": 107276374,
+          "duration_sec": 4470,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "abc68812-6366-41ff-b833-3acdfe2c4188",
+          "episode": "Whence Came You? - 0719 - The Egyptian Shadow on the Winding Stairs: Decoding Our Golden L",
+          "declared_bytes": 68842906,
+          "delivered_bytes": 68842906,
+          "duration_sec": 1722,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "dcc81e1e-e550-4d20-8f2e-8d01d42dba0a",
+          "episode": "Whence Came You? - 0718 - Watchmen in the Dark: Fighting Dictators and the Fear of Dying",
+          "declared_bytes": 70718738,
+          "delivered_bytes": 70718738,
+          "duration_sec": 1768,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "9b8bedd7-0e21-4e56-a168-10fd8e6720c5",
+          "episode": "Whence Came You? - 0717 - Guarded Portals and The Concealed Doctrine",
+          "declared_bytes": 67917438,
+          "delivered_bytes": 67917438,
+          "duration_sec": 1698,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1058718804",
+      "title": "The Jason & Scot Show - E-Commerce And Retail News",
+      "feed_host": "libsyn.com",
+      "enclosure_host": "content.libsyn.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 12,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "content.libsyn.com"
+      ],
+      "samples": [
+        {
+          "guid": "b1634290-4527-4f7a-aa0d-31e513400d61",
+          "episode": "EP 340 — Ron Johnson, the Man Who Built the Apple Store",
+          "declared_bytes": 25589907,
+          "delivered_bytes": 25589907,
+          "duration_sec": 3111,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "0c048024-e8de-4c44-a748-3978ee34cb2a",
+          "episode": "EP338 - Amazon Q1 2026 Earnings",
+          "declared_bytes": 32044747,
+          "delivered_bytes": 32044747,
+          "duration_sec": 3936,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "4a70d822-9d85-45ad-97cd-3ae2c2734a88",
+          "episode": "EP336 - Amazon Q4 Earnings",
+          "declared_bytes": 37756997,
+          "delivered_bytes": 37756997,
+          "duration_sec": 4596,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "1a86450b-1967-4d1d-849c-2b5a6bb6ae6d",
+          "episode": "EP335 - Kevin Ertell The Strategy Trap",
+          "declared_bytes": 28100450,
+          "delivered_bytes": 28100450,
+          "duration_sec": 3389,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "5490add8-f858-40d2-995b-a6a376f55e1b",
+          "episode": "Jason Goldberg's Full Closing NRF 26 Keynote: \"Commerce Disrupted: Rise of the AI Native C",
+          "declared_bytes": 60204608,
+          "delivered_bytes": 60204608,
+          "duration_sec": 2523,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "6783386839",
+      "title": "Curious Goldfish Podcast",
+      "feed_host": "beehiiv.com",
+      "enclosure_host": "podcasts.beehiiv.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 84,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "podcasts.beehiiv.com"
+      ],
+      "samples": [
+        {
+          "guid": "01a00ad2-4ba8-7a8d-9813-d539dd45e628",
+          "episode": "The CEO Who Hid His Guitar: A Chat with George Barrett",
+          "declared_bytes": 39157524,
+          "delivered_bytes": 39157524,
+          "duration_sec": 2425,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "019fc519-99c5-7f4f-aadc-0db47f5cf586",
+          "episode": "Voiceless No More: A Chat with Alicia Blue",
+          "declared_bytes": 33685591,
+          "delivered_bytes": 33685591,
+          "duration_sec": 2087,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "019fc3b2-1615-71da-8554-71a4cc548be0",
+          "episode": "50 Years & Still Building: A Chat with Garry Tallent of the E Street Band",
+          "declared_bytes": 29348653,
+          "delivered_bytes": 29348653,
+          "duration_sec": 1812,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "019fc3ab-0f7f-7f3b-ba50-2b87cee8153b",
+          "episode": "Quiet in the Chaos: A Chat with Anna May",
+          "declared_bytes": 24897996,
+          "delivered_bytes": 24897996,
+          "duration_sec": 1538,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "019fc388-b6fc-71ae-9835-bc191f383c07",
+          "episode": "17 Albums. Now What? A Chat with Michelle Malone",
+          "declared_bytes": 29288904,
+          "delivered_bytes": 29288904,
+          "duration_sec": 1807,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1734053538",
+      "title": "Supreme Court Oral Arguments",
+      "feed_host": "scotusstats.com",
+      "enclosure_host": "podcast.scotusstats.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 27,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 0.999,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": -7,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "podcast.scotusstats.com"
+      ],
+      "samples": [
+        {
+          "guid": "scotus_2025_24-856_v0",
+          "episode": "[24-856] Cisco Systems, Inc. v. Doe I",
+          "declared_bytes": 28173787,
+          "delivered_bytes": 28147533,
+          "duration_sec": 7035,
+          "ratio": 0.999,
+          "delta_sec_implied": -7
+        },
+        {
+          "guid": "scotus_2025_25-429_v0",
+          "episode": "[25-429] Blanche v. Lau",
+          "declared_bytes": 21522175,
+          "delivered_bytes": 21496840,
+          "duration_sec": 5373,
+          "ratio": 0.999,
+          "delta_sec_implied": -6
+        },
+        {
+          "guid": "scotus_2025_25-406_v0",
+          "episode": "[25-406] Federal Communications Commission v. AT&T, Inc.",
+          "declared_bytes": 20317199,
+          "delivered_bytes": 20291060,
+          "duration_sec": 5071,
+          "ratio": 0.999,
+          "delta_sec_implied": -7
+        },
+        {
+          "guid": "scotus_2025_24-7351_v0",
+          "episode": "[24-7351] Pitchford v. Cain",
+          "declared_bytes": 26359530,
+          "delivered_bytes": 26334774,
+          "duration_sec": 6582,
+          "ratio": 0.999,
+          "delta_sec_implied": -6
+        },
+        {
+          "guid": "scotus_2025_24-935_v0",
+          "episode": "[24-935] Flower Foods, Inc. v. Brock",
+          "declared_bytes": 18816725,
+          "delivered_bytes": 18791038,
+          "duration_sec": 4696,
+          "ratio": 0.999,
+          "delta_sec_implied": -6
+        }
+      ]
+    },
+    {
+      "show_id": "95185416",
+      "title": "Ze Shows – Anime Pulse",
+      "feed_host": "anime-pulse.com",
+      "enclosure_host": "delivery-edge.libsyn.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 13,
+      "verdict": "injected",
+      "disposition": "drop",
+      "median": 1.012,
+      "n": 5,
+      "inserted_samples": 5,
+      "max_delta_sec_implied": 126,
+      "tier": "locate-required",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "traffic.libsyn.com",
+        "delivery-edge.libsyn.com"
+      ],
+      "samples": [
+        {
+          "guid": "https://www.anime-pulse.com/?p=16594",
+          "episode": "Manga Pulse 538: Radiant Cunt",
+          "declared_bytes": 76348654,
+          "delivered_bytes": 78030542,
+          "duration_sec": 5698,
+          "ratio": 1.022,
+          "delta_sec_implied": 126
+        },
+        {
+          "guid": "https://www.anime-pulse.com/?p=16409",
+          "episode": "Manga Pulse 530: Ari Parasites",
+          "declared_bytes": 93680730,
+          "delivered_bytes": 94834780,
+          "duration_sec": 7048,
+          "ratio": 1.012,
+          "delta_sec_implied": 87
+        },
+        {
+          "guid": "https://www.anime-pulse.com/?p=16398",
+          "episode": "Popcorn Pulse 236: One Last Venom",
+          "declared_bytes": 128687470,
+          "delivered_bytes": 129956355,
+          "duration_sec": 9470,
+          "ratio": 1.01,
+          "delta_sec_implied": 93
+        },
+        {
+          "guid": "https://www.anime-pulse.com/?p=16390",
+          "episode": "Manga Pulse 529: Vermillion Trauma",
+          "declared_bytes": 107293159,
+          "delivered_bytes": 108559118,
+          "duration_sec": 8027,
+          "ratio": 1.012,
+          "delta_sec_implied": 95
+        },
+        {
+          "guid": "https://www.anime-pulse.com/?p=16369",
+          "episode": "Popcorn Pulse 235: I Saw January",
+          "declared_bytes": 100184066,
+          "delivered_bytes": 101338116,
+          "duration_sec": 7541,
+          "ratio": 1.012,
+          "delta_sec_implied": 87
+        }
+      ]
+    },
+    {
+      "show_id": "1125522101",
+      "title": "Service Drive Revolution with Chris Collins",
+      "feed_host": "libsyn.com",
+      "enclosure_host": "delivery-edge.libsyn.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 6,
+      "verdict": "injected",
+      "disposition": "drop",
+      "median": 1.042,
+      "n": 5,
+      "inserted_samples": 5,
+      "max_delta_sec_implied": 233,
+      "tier": "locate-required",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "dts.podtrac.com",
+        "pscrb.fm",
+        "prefix-v4.pscrb.fm",
+        "traffic.libsyn.com",
+        "delivery-edge.libsyn.com"
+      ],
+      "samples": [
+        {
+          "guid": "a831849c-972f-4e8a-b8f3-588f96834845",
+          "episode": "SDR #372: BDC: AI or Humans - What's Better?",
+          "declared_bytes": 97139189,
+          "delivered_bytes": 101265595,
+          "duration_sec": 3036,
+          "ratio": 1.042,
+          "delta_sec_implied": 129
+        },
+        {
+          "guid": "076fb305-8dbd-4102-aca6-2e7eb3c4334d",
+          "episode": "SDR #371 - Selling Cars From The Service Drive",
+          "declared_bytes": 102407679,
+          "delivered_bytes": 109864891,
+          "duration_sec": 3200,
+          "ratio": 1.073,
+          "delta_sec_implied": 233
+        },
+        {
+          "guid": "56f14a2e-572b-4878-82f4-b5b4e65d7928",
+          "episode": "SDR #370: How To Reduce Parts Obsolesence",
+          "declared_bytes": 88166662,
+          "delivered_bytes": 91065871,
+          "duration_sec": 2718,
+          "ratio": 1.033,
+          "delta_sec_implied": 89
+        },
+        {
+          "guid": "0d671481-a468-49ba-8f4c-dc4869b22550",
+          "episode": "SDR #368: It's Not Traffic... It's Your Techs!",
+          "declared_bytes": 71940330,
+          "delivered_bytes": 76273389,
+          "duration_sec": 2212,
+          "ratio": 1.06,
+          "delta_sec_implied": 133
+        },
+        {
+          "guid": "9eac5bec-323b-4e24-ba51-2ab99fdc71c5",
+          "episode": "SDR #367: 5 Dumb Things Service Managers Say",
+          "declared_bytes": 83460096,
+          "delivered_bytes": 86351770,
+          "duration_sec": 2572,
+          "ratio": 1.035,
+          "delta_sec_implied": 89
+        }
+      ]
+    },
+    {
+      "show_id": "1713413210",
+      "title": "The Naked Connection: Master Sex, Dating & Relationships",
+      "feed_host": "pdrl.fm",
+      "enclosure_host": "delivery-edge.libsyn.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1,
+      "verdict": "injected",
+      "disposition": "drop",
+      "median": 1.026,
+      "n": 1,
+      "inserted_samples": 1,
+      "max_delta_sec_implied": 60,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "pdcn.co",
+        "dts.podtrac.com",
+        "traffic.libsyn.com",
+        "delivery-edge.libsyn.com"
+      ],
+      "samples": [
+        {
+          "guid": "0e97b4d0-5042-4acc-b8e6-f8c3c2a051a2",
+          "episode": "Fertility Expert Explains The Secrets To Male Fertility",
+          "declared_bytes": 36954793,
+          "delivered_bytes": 37919253,
+          "duration_sec": 2310,
+          "ratio": 1.026,
+          "delta_sec_implied": 60
+        }
+      ]
+    },
+    {
+      "show_id": "1561967744",
+      "title": "T'as qui en Histoire ?",
+      "feed_host": "ausha.co",
+      "enclosure_host": "s0.audiofiles.ausha.co",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 19,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 5,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "tr.ausha.co",
+        "api.soundcast.io",
+        "audio.ausha.co",
+        "s0.audiofiles.ausha.co"
+      ],
+      "samples": [
+        {
+          "guid": "f64381db4d56fc5461aeafc2e86e50397914740c",
+          "episode": "Tours, ville royale et trois fois capitale [Hors-série]",
+          "declared_bytes": 22561966,
+          "delivered_bytes": 22561966,
+          "duration_sec": 1410,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "666df1e7721cd2a6d8b1ff394d44b6f2e4c0d6e9",
+          "episode": "Germaine Kanova, photographe de guerre et les fonds de l'ECPAD [Hors-série]",
+          "declared_bytes": 35616558,
+          "delivered_bytes": 35616558,
+          "duration_sec": 2226,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "70172c4a837a027e88483264a2b74955c05bde47",
+          "episode": "138. Marc Bloch : l'historien qui entre au panthéon",
+          "declared_bytes": 14422266,
+          "delivered_bytes": 14422266,
+          "duration_sec": 901,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "1b6987d894d8f270b4e3c7bcf85265f0943144be",
+          "episode": "[REDIFF] 101. On révise l'Histoire pour le brevet !",
+          "declared_bytes": 26057839,
+          "delivered_bytes": 26057839,
+          "duration_sec": 1628,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "36193b112c52e265172322fc593462d8ef0d976d",
+          "episode": "137. Les Vikings : derrière le mythe, un peuple",
+          "declared_bytes": 21515034,
+          "delivered_bytes": 21515034,
+          "duration_sec": 1344,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1428670057",
+      "title": "The Pioneer Morning Briefing - Nachrichten aus Politik und Wirtschaft",
+      "feed_host": "podigee.io",
+      "enclosure_host": "audio.podigee-cdn.net",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 4,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 4,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "audio.podigee-cdn.net"
+      ],
+      "samples": [
+        {
+          "guid": "0a4f6941b539329fc266880f6e6f4683",
+          "episode": "CSU-Landesgruppenchef warnt Bas | Wohlstand für alle in 2026? | Neues von Apple",
+          "declared_bytes": 26271242,
+          "delivered_bytes": 26271242,
+          "duration_sec": 1620,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "4b9bac39244172811589132112ff85f7",
+          "episode": "Zwischen DGB und Dauerurlaub – der deutsche Protestkomfort",
+          "declared_bytes": 6870099,
+          "delivered_bytes": 6870099,
+          "duration_sec": 409,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "995bf1a5cb8500da316fd449d3d2803f",
+          "episode": "Zwischen Neugier und Naivität – der Plausch mit Höcke",
+          "declared_bytes": 8545245,
+          "delivered_bytes": 8545245,
+          "duration_sec": 517,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "e7bc27da5f36e89b68ea4458b4c2a093",
+          "episode": "Peinlich, albern, cringe: Verlust des politischen Ernsts",
+          "declared_bytes": 30177915,
+          "delivered_bytes": 30177915,
+          "duration_sec": 1867,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "545679111",
+      "title": "Bahnhofskino – Der Filmpodcast von A bis Sleaze",
+      "feed_host": "podigee.io",
+      "enclosure_host": "audio.podigee-cdn.net",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 4,
+      "verdict": "ad-free",
+      "disposition": "recover",
+      "median": 1,
+      "n": 4,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": 0,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "audio.podigee-cdn.net"
+      ],
+      "samples": [
+        {
+          "guid": "0b73bc50ee9c1fea35b53db5ec657392",
+          "episode": "Das Airport-Quartett – Teil 1/2: Airport (1970) & Airport 1975: Giganten am Himmel (1974) ",
+          "declared_bytes": 81993443,
+          "delivered_bytes": 81993443,
+          "duration_sec": 5103,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "63869688430b5f8e61933553e4a1db52",
+          "episode": "BEEzilla #6 (Classic): Frankensteins Kampf gegen die Teufelsmonster (1971) mit André Wentz",
+          "declared_bytes": 55533025,
+          "delivered_bytes": 55533025,
+          "duration_sec": 3451,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "e5491375c7707c8b10b1209725611f26",
+          "episode": "Sleepy Hollow (1999) mit Michael Tierse",
+          "declared_bytes": 65121234,
+          "delivered_bytes": 65121234,
+          "duration_sec": 4046,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "1edb9fd19cf1c328fb1479c322aad2ea",
+          "episode": "Grizzly – Eine Bestie läuft Amok (1976) & Panik in der Sierra Nova (1977) mit Heiko Hartma",
+          "declared_bytes": 78684421,
+          "delivered_bytes": 78684421,
+          "duration_sec": 4893,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1624716757",
+      "title": "Cocktails and Gossip",
+      "feed_host": "pdrl.fm",
+      "enclosure_host": "teletraan.libsyn.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 8,
+      "verdict": "injected",
+      "disposition": "drop",
+      "median": 1.172,
+      "n": 5,
+      "inserted_samples": 5,
+      "max_delta_sec_implied": 689,
+      "tier": "locate-required",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "pdst.fm",
+        "dts.podtrac.com",
+        "verifi.podscribe.com",
+        "prefix-v4.pscrb.fm",
+        "claritaspod.com",
+        "pdrl.fm",
+        "traffic.libsyn.com",
+        "teletraan.libsyn.com"
+      ],
+      "samples": [
+        {
+          "guid": "709d7871-2ee7-4c1b-a8bc-89bd30e2aff7",
+          "episode": "170. RHONJ filming plans; Carole Radziwill on RHONY? The Valley reunion pt 2; Denise Richa",
+          "declared_bytes": 84478531,
+          "delivered_bytes": 97638131,
+          "duration_sec": 3493,
+          "ratio": 1.156,
+          "delta_sec_implied": 544
+        },
+        {
+          "guid": "34c39e67-542a-4448-a828-58165a218f49",
+          "episode": "167. Steven McBee from the McBee Dynasty is here; Scheana's cheating scandal; No Jax on Th",
+          "declared_bytes": 94470257,
+          "delivered_bytes": 108903016,
+          "duration_sec": 3910,
+          "ratio": 1.153,
+          "delta_sec_implied": 597
+        },
+        {
+          "guid": "e1fba96c-8425-45da-a3cb-a763ca318817",
+          "episode": "166. RHOC Season 19; RHOA Season 17 All-Star cast? We've got bones to pick with And Just L",
+          "declared_bytes": 82428035,
+          "delivered_bytes": 96639486,
+          "duration_sec": 3408,
+          "ratio": 1.172,
+          "delta_sec_implied": 588
+        },
+        {
+          "guid": "9e9dc485-2971-45ac-ac25-a33adb8ccab7",
+          "episode": "165. We love Kristen and Luke's love; Secret Lives of Mormon Wives Reunion; David Beador's",
+          "declared_bytes": 75667459,
+          "delivered_bytes": 91236458,
+          "duration_sec": 3126,
+          "ratio": 1.206,
+          "delta_sec_implied": 643
+        },
+        {
+          "guid": "ff5afc69-8b31-4d23-b1ed-f75c3c96f835",
+          "episode": "164. We got a facelift! Miami goes deeper; Next Gen NYC's future",
+          "declared_bytes": 92521061,
+          "delivered_bytes": 109166504,
+          "duration_sec": 3829,
+          "ratio": 1.18,
+          "delta_sec_implied": 689
+        }
+      ]
+    },
+    {
+      "show_id": "1572124982",
+      "title": "Monde Numérique (Actualité Tech & IA)",
+      "feed_host": "audiomeans.fr",
+      "enclosure_host": "files.audiomeans.fr",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 4,
+      "verdict": "ad-free",
+      "disposition": "drop",
+      "median": 1.007,
+      "n": 4,
+      "inserted_samples": 2,
+      "max_delta_sec_implied": 50,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "audio.audiomeans.fr",
+        "files.audiomeans.fr"
+      ],
+      "samples": [
+        {
+          "guid": "db00543f-d426-4b96-a2e2-9e06a66573d6",
+          "episode": "📆 L'HEBDO 16/05 - Arthur Mensch sonne l’alarme : l’Europe joue sa survie dans l’IA",
+          "declared_bytes": 53126089,
+          "delivered_bytes": 53918227,
+          "duration_sec": 3316,
+          "ratio": 1.015,
+          "delta_sec_implied": 49
+        },
+        {
+          "guid": "fa9770e1-13d2-437d-bdcf-7c56b8bcea7d",
+          "episode": "📚 Tout comprendre – Souveraineté numérique : comment l’Europe peut reprendre le contrôle",
+          "declared_bytes": 15302022,
+          "delivered_bytes": 16110052,
+          "duration_sec": 955,
+          "ratio": 1.053,
+          "delta_sec_implied": 50
+        },
+        {
+          "guid": "383b7296-6144-49d5-87d1-d2af36bc91e4",
+          "episode": "📆 L'HEBDO 15/03 - IA : les Chinois rient, Apple pleure",
+          "declared_bytes": 52841351,
+          "delivered_bytes": 52841351,
+          "duration_sec": 3301,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        },
+        {
+          "guid": "2d45493d-c2a7-475b-898d-df85bedbd557",
+          "episode": "✍️ Edito - Apple face à une impasse technologique avec l’IA ?",
+          "declared_bytes": 4305557,
+          "delivered_bytes": 4305557,
+          "duration_sec": 268,
+          "ratio": 1,
+          "delta_sec_implied": 0
+        }
+      ]
+    },
+    {
+      "show_id": "1482297423",
+      "title": "Easy German: Learn German with native speakers | Deutsch lernen mit Muttersprachlern",
+      "feed_host": "svmaudio.com",
+      "enclosure_host": "easy-german.cdn.svmaudio.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": 0.945,
+      "n": 1,
+      "inserted_samples": 0,
+      "max_delta_sec_implied": -104,
+      "tier": "paddable-screened",
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "easy-german.cdn.svmaudio.com"
+      ],
+      "undersized_samples": 1,
+      "note": "delivered bytes fall short of the feed-declared length, so the declared length does not describe the file we receive and the ratio cannot answer the ad question",
+      "samples": [
+        {
+          "guid": "ee0a4d22-0f1c-4894-9531-4bfd0d67057a",
+          "episode": "572: Kennst du Pfeffer?",
+          "declared_bytes": 33314538,
+          "delivered_bytes": 31468488,
+          "duration_sec": 1871,
+          "ratio": 0.945,
+          "delta_sec_implied": -104
+        }
+      ]
+    },
+    {
+      "show_id": "1484783544",
+      "title": "Success Story with Scott D. Clary",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1264,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": null,
+      "n": 0,
+      "inserted_samples": 0,
+      "repeats": 3,
+      "varying_samples": 0,
+      "max_delta_sec_implied": null,
+      "tier": null,
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "arttrk.com",
+        "episode.flightcast.com",
+        "atelier.flightcast.com"
+      ],
+      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "samples": [
+        {
+          "guid": "flightcast:01M0PZ6QRAJ7SQT990K5P0TVK7",
+          "episode": "Lessons - The CrowdStrike Co-Founder on How America Beats China Before It's Too Late | Dmi",
+          "declared_bytes": null,
+          "delivered_bytes": 7848961,
+          "duration_sec": 654,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            7848961,
+            7848961,
+            7848961
+          ]
+        },
+        {
+          "guid": "flightcast:01M0Q009737DJ957PN5XM11AFN",
+          "episode": "Lessons - She Lived in Her Mom's Car and Built a Fashion Brand Worn by Kim Kardashian and ",
+          "declared_bytes": null,
+          "delivered_bytes": 8383739,
+          "duration_sec": 699,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            8383739,
+            8383739,
+            8383739
+          ]
+        },
+        {
+          "guid": "flightcast:01M0DF6E5RPFA4KGYTMJS0BQ6A",
+          "episode": "Mike Fisher - MyFitnessPal CEO (200M+ Users) & Fmr Etsy CTO | The CEO of MyFitnessPal Says",
+          "declared_bytes": null,
+          "delivered_bytes": 60686420,
+          "duration_sec": 5057,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            60686420,
+            60686420,
+            60686420
+          ]
+        },
+        {
+          "guid": "flightcast:01M0DZ00ZV9Y8R132AF91E327T",
+          "episode": "Lessons - The ABC News Anchor Who Had a Panic Attack on Live Television | Matt Gutman - AB",
+          "declared_bytes": null,
+          "delivered_bytes": 10116285,
+          "duration_sec": 842,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            10116285,
+            10116285,
+            10116285
+          ]
+        },
+        {
+          "guid": "flightcast:01M0DYHMT79K4JXRMSZN76JMSW",
+          "episode": "Lessons - From F-16 Flight Commander to Serial Entrepreneur With 100+ Investments | Ilana ",
+          "declared_bytes": null,
+          "delivered_bytes": 9529156,
+          "duration_sec": 793,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            9529156,
+            9529156,
+            9529156
+          ]
+        }
+      ]
+    },
+    {
+      "show_id": "1499409058",
+      "title": "Bankless",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1150,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": null,
+      "n": 0,
+      "inserted_samples": 0,
+      "repeats": 3,
+      "varying_samples": 0,
+      "max_delta_sec_implied": null,
+      "tier": null,
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "pscrb.fm",
+        "prefix-v4.pscrb.fm",
+        "episode.flightcast.com",
+        "atelier.flightcast.com"
+      ],
+      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "samples": [
+        {
+          "guid": "flightcast:01M0GSBGR85QKK504HPGJJVZ43",
+          "episode": "ROLLUP: Is the Bull Market Back? | Treasury QE | Trump Pumps Crypto | SEC Token Rules",
+          "declared_bytes": null,
+          "delivered_bytes": 45340840,
+          "duration_sec": 3778,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            45340840,
+            45340840,
+            45340840
+          ]
+        },
+        {
+          "guid": "flightcast:01M0FAAR0FTQZG8BXP7X657PDF",
+          "episode": "Why Ethereum MUST Change Its Monetary Policy | Sam Jernigan and Jerome de Tychey",
+          "declared_bytes": null,
+          "delivered_bytes": 59421885,
+          "duration_sec": 4952,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            59421885,
+            59421885,
+            59421885
+          ]
+        },
+        {
+          "guid": "flightcast:01M07EEZQSF6A681CHRHSRVS8T",
+          "episode": "Why Raising Rates Would Actually Calm Markets | Jim Bianco",
+          "declared_bytes": null,
+          "delivered_bytes": 49860441,
+          "duration_sec": 4155,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            49860441,
+            49860441,
+            49860441
+          ]
+        },
+        {
+          "guid": "flightcast:01KZZMDT2P0T93WGBRHWPJHNBF",
+          "episode": "EtherFi’s Next Act: Stocks, Loans, and Global Banking | Mike Silagadze",
+          "declared_bytes": null,
+          "delivered_bytes": 30652918,
+          "duration_sec": 2554,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            30652918,
+            30652918,
+            30652918
+          ]
+        },
+        {
+          "guid": "flightcast:01KZWVDWVS2WNENXQ5VD7MK8X8",
+          "episode": "ROLLUP: Bitcoin’s Fork Died in 2 Blocks | Saylor Sells Again | Robinhood Chain | Fidelity ",
+          "declared_bytes": null,
+          "delivered_bytes": 39838825,
+          "duration_sec": 3320,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            39838825,
+            39838825,
+            39838825
+          ]
+        }
+      ]
+    },
+    {
+      "show_id": "1254720112",
+      "title": "The Game with Alex Hormozi",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 1141,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": null,
+      "n": 0,
+      "inserted_samples": 0,
+      "repeats": 3,
+      "varying_samples": 0,
+      "max_delta_sec_implied": null,
+      "tier": null,
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "pscrb.fm",
+        "prefix-v4.pscrb.fm",
+        "episode.flightcast.com",
+        "atelier.flightcast.com"
+      ],
+      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "samples": [
+        {
+          "guid": "flightcast:01M093XD5BVB7XKVNW4XVS4AJ6",
+          "episode": "The Case Against AI | Ep 993",
+          "declared_bytes": null,
+          "delivered_bytes": 6882221,
+          "duration_sec": 573,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            6882221,
+            6882221,
+            6882221
+          ]
+        },
+        {
+          "guid": "flightcast:01KZZW6RQVC36EYJ2DTCXPT1EQ",
+          "episode": "One High-Stakes Decision Changes Everything | Ep 992",
+          "declared_bytes": null,
+          "delivered_bytes": 8355841,
+          "duration_sec": 696,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            8355841,
+            8355841,
+            8355841
+          ]
+        },
+        {
+          "guid": "flightcast:01KZ9E2KPB1GJ7ZNDD403PGMCX",
+          "episode": "The One Question to Ask About Any Relationship | Ep 991",
+          "declared_bytes": null,
+          "delivered_bytes": 5377881,
+          "duration_sec": 448,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            5377881,
+            5377881,
+            5377881
+          ]
+        },
+        {
+          "guid": "flightcast:01KZ53VKWA5D0ZBSJMWAZBRK6H",
+          "episode": "The Offer So Good People Feel Stupid Saying No | Ep 990",
+          "declared_bytes": null,
+          "delivered_bytes": 5851220,
+          "duration_sec": 488,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            5851220,
+            5851220,
+            5851220
+          ]
+        },
+        {
+          "guid": "flightcast:01KYQYJFYYNE9W0533GDQAMMTT",
+          "episode": "Economies of Scale, Vertical Integration, and the Brand I Love Most | Ep 989",
+          "declared_bytes": null,
+          "delivered_bytes": 5862505,
+          "duration_sec": 488,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            5862505,
+            5862505,
+            5862505
+          ]
+        }
+      ]
+    },
+    {
+      "show_id": "1346054199",
+      "title": "Right About Now - Legendary Business Advice",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 650,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": null,
+      "n": 0,
+      "inserted_samples": 0,
+      "repeats": 3,
+      "varying_samples": 0,
+      "max_delta_sec_implied": null,
+      "tier": null,
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "p.podderapp.com",
+        "claritaspod.com",
+        "episode.flightcast.com",
+        "atelier.flightcast.com"
+      ],
+      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "samples": [
+        {
+          "guid": "flightcast:01M0HW8VWXCVJ00KFBA8KT94RG",
+          "episode": "The Self-Made Millionaire: Why Struggle Was His Greatest Advantage",
+          "declared_bytes": null,
+          "delivered_bytes": 24511112,
+          "duration_sec": 2043,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            24511112,
+            24511112,
+            24511112
+          ]
+        },
+        {
+          "guid": "flightcast:01M09S1192QZR7ME4HNJ0R4Q6Z",
+          "episode": "Build a Brand That Sells: Lessons From Blue Moon, White Claw, and mōcean",
+          "declared_bytes": null,
+          "delivered_bytes": 16942394,
+          "duration_sec": 1412,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            16942394,
+            16942394,
+            16942394
+          ]
+        },
+        {
+          "guid": "flightcast:01KZZJQQHH9T7SXHA4D6DJ7EFK",
+          "episode": "Podcast Advertising Is About to Change Everything | Jeff Umbro",
+          "declared_bytes": null,
+          "delivered_bytes": 20460147,
+          "duration_sec": 1705,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            20460147,
+            20460147,
+            20460147
+          ]
+        },
+        {
+          "guid": "flightcast:01KZQRSSKW71W88SB1V55EMPG7",
+          "episode": "Building a $25M Business From the Attention Economy with Dan Novaes",
+          "declared_bytes": null,
+          "delivered_bytes": 22129059,
+          "duration_sec": 1844,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            22129059,
+            22129059,
+            22129059
+          ]
+        },
+        {
+          "guid": "flightcast:01KZDNWNAS14SKCSHAZWRARG2S",
+          "episode": "How One Book Generated $7M in Sales | Selfpublishing.com with Chandler Bolt",
+          "declared_bytes": null,
+          "delivered_bytes": 17155240,
+          "duration_sec": 1430,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            17155240,
+            17155240,
+            17155240
+          ]
+        }
+      ]
+    },
+    {
+      "show_id": "844102142",
+      "title": "The Secret To Success with CJ, Karl, Jemal & Eric Thomas",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 564,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": null,
+      "n": 0,
+      "inserted_samples": 0,
+      "repeats": 3,
+      "varying_samples": 0,
+      "max_delta_sec_implied": null,
+      "tier": null,
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "episode.flightcast.com",
+        "atelier.flightcast.com"
+      ],
+      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "samples": [
+        {
+          "guid": "flightcast:01M084K1JPC2Q3R245QXPVNC82",
+          "episode": "You're Winning in Some Areas But Losing in 1 (And It's Costing You Everything) | S2S 555",
+          "declared_bytes": null,
+          "delivered_bytes": 40455106,
+          "duration_sec": 3371,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            40455106,
+            40455106,
+            40455106
+          ]
+        },
+        {
+          "guid": "flightcast:01KZPC10J808MQV211NJQYT50R",
+          "episode": "You Want the Reward Without the Relationship (And That's Why You're Stuck) | S2S 554",
+          "declared_bytes": null,
+          "delivered_bytes": 40190538,
+          "duration_sec": 3349,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            40190538,
+            40190538,
+            40190538
+          ]
+        },
+        {
+          "guid": "flightcast:01KZ3VHYRS1SQC69RDDBZT942A",
+          "episode": "You Don't Want the Advice, You Want the Reward | S2S 553",
+          "declared_bytes": null,
+          "delivered_bytes": 33653134,
+          "duration_sec": 2802,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            33653134,
+            33653134,
+            33653134
+          ]
+        },
+        {
+          "guid": "flightcast:01KYMEDMSNG4AE5FZBFE70VYHB",
+          "episode": "LeBron or Jordan? The Argument That Got Heated (S2S 552)",
+          "declared_bytes": null,
+          "delivered_bytes": 48507507,
+          "duration_sec": 4039,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            48507507,
+            48507507,
+            48507507
+          ]
+        },
+        {
+          "guid": "flightcast:01KY03B0FNC3GJZAA2AE4GNMVY",
+          "episode": "Prayed About It But Still Stuck? Here's Why | S2S 551",
+          "declared_bytes": null,
+          "delivered_bytes": 30112183,
+          "duration_sec": 2509,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            30112183,
+            30112183,
+            30112183
+          ]
+        }
+      ]
+    },
+    {
+      "show_id": "900114017",
+      "title": "The Wild Sovereign Soul Show",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 551,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": null,
+      "n": 0,
+      "inserted_samples": 0,
+      "repeats": 3,
+      "varying_samples": 0,
+      "max_delta_sec_implied": null,
+      "tier": null,
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "episode.flightcast.com",
+        "atelier.flightcast.com"
+      ],
+      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "samples": [
+        {
+          "guid": "flightcast:01KZ6BNBDA885P19CKT7C6VX6T",
+          "episode": "How To Reclaim Beauty As A Spiritual Practice - Lian Brook-Tyler",
+          "declared_bytes": null,
+          "delivered_bytes": 54720784,
+          "duration_sec": 4560,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            54720784,
+            54720784,
+            54720784
+          ]
+        },
+        {
+          "guid": "flightcast:01KYA44FYKN1GC5HB3ESMY6K2N",
+          "episode": "How To Stop Your 'Good Girl' Playing By Other People's Rules - Lian Brook-Tyler",
+          "declared_bytes": null,
+          "delivered_bytes": 5443396,
+          "duration_sec": 454,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            5443396,
+            5443396,
+            5443396
+          ]
+        },
+        {
+          "guid": "flightcast:01KX6VCS2K7S75REABG34PTCSJ",
+          "episode": "Fermenting change: how to use friction to slow down - Kirsten K. Shockey",
+          "declared_bytes": null,
+          "delivered_bytes": 39564226,
+          "duration_sec": 3297,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            39564226,
+            39564226,
+            39564226
+          ]
+        },
+        {
+          "guid": "flightcast:01KWRVZ64VC62WQB38QRVYM5AJ",
+          "episode": "How To Receive The Medicine Of The Trees Around You - Jason Grechanik",
+          "declared_bytes": null,
+          "delivered_bytes": 44546822,
+          "duration_sec": 3712,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            44546822,
+            44546822,
+            44546822
+          ]
+        },
+        {
+          "guid": "flightcast:01KWC1CK44EHRWCBYZ2NMPSRDP",
+          "episode": "Spiritual Warfare: What Makes You More Vulnerable To Malevolent Forces - Bernhard Guenther",
+          "declared_bytes": null,
+          "delivered_bytes": 38329783,
+          "duration_sec": 3194,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            38329783,
+            38329783,
+            38329783
+          ]
+        }
+      ]
+    },
+    {
+      "show_id": "1291423644",
+      "title": "The Diary Of A CEO with Steven Bartlett",
+      "feed_host": "flightcast.com",
+      "enclosure_host": "atelier.flightcast.com",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 141,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": null,
+      "n": 0,
+      "inserted_samples": 0,
+      "repeats": 3,
+      "varying_samples": 0,
+      "max_delta_sec_implied": null,
+      "tier": null,
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "pdst.fm",
+        "pscrb.fm",
+        "prefix-v4.pscrb.fm",
+        "mgln.ai",
+        "claritaspod.com",
+        "p.podderapp.com",
+        "episode.flightcast.com",
+        "atelier.flightcast.com"
+      ],
+      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "samples": [
+        {
+          "guid": "flightcast:01M08555EDJDXY5E3VGD5B9BPA",
+          "episode": "Most Replayed Moment: Better Sleep Doesn't Always Mean Longer Sleep! Fix These Habits Toda",
+          "declared_bytes": null,
+          "delivered_bytes": 22191439,
+          "duration_sec": 1849,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            22191439,
+            22191439,
+            22191439
+          ]
+        },
+        {
+          "guid": "flightcast:01M011YXPMA7EXR82JB7CMWHJN",
+          "episode": "Financial Crash Expert: He Predicted The 2008 Crash, Now He Says Capitalism Failed, It’s T",
+          "declared_bytes": null,
+          "delivered_bytes": 67510022,
+          "duration_sec": 5626,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            67510022,
+            67510022,
+            67510022
+          ]
+        },
+        {
+          "guid": "flightcast:01M011QCMPHN8FAV0XN9GXFS1N",
+          "episode": "Top Scientist REVEALS: We Invented Heaven, God Is A Human Invention! | Prof Brian Greene",
+          "declared_bytes": null,
+          "delivered_bytes": 94472464,
+          "duration_sec": 7873,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            94472464,
+            94472464,
+            94472464
+          ]
+        },
+        {
+          "guid": "flightcast:01KZX9EY9A36HTNHJPP6971MN1",
+          "episode": "Most Replayed Moment: Fear Is A Skill You Can Train! Lessons From The World's Greatest Cli",
+          "declared_bytes": null,
+          "delivered_bytes": 18667416,
+          "duration_sec": 1556,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            18667416,
+            18667416,
+            18667416
+          ]
+        },
+        {
+          "guid": "flightcast:01KZERQ8T6WKSG6169FR2YC3SZ",
+          "episode": "Fat Loss Scientist: It’s Easy To Lose Weight, But Here’s Why You WON’T Do It! | Dr Andy Ga",
+          "declared_bytes": null,
+          "delivered_bytes": 94906306,
+          "duration_sec": 7909,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            94906306,
+            94906306,
+            94906306
+          ]
+        }
+      ]
+    },
+    {
+      "show_id": "1874921147",
+      "title": "The Ugly Truth of Divorce",
+      "feed_host": "audioboom.com",
+      "enclosure_host": "d11untcg2uthr3.cloudfront.net",
+      "suspect_reason": "inferred-static",
+      "timed_transcripts": 42,
+      "verdict": "unknown",
+      "disposition": "unresolved",
+      "median": null,
+      "n": 0,
+      "inserted_samples": 0,
+      "repeats": 3,
+      "varying_samples": 0,
+      "max_delta_sec_implied": null,
+      "tier": null,
+      "dai_by_chain": false,
+      "dai_via": null,
+      "resolved_chain": [
+        "dts.podtrac.com",
+        "audioboom.com",
+        "d11untcg2uthr3.cloudfront.net"
+      ],
+      "note": "5 episode(s) each probed 3x delivered a byte-identical length every time; this feed declares no enclosure length, so the ratio cannot run and stability across repeats is consistent with a static file AND with a stitcher that did not vary for us — ADR-0008 decode-and-compare settles it",
+      "samples": [
+        {
+          "guid": "audioboom-019f4297-5d5b-7546-ad53-a360e38c8540",
+          "episode": "41: Why the Priority List in Your Parenting Plan Matters More Than You Think",
+          "declared_bytes": null,
+          "delivered_bytes": 15599605,
+          "duration_sec": 938,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            15599605,
+            15599605,
+            15599605
+          ]
+        },
+        {
+          "guid": "audioboom-019ef3f7-767b-7e7b-b39f-0a4b3413c441",
+          "episode": "40: The Things No One Warns You About After the Divorce Is Final",
+          "declared_bytes": null,
+          "delivered_bytes": 21463867,
+          "duration_sec": 1305,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            21463867,
+            21463867,
+            21463867
+          ]
+        },
+        {
+          "guid": "audioboom-019ed9e8-88bc-7246-ac37-5b17aec46bec",
+          "episode": "39: The 5 Boundaries That Changed Everything For Me",
+          "declared_bytes": null,
+          "delivered_bytes": 18892211,
+          "duration_sec": 1146,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            18892211,
+            18892211,
+            18892211
+          ]
+        },
+        {
+          "guid": "audioboom-019ecf3b-12df-7120-b2bb-4374cbecc377",
+          "episode": "38: The Top 7 Challenges of 50/50 Custody (Especially with a High-Conflict Co-Parent)",
+          "declared_bytes": null,
+          "delivered_bytes": 37770899,
+          "duration_sec": 2321,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            37770899,
+            37770899,
+            37770899
+          ]
+        },
+        {
+          "guid": "audioboom-019eb5dc-0629-710f-a741-e95b9d7bfc80",
+          "episode": "37: On the Stand: How to Handle Court When You're Dealing with a High-Conflict Ex",
+          "declared_bytes": null,
+          "delivered_bytes": 33690224,
+          "duration_sec": 2068,
+          "ratio": null,
+          "delta_sec_implied": null,
+          "deliveries": [
+            33690224,
+            33690224,
+            33690224
+          ]
+        }
+      ]
+    }
+  ]
+}
