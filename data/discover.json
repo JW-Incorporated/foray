@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-22T11:43:14.157Z",
+  "built_at": "2026-08-23T11:41:42.789Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -35128,6 +35128,111 @@
         "food/drinks"
       ],
       "hook": "Prime Barrel's Michael Nagdi on turning single-barrel picks into an online Discord community.",
+      "explicit": true
+    },
+    {
+      "id": "the-ancients--terror-birds",
+      "show": "The Ancients",
+      "title": "Terror Birds",
+      "apple_collection_id": 1520403988,
+      "apple_track_id": 1000784368975,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/terror-birds/id1520403988?i=1000784368975&uo=4",
+      "release_date": "2026-08-23",
+      "duration_min": 45,
+      "duration_sec": 2714,
+      "audio_url": "https://sphinx.acast.com/p/acast/s/the-ancients/e/6a85d12386c11680de6a29a4/media.mp3?tk=eyJ0ayI6ImRlZmF1bHQiLCJhZHMiOnRydWUsInNwb25zIjp0cnVlLCJzdGF0dXMiOiJwdWJsaWMifQ==&sig=4wqx3VYnKME56C4A0X1xrXJn3eVU_hsNhnSV0-3L_1E",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 43430974,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/6c/94/31/6c943113-5484-a41d-5cb7-bf606ff289ef/mza_6401313720037127611.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-ancient"
+      ],
+      "hook": "Palaeontologist Steve Brusatte explains how flightless terror birds ruled South America after the dinosaurs died out.",
+      "explicit": false
+    },
+    {
+      "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1620",
+      "show": "Engines of Our Ingenuity",
+      "title": "The Engines of Our Ingenuity 1620: The Indian Canoe",
+      "apple_collection_id": 121493645,
+      "apple_track_id": 1000785191534,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-engines-of-our-ingenuity-1620-the-indian-canoe/id121493645?i=1000785191534&uo=4",
+      "release_date": "2026-08-23",
+      "duration_min": 4,
+      "duration_sec": 225,
+      "audio_url": "https://op3.dev/e/dts.podtrac.com/redirect.mp3/ondemand.houstonpublicmedia.org/engines-of-our-ingenuity/KUHF_20260823.mp3?srcid=apple-podcasts",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 1796464,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/d9/48/5f/d9485f01-660b-d928-e85f-d61b6f877982/mza_8721609852467453666.png/600x600bb.jpg",
+      "topics": [
+        "history/technology"
+      ],
+      "hook": "A short history of the birch-bark canoe, one of the most refined technologies ever perfected.",
+      "explicit": false
+    },
+    {
+      "id": "philosophy-bites--lani-watson-on-the-power-of",
+      "show": "Philosophy Bites",
+      "title": "Lani Watson on the Power of Questions",
+      "apple_collection_id": 257042117,
+      "apple_track_id": 1000785111209,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/lani-watson-on-the-power-of-questions/id257042117?i=1000785111209&uo=4",
+      "release_date": "2026-08-22",
+      "duration_min": 16,
+      "duration_sec": 988,
+      "audio_url": "https://traffic.libsyn.com/secure/philosophybites/Lani_Watson_on_the_Power_of_Questions.mp3?dest-id=14010",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 13357903,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/4b/46/9c/4b469ca0-6e1c-80fd-a654-09a21cfc0cc7/mza_14359361872834352420.jpg/600x600bb.jpg",
+      "topics": [
+        "philosophy/ideas"
+      ],
+      "hook": "Philosopher Lani Watson argues true questions are defined by their function, not their form.",
+      "explicit": false
+    },
+    {
+      "id": "happier-gretchen-rubin--move-happier-clear-the-decks-for",
+      "show": "Happier with Gretchen Rubin",
+      "title": "Move Happier: Clear the Decks for September with 26 Quick Tasks (Bonus)",
+      "apple_collection_id": 969519520,
+      "apple_track_id": 1000784150691,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/move-happier-clear-the-decks-for-september-with-26/id969519520?i=1000784150691&uo=4",
+      "release_date": "2026-08-23",
+      "duration_min": 33,
+      "duration_sec": 1992,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/claritaspod.com/measure/pscrb.fm/rss/p/mgln.ai/e/491/traffic.megaphone.fm/LEME3992852221.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6a/e2/d1/6ae2d151-83a4-b972-9f44-5edd63f1694e/mza_2346440544380907533.jpeg/600x600bb.jpg",
+      "topics": [
+        "education/self-improvement"
+      ],
+      "hook": "Gretchen Rubin shares 26 quick tasks to clear your space and reset before September.",
+      "explicit": false
+    },
+    {
+      "id": "casefile--case-349-michael-wallace-david-castor",
+      "show": "Casefile True Crime",
+      "title": "Case 349: Michael Wallace & David Castor",
+      "apple_collection_id": 998568017,
+      "apple_track_id": 1000783422985,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/case-349-michael-wallace-david-castor/id998568017?i=1000783422985&uo=4",
+      "release_date": "2026-08-22",
+      "duration_min": 79,
+      "duration_sec": 4767,
+      "audio_url": "https://sphinx.acast.com/p/open/s/679acff465f74095106abfaa/e/6a8968a4a89d26398e37bee5/media.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 114762879,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/32/81/a3/3281a345-6fa5-1d0d-b0bc-f02b0850a0ae/mza_17562537467118278179.jpeg/600x600bb.jpg",
+      "topics": [
+        "true-crime"
+      ],
+      "hook": "Two husbands die years apart; inconsistencies surface and investigators turn their attention to the widow.",
       "explicit": true
     }
   ]

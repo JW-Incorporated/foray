@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-22T11:43:14.157Z",
+  "built_at": "2026-08-23T11:41:42.789Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -14657,6 +14657,47 @@
       "community",
       "interview",
       "craft"
+    ],
+    "the-ancients--terror-birds": [
+      "paleontology",
+      "birds",
+      "south-america",
+      "extinction",
+      "steve-brusatte",
+      "prehistory",
+      "fossils"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-1620": [
+      "engineering-history",
+      "history-of-technology",
+      "invention",
+      "indigenous",
+      "craftsmanship",
+      "materials"
+    ],
+    "philosophy-bites--lani-watson-on-the-power-of": [
+      "philosophy",
+      "epistemology",
+      "language",
+      "communication",
+      "ideas",
+      "interview"
+    ],
+    "happier-gretchen-rubin--move-happier-clear-the-decks-for": [
+      "gretchen-rubin",
+      "self-improvement",
+      "productivity",
+      "organization",
+      "habits",
+      "home"
+    ],
+    "casefile--case-349-michael-wallace-david-castor": [
+      "true-crime",
+      "casefile",
+      "murder-investigation",
+      "investigation",
+      "criminal-justice",
+      "forensics"
     ]
   }
 }
