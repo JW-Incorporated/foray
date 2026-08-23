@@ -370,9 +370,35 @@ const FLOORS = {
 
      `shell-invariants` gained two, one of which pins the slice's per-file budget —
      the same self-referential hole that `MAX_BYTES = 30 * 1024 * 1024` opened in the
-     size cap, closed in advance this time. */
-  "tools/mobile/prepare-webdir.test.mjs": 52,
-  "tools/mobile/shell-invariants.test.mjs": 46,
+     size cap, closed in advance this time.
+
+     THEY ROSE AGAIN ON 2026-08-23, from 52 and 46, when the SEGMENT POOL stopped
+     being copied whole (#327). Thirteen of `prepare-webdir`'s tests are that slice,
+     and the floor is EXACT again rather than carrying the two tests of slack the
+     first draft of this entry left: slack in a floor is the number of tests a later
+     auto-merging PR may delete without CI noticing, which is the whole failure this
+     file exists to prevent. And
+     the three not to lose are again the ones a reader would not guess at:
+
+       - "the slice keeps BOTH rows of a duplicated id, because the join reads the
+         last one". `indexSegments` is `Map.set` in document order, so the LAST row
+         sharing an id wins; a "first match" slice keeps the right id, the right count
+         and the right budget and plays the wrong ninety seconds. It CANNOT FAIL ON
+         TODAY'S DATA — the real pool has no duplicate ids — and it is the segment
+         version of the artwork-anchor test above.
+       - "the slice keeps a DRAFT Foray's segments". A draft is reachable by id
+         (`?foray=`), which is how a Foray is tested before publishing, so slicing
+         against `listableForays` would look like a tightening and ship a Foray that
+         resolves to nothing.
+       - "REAL REPO: nothing in the app browses the segment pool". That is the PREMISE
+         the slice rests on — it is exactly the referenced set, with no topic top-up,
+         because nothing enumerates the pool. Delete it and the day somebody adds a
+         segment browse surface, it renders empty in the app and full on the web.
+
+     `shell-invariants` gained one: the same slice against TODAY'S real documents,
+     independently of the fixture suite. */
+  "tools/mobile/prepare-webdir.test.mjs": 65,
+  "tools/mobile/shell-invariants.test.mjs": 47,
   /* The foreground service's web half (#27's Android half, on #37). Zero slack, and
      for the reason `media-session.test.js` above gives: what this suite guards is
      mostly a set of single-line edits away from their opposites, on a surface nobody

@@ -82,8 +82,10 @@ import { fileURLToPath } from "node:url";
 import {
   MAX_BYTES, MIN_DERIVED_DATA_FILES, PROJECTED_DATA, BUNDLED_ITEMS_PER_SHOW,
   discoverSlice, assertDiscoverSliceComplete, sliceBytes,
+  referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
 } from "./prepare-webdir.mjs";
 import { artworkUrlsByShow, collectionIdsByShow } from "../../player/foray-sources.js";
+import { hydrateForayItems, indexSegments, indexSources } from "../../player/foray-resolve.js";
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
   PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS,
@@ -356,22 +358,82 @@ test("the derivation floor is pinned at 6 files", () => {
   assert.equal(MIN_DERIVED_DATA_FILES, 6);
 });
 
-test("the sliced file's per-file budget is pinned at 800 KB", () => {
+test("the sliced files' per-file budgets are pinned, all three of them", () => {
   /* THE THIRD INSTANCE OF THE SAME SELF-REFERENTIAL SHAPE, added with the budgets
      themselves rather than after somebody defeated them. `prepare-webdir` only fails
      when a slice EXCEEDS its own `maxBytes`, so raising `maxBytes` satisfies both
      sides of the comparison — the identical hole that `MAX_BYTES = 30 * 1024 * 1024`
      opened in the size cap.
 
-     This number is the tight alarm for the catalogue slice having stopped being
-     bounded, which the 3 MB cap is now too loose to notice quickly: the whole bundle
-     is 1.96 MB. Raising it is a decision, and it should cost an edit here and a
-     sentence about what the new number guards. */
-  assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [["data/discover.json", 800 * 1024]]);
+     These numbers are the tight alarm for a slice having stopped being bounded,
+     which the 3 MB cap is too loose to notice quickly: the whole bundle is 2.10 MB.
+     Raising one is a decision, and it should cost an edit here and a sentence about
+     what the new number guards.
+
+     THEY MEAN TWO DIFFERENT THINGS, which is why they are pinned as a table rather
+     than as one constant. `data/discover.json`'s budget watches CATALOGUE growth,
+     which the nightly refresh causes whether or not anybody decided anything. The
+     two Foray documents' budgets watch PRODUCT growth: a new Foray is a deliberate
+     act, so they sit further above today's number — about four more Forays the size
+     of today's three combined — but they must still fire long before the segment
+     pool's unbounded growth could get back into the bundle (#327). */
+  assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [
+    ["data/discover.json", 800 * 1024],
+    ["data/segments.json", 100 * 1024],
+    ["data/segment-sources.json", 40 * 1024],
+  ]);
   /* And the knob is a small integer, not a number large enough to make the slice the
      whole catalogue again. */
   assert.ok(Number.isInteger(BUNDLED_ITEMS_PER_SHOW) && BUNDLED_ITEMS_PER_SHOW >= 1);
   assert.ok(BUNDLED_ITEMS_PER_SHOW <= 6, "a per-show cap this high is not a bounded slice any more");
+});
+
+test("the bundled segment slice is exactly what today's Forays reference, and the join agrees", () => {
+  /* DELIBERATELY A SECOND, INDEPENDENT SUITE, for the same reason the catalogue slice
+     has one below: `prepare-webdir.test.mjs` covers this in detail against a fixture,
+     and this asserts it against TODAY'S REAL documents, from the file that owns the
+     shell's invariants. The failure it guards is invisible — a Foray that opens in
+     the app and resolves to an empty running order, playing fine on the website. */
+  const forays = readJson(path.join(ROOT, "data", "forays.json"));
+  const segments = readJson(path.join(ROOT, "data", "segments.json"));
+  const sources = readJson(path.join(ROOT, "data", "segment-sources.json"));
+
+  const slice = segmentSlice(segments, forays);
+  const srcSlice = segmentSourceSlice(sources, segments, forays);
+
+  /* It really is slicing the real documents, or nothing below means anything. */
+  assert.ok(segments.segments.length > slice.segments.length, "the slice is not slicing the real pool");
+  assert.ok(sources.sources.length > srcSlice.sources.length, "the slice is not slicing the real registry");
+
+  /* EXACTLY the referenced set — no top-up, because nothing in the app browses the
+     pool. `discover.json` needs one only because app.js routes #/subject/<topic> off
+     it; a segment's `topic` has no such reader. */
+  const referenced = referencedSegmentIds(forays);
+  assert.ok(referenced.size > 0, "today's Forays reference no segments at all");
+  assert.deepEqual(new Set(slice.segments.map((s) => s.id)), referenced);
+
+  assert.equal(
+    assertForaySliceComplete(forays, { segments, sources }, { segments: slice, sources: srcSlice }),
+    true
+  );
+  /* Re-asserted here directly rather than only through that call, so deleting the
+     join re-run inside the guard fails in two suites. */
+  const hydrate = (docs) =>
+    forays.forays.map((f) =>
+      hydrateForayItems(f, { segments: indexSegments(docs.segments), sources: indexSources(docs.sources) })
+    );
+  const before = hydrate({ segments, sources });
+  const played = before.reduce((n, h) => n + h.items.filter((i) => i.type === "segment").length, 0);
+  assert.ok(played >= 50, `the real documents resolve to only ${played} segment entries — the comparison is vacuous`);
+  assert.deepEqual(hydrate({ segments: slice, sources: srcSlice }), before);
+
+  /* Inside their budgets, with the headroom the budgets claim. */
+  for (const [rel, doc] of [["data/segments.json", slice], ["data/segment-sources.json", srcSlice]]) {
+    const budget = PROJECTED_DATA.find((p) => p.rel === rel).maxBytes;
+    const bytes = sliceBytes(doc);
+    assert.ok(bytes < budget, `the real ${rel} slice is ${(bytes / 1024).toFixed(1)} KB, over its budget`);
+    assert.ok(bytes > budget * 0.2, `${rel}'s budget is loose enough that it would not notice a quadrupling`);
+  }
 });
 
 test("the bundled catalogue slice keeps every show, and both of the Foray joins", () => {
