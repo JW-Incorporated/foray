@@ -28,6 +28,15 @@
    is stream-then-discard (docs/curation/segment-extraction-pipeline.md §2).
    Only the index gets committed.
 
+   THE JOIN KEY: `enclosure_url`. Episode rows are keyed by feed `guid`, which
+   `data/discover.json` does not carry — its items key on Apple ids. So every
+   episode-level join between the two files returned ZERO, and "how many of our
+   1,672 curated episodes have a free transcript?" read as "none" when the true
+   answer was 158. The enclosure URL is the one field both sides take verbatim
+   from the same feed (verified 10/10 on Practical AI), so recording it here is
+   what makes the question answerable at all. tools/segments/transcript-coverage.mjs
+   is the join; it fails loudly if the match rate collapses again.
+
    FAILURES ARE NAMED, NEVER SILENT. Every failure mode exits through a
    `SweepError` with a code (`HTTP_429`, `TIMEOUT`, `EMPTY_FEED`, `NOT_RSS`…)
    that lands in the show record and in the run summary; a run where no show
@@ -57,15 +66,17 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { durationSeconds, hostOf } from "../refresh/enclosure.mjs";
 import { classifyShow, isDaiHost } from "../refresh/dai.mjs";
+import { UA, awaitHostSlot, waitBeforeRetry } from "./politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-export const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+/* Re-exported so existing importers keep working; it is defined in
+   ./politeness.mjs, which is also where the per-host gate and the backoff
+   live now. They were duplicated into fetch-transcripts.mjs and had already
+   drifted (the copy lost the jitter) while sharing the same two bugs. */
+export { UA };
 const FEED_TIMEOUT_MS = 30_000; // feeds run to several MB; the 15s used elsewhere times out on the long tail
-const MIN_HOST_INTERVAL_MS = 1200; // per host, not global — 213 shows sit on far fewer CDNs
 const MAX_ATTEMPTS = 3;
-const BASE_BACKOFF_MS = 2000;
-const MAX_RETRY_AFTER_MS = 60_000; // a host asking for longer than this is telling us to come back another day
 
 /* Transcript formats that carry a timeline, in preference order. Mirrors
    TIMED_TRANSCRIPT_TYPES in backend/src/feeds/parser.ts (issue #103). */
@@ -190,6 +201,7 @@ export function parseFeed(xml) {
 
     return {
       guid: textOf(itemXml, "guid") || enclosureUrl || `item-${idx}`,
+      enclosure_url: enclosureUrl,
       title: textOf(itemXml, "title"),
       pub_date: textOf(itemXml, "pubDate"),
       duration_sec: durationSeconds(textOf(itemXml, "duration")),
@@ -207,28 +219,6 @@ export function parseFeed(xml) {
 // ------------------------------------------------------------- politeness --
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const nextAllowedByHost = new Map();
-
-/** Serialises requests per host without serialising the run. Concurrency 6 on
-    its own is not politeness: this catalogue's feeds cluster onto a handful of
-    CDNs, so six workers can be six simultaneous hits on one host. */
-async function awaitHostSlot(url) {
-  const host = hostOf(url) || "unknown";
-  const now = Date.now();
-  const earliest = Math.max(now, nextAllowedByHost.get(host) || 0);
-  nextAllowedByHost.set(host, earliest + MIN_HOST_INTERVAL_MS);
-  const wait = earliest - now;
-  if (wait > 0) await sleep(wait);
-}
-
-function retryAfterMs(res) {
-  const raw = res.headers.get("retry-after");
-  if (!raw) return null;
-  const secs = Number(raw);
-  if (Number.isFinite(secs)) return Math.min(secs * 1000, MAX_RETRY_AFTER_MS);
-  const when = Date.parse(raw);
-  return Number.isFinite(when) ? Math.min(Math.max(0, when - Date.now()), MAX_RETRY_AFTER_MS) : null;
-}
 
 /** Fetches a feed body. Retries 429/5xx/network with backoff; 4xx other than
     429 is permanent and fails immediately — retrying a 404 is just rudeness
@@ -251,7 +241,9 @@ async function fetchFeed(url, { attempts = MAX_ATTEMPTS, timeoutMs = FEED_TIMEOU
       if (res.status !== 429 && res.status < 500) throw err; // permanent — do not retry
       lastError = err;
       if (attempt < attempts) {
-        const wait = retryAfterMs(res) ?? BASE_BACKOFF_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 500);
+        // waitBeforeRetry pushes the gate for the WHOLE host, so a 429 quiets
+        // every worker rather than only the one that was told to wait.
+        const wait = waitBeforeRetry(url, res, attempt);
         log(`    retry ${attempt}/${attempts - 1} in ${Math.round(wait / 1000)}s (${err.code})`);
         await sleep(wait);
       }
@@ -265,7 +257,7 @@ async function fetchFeed(url, { attempts = MAX_ATTEMPTS, timeoutMs = FEED_TIMEOU
         : e instanceof SweepError
           ? e
           : new SweepError("NETWORK", `${e.message}${cause ? ` (${cause})` : ""} for ${url}`);
-      if (attempt < attempts) await sleep(BASE_BACKOFF_MS * 2 ** (attempt - 1) + Math.floor(Math.random() * 500));
+      if (attempt < attempts) await sleep(waitBeforeRetry(url, null, attempt));
     } finally {
       clearTimeout(timer);
     }
