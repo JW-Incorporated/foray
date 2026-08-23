@@ -7,7 +7,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import {
   probeTargets,
   impliedDeltaSec,
@@ -29,6 +29,10 @@ import {
   fetchNoteOf,
   decodeIndex,
   decodeOverride,
+  gridIndex,
+  GRID_REPORT_RELS,
+  gridOverride,
+  combineOverrides,
   decodeUnderreports,
   probeCorroborated,
   CONSTANT_OFFSET_TOLERANCE_BYTES,
@@ -1024,9 +1028,21 @@ test("every committed anchorable verdict is reproducible from its own samples", 
     });
     assert.equal(screened, r.screened_disposition ?? r.disposition, `${r.title}: disposition`);
     if (r.screened_disposition) {
-      assert.equal(r.decided_by, "decode-and-compare", `${r.title}: an overruled row must name what overruled it`);
+      /* TWO INSTRUMENTS MAY NOW OVERRULE THE SCREEN, and the row must name
+         which — and then carry THAT instrument's numbers. The pairing is a
+         lookup rather than an `if/else` on purpose: a third instrument, or a
+         renamed `decided_by`, lands as an undefined here and fails, instead of
+         slipping through an `else` branch that asserts nothing. That is the
+         same failure this test was written to close, one instrument later. */
+      const evidenceOf = {
+        "decode-and-compare": /DECODED/,
+        "decode-and-compare (probe grid corroborating)": /DECODED/,
+        "probe-grid": /PROBE GRID/,
+        "probe-grid (over decode-and-compare)": /PROBE GRID/,
+      }[r.decided_by];
+      assert.ok(evidenceOf, `${r.title}: an overruled row must name what overruled it, got ${r.decided_by}`);
       assert.notEqual(r.disposition, r.screened_disposition, `${r.title}: nothing to record if they agree`);
-      assert.match(r.note || "", /DECODED/, `${r.title}: an overruled row must carry the decode's numbers`);
+      assert.match(r.note || "", evidenceOf, `${r.title}: an overruled row must carry its instrument's numbers`);
     }
     assert.equal(maxDeltaSec(r.samples), r.max_delta_sec_implied, `${r.title}: worst delta`);
     assert.equal(adrTier(r.max_delta_sec_implied), r.tier, `${r.title}: ADR-0008 tier`);
@@ -1231,11 +1247,26 @@ test("the resume path re-derives a carried-forward row rather than copying it", 
      as "do not retry this" in committed evidence. `fetchNoteOf` has its own
      unit test; only a scan pins that the resume path calls it. */
   assert.match(src, /deriveRow\(r, \{ note: fetchNoteOf\(r\)[^)]*\}\)/, "a carried row keeps a note the samples cannot re-derive");
-  /* AND the decode ledger. A resumed row that skipped it would be re-judged by
+  /* AND BOTH LEDGERS. A resumed row that skipped them would be re-judged by
      the ranged-GET screen alone while a freshly probed one was judged by the
-     decode — the same "two standards in one file" failure this test exists to
-     prevent, one instrument further up. */
-  assert.match(src, /deriveRow\(r, \{ note: fetchNoteOf\(r\), decodes \}\)/, "a carried row is re-judged against the decode ledger too");
+     decode and the grid — the same "two standards in one file" failure this
+     test exists to prevent, one instrument further up. `grids` is named here
+     for the same reason `decodes` was: when the flightcast pass condemned two
+     shows the screen had left `unresolved`, a resume that dropped the index
+     would have quietly restored them to the corpus on the next run, and the
+     only visible symptom would have been the net going back up. */
+  assert.match(
+    src,
+    /deriveRow\(r, \{ note: fetchNoteOf\(r\), decodes, grids \}\)/,
+    "a carried row is re-judged against both the decode ledger and the probe grids",
+  );
+  /* AND SO DOES THE LIVE PROBE PATH. SURVIVED the first mutation run: dropping
+     `grids` from the freshly-probed call site left every suite green, because
+     this test only ever looked at the resume path. The two paths disagreeing is
+     the "one file, two standards" failure in its purest form — a show re-probed
+     today would be judged by the ranged-GET screen alone while the show beside
+     it, carried forward untouched, was judged by the grid. */
+  assert.match(src, /\{ note, decodes, grids \},/, "a freshly probed row is judged by the same ledgers as a carried one");
 });
 
 /* MUTATION: filter `deliveries` on `n > 0` instead of `isPlausibleAudioSize`.
@@ -1379,4 +1410,334 @@ test("a show is only repeat-probed if every one of its samples was", () => {
     { shows: 0, timed_transcripts: 0 },
     "a show with one ratio-able episode was not 'probed N times with no denominator'",
   );
+});
+
+/* ------------------------------------------------------------- the grid
+
+   THE THIRD INSTRUMENT, and the cheapest. Four requests for one URL's length —
+   ranged and unranged, under each outbound identity — and no body at all. What
+   it decides here: 1,914 timed transcripts that #323 left `unresolved` on the
+   one origin it caught assembling per request, and which nothing but a 60 MB
+   download could otherwise have settled. */
+
+const gridRow = (over = {}) => ({
+  show_id: "S1",
+  title: "A Show",
+  enclosure_host: "atelier.flightcast.com",
+  timed_transcripts: 100,
+  grid: {
+    status: "stable",
+    varies_by_request: false,
+    episodes_probed: 3,
+    episodes_informative: 3,
+    varying_episodes: 0,
+    varying_totals: [],
+    varying_pairs: [],
+    totals_seen: [100],
+  },
+  ...over,
+});
+
+const variesGrid = (over = {}) =>
+  gridRow({
+    grid: {
+      status: "varies",
+      varies_by_request: true,
+      episodes_probed: 3,
+      episodes_informative: 3,
+      varying_episodes: 3,
+      varying_totals: [7_848_961, 8_383_739, 10_631_316, 11_540_063],
+      varying_pairs: ["7848961 vs 10631316", "8383739 vs 11540063"],
+      totals_seen: [7_848_961, 8_383_739, 10_631_316, 11_540_063],
+    },
+    ...over,
+  });
+
+/* MUTATION: key `gridIndex` on `enclosure_host` instead of `show_id`. Verified
+   failing.
+
+   A PLATFORM VERDICT IS NOT A SHOW VERDICT, and on the flightcast pool that is
+   measured rather than cautionary: six shows, one enclosure host, and two
+   answers. A host-keyed index condemns 3,406 transcripts on the evidence of
+   1,914 — the aggregation `_adswizz_note` forbids and that #321 already found
+   wrong on blubrry (9 clean / 1 dirty) and libsyn (4/4 by origin). */
+test("grid evidence is keyed on the show, never on the host it shares", () => {
+  const index = gridIndex([
+    { results: [variesGrid({ show_id: "dirty" }), gridRow({ show_id: "clean" })] },
+  ]);
+  assert.equal(gridOverride({ show_id: "dirty" }, index).disposition, "drop");
+  assert.equal(gridOverride({ show_id: "clean" }, index), null, "same host, different show, no verdict");
+});
+
+/* MUTATION: make `gridIndex` keep the FIRST row for a repeated `show_id`.
+   Verified failing. Later files supersede earlier ones for the shows they
+   re-probed, matching how `--resume` replaces rows by `show_id`; the opposite
+   rule would freeze a superseded pass in front of the one that corrected it. */
+test("a later grid pass supersedes an earlier one for the same show", () => {
+  const index = gridIndex([{ results: [gridRow()] }, { results: [variesGrid()] }]);
+  assert.equal(gridOverride({ show_id: "S1" }, index).disposition, "drop");
+  assert.equal(gridIndex([]).byShow.size, 0);
+  assert.equal(gridIndex(null).byShow.size, 0);
+});
+
+/* MUTATION: return a `recover` (or an `unresolved`) from `gridOverride` on a
+   `stable` grid. Verified failing.
+
+   THE GRID CAN ONLY EVER CONDEMN, and that asymmetry is the whole of its
+   licence. Agreement across four cells proves only that this delivery path does
+   not lie the way `atelier.flightcast.com` does — #323's bare-chain control
+   returns four identical cells ON THE LYING ORIGIN and stays `unresolved`. A
+   grid that could admit a show would have admitted that one. */
+test("a grid that agrees with itself moves nothing", () => {
+  const index = gridIndex([
+    {
+      results: [
+        gridRow({ show_id: "stable" }),
+        gridRow({ show_id: "incon", grid: { ...gridRow().grid, status: "inconclusive", episodes_informative: 1 } }),
+      ],
+    },
+  ]);
+  assert.equal(gridOverride({ show_id: "stable" }, index), null);
+  assert.equal(gridOverride({ show_id: "incon" }, index), null, "an unspent question is not a negative result");
+  assert.equal(gridOverride({ show_id: "never-probed" }, index), null);
+  assert.equal(gridOverride({ show_id: "S1" }, null), null, "a null index changes nothing");
+});
+
+/* MUTATION: quote `varying_totals` instead of `varying_pairs` in the note.
+   Verified failing.
+
+   The claim is "ONE url, two lengths". Pooled across three episodes it renders
+   as six numbers for one URL, which overstates the finding inside the sentence
+   that reports it — and this note is copied verbatim into
+   `data/breadth-anchorable-inflation.json`, which is what a founder reads. */
+test("the condemning note quotes one pair per URL", () => {
+  const out = gridOverride({ show_id: "S1" }, gridIndex([{ results: [variesGrid()] }]));
+  assert.equal(out.disposition, "drop");
+  assert.equal(out.decided_by, "probe-grid");
+  assert.match(out.note, /7848961 vs 10631316; 8383739 vs 11540063/);
+  assert.match(out.note, /No body was read/);
+  assert.ok(!/7848961 \/ 8383739 \/ 10631316/.test(out.note), "the union must not be quoted as one URL's lengths");
+});
+
+/* MUTATION: collapse `combineOverrides` to `grid || decode`, or to
+   `decode || grid`. Verified failing (both, on different branches).
+
+   Neither `||` is right and the reason is the asymmetry `decodeOverride`'s own
+   header argues. `grid || decode` throws away a decode's condemnation — the one
+   denominated in SECONDS against the show's own transcript — whenever a grid
+   also fired. `decode || grid` lets an acquittal drawn from ONE decoded episode
+   outrank positive evidence that the show's URLs are assembled per request,
+   which makes that episode a sample of one from a distribution. */
+test("the decode and the grid are combined by rule, not by whichever came first", () => {
+  const grid = { disposition: "drop", decided_by: "probe-grid", note: "GRID" };
+
+  assert.equal(combineOverrides(null, null), null);
+  assert.deepEqual(combineOverrides(null, grid), grid, "the grid alone decides when nothing else spoke");
+  assert.equal(combineOverrides({ disposition: "recover", note: "D" }, null).disposition, "recover");
+
+  /* CORROBORATION, NOT REPLACEMENT: the decode saw the audio and says more. */
+  const both = combineOverrides({ disposition: "drop", note: "DECODED: 139.13s beyond" }, grid);
+  assert.equal(both.disposition, "drop");
+  assert.match(both.note, /DECODED: 139\.13s beyond/, "the decode's seconds survive");
+  assert.match(both.note, /CORROBORATED by the probe grid/);
+  assert.match(both.decided_by, /^decode-and-compare/);
+
+  /* SETTLING, NOT OVERRIDING. `unresolved` is not a finding to overturn, and
+     this is the branch every flightcast row actually takes. */
+  const settled = combineOverrides({ disposition: "unresolved", note: "cannot admit this show" }, grid);
+  assert.equal(settled.disposition, "drop");
+  assert.equal(settled.decided_by, "probe-grid");
+  assert.match(settled.note, /SETTLES what the decode ledger could not/);
+
+  /* THE CONTESTED CASE, unreached on today's evidence and written down anyway. */
+  const beat = combineOverrides({ disposition: "recover", note: "DECODED CLEAN: 8625.53s against a cue at 8625.44s" }, grid);
+  assert.equal(beat.disposition, "drop", "positive evidence of the mechanism outranks an acquittal built on absence");
+  assert.match(beat.decided_by, /over decode-and-compare/);
+  /* AND THE OVERRULED DECODE'S NUMBERS SURVIVE. A reviewer caught this branch
+     paraphrasing the decode into "the decode ledger's recover" and dropping its
+     note — which on this branch is total erasure, because `screened_disposition`
+     records the SCREEN, not the decode. The corroboration branch above already
+     asserts the same property; asserting it on only one of the two is how the
+     loss got baked in unnoticed. */
+  assert.match(beat.note, /DECODED CLEAN: 8625\.53s against a cue at 8625\.44s/, "an overruled decode still speaks");
+});
+
+/* MUTATION: restore the blind-host note's old ending, "ADR-0008
+   decode-and-compare is the ONLY instrument that can settle it". SURVIVED the
+   first mutation run — no test looked at that sentence at all.
+
+   IT WAS FALSE IN TWO DIRECTIONS. It was already wrong when #323 shipped
+   `probeGrid`: four requests and no body against a 60 MB download. And because
+   `combineOverrides` concatenates the decode's note after the grid's, the
+   flightcast rows came out asserting that only a decode could settle them, in
+   the same sentence as the grid evidence that had just settled them — a
+   self-contradiction in committed evidence, which is the specific failure
+   #323's reviewer round caught twice.
+
+   The sentence still has to read correctly STANDING ALONE, because that is the
+   form the four flightcast shows the grid did not condemn still carry. */
+test("the blind-host note names every instrument that could settle the row", () => {
+  const index = decodeIndex({
+    results: [decodeRow({
+      show_id: "S1", resolved_host: "atelier.flightcast.com", probe_recorded_bytes: 67_510_022,
+      comparison: { verdict: "excess-audio", decoded_sec: 5740.38, last_cue_sec: 5601.25, feed_duration_sec: 5626, beyond_transcript_sec: 139.13, delivered_bytes: 68_884_898 },
+    })],
+  });
+  const withheld = decodeOverride({ show_id: "S2", enclosure_host: "atelier.flightcast.com" }, index);
+  assert.equal(withheld.disposition, "unresolved");
+  assert.match(withheld.note, /probe grid/, "the cheap instrument has to be named as a way out");
+
+  /* MATCHED ON THE CLAIM, NOT ON ONE PHRASING OF IT. A reviewer caught the
+     first version of this regex (`/only instrument/`) letting "Only ADR-0008
+     decode-and-compare can settle it" walk straight past — the same claim, one
+     synonym over, which is exactly how the contradiction reached two committed
+     files in the first place. `ONLY` near `settle` is the shape to refuse. */
+  const claimsSoleInstrument = /\bonly\b[^.]*\bsettle\b|\bsettle\b[^.]*\bonly\b/i;
+  assert.ok(!claimsSoleInstrument.test(withheld.note), "a decode has not been the only way to settle a row since #323");
+
+  /* AND THE COMBINED FORM MUST NOT CONTRADICT ITSELF. */
+  const settled = combineOverrides(withheld, { disposition: "drop", decided_by: "probe-grid", note: "PROBE GRID: two lengths" });
+  assert.equal(settled.disposition, "drop");
+  assert.ok(!claimsSoleInstrument.test(settled.note), "the row must not deny the instrument that decided it");
+
+  /* AND SO MUST EVERY NOTE IN BOTH COMMITTED LEDGERS. The contradiction lived
+     in `regrid-clean.mjs`'s wording while this file's was correct, so a test
+     scoped to one module would have passed while the two artifacts disagreed
+     about the same four show_ids. */
+  for (const rel of ["breadth-anchorable-inflation", "flightcast-settle-regrid", "breadth-clean-regrid"]) {
+    const f = JSON.parse(readFileSync(new URL(`../../data/${rel}.json`, import.meta.url), "utf8"));
+    for (const r of f.results || []) {
+      assert.ok(!claimsSoleInstrument.test(r.note || ""), `${rel} / ${r.title}: claims one instrument is the only way to settle`);
+    }
+  }
+});
+
+/* MUTATION: drop `grids` from `deriveRow`'s options, or stop passing it at
+   either call site. Verified failing.
+
+   And the null case is the one that must not regress: every pool nobody has
+   gridded passes `null` here, and a null index has to leave the screen's
+   verdict exactly as it found it — the same property `decodeOverride` is
+   pinned on. */
+test("a grid reaches the row's disposition, and a missing one changes nothing", () => {
+  const base = { show_id: "S1", enclosure_host: "atelier.flightcast.com", timed_transcripts: 1264, samples: [] };
+  const grids = gridIndex([{ results: [variesGrid()] }]);
+
+  const ungridded = deriveRow(base);
+  assert.equal(ungridded.disposition, "unresolved");
+  assert.equal(ungridded.grid_status, undefined, "no grid, no claim that one was spent");
+  assert.deepEqual(deriveRow(base, { grids: null }), ungridded, "a null index is the same row");
+
+  const gridded = deriveRow(base, { grids });
+  assert.equal(gridded.disposition, "drop");
+  assert.equal(gridded.screened_disposition, "unresolved");
+  assert.equal(gridded.decided_by, "probe-grid", "credit the instrument that actually decided");
+  assert.equal(gridded.grid_status, "varies");
+
+  /* A STABLE GRID LEAVES THE DISPOSITION ALONE AND STILL SAYS IT WAS ASKED.
+     Without `grid_status` the four flightcast shows the grid did not condemn
+     are indistinguishable from four nobody probed — #324's whole point about
+     `inconclusive` is that an unspent question and a spent one that came back
+     negative are opposite facts a single absence renders identically. */
+  const stable = deriveRow(base, { grids: gridIndex([{ results: [gridRow()] }]) });
+  assert.equal(stable.disposition, "unresolved");
+  assert.equal(stable.grid_status, "stable");
+  assert.equal(stable.decided_by, undefined);
+});
+
+/* MUTATION: hand-edit `disposition` on one of the two dropped rows in the
+   committed file, or edit its `grid_status`. Verified failing, and verified
+   changing bytes on disk first.
+
+   THE NUMBER IN THE FOUNDER'S HANDS. `anchorable_net_of_suspects` fell 10,747
+   to 8,833 on exactly these two rows, and the evidence for both is four
+   requests per episode recorded in `data/flightcast-settle-regrid.json`. This
+   pins the committed measured file against the committed grid file so neither
+   can drift without the other. */
+test("the committed drops are the shows the committed grids condemned", () => {
+  const measured = JSON.parse(
+    readFileSync(new URL("../../data/breadth-anchorable-inflation.json", import.meta.url), "utf8"),
+  );
+  const grids = gridIndex([
+    JSON.parse(readFileSync(new URL("../../data/breadth-clean-regrid.json", import.meta.url), "utf8")),
+    JSON.parse(readFileSync(new URL("../../data/flightcast-settle-regrid.json", import.meta.url), "utf8")),
+  ]);
+
+  const byGrid = measured.results.filter((r) => r.decided_by === "probe-grid");
+  assert.equal(byGrid.length, 2);
+  assert.equal(byGrid.reduce((n, r) => n + r.timed_transcripts, 0), 1914);
+
+  for (const r of measured.results) {
+    const evidence = grids.byShow.get(String(r.show_id));
+    assert.equal(r.grid_status ?? null, evidence?.grid?.status ?? null, `${r.title}: the row records what the grid saw`);
+    /* THE OVERRIDE IS RE-DERIVABLE FROM THE COMMITTED EVIDENCE. A row claiming
+       the grid decided it, on a grid that did not vary, would be a number with
+       no measurement under it. */
+    if (r.decided_by === "probe-grid") {
+      assert.equal(evidence.grid.status, "varies", `${r.title}: credited to a grid that saw nothing`);
+      assert.equal(r.disposition, "drop");
+    }
+    if (evidence?.grid?.status === "varies") assert.equal(r.disposition, "drop", `${r.title}: condemned but not dropped`);
+  }
+});
+
+/* MUTATION: remove `data/flightcast-settle-regrid.json` from
+   `GRID_REPORT_RELS`. Verified failing.
+
+   `GRID_REPORT_RELS` IS HAND-MAINTAINED AND NOTHING ELSE POINTS AT IT. A
+   committed ledger missing from the list is evidence that was bought, written
+   to disk, and then never consulted — the two condemned shows would revert to
+   `unresolved` and 1,914 transcripts would return to the anchorable count with
+   no diff in any data file to show for it. The artifact naming is independent
+   of the list (`defaultOutFor` produces a path from the pool; the flightcast
+   pass was also narrowed by `--host` and is committed under a narrower name),
+   so the two can only be kept in step by asserting it. */
+test("every committed grid ledger is one the scan actually reads", () => {
+  const dir = new URL("../../data/", import.meta.url);
+  const committed = readdirSync(dir).filter((f) => f.endsWith("-regrid.json"));
+  assert.ok(committed.length >= 2, "both grid passes are committed");
+  for (const f of committed) {
+    assert.ok(
+      GRID_REPORT_RELS.some((rel) => rel.replaceAll("\\", "/").endsWith(`data/${f}`)),
+      `data/${f} is committed but GRID_REPORT_RELS does not read it`,
+    );
+  }
+  /* ...and nothing in the list points at a file that is not there. */
+  for (const rel of GRID_REPORT_RELS) {
+    assert.ok(existsSync(new URL(`../../${rel.replaceAll("\\", "/")}`, import.meta.url)), `${rel} is listed but missing`);
+  }
+});
+
+/* MUTATION: hand-add a `grid_status` to a row in
+   `data/breadth-suspect-inflation.json` that disagrees with its grid. Verified
+   failing.
+
+   BOTH MEASURED LEDGERS, NOT ONE. The suspects file and the anchorable file are
+   two pools of one scan and `deriveRow` writes both, so a guard scoped to one
+   of them checks half the corpus. It is written to tolerate a MISSING
+   `grid_status` — `data/breadth-suspect-inflation.json` predates the field and
+   regenerating it would drag twelve unrelated shows and their re-probes into a
+   flightcast change — but never a WRONG one, which is the failure that could
+   move a number. */
+test("no measured row claims a grid result its grid did not produce", () => {
+  const grids = gridIndex(
+    GRID_REPORT_RELS.map((rel) =>
+      JSON.parse(readFileSync(new URL(`../../${rel.replaceAll("\\", "/")}`, import.meta.url), "utf8")),
+    ),
+  );
+  for (const rel of ["breadth-anchorable-inflation", "breadth-suspect-inflation"]) {
+    const f = JSON.parse(readFileSync(new URL(`../../data/${rel}.json`, import.meta.url), "utf8"));
+    for (const r of f.results || []) {
+      if (r.grid_status == null) continue;
+      const evidence = grids.byShow.get(String(r.show_id));
+      assert.equal(r.grid_status, evidence?.grid?.status, `${rel} / ${r.title}: grid_status has no grid behind it`);
+    }
+    /* AND A CONDEMNING GRID IS NEVER IGNORED IN EITHER FILE. This is the half
+       that can move a number, so it is checked unconditionally. */
+    for (const r of f.results || []) {
+      if (grids.byShow.get(String(r.show_id))?.grid?.status === "varies") {
+        assert.equal(r.disposition, "drop", `${rel} / ${r.title}: condemned by the grid but not dropped`);
+      }
+    }
+  }
 });

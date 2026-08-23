@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measured_at": "2026-08-23T13:32:43.716Z",
+  "measured_at": "2026-08-23T16:22:27.603Z",
   "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs via tools/segments/measure-suspects.mjs",
   "pool": "anchorable",
   "source": {
@@ -47,16 +47,16 @@
       "timed_transcripts": 5367
     },
     "measured_injecting": {
-      "shows": 7,
-      "timed_transcripts": 186
+      "shows": 9,
+      "timed_transcripts": 2100
     },
     "unresolved": {
-      "shows": 11,
-      "timed_transcripts": 5366
+      "shows": 9,
+      "timed_transcripts": 3452
     },
     "repeat_stable_no_denominator": {
-      "shows": 7,
-      "timed_transcripts": 5362
+      "shows": 5,
+      "timed_transcripts": 3448
     },
     "note": "unresolved is neither a clean bill nor evidence of ads: the show keeps whatever its pre-measurement status was, and stays inferred rather than becoming measured. repeat_stable_no_denominator is the subset of it that was probed N times and never varied — no sign of insertion, and no declared length with which to confirm its absence"
   },
@@ -70,6 +70,7 @@
       "timed_transcripts": 1368,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -142,6 +143,7 @@
       "timed_transcripts": 1035,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -209,6 +211,7 @@
       "timed_transcripts": 121,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -276,6 +279,7 @@
       "timed_transcripts": 995,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -345,6 +349,7 @@
       "timed_transcripts": 48,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -484,6 +489,7 @@
       "timed_transcripts": 11,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -552,6 +558,7 @@
       "timed_transcripts": 7,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -620,6 +627,7 @@
       "timed_transcripts": 4,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 4,
       "inserted_samples": 0,
@@ -679,6 +687,7 @@
       "timed_transcripts": 4,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 4,
       "inserted_samples": 0,
@@ -738,6 +747,7 @@
       "timed_transcripts": 3,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 3,
       "inserted_samples": 0,
@@ -887,6 +897,7 @@
       "timed_transcripts": 558,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -955,6 +966,7 @@
       "timed_transcripts": 525,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1028,6 +1040,7 @@
       "timed_transcripts": 189,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1095,6 +1108,7 @@
       "timed_transcripts": 169,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1162,6 +1176,7 @@
       "timed_transcripts": 107,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1232,6 +1247,7 @@
       "timed_transcripts": 57,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1300,6 +1316,7 @@
       "timed_transcripts": 16,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1368,6 +1385,7 @@
       "timed_transcripts": 12,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1436,6 +1454,7 @@
       "timed_transcripts": 84,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "inconclusive",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1503,6 +1522,7 @@
       "timed_transcripts": 27,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 0.999,
       "n": 5,
       "inserted_samples": 0,
@@ -1743,6 +1763,7 @@
       "timed_transcripts": 19,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 5,
       "inserted_samples": 0,
@@ -1813,6 +1834,7 @@
       "timed_transcripts": 4,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 4,
       "inserted_samples": 0,
@@ -1871,6 +1893,7 @@
       "timed_transcripts": 4,
       "verdict": "ad-free",
       "disposition": "recover",
+      "grid_status": "stable",
       "median": 1,
       "n": 4,
       "inserted_samples": 0,
@@ -2094,7 +2117,10 @@
       "suspect_reason": "inferred-static",
       "timed_transcripts": 1264,
       "verdict": "unknown",
-      "disposition": "unresolved",
+      "disposition": "drop",
+      "screened_disposition": "unresolved",
+      "decided_by": "probe-grid",
+      "grid_status": "varies",
       "median": null,
       "n": 0,
       "inserted_samples": 0,
@@ -2109,7 +2135,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
+      "note": "PROBE GRID: 3 of 3 probed episode(s) were served MORE THAN ONE LENGTH for a single URL depending only on how the request was made (64894433 vs 69439740; 8383739 vs 11540063; 7848961 vs 10631316 bytes — one entry per episode, each entry the distinct lengths ONE url was served). More than one length for one URL means more than one resource, which is per-request assembly — #323's finding, measured on this show. No body was read: four requests per episode and the unranged calls aborted at their headers. This SETTLES what the decode ledger could not: atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — settling it needs ADR-0008 decode-and-compare, or a probe grid that catches the assembly",
       "samples": [
         {
           "guid": "flightcast:01M0PZ6QRAJ7SQT990K5P0TVK7",
@@ -2192,6 +2218,7 @@
       "timed_transcripts": 1150,
       "verdict": "unknown",
       "disposition": "unresolved",
+      "grid_status": "stable",
       "median": null,
       "n": 0,
       "inserted_samples": 0,
@@ -2207,7 +2234,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — settling it needs ADR-0008 decode-and-compare, or a probe grid that catches the assembly",
       "samples": [
         {
           "guid": "flightcast:01M0GSBGR85QKK504HPGJJVZ43",
@@ -2290,6 +2317,7 @@
       "timed_transcripts": 1141,
       "verdict": "unknown",
       "disposition": "unresolved",
+      "grid_status": "stable",
       "median": null,
       "n": 0,
       "inserted_samples": 0,
@@ -2305,7 +2333,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — settling it needs ADR-0008 decode-and-compare, or a probe grid that catches the assembly",
       "samples": [
         {
           "guid": "flightcast:01M093XD5BVB7XKVNW4XVS4AJ6",
@@ -2387,7 +2415,10 @@
       "suspect_reason": "inferred-static",
       "timed_transcripts": 650,
       "verdict": "unknown",
-      "disposition": "unresolved",
+      "disposition": "drop",
+      "screened_disposition": "unresolved",
+      "decided_by": "probe-grid",
+      "grid_status": "varies",
       "median": null,
       "n": 0,
       "inserted_samples": 0,
@@ -2403,7 +2434,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
+      "note": "PROBE GRID: 3 of 3 probed episode(s) were served MORE THAN ONE LENGTH for a single URL depending only on how the request was made (24511112 vs 25778155; 16942394 vs 19288712; 20460147 vs 23169777 bytes — one entry per episode, each entry the distinct lengths ONE url was served). More than one length for one URL means more than one resource, which is per-request assembly — #323's finding, measured on this show. No body was read: four requests per episode and the unranged calls aborted at their headers. This SETTLES what the decode ledger could not: atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — settling it needs ADR-0008 decode-and-compare, or a probe grid that catches the assembly",
       "samples": [
         {
           "guid": "flightcast:01M0HW8VWXCVJ00KFBA8KT94RG",
@@ -2486,6 +2517,7 @@
       "timed_transcripts": 564,
       "verdict": "unknown",
       "disposition": "unresolved",
+      "grid_status": "stable",
       "median": null,
       "n": 0,
       "inserted_samples": 0,
@@ -2499,7 +2531,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. 1 episode decoded clean, below the 2-sample floor — ADR-0008 decode-and-compare is the only instrument that can settle it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. 1 episode decoded clean, below the 2-sample floor — settling it needs ADR-0008 decode-and-compare, or a probe grid that catches the assembly",
       "samples": [
         {
           "guid": "flightcast:01M084K1JPC2Q3R245QXPVNC82",
@@ -2582,6 +2614,7 @@
       "timed_transcripts": 551,
       "verdict": "unknown",
       "disposition": "unresolved",
+      "grid_status": "stable",
       "median": null,
       "n": 0,
       "inserted_samples": 0,
@@ -2595,7 +2628,7 @@
         "episode.flightcast.com",
         "atelier.flightcast.com"
       ],
-      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — ADR-0008 decode-and-compare is the only instrument that can settle it",
+      "note": "atelier.flightcast.com was caught delivering more bytes than its Content-Range declares, so every byte figure above is a master length rather than a delivery and cannot admit this show. no episode of this show has been decoded — settling it needs ADR-0008 decode-and-compare, or a probe grid that catches the assembly",
       "samples": [
         {
           "guid": "flightcast:01KZ6BNBDA885P19CKT7C6VX6T",

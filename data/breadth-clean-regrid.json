@@ -1,13 +1,16 @@
 {
   "version": 1,
   "generated_at": "2026-08-23T15:13:14.392Z",
-  "method": "tools/transcribe/decode-compare.mjs probeGrid (#323) re-run over every measured_clean show: for each probed episode, four requests for one URL's length — 2-byte ranged GET and unranged, under both outbound identities. No body is read; the unranged calls are aborted as their headers arrive.",
-  "policy": "This file can move a show OFF measured_clean and can never move one onto it. See verdictNote: a grid that agrees with itself says this delivery path does not lie the way atelier.flightcast.com does, which is a statement about one instrument, not a clean bill.",
+  "method": "tools/transcribe/decode-compare.mjs probeGrid (#323) re-run over every show whose disposition is [recover]: for each probed episode, four requests for one URL's length — 2-byte ranged GET and unranged, under both outbound identities. No body is read; the unranged calls are aborted as their headers arrive.",
+  "policy": "This file can only ever move a show DOWN — off measured_clean, or out of the anchorable count altogether — and can never move one up. See verdictNote: a grid that agrees with itself says this delivery path does not lie the way atelier.flightcast.com does, which is a statement about one instrument, not a clean bill, and it leaves an already-unresolved show unresolved.",
   "source": {
     "yield": "data/breadth-transcript-yield.json",
     "measured": [
       "data/breadth-suspect-inflation.json",
       "data/breadth-anchorable-inflation.json"
+    ],
+    "dispositions": [
+      "recover"
     ]
   },
   "episodes_per_show": 3,
@@ -37,7 +40,7 @@
       "shows": 0,
       "timed_transcripts": 0
     },
-    "note": "varies_by_request is positive evidence of per-request assembly and moves a show off measured_clean. stable_across_the_grid is NOT a clean bill: it means this delivery path does not lie in the way atelier.flightcast.com does, and stability across requests is consistent with a static file AND with a stitcher that did not vary for us. inconclusive rows never got a length back in all four cells — a refusal under one identity, or an origin answering unranged requests chunked — and a grid missing any cell may be missing the one that would have condemned. unclassified must be zero: it counts rows carrying no verdict at all, and exists so the four buckets always sum to audited."
+    "note": "varies_by_request is positive evidence of per-request assembly and moves a show DOWN out of whichever bucket it was in — off measured_clean, or out of the anchorable count altogether for a show that was already unresolved. stable_across_the_grid is NOT a clean bill: it means this delivery path does not lie in the way atelier.flightcast.com does, and stability across requests is consistent with a static file AND with a stitcher that did not vary for us. inconclusive rows never got a length back in all four cells — a refusal under one identity, or an origin answering unranged requests chunked — and a grid missing any cell may be missing the one that would have condemned. unclassified must be zero: it counts rows carrying no verdict at all, and exists so the four buckets always sum to audited."
   },
   "results": [
     {
@@ -55,6 +58,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           53187868,
           53922789,
@@ -227,6 +231,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           79304757,
           173126145,
@@ -399,6 +404,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           24057177,
           27367829,
@@ -571,6 +577,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           59948455,
           65353394,
@@ -743,6 +750,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           48449918,
           50010578,
@@ -915,6 +923,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           58644574,
           62603420,
@@ -1087,6 +1096,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           58795698,
           70835749,
@@ -1259,6 +1269,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           89441507,
           129396432,
@@ -1431,6 +1442,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           22030678,
           70430352,
@@ -1753,6 +1765,7 @@
         "episodes_informative": 0,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           29348653,
           33685591,
@@ -1775,6 +1788,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           69652205,
           75197327,
@@ -1947,6 +1961,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           46615817,
           49660801,
@@ -2119,6 +2134,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           20291060,
           21496840,
@@ -2291,6 +2307,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           14422266,
           22561966,
@@ -2463,6 +2480,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           68842906,
           70813772,
@@ -2635,6 +2653,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           46201678,
           50873142,
@@ -2807,6 +2826,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           25589907,
           32044747,
@@ -2979,6 +2999,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           14629447,
           15602249,
@@ -3151,6 +3172,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           48716555,
           49828415,
@@ -3323,6 +3345,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           81339287,
           82953043,
@@ -3495,6 +3518,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           44451402,
           48948079,
@@ -3667,6 +3691,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           6870099,
           8545245,
@@ -3839,6 +3864,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           55533025,
           65121234,
@@ -4011,6 +4037,7 @@
         "episodes_informative": 3,
         "varying_episodes": 0,
         "varying_totals": [],
+        "varying_pairs": [],
         "totals_seen": [
           32866664,
           41338685,
@@ -4168,5 +4195,6 @@
         }
       ]
     }
-  ]
+  ],
+  "rederived_at": "2026-08-23T16:41:34.245Z"
 }
