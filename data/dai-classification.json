@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-08-23T03:58:24.541Z",
+  "built_at": "2026-08-19T16:05:06.346Z",
   "shows": {
     "75092679": {
       "show": "Basic Brewing Radio",
@@ -107,45 +107,45 @@
       "checked_at": "2026-07-26T19:20:31.202Z",
       "ad_inflation": {
         "verdict": "injected",
-        "median_ratio": 1.187,
+        "median_ratio": 1.178,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
             "item_id": "stuff-you-should-know--kola-deepest-hole",
             "episode": "Kola: The World's Deepest Hole",
             "declared_bytes": 44608461,
-            "delivered_bytes": 52278829,
-            "ratio": 1.172
+            "delivered_bytes": 52135051,
+            "ratio": 1.169
           },
           {
             "item_id": "stuff-you-should-know--alaska-earthquake-1964",
             "episode": "Alaska Earthquake of 1964",
             "declared_bytes": 35549607,
-            "delivered_bytes": 44661517,
-            "ratio": 1.256
+            "delivered_bytes": 42993859,
+            "ratio": 1.209
           },
           {
             "item_id": "stuff-you-should-know--nuclear-fusion-reactors",
             "episode": "The Stuff You Should Know Doin' Science Playlist: Can Nuclear Fusion Reactors Save The Wor",
             "declared_bytes": 42563868,
-            "delivered_bytes": 51675778,
-            "ratio": 1.214
+            "delivered_bytes": 50127656,
+            "ratio": 1.178
           },
           {
             "item_id": "stuff-you-should-know--eleanor-roosevelt",
             "episode": "Eleanor Roosevelt: Best First Lady",
             "declared_bytes": 45619089,
-            "delivered_bytes": 53528527,
-            "ratio": 1.173
+            "delivered_bytes": 53182877,
+            "ratio": 1.166
           },
           {
             "item_id": "stuff-you-should-know--short-stuff-great-britain",
             "episode": "Short Stuff: Great Britain",
             "declared_bytes": 12084466,
-            "delivered_bytes": 14345154,
-            "ratio": 1.187
+            "delivered_bytes": 14325928,
+            "ratio": 1.185
           }
         ]
       }
@@ -265,7 +265,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -442,7 +442,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -493,8 +493,9 @@
         "verdict": "unknown",
         "median_ratio": 0.758,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "undersized_samples": 4,
         "note": "delivered bytes fall short of the feed-declared length, so the declared length does not describe the file we receive and the ratio cannot answer the ad question",
         "samples": [
           {
@@ -552,7 +553,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 4,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -771,7 +772,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 2,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -822,7 +823,7 @@
         "verdict": "injected",
         "median_ratio": 1.013,
         "episodes_probed": 4,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -866,7 +867,7 @@
         "verdict": "injected",
         "median_ratio": 1.151,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -931,7 +932,7 @@
         "verdict": "injected",
         "median_ratio": 1.271,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -994,45 +995,45 @@
       "checked_at": "2026-07-26T19:26:15.193Z",
       "ad_inflation": {
         "verdict": "injected",
-        "median_ratio": 1.17,
+        "median_ratio": 1.193,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
             "item_id": "las-culturistas--mindy-kaling",
             "episode": "\"To Be Memed\" (w/ Mindy Kaling)",
             "declared_bytes": 87979350,
-            "delivered_bytes": 102926219,
-            "ratio": 1.17
+            "delivered_bytes": 104956663,
+            "ratio": 1.193
           },
           {
             "item_id": "las-culturistas--darcy-carden",
             "episode": "\"AT ONCE!\" (w/ D'Arcy Carden)",
             "declared_bytes": 91186153,
-            "delivered_bytes": 106133022,
-            "ratio": 1.164
+            "delivered_bytes": 108347786,
+            "ratio": 1.188
           },
           {
             "item_id": "las-culturistas--adam-shankman",
             "episode": "\"Gay Ang Lee\" (w/ Adam Shankman)",
             "declared_bytes": 105383922,
-            "delivered_bytes": 120029442,
-            "ratio": 1.139
+            "delivered_bytes": 122545555,
+            "ratio": 1.163
           },
           {
             "item_id": "las-culturistas--everything-feet-w-gracie-abrams",
             "episode": "\"Everything Feet\" (w/ Gracie Abrams)",
             "declared_bytes": 79860408,
-            "delivered_bytes": 95108626,
-            "ratio": 1.191
+            "delivered_bytes": 97022041,
+            "ratio": 1.215
           },
           {
             "item_id": "las-culturistas--mixtape-w-slayyyter",
             "episode": "“Mixtape” (w/ Slayyyter)",
             "declared_bytes": 67489736,
-            "delivered_bytes": 82436605,
-            "ratio": 1.221
+            "delivered_bytes": 84651369,
+            "ratio": 1.254
           }
         ]
       }
@@ -1089,7 +1090,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -1175,7 +1176,7 @@
         "verdict": "injected",
         "median_ratio": 1.236,
         "episodes_probed": 3,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -1380,7 +1381,7 @@
         "verdict": "injected",
         "median_ratio": 1.105,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -1431,7 +1432,7 @@
         "verdict": "injected",
         "median_ratio": 1.132,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -1587,7 +1588,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -1638,7 +1639,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -1792,45 +1793,45 @@
       "checked_at": "2026-07-26T19:25:34.985Z",
       "ad_inflation": {
         "verdict": "injected",
-        "median_ratio": 1.314,
+        "median_ratio": 1.298,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
             "item_id": "happiness-lab--no-regrets-bad-advice",
             "episode": "Why “No Regrets” Is Bad Advice",
             "declared_bytes": 29757859,
-            "delivered_bytes": 41241685,
-            "ratio": 1.386
+            "delivered_bytes": 40266168,
+            "ratio": 1.353
           },
           {
             "item_id": "happiness-lab--negative-emotions-signals",
             "episode": "What Your Negative Emotions Are Trying to Tell You",
             "declared_bytes": 43911660,
-            "delivered_bytes": 56073417,
-            "ratio": 1.277
+            "delivered_bytes": 55484930,
+            "ratio": 1.264
           },
           {
             "item_id": "happiness-lab--art-of-doing-nothing",
             "episode": "The Art of Doing Nothing",
             "declared_bytes": 33894406,
-            "delivered_bytes": 45791594,
-            "ratio": 1.351
+            "delivered_bytes": 45089841,
+            "ratio": 1.33
           },
           {
             "item_id": "happiness-lab--forget-small-talk-go-deep",
             "episode": "Forget Small Talk: Go Deep Instead",
             "declared_bytes": 36158068,
-            "delivered_bytes": 47498117,
-            "ratio": 1.314
+            "delivered_bytes": 46940141,
+            "ratio": 1.298
           },
           {
             "item_id": "happiness-lab--men-need-bromance",
             "episode": "Men Don’t Just Need Friends. They Need Bromance.",
             "declared_bytes": 42110240,
-            "delivered_bytes": 53854456,
-            "ratio": 1.279
+            "delivered_bytes": 52651568,
+            "ratio": 1.25
           }
         ]
       }
@@ -1901,8 +1902,9 @@
         "verdict": "injected",
         "median_ratio": 1.024,
         "episodes_probed": 3,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
+        "undersized_samples": 1,
         "samples": [
           {
             "item_id": "5-4-podcast--trump-v-barbara",
@@ -1952,7 +1954,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2003,7 +2005,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 2,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2061,7 +2063,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 3,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2140,7 +2142,7 @@
         "verdict": "injected",
         "median_ratio": 1.126,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2268,7 +2270,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 5,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2389,7 +2391,7 @@
         "verdict": "injected",
         "median_ratio": 1.213,
         "episodes_probed": 2,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2433,7 +2435,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 2,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2477,7 +2479,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 3,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2514,7 +2516,7 @@
         "verdict": "ad-free",
         "median_ratio": 1,
         "episodes_probed": 4,
-        "measured_at": "2026-08-23T03:58:24.540Z",
+        "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "samples": [
           {
@@ -2569,5 +2571,6 @@
       "resolved_host": "d3ctxlq1ktw2nl.cloudfront.net",
       "checked_at": "2026-07-26T19:20:36.179Z"
     }
-  }
+  },
+  "ad_inflation_measured_at": "2026-08-23T04:24:10.670Z"
 }

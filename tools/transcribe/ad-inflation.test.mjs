@@ -8,9 +8,9 @@ import {
   probeEpisode, selectTargets, isPlausibleAudioSize, isRetryableStatus,
   applyVerdicts, adFreeShows,
   AD_FREE_THRESHOLD, AD_FREE_FLOOR, MIN_PLAUSIBLE_BYTES, RETRYABLE_STATUS,
-  UNDERSIZED_REASON,
+  UNDERSIZED_REASON, THIN_SAMPLE_REASON, MIN_SAMPLES_FOR_AD_FREE,
 } from './ad-inflation.mjs';
-import { AUDIO_UA, AUDIO_PROBE_HEADERS, MIN_HOST_INTERVAL_MS, resetHostGates } from '../segments/politeness.mjs';
+import { AUDIO_UA, AUDIO_PROBE_HEADERS, MIN_HOST_INTERVAL_MS, resetHostGates, awaitHostSlot } from '../segments/politeness.mjs';
 import { AD_FREE_SHOWS } from '../segments/fetch-transcripts.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -260,9 +260,14 @@ test('a 429 goes to the shared waitBeforeRetry, with the response attached', asy
     maxAttempts: 2,
     retryWait: (url, response, attempt) => { calls.push({ url, status: response && response.status, attempt }); return 0; },
   });
-  assert.equal(calls.length, 1, 'one retry, one hand-off to the shared gate');
-  assert.equal(calls[0].url, 'https://slow.test/a.mp3', 'the HOST is what gets held, so it needs the url');
-  assert.equal(calls[0].status, 429, 'without the response, Retry-After cannot be read at all');
+  // One hand-off per refusal, INCLUDING the last one -- the hold belongs to the
+  // host, not to whether this caller is going to try again. See the dedicated
+  // test for why the last one is the one that matters.
+  assert.equal(calls.length, 2, 'every 429 is handed to the shared gate');
+  for (const c of calls) {
+    assert.equal(c.url, 'https://slow.test/a.mp3', 'the HOST is what gets held, so it needs the url');
+    assert.equal(c.status, 429, 'without the response, Retry-After cannot be read at all');
+  }
 });
 
 /* MUTATION: pass `null` instead of `res` to `retryWait`. The wait then falls
@@ -378,21 +383,58 @@ const classFixture = () => ({
 test('applyVerdicts writes beside the host flag, never into it', () => {
   const c = classFixture();
   applyVerdicts(c, [
-    { show: 'Clean Show', apple_collection_id: 111, verdict: 'ad-free', median: 1.0004, n: 5, samples: [] },
+    // A summarised result, the way main() produces one -- the rounding is
+    // summariseShow's job now, so applyVerdicts records what it is handed.
+    { show: 'Clean Show', apple_collection_id: 111, ...summariseShow([1.0004, 1.0004, 1.0, 1.0, 1.0]), samples: [] },
   ], { measuredAt: '2026-08-23T00:00:00.000Z' });
 
   assert.equal(c.shows[111].dai, true, 'the host-derived flag is not ours to overwrite');
   assert.equal(c.shows[111].reason, 'host:megaphone.fm');
   assert.equal(c.shows[111].ad_inflation.verdict, 'ad-free');
-  assert.equal(c.shows[111].ad_inflation.median_ratio, 1);
+  assert.equal(c.shows[111].ad_inflation.median_ratio, 1, 'recorded at the summary precision');
   assert.equal(c.shows[111].ad_inflation.episodes_probed, 5);
   assert.equal(c.shows[111].ad_inflation.measured_at, '2026-08-23T00:00:00.000Z');
 });
 
-test('applyVerdicts rounds the ratio for the record but keeps it honest', () => {
+/* MUTATION: classify the raw median in `summariseShow` while rounding the one
+   that reaches the record -- which is what this tool did until review.
+
+   An even-sized sample averages its middle pair and lands between them:
+   Cider Chat measured 1.000 / 1.011 / 1.014 / 1.046, median 1.0125. That is
+   harmless. A raw median of 1.0095 is not: it classifies `ad-free` and rounds
+   to 1.010, so the committed record would read "ad-free" beside a ratio that
+   is over the threshold -- and the consistency test below reads the record. */
+test('the verdict follows the ratio that is actually recorded', () => {
+  const s = summariseShow([1.009, 1.01]);
+  assert.equal(s.median, 1.01, "the median is rounded to the recorded precision");
+  assert.equal(classify(s.median), s.verdict, "a record must not disagree with itself");
+  assert.equal(s.verdict, 'injected');
+
   const c = classFixture();
-  applyVerdicts(c, [{ show: 'Ad Show', apple_collection_id: 222, verdict: 'injected', median: 1.2713456, n: 5, samples: [] }]);
+  applyVerdicts(c, [{ show: 'Ad Show', apple_collection_id: 222, ...summariseShow([1.271, 1.271]), samples: [] }]);
   assert.equal(c.shows[222].ad_inflation.median_ratio, 1.271);
+  assert.equal(classify(c.shows[222].ad_inflation.median_ratio), c.shows[222].ad_inflation.verdict);
+});
+
+/* MUTATION: delete the MIN_SAMPLES_FOR_AD_FREE clause from `summariseShow`.
+
+   A show is then admitted on ONE response. One response is the cheapest thing
+   for a host to get wrong -- a cached 200, a redirect to a trailer, a CDN
+   serving a stale master -- and admitting a show means anchoring every
+   transcript it ships against audio we sampled once. Note the asymmetry: this
+   only ever downgrades `ad-free`. Refusing a show on thin evidence costs
+   nothing, so `injected` and `unknown` are untouched. */
+test('one clean probe is not enough to admit a show', () => {
+  assert.ok(MIN_SAMPLES_FOR_AD_FREE >= 2);
+  const thin = summariseShow([1.0]);
+  assert.equal(thin.verdict, 'unknown', 'n=1 must not license a show');
+  assert.equal(thin.reason, THIN_SAMPLE_REASON);
+  assert.equal(thin.median, 1, "the measurement is still reported, just not acted on");
+
+  // ...and the refusing verdicts are never softened by thin evidence.
+  assert.equal(summariseShow([1.30]).verdict, 'injected');
+  assert.equal(summariseShow([0.5]).verdict, 'unknown');
+  assert.equal(summariseShow([1.0, 1.0]).verdict, 'ad-free');
 });
 
 /* MUTATION: change the `!shows[key]` guard to create the entry instead of
@@ -437,6 +479,93 @@ test('adFreeShows admits only a measured ad-free verdict', () => {
   assert.deepEqual(adFreeShows(null), []);
 });
 
+/* MUTATION: guard the retry hand-off with `attempt < maxAttempts`, which is
+   how this loop shipped until review caught it.
+
+   The bug is only visible on the FINAL attempt. Three consecutive 429s then
+   end with the host never held: `retryWait` is not called, the `Retry-After`
+   the host just sent is dropped, and the gate carries only its 1.2s minimum.
+   So the next probe of that host -- and this scan walks shows sharing a
+   handful of CDNs, so it is often the same host -- goes out 1.2 seconds after
+   it was asked for sixty seconds of silence. The hold is a property of the
+   HOST, not of whether this caller intends to try again. */
+test('the last refusal quiets the host too, not just the ones we retry after', async () => {
+  resetHostGates();
+  const slept = [];
+  const sleep = async (ms) => { slept.push(ms); };
+  const fetchImpl = async () => res({ 'retry-after': '30' }, { status: 429 });
+
+  const p = await probeEpisode('https://busy.test/a.mp3', 2000000, { fetchImpl, sleep, maxAttempts: 3 });
+  assert.equal(p.attempts, 3);
+  assert.equal(p.ratio, null);
+
+  // The gate must still be holding this host for what it asked for.
+  const wait = await awaitHostSlot('https://busy.test/OTHER.mp3', { sleep });
+  assert.ok(wait >= 25_000, `next request to the host waited only ${wait}ms after a 429 asking for 30s`);
+});
+
+/* MUTATION: delete the `await res.body.cancel()` on the RETRYABLE branch.
+   The success-path drain test above still passes while every retry leaks one
+   socket -- which is the shape of leak that only shows up on a bad day, when
+   a host is 503ing and the scan is retrying most of its requests. */
+test('a retried response is drained too, not only a successful one', async () => {
+  let cancels = 0;
+  let n = 0;
+  const fetchImpl = async () => {
+    n += 1;
+    return {
+      status: n === 1 ? 503 : 206,
+      headers: new Map(n === 1 ? [] : [['content-range', 'bytes 0-1/2000000']]),
+      body: { cancel: async () => { cancels += 1; } },
+    };
+  };
+  await probeEpisode('https://flaky.test/a.mp3', 2000000, {
+    fetchImpl, gate: async () => 0, retryWait: () => 0,
+  });
+  assert.equal(cancels, 2, 'both the 503 body and the 206 body must be drained');
+});
+
+/* MUTATION: drop the `catch` around the fetch, or stop counting a throw as an
+   attempt. A DNS blip or a reset socket then either crashes the whole 27-show
+   scan or silently retries forever. */
+test('a network throw is retried, bounded, and reported as itself', async () => {
+  let hits = 0;
+  const fetchImpl = async () => { hits += 1; throw new Error("socket hang up"); };
+  const p = await probeEpisode('https://down.test/a.mp3', 2000000, {
+    fetchImpl, gate: async () => 0, retryWait: () => 0,
+  });
+  assert.equal(hits, 3, 'bounded by maxAttempts');
+  assert.equal(p.attempts, 3);
+  assert.equal(p.ratio, null);
+  assert.equal(p.delivered_bytes, null);
+  assert.match(p.error, /socket hang up/, 'the reason must survive to the record');
+});
+
+/* MUTATION: map an AbortError to its raw message instead of 'timeout'. A
+   probe that timed out then reads like an unclassified crash, and the whole
+   point of the error field is telling a slow host from a refusing one. */
+test('a timeout is reported as a timeout', async () => {
+  const fetchImpl = async () => {
+    const e = new Error('This operation was aborted');
+    e.name = 'AbortError';
+    throw e;
+  };
+  const p = await probeEpisode('https://slow.test/a.mp3', 2000000, {
+    fetchImpl, gate: async () => 0, retryWait: () => 0,
+  });
+  assert.equal(p.error, 'timeout');
+});
+
+/* MUTATION: report a 403 as `no usable length in the response`. That is what
+   it said before review, and a UA-blocked host is the single failure this
+   scan most needs to be greppable -- it is how the Buzzsprout 403 hid. */
+test('a refusal names its status in the error', async () => {
+  const fetchImpl = async () => res({}, { status: 403 });
+  const p = await probeEpisode('https://refuses.test/a.mp3', 2000000, { fetchImpl, gate: async () => 0 });
+  assert.equal(p.error, 'HTTP 403');
+  assert.equal(p.status, 403);
+});
+
 /* MUTATION: measure a new ad-free show and forget to add it to
    AD_FREE_SHOWS -- or delete a title from that list.
 
@@ -455,6 +584,20 @@ test('AD_FREE_SHOWS is exactly what the committed measurement says it is', () =>
     measured,
     'update AD_FREE_SHOWS from `node tools/transcribe/ad-inflation.mjs` output',
   );
+
+  /* AND THE JOIN THAT IS ACTUALLY USED. There are three title spaces here:
+     AD_FREE_SHOWS, `show` in dai-classification.json (which came from
+     discover.json), and `title` in transcript-availability.json -- and
+     `isAnchorableShow` matches against the THIRD. The assertion above pins
+     the first two. If a publisher renames a show, availability is rebuilt
+     from the feed while the other two keep the old string, every title here
+     still agrees, and the show silently drops out of the anchorable set with
+     nothing red. Under-inclusive, so it fails safe -- but silently. */
+  const availability = JSON.parse(readFileSync(join(ROOT, 'data', 'transcript-availability.json'), 'utf8'));
+  const titles = new Set(availability.shows.map((s) => s.title));
+  for (const t of AD_FREE_SHOWS) {
+    assert.ok(titles.has(t), `AD_FREE_SHOWS has "${t}", which no availability show is titled`);
+  }
 });
 
 test('every committed verdict carries the evidence behind it', () => {

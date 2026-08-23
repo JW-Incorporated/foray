@@ -121,6 +121,11 @@ export const AD_FREE_FLOOR = 0.99;
 /** Said out loud on the record, because an unexplained "unknown" is
     indistinguishable from a failed fetch, and the two want different follow-up:
     a failed fetch wants a retry, this wants the decode-and-compare of ADR-0008. */
+/** The other way a ratio can be real and still not settle anything. */
+export const THIN_SAMPLE_REASON =
+  'the probes that returned a length agree the file is byte-stable, but there are ' +
+  'too few of them to admit a show on';
+
 export const UNDERSIZED_REASON =
   'delivered bytes fall short of the feed-declared length, so the declared length ' +
   'does not describe the file we receive and the ratio cannot answer the ad question';
@@ -131,19 +136,39 @@ export function classify(ratio) {
   return ratio < AD_FREE_THRESHOLD ? 'ad-free' : 'injected';
 }
 
+/** Ratios are recorded to three decimals, so the summary is computed to three
+    decimals too. This is not cosmetic. An even-sized sample averages its middle
+    pair and can land between them -- (1.011 + 1.014) / 2 = 1.0125 -- and if the
+    verdict is taken from the raw median while the RECORD keeps a rounded one,
+    a raw 1.0095 is stored as `ad-free` beside a ratio of 1.010. Rounding here,
+    once, before classifying, makes the two agree by construction. */
+export const RATIO_PRECISION = 1000;
+
+/** Below this, an 'ad-free' verdict rests on a single response, and a single
+    response is the cheapest thing for a host to get wrong -- one cached 200,
+    one redirect to a trailer. `injected` and `unknown` are unaffected: they
+    refuse to admit a transcript, and refusing on thin evidence is free. */
+export const MIN_SAMPLES_FOR_AD_FREE = 2;
+
 /** Median is the right summary: one odd episode should not reclassify a show. */
 export function summariseShow(ratios) {
   const clean = ratios.filter((r) => typeof r === 'number' && Number.isFinite(r)).sort((a, b) => a - b);
   if (!clean.length) return { median: null, n: 0, verdict: 'unknown', reason: null };
-  const median = clean.length % 2
+  const mid = clean.length % 2
     ? clean[(clean.length - 1) / 2]
     : (clean[clean.length / 2 - 1] + clean[clean.length / 2]) / 2;
-  const verdict = classify(median);
+  const median = Math.round(mid * RATIO_PRECISION) / RATIO_PRECISION;
+  const measured = classify(median);
+  const verdict = measured === 'ad-free' && clean.length < MIN_SAMPLES_FOR_AD_FREE ? 'unknown' : measured;
   return {
     median,
     n: clean.length,
     verdict,
-    reason: verdict === 'unknown' && median != null ? UNDERSIZED_REASON : null,
+    reason:
+      verdict !== 'unknown' ? null
+        : median == null ? null
+        : measured === 'ad-free' ? THIN_SAMPLE_REASON
+        : UNDERSIZED_REASON,
   };
 }
 
@@ -211,7 +236,8 @@ export async function probeEpisode(url, declaredBytes, {
     }
 
     if (!res) {
-      if (attempt < maxAttempts) retryWait(url, null, attempt, gateOpts);
+      /* Held even on the LAST attempt -- see the note on the 429 branch. */
+      retryWait(url, null, attempt, gateOpts);
       continue;
     }
 
@@ -219,9 +245,24 @@ export async function probeEpisode(url, declaredBytes, {
     if (status != null && isRetryableStatus(status)) {
       error = `HTTP ${status}`;
       if (res.body && typeof res.body.cancel === 'function') await res.body.cancel();
-      if (attempt < maxAttempts) retryWait(url, res, attempt, gateOpts);
+      /* UNCONDITIONAL, INCLUDING ON THE LAST ATTEMPT. The hold is a property of
+         the HOST, not of whether this caller intends to try again. Guarding it
+         with `attempt < maxAttempts` -- which this loop did until review caught
+         it -- means three consecutive 429s end with the gate carrying only its
+         1.2s minimum, so the next probe of that host goes out 1.2s after it
+         asked us to go away for sixty seconds. That is the #313 bug wearing a
+         different hat, and it fires exactly when the host is most insistent.
+         This scan walks shows that share a handful of CDNs, so the next probe
+         is frequently the same host. */
+      retryWait(url, res, attempt, gateOpts);
       continue;
     }
+
+    /* A refusal is not retried, but it should still SAY it was a refusal.
+       `no usable length in the response` is what a 403 reported before review,
+       and a 403 from a blocked User-Agent is the one failure this scan most
+       needs to be greppable. */
+    if (status != null && status >= 400) error = `HTTP ${status}`;
 
     const delivered =
       parseContentRangeTotal(res.headers.get('content-range')) ??
@@ -299,10 +340,11 @@ export function applyVerdicts(classification, results, { measuredAt = new Date()
     if (!key || !shows[key]) { unkeyed++; continue; }
     shows[key].ad_inflation = {
       verdict: r.verdict,
-      median_ratio: r.median == null ? null : Math.round(r.median * 1000) / 1000,
+      median_ratio: r.median,
       episodes_probed: r.n,
       measured_at: measuredAt,
       method: '2-byte ranged GET; tools/transcribe/ad-inflation.mjs',
+      ...(r.undersized_samples ? { undersized_samples: r.undersized_samples } : {}),
       ...(r.note ? { note: r.note } : {}),
       samples: r.samples,
     };
@@ -332,7 +374,14 @@ function parseArgs(argv) {
     return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : fallback;
   };
   return {
-    perShow: Number(get('--per-show', 5)),
+    /* NaN selects zero targets, which would rewrite all 27 verdicts as "could
+       not tell" without making a single request. Fail loudly instead. */
+    perShow: (() => {
+      const raw = get('--per-show', 5);
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1) throw new Error(`--per-show must be a positive integer, got ${raw}`);
+      return n;
+    })(),
     out: get('--out', null),
     show: get('--show', null),
     all: argv.includes('--all'),
@@ -358,7 +407,7 @@ async function main() {
      show with no probeable episode still produces an explicit "could not tell"
      row instead of vanishing from the report. */
   const pool = (availability.shows ?? [])
-    .filter((s) => (s.episodes_with_timed_transcript || 0) > 0)
+    .filter((s) => args.all || (s.episodes_with_timed_transcript || 0) > 0)
     .filter((s) => !args.show || s.title === args.show)
     .sort((a, b) => b.episodes_with_timed_transcript - a.episodes_with_timed_transcript);
 
@@ -426,7 +475,10 @@ async function main() {
     console.log('\n--dry-run: no files written.');
   } else {
     const { written, unkeyed } = applyVerdicts(classification, results);
-    classification.built_at = new Date().toISOString();
+    /* `built_at` belongs to classify-dai.mjs, which keeps discover.json's copy
+       equal to it. Overwriting it here desynchronises the two for a change that
+       touched neither. Our timestamp goes in our own field. */
+    classification.ad_inflation_measured_at = new Date().toISOString();
     writeFileSync(classPath, JSON.stringify(classification, null, 2) + '\n');
     console.log(`\nwrote data/dai-classification.json (${written} shows; ${unkeyed} had no entry to attach to)`);
     console.log(`ad-free shows now: ${adFreeShows(classification).join(', ')}`);

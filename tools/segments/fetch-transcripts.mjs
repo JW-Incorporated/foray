@@ -22,20 +22,34 @@
    fetching them is bandwidth spent on transcripts we cannot anchor. The default
    selection is therefore:
 
-     non-DAI shows          stable timeline by construction
-     + AD_FREE_SHOWS        DAI-flagged but measured delivering byte-identical
+     non-DAI shows          assumed stable — see the caveat below
+     + AD_FREE_SHOWS        measured delivering byte-identical (8 of the 14 are
+                            DAI-flagged; the other 6 are non-DAI and measured)
 
    THE UNMEASURED POOL IS GONE, and it did not pay out. As of 2026-08-23 all 27
    transcript-shipping shows have been probed, so nothing here is waiting on a
    verdict any more. The 2,573 transcripts that were unmeasured resolved to 89
    anchorable, 2,183 injecting and 301 that still cannot be called — which moves
-   this default from 587 to 676 and closes the "one cheap scan from an answer"
-   line the scale plan had been carrying.
+   this default from 587 to 676 (across 15 shows) and closes the "one cheap scan
+   from an answer" line the scale plan had been carrying.
 
-   `--all-timed` still overrides the selection, and it is now the only way to
-   reach the 6,625 injecting ones. ADR-0008 is what governs whether that is ever
-   worth doing: ad load stopped being a sourcing gate there and became a
-   per-episode number that decides how a segment is anchored.
+   THE CAVEAT, because the default is not "measured clean" and should not be
+   read as it. 676 is 645 measured ad-free PLUS 31 that are measured INJECTING:
+   Cider Chat is non-DAI, so the first clause admits it without ever consulting
+   the measurement, and it came back at a median 1.013. "Stable by construction"
+   is an assumption about hosts, and this is the first time it has been checked
+   against one and been wrong.
+
+   It is deliberately still admitted. ADR-0008 reversed exactly this gate: a >1%
+   ratio used to REJECT a show as a source, eleven shows were dropped on that
+   ground alone, and the ruling was that ad load stops being a sourcing gate and
+   becomes a per-episode number deciding how a segment is anchored. Re-adding a
+   1% rejection here would re-impose what that ADR removed, so it is an ADR-0008
+   amendment to make, not a tweak to this file. The verdicts are recorded in
+   data/dai-classification.json either way, so whoever makes that call has the
+   numbers.
+
+   `--all-timed` overrides the selection and reaches the remaining 6,594.
 
    WHERE THE BYTES GO — `data-local/transcripts/`, gitignored, same shape the
    research corpus settled on (#255): fetched third-party text lives outside the

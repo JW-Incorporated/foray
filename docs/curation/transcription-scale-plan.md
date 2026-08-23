@@ -432,7 +432,9 @@ the first several Forays are built.
 The ad-inflation scan over the 14 unmeasured shows (§6 step 2) ran on 2026-08-23
 for 112 ranged GETs and added **89** transcripts, not the 2,573 the row above
 was holding open. That row can no longer be used to defer the ASR decision:
-free publisher transcripts top out at **676 episodes on 21 shows**, and every
+free publisher transcripts top out at **676 episodes on 15 shows** (of which 645
+are measured clean and 31 are Cider Chat, measured injecting but admitted by the
+non-DAI clause — see `tools/segments/fetch-transcripts.mjs`), and every
 subject beyond what those shows happen to cover needs #108.
 
 ## 8. What this doc is not
