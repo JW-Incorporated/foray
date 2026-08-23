@@ -1,14 +1,29 @@
 # Segment pipeline (`tools/segments/`)
 
-Track A of epic #102. Pure, dependency-free, no-network helpers that turn what a
-publisher shipped into something segment extraction can index. Dependency-free
-is a constraint, not an accident — `tools/` has no `package.json` and no install
+Track A of epic #102. Dependency-free helpers that turn what a publisher
+shipped into something segment extraction can index. Dependency-free is a
+constraint, not an accident — `tools/` has no `package.json` and no install
 step, so any of it runs from a bare checkout in a keyless GitHub Action.
 
-| File | Role |
-|------|------|
-| `transcript-normalize.mjs` | Any timestamped transcript format → one cue list (#105) |
-| `merge-segments.mjs` | Agent-authored candidate segments → validated `data/segments.json` (#106) |
+| File | Role | Network |
+|------|------|---------|
+| `transcript-normalize.mjs` | Any timestamped transcript format → one cue list (#105) | no |
+| `merge-segments.mjs` | Agent-authored candidate segments → validated `data/segments.json` (#106) | no |
+| `transcript-coverage.mjs` | Joins the availability index to `data/discover.json` — the coverage number (#104) | no |
+| `sweep-transcripts.mjs` | Which episodes *advertise* a transcript, indexed per show (#104) | reads feeds |
+| `fetch-transcripts.mjs` | Fetches and normalises the free, anchorable transcripts (#104) | reads transcripts |
+| `politeness.mjs` | The per-host gate both fetchers share: throttle, backoff, `Retry-After` | n/a |
+
+The two fetchers are the only ones that touch the network, and they are polite
+in the same way because they share `politeness.mjs` rather than each carrying a
+copy: honest User-Agent with a contact address, a per-host minimum
+interval so shows sharing a CDN cannot be burst, `Retry-After` honoured, hard
+timeouts, bounded attempts. A `Retry-After` holds the gate for the **whole**
+host, so one 429 quiets every worker rather than only the one that received it —
+the copies each had that backwards, which is what one shared module fixes and
+two drifting ones did not. **Neither ever requests audio** — that is a separate
+decision behind a gate (#108), and `fetch-transcripts.mjs` asserts it per
+request rather than trusting its caller.
 
 Primary sources: `docs/research/corpus/digests.md` entries 1
 (`<podcast:transcript>` spec — the tag behind every transcript format this
@@ -48,6 +63,56 @@ Three things worth knowing before you use it:
 
 `speaker` is `null` for formats that cannot express it (SRT always), so callers
 that only read `start_sec`/`end_sec`/`text` see one shape everywhere.
+
+## `transcript-coverage.mjs` — the number
+
+```
+node tools/segments/transcript-coverage.mjs            # human-readable, by show
+node tools/segments/transcript-coverage.mjs --json     # the full report
+```
+
+Answers "how many of our curated episodes can we read for free?" — and exists
+because for ten days nothing could. `data/discover.json` keys episodes on Apple
+ids; `data/transcript-availability.json` keys them on the feed `<guid>`. Neither
+carries the other's key, so every join returned **zero while the index held
+8,012 transcripts**, and zero was exactly what everyone expected, so it read as
+a finding rather than a bug.
+
+The fix is one field: `enclosure_url`, the only value both files take verbatim
+from the same feed. The sweep now records it and this joins on it, with
+a title-AND-duration match as the one counted backstop. Every match reports
+`via`, so a report carried by the backstop rather than the key is visibly one
+to distrust. Requiring both signals is load-bearing: tried independently they
+produced 7 matches on the real catalogue and all 7 were the wrong episode.
+
+**An index without the join key is a named error, not a zero.** Producing "0%
+coverage" from a pre-`enclosure_url` index is the precise bug this file exists
+to end, so it refuses to.
+
+## `fetch-transcripts.mjs` — acquisition
+
+```
+node tools/segments/fetch-transcripts.mjs --dry-run    # what would be fetched
+node tools/segments/fetch-transcripts.mjs              # anchorable shows only
+node tools/segments/fetch-transcripts.mjs --all-timed  # once ad-inflation has verdicts
+```
+
+ADR-0004 step 1, and the only file here that requests a transcript body.
+
+**Default selection is anchorable, not everything.** Of 7,571 timed transcripts
+in the index, 4,411 belong to shows measured injecting 8–11 minutes of ads into
+the file we receive, so their timestamps do not describe our audio and a segment
+cut from them points at the wrong moment. The default is therefore non-DAI shows
+plus `AD_FREE_SHOWS` — DAI-flagged shows *measured* delivering byte-identical.
+The remaining 2,573 are unmeasured rather than rejected; `--all-timed` takes
+them once `tools/transcribe/ad-inflation.mjs` has a verdict.
+
+**Text lives outside the repo.** Bodies and normalised cues go to
+`data-local/transcripts/` (gitignored), the shape the research corpus settled on
+in #255; only `data/transcript-digests.json` is committed — hash, cue count and
+covered span per transcript, enough to notice a publisher silently rewriting a
+transcript we already cut segments from, without putting ~30MB of third-party
+text into git history. Re-runs skip what is already on disk.
 
 ## `merge-segments.mjs`
 

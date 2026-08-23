@@ -445,6 +445,48 @@ const FLOORS = {
   "tools/segments/sweep-transcripts.test.mjs": 26,
   "tools/segments/transcript-normalize.test.mjs": 24,
   "tools/segments/merge-segments.test.mjs": 39,
+  /* The free-transcript acquisition step (#104 follow-up): the join that
+     produces the coverage number, the fetcher that acquires what it finds, and
+     the host gate they share. Floored together because they fail together in
+     the same way — each exists to stop a confident wrong number or a rude
+     request from looking like success.
+
+     `transcript-coverage` is the join between `data/discover.json` and
+     `data/transcript-availability.json`. It was written because there wasn't
+     one: the two files share no episode key, so every attempt to ask how many
+     curated episodes have a free transcript answered 0 while the index held
+     8,012 of them. Its guard tests pin that a broken index is an ERROR rather
+     than 0% coverage — including the three ways that go wrong separately
+     (never swept, a partial key collapse, and the backstop carrying the join).
+
+     `fetch-transcripts` is the only file in the repo that requests a transcript
+     body. Three of its tests are boundary guards rather than behaviour: it must
+     never fetch audio by URL, it must abandon a response whose Content-Type
+     says audio even when the feed declared otherwise (#108 is a `[gate]`), and
+     a feed guid must not be able to choose where the repo writes files.
+
+     `politeness` holds the per-host gate both fetchers use. It exists because
+     of what this file used to claim and could not back up — see below.
+
+     ON THE MUTATION CLAIM, WHICH THIS COMMENT PREVIOUSLY OVERSTATED.
+     An earlier version said "All 19 were mutation-killed". That was true of the
+     19 mutations the author wrote, and it was not the same statement as "this
+     suite is well pinned". A reviewer ran 10 fresh mutations: 8 died and 2
+     survived — `MIN_HOST_INTERVAL_MS` to 0, and `retryAfterMs` to always-null.
+     Both survivors were the politeness layer, which had no test at all while
+     three file headers described it in detail. The prose was strongest exactly
+     where the coverage was thinnest, and two real bugs were living there: a
+     `Retry-After` that paused one worker while its siblings kept firing, and a
+     `?? ` that could not fall back from a zero wait.
+
+     Both survivors are now killed by `politeness.test.mjs`, and the layer they
+     cover was extracted from two drifting copies. The lesson is the floor's, not
+     the tests': a mutation claim is only as good as the mutations someone else
+     would think to write, so this comment now names what the suite pins rather
+     than asserting a score. */
+  "tools/segments/transcript-coverage.test.mjs": 12,
+  "tools/segments/fetch-transcripts.test.mjs": 11,
+  "tools/segments/politeness.test.mjs": 7,
   "tools/transcribe/fetch-audio.test.mjs": 64,
   "tools/transcribe/ad-inflation.test.mjs": 20,
   "tools/corpus/fetcher.test.mjs": 23,

@@ -252,7 +252,136 @@ behind 220 free ones. **Do not buy capacity before step 2 reports.**
 
 ---
 
-## 7. What this doc is not
+## 7. MEASURED, 2026-08-22 — the pool was never counted, because the join was broken
+
+§4 ended by naming the obvious follow-up: scan the rest of the catalogue,
+because every ad-free show it finds is free transcripts. Before that could be
+sized, a more basic problem surfaced.
+
+### The number everyone was quoting was produced by a broken join
+
+`data/transcript-availability.json` has recorded thousands of transcripts since
+2026-08-12. Asking "how many of our 1,672 curated episodes have one?" answered
+**zero** — not because the index was empty, but because `data/discover.json`
+keys episodes on Apple ids and the index keys them on the feed `<guid>`, and
+neither file carries the other's key. Every join — by guid, by track id, by show
+slug — matched nothing.
+
+That is the worst shape a measurement can take. An empty index announces itself;
+a broken join returns a real number that happens to be zero, and zero was what
+everyone already feared, so nobody re-checked it.
+
+The fix is one field. `enclosure_url` is the only value both files take verbatim
+from the same feed (10/10 exact on Practical AI before it was added), so
+`sweep-transcripts.mjs` now records it and `tools/segments/transcript-coverage.mjs`
+joins on it. **All 158 matches land on that exact key.**
+
+### The fuzzy backstop reported 7 more, and all 7 were fiction
+
+Worth recording, because it is the same failure as the broken join wearing
+better clothes. The first working version of `joinItem` tried a normalised-title
+match and a duration match *independently*, and reported **165**. Auditing those
+7 non-exact matches by hand, every one was a different episode:
+
+| show | discover episode | matched to |
+|---|---|---|
+| Geology Bites | Bernhard Steinberger on Whether Hotspots Are Fixed (1736s) | Alec Brenner on When Tectonic Plates First Moved (1735s) |
+| Being an Engineer | S7E21 Rod Scholl (2886s) | S6E26 Katie Karmelek (2887s) |
+| The BBQ Central Show | *same title*, 563s | a 303s re-cut |
+
+Neither signal discriminates alone. A show publishes hundreds of episodes and
+dozens land within a second of each other; a show also re-releases an episode
+under one title with a different cut. The backstop now requires **both**, and on
+the real catalogue it contributes **zero** — the exact key does all the work,
+which is what a healthy join looks like.
+
+A miss costs one transcript. A mismatch produces a segment whose anchors point
+into different audio, and nothing downstream can detect it. **No unit test found
+this — only running the real catalogue and reading the 7 by hand did.**
+
+### The curated slice, correctly counted
+
+| | of 1,672 |
+|---|---|
+| have a publisher transcript | **158 (9.4%)** |
+| of which timed, i.e. anchorable | **137 (8.2%)** |
+| shows they sit in | **24 of 221** |
+
+### But `discover.json` is a thin slice, and the pool behind it is not
+
+The curated file holds 1,672 of the catalogue's 86,923 episodes, so it
+undercounts the asset badly: Geology Bites contributes **1** episode to
+`discover.json` and **120 timed transcripts** to its feed. Sweeping all 220
+shows (2026-08-22: 219 ok, 1 NETWORK) gives the real picture:
+
+| pool | timed transcripts | shows | status |
+|---|---|---|---|
+| non-DAI + **measured** ad-free | **587** | 10 | **usable today, free** |
+| DAI-flagged, verdict unknown | 2,573 | 14 | **one cheap scan from an answer** |
+| measured injecting ads | 4,411 | 3 | dead for anchoring (§4) |
+| **total timed** | **7,571** | 27 | |
+
+### What that is worth in segments
+
+`data/segments.json` holds **69 segments cut from 19 source episodes — 3.6 per
+episode.** Applying that rate:
+
+| | episodes | segments at 3.6 |
+|---|---|---|
+| today | 19 | **69** |
+| the 587 free anchorable transcripts | 587 | **~2,100** |
+| if the 2,573 unmeasured are mostly ad-free | +2,573 | +~9,200 |
+
+**So free publisher transcripts move the segment pool by roughly 30x, for zero
+dollars and zero ASR.** §3's "34 episodes scattered across five unrelated
+niches" is superseded: Being an Engineer alone ships 337 timed transcripts and
+Geology Bites 120, both measured delivering ad-free, both single coherent
+subjects.
+
+### Acquired, 2026-08-22
+
+All 587 fetched and normalised in one polite pass — **0 failures, 0 retries,
+no host asked us to slow down** (`tools/segments/fetch-transcripts.mjs`, then
+`transcript-normalize.mjs`). Text sits in `data-local/transcripts/`
+(gitignored, ~30MB); digests in `data/transcript-digests.json`.
+
+| | |
+|---|---|
+| transcripts | **587** across 10 shows |
+| cues | **181,225** |
+| anchored speech | **428.3 hours** |
+
+Two data-quality findings, both from running the real corpus rather than from
+any test:
+
+- **One transcript claimed 100 hours on a 70-minute episode.** Inside
+  Winemaking 210 ships a single cue ending at `99:59:59.999` — what a writer
+  emits when it means "no end time". Summed naively, that one file put the
+  corpus total at 527 hours instead of 428: a headline number **24% wrong**
+  because of one degenerate file. `spanImplausible()` now flags any transcript
+  whose span exceeds 1.5x the feed duration, and the summary counts it at feed
+  duration. Flagged rather than dropped — the cues may be individually fine and
+  extraction needs to know the timeline is untrustworthy, not lose the evidence.
+- **4 of 587 normalise to zero cues.** Three are 9-byte stubs Being an Engineer
+  publishes for episodes it has not transcribed. The fourth is a real
+  normaliser gap: `tools/segments/transcript-normalize.mjs` cannot read SRT that
+  prefixes the speaker onto the timing line (`Mark McLaughlin 00:00:00,000 -->
+  …`), which Blubrry emits, so all 2,305 cues were dropped. **Left unfixed
+  deliberately** — it affects exactly 1 file of 587 here, and widening a
+  well-tested pure parser is not worth doing inside an acquisition pass. It is
+  worth doing before `--all-timed`, where the Blubrry-hosted share is unknown.
+
+### This does not settle #108, and sharpens what it is for
+
+ASR is still the only route to the **non-DAI pool's 25,254 episodes**, which is
+where subject depth on demand comes from — free transcripts are 587 episodes on
+whatever ten subjects those shows happen to cover, not on a subject we choose.
+What changed is the urgency and the ordering: nothing needs to be bought before
+the first several Forays are built, and **the ad-inflation scan over the 14
+unmeasured shows (§6 step 2) is still the cheapest content in the project** —
+under an hour of ranged GETs standing between us and up to 2,573 more.
+
+## 8. What this doc is not
 
 It is not a decision. It is the arithmetic that was missing, so the decisions in
 §5 can be made against measured numbers instead of instinct. The measurements
