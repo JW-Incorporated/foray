@@ -165,15 +165,31 @@ every downstream lane consumes it.
 
 The army's real work, once #64 rules and ADR-0007 is accepted.
 
-**Prepare** — `tools/segments/prepare-segment-batch.mjs`, deterministic:
-- Input: `data/transcript-availability.json` + a target topic node.
-- Select episodes with a free transcript, in-topic, above a duration floor.
-- Fetch and normalise the transcript to a common shape
-  (`[{start_sec, text}]` — VTT/SRT/JSON all collapse to this).
-- Emit a batch file: episode metadata + the normalised transcript +
-  `reference_duration_sec` (from the enclosure actually fetched).
+**Prepare** — `tools/segments/prepare-segment-batch.mjs` (BUILT 2026-08-23),
+deterministic, keyless, no network:
+- Input: the committed transcript digests plus the bodies `fetch-transcripts.mjs`
+  already put in `data-local/transcripts/`. It does not fetch; a transcript that
+  is not already on disk is not a candidate.
+- **Gate the timeline before anything else (#315).** A transcript whose last cue
+  overruns the feed's declared duration by more than
+  `TIMELINE_OVERRUN_TOLERANCE_SEC` (5 s) is excluded, with the reason recorded.
+  This is the one check nothing downstream can make: ADR-0007's anchor tolerance
+  is ±120 s and `span_implausible`'s `MAX_SPAN_RATIO` is 1.5, so a 30–100 s
+  offset resolves, passes, and plays the wrong words. Measured over the 1,718
+  transcripts held on 2026-08-23: 58 overrun, 55 of them one show.
+- Emit a batch file (episode metadata + the transcript the anchors will be
+  authored against + `reference_duration_sec`, which is the FEED's number), the
+  matching `data/segment-sources.json` rows written from that same number, and
+  a numbered, timestamped rendering of each transcript for the extractor to
+  quote from.
 
-**Agent** — `docs/agents/runner-prompts/segment-batch.md`, the contract:
+**Lint** — the same file, `--lint`. The tier-P/tier-B rules from
+`segment-length-rules.md` §9 that the merge cannot enforce: L1/L3/L4/L5 drop a
+candidate, S1/S2 flag it, M1 drops and M2 flags a same-episode pair that should
+have been one segment, B1 reports the batch median.
+
+**Agent** — `docs/agents/runner-prompts/segment-batch.md` (WRITTEN 2026-08-23,
+from the brief the first real batch was run against), the contract:
 - Input: one episode's transcript, the taxonomy, the topic in question.
 - Output: 0–N candidate segments, each with `start_sec`, `end_sec`,
   `start_anchor`, `end_anchor` (verbatim from the transcript, 8–12 words),
