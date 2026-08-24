@@ -905,6 +905,17 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 **Worked if:** calling the RPC as an ordinary anonymous user removes that user from `auth.users` and returns success, and calling it cannot remove anybody else's (test it twice, with two different anonymous tokens). Then `docs/legal/data-safety.md` §A7 and `privacy-policy.md` §7 can drop the "the account row stays" paragraph — and both must be updated in the same change that ships the client call, per the standing rule in §8 of the policy.
 ### 15. Rule on the app's permanent bundle id
 
+> **NOW BLOCKING SOMETHING LIVE, 2026-08-23.** Wyatt has the D-U-N-S and is enrolling in
+> both stores. Item **#19** says it plainly: *"Do #15 (the permanent bundle id) before this
+> either way — the App ID you register here is the one you live with."* Registering an App ID
+> is the moment this stops being reversible.
+>
+> **One thing changed since this was written.** The app is now called **4a** (#302); the
+> proposed id still reads `com.jwincorporated.foray`. That is defensible — a bundle id is
+> invisible to users, and this one names the org that owns the repo and pays the Actions bill —
+> but it should be a decision rather than an accident. The stitched-audio unit is still a
+> *foray*, so the word is not retired either way.
+
 **Tag:** `[BLOCKING]` for any store submission · **Time:** ~2 minutes · **Owner:** Wyatt (architecture)
 
 **Why it matters.** The bundle id is the app's identity in both stores and it is **permanent once published** — changing it after a release means a brand-new listing, a new URL, and zero installs carried over. It is now written into a file and into a test, so it will not drift by accident, but nobody has actually agreed to it.
@@ -1568,6 +1579,57 @@ transcripts are usable — and one download of The Secret To Success would settl
 
 ---
 
+### 25. Buy the company domain before writing either store listing
+
+**Tag:** `[BLOCKING]` for store listings · **Time:** ~10 minutes · **Owner:** Wyatt · **Cost:** ~$12/year — a spend decision, so founders' call (`CLAUDE.md` decision-authority item 3)
+
+**Why it matters.** Both stores require a **Privacy Policy URL**; Apple also requires a
+**Support URL**. Those URLs must stay live for the life of the app — both stores re-check
+them after publication, and a dead one is a compliance problem rather than a cosmetic one.
+
+**The org will ship more than one app.** `JW-Incorporated` already holds `foray`, `swift2`
+and `starter-kit`. That makes this a company-level decision, not a 4a one.
+
+**What is wrong with what exists today.** The only public URL is
+`jw-incorporated.github.io/foray/docs/legal/privacy-policy.md`. It returns 200 — Pages serves
+the repo root, so the file is reachable — but it bakes in three things you do not want
+permanently attached to 4a's legally-required privacy URL:
+
+- the repo name **foray**, for an app now called **4a**;
+- a **code host's domain** the company does not own;
+- a raw `.md` path, which browsers render as unformatted text.
+
+**Privacy policies are per-app, not per-company.** 4a's describes `cp_` keys, IndexedDB and an
+anonymous session token. When a second app ships with different data handling, one shared
+policy is wrong in the direction stores care about. So: company domain, per-app paths.
+
+```
+jwincorporated.com/            company — who you are, the app list
+jwincorporated.com/4a/         app page      -> Marketing URL (optional)
+jwincorporated.com/4a/privacy  policy        -> Privacy Policy URL (required)
+jwincorporated.com/4a/support  contact + FAQ -> Support URL (Apple, required)
+```
+
+**Why the order matters, and it is the whole reason this is filed.** The free alternative is a
+GitHub org Pages site (a repo named exactly `jw-incorporated.github.io`; there is none today —
+`jw-incorporated.github.io/` returns **404**). That works, but if a real domain is added later,
+**every URL changes**, and you would be editing live store listings for two apps to chase them.
+Buying first and pointing the domain at the Pages repo via `CNAME` means the listings are
+written once.
+
+**Steps.**
+
+1. Buy a domain. Reply with it.
+2. A session builds the static site — no dependencies, same CSP discipline as the app — and
+   renders 4a's existing `docs/legal/privacy-policy.md` and `data-safety.md` as real pages.
+   Those documents already exist and were renamed to 4a in #304.
+3. The listing fields in **#42** then have stable URLs to quote.
+
+**Worked if:** the three URLs above resolve, and #42's listing draft quotes them.
+
+**Status:** OPEN
+
+---
 ## DONE
 
 *(Nothing filed yet. Finished items move here with the date they were done and
