@@ -1,0 +1,610 @@
+/* Tests for the transcript availability sweep (issue #104).
+   Run: node --test tools/segments/
+
+   Scope is the pure half of the file — tag extraction, the timestamp
+   classification, the summary arithmetic, and checkpoint resume. **Nothing
+   here touches the network**: the feed bodies are fixtures, so the suite is
+   deterministic, runnable in CI, and cannot be turned green or red by a
+   publisher changing their feed at 3am.
+
+   The classification test is the important one. `has_timestamps` decides
+   whether an episode can anchor a segment boundary at all (ADR-0007), and
+   `text/plain` is the third most published transcript format in the wild —
+   so a matcher that quietly accepted prose would not look broken, it would
+   look like a much larger free corpus than we actually have. */
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, readdirSync, renameSync as renameSyncReal } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import {
+  SweepError,
+  TIMED_TRANSCRIPT_TYPES,
+  PROSE_TRANSCRIPT_TYPES,
+  attrOf,
+  decodeEntities,
+  emptyProgress,
+  episodeRowsArg,
+  hasTimestamps,
+  keepBetterRecord,
+  loadProgress,
+  normalizeMimeType,
+  parseFeed,
+  pendingShows,
+  pickTranscript,
+  summarizeRun,
+  summarizeShow,
+  sweepShow,
+  writeJsonAtomic,
+} from "./sweep-transcripts.mjs";
+import { pickEnclosure } from "../refresh/enclosure.mjs";
+
+const feed = (items) => `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+<channel><title>Fixture Show</title>${items}</channel></rss>`;
+
+const ITEM_FULL = `<item>
+  <title>Fusion, honestly</title>
+  <guid isPermaLink="false">ep-0001</guid>
+  <pubDate>Tue, 05 Aug 2026 09:00:00 +0000</pubDate>
+  <itunes:duration>01:12:30</itunes:duration>
+  <enclosure url="https://dcs.megaphone.fm/EP0001.mp3?updated=1" length="61000000" type="audio/mpeg"/>
+  <podcast:transcript url="https://example.com/ep1.txt" type="text/plain"/>
+  <podcast:transcript url="https://example.com/ep1.vtt" type="text/vtt" language="en"/>
+  <podcast:transcript url="https://example.com/ep1.json" type="application/json"/>
+  <podcast:chapters url="https://example.com/ep1-chapters.json" type="application/json+chapters"/>
+</item>`;
+
+// A plain-text-only episode: has a transcript, cannot anchor a boundary.
+const ITEM_PROSE_ONLY = `<item>
+  <title><![CDATA[Prose only & proud]]></title>
+  <guid>ep-0002</guid>
+  <itunes:duration>2715</itunes:duration>
+  <enclosure url="https://static.example.org/ep2.mp3" type="audio/mpeg"/>
+  <podcast:transcript url="https://example.com/ep2.html?a=1&amp;b=2" type="text/html" />
+</item>`;
+
+// No transcript at all, no chapters — the ~90% case.
+const ITEM_BARE = `<item>
+  <title>Nothing to index</title>
+  <guid>ep-0003</guid>
+  <itunes:duration>45:00</itunes:duration>
+  <enclosure url="https://static.example.org/ep3.mp3" type="audio/mpeg"/>
+</item>`;
+
+// --------------------------------------------------------------- extraction
+
+test("extracts every recorded field from one item", () => {
+  const { episodes } = parseFeed(feed(ITEM_FULL));
+  assert.equal(episodes.length, 1);
+  const ep = episodes[0];
+  assert.equal(ep.guid, "ep-0001");
+  assert.equal(ep.title, "Fusion, honestly");
+  assert.equal(ep.duration_sec, 4350);
+  assert.equal(ep.chapters_url, "https://example.com/ep1-chapters.json");
+  assert.deepEqual(ep.transcript_types, ["text/plain", "text/vtt", "application/json"]);
+});
+
+/* MUTATION: delete `enclosure_bytes` from the row `parseFeed` builds, or set it
+   to `attrOf(enclosure, "length")` without passing it through
+   `enclosureLengthBytes`. Verified failing on the first and third assertions
+   respectively.
+
+   THE MISSING DENOMINATOR. `ad-inflation.mjs` measures ad load as delivered
+   bytes / feed-declared length. The sweep read the `<enclosure>` tag and kept
+   only its `url`, so every one of the 500 breadth shows was unmeasurable — the
+   scan cannot even report "injected" or "ad-free", only "could not tell", for a
+   pool whose whole purpose is to be judged on exactly that. It costs no extra
+   request, and episode rows live in `data-local/` (#255), so nothing committed
+   grows.
+
+   ONE DEFINITION, TWO PARSERS. This file reads feeds with regexes and
+   `refresh/enclosure.mjs` reads them with fast-xml-parser, so they cannot share
+   a code path — but `length="0"` meaning "unknown" is a fact about RSS, not
+   about a parser, and the last four times a rule like that lived in two places
+   the copies drifted (#211/#219/#249, #313, #316, #318). The third assertion
+   drives both parsers over the same values and fails if they ever disagree. */
+test("parseFeed keeps the enclosure length, and agrees with the curated parser", () => {
+  const { episodes } = parseFeed(feed(ITEM_FULL + ITEM_BARE));
+  assert.equal(episodes[0].enclosure_bytes, 61000000);
+  // No length attribute at all is null, not 0 and not NaN.
+  assert.equal(episodes[1].enclosure_bytes, null);
+
+  for (const raw of ["61000000", "0", "unknown", "", "-5", "12.5"]) {
+    const viaSweep = parseFeed(feed(
+      `<item><guid>g</guid><enclosure url="https://static.example.org/e.mp3" length="${raw}"/></item>`,
+    )).episodes[0].enclosure_bytes;
+    const viaCurated = pickEnclosure({ enclosure: { "@_url": "https://static.example.org/e.mp3", "@_length": raw } }).bytes;
+    assert.equal(viaSweep, viaCurated, `the two feed parsers disagree on length="${raw}"`);
+  }
+});
+
+test("the enclosure of the first item is offered as the DAI sample", () => {
+  const { sample_enclosure_url } = parseFeed(feed(ITEM_BARE + ITEM_FULL));
+  assert.equal(sample_enclosure_url, "https://static.example.org/ep3.mp3");
+});
+
+test("decodes entities in attribute URLs — a literal &amp; would 404", () => {
+  const { episodes } = parseFeed(feed(ITEM_PROSE_ONLY));
+  assert.equal(episodes[0].transcript_url, "https://example.com/ep2.html?a=1&b=2");
+});
+
+test("unwraps CDATA titles", () => {
+  const { episodes } = parseFeed(feed(ITEM_PROSE_ONLY));
+  assert.equal(episodes[0].title, "Prose only & proud");
+});
+
+test("reads the tag whatever namespace prefix the feed bound it to", () => {
+  // Nearly every feed writes `podcast:` — but the prefix is arbitrary per the
+  // XML spec, and a feed that binds the same namespace to `pc:` is not broken.
+  const { episodes } = parseFeed(feed(`<item><guid>x</guid>
+    <pc:transcript url="https://example.com/x.srt" type="application/srt"/>
+    <pc:chapters url="https://example.com/x.json"/></item>`));
+  assert.equal(episodes[0].transcript_url, "https://example.com/x.srt");
+  assert.equal(episodes[0].chapters_url, "https://example.com/x.json");
+});
+
+test("handles single-quoted attributes and non-self-closing tags", () => {
+  const { episodes } = parseFeed(feed(`<item><guid>y</guid>
+    <podcast:transcript url='https://example.com/y.vtt' type='text/vtt'></podcast:transcript></item>`));
+  assert.equal(episodes[0].transcript_url, "https://example.com/y.vtt");
+  assert.equal(episodes[0].has_timestamps, true);
+});
+
+test("a transcript tag with no url is treated as absent, not as a transcript", () => {
+  const { episodes } = parseFeed(feed(`<item><guid>z</guid><podcast:transcript type="text/vtt"/></item>`));
+  assert.equal(episodes[0].transcript_url, null);
+  assert.equal(episodes[0].has_timestamps, false);
+  assert.deepEqual(episodes[0].transcript_types, []);
+});
+
+test("falls back to the enclosure url when an item carries no guid", () => {
+  const { episodes } = parseFeed(feed(`<item><enclosure url="https://static.example.org/n.mp3"/></item>`));
+  assert.equal(episodes[0].guid, "https://static.example.org/n.mp3");
+});
+
+test("normalizes the three itunes:duration dialects, and refuses garbage", () => {
+  const { episodes } = parseFeed(feed(ITEM_FULL + ITEM_PROSE_ONLY + ITEM_BARE +
+    `<item><guid>g</guid><itunes:duration>not a time</itunes:duration></item>`));
+  assert.deepEqual(episodes.map((e) => e.duration_sec), [4350, 2715, 2700, null]);
+});
+
+test("attrOf and decodeEntities tolerate junk instead of throwing", () => {
+  assert.equal(attrOf(null, "url"), null);
+  assert.equal(attrOf("<podcast:transcript/>", "url"), null);
+  assert.equal(attrOf('<podcast:transcript url="  " />', "url"), null);
+  assert.equal(decodeEntities(null), null);
+  assert.equal(decodeEntities("a &notarealentity; b"), "a &notarealentity; b");
+  assert.equal(decodeEntities("&#39;&#x27;&quot;"), "''\"");
+});
+
+// ----------------------------------------------------- timestamp capability
+
+test("timestamped formats are exactly the four that carry a timeline", () => {
+  for (const t of TIMED_TRANSCRIPT_TYPES) assert.equal(hasTimestamps(t), true, t);
+  assert.deepEqual(TIMED_TRANSCRIPT_TYPES, ["text/vtt", "application/srt", "application/x-subrip", "application/json"]);
+});
+
+test("prose formats are never timestamped — the whole point of the file", () => {
+  for (const t of PROSE_TRANSCRIPT_TYPES) assert.equal(hasTimestamps(t), false, t);
+  assert.deepEqual(PROSE_TRANSCRIPT_TYPES, ["text/plain", "text/html"]);
+});
+
+test("an unknown or missing type is not assumed to be anchorable", () => {
+  for (const t of [null, undefined, "", "   ", "application/pdf", "text/markdown", "vtt"]) {
+    assert.equal(hasTimestamps(t), false, String(t));
+  }
+});
+
+test("mime parameters and casing do not defeat the match", () => {
+  assert.equal(hasTimestamps("text/vtt; charset=utf-8"), true);
+  assert.equal(hasTimestamps("TEXT/VTT"), true);
+  assert.equal(hasTimestamps("  application/x-subrip  "), true);
+  assert.equal(hasTimestamps("Text/Plain; charset=utf-8"), false);
+  assert.equal(normalizeMimeType("TEXT/VTT ; charset=utf-8"), "text/vtt");
+  assert.equal(normalizeMimeType(null), null);
+});
+
+test("picks the best timed format, in the same order parser.ts uses", () => {
+  const all = [
+    { url: "p", type: "text/plain" },
+    { url: "j", type: "application/json" },
+    { url: "s", type: "application/srt" },
+    { url: "v", type: "text/vtt" },
+  ];
+  assert.equal(pickTranscript(all).url, "v");
+  assert.equal(pickTranscript(all.filter((t) => t.type !== "text/vtt")).url, "s");
+  assert.equal(pickTranscript([{ url: "x", type: "application/x-subrip" }, { url: "j", type: "application/json" }]).url, "x");
+  assert.equal(pickTranscript([{ url: "j", type: "application/json" }, { url: "p", type: "text/plain" }]).url, "j");
+});
+
+test("with no timed format at all, the prose transcript is still recorded", () => {
+  // Recorded, but flagged unanchorable: "we have text for this episode" is
+  // useful to A10 topic selection even when Lane C cannot cut it.
+  const picked = pickTranscript([{ url: "p", type: "text/plain" }, { url: "h", type: "text/html" }]);
+  assert.equal(picked.url, "p");
+  assert.equal(hasTimestamps(picked.type), false);
+  assert.equal(pickTranscript([]), null);
+  assert.equal(pickTranscript(null), null);
+});
+
+// --------------------------------------------------------- named failures
+
+test("a broken feed raises a coded error instead of returning zero episodes", () => {
+  // The starter-kit lesson: a run that reports success while indexing nothing
+  // is worse than one that crashes, because the empty index is what every
+  // later lane reads as truth.
+  assert.throws(() => parseFeed("<!doctype html><html><body>404 not found</body></html>"), (e) => e instanceof SweepError && e.code === "NOT_XML");
+  assert.throws(() => parseFeed(feed("")), (e) => e instanceof SweepError && e.code === "EMPTY_FEED");
+  assert.throws(() => parseFeed(`<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>a</title></entry></feed>`), (e) => e instanceof SweepError && e.code === "NOT_RSS");
+  assert.throws(() => parseFeed(""), (e) => e instanceof SweepError && e.code === "NOT_XML");
+});
+
+// ------------------------------------------------------------- aggregation
+
+test("per-show counts separate 'has a transcript' from 'can be anchored'", () => {
+  const { episodes } = parseFeed(feed(ITEM_FULL + ITEM_PROSE_ONLY + ITEM_BARE));
+  const rec = summarizeShow({ show_id: "fixture" }, episodes);
+  assert.equal(rec.episodes_total, 3);
+  assert.equal(rec.episodes_with_transcript, 2);
+  assert.equal(rec.episodes_with_timed_transcript, 1);
+  assert.equal(rec.episodes_with_chapters, 1);
+  assert.equal(rec.transcript_tags, 4);
+  assert.deepEqual(rec.transcript_types, { "text/plain": 1, "text/vtt": 1, "application/json": 1, "text/html": 1 });
+});
+
+test("run summary splits coverage by DAI, which is the finding that reshaped the epic", () => {
+  const s = summarizeRun([
+    { status: "ok", dai_suspected: true, episodes_total: 100, episodes_with_transcript: 13, episodes_with_timed_transcript: 10, episodes_with_chapters: 5, transcript_tags: 39, transcript_types: { "text/vtt": 13, "text/plain": 13, "application/srt": 13 } },
+    { status: "ok", dai_suspected: false, episodes_total: 100, episodes_with_transcript: 1, episodes_with_timed_transcript: 0, episodes_with_chapters: 0, transcript_tags: 1, transcript_types: { "text/plain": 1 } },
+    { status: "ok", dai_suspected: null, episodes_total: 10, episodes_with_transcript: 0, episodes_with_timed_transcript: 0, episodes_with_chapters: 0, transcript_tags: 0, transcript_types: {} },
+    { status: "error", error_code: "HTTP_404" },
+  ]);
+  assert.equal(s.shows_ok, 3);
+  assert.equal(s.shows_failed, 1);
+  assert.deepEqual(s.error_codes, { HTTP_404: 1 });
+  assert.equal(s.dai.transcript_coverage_pct, 13);
+  assert.equal(s.non_dai.transcript_coverage_pct, 1);
+  assert.equal(s.transcript_coverage_pct, 6.7);
+  assert.equal(s.timed_transcript_coverage_pct, 4.8);
+  assert.equal(s.transcript_tags_per_transcribed_episode, 2.86);
+  assert.deepEqual(s.transcript_types, { "text/vtt": 13, "text/plain": 14, "application/srt": 13 });
+});
+
+test("a failed show contributes no episodes to the coverage denominator", () => {
+  // Otherwise a bad afternoon on one CDN reads as "transcripts got rarer".
+  const s = summarizeRun([{ status: "error", error_code: "TIMEOUT", episodes_total: 0, episodes_with_transcript: 0 }]);
+  assert.equal(s.episodes_total, 0);
+  assert.equal(s.transcript_coverage_pct, 0);
+});
+
+// ---------------------------------------------------------------- resuming
+
+function tmpFile(name) {
+  return join(mkdtempSync(join(tmpdir(), "foray-sweep-")), name);
+}
+
+const CATALOG = [
+  { show_id: "a", feed_url: "https://a.example/rss" },
+  { show_id: "b", feed_url: "https://b.example/rss" },
+  { show_id: "c", feed_url: "https://c.example/rss" },
+];
+
+test("a checkpointed show is not swept twice", () => {
+  const progress = emptyProgress();
+  progress.shows.a = { show_id: "a", status: "ok" };
+  progress.shows.b = { show_id: "b", status: "error", error_code: "TIMEOUT" };
+  assert.deepEqual(pendingShows(CATALOG, progress).map((s) => s.show_id), ["c"]);
+});
+
+test("--retry-failed re-queues errors but never re-fetches a success", () => {
+  const progress = emptyProgress();
+  progress.shows.a = { show_id: "a", status: "ok" };
+  progress.shows.b = { show_id: "b", status: "error", error_code: "HTTP_503" };
+  assert.deepEqual(pendingShows(CATALOG, progress, { retryFailed: true }).map((s) => s.show_id), ["b", "c"]);
+});
+
+test("shows keyed by apple_collection_id resume too", () => {
+  const progress = emptyProgress();
+  progress.shows["123"] = { show_id: "123", status: "ok" };
+  const shows = [{ apple_collection_id: 123, feed_url: "x" }, { apple_collection_id: 456, feed_url: "y" }];
+  assert.deepEqual(pendingShows(shows, progress).map((s) => s.apple_collection_id), [456]);
+});
+
+test("a checkpoint survives a round trip through disk", () => {
+  const path = tmpFile("transcript-progress.json");
+  assert.deepEqual(loadProgress(path).shows, {}); // absent file is a legitimate cold start
+  const progress = emptyProgress();
+  progress.shows.a = { show_id: "a", status: "ok", episodes_with_transcript: 7 };
+  writeJsonAtomic(path, progress);
+  assert.equal(existsSync(path + ".tmp"), false); // atomic write leaves no debris
+  const reloaded = loadProgress(path);
+  assert.equal(reloaded.shows.a.episodes_with_transcript, 7);
+  assert.deepEqual(pendingShows(CATALOG, reloaded).map((s) => s.show_id), ["b", "c"]);
+});
+
+test("a corrupt checkpoint is reported, never silently discarded", () => {
+  // Silently starting over would look identical to a fresh run and cost an
+  // hour of re-fetching that nobody would think to look for.
+  const path = tmpFile("bad-progress.json");
+  writeFileSync(path, JSON.stringify({ version: 1, note: "no shows map here" }));
+  assert.throws(() => loadProgress(path), (e) => e instanceof SweepError && e.code === "BAD_CHECKPOINT");
+  writeFileSync(path, "{ not json");
+  assert.throws(() => loadProgress(path), SyntaxError);
+});
+
+test("the committed index carries no transcript bodies", () => {
+  // Structural guard on the one rule that would blow up the repo: this module
+  // must have no code path that fetches a transcript_url. 8,012 transcribed
+  // episodes x ~50KB is ~400MB against a 44MB data/ directory.
+  const src = readFileSync(new URL("./sweep-transcripts.mjs", import.meta.url), "utf8");
+  const callSites = src.match(/(?<![\w.])fetch\s*\(\s*[\w.[\]]+/g) || [];
+  assert.deepEqual(callSites, ["fetch(url"]); // exactly one, and it is the feed
+  assert.match(src, /await fetchFeed\(show\.feed_url/);
+  const fetchLinesMentioningTranscripts = src
+    .split("\n")
+    .filter((l) => !l.trimStart().startsWith("*") && /\bfetch\w*\(/.test(l) && /transcript/i.test(l));
+  assert.deepEqual(fetchLinesMentioningTranscripts, []);
+});
+
+/* ------------------------------------------------- --max-episode-rows (#114)
+
+   These four are the only tests in this file that exercise `sweepShow`, and
+   they still touch no network: `globalThis.fetch` is replaced with a stub that
+   returns a fixture, and the fixture declares no `<enclosure>`, which is what
+   makes `resolveDai` return "no enclosure url in feed" without a request.
+
+   The cap exists because the checkpoint is rewritten in full after every show,
+   so its cost is the whole index, and the index is driven by episode ROWS. The
+   first 20 shows of the ranked breadth tranche produced 55MB at 951 bytes per
+   row; a full-catalogue run at that shape hands `JSON.stringify` a string
+   longer than V8 will allocate and throws rather than slowing down. */
+
+const manyItems = (n) =>
+  Array.from(
+    { length: n },
+    (_, i) => `<item><title>Ep ${i}</title><guid>ep-${i}</guid>
+      <podcast:transcript url="https://cdn.example/${i}.vtt" type="text/vtt"/></item>`,
+  ).join("");
+
+async function withStubbedFeed(xml, fn) {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    headers: { get: () => null },
+    text: async () => xml,
+  });
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+/* MUTATION: apply the cap to `episodes` before `summarizeShow` instead of
+   after. The counts are then computed over the truncated list, so a 2,900-
+   transcript show reports 200 and every yield number in the run — the one
+   number the breadth sweep exists to produce — is silently floored at the cap.
+   Verified failing. */
+test("--max-episode-rows caps stored rows and never the counts", async () => {
+  await withStubbedFeed(feed(manyItems(500)), async () => {
+    const rec = await sweepShow({ show_id: "capped", feed_url: "https://feeds.cap-test-a.example/f" }, { maxEpisodeRows: 50 });
+    assert.equal(rec.status, "ok");
+    assert.equal(rec.episodes_total, 500, "counts must be computed over the whole feed");
+    assert.equal(rec.episodes_with_transcript, 500);
+    assert.equal(rec.episodes_with_timed_transcript, 500);
+    assert.equal(rec.episodes.length, 50, "only the rows are capped");
+  });
+});
+
+/* MUTATION: omit `episode_rows_available`/`episode_rows_dropped`. A truncated
+   show then looks identical to a show that only ever had 50 transcripts, so a
+   later fetch pass cannot tell "this show has no more" from "we stopped
+   recording" — a silent ceiling, which is the failure mode this pipeline's
+   other files go out of their way to avoid. Verified failing. */
+test("a truncated show says how much it dropped", async () => {
+  await withStubbedFeed(feed(manyItems(500)), async () => {
+    const rec = await sweepShow({ show_id: "counted", feed_url: "https://feeds.cap-test-b.example/f" }, { maxEpisodeRows: 50 });
+    assert.equal(rec.episode_rows_available, 500);
+    assert.equal(rec.episode_rows_dropped, 450);
+  });
+});
+
+/* MUTATION: default `maxEpisodeRows` to some finite number rather than
+   Infinity. Every existing caller — including the curated sweep that produces
+   the committed `data/transcript-availability.json` — would then silently lose
+   episode rows on the next run, and `transcript-coverage.mjs`'s join would
+   start reporting a collapse it would attribute to the publishers.
+   Verified failing. */
+test("the cap is absent by default, so existing runs are unchanged", async () => {
+  await withStubbedFeed(feed(manyItems(300)), async () => {
+    const rec = await sweepShow({ show_id: "uncapped", feed_url: "https://feeds.cap-test-c.example/f" });
+    assert.equal(rec.episodes.length, 300);
+    assert.equal(rec.episode_rows_dropped, 0);
+    assert.equal(rec.episode_rows_available, 300);
+  });
+});
+
+/* MUTATION: `eligible.slice(-maxEpisodeRows)` instead of `slice(0, n)`. Feeds
+   are newest-first, so that keeps the OLDEST episodes — the ones likeliest to
+   have a transcript URL the publisher has since taken down — and quietly
+   maximises the 404 rate of the fetch stage that reads these rows.
+   Verified failing. */
+test("the rows kept are the newest ones the feed lists first", async () => {
+  await withStubbedFeed(feed(manyItems(20)), async () => {
+    const rec = await sweepShow({ show_id: "order", feed_url: "https://feeds.cap-test-d.example/f" }, { maxEpisodeRows: 3 });
+    assert.deepEqual(rec.episodes.map((e) => e.guid), ["ep-0", "ep-1", "ep-2"]);
+  });
+});
+
+/* MUTATION: drop the truncation branch from `pendingShows` and go back to
+   "any `ok` record is done". Raising `--max-episode-rows` on a later run then
+   re-sweeps NOTHING — every truncated record still says `ok` — and the only way
+   to deepen five shows is `--reset`, which re-requests all 500 feeds. The
+   header claims a truncated show is "a re-queue rather than a silent ceiling";
+   this is the line that makes that true. Verified failing. */
+test("raising the cap re-queues the shows that were truncated, and only those", () => {
+  const progress = emptyProgress();
+  progress.shows["truncated"] = { status: "ok", episode_rows_dropped: 795, episodes: new Array(200) };
+  progress.shows["complete"] = { status: "ok", episode_rows_dropped: 0, episodes: new Array(7) };
+  const shows = [{ show_id: "truncated", feed_url: "a" }, { show_id: "complete", feed_url: "b" }];
+
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000 }).map((s) => s.show_id), ["truncated"]);
+  // Same cap as last time: nothing to gain, so nothing is re-requested.
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 200 }).map((s) => s.show_id), []);
+  // And the default (no cap) still skips everything already done.
+  assert.deepEqual(pendingShows(shows, progress).map((s) => s.show_id), ["truncated"]);
+});
+
+/* MUTATION: revert `--max-episode-rows` to a bare `Number(...)`. `Number("20O")`
+   is NaN, `Number.isFinite(NaN)` is false, the slice is skipped, and the run
+   proceeds UNCAPPED — silently doing the one thing the flag exists to prevent,
+   on a run that takes hours and whose failure mode is an unwritable checkpoint.
+   Verified failing. */
+test("--max-episode-rows refuses a value it cannot honour", () => {
+  assert.equal(episodeRowsArg("Infinity"), Infinity);
+  assert.equal(episodeRowsArg("200"), 200);
+  assert.equal(episodeRowsArg("0"), 0);
+  for (const bad of ["20O", "abc", "-5", "", "NaN"]) {
+    assert.throws(() => episodeRowsArg(bad), (e) => e instanceof SweepError && e.code === "BAD_ARG", `${JSON.stringify(bad)} should be rejected`);
+  }
+
+  /* And that `parseArgs` actually ROUTES THROUGH IT. Pinning the helper alone
+     left the real mutation alive: swapping the call site back to a bare
+     `Number(get(...))` kept this suite green, because nothing connected the
+     validator to the flag. `parseArgs` is not exported (nor should it be, for
+     one assertion), so this is a source check — the same shape as the
+     transcript-bodies guard at the end of this file. */
+  const src = readFileSync(new URL("./sweep-transcripts.mjs", import.meta.url), "utf8");
+  assert.match(src, /maxEpisodeRows:\s*episodeRowsArg\(get\("--max-episode-rows"/);
+  assert.deepEqual(src.match(/Number\(get\("--max-episode-rows"/g), null);
+});
+
+/* MUTATION: revert the checkpoint write to `progress.shows[id] = record`. The
+   cap's re-queue path made this a DATA-LOSS bug where it previously could not
+   be one: an `ok` show used to be swept exactly once, so an unconditional
+   assignment was safe. Now a re-queued show whose second read 404s or times out
+   replaces a good 200-row record with a zeroed `error` one — the show reports
+   as failed, its transcripts vanish from every yield number, and recovery costs
+   a third request. The five shows re-swept uncapped in this branch went through
+   this exact path. Verified failing. */
+test("a failed re-sweep never overwrites a good record", () => {
+  const good = { show_id: "s", status: "ok", episodes_with_timed_transcript: 995, episode_rows_dropped: 795, episodes: new Array(200) };
+  const failed = { show_id: "s", status: "error", error: "HTTP_404: gone", error_code: "HTTP_404", swept_at: "2026-08-22T12:00:00Z", episodes: [] };
+
+  const kept = keepBetterRecord(good, failed);
+  assert.equal(kept.status, "ok", "the good record survives");
+  assert.equal(kept.episodes_with_timed_transcript, 995);
+  assert.equal(kept.episodes.length, 200);
+  assert.equal(kept.requeue_failed, true, "and the failure is still visible");
+  assert.equal(kept.requeue_error_code, "HTTP_404");
+
+  // A successful re-sweep replaces freely — that is the whole point of the cap.
+  const better = { show_id: "s", status: "ok", episodes_with_timed_transcript: 995, episode_rows_dropped: 0, episodes: new Array(995) };
+  assert.equal(keepBetterRecord(good, better).episodes.length, 995);
+  // A first-ever failure has nothing to protect and is stored as-is.
+  assert.equal(keepBetterRecord(undefined, failed).status, "error");
+  assert.equal(keepBetterRecord({ show_id: "s", status: "error" }, failed).status, "error");
+});
+
+/* MUTATION: drop the `requeue_failed` check from `pendingShows`. A truncated
+   show whose re-sweep fails still has `episode_rows_dropped > 0`, so every
+   future run re-queues it — spending requests forever on a feed that has
+   stopped answering, which is the behaviour the error-skip rule already exists
+   to prevent. Verified failing. */
+test("a re-queue that failed is not retried on every subsequent run", () => {
+  const progress = emptyProgress();
+  progress.shows["s"] = { status: "ok", episode_rows_dropped: 795, episodes: new Array(200), requeue_failed: true };
+  const shows = [{ show_id: "s", feed_url: "a" }];
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000 }), []);
+  assert.deepEqual(pendingShows(shows, progress, { maxEpisodeRows: 3000, retryFailed: true }).map((x) => x.show_id), ["s"]);
+});
+
+/* ------------------------------------- the checkpoint's one Windows failure */
+
+/* MUTATION: drop the retry — `renameSync(tmp, path)` with nothing around it,
+   which is what this was until #320. IT COST A RUN: a 1,000-feed sweep died at
+   feed 788 with `EPERM: operation not permitted, rename` because another
+   process had the 33MB checkpoint open for READING at that instant. Nothing was
+   corrupt and nothing was lost — the checkpoint is atomic and the sweep resumed
+   — but the run stopped, and on Windows any reader is enough to stop it, which
+   makes the file this function protects the one most likely to be open.
+   Verified failing. */
+test("a checkpoint write waits out a reader holding the file", () => {
+  const path = tmpFile("locked-progress.json");
+  let calls = 0;
+  const waits = [];
+  const attempts = writeJsonAtomic(path, { version: 1, shows: { a: 1 } }, {
+    // Two refusals then success — a reader that let go, which is the case that
+    // actually happens.
+    rename: (from, to) => {
+      calls++;
+      if (calls <= 2) {
+        const e = new Error("EPERM: operation not permitted, rename");
+        e.code = "EPERM";
+        throw e;
+      }
+      return renameSyncReal(from, to);
+    },
+    sleep: (ms) => waits.push(ms),
+  });
+  assert.equal(attempts, 3, "it must actually have retried, not silently swallowed the error");
+  assert.deepEqual(waits, [100, 200], "the pause grows, so a slower reader still gets out of the way");
+  assert.equal(JSON.parse(readFileSync(path, "utf8")).shows.a, 1, "and the file must really be there afterwards");
+  assert.equal(existsSync(path + ".tmp"), false);
+});
+
+/* MUTATION: retry on every error rather than only on the lock codes. A bad
+   path, a full disk or a read-only volume does not improve if you wait; the run
+   then spends the whole retry ladder before reporting the identical failure,
+   and the operator reads the delay as progress. Verified failing. */
+test("a rename failure that is not a lock is raised at once", () => {
+  const path = tmpFile("broken-progress.json");
+  let calls = 0;
+  assert.throws(
+    () =>
+      writeJsonAtomic(path, { version: 1, shows: {} }, {
+        rename: () => {
+          calls++;
+          const e = new Error("ENOSPC: no space left on device, rename");
+          e.code = "ENOSPC";
+          throw e;
+        },
+        sleep: () => assert.fail("a non-lock error must not be slept on"),
+      }),
+    /ENOSPC/,
+  );
+  assert.equal(calls, 1, "exactly one attempt");
+});
+
+/* MUTATION: give `fetch-transcripts.mjs` its own `function writeJsonAtomic`
+   back. IT HAD ONE — byte-identical to this file's, which is exactly why nobody
+   saw it, and it is the sixth duplicated implementation this repo has found
+   after four matchers, two throttles, three header copies, ten User-Agents and
+   `AD_FREE_SHOWS`. The cost is not abstract: the lock retry above landed in the
+   checkpoint writer, and the copy that writes transcript digests and normalised
+   cues would have gone on failing on the same EPERM.
+
+   A BLUNT SCAN, on purpose, for the reason #318's guard had to become one: it
+   matches the declaration anywhere in the bytes, so it cannot be blinded by
+   whatever else a file happens to contain. A future file that legitimately
+   needs its own must add itself here with a reason. Verified failing against a
+   restored copy. */
+test("writeJsonAtomic is defined exactly once in this directory", () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  /* Suites are excluded, and finding that out was the point. This suite trips
+     its own scan: the mutation named in the comment above contains the literal
+     "function writeJsonAtomic", so a scan over every .mjs in the directory
+     reports THIS FILE as a second definition and stays red no matter what the
+     source does. That is the #318 failure with the sign flipped — prose in the
+     guards own file deciding the guards verdict — and the fix is to scan the
+     files that can actually ship the function. */
+  const sources = readdirSync(dir).filter((f) => f.endsWith(".mjs") && !f.endsWith(".test.mjs"));
+  assert.ok(sources.length >= 5, "the filter must not be able to make this pass by matching nothing");
+  const owners = sources.filter((f) => readFileSync(join(dir, f), "utf8").includes("function writeJsonAtomic"));
+  assert.deepEqual(owners, ["sweep-transcripts.mjs"], "one definition; every other caller imports it");
+});

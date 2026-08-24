@@ -14,12 +14,13 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
+import { audioFieldsFrom } from "./enclosure.mjs";
+import { UA } from "../segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
 const { XMLParser } = backendRequire("fast-xml-parser");
 
-const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 const THROTTLE_MS = 1800;
 const args = process.argv.slice(2);
 const LIMIT = args.includes("--limit") ? Number(args[args.indexOf("--limit") + 1]) : Infinity;
@@ -57,6 +58,7 @@ async function main() {
 
   const shows = catalog.shows.filter((s) => s.feed_url).slice(0, LIMIT);
   const pending = [];
+  const withheld = [];
   let polled = 0, failed = 0;
 
   for (const show of shows) {
@@ -79,6 +81,13 @@ async function main() {
         if (knownTitles.has(show.title + "::" + title)) continue;
         const desc = String(text(it.description) || text(it["itunes:summary"]) || "")
           .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500);
+        // Audio provenance (issue #21). The enclosure is the authoritative
+        // playable URL and we were already parsing this element for the guid
+        // fallback above — we just weren't keeping it.
+        const audio = audioFieldsFrom(it);
+        if (audio.reason) {
+          withheld.push(`${show.title} :: ${title} :: ${audio.reason}`);
+        }
         pending.push({
           show: show.title,
           show_id: show.show_id || null,
@@ -88,6 +97,10 @@ async function main() {
           guid, title,
           release_date: pub.toISOString().slice(0, 10),
           duration_min: normDuration(it["itunes:duration"]),
+          duration_sec: audio.duration_sec,
+          audio_url: audio.audio_url,
+          audio_type: audio.audio_type,
+          audio_bytes: audio.audio_bytes,
           description: desc,
           explicit_hint: /yes|true|explicit/i.test(String(text(it["itunes:explicit"]) || "")),
         });
@@ -104,7 +117,13 @@ async function main() {
   state.last_run = new Date().toISOString();
   writeFileSync(STATE_PATH, JSON.stringify(state));
   writeFileSync(OUT_PATH, JSON.stringify({ generated_at: state.last_run, window_hours: WINDOW_H, episodes: pending }, null, 2));
+  const withAudio = pending.filter((e) => e.audio_url).length;
   console.log(`polled ${polled}/${shows.length} feeds (${failed} failed); ${pending.length} new episodes -> ${OUT_PATH}`);
+  console.log(`audio urls: ${withAudio}/${pending.length}`);
+  // Not fatal: an episode with no playable URL still belongs in discovery, it
+  // just links out instead of playing (issue #24). Visible so a feed that
+  // starts withholding enclosures doesn't degrade silently.
+  if (withheld.length) console.log(`WITHHELD ${withheld.length} enclosure(s):\n  ${withheld.join("\n  ")}`);
   console.log("REFRESH_SCAN_COMPLETE");
 }
 

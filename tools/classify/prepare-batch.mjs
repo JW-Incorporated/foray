@@ -38,9 +38,20 @@
        classifier can produce a low-confidence, needs_review-flagged
        result instead of the show silently never getting classified.
 
+   A LABEL, NOT A FILTER (founder ruling 2026-08-16). Each batch entry carries a
+   `transcript_labels` object read out of bytes this script already fetched and
+   used to discard: `<podcast:transcript>` presence, count and type. It is a COST
+   signal — a show that ships timed transcripts is cheaper to build from, because
+   we transcribe our own audio otherwise — and it is NOT a requirement for
+   anything. Rate and rationale: tools/classify/labels.mjs, which is the one place
+   that number is written down. Nothing in this file selects, orders,
+   skips or drops a show on the basis of it; see tools/classify/labels.mjs for the
+   rule and tools/classify/no-exclusion.test.mjs for the check that holds it.
+
    Usage:
-     node tools/classify/prepare-batch.mjs [--batch-size 40] [--mode fresh|escalate]
-       [--episodes-per-show 8] [--max-fetch-attempts 3] [--out PATH] [--progress PATH]
+     node tools/classify/prepare-batch.mjs [--batch-size 60] [--mode fresh|escalate]
+       [--shard i/N] [--episodes-per-show 8] [--max-fetch-attempts 3]
+       [--out PATH] [--progress PATH]
 
    Env overrides (mirrors tools/refresh/'s cloud-path-split convention):
      PROGRESS_PATH      progress/state file      (default data-local/classify-progress.json)
@@ -49,39 +60,61 @@
        rarely needed outside tests. */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
+import { parseShard, transcriptLabelsFromXml, emptyTranscriptLabels, LABEL_SCHEMA_VERSION } from "./labels.mjs";
+import { selectFreshCandidates, selectEscalateCandidates } from "./select.mjs";
+import { UA } from "../segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
-const { XMLParser } = backendRequire("fast-xml-parser");
 
-const UA = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 const FETCH_TIMEOUT_MS = 15_000;
 const THROTTLE_MS = 1500; // between feed requests — different hosts per show, so lighter than scan.mjs's single-host throttle
 const RETRY_COOLDOWN_MS = 6 * 3600_000; // 6h between retry attempts on the same failed feed
 const STALE_IN_FLIGHT_MS = 12 * 3600_000; // reclaim a batch nobody merged within 12h
 const NEW_PIPELINE_SOURCE_PREFIX = "classify-agent-";
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
+  /* A flag present with no value is NOT the same as an absent flag, and
+     collapsing the two is how `--shard` fails open: `--shard` written last, or
+     `--shard --batch-size 60`, would otherwise read as "no shard" and silently
+     run the full unsharded catalogue. Present-but-valueless yields "", which
+     parseShard rejects; absent yields the fallback. */
   const get = (flag, fallback) => {
     const idx = argv.indexOf(flag);
-    return idx >= 0 && argv[idx + 1] !== undefined ? argv[idx + 1] : fallback;
+    if (idx < 0) return fallback;
+    const next = argv[idx + 1];
+    if (next === undefined || /^--/.test(next)) return "";
+    return next;
   };
+  /* Same fail-loud stance as --shard. `--batch-size abc` used to become NaN,
+     `slice(0, NaN)` used to become `[]`, and the run reported
+     CLASSIFY_BATCH_EMPTY — a silent no-op that looks exactly like "the pass is
+     complete". A misconfigured routine must be noisy. */
+  const int = (flag, fallback) => {
+    const raw = get(flag, fallback);
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1) {
+      throw new Error(`${flag}: expected a positive integer, got ${JSON.stringify(raw)}.`);
+    }
+    return n;
+  };
+
   return {
-    batchSize: Number(get("--batch-size", "40")),
+    batchSize: int("--batch-size", "60"),
     mode: get("--mode", "fresh"), // "fresh" | "escalate"
-    episodesPerShow: Number(get("--episodes-per-show", "8")),
-    maxFetchAttempts: Number(get("--max-fetch-attempts", "3")),
+    episodesPerShow: int("--episodes-per-show", "8"),
+    maxFetchAttempts: int("--max-fetch-attempts", "3"),
     outOverride: get("--out", null),
     progressOverride: get("--progress", null),
-    shard: get("--shard", null) // "i/N" for parallel sharded runs — take only shows where Number(id) % N === i
+    // "i/N" for parallel sharded runs — take only shows this shard owns, by a
+    // hashed, stable key (labels.mjs). Malformed values THROW; this flag used to
+    // fail open and silently process the full unsharded catalogue.
+    shard: get("--shard", null)
   };
 }
-
-mkdirSync(join(ROOT, "data-local"), { recursive: true });
 
 function envPath(name, def) {
   const v = process.env[name];
@@ -136,7 +169,21 @@ function tier0Prior(show, gmap) {
 // --- RSS fetch + extraction (Tier 0.5). Never throws — degrades to a
 // failure result the caller decides how to handle (skip + retry later, or
 // fall back to Tier-0-only signal after MAX_FETCH_ATTEMPTS).
-const xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
+
+/* fast-xml-parser is resolved LAZILY, on first parse, out of
+   backend/node_modules. It has to be: CI's `data-and-site` job never runs
+   `npm ci` in backend/, and this module must stay importable there so the
+   suites in this directory can exercise the batch assembly and the selector.
+   A top-level require made merely importing this file a hard failure in the
+   one environment that runs its tests. */
+let xmlParserInstance = null;
+function xmlParser() {
+  if (!xmlParserInstance) {
+    const { XMLParser } = createRequire(join(ROOT, "backend", "package.json"))("fast-xml-parser");
+    xmlParserInstance = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
+  }
+  return xmlParserInstance;
+}
 
 function textOf(node) {
   if (node == null) return null;
@@ -167,11 +214,19 @@ async function fetchText(url, timeoutMs = FETCH_TIMEOUT_MS) {
   }
 }
 
-/** Fetches + parses a show's feed into { description, episodes, transcriptUrls, error }. */
-async function fetchShowSignal(feedUrl, episodesPerShow) {
+/* Parses an already-fetched feed body into
+   { description, episodes, transcriptUrls, labels, error }.
+
+   The Tier-0.5 signal (description, episode titles) uses the fast-xml-parser
+   instance above, borrowed from backend/. The `transcript_labels` come from
+   labels.mjs, which reads the SAME bytes with a dependency-free regex parser
+   instead — deliberately, so the label stays importable by a test suite in a
+   checkout that has never run `npm ci` in backend/ (which is every CI run of
+   `data-and-site`). Two passes over one already-downloaded body is microseconds
+   against a 1.5s inter-show throttle. */
+function parseShowSignal(body, episodesPerShow) {
   try {
-    const body = await fetchText(feedUrl);
-    const doc = xmlParser.parse(body);
+    const doc = xmlParser().parse(body);
     const channel = doc?.rss?.channel;
     if (!channel) return { error: "no <rss><channel> found" };
 
@@ -179,10 +234,11 @@ async function fetchShowSignal(feedUrl, episodesPerShow) {
 
     let items = channel.item || [];
     if (!Array.isArray(items)) items = [items];
+    const sampled = items.slice(0, episodesPerShow);
 
     const episodes = [];
     const transcriptUrls = [];
-    for (const it of items.slice(0, episodesPerShow)) {
+    for (const it of sampled) {
       const title = textOf(it.title) ?? "(untitled)";
       const desc = stripHtml(textOf(it["content:encoded"]) ?? textOf(it.description) ?? textOf(it["itunes:summary"]) ?? "").slice(0, 200);
       episodes.push({ title, description: desc });
@@ -195,10 +251,50 @@ async function fetchShowSignal(feedUrl, episodesPerShow) {
     }
 
     if (episodes.length === 0) return { error: "feed has zero <item> entries" };
-    return { description, episodes, transcriptUrls };
+    // Zero marginal cost: bytes already on the wire, previously discarded.
+    return { description, episodes, transcriptUrls, labels: transcriptLabelsFromXml(body, episodesPerShow) };
   } catch (e) {
     return { error: e.name === "AbortError" ? "timeout" : e.message };
   }
+}
+
+/** Fetches a show's feed, then parses it. Never throws — degrades to an
+    `{ error }` result the caller decides how to handle. */
+async function fetchShowSignal(feedUrl, episodesPerShow) {
+  let body;
+  try {
+    body = await fetchText(feedUrl);
+  } catch (e) {
+    return { error: e.name === "AbortError" ? "timeout" : e.message };
+  }
+  return parseShowSignal(body, episodesPerShow);
+}
+
+/* One show's entry in the batch INPUT file. Pure, and exported so
+   tools/classify/transcript-label.test.mjs can drive the real prepare -> merge
+   round trip without a network call: this function names the field that
+   merge-results.mjs reads, so the two agreeing is what the round-trip test
+   actually proves. */
+export function batchShowFrom(show, tier0, signal, priorResult = null, transcriptExcerpts = []) {
+  return {
+    apple_collection_id: show.apple_collection_id,
+    title: show.title,
+    apple_genre: show.apple_genre ?? null,
+    chart_genre_name: show.chart_genre_name ?? null,
+    chart_rank: show.chart_rank ?? null,
+    tier0_prior: tier0,
+    signal_fetch_status: signal.error ? "failed_degraded" : "ok",
+    // A descriptive cost label off the feed we just fetched. Present on every
+    // show, including one whose feed would not parse — then it is honestly empty
+    // (`episodes_sampled: 0`) rather than claiming zero transcripts.
+    transcript_labels: signal.labels ?? emptyTranscriptLabels(),
+    description: signal.description ?? null,
+    episodes: signal.episodes ?? [],
+    transcript_excerpts: transcriptExcerpts.length ? transcriptExcerpts : undefined,
+    prior_result: priorResult
+      ? { topics: priorResult.topics, needs_review: priorResult.needs_review, rationale: priorResult.rationale }
+      : undefined
+  };
 }
 
 /** Tier-2 only: fetches + truncates a transcript body already known to exist (free — ADR-0004). */
@@ -214,55 +310,29 @@ async function fetchTranscriptExcerpt(url) {
   }
 }
 
-function selectFreshCandidates(shows, classification, progress, now, batchSize, maxFetchAttempts, shard) {
-  let shardIndex = -1, shardCount = 0;
-  if (shard) {
-    const [i, n] = String(shard).split("/").map(Number);
-    if (Number.isInteger(i) && Number.isInteger(n) && n > 0 && i >= 0 && i < n) { shardIndex = i; shardCount = n; }
-  }
-  const candidates = [];
-  for (const show of shows) {
-    const id = String(show.apple_collection_id);
-    if (shardCount && Number(id) % shardCount !== shardIndex) continue; // parallel sharded run — disjoint slice, no collision with sibling shards
-    if (progress.in_flight[id]) continue;
-    const entry = classification.entries[id];
-    if (entry && entry.source && entry.source.startsWith(NEW_PIPELINE_SOURCE_PREFIX)) continue; // already reclassified
-
-    const failed = progress.failed_fetch[id];
-    if (failed && failed.attempts < maxFetchAttempts && now - new Date(failed.last_attempt_at).getTime() < RETRY_COOLDOWN_MS) {
-      continue; // in cooldown, try again later
-    }
-    candidates.push(show);
-  }
-  // Prioritize known-bad sources first (llm-title-genre, the distrusted
-  // refinement) so the least-trustworthy tags get replaced soonest; then
-  // genre-map-only; then never-classified.
-  const rank = (show) => {
-    const e = classification.entries[String(show.apple_collection_id)];
-    if (!e) return 0; // never classified — mildly urgent (no signal at all)
-    if (e.source === "llm-title-genre") return 2; // most urgent — known-distrusted
-    if (e.source === "genre-map") return 1;
-    return 0;
-  };
-  candidates.sort((a, b) => rank(b) - rank(a));
-  return candidates.slice(0, batchSize);
-}
-
-function selectEscalateCandidates(shows, classification, progress, batchSize) {
-  const byId = new Map(shows.map((s) => [String(s.apple_collection_id), s]));
-  const candidates = [];
-  for (const [id, entry] of Object.entries(classification.entries)) {
-    if (entry.source !== "classify-agent-tier1") continue;
-    if (!entry.needs_review) continue;
-    if (progress.in_flight[id]) continue;
-    const show = byId.get(id);
-    if (show) candidates.push({ show, priorResult: entry });
-  }
-  return candidates.slice(0, batchSize);
-}
-
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  parseShard(args.shard); // fail loudly, before any network work, on a malformed --shard
+
+  /* `--shard` is meaningless in escalate mode: selectEscalateCandidates has no
+     shard support and no ordering, so six routines passing six different shards
+     would all select the identical batch — the same duplicate work the flag
+     exists to prevent, in the other mode. Refuse rather than ignore. */
+  if (args.mode === "escalate" && args.shard !== null) {
+    throw new Error("--shard is not supported with --mode escalate (the escalate selector cannot shard). Run escalation as a single routine.");
+  }
+
+  /* Resolve fast-xml-parser HERE, eagerly, outside any try. It is required
+     lazily so this module stays importable without backend/node_modules (CI's
+     data-and-site job never installs them), but a SCRIPT run must die on line one
+     if it is missing. Left to resolve inside parseShowSignal's try, a missing
+     dependency became MODULE_NOT_FOUND in the per-show catch: every feed in the
+     batch recorded a `failed_fetch`, and after three such runs the shows went
+     down the DEGRADED path and got permanently classified on Tier-0 genre alone.
+     A broken environment must not quietly become bad data. */
+  xmlParser();
+
+  mkdirSync(join(ROOT, "data-local"), { recursive: true });
   const now = Date.now();
   const batchId = `${args.mode}-${new Date(now).toISOString().slice(0, 10)}-${randomUUID().slice(0, 8)}`;
 
@@ -333,19 +403,7 @@ async function main() {
       }
     }
 
-    batchShows.push({
-      apple_collection_id: show.apple_collection_id,
-      title: show.title,
-      apple_genre: show.apple_genre ?? null,
-      chart_genre_name: show.chart_genre_name ?? null,
-      chart_rank: show.chart_rank ?? null,
-      tier0_prior: tier0,
-      signal_fetch_status: signal.error ? "failed_degraded" : "ok",
-      description: signal.description ?? null,
-      episodes: signal.episodes ?? [],
-      transcript_excerpts: transcriptExcerpts.length ? transcriptExcerpts : undefined,
-      prior_result: priorResult ? { topics: priorResult.topics, needs_review: priorResult.needs_review, rationale: priorResult.rationale } : undefined
-    });
+    batchShows.push(batchShowFrom(show, tier0, signal, priorResult, transcriptExcerpts));
 
     progress.in_flight[id] = { batch_id: batchId, reserved_at: new Date(now).toISOString() };
   }
@@ -364,6 +422,8 @@ async function main() {
     generated_at: new Date(now).toISOString(),
     taxonomy_path: "data/taxonomy.json",
     genre_map_path: "data/genre-taxonomy-map.json",
+    label_schema_version: LABEL_SCHEMA_VERSION,
+    shard: args.shard ?? null, // which slice this run took, so a batch file explains itself later
     shows: batchShows
   };
   writeFileSync(outPath, JSON.stringify(batch, null, 2) + "\n");
@@ -374,7 +434,11 @@ async function main() {
   console.log(`CLASSIFY_BATCH_PREPARED: ${outPath} (batch_id=${batchId}, mode=${args.mode}, tier=${batch.tier}, shows=${batchShows.length})`);
 }
 
-main().catch((e) => {
-  console.error("FATAL:", e);
-  process.exit(1);
-});
+/* Only run when invoked as a script, so the selection and label helpers above
+   can be imported by tools/classify/*.test.mjs. */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => {
+    console.error("FATAL:", e);
+    process.exit(1);
+  });
+}

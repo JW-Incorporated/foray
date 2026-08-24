@@ -1,0 +1,3 @@
+# PDF fixtures are binary; without this the repo-wide text=auto normalizes
+# line endings inside them and shifts every xref offset.
+*.pdf binary

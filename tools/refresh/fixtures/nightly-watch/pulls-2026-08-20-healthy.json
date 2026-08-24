@@ -1,0 +1,525 @@
+[
+ {
+  "number": 289,
+  "title": "Nightly refresh: +29 episodes (2026-08-20)",
+  "headRefName": "nightly/2026-08-20",
+  "state": "MERGED",
+  "mergedAt": "2026-08-20T11:45:52Z",
+  "createdAt": "2026-08-20T11:44:31Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/289",
+  "_synthetic": "The PR the agent never opened. Every other row in this file is real; see README.md. The number collides with a real, unrelated #289 — no verdict depends on it."
+ },
+ {
+  "number": 288,
+  "title": "The Android build stops belonging to one machine: a Linux CI job, and a recipe for rebuilding the toolchain (#245)",
+  "headRefName": "fix/245-android-toolchain",
+  "state": "OPEN",
+  "mergedAt": null,
+  "createdAt": "2026-08-19T17:57:21Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/288"
+ },
+ {
+  "number": 287,
+  "title": "Narration is the spine now, so every claim it makes has to be fetched before it is spoken (#247)",
+  "headRefName": "feat/narration-architecture",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T17:34:58Z",
+  "createdAt": "2026-08-19T17:33:45Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/287"
+ },
+ {
+  "number": 286,
+  "title": "The `foray-v5` bump landed in #241; three places still asked someone to do it",
+  "headRefName": "docs/foray-v5-landed",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T15:54:43Z",
+  "createdAt": "2026-08-19T15:53:31Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/286"
+ },
+ {
+  "number": 285,
+  "title": "The item that told three agents path-policy was report-only no longer says so, and its prerequisite is met",
+  "headRefName": "docs/human-actions-path-policy",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T15:45:44Z",
+  "createdAt": "2026-08-19T15:44:32Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/285"
+ },
+ {
+  "number": 284,
+  "title": "Nightly refresh: +30 episodes (2026-08-19)",
+  "headRefName": "nightly/2026-08-19",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T11:45:41Z",
+  "createdAt": "2026-08-19T11:44:29Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/284"
+ },
+ {
+  "number": 283,
+  "title": "The path-policy comments say \"until then\"; then already happened",
+  "headRefName": "docs/enforce-is-on",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T11:43:20Z",
+  "createdAt": "2026-08-19T11:39:55Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/283"
+ },
+ {
+  "number": 282,
+  "title": "Document frequency is a fraction on both sides of search-engine.js, so query expansion stops drifting with the catalogue (#275)",
+  "headRefName": "fix/275-relative-tagdf",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T11:43:18Z",
+  "createdAt": "2026-08-19T11:37:27Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/282"
+ },
+ {
+  "number": 281,
+  "title": "Legal documents cite symbols, not line numbers, and the citations are pinned in both directions",
+  "headRefName": "docs/anchor-code-citations",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T10:40:35Z",
+  "createdAt": "2026-08-19T10:39:25Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/281"
+ },
+ {
+  "number": 280,
+  "title": "Saved playlists stop decaying: each part carries its own row, and the pool can no longer shorten one (#276)",
+  "headRefName": "fix/276-playlist-decay",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T08:22:53Z",
+  "createdAt": "2026-08-19T08:21:49Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/280"
+ },
+ {
+  "number": 278,
+  "title": "Alcohol coverage report: 1 strong / 15 thin / 47 empty, and Act I has no strong tape at all (#226)",
+  "headRefName": "foray/226-alcohol-stage2",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T08:04:17Z",
+  "createdAt": "2026-08-19T08:03:08Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/278"
+ },
+ {
+  "number": 277,
+  "title": "A green test is not evidence until you have broken it",
+  "headRefName": "docs/green-test-rule",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T08:35:25Z",
+  "createdAt": "2026-08-19T07:44:22Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/277"
+ },
+ {
+  "number": 274,
+  "title": "The app ships a bounded slice of the catalogue, not the catalogue: 2.98 MB of 3.00 becomes 1.96, and the cap stays",
+  "headRefName": "perf/bundle-discover-trim",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T06:25:55Z",
+  "createdAt": "2026-08-19T06:14:19Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/274"
+ },
+ {
+  "number": 273,
+  "title": "Catalogue tape search: Act IV cannot be closed from the catalogue, and the ASR queue is already empty (#226)",
+  "headRefName": "grilling-tape-sourcing",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T04:53:48Z",
+  "createdAt": "2026-08-19T04:52:42Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/273"
+ },
+ {
+  "number": 272,
+  "title": "mobile/ does not auto-merge, and six files said it did (a wrong reason, a right decision)",
+  "headRefName": "docs/automerge-premise",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T04:54:55Z",
+  "createdAt": "2026-08-19T04:27:13Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/272"
+ },
+ {
+  "number": 271,
+  "title": "Android gets a lock screen: implement the mediaSession the WebView switched off (#27, on #244, #245)",
+  "headRefName": "feat/android-mediasession-27",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T03:11:00Z",
+  "createdAt": "2026-08-19T02:49:16Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/271"
+ },
+ {
+  "number": 270,
+  "title": "Ordering and filtering agree on what better means: a sparse answer stops at the last strong match (#216)",
+  "headRefName": "fix/search-tiering-prefix",
+  "state": "MERGED",
+  "mergedAt": "2026-08-19T01:36:08Z",
+  "createdAt": "2026-08-19T01:00:10Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/270"
+ },
+ {
+  "number": 269,
+  "title": "The player writes down what it measures, and a founder can read it in a car (#264)",
+  "headRefName": "feat/264-local-diagnostic-record",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T21:54:57Z",
+  "createdAt": "2026-08-18T21:53:53Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/269"
+ },
+ {
+  "number": 268,
+  "title": "HUMAN-ACTIONS: four stale items, one of them already done",
+  "headRefName": "docs/human-actions-refresh-2",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T21:39:54Z",
+  "createdAt": "2026-08-18T21:38:43Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/268"
+ },
+ {
+  "number": 266,
+  "title": "One press does what the listener meant: the surface reconciles against the element (#263)",
+  "headRefName": "fix/263-visibility-reconcile",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T20:30:03Z",
+  "createdAt": "2026-08-18T15:55:59Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/266"
+ },
+ {
+  "number": 265,
+  "title": "Correct one wrong argument and fourteen measurement errors in the coverage report (#226)",
+  "headRefName": "bbq2-review-followup",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T15:48:16Z",
+  "createdAt": "2026-08-18T15:47:13Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/265"
+ },
+ {
+  "number": 262,
+  "title": "Score seven ASR transcripts against the barbecue spine: no beat moves (#226)",
+  "headRefName": "bbq2-beat-scoring",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T15:02:31Z",
+  "createdAt": "2026-08-18T15:01:25Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/262"
+ },
+ {
+  "number": 261,
+  "title": "Extract the D1/D5/M4 boundary fixture, so a Foray can be curated without a test migration (#236)",
+  "headRefName": "fix/236-fixture-extraction",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T19:35:50Z",
+  "createdAt": "2026-08-18T14:43:33Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/261"
+ },
+ {
+  "number": 260,
+  "title": "A narration item's duration is first-class, and the listener's clock is what D1 measures",
+  "headRefName": "feat/narration-duration",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T12:18:39Z",
+  "createdAt": "2026-08-18T12:17:39Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/260"
+ },
+ {
+  "number": 259,
+  "title": "Nightly refresh: +21 episodes (2026-08-18)",
+  "headRefName": "nightly/2026-08-18",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T11:45:13Z",
+  "createdAt": "2026-08-18T11:44:15Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/259"
+ },
+ {
+  "number": 258,
+  "title": "Narration work list and beat cut plan: the barbecue Foray is not fundable at 40 beats (#247)",
+  "headRefName": "docs/narration-work-list",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T10:34:45Z",
+  "createdAt": "2026-08-18T10:33:44Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/258"
+ },
+ {
+  "number": 257,
+  "title": "Narration pipeline: a failed TTS call must never be cached as a success, and six more review fixes (#247)",
+  "headRefName": "fix/narrate-review-253",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T09:37:02Z",
+  "createdAt": "2026-08-18T09:36:09Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/257"
+ },
+ {
+  "number": 256,
+  "title": "Narration craft: the editorial half of the narrator charter (#247)",
+  "headRefName": "docs/narration-craft",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T09:22:21Z",
+  "createdAt": "2026-08-18T09:21:21Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/256"
+ },
+ {
+  "number": 254,
+  "title": "Narrator voice: one voice, and the pronunciation risk that decides the model (#247)",
+  "headRefName": "research/narrator-voice",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T08:21:27Z",
+  "createdAt": "2026-08-18T08:20:22Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/254"
+ },
+ {
+  "number": 253,
+  "title": "Narrator pipeline: hosting recommendation, a dry-run TTS adapter, and the cost figures re-checked (#247)",
+  "headRefName": "feat/narrator-pipeline",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T08:13:21Z",
+  "createdAt": "2026-08-18T08:12:18Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/253"
+ },
+ {
+  "number": 252,
+  "title": "Sense-locked stems, and the fourth copy of the matcher (#248, #249)",
+  "headRefName": "fix/248-249-sense-lock",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T07:18:29Z",
+  "createdAt": "2026-08-18T07:12:09Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/252"
+ },
+ {
+  "number": 251,
+  "title": "Act IV gets its authorship spine: five beats off empty, and beat 20 gets a clean no (#226)",
+  "headRefName": "foray/act4-authorship-tape",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T06:45:23Z",
+  "createdAt": "2026-08-18T06:44:30Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/251"
+ },
+ {
+  "number": 250,
+  "title": "Spine for a new Foray: all the forms of alcohol, written source-blind (#226)",
+  "headRefName": "docs/alcohol-forms-spine",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T06:16:28Z",
+  "createdAt": "2026-08-18T06:15:29Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/250"
+ },
+ {
+  "number": 246,
+  "title": "`grill` reaches `grilling`, and the third copy of the matcher dies (#218, #219)",
+  "headRefName": "fix/218-219-suffix-matcher",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T06:21:23Z",
+  "createdAt": "2026-08-18T05:49:41Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/246"
+ },
+ {
+  "number": 244,
+  "title": "A home for Android's native code, and the mediaPlayback foreground service in it (#27, on #37)",
+  "headRefName": "feat/android-native-fgs",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T03:56:13Z",
+  "createdAt": "2026-08-18T03:45:14Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/244"
+ },
+ {
+  "number": 242,
+  "title": "Playback speed: 0.75x to 2x, and it survives a seam",
+  "headRefName": "feature/playback-speed",
+  "state": "MERGED",
+  "mergedAt": "2026-08-18T01:41:37Z",
+  "createdAt": "2026-08-18T01:40:38Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/242"
+ },
+ {
+  "number": 241,
+  "title": "Serve app.js, player/*.js and data/*.json from one generation (#233)",
+  "headRefName": "fix/233-sw-generation-pairing",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T23:55:15Z",
+  "createdAt": "2026-08-17T23:20:20Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/241"
+ },
+ {
+  "number": 240,
+  "title": "ANSWERED: the ~26 s hidden-suspension ceiling is real, and its cause is a Simulator-only entitlement gap (#38)",
+  "headRefName": "probe/hidden-ceiling",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T23:16:42Z",
+  "createdAt": "2026-08-17T22:46:53Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/240"
+ },
+ {
+  "number": 239,
+  "title": "A hidden page gets 20 s to load a segment; a visible one keeps 10 s",
+  "headRefName": "fix/hidden-load-deadline",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T21:25:58Z",
+  "createdAt": "2026-08-17T21:25:02Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/239"
+ },
+ {
+  "number": 238,
+  "title": "Close two review findings from #237: a vacuous L4 gate and an unraised declaration floor",
+  "headRefName": "stage4/review-followup",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T20:46:33Z",
+  "createdAt": "2026-08-17T20:45:36Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/238"
+ },
+ {
+  "number": 237,
+  "title": "Ship the on-plot short version as grilling-history-2, and re-sort the ASR queue against the spine (#226)",
+  "headRefName": "stage4/grilling-history-1-rebuild",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T20:37:05Z",
+  "createdAt": "2026-08-17T20:36:09Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/237"
+ },
+ {
+  "number": 235,
+  "title": "Park the seam handover: it was measured DROPPING a segment, not shortening a gap",
+  "headRefName": "fix/seam-prefetch-off",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T20:14:28Z",
+  "createdAt": "2026-08-17T20:13:29Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/235"
+ },
+ {
+  "number": 234,
+  "title": "Start a Foray inside the tap, and say so when a start fails (#225)",
+  "headRefName": "fix/start-path-225",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T19:17:06Z",
+  "createdAt": "2026-08-17T19:16:02Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/234"
+ },
+ {
+  "number": 232,
+  "title": "The Android shell builds, and the CSP risk #36 left open is answered (#37)",
+  "headRefName": "feat/android-shell",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T19:36:12Z",
+  "createdAt": "2026-08-17T19:15:06Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/232"
+ },
+ {
+  "number": 231,
+  "title": "HUMAN-ACTIONS: items 11 and 16 had gone stale under the code",
+  "headRefName": "docs/human-actions-refresh",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T19:02:16Z",
+  "createdAt": "2026-08-17T19:01:07Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/231"
+ },
+ {
+  "number": 230,
+  "title": "Coverage report for grilling-history-1: which beats real tape can serve (#226)",
+  "headRefName": "foray/226-stage2-coverage",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T18:19:59Z",
+  "createdAt": "2026-08-17T18:19:05Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/230"
+ },
+ {
+  "number": 228,
+  "title": "Spine for grilling-history-1: the history of barbecue, written source-blind (#226)",
+  "headRefName": "spine/barbecue-source-blind-226",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T16:44:46Z",
+  "createdAt": "2026-08-17T16:43:46Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/228"
+ },
+ {
+  "number": 227,
+  "title": "Prefetch the next segment so a seam is 2 seconds, not 9 (#111)",
+  "headRefName": "feat/seam-prefetch",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T16:32:34Z",
+  "createdAt": "2026-08-17T16:31:37Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/227"
+ },
+ {
+  "number": 222,
+  "title": "Unblock the nightly (#214): the \"nba\" search case is stale, not a caught bug",
+  "headRefName": "fix/nba-search-case",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T18:15:08Z",
+  "createdAt": "2026-08-17T15:44:55Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/222"
+ },
+ {
+  "number": 221,
+  "title": "The shell's two governed docs, split out of #209 so the shell can auto-merge",
+  "headRefName": "docs/shell-governed",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T18:22:45Z",
+  "createdAt": "2026-08-17T14:06:19Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/221"
+ },
+ {
+  "number": 220,
+  "title": "Measure whether a Foray's SEAM TRANSITION survives backgrounding on iOS - and retract the reading that said we needed native audio (#28, #35)",
+  "headRefName": "feat/ios-native-outpoint",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T18:12:41Z",
+  "createdAt": "2026-08-17T13:39:24Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/220"
+ },
+ {
+  "number": 215,
+  "title": "Delete my data: the in-app control Play's deletion question needs (#42)",
+  "headRefName": "feat/delete-my-data",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T11:55:16Z",
+  "createdAt": "2026-08-17T11:54:15Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/215"
+ },
+ {
+  "number": 214,
+  "title": "Nightly refresh: +24 episodes (2026-08-17)",
+  "headRefName": "nightly/2026-08-17",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T18:51:53Z",
+  "createdAt": "2026-08-17T11:47:32Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/214"
+ },
+ {
+  "number": 213,
+  "title": "Build the iOS shell on a macOS runner, and measure three claims we only believe (#38)",
+  "headRefName": "ci/ios-build",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T12:43:36Z",
+  "createdAt": "2026-08-17T10:42:57Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/213"
+ },
+ {
+  "number": 212,
+  "title": "Store paperwork: privacy policy + both stores' data-safety declarations, audited from the code (#42)",
+  "headRefName": "docs/privacy-and-data-safety",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T10:31:27Z",
+  "createdAt": "2026-08-17T10:30:32Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/212"
+ },
+ {
+  "number": 211,
+  "title": "Kill the wall-clock flake, and land what survives of #198",
+  "headRefName": "fix/flake-and-198",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T18:48:12Z",
+  "createdAt": "2026-08-17T10:16:38Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/211"
+ },
+ {
+  "number": 210,
+  "title": "chore: union-merge STATE.md so additive workstream entries stop stalling PRs",
+  "headRefName": "chore/state-union-merge",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T12:43:32Z",
+  "createdAt": "2026-08-17T09:39:13Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/210"
+ },
+ {
+  "number": 209,
+  "title": "MP2: the native app shell — Capacitor in its own directory, and the four changes it forces (#36)",
+  "headRefName": "feat/capacitor-shell",
+  "state": "MERGED",
+  "mergedAt": "2026-08-17T14:06:42Z",
+  "createdAt": "2026-08-17T09:10:22Z",
+  "url": "https://github.com/JW-Incorporated/foray/pull/209"
+ }
+]

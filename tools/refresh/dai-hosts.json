@@ -1,0 +1,76 @@
+{
+  "_doc": "Hosts known to do dynamic ad insertion (DAI). See issue #22 and docs/brief/05_CORNER_CASES.md #2. A DAI host stitches ads per request, so total duration varies between copies of the same episode and any timestamp derived from one copy misaligns against another. This gates seek precision (#30) — never delete an entry without reading that issue. Edited by hand as we learn; matching is on the RESOLVED host (after redirects), because prefix trackers hide the real one. Suffix match, so 'megaphone.fm' also covers 'dcs-cached.megaphone.fm'.",
+  "_matching": "suffix",
+  "hosts": [
+    {
+      "host": "megaphone.fm",
+      "why": "Spotify's podcast ad platform; DAI is its core product. Reached via the pdst.fm and www.podtrac.com prefixes in this catalogue."
+    },
+    {
+      "host": "art19.com",
+      "why": "Amazon-owned ad-insertion platform; stitching is the product, not an add-on."
+    },
+    {
+      "host": "acast.com",
+      "why": "Acast serves stitched ads per request."
+    },
+    {
+      "host": "omny.fm",
+      "why": "iHeart's platform; dynamic insertion by default."
+    },
+    {
+      "host": "simplecast.com",
+      "why": "Simplecast dynamic ad insertion."
+    },
+    {
+      "host": "simplecastaudio.com",
+      "why": "Simplecast's audio CDN, incl. the injector.* and stitcher.* subdomains — the names are the giveaway."
+    },
+    {
+      "host": "spreaker.com",
+      "why": "iHeart-owned; supports dynamic insertion."
+    },
+    {
+      "host": "anchor.fm",
+      "why": "Spotify Anchor inserts sponsor reads dynamically."
+    },
+    {
+      "host": "tritondigital.com",
+      "why": "Triton's mc.* media delivery is ad-tech infrastructure with insertion enabled. Conservative: some public-broadcaster feeds on it may in fact be static."
+    },
+    {
+      "host": "podbean.com",
+      "why": "Podbean's hosting tier includes dynamic ad insertion; treat the whole platform as stitched."
+    },
+    {
+      "host": "buzzsprout.com",
+      "why": "Buzzsprout dynamic ad insertion."
+    },
+    {
+      "host": "captivate.fm",
+      "why": "Captivate inserts pre/mid/post rolls dynamically at request time."
+    },
+    {
+      "host": "transistor.fm",
+      "why": "Transistor supports dynamic ad insertion on its hosted audio CDN."
+    },
+    {
+      "host": "redcircle.com",
+      "why": "RedCircle's business is programmatic insertion."
+    },
+    {
+      "host": "omnycontent.com",
+      "why": "Omny's delivery CDN (6b8m1.omnycontent.com etc). Listing omny.fm alone missed it — the platform domain and the CDN domain differ."
+    },
+    {
+      "host": "prxu.org",
+      "why": "PRX Dovetail (dovetail-cdn.prxu.org) is an ad-insertion platform, not a plain CDN."
+    }
+  ],
+  "_not_dai_note": "Deliberately NOT listed, because they serve a static file: traffic.libsyn.com, media.blubrry.com / content.blubrry.com, feeds.soundcloud.com, and self-hosted CDNs. Libsyn and Blubrry do offer DAI as an add-on, so if an episode on one of them ever shows drifting chapter marks, promote the specific show rather than the whole host.",
+  "_prefixes_note": "podtrac.com, dts.podtrac.com, pdst.fm, pdrl.fm, pscrb.fm, mgln.ai and chartable are download-measurement PREFIXES, not origins. They are never classified directly — the classifier follows redirects and matches whatever they land on. Measured: pdst.fm -> dcs-cached.megaphone.fm (DAI), podtrac.com -> mc.tritondigital.com, mgln.ai -> mc.tritondigital.com.",
+  "_unverified_note": "Opaque CloudFront distributions seen in this catalogue and NOT classified, because a hash can be reassigned and we will not assert ownership we cannot verify: d3ctxlq1ktw2nl.cloudfront.net (5 shows), d11untcg2uthr3.cloudfront.net (5), d2ffk1w24woq0d.cloudfront.net (2). If chapter marks ever drift on a show behind one of these, that is the evidence needed to promote it. Same for waaa.wnyc.org, where some but not all shows carry dynamic ads.",
+  "_chain_resolves_two_of_these": "MEASURED 2026-08-23, and it settles the first entry without adding a host. This note used to read 'd3ctxlq1ktw2nl.cloudfront.net (5 shows, widely reported as Simplecast)'. It is not Simplecast: matching on the whole redirect chain rather than its last hop shows all five shows arriving via anchor.fm -> d3ctxlq1ktw2nl.cloudfront.net, and anchor.fm has been on the list since #22. Re-resolving all 79 curated shows currently classified static produced exactly those five and no others, so the remaining two hashes (d11untcg2uthr3, d2ffk1w24woq0d - 7 shows) carry no known platform anywhere in their chains and stay unverified. The hashes are still NOT listed and should not be: the chain now names the platform dynamically, which is strictly better than pinning a distribution id that can be reassigned. See resolveChain in dai.mjs.",
+  "_data_is_STALE_against_this_note": "READ THIS BEFORE TRUSTING data/dai-classification.json. The five anchor.fm shows above - Within Tolerance, Geology Bites, The Engineering History Podcast, The Physiology of Endurance Running Podcast, MTDCNC Podcast - are still recorded there as dai:false, reason:'unknown', and their 18 items in discover.json still carry dai_suspected:false, which is what seek-policy.js reads to grant exact hard-seek. No cached entry has a resolved_chain, so --reclassify CANNOT repair them: it judges the cached resolved_host, which is the CloudFront hash, and matches nothing. Only 'node tools/refresh/classify-dai.mjs --recheck' goes and gets the chain. That was deliberately NOT run on the branch that measured this: flipping the flag changes shipped seek precision on 18 items, and 0 timed transcripts turn on it (Geology Bites is the only one of the five shipping any, and it is in AD_FREE_SHOWS, so isAnchorableShow keeps it either way). It is a founder call, not an automerge.",
+  "_adswizz_note": "adswizz.podigee-cdn.net is AdsWizz, an ad-insertion company, and is deliberately still NOT listed. Measured 2026-08-23 by tools/segments/measure-suspects.mjs across two Podigee shows, 5 episodes each: Apokalypse & Filterkaffee 0/5 episodes carried an insert (a flat -0.1%, a stripped tag), Auf den Punkt 1/5 (+24 s). One insert on one show is evidence about that show, not a platform-wide claim, and listing the host would flag every future Podigee feed on it. tools/segments/breadth-yield.mjs already labels this origin via AD_TECH_HOST_MARKERS, which is the 'label, never exclude' position. Promote it if a third Podigee show measures dirty."
+}

@@ -1,0 +1,566 @@
+{
+ "version": 1,
+ "built_at": "2026-08-19T11:43:46.428Z",
+ "items": [
+  {
+   "id": "the-race-f1-podcast--driving-style-secrets-we-answer-your",
+   "show": "The Race F1 Podcast",
+   "title": "Driving Style Secrets: We answer your questions about five 21st century greats",
+   "apple_track_id": 1000783423663,
+   "release_date": "2026-08-15"
+  },
+  {
+   "id": "masters-of-scale--pioneers-of-ai-why-ai-conversations",
+   "show": "Masters of Scale",
+   "title": "Pioneers of AI:  Why AI conversations are always one-sided",
+   "apple_track_id": 1000783423297,
+   "release_date": "2026-08-15"
+  },
+  {
+   "id": "common-descent--episode-250-camels",
+   "show": "The Common Descent Podcast",
+   "title": "Episode 250 - Camels",
+   "apple_track_id": 1000783536278,
+   "release_date": "2026-08-16"
+  },
+  {
+   "id": "casefile--case-348-toyah-cordingley",
+   "show": "Casefile True Crime",
+   "title": "Case 348: Toyah Cordingley",
+   "apple_track_id": 1000781038037,
+   "release_date": "2026-08-15"
+  },
+  {
+   "id": "wow-in-the-world--wewow-on-the-weekend-popsicle-stick",
+   "show": "Wow in the World",
+   "title": "WeWow on the Weekend: Popsicle Stick Sculptures, Ducks, and Bread!",
+   "apple_track_id": 1000783562108,
+   "release_date": "2026-08-16"
+  },
+  {
+   "id": "conan-obrien-needs-a-friend--gillian-anderson",
+   "show": "Conan O'Brien Needs a Friend",
+   "title": "Gillian Anderson",
+   "apple_track_id": 1000780293873,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3400",
+   "show": "Engines of Our Ingenuity",
+   "title": "The Engines of Our Ingenuity 3400: Hell-Broth",
+   "apple_track_id": 1000783745503,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "twenty-minute-vc--20vc-uber-president-on-budgeting-ai",
+   "show": "The Twenty Minute VC (20VC)",
+   "title": "20VC: Uber President on Budgeting AI at Uber: How AI Helps and Hurts Uber | Why Autonomy Is Existential | How to Beat DoorDash to #1 in Food | The Untold Stories of Travis Kalanick, Dara Khosrowshahi and China with Andrew MacDonald",
+   "apple_track_id": 1000783757706,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "fly-on-the-wall--mcdonald-s-mustard-and-snl-wigs",
+   "show": "Fly on the Wall with Dana Carvey and David Spade",
+   "title": "McDonald’s Mustard and SNL Wigs",
+   "apple_track_id": 1000783756453,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "science-for-sport-podcast--333-why-athletes-keep-breaking-down",
+   "show": "Science for Sport Podcast",
+   "title": "333: Why Athletes Keep Breaking Down",
+   "apple_track_id": 1000783742720,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "you-are-not-so-smart--346-no-nocebo-effect-helen-pilcher",
+   "show": "You Are Not So Smart",
+   "title": "346 - No Nocebo Effect - Helen Pilcher",
+   "apple_track_id": 1000783742490,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "partially-examined-life--ep-398-donald-davidson-on-mind",
+   "show": "The Partially Examined Life Philosophy Podcast",
+   "title": "Ep. 398: Donald Davidson on Mind vs. Body (Part One)",
+   "apple_track_id": 1000783730547,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "how-i-built-this--bobbie-laura-modi-how-a-baby",
+   "show": "How I Built This with Guy Raz",
+   "title": "Bobbie: Laura Modi. How a Baby Formula Startup Took Market Share From Two Industry Giants",
+   "apple_track_id": 1000783757014,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "the-matt-walker-podcast--148-psychedelics-for-mental-health",
+   "show": "The Matt Walker Podcast",
+   "title": "#148 - Psychedelics for Mental Health",
+   "apple_track_id": 1000783757294,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "the-peter-attia-drive--404-mental-health-beyond-neurotransmitters-the",
+   "show": "The Peter Attia Drive",
+   "title": "#404 ‒ Mental health beyond neurotransmitters: the role of hormones in psychiatry, why symptom reduction isn't enough, and the future of psychedelic therapies | Linus Abrams, M.D.",
+   "apple_track_id": 1000783738434,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "strict-scrutiny--all-the-president-s-henchmen",
+   "show": "Strict Scrutiny",
+   "title": "All the President’s Henchmen",
+   "apple_track_id": 1000783755202,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "happiness-lab--the-life-changing-power-of-a",
+   "show": "The Happiness Lab with Dr. Laurie Santos",
+   "title": "The Life-Changing Power of a Sabbatical",
+   "apple_track_id": 1000783362495,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "ten-percent-happier--you-can-get-through-it-how",
+   "show": "10% Happier with Dan Harris",
+   "title": "You Can Get Through It: How to Handle the Hardest Things That Will Ever Happen to You | Dr. Lucy Hone",
+   "apple_track_id": 1000783319194,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "mel-robbins-podcast--former-cia-spy-how-to-eliminate",
+   "show": "The Mel Robbins Podcast",
+   "title": "Former CIA Spy: How to Eliminate Self-Doubt, Build Confidence, and Protect Yourself in Today’s World",
+   "apple_track_id": 1000783324323,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "happier-gretchen-rubin--little-happier-why-nba-star-jalen",
+   "show": "Happier with Gretchen Rubin",
+   "title": "Little Happier: Why NBA Star Jalen Brunson Values Persistence over Pyrotechnics",
+   "apple_track_id": 1000779797157,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "armchair-expert--david-sedaris-6",
+   "show": "Armchair Expert with Dax Shepard",
+   "title": "David Sedaris #6",
+   "apple_track_id": 1000783758499,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "comedy-bang-bang--shine-the-vinyl-kristian-bruun-lily",
+   "show": "Comedy Bang Bang: The Podcast",
+   "title": "Shine The Vinyl (Kristian Bruun, Lily Sullivan, Emily Pendergast)",
+   "apple_track_id": 1000783750732,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "working-it-out-birbiglia--221-ron-funches-say-what-you",
+   "show": "Mike Birbiglia's Working It Out",
+   "title": "221. Ron Funches: Say What You Want",
+   "apple_track_id": 1000783718937,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "lore--legends-86-litmus-test",
+   "show": "Lore",
+   "title": "Legends 86: Litmus Test",
+   "apple_track_id": 1000768425288,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "crime-junkie--new-show-the-truth-about-natalie",
+   "show": "Crime Junkie",
+   "title": "NEW SHOW: The Truth About Natalie",
+   "apple_track_id": 1000783006879,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "wicked-words--tori-telfer-criminal-broads",
+   "show": "Wicked Words - A True Crime Talk Show with Kate Winkler Dawson",
+   "title": "Tori Telfer: Criminal Broads",
+   "apple_track_id": 1000783755499,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "this-american-life--895-label-maker",
+   "show": "This American Life",
+   "title": "895: Label Maker!",
+   "apple_track_id": 1000783492833,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "where-should-we-begin--can-i-be-loved",
+   "show": "Where Should We Begin? with Esther Perel",
+   "title": "Can I Be Loved?",
+   "apple_track_id": 1000778057746,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "wow-in-the-world--practice-makes-permanent-how-repetition-rewires",
+   "show": "Wow in the World",
+   "title": "Practice Makes Permanent: How Repetition Rewires Your Brain!",
+   "apple_track_id": 1000783754700,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "cbc-ideas--how-to-brace-for-a-world",
+   "show": "CBC Ideas",
+   "title": "How to brace for a world of unheard-of conditions",
+   "apple_track_id": 1000783935255,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "smartless--tim-robbins",
+   "show": "SmartLess",
+   "title": "\"Tim Robbins\"",
+   "apple_track_id": 1000781330911,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "my-brother-my-brother-and-me--mbmbam-827-advanced-jesus-studies-for",
+   "show": "My Brother, My Brother and Me",
+   "title": "MBMBaM 827: Advanced Jesus Studies for Men",
+   "apple_track_id": 1000783904200,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "making-chips--groundcontrol-turning-first-articles-from-a",
+   "show": "Making Chips Podcast for Manufacturing Leaders",
+   "title": "GroundControl: Turning First Articles From a Bottleneck Into an Advantage | Ep. 536",
+   "apple_track_id": 1000783820010,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3401",
+   "show": "Engines of Our Ingenuity",
+   "title": "The Engines of Our Ingenuity 3401: Two Views of a Polymath",
+   "apple_track_id": 1000783990126,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "this-week-in-startups--bittensor-creator-const-on-affine-dtao",
+   "show": "This Week in Startups",
+   "title": "Bittensor creator Const on Affine, dTAO, \"mining reasoning,\" and more | E2326",
+   "apple_track_id": 1000783932664,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "this-podcast-will-kill-you--ep-219-the-brown-recluse-fearsome",
+   "show": "This Podcast Will Kill You",
+   "title": "Ep 219 The Brown Recluse: Fearsome foe or slandered spider?",
+   "apple_track_id": 1000784002799,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "switched-on-pop--we-have-confessions-to-make",
+   "show": "Switched on Pop",
+   "title": "We have Confessions to make...",
+   "apple_track_id": 1000784001721,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "advent-of-computing--episode-187-what-s-better-than",
+   "show": "Advent of Computing",
+   "title": "Episode 187 - What's Better Than Binary?",
+   "apple_track_id": 1000783957239,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "odd-lots--what-the-openai-hugging-face-hack",
+   "show": "Odd Lots",
+   "title": "What the OpenAI-Hugging Face Hack Really Tells Us About AI Danger",
+   "apple_track_id": 1000783761497,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "hidden-brain--how-to-be-a-better-partner",
+   "show": "Hidden Brain",
+   "title": "How to Be A Better Partner",
+   "apple_track_id": 1000783926574,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "unexplainable--can-these-corals-take-the-heat",
+   "show": "Unexplainable",
+   "title": "Can these corals take the heat?",
+   "apple_track_id": 1000783763446,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "we-have-ways-of-making-you-talk--before-the-storm-midnight-approaches-part",
+   "show": "WW2 Pod: We Have Ways of Making You Talk",
+   "title": "Before The Storm: Midnight Approaches (Part 4)",
+   "apple_track_id": 1000780072940,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "huberman-lab--neuroscience-of-emotions-tools-for-improving",
+   "show": "Huberman Lab",
+   "title": "Neuroscience of Emotions & Tools for Improving Emotion Regulation | Dr. Ralph Adolphs",
+   "apple_track_id": 1000783762747,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "palaeocast--episode-177-cambrian-fecal-revolution",
+   "show": "Palaeocast",
+   "title": "Episode 177: Cambrian Fecal Revolution",
+   "apple_track_id": 1000783909286,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "the-archaeology-show--the-mystery-of-rongorongo-an-etruscan",
+   "show": "The Archaeology Show",
+   "title": "The Mystery of Rongorongo, an Etruscan Well, and a Lost Convent - Ep 338",
+   "apple_track_id": 1000783958319,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "mwa-woodworking--mwa620-joe-bass-returns",
+   "show": "MWA Podcast - Woodworking Conversations",
+   "title": "MWA620 - Joe Bass Returns",
+   "apple_track_id": 1000783980836,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "sigma-nutrition-radio--fiber-independent-benefits-or-just-a",
+   "show": "Sigma Nutrition Radio",
+   "title": "Fiber: Independent Benefits or Just a Proxy for Healthy Foods?",
+   "apple_track_id": 1000783996221,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "kill-tony--781-jeff-arcuri",
+   "show": "KILL TONY",
+   "title": "#781 - JEFF ARCURI",
+   "apple_track_id": 1000783964012,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "morbid--the-hunt-for-john-list-part",
+   "show": "Morbid",
+   "title": "The Hunt for John List (Part 1)",
+   "apple_track_id": 1000783728874,
+   "release_date": "2026-08-17"
+  },
+  {
+   "id": "we-can-do-hard-things--who-invented-gender-amanda-with-alok",
+   "show": "We Can Do Hard Things",
+   "title": "Who Invented Gender? Amanda with ALOK",
+   "apple_track_id": 1000783980840,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "cbc-ideas--david-bowie-took-his-own-death",
+   "show": "CBC Ideas",
+   "title": "David Bowie took his own death as a creative catalyst",
+   "apple_track_id": 1000784164242,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "stuff-you-should-know--isn-t-it-ironic-dontcha-think",
+   "show": "Stuff You Should Know",
+   "title": "Isn't It Ironic, Dontcha Think?",
+   "apple_track_id": 1000784016047,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "mrs-bulletin-materials-news--new-insights-lead-to-control-of",
+   "show": "MRS Bulletin Materials News Podcast",
+   "title": "New insights lead to control of heat transport in ultrathin semiconductors",
+   "apple_track_id": 1000784163724,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3402",
+   "show": "Engines of Our Ingenuity",
+   "title": "The Engines of Our Ingenuity 3402: Absolute Zero",
+   "apple_track_id": 1000784235759,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "wood-talk--shove-a-kregger-in-the-hole",
+   "show": "Wood Talk | Woodworking",
+   "title": "Shove a Kregger in the Hole | 613",
+   "apple_track_id": 1000784201031,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "good-hang-amy-poehler--keke-palmer",
+   "show": "Good Hang with Amy Poehler",
+   "title": "Keke Palmer",
+   "apple_track_id": 1000784058614,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "gastropod--so-hot-right-now-why-we",
+   "show": "Gastropod",
+   "title": "So Hot Right Now: Why We Love the Chile Pepper",
+   "apple_track_id": 1000784129545,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "the-bbq-central-show--bbq-university-hosted-by-man-on",
+   "show": "The BBQ Central Show",
+   "title": "BBQ University Hosted By Man On Fire; Wes Wright Has Wifi Issues...I Guess?",
+   "apple_track_id": 1000784233961,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "99-percent-invisible--the-bone-wars",
+   "show": "99% Invisible",
+   "title": "The Bone Wars",
+   "apple_track_id": 1000782055557,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "ologies-with-alie-ward--mephitology-skunks-with-jerry-dragoo",
+   "show": "Ologies with Alie Ward",
+   "title": "Mephitology (SKUNKS) with Jerry Dragoo",
+   "apple_track_id": 1000784234527,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "spycast--what-it-takes-to-run-the",
+   "show": "SpyCast",
+   "title": "What It Takes to Run the CIA's Southeast Asia Department",
+   "apple_track_id": 1000784092010,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "software-engineering-daily--how-llms-are-reshaping-recommendation-systems",
+   "show": "Software Engineering Daily",
+   "title": "How LLMs Are Reshaping Recommendation Systems",
+   "apple_track_id": 1000784016442,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "freakonomics-radio--meet-warren-zanes-the-author-and",
+   "show": "Freakonomics Radio",
+   "title": "Meet Warren Zanes, the Author and Rocker Behind the Springsteen Movie | Better in Person",
+   "apple_track_id": 1000784193807,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "f1-beyond-the-grid--legends-damon-hill-from-humiliation-to",
+   "show": "F1 Beyond The Grid",
+   "title": "LEGENDS: Damon Hill – from ‘humiliation’ to World Champion",
+   "apple_track_id": 1000784184922,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "the-race-f1-podcast--driver-market-moves-cadillac-s-shock",
+   "show": "The Race F1 Podcast",
+   "title": "Driver market moves, Cadillac's shock change & who Mercedes should fear - Our Dutch GP F1 predictions",
+   "apple_track_id": 1000784160981,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "energy-gang--america-s-new-gas-boom-can",
+   "show": "Energy Gang",
+   "title": "America’s new gas boom. Can the industry meet soaring demand to power AI and export LNG while keeping energy affordable at home?",
+   "apple_track_id": 1000784090920,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "business-wars--warby-parker-vs-luxottica-getting-vertical",
+   "show": "Business Wars",
+   "title": "Warby Parker vs Luxottica | Getting Vertical | 2",
+   "apple_track_id": 1000782841317,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "masters-of-scale--what-the-jobs-report-isn-t",
+   "show": "Masters of Scale",
+   "title": "What the jobs report isn't telling you about AI & the workforce, with Upwork’s Hayden Brown",
+   "apple_track_id": 1000784014257,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "unauthorized-history-pacific-war--empire-of-ashes-truman-hirohito-and",
+   "show": "The Unauthorized History of the Pacific War",
+   "title": "Empire of Ashes-Truman, Hirohito and Total War with James Scott – Episode 613",
+   "apple_track_id": 1000784019742,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "history-of-wwii-podcast--episode-647-here-comes-chesty-puller",
+   "show": "The History of WWII Podcast",
+   "title": "Episode 647-Here Comes Chesty Puller",
+   "apple_track_id": 1000784130344,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "tiny-matters--giant-viruses-how-these-amoeba-infecting",
+   "show": "Tiny Matters",
+   "title": "Giant viruses: How these amoeba-infecting behemoths are rewriting the rules of virology",
+   "apple_track_id": 1000784237184,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "weather-geeks--holding-fast-in-heavy-seas",
+   "show": "Weather Geeks",
+   "title": "Holding Fast in Heavy Seas",
+   "apple_track_id": 1000784251503,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "shipwrecks-and-sea-dogs--lost-without-a-trace-the-marine",
+   "show": "Shipwrecks and Sea Dogs",
+   "title": "Lost Without a Trace: The Marine Sulphur Queen",
+   "apple_track_id": 1000783963378,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "ten-percent-happier--you-can-stop-fixing-yourself-buddhist",
+   "show": "10% Happier with Dan Harris",
+   "title": "You Can Stop Fixing Yourself: Buddhist Advice on Boundaries, Rituals, and Dropping Your Self-Aggression | Susan Piver",
+   "apple_track_id": 1000783907479,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "happier-gretchen-rubin--ep-600-600-episodes-of-happier",
+   "show": "Happier with Gretchen Rubin",
+   "title": "Ep. 600: 600 Episodes of Happier! Listeners Share the Ideas that Stuck",
+   "apple_track_id": 1000783026214,
+   "release_date": "2026-08-19"
+  },
+  {
+   "id": "handsome--jake-johnson-asks-about-special-human",
+   "show": "Handsome",
+   "title": "Jake Johnson asks about special human connections",
+   "apple_track_id": 1000784012302,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "dateline--the-house",
+   "show": "Dateline NBC",
+   "title": "The House",
+   "apple_track_id": 1000783930014,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "circle-round--summer-camp-crocus-pocus",
+   "show": "Circle Round",
+   "title": "Summer Camp: Crocus-Pocus",
+   "apple_track_id": 1000784159552,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "dissect--crowning-tyler-the-creator-s-best",
+   "show": "Dissect",
+   "title": "Crowning Tyler The Creator's Best Song Ever | Last Song Standing (E8)",
+   "apple_track_id": 1000784043026,
+   "release_date": "2026-08-18"
+  },
+  {
+   "id": "broken-record--interpol-s-daniel-kessler",
+   "show": "Broken Record with Rick Rubin, Malcolm Gladwell, Bruce Headlam and Justin Richmond",
+   "title": "Interpol's Daniel Kessler",
+   "apple_track_id": 1000783937797,
+   "release_date": "2026-08-18"
+  }
+ ]
+}
