@@ -36,7 +36,7 @@ draft is a founder action.
 listener is not met.** D1 passes at 6 starts against a budget of 8, D5 passes
 with an IQR of 57.5 s against a floor of 45, M4's worst episode is 18.4 % of
 runtime against a cap of 25 %. None of that is what a listener would notice
-first. What they would notice is that eighteen times in forty minutes the voice
+first. What they would notice is that fifteen times in forty minutes the voice
 changes with nothing said in between.
 
 ---
@@ -234,8 +234,10 @@ be written at any time at zero cost and would slot into `items` as
 `{ "type": "narration", ... }` entries without touching a single segment. The
 runtime and `runtime_sec` would then need restating, and at 40.34 minutes there
 are 4.66 minutes of headroom before the Foray crosses 45 minutes and D1's budget
-drops from 8 to 6 — enough for roughly 15 bridges at the spec's 8 s ceiling,
-with nothing to spare. **X2** (a bridge names its source) is unmet for the same
+drops from 8 to 6 — 279.6 s, which is roughly 35 bridges at the spec's 8 s
+ceiling, or 23 at `narration-craft.md` §0's 12 s attribution allowance. The 15
+bridges X1 actually owes cost 120 s at the ceiling and 180 s with attribution,
+so the headroom is not the binding constraint here. **X2** (a bridge names its source) is unmet for the same
 reason; `show` and `episode_title` are already on every hydrated entry, so a
 bridge would have the attribution to hand.
 
