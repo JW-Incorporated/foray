@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-24T08:08:53.844Z",
+  "built_at": "2026-08-24T16:15:24.347Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-24-95c1767d",
+    "last_batch_id": "fresh-2026-08-24-88f03e96",
     "last_batch_tier": 1
   },
   "entries": {
