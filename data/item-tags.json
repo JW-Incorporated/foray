@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-23T11:41:42.789Z",
+  "built_at": "2026-08-24T11:43:35.595Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -14698,6 +14698,243 @@
       "investigation",
       "criminal-justice",
       "forensics"
+    ],
+    "the-rest-is-history--699-the-troubles-return-of-the": [
+      "the-troubles",
+      "ira",
+      "northern-ireland",
+      "catholic",
+      "british-army",
+      "conflict",
+      "history",
+      "storytelling",
+      "narrative"
+    ],
+    "conan-obrien-needs-a-friend--john-cena": [
+      "conan-obrien",
+      "john-cena",
+      "wrestling",
+      "comedy",
+      "acting",
+      "hollywood",
+      "hang",
+      "interview"
+    ],
+    "smartless--sandra-bullock": [
+      "smartless",
+      "sandra-bullock",
+      "comedy",
+      "funny",
+      "hang",
+      "interview"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-3403": [
+      "telephone",
+      "1900s",
+      "history-of-technology",
+      "bite-sized",
+      "explainer"
+    ],
+    "founders--430-how-to-write-ads-that": [
+      "claude-hopkins",
+      "advertising",
+      "copywriting",
+      "marketing",
+      "founders",
+      "business",
+      "biography",
+      "storytelling"
+    ],
+    "twenty-minute-vc--20vc-inside-sequoia-s-investment-committee": [
+      "sequoia",
+      "venture-capital",
+      "spacex",
+      "startups",
+      "founders",
+      "business",
+      "interview"
+    ],
+    "fly-on-the-wall--dunkin-no-donuts": [
+      "dana-carvey",
+      "david-spade",
+      "comedy",
+      "funny",
+      "pop-culture",
+      "hollywood",
+      "hang",
+      "banter"
+    ],
+    "science-for-sport-podcast--334-how-elite-athletes-respond-under": [
+      "sports-psychology",
+      "mental-performance",
+      "athletes",
+      "training",
+      "sports-science",
+      "interview"
+    ],
+    "the-race-f1-podcast--dutch-gp-was-this-norris-s": [
+      "formula-1",
+      "motorsport",
+      "racing",
+      "lando-norris",
+      "mclaren",
+      "dutch-gp",
+      "technical",
+      "explainer"
+    ],
+    "partially-examined-life--pel-presents-pvi-123-brain-spritzing": [
+      "philosophy",
+      "academic-misconduct",
+      "education",
+      "pop-culture",
+      "improv",
+      "panel"
+    ],
+    "how-i-built-this--yeti-ron-and-ryan-seiders-how": [
+      "yeti",
+      "founders",
+      "entrepreneurship",
+      "consumer-products",
+      "outdoors",
+      "business",
+      "interview",
+      "storytelling"
+    ],
+    "the-matt-walker-podcast--149-the-11-largest-sleep-myths": [
+      "sleep",
+      "neuroscience",
+      "science",
+      "myths",
+      "health",
+      "explainer"
+    ],
+    "the-peter-attia-drive--405-ama-88-metabolic-liver-health": [
+      "liver",
+      "metabolic-health",
+      "insulin-resistance",
+      "medicine",
+      "longevity",
+      "explainer"
+    ],
+    "strict-scrutiny--what-does-peak-fascism-look-like": [
+      "law",
+      "politics",
+      "legal-news",
+      "corruption",
+      "christian-nationalism",
+      "explainer"
+    ],
+    "ten-percent-happier--longevity-secrets-and-controversies-from-the": [
+      "blue-zones",
+      "longevity",
+      "dan-buettner",
+      "health",
+      "psychology",
+      "interview"
+    ],
+    "mel-robbins-podcast--30-years-of-marriage-3-things": [
+      "marriage",
+      "relationships",
+      "self-improvement",
+      "mel-robbins",
+      "interview"
+    ],
+    "happier-gretchen-rubin--little-happier-nba-players-on-the": [
+      "happiness",
+      "habits",
+      "self-improvement",
+      "gretchen-rubin",
+      "panel"
+    ],
+    "armchair-expert--jimmy-kimmel-molly-mcnearney": [
+      "jimmy-kimmel",
+      "comedy",
+      "marriage",
+      "hollywood",
+      "interview"
+    ],
+    "call-her-daddy--avoidant-attachment-101": [
+      "attachment",
+      "relationships",
+      "psychology",
+      "self-improvement",
+      "interview"
+    ],
+    "comedy-bang-bang--pordlandia-fred-armisen-carrie-brownstein-will": [
+      "fred-armisen",
+      "carrie-brownstein",
+      "improv",
+      "characters",
+      "comedy",
+      "absurdist",
+      "panel"
+    ],
+    "working-it-out-birbiglia--michael-che-an-amateur-therapy-session": [
+      "michael-che",
+      "snl",
+      "stand-up",
+      "comedy",
+      "writing",
+      "craft",
+      "interview"
+    ],
+    "lore--lore-313-tall-tall-tales": [
+      "lore",
+      "folklore",
+      "history",
+      "mystery",
+      "storytelling",
+      "narrative"
+    ],
+    "crime-junkie--mysterious-death-of-alyssa-romine-olson": [
+      "true-crime",
+      "missing-persons",
+      "cold-case",
+      "arizona",
+      "investigation",
+      "crime-junkie",
+      "narrative"
+    ],
+    "morbid--the-unbelievable-disappearance-of-angela-green": [
+      "true-crime",
+      "missing-persons",
+      "history",
+      "investigation",
+      "morbid",
+      "narrative"
+    ],
+    "wicked-words--dawson-fearnow-incognito-inc": [
+      "true-crime",
+      "journalism",
+      "arizona",
+      "witness-protection",
+      "organized-crime",
+      "wicked-words",
+      "interview"
+    ],
+    "where-should-we-begin--will-i-always-be-alone": [
+      "relationships",
+      "loneliness",
+      "religion",
+      "esther-perel",
+      "psychology",
+      "intimacy"
+    ],
+    "wow-in-the-world--from-trash-can-to-man-s": [
+      "raccoons",
+      "animals",
+      "evolution",
+      "domestication",
+      "science-for-kids",
+      "curiosity"
+    ],
+    "whiskycast--light-whiskey-it-s-not-about": [
+      "whiskey",
+      "light-whiskey",
+      "distilling",
+      "1960s",
+      "craft",
+      "interview"
     ]
   }
 }
