@@ -128,7 +128,7 @@ test("the committed Forays are the three documented ones, and all are #134's kin
      edit too, and a `deepEqual` is the cheapest way to say so. */
   assert.deepEqual(
     live.forays.forays.map((f) => f.id),
-    ["grilling-history-1", "grilling-history-2", "capital-types-1"]
+    ["grilling-history-1", "grilling-history-2", "capital-types-1", "geology-plates-1"]
   );
   for (const f of live.forays.forays) assert.equal(f.kind, "deep-dive", f.id);
 });
@@ -357,6 +357,7 @@ const RUNNING_ORDER_DOCS = [
   { forayId: "grilling-history-1", doc: "docs/curation/grilling-foray.md", endsBefore: "### Why the order", tldr: true, slotHeaders: true },
   { forayId: "grilling-history-2", doc: "docs/curation/grilling-history-assembly.md", endsBefore: "### 2a.", tldr: false, slotHeaders: false },
   { forayId: "capital-types-1", doc: "docs/curation/foray2-capital.md", endsBefore: "### Why the slots run", tldr: true, slotHeaders: true },
+  { forayId: "geology-plates-1", doc: "docs/curation/geology-foray-assembly.md", endsBefore: "### Who each label is", tldr: true, slotHeaders: true },
 ];
 
 /** `2:33` or `1:01:13` as seconds. The curation docs write every duration this
