@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-24T08:18:37.194Z",
+  "built_at": "2026-08-24T16:26:34.791Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-24-2b2d6e8a",
+    "last_batch_id": "fresh-2026-08-24-f1dcec42",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -4928,11 +4928,39 @@
     },
     "252250286": {
       "topics": [
-        "business/marketing"
+        "business/marketing",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Referral marketing networking community.",
+      "display_title": "The Official BNI Podcast",
+      "blurb": "Networking strategies and business referral systems.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "253191823": {
       "topics": [
@@ -7822,11 +7850,39 @@
     },
     "316019334": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Second Amendment rights and gun policy.",
+      "display_title": "Show Archives – Armed American Radio",
+      "blurb": "Second Amendment advocacy and firearm rights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "316045799": {
       "topics": [
@@ -29051,11 +29107,39 @@
     },
     "1054720784": {
       "topics": [
+        "gaming/design",
         "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming/design",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Warhammer 40K tabletop gaming discussion.",
+      "display_title": "Forge the Narrative - Warhammer 40k...",
+      "blurb": "Warhammer 40K gaming universe discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1054764942": {
       "topics": [
@@ -29246,9 +29330,32 @@
       "topics": [
         "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports analysis and cultural commentary.",
+      "display_title": "The Press Box",
+      "blurb": "Sports news and pop culture analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1059045374": {
       "topics": [
@@ -29259,11 +29366,41 @@
     },
     "1059127320": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal development for Black women.",
+      "display_title": "Girl Stop Playin | #1 Podcast for B...",
+      "blurb": "Personal growth and wellness for Black women.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1059459491": {
       "topics": [
@@ -30003,8 +30140,31 @@
         "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "IELTSCast | Weekly shadowing exerci...",
+      "blurb": "this show publishes 'repeat after me' ielts speaking lessons",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1070322219": {
       "topics": [
@@ -30065,8 +30225,31 @@
         "psychology"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "The Tempest Universe Podcast",
+      "blurb": "the tempest universe podcast covers ufos, uap sightings, non",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1071231130": {
       "topics": [
@@ -30225,11 +30408,34 @@
     },
     "1072185017": {
       "topics": [
-        "nature/ocean-science"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby and leisure activities.",
+      "display_title": "Aquarium Co-Op Podcast",
+      "blurb": "Hobby and leisure discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1072212202": {
       "topics": [
@@ -30309,9 +30515,32 @@
       "topics": [
         "news/commentary"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Pivot",
+      "blurb": "with great power, comes great scrutiny. every tuesday and fr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1073270208": {
       "topics": [
@@ -30787,8 +31016,31 @@
         "music"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Rolling Stone All Access",
+      "blurb": "step into rolling stone all access, where the biggest voices",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1078657833": {
       "topics": [
@@ -31004,8 +31256,31 @@
         "economics/markets"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Afford Anything | Get Smarter With Money",
+      "blurb": "45 million downloads. one question: what does it actually ta",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1079680168": {
       "topics": [
@@ -31025,9 +31300,34 @@
       "topics": [
         "space"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Space Nuts: Astronomy Insights & Co...",
+      "blurb": "5 million downloads and counting 90+% five star reviews host",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1080169763": {
       "topics": [
@@ -31084,17 +31384,63 @@
       "topics": [
         "sports/hockey"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "CHGO Chicago Blackhawks Podcast",
+      "blurb": "the chgo blackhawks podcast is your daily home for chicago b",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1080535798": {
       "topics": [
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby and leisure activities.",
+      "display_title": "The Grey Nato",
+      "blurb": "Hobby and leisure discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1080634709": {
       "topics": [
@@ -31230,9 +31576,32 @@
       "topics": [
         "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal stories and journals.",
+      "display_title": "The Secret Room | True Stories",
+      "blurb": "Personal narratives and stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1082504877": {
       "topics": [
@@ -31346,9 +31715,32 @@
       "topics": [
         "sports/endurance"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Running Commentary",
+      "blurb": "comedians paul tonkinson and rob deering talk about life and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1083585785": {
       "topics": [
@@ -31430,8 +31822,31 @@
         "tv-film"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "It's Erik Nagel",
+      "blurb": "erik and the crew discuss the lighter, more fun, side of cur",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1085539213": {
       "topics": [
@@ -31617,9 +32032,32 @@
       "topics": [
         "culture/fashion"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Fat Mascara",
+      "blurb": "fat mascara has been leading the conversation about beauty a",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1087684663": {
       "topics": [
@@ -31693,9 +32131,32 @@
       "topics": [
         "sports/football"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Pardon My Take",
+      "blurb": "on \"pardon my take,\" big cat & pft commenter deliver the lou",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1089027054": {
       "topics": [
@@ -31793,9 +32254,32 @@
       "topics": [
         "sports/fantasy"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Rotoworld Football Show – Fantasy F...",
+      "blurb": "whether it’s season-long fantasy rankings, nfl draft analysi",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1090123738": {
       "topics": [
@@ -31941,8 +32425,31 @@
         "psychology"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "ABA Inside Track",
+      "blurb": "wish you could do a better job keeping up with peer-reviewed",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1091474629": {
       "topics": [
@@ -32190,9 +32697,32 @@
       "topics": [
         "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "The New Yorker: The Writer's Voice ...",
+      "blurb": "new yorker fiction writers read their stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1093934861": {
       "topics": [
@@ -32510,11 +33040,34 @@
     },
     "1099620894": {
       "topics": [
-        "nature/ocean-science"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby and leisure activities.",
+      "display_title": "The Saltwater Aquarium Radio Podcast",
+      "blurb": "Hobby and leisure discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1099630309": {
       "topics": [
@@ -32659,9 +33212,32 @@
       "topics": [
         "business/non-profit"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Nonprofit Leadership Podcast",
+      "blurb": "the nonprofit leadership podcast discusses important issues ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1102859089": {
       "topics": [
@@ -32741,11 +33317,34 @@
     },
     "1105457520": {
       "topics": [
-        "nature"
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Main Engine Cut Off",
+      "blurb": "meco is opinion and analysis of spaceflight, exploration, po",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1105665515": {
       "topics": [
@@ -33002,11 +33601,34 @@
     },
     "1110860681": {
       "topics": [
-        "comedy"
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and casual conversation.",
+      "display_title": "The Drew Lane Show",
+      "blurb": "Comedy and casual hangout discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1111319839": {
       "topics": [
@@ -33497,8 +34119,31 @@
         "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical events and analysis.",
+      "display_title": "More Perfect",
+      "blurb": "Historical stories and events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1117489326": {
       "topics": [
@@ -34170,9 +34815,32 @@
       "topics": [
         "health/sexuality"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "QueerAF | Inspiring LGBTQIA+ storie...",
+      "blurb": "queeraf is the award-winning (more than a) podcast with beyo",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1126543994": {
       "topics": [
@@ -34268,9 +34936,34 @@
       "topics": [
         "business/non-profit"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "America's Credit Unions",
+      "blurb": "america's credit unions is a weekly podcast featuring credit",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "text/html": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1129323212": {
       "topics": [
@@ -34380,9 +35073,36 @@
       "topics": [
         "sports/golf"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "The Fried Egg Golf Podcast",
+      "blurb": "a deeper level of golf: conversations and stories about golf",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1131754929": {
       "topics": [
@@ -34433,8 +35153,31 @@
         "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music discussion and industry.",
+      "display_title": "The Martin Garrix Show",
+      "blurb": "Music and industry discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1133023095": {
       "topics": [
@@ -34643,11 +35386,34 @@
     },
     "1135598495": {
       "topics": [
-        "nature"
+        "science"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "The Gestalt Gardener",
+      "blurb": "each week, horticulturalist felder rushing shares stories, a",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1135688404": {
       "topics": [
@@ -34718,11 +35484,34 @@
     },
     "1136251922": {
       "topics": [
-        "health/nutrition"
+        "health/fitness"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Optimal Health Daily - Fitness and ...",
+      "blurb": "optimal health daily, hosted by the esteemed dr. neal malik,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1136792532": {
       "topics": [
@@ -34822,20 +35611,69 @@
     },
     "1138869817": {
       "topics": [
-        "economics/markets",
         "business/marketing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/marketing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and marketing topics.",
+      "display_title": "Marketing School - Digital Marketin...",
+      "blurb": "Business strategy and marketing guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1138942145": {
       "topics": [
         "sports/fantasy"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/fantasy",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "FantasyPros - Fantasy Football Podcast",
+      "blurb": "fantasypros provides hard-hitting fantasy football analysis ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1139115219": {
       "topics": [
@@ -35304,9 +36142,32 @@
       "topics": [
         "true-crime"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Snapped: Women Who Murder",
+      "blurb": "for the first time ever, full snapped episodes are now a pod",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1145222943": {
       "topics": [
@@ -35340,11 +36201,38 @@
     },
     "1146579746": {
       "topics": [
-        "nature"
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Hillbilly Horror Stories Paranormal...",
+      "blurb": "hillbilly horror stories is a mostly paranormal show hosted ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1146588641": {
       "topics": [
@@ -35358,8 +36246,31 @@
         "psychology"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Naruhodo",
+      "blurb": "naruhodo! é o podcast pra quem tem fome de aprender. ciência",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1146781072": {
       "topics": [
@@ -35559,8 +36470,31 @@
         "psychology"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Something You Should Know",
+      "blurb": "sometimes all it takes is one little fact or one little piec",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1150131366": {
       "topics": [
@@ -35690,11 +36624,39 @@
     },
     "1151856991": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Government and political commentary.",
+      "display_title": "Bold American Pod",
+      "blurb": "Political news and government analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1151965239": {
       "topics": [
@@ -35742,11 +36704,34 @@
     },
     "1152618068": {
       "topics": [
-        "espionage"
+        "society"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Secrets and Spies Podcast: Espionag...",
+      "blurb": "secrets and spies sits at the intersection of intelligence, ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1152853871": {
       "topics": [
@@ -36099,9 +37084,32 @@
       "topics": [
         "food"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Christopher Kimball’s Milk Street Radio",
+      "blurb": "every week, milk street radio travels the world to find the ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1158942934": {
       "topics": [
@@ -36238,9 +37246,32 @@
       "topics": [
         "science/chemistry"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/chemistry",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "The chemical breakdown & Chemistry ...",
+      "blurb": "the chemical breakdown is your biweekly source of the latest",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1162734003": {
       "topics": [
@@ -36305,11 +37336,34 @@
     },
     "1163344992": {
       "topics": [
-        "computing"
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "TV and film criticism.",
+      "display_title": "Decoding TV",
+      "blurb": "Film and TV reviews and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1163569560": {
       "topics": [
@@ -36393,11 +37447,34 @@
     },
     "1163966747": {
       "topics": [
-        "religion/christianity"
+        "religion/judaism"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "The Parsha Podcast - With Rabbi Yaa...",
+      "blurb": "the parsha podcast with rabbi yaakov wolbe was started in 20",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1163966749": {
       "topics": [
@@ -37077,9 +38154,32 @@
       "topics": [
         "sports/wrestling"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Fightful Wrestling Podcast with Sea...",
+      "blurb": "fightful.com podcasts bring you the best in mma, pro wrestli",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1175478134": {
       "topics": [
@@ -37463,9 +38563,32 @@
       "topics": [
         "health/nutrition"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/nutrition",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Nutrition Facts with Dr. Greger",
+      "blurb": "have you ever wondered if there’s a natural way to lower you",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1183573658": {
       "topics": [
@@ -37486,9 +38609,32 @@
       "topics": [
         "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational content and learning.",
+      "display_title": "The Jordan B. Peterson Podcast",
+      "blurb": "Educational resources and instruction.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1184615147": {
       "topics": [
@@ -37596,11 +38742,34 @@
     },
     "1186480811": {
       "topics": [
-        "engineering/ai-robotics"
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology news and discussion.",
+      "display_title": "NVIDIA AI Podcast",
+      "blurb": "Technology news and innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1186824033": {
       "topics": [
@@ -37704,11 +38873,39 @@
     },
     "1187748808": {
       "topics": [
-        "society/law"
+        "society/government",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Government and political commentary.",
+      "display_title": "Oral Arguments for the Court of App...",
+      "blurb": "Political news and government analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1187749095": {
       "topics": [
@@ -37759,11 +38956,34 @@
     },
     "1188724250": {
       "topics": [
-        "news"
+        "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news and current events.",
+      "display_title": "1A",
+      "blurb": "Daily news coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1190000968": {
       "topics": [
@@ -38129,9 +39349,34 @@
       "topics": [
         "health/sexuality"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Sexology",
+      "blurb": "each week, dr. nazanin moali interviews experts, psychologis",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 5,
+        "transcript_tags": 5,
+        "transcript_types": {
+          "text/vtt": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1193720457": {
       "topics": [
@@ -38445,9 +39690,32 @@
       "topics": [
         "medicine"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "The Curbsiders Internal Medicine Podcast",
+      "blurb": "the curbsiders internal medicine podcast brings you expert i",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1198899314": {
       "topics": [
@@ -38506,8 +39774,31 @@
         "craft/diy-home"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Decorating Tips and Tricks",
+      "blurb": "decorating tips and advice to help you create a beautiful ho",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1199902190": {
       "topics": [
@@ -38596,9 +39887,32 @@
       "topics": [
         "health/sexuality"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Talk About Gay Sex TAGSPODCAST",
+      "blurb": "tagspodcast aka talk about gay sex is a queer podcast offeri",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1201114838": {
       "topics": [
@@ -38985,9 +40299,32 @@
       "topics": [
         "sports/endurance"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Ali on the Run Show",
+      "blurb": "every week on the ali on the run show, i talk with inspiring",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1204570053": {
       "topics": [
@@ -39075,9 +40412,32 @@
       "topics": [
         "fiction/drama"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Uncertain classification from available signal.",
+      "display_title": "Creepy",
+      "blurb": "from creator jon grilz, a collection of the most famous and ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1205394015": {
       "topics": [
@@ -39203,11 +40563,34 @@
     },
     "1207681531": {
       "topics": [
-        "food/fermentation"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby and leisure activities.",
+      "display_title": "The Brülosophy Podcast",
+      "blurb": "Hobby and leisure discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-f1dcec42",
+      "classified_at": "2026-08-24T16:26:34.791Z"
     },
     "1207682052": {
       "topics": [
