@@ -115,7 +115,7 @@ test("the CLI exits 0 on the committed data", () => {
   assert.match(out, /forays ok/);
 });
 
-test("the committed Forays are the three documented ones, and all are #134's kind", () => {
+test("the committed Forays are the four documented ones, and all are #134's kind", () => {
   /* Pinned by id rather than by count so that adding a fourth is a deliberate
      edit here, and so a RENAME cannot pass as an addition. This is the one live
      literal that survives #236, and it is not a shape pin: it is a statement
