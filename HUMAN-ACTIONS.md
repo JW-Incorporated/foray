@@ -911,7 +911,7 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 > is the moment this stops being reversible.
 >
 > **One thing changed since this was written.** The app is now called **4a** (#302); the
-> proposed id still reads `com.jwincorporated.foray`. That is defensible — a bundle id is
+> proposed id read `com.jwincorporated.foray`. **Ruled 2026-08-24: `dev.jwlabs.foura`.** A bundle id is
 > invisible to users, and this one names the org that owns the repo and pays the Actions bill —
 > but it should be a decision rather than an accident. The stitched-audio unit is still a
 > *foray*, so the word is not retired either way.
@@ -920,7 +920,10 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 
 **Why it matters.** The bundle id is the app's identity in both stores and it is **permanent once published** — changing it after a release means a brand-new listing, a new URL, and zero installs carried over. It is now written into a file and into a test, so it will not drift by accident, but nobody has actually agreed to it.
 
-**The recommendation** (from #36, unchanged): **`com.jwincorporated.foray`**. It matches the GitHub org that owns the repo and pays the Actions bill.
+**RULED 2026-08-24: `dev.jwlabs.foura`.** Reverse-DNS of `jwlabs.dev`, which the company now owns
+— the old `com.jwincorporated` implied a domain it does not hold. `foura` rather than `4a` because
+Capacitor uses one `appId` for the iOS bundle id **and** the Android `applicationId`, and Android
+package segments must begin with a letter, so a `4a` segment will not build.
 
 **The one thing to know before saying yes.** `ios/project.yml` — the old SwiftUI scaffold — says `com.wjduvall.foray`, which predates the org. That is a **different app** and it has never been published, so there is nothing to migrate. As of #36 that directory is reference material, not the shipping app (`docs/mobile-shell.md` §1); the shipping app is the Capacitor shell in `mobile/`. Leaving the two ids different is fine and is the current state.
 
@@ -929,7 +932,7 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 1. Open `mobile/capacitor.config.json`. Line 2 reads:
 
    ```json
-   "appId": "com.jwincorporated.foray",
+   "appId": "dev.jwlabs.foura",
    ```
 
 2. Reply either **"confirmed"**, or with the id you want instead.
@@ -1133,7 +1136,7 @@ One iOS finding that does bear on your step 6, though: `navigator.serviceWorker`
    - the **Issuer ID** (a UUID, shown above the key list)
    - the file `AuthKey_<KeyID>.p8`
 3. In the developer portal → **Certificates, Identifiers & Profiles**:
-   - **Identifiers → +** → App IDs → App → Bundle ID **`com.jwincorporated.foray`** exactly (this is #15's value; if #15 rules differently, use that instead and say so here). Tick **Background Modes** under Capabilities.
+   - **Identifiers → +** → App IDs → App → Bundle ID **`dev.jwlabs.foura`** exactly (this is #15's ruling, 2026-08-24). Tick **Background Modes** under Capabilities.
    - **Certificates → +** → **Apple Distribution**. Follow Apple's instructions to create the CSR, download the `.cer`, open it so it lands in your Keychain, then in **Keychain Access** right-click the certificate → **Export** → `.p12`, and set a password. Keep both the file and the password.
    - **Profiles → +** → **App Store Connect** distribution profile for that App ID and that certificate. Download the `.mobileprovision`.
    - Note your **Team ID** (10 characters, top right of the developer portal, or under Membership details).
