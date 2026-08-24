@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-23T16:08:44.603Z",
+  "built_at": "2026-08-24T08:08:53.844Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-23-b376cc1c",
+    "last_batch_id": "fresh-2026-08-24-95c1767d",
     "last_batch_tier": 1
   },
   "entries": {
@@ -40383,11 +40383,31 @@
     },
     "1288412022": {
       "topics": [
-        "math"
+        "math",
+        "psychology/decision-making"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.88
+        },
+        {
+          "node": "psychology/decision-making",
+          "confidence": 0.72
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Uses mathematics and statistics to explore human behavior and decision-making across diverse real-world events.",
+      "display_title": "Sum of All Parts",
+      "blurb": "Uses numbers and mathematical thinking to reveal patterns in human behavior, historical events, and scientific phenomena.",
+      "display_copy_ok": true,
+      "display_copy_notes": [],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-95c1767d",
+      "classified_at": "2026-08-24T08:08:53.844Z"
     },
     "1288418637": {
       "topics": [
@@ -44773,10 +44793,30 @@
     },
     "1351065618": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.94
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.68
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biographical stories for kids about Australian women with diverse careers and achievements, designed to inspire young listeners.",
+      "display_title": "Fierce Girls",
+      "blurb": "Stories of Australian women and girls—from athletes to scientists to police commissioners—who broke barriers and dared to do things differently.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-24-95c1767d",
+      "classified_at": "2026-08-24T08:08:53.844Z"
     },
     "1351131347": {
       "topics": [
