@@ -619,6 +619,186 @@
           "role": "explanation"
         }
       ]
+    },
+    {
+      "id": "geology-plates-1",
+      "kind": "deep-dive",
+      "title": "How Earth got plate tectonics and Venus never did",
+      "topic": "nature/earth-science",
+      "status": "draft",
+      "summary": "Water, sinking slabs and two blobs at the bottom of the mantle: the machine that moves continents.",
+      "runtime_sec": 2420.44,
+      "source_doc": "docs/curation/geology-foray-assembly.md",
+      "label_prefixes": {
+        "FACC": "geology-bites--claudio-faccenna-on-the-dynamics-of-subduction-zones",
+        "BERC": "geology-bites--david-bercovici-on-how-plate-subduction-starts",
+        "ELK": "geology-bites--lindy-elkins-tanton-on-the-origin-of-earth-s-water",
+        "CAW": "geology-bites--peter-cawood-on-when-plate-tectonics-started",
+        "BREN": "geology-bites--alec-brenner-on-when-tectonic-plates-first-moved",
+        "VH": "geology-bites--douwe-van-hinsbergen-on-what-drives-the-motions-of-tectonic",
+        "MCN": "geology-bites--allen-mcnamara-on-the-deep-mantle-structure-of-the-earth",
+        "ROM": "geology-bites--barbara-romanowicz-on-seeing-deep-into-the-earth",
+        "JOHN": "geology-bites--clark-johnson-on-the-banded-iron-formations",
+        "EVAN": "geology-bites--david-evans-on-supercontinents",
+        "NANC": "geology-bites--damian-nance-on-what-drives-the-supercontinent-cycle"
+      },
+      "slots": [
+        {
+          "id": "a-should-have-seized",
+          "title": "A planet that should have seized up"
+        },
+        {
+          "id": "b-when-they-started",
+          "title": "When the plates started moving"
+        },
+        {
+          "id": "c-what-is-pulling",
+          "title": "What is actually pulling them"
+        },
+        {
+          "id": "d-two-blobs",
+          "title": "Two blobs at the bottom of the mantle"
+        },
+        {
+          "id": "e-the-cycle",
+          "title": "The cycle, and the next supercontinent"
+        }
+      ],
+      "items": [
+        {
+          "type": "segment",
+          "slot": "a-should-have-seized",
+          "label": "FACC-1",
+          "segment_id": "geology-bites--claudio-faccenna-on-the-dynamics-of-subduction-zones#73",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "a-should-have-seized",
+          "label": "BERC-1",
+          "segment_id": "geology-bites--david-bercovici-on-how-plate-subduction-starts#52",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "a-should-have-seized",
+          "label": "ELK-1",
+          "segment_id": "geology-bites--lindy-elkins-tanton-on-the-origin-of-earth-s-water#768",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "b-when-they-started",
+          "label": "CAW-1",
+          "segment_id": "geology-bites--peter-cawood-on-when-plate-tectonics-started#108",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "b-when-they-started",
+          "label": "BREN-1",
+          "segment_id": "geology-bites--alec-brenner-on-when-tectonic-plates-first-moved#75",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "b-when-they-started",
+          "label": "CAW-2",
+          "segment_id": "geology-bites--peter-cawood-on-when-plate-tectonics-started#1563",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "c-what-is-pulling",
+          "label": "VH-1",
+          "segment_id": "geology-bites--douwe-van-hinsbergen-on-what-drives-the-motions-of-tectonic#567",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "c-what-is-pulling",
+          "label": "VH-2",
+          "segment_id": "geology-bites--douwe-van-hinsbergen-on-what-drives-the-motions-of-tectonic#1193",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "c-what-is-pulling",
+          "label": "VH-3",
+          "segment_id": "geology-bites--douwe-van-hinsbergen-on-what-drives-the-motions-of-tectonic#1407",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "d-two-blobs",
+          "label": "MCN-1",
+          "segment_id": "geology-bites--allen-mcnamara-on-the-deep-mantle-structure-of-the-earth#81",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "d-two-blobs",
+          "label": "ROM-1",
+          "segment_id": "geology-bites--barbara-romanowicz-on-seeing-deep-into-the-earth#725",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "d-two-blobs",
+          "label": "MCN-2",
+          "segment_id": "geology-bites--allen-mcnamara-on-the-deep-mantle-structure-of-the-earth#280",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "d-two-blobs",
+          "label": "ROM-2",
+          "segment_id": "geology-bites--barbara-romanowicz-on-seeing-deep-into-the-earth#930",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "d-two-blobs",
+          "label": "MCN-3",
+          "segment_id": "geology-bites--allen-mcnamara-on-the-deep-mantle-structure-of-the-earth#759",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "d-two-blobs",
+          "label": "JOHN-1",
+          "segment_id": "geology-bites--clark-johnson-on-the-banded-iron-formations#340",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "d-two-blobs",
+          "label": "JOHN-2",
+          "segment_id": "geology-bites--clark-johnson-on-the-banded-iron-formations#996",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "e-the-cycle",
+          "label": "EVAN-1",
+          "segment_id": "geology-bites--david-evans-on-supercontinents#93",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "e-the-cycle",
+          "label": "NANC-1",
+          "segment_id": "geology-bites--damian-nance-on-what-drives-the-supercontinent-cycle#440",
+          "role": "explanation"
+        },
+        {
+          "type": "segment",
+          "slot": "e-the-cycle",
+          "label": "EVAN-2",
+          "segment_id": "geology-bites--david-evans-on-supercontinents#1693",
+          "role": "explanation"
+        }
+      ]
     }
   ]
 }
