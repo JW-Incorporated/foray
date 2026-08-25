@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-25T08:19:46.708Z",
+  "built_at": "2026-08-25T16:25:40.256Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-25-08776412",
+    "last_batch_id": "fresh-2026-08-25-41895f9c",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -3010,11 +3010,39 @@
     },
     "152024419": {
       "topics": [
-        "business"
+        "news/daily",
+        "economics/markets"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.55
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.45
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business news show; limited signal available (no description/episodes fetched).",
+      "display_title": "WSJ Your Money Briefing",
+      "blurb": "Brief take on financial and business news from the Wall Street Journal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 0,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "152249110": {
       "topics": [
@@ -71330,11 +71358,44 @@
     },
     "1466686717": {
       "topics": [
-        "economics/markets"
+        "economics/markets",
+        "economics",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics",
+          "confidence": 0.65
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert commentary on current financial markets, credit trends, and AI's capital implications.",
+      "display_title": "Thoughts on the Market",
+      "blurb": "Morgan Stanley experts discuss shifts in markets, AI investment cycles, and geopolitics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1466697207": {
       "topics": [
@@ -71534,11 +71595,44 @@
     },
     "1467317304": {
       "topics": [
-        "computing"
+        "computing",
+        "engineering",
+        "news/tech"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Detailed discussion of PC hardware releases, specs, pricing, and gaming performance.",
+      "display_title": "Broken Silicon",
+      "blurb": "Brothers discuss latest PC hardware, GPU pricing, and gaming performance trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1467374705": {
       "topics": [
@@ -71870,11 +71964,39 @@
     },
     "1468939064": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews with professional wrestlers, exploring careers and wrestling industry.",
+      "display_title": "Insight with Chris Van Vliet",
+      "blurb": "In-depth interviews with wrestlers, exploring careers, mindset, and behind-the-scenes stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1468956772": {
       "topics": [
@@ -71961,11 +72083,44 @@
     },
     "1469168641": {
       "topics": [
+        "society/law",
+        "news/politics",
         "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep analysis of Supreme Court cases and legal issues affecting daily life and rights.",
+      "display_title": "Strict Scrutiny",
+      "blurb": "Constitutional law experts analyze Supreme Court decisions and their impact on rights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1469173023": {
       "topics": [
@@ -72009,11 +72164,39 @@
     },
     "1469238409": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical career guidance and clinical training for speech-language pathologists.",
+      "display_title": "SLP Full Disclosure",
+      "blurb": "Speech-language pathologists discuss clinical practice, tech tools, and career pathways.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1469274680": {
       "topics": [
@@ -72031,11 +72214,39 @@
     },
     "1469319650": {
       "topics": [
-        "travel"
+        "travel",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strategy for earning travel rewards through credit card optimization and transfer tactics.",
+      "display_title": "Frequent Miler on the Air",
+      "blurb": "Experts debate credit card strategies and loyalty program optimization for travel.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1469333142": {
       "topics": [
@@ -72262,11 +72473,47 @@
     },
     "1470129415": {
       "topics": [
+        "paranormal",
+        "philosophy/ideas",
         "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.55
+        },
+        {
+          "node": "science",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Consciousness research exploring hypothesis that mind is external to brain; paranormal phenomena.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1470175064": {
       "topics": [
@@ -72817,11 +73064,44 @@
     },
     "1471798762": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "religion",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intellectual platform exploring Islam, geopolitics, and contemporary Muslim affairs.",
+      "display_title": "The Thinking Muslim",
+      "blurb": "Muslim intellectuals discuss religion, geopolitics, identity, and cultural renewal.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1472032462": {
       "topics": [
@@ -73053,11 +73333,44 @@
     },
     "1473072044": {
       "topics": [
-        "kids-family/parenting"
+        "kids-family/parenting",
+        "kids-family",
+        "health/mental"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Developmental psychologist offers science-backed parenting strategies and expert interviews.",
+      "display_title": "Raising Good Humans",
+      "blurb": "Developmental psychologist and experts offer practical parenting strategies and research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1473089556": {
       "topics": [
@@ -73524,11 +73837,44 @@
     },
     "1474849832": {
       "topics": [
-        "business"
+        "business",
+        "economics/markets",
+        "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Private equity insights and business commentary on markets, healthcare, and leadership.",
+      "display_title": "Becker Private Equity & Business Podcast",
+      "blurb": "Scott Becker discusses private equity, markets, healthcare trends, and business strategy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1474873320": {
       "topics": [
@@ -73801,11 +74147,39 @@
     },
     "1475773051": {
       "topics": [
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Host reads Reddit stories with humorous voices; casual comedy based on social media.",
+      "display_title": "rSlash",
+      "blurb": "Host reads Reddit stories from r/ProRevenge, r/EntitledParents with comedic narration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1475774488": {
       "topics": [
@@ -74046,11 +74420,44 @@
     },
     "1476456050": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "religion",
+        "paranormal"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spiritual mediumship journey; channeling, intuition, healing, and personal transformation.",
+      "display_title": "Medium in the Middle Podcast",
+      "blurb": "Medium shares spiritual journey including mediumship, intuition, and energy work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1476456225": {
       "topics": [
@@ -74357,11 +74764,49 @@
     },
     "1477409622": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Somatic sex therapist discusses pleasure, sexuality, intimacy, and embodied practice.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "text/html": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1477467491": {
       "topics": [
@@ -74687,11 +75132,39 @@
     },
     "1477991794": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "gaming/design"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hobby podcast focused on miniature painting, wargaming, and tabletop modeling.",
+      "display_title": "Trapped Under Plastic",
+      "blurb": "Hosts discuss miniature painting, wargaming, and tabletop hobby techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1477994760": {
       "topics": [
@@ -74702,11 +75175,44 @@
     },
     "1477999442": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "education",
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio course on Thomas Aquinas' philosophy and medieval theology.",
+      "display_title": "Aquinas 101",
+      "blurb": "Course exploring Thomas Aquinas, faith, reason, and medieval Christian thought.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 6,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1478013779": {
       "topics": [
@@ -74809,20 +75315,85 @@
     },
     "1478272793": {
       "topics": [
-        "nature",
-        "education/how-to"
+        "education/how-to",
+        "food",
+        "craft/diy-home"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.75
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical vegetable gardening instruction covering techniques, pest management, preservation.",
+      "display_title": "Backyard Gardens",
+      "blurb": "Gardeners share practical tips on growing vegetables, pest control, and preservation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1478275646": {
       "topics": [
-        "business"
+        "business",
+        "economics/markets",
+        "education/how-to"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.65
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Credit expert explains credit reports, debt management, identity theft prevention.",
+      "display_title": "The Credit Show",
+      "blurb": "Credit expert breaks down credit reports, debt, and consumer financial protection.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1478296139": {
       "topics": [
@@ -74936,11 +75507,48 @@
     },
     "1478660220": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "tv-film/after-shows",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.65
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Retrospective comedy analysis of wrestling history across WWF, WCW, TNA, WWE.",
+      "display_title": "DEADLOCK",
+      "blurb": "Off-the-rails retrospectives of pro wrestling's memorable and ridiculous moments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1478682639": {
       "topics": [
@@ -75332,20 +75940,80 @@
     },
     "1479389232": {
       "topics": [
-        "space",
-        "math"
+        "math",
+        "science/physics",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Physics and mathematics conversations with leading theoretical physicists and mathematicians.",
+      "display_title": "The Universe Speaks in Numbers",
+      "blurb": "Conversations with top physicists and mathematicians on the interplay of math and physics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1479444959": {
       "topics": [
-        "fiction"
+        "fiction",
+        "fiction/sci-fi"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama serial about survivors after global sleep-death pandemic.",
+      "display_title": "The Edge of Sleep",
+      "blurb": "Audio fiction: survivors uncover the cause of a global sleep-death pandemic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1479455008": {
       "topics": [
@@ -75395,11 +76063,44 @@
     },
     "1479564642": {
       "topics": [
-        "education/courses"
+        "history",
+        "education/courses",
+        "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holocaust survivor testimonies and historical documentation from Yale archive.",
+      "display_title": "Those Who Were There",
+      "blurb": "Holocaust survivor testimonies and historical perspectives from the Yale archives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1479594692": {
       "topics": [
@@ -75425,11 +76126,39 @@
     },
     "1479606317": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Regional experts discuss Middle East geopolitics, diplomacy, and contemporary affairs.",
+      "display_title": "Babel: Translating the Middle East",
+      "blurb": "Expert analysis of Middle East geopolitics, policy, and current events from CSIS.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1479610314": {
       "topics": [
@@ -75600,11 +76329,39 @@
     },
     "1480022700": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Genealogy research methods, tools, and strategies for tracing family ancestry.",
+      "display_title": "Family Tree Magazine Podcast",
+      "blurb": "Genealogy tips and expert interviews on ancestry research, databases, and records.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1480037528": {
       "topics": [
@@ -75726,11 +76483,39 @@
     },
     "1480230514": {
       "topics": [
+        "religion/christianity",
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Old-time Pentecostal holiness preachers delivering biblical sermons and spiritual messages.",
+      "display_title": "Pentecostal Holiness Assembly",
+      "blurb": "Traditional Pentecostal holiness preaching from ordained ministers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1480257700": {
       "topics": [
@@ -75813,12 +76598,44 @@
     },
     "1480370173": {
       "topics": [
-        "computing",
-        "society"
+        "society",
+        "news/daily",
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.7
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime investigation into Dr. Ruja Ignatova, missing crypto fraudster, and OneCoin scam.",
+      "display_title": "The Missing Cryptoqueen",
+      "blurb": "Investigation into the OneCoin scam and search for disappeared founder Dr. Ruja.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:40.256Z"
     },
     "1480583664": {
       "topics": [
@@ -76500,11 +77317,39 @@
     },
     "1481543060": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NHL veteran and insider interview current players, coaches, executives on hockey.",
+      "display_title": "The Cam & Strick Podcast",
+      "blurb": "NHL players and executives discuss hockey strategy, careers, and industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1481543700": {
       "topics": [
@@ -76566,11 +77411,39 @@
     },
     "1481728195": {
       "topics": [
+        "hobbies",
         "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly pub quiz podcast with trivia rounds spanning general knowledge, music, pop culture.",
+      "display_title": "Trivia Time",
+      "blurb": "Weekly pub quiz podcast with themed trivia rounds and anagrams.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1481736651": {
       "topics": [
@@ -76596,11 +77469,39 @@
     },
     "1481776178": {
       "topics": [
+        "psychology",
         "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian-language podcast on mental wellness, psychology, anxiety, and self-improvement.",
+      "display_title": "صلح درون",
+      "blurb": "Mental health and psychology advice in Persian for personal wellbeing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1481776281": {
       "topics": [
@@ -76971,11 +77872,39 @@
     },
     "1482448472": {
       "topics": [
-        "society"
+        "society",
+        "religion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian disaster relief organization shares fieldwork stories from global humanitarian response.",
+      "display_title": "On the Ground with Samaritan's Purse",
+      "blurb": "Humanitarian stories from Samaritan's Purse disaster relief and global aid work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1482449784": {
       "topics": [
@@ -77030,11 +77959,44 @@
     },
     "1482575855": {
       "topics": [
-        "medicine/biology"
+        "science",
+        "nature",
+        "news/daily"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quick science news and mysteries: AI, biology, physics, space, and environmental topics.",
+      "display_title": "Short Wave",
+      "blurb": "Daily science news covering biology, physics, space, and technological discoveries.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1482580830": {
       "topics": [
@@ -77164,11 +78126,39 @@
     },
     "1482801842": {
       "topics": [
-        "tv-film"
+        "sports",
+        "news/daily"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chicago sports reporters discuss Bears, Blackhawks, Bulls, White Sox daily.",
+      "display_title": "Waddle & Silvy",
+      "blurb": "Daily Chicago sports coverage and commentary from local sports journalists.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1482802816": {
       "topics": [
@@ -77301,11 +78291,39 @@
     },
     "1483009735": {
       "topics": [
+        "hobbies",
         "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pokemon trading card game meta analysis, news, and competitive deck discussion.",
+      "display_title": "Tag Team Pokemon TCG Podcast",
+      "blurb": "Pokemon trading card game meta, strategies, and tournament analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1483011704": {
       "topics": [
@@ -77413,11 +78431,39 @@
     },
     "1483237956": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily NHL podcast with analysis, news, and interviews about all professional hockey.",
+      "display_title": "Locked On NHL",
+      "blurb": "Daily NHL news, analysis, and team coverage from expert commentators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1483252435": {
       "topics": [
@@ -77680,11 +78726,39 @@
     },
     "1483654175": {
       "topics": [
+        "nature",
         "society/government"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Utah wildlife resource agency explores fish, game, habitat management, and conservation.",
+      "display_title": "Wild",
+      "blurb": "Wildlife conservation, habitat management, and field biology from Utah DWR.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1483692776": {
       "topics": [
@@ -78046,11 +79120,39 @@
     },
     "1484537932": {
       "topics": [
+        "business",
         "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Marketing strategist interviews beauty, wellness, and lifestyle brand founders.",
+      "display_title": "Coffee N° 5 with Lara Schmoisman",
+      "blurb": "Marketing strategy and entrepreneurship insights from beauty and wellness leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1484569777": {
       "topics": [
@@ -78660,11 +79762,39 @@
     },
     "1485740243": {
       "topics": [
+        "relationships",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Olympic gymnast and NFL player couple discuss personal stories, marriage, relationships.",
+      "display_title": "Couple Things with Shawn and Andrew",
+      "blurb": "Olympic athlete couple share personal stories, marriage, and life lessons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1485757121": {
       "topics": [
@@ -78682,11 +79812,39 @@
     },
     "1485811734": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cattle ranching management: herd health, grazing, technology, business strategies.",
+      "display_title": "Casual Cattle Conversations",
+      "blurb": "Practical cattle ranching advice covering herd management and farm business.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1485813093": {
       "topics": [
@@ -78737,11 +79895,41 @@
     },
     "1485898177": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Firearms industry podcast discussing shooting techniques, gear, and gun culture.",
+      "display_title": "The GUNS Magazine Podcast",
+      "blurb": "Firearms, shooting techniques, gear reviews, and gun culture discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "application/x-subrip": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1485902260": {
       "topics": [
@@ -78893,11 +80081,39 @@
     },
     "1486210336": {
       "topics": [
+        "health/fitness",
         "health/nutrition"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strength training research: hypertrophy, nutrition, fitness science with experts.",
+      "display_title": "RP Strength Podcast",
+      "blurb": "Science-based strength training, nutrition, and muscle building discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1486221160": {
       "topics": [
@@ -79048,11 +80264,39 @@
     },
     "1486505917": {
       "topics": [
-        "religion"
+        "religion",
+        "religion/christianity"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion/christianity",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bible study podcast discussing scripture, faith, and Christian living.",
+      "display_title": "Don't Miss This Study",
+      "blurb": "Bible study and Christian scripture interpretation with spiritual teachers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1486579283": {
       "topics": [
@@ -79064,11 +80308,44 @@
     },
     "1486862782": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Design, business, and culture intersection: product, interior, brand strategy.",
+      "display_title": "The iDesign Lab Podcast",
+      "blurb": "Design, business, and cultural innovation from entrepreneurs and creators.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1486873615": {
       "topics": [
@@ -79168,12 +80445,44 @@
     },
     "1487231767": {
       "topics": [
-        "craft/photography",
-        "culture/art"
+        "culture/art",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.95
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Photography magazine podcast interviewing acclaimed photographers on their work.",
+      "display_title": "FRAMES Photography Podcast",
+      "blurb": "Interviews with award-winning photographers discussing visual storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1487234690": {
       "topics": [
@@ -79192,11 +80501,39 @@
     },
     "1487320403": {
       "topics": [
+        "news/daily",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep narrative investigations of global news: true crime, policy, geopolitics.",
+      "display_title": "The Slow Newscast",
+      "blurb": "In-depth investigative journalism on global news and true crime.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1487391895": {
       "topics": [
@@ -79335,11 +80672,39 @@
     },
     "1487854841": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit leadership: governance, fundraising, strategy, management best practices.",
+      "display_title": "Your Path to Nonprofit Leadership",
+      "blurb": "Nonprofit management strategies, fundraising, and leadership development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1487863873": {
       "topics": [
@@ -79615,11 +80980,45 @@
     },
     "1488383032": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "craft/diy-home"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stationery, pens, notebooks, planning tools, and analog writing practices.",
+      "display_title": "Stationery Freaks",
+      "blurb": "Stationery reviews, notebooks, pens, and analog planning and writing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 40,
+        "transcript_types": {
+          "text/vtt": 8,
+          "application/x-subrip": 8,
+          "application/json": 8,
+          "text/plain": 8,
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1488385968": {
       "topics": [
@@ -79843,11 +81242,39 @@
     },
     "1489061681": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motivational speaker discusses personal growth, mindset, power, and success.",
+      "display_title": "The Trent Shelton Podcast",
+      "blurb": "Motivational content on mindset, personal growth, and life philosophy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1489061831": {
       "topics": [
@@ -80408,11 +81835,39 @@
     },
     "1490915960": {
       "topics": [
-        "sports/volleyball"
+        "business",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial literacy, wealth building, budgeting, credit for women of color.",
+      "display_title": "Wealth and Wellness University",
+      "blurb": "Financial literacy and wealth-building strategies for women of color.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1490924360": {
       "topics": [
@@ -80873,11 +82328,39 @@
     },
     "1492327668": {
       "topics": [
+        "sports",
         "sports/endurance"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ultrarunner interviews and ultramarathon race coverage, training, outdoor sports.",
+      "display_title": "The Freetrail Podcast with Dylan Bowman",
+      "blurb": "Ultrarunning interviews, race coverage, and endurance sports discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1492360046": {
       "topics": [
@@ -81062,11 +82545,43 @@
     },
     "1492766207": {
       "topics": [
-        "tv-film/history"
+        "tv-film",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "80s and 90s film and music history: compare/contrast movies, soundtracks, pop culture.",
+      "display_title": "Surely You Can't Be Serious Podcast",
+      "blurb": "Generation X film and music history with comparative analysis of classic work.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1492797340": {
       "topics": [
@@ -81247,11 +82762,41 @@
     },
     "1493065837": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket podcast discussing matches, player careers, history, niche cricket topics.",
+      "display_title": "PCCI Podcast",
+      "blurb": "Cricket analysis, player interviews, and grassroots sports discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "application/x-subrip": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1493074491": {
       "topics": [
@@ -81284,11 +82829,41 @@
     },
     "1493130920": {
       "topics": [
-        "kids-family"
+        "kids-family",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Midwives discuss pregnancy, birth, postpartum care, women's health, birth stories.",
+      "display_title": "Down to Birth",
+      "blurb": "Pregnancy, birth, and postpartum health from midwifery and women's health experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1493131803": {
       "topics": [
@@ -81421,11 +82996,39 @@
     },
     "1493328264": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "gaming"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pokemon trading card collecting, news, market discussion, hobby trends.",
+      "display_title": "Shadowless Podcast: A Pokemon Podcast",
+      "blurb": "Pokemon trading cards, collecting, and market trends from enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1493353598": {
       "topics": [
@@ -81667,11 +83270,39 @@
     },
     "1493689936": {
       "topics": [
-        "business/non-profit"
+        "business/non-profit",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Course on nonprofit management: governance, fundraising, strategy, operations.",
+      "display_title": "Nonprofit Management and Leadership",
+      "blurb": "Nonprofit management education covering governance, finance, and leadership.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1493713982": {
       "topics": [
@@ -81742,11 +83373,39 @@
     },
     "1493757042": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "religion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Talmud study podcast: one page per day with brief explanations.",
+      "display_title": "Take One Daf Yomi",
+      "blurb": "Daily Talmudic study and Jewish learning in brief 10-minute episodes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1493858530": {
       "topics": [
@@ -82032,11 +83691,39 @@
     },
     "1494372037": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "religion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu American interviews on Hinduism, identity, culture, activism, philanthropy.",
+      "display_title": "That's So Hindu",
+      "blurb": "Hindu American perspectives on faith, identity, culture, and community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-41895f9c",
+      "classified_at": "2026-08-25T16:25:17.060Z"
     },
     "1494372527": {
       "topics": [
