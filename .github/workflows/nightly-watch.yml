@@ -1,0 +1,176 @@
+# The night that produced no PR. Issue #290.
+#
+# WHY THIS WORKFLOW EXISTS
+# Every other check in this repo watches for something going wrong. This one
+# watches for something not happening at all.
+#
+# On 2026-08-20 and 2026-08-21 the `foray-nightly-enrich` Cloud agent did not run
+# — its account had hit a weekly usage limit. `nightly-refresh` succeeded both
+# nights and logged "published digest: 29 resolved episodes" both nights. Every
+# scheduled run in the window was `success`. No content reached `main` for two
+# days and there was no red anything, because the only symptom was an ABSENCE and
+# nothing in the system watched for one. The failure was invisible in exactly the
+# place anyone would look: the workflow list.
+#
+# So: this job's ONLY output is "did last night's digest turn into a PR", and its
+# only job is to go red when it did not.
+#
+# WHAT IT ACTUALLY CHECKS
+# `tools/refresh/watch-nightly.mjs --mode absence`, whose header carries the
+# reasoning and whose suite proves it against the real 2026-08-20 night. In one
+# line: a digest older than 12h with no `nightly/<its date>` PR — open or merged
+# — is red.
+#
+# 12h IS THE SAME 12h THE RUNNER PROMPT ALREADY USES
+# `docs/agents/runner-prompts/foray-nightly.md` step 2 makes the agent refuse a
+# digest older than 12 hours, so that a missing ACTION cannot produce "a silently
+# skipped night that looks like a successful one". This is that sentence with the
+# halves swapped. One number, two directions: a digest must be consumed within
+# 12h of being made.
+#
+# WHY 21:40 UTC, AND WHY GITHUB'S CRON DRIFT CANNOT MAKE THIS FLAKY
+# The Action's cron is 06:40 and the agent runs ~11:40. GitHub does not honour
+# cron punctually under load — measured on this repo, the old 09:40 slot actually
+# started at 10:54 and 11:05 on consecutive days, 75-85 minutes late. Stack every
+# delay and a HEALTHY night still merges by roughly 15:10, with the digest ~6.8h
+# old. 21:40 leaves about six hours past that, and the threshold inside the
+# checker is 12h, roughly double the worst measured latency, so a late night is
+# late twice over before anything goes red.
+#
+# Drift can only push a run LATER, never earlier, and a LATE watchdog is the safe
+# direction: it sees an older digest and MORE merged PRs, never fewer. The only
+# thing 21:40 must beat is the next 06:40 scan, and it has nine hours of room.
+#
+# A flaky alarm is worse than no alarm, because people learn to ignore it. Every
+# number here is chosen for quiet, not for speed — the failure this catches needs
+# two consecutive nights to destroy data, and the `overwrite` guard inside
+# `nightly-refresh.yml` is what stops the second night. This is the report; that
+# is the brake.
+#
+# WHAT THIS DELIBERATELY DOES NOT DO
+# It does not open an issue, comment, or page anyone. The requirement in #290 is
+# "a night that produces no PR must produce a red something", and a failed
+# scheduled run is exactly the signal whose absence made this invisible — it
+# appears in the workflow list, which is where the founder looked and found
+# nothing but green. Routing that red somewhere noisier (an issue, a mention) is
+# a real improvement and a separate decision, because it needs `issues: write`
+# and a dedup rule; it is not worth widening this job's token to guess at.
+
+name: nightly-watch
+
+on:
+  schedule:
+    # 21:40 UTC. Offset off :00 per the Swift2 convention — the top of the hour
+    # is where GitHub's scheduling contention lives, and this job's whole value
+    # is that it is boring and on time.
+    - cron: "40 21 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: nightly-watch
+  cancel-in-progress: false
+
+# Read-only, both of them. This job proposes nothing and writes nothing; a
+# watchdog that can change the thing it watches is not a watchdog.
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  DIGEST_BRANCH: refresh-digest
+
+jobs:
+  digest-became-a-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # No `npm ci` anywhere in this job: watch-nightly.mjs has no dependencies
+      # and makes no network calls of its own. Everything it reads is fetched
+      # here, by `gh`, into a file.
+      - name: Fetch the digest and the PR list
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          retry() {
+            local n=1 max=4 delay=5
+            until "$@"; do
+              if [ $n -ge $max ]; then return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+
+          # A digest branch with no digest is itself the alarm, so on a real 404
+          # the file is left ABSENT rather than empty — the checker is red on a
+          # missing digest in this mode, deliberately, and a zero-byte file would
+          # come back as a parse error instead of a sentence. Anything that is NOT
+          # a 404 is "I could not tell", which fails the job on its own terms
+          # rather than being laundered into a verdict about last night. A 404 is
+          # final and is not retried; everything else is.
+          fetch_digest() {
+            gh api "repos/$REPO/contents/resolved.json?ref=$DIGEST_BRANCH" --jq .content > digest.b64 2> digest.err && return 0
+            grep -qiE 'not found|HTTP 404|no commit found' digest.err || return 1
+            # `--jq .content` against a 404 body writes the literal `null` to
+            # stdout, so the file is non-empty and `base64 -d` chokes on it.
+            # Empty it, and let the `-s` test below mean what it says.
+            : > digest.b64
+          }
+
+          if retry fetch_digest; then
+            if [ -s digest.b64 ]; then
+              base64 -d < digest.b64 > digest.json
+              echo "digest.json: $(wc -c < digest.json) bytes"
+            else
+              rm -f digest.json digest.b64
+              echo "no resolved.json on $DIGEST_BRANCH — the checker will say so" >&2
+            fi
+          else
+            echo "::error::Could not read $DIGEST_BRANCH. This is not a verdict about last night." >&2
+            cat digest.err >&2
+            exit 1
+          fi
+
+          # Two fetches, unioned by the checker: a page of recent PRs, which can be
+          # crowded out on a busy day (35 PRs landed here in one session), and a
+          # targeted search that cannot be crowded out but lags GitHub's search
+          # index by minutes. Neither alone has no blind spot; together they do.
+          # A failed fetch fails the job — an empty PR list must never reach the
+          # checker dressed up as "no PR exists".
+          list_pulls() {
+            gh pr list --repo "$REPO" --state all --limit 200 \
+              --json number,title,headRefName,state,mergedAt,createdAt,url > recent-pulls.json
+          }
+          retry list_pulls
+
+          # The digest's own date, from the ONE implementation of that rule —
+          # re-deriving it in YAML is how the two-copies bug in
+          # tools/ci/path-policy.mjs started.
+          echo '[]' > nightly-pulls.json
+          if DIGEST_DATE=$(node tools/refresh/watch-nightly.mjs --mode date --digest digest.json); then
+            search_pulls() {
+              gh pr list --repo "$REPO" --state all --limit 50 \
+                --search "head:nightly/$DIGEST_DATE" \
+                --json number,title,headRefName,state,mergedAt,createdAt,url > nightly-pulls.json
+            }
+            retry search_pulls
+            echo "digest date $DIGEST_DATE"
+          fi
+
+      - name: Did last night's digest become a PR?
+        run: |
+          # `--discover` is not decoration here. #293 merged as
+          # `nightly/2026-08-19-recovery`, so a branch-name-only reading goes red
+          # on the evening a human just repaired the pipeline.
+          node tools/refresh/watch-nightly.mjs --mode absence \
+            --digest digest.json \
+            --pulls recent-pulls.json \
+            --pulls nightly-pulls.json \
+            --discover data/discover.json
