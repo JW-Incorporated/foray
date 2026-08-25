@@ -461,7 +461,9 @@ test("`APP_ID` IS THE APP ID — the workflow's copy agrees with capacitor.confi
 
      MUTATION: change `APP_ID:` in the workflow to `dev.jwlabs.foura` (its value
      before this move, i.e. exactly the miss a partial rename produces) -> fails on
-     the named assertion. Changing `appId` in `mobile/capacitor.config.json` instead
+     the named assertion. Deleting the line, adding a second `APP_ID:` assignment, and
+     adding one that hides behind a trailing `# comment` each fail too, on their own
+     message. Changing `appId` in `mobile/capacitor.config.json` instead
      fails here AND on the app-id pin in `shell-invariants.test.mjs`, which is the
      correct asymmetry: the config is the decision, this is a copy of it. */
   const appId = JSON.parse(fs.readFileSync(path.join(ROOT, "mobile/capacitor.config.json"), "utf8")).appId;
@@ -469,21 +471,38 @@ test("`APP_ID` IS THE APP ID — the workflow's copy agrees with capacitor.confi
   /* ALL assignments, not the first. A second `APP_ID:` at step or job scope would
      SHADOW the one this test checked and the check would still pass — the same class
      of hole as reading only the new package directory in `shell-invariants.test.mjs`.
-     Quotes optional, so `APP_ID: "…"` compares as the id rather than as `"…"`. */
-  const declarations = [...WF.matchAll(/^\s*APP_ID:\s*["']?([^"'\s#]+)["']?\s*$/gm)];
+     Quotes optional, so `APP_ID: "…"` compares as the id rather than as `"…"`.
+
+     A TRAILING YAML COMMENT IS PART OF THE LINE, and the first draft of this test was
+     blind to one: with `#` excluded from the value class and `\s*$` demanding the end
+     of the line, `APP_ID: dev.jwlabs.foura # oops` matched NOTHING and so was neither
+     counted nor compared — a shadowing declaration could hide behind a comment in
+     exactly the check written to catch shadowing. `(?:#.*)?` closes that, and it also
+     stops a comment on the LEGITIMATE line from dropping the count to zero and
+     reporting "the workflow no longer sets APP_ID" at a line that plainly sets it. */
+  const declarations = [...WF.matchAll(/^\s*APP_ID:\s*["']?([^"'\s#]+)["']?\s*(?:#.*)?$/gm)];
+  const values = declarations.map((m) => m[1]);
   assert.ok(declarations.length > 0, "the workflow no longer sets APP_ID, but simctl is still given $APP_ID");
   assert.equal(
     declarations.length,
     1,
-    "APP_ID is assigned " + declarations.length + " times (" + declarations.map((m) => m[1]).join(", ") +
+    "APP_ID is assigned " + declarations.length + " times (" + values.join(", ") +
       "); the narrower scope silently wins and pinning one of them proves nothing"
   );
-  assert.equal(
-    declarations[0][1],
-    appId,
-    "the iOS workflow's APP_ID is " + declarations[0][1] + " but capacitor.config.json's appId is " + appId +
-      "; simctl launch/terminate/get_app_container would address a bundle id the simulator has not installed"
-  );
+  /* EVERY declaration, not just the one the count above allows to exist. Asserted
+     separately so that if a future job legitimately sets the same id twice and the
+     count assertion is relaxed to permit it, the thing that actually matters — that no
+     assignment anywhere names a bundle id the simulator has not installed — is still
+     pinned rather than relaxed along with it. */
+  for (const [i, value] of values.entries()) {
+    assert.equal(
+      value,
+      appId,
+      "the iOS workflow's APP_ID (assignment " + (i + 1) + " of " + values.length + ") is " + value +
+        " but capacitor.config.json's appId is " + appId +
+        "; simctl launch/terminate/get_app_container would address a bundle id the simulator has not installed"
+    );
+  }
 });
 
 test("the plist injection goes through the tested script, not through sed or PlistBuddy alone", () => {

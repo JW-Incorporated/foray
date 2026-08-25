@@ -941,7 +941,8 @@ its reasoning.
   `APP_ID` in `.github/workflows/ios-build.yml` (**functional** — it drives `simctl
   launch`/`terminate`/`get_app_container`, so a stale value breaks the iOS probes);
   the two expectations in `tools/mobile/android-workflow.test.mjs`; the app-id pin and
-  the 16 source paths in `tools/mobile/shell-invariants.test.mjs`; two comments in
+  17 path literals in `tools/mobile/shell-invariants.test.mjs` (16 naming a `.java`
+  file, plus the package *directory* the transport-action scan reads); two comments in
   `test/app-name.test.js`; `HUMAN-ACTIONS.md` #15 and #19; and four docs.
 - **ONE ASSERTION ADDED, because the third pass is enough evidence.** `APP_ID` in
   `.github/workflows/ios-build.yml` had to be hand-synced with
@@ -951,9 +952,21 @@ its reasoning.
   value from the config rather than restating it, so it cannot be satisfied by editing
   the test. The failure it closes is not a red build: `simctl launch` on a stale bundle
   id collects no measurement, and the job then reports a missing out-point rather than
-  a stale string. #15 now says three places. Mutation-tested twice — reverting `APP_ID`
-  to `dev.jwlabs.foura`, and deleting the line — each failing on its own named
-  assertion.
+  a stale string. #15 now says three places. Mutation-tested four ways — reverting
+  `APP_ID` to `dev.jwlabs.foura`, deleting the line, adding a second shadowing
+  assignment, and hiding a shadowing assignment behind a trailing YAML comment — each
+  failing on its own named assertion.
+- **THE NEW ASSERTION HAD THE SHADOWING HOLE IT WAS WRITTEN TO CLOSE, and review found
+  it.** Its first draft excluded `#` from the value it captured and then anchored on
+  `\s*$`, so `APP_ID: dev.jwlabs.foura # oops` matched *nothing*: a second, wrong
+  assignment was neither counted nor compared as long as it carried a comment. The
+  check written to catch a shadowing declaration could be defeated by commenting one.
+  Fixed by tolerating a trailing comment, and the value comparison now runs over
+  **every** assignment rather than `declarations[0]`, so the property that matters — no
+  assignment anywhere names an id the simulator has not installed — survives any future
+  relaxing of the count. Worth recording because it is the same shape as the near-miss
+  in the entry above: a guard that reads only the place the author expected the defect
+  to be.
 - **What deliberately did NOT move, for the third time.** The Capacitor plugin's
   **registered name** is still `ForayAudio` — the `@CapacitorPlugin(name = …)`
   annotation and `PLUGIN_NAME` in both web halves are byte-identical to `origin/main`.
@@ -974,11 +987,19 @@ its reasoning.
   pass ran two deliberately separate `sed` invocations for exactly that reason, one for
   the plain string and one for the backslash-escaped form, **and the escaped one still
   ate its own backslashes in the replacement**, producing
-  `/grep -qF 'ai.jwlabs.foura\.audio\.ForayAudioPlugin'/`. Two of five dots
+  `/grep -qF 'ai.jwlabs.foura\.audio\.ForayAudioPlugin'/`. Two of the four dots
   wildcarded. Restored by hand. **The lesson is not "be careful with sed": it is that
   the one regex in the repo carrying this string has now been damaged by two of the
   three passes over it, so the check is not optional.** There is exactly one such
-  regex — `git grep -n 'jwlabs\\.'` returns one line, and every dot in it is escaped.
+  regex, `tools/mobile/android-workflow.test.mjs:402`, and every dot in it is escaped.
+  To re-check it, grep for an escaped dot next to the name — `git grep -nE
+  'jwlabs\\\.'` — and read the hits rather than counting them: this sentence contains
+  the pattern it describes, so this file is itself one of them. **The way to verify the
+  escaping is load-bearing is not to look at it but to break the thing it reads**:
+  change the needle in `.github/workflows/android-build.yml` so its dots become other
+  characters (`aiXjwlabsXfouraXaudioXForayAudioPlugin`). With the escaping intact the
+  assertion fails; with the escaping stripped the *same* mutation passes, because the
+  bare dots match the `X`s. Both halves of that were run.
 - **The old-package-left-behind guard was re-verified, not assumed.** The 2026-08-25
   entry above records a test that could not see a `.java` left on the old path —
   the exact residue of a half-finished `git mv` — and that now asserts against the
