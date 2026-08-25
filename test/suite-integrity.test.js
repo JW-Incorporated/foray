@@ -271,6 +271,17 @@ const FLOORS = {
   "test/sw-generation.test.js": 32,
   // tools/ is allowlisted for auto-merge too (T3 in automerge-nightly.yml),
   // so suites under it need the same floor.
+  /* The icons are generated from tools/brand/4a-logo.png, and this suite is the
+     only thing stopping someone editing a committed PNG by hand. Six of its
+     seven claimed mutations were run and killed; the seventh is documented in
+     the suite as deliberately uncovered, with the reason.
+
+     THE FLOOR IS 10, AND THE SUITE RUNS 14. Not a mistake: the counter above is
+     `/^s*test(/gm`, which counts call sites, and six of those runs come from
+     two calls inside a loop over SIZES. The loop's own inputs are pinned by
+     "SIZES still names exactly the three icons we publish", so an entry cannot
+     be dropped to shed tests while the static count holds still. */
+  "tools/brand/build-icons.test.mjs": 10,
   "tools/ci/path-policy.test.mjs": 82,
   "tools/ci/pr-triage.test.mjs": 85,
   "tools/ci/run-suites.test.mjs": 36,

@@ -59,7 +59,9 @@
  *     Now an allowlist: it must be `true`.
  *   - `img-src 'self'` (dropping `https: data:`) — the new directive was pinned
  *     and the two pre-existing, load-bearing ones were not. Every piece of cover
- *     art and the favicon would have gone blank. Now all three are pinned.
+ *     art would have gone blank. Now all three are pinned. (`data:` was there
+ *     for the favicon when this was written. The favicon is icon-180.png since
+ *     the logo landed, and `data:` is held up by media-session artwork now.)
  *   - a `/Android|iPhone/` test inside `shouldRegisterServiceWorker` — the
  *     harness hardcoded `userAgent: "node"`, so a UA sniff that switched the
  *     offline shell off for the entire real audience passed. Now parameterised.
@@ -735,13 +737,18 @@ test("the CSP lets the app load its own bundled assets", () => {
   }
 });
 
-test("img-src still allows remote artwork and the data: favicon", () => {
+test("img-src still allows remote artwork and data: artwork URIs", () => {
   /* PINNED IN BOTH DIRECTIONS, because the first version of this suite pinned
      only the token it had just added. Narrowing `img-src 'self' https: data:` to
      `img-src 'self'` left every test in the repo green while blanking every piece
      of cover art on the site and in the app: app.js renders remote artwork from
-     ~41 podcast CDNs, and index.html's favicon is a data: URI. A guard that
-     protects only the newest change is how the older, load-bearing thing dies. */
+     ~41 podcast CDNs. A guard that protects only the newest change is how the
+     older, load-bearing thing dies.
+
+     `data:` is NOT here for the favicon any more -- that is icon-180.png since
+     the logo landed. It is held up by artwork instead: `player/media-session.js`
+     and the plugin's `foray-media-session.js` both accept a `data:image/` artwork
+     URI and hand it to the OS. Dropping the token blanks lock-screen art there. */
   const csp = cspDirectives();
   for (const src of ["'self'", "https:", "data:"]) {
     assert.ok(csp["img-src"]?.includes(src), `img-src lost ${src}`);
