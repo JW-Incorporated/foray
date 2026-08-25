@@ -1582,9 +1582,46 @@ transcripts are usable — and one download of The Secret To Success would settl
 
 ---
 
-### 25. Buy the company domain before writing either store listing
+### 25. Buy the company domain before writing either store listing — DONE
 
-**Tag:** `[BLOCKING]` for store listings · **Time:** ~10 minutes · **Owner:** Wyatt · **Cost:** ~$12/year — a spend decision, so founders' call (`CLAUDE.md` decision-authority item 3)
+**Tag:** `[DONE 2026-08-25]` · **Owner:** nobody · **Cost:** $0 more
+
+> **RESOLVED, AND THE ANSWER IS "DO NOT BUY ANYTHING".** `jwlabs.dev` was purchased
+> 2026-08-24 and the site is built, deployed and verified live. The three URLs a
+> store listing needs already exist, in exactly the path shape this item specified:
+>
+> | store field | URL | verified |
+> |---|---|---|
+> | Privacy Policy URL (both stores, required) | `https://jwlabs.dev/4a/privacy/` | HTTP 200 |
+> | Support URL (Apple, required) | `https://jwlabs.dev/4a/support/` | HTTP 200 |
+> | Marketing URL (optional) | `https://jwlabs.dev/4a/` | HTTP 200 |
+>
+> **`jwincorporated.com` must NOT be bought**, and the illustrative block below is
+> left as written only as the record of what was proposed. Three reasons, and they
+> compound:
+>
+> 1. **It names a company that does not exist.** The legal entity is **JW Labs LLC**,
+>    filed in California 2026-07-26. "JW Incorporated" was never the entity; it was an
+>    error that propagated into this file, the website and — most seriously — the
+>    published privacy policy, which named it as the **data controller**.
+> 2. **The requirement is already met**, at no further cost, on a domain that matches
+>    both the entity name and the app id `dev.jwlabs.foura` (#15).
+> 3. **It would manufacture the exact defect Apple rejected us for.** Apple declined
+>    enrollment `DVNC3U5GMU` in part because the website's domain was not associated
+>    with the organisation. Buying a domain whose name does not match the entity
+>    recreates that, deliberately, after paying to fix it.
+>
+> A consumer-facing `.com` remains a reasonable *marketing* purchase some day — but
+> then `jwlabs.com` or similar, matching the entity. It blocks nothing and no store
+> requires it. `.dev` is HSTS-preloaded, so these pages are HTTPS-only, which is what
+> both stores want anyway.
+>
+> **One live dependency, recorded because it is invisible from this repo:** the site
+> is served by GitHub Pages *through Cloudflare*, and the proxy is load-bearing —
+> GitHub never issued a certificate for `jwlabs.dev`, so the origin still presents
+> `CN=*.github.io`. Turning the DNS records grey brings back a certificate error that,
+> because `.dev` is HSTS-preloaded, users cannot click through. Details in that repo's
+> README, "How this is served".
 
 **Why it matters.** Both stores require a **Privacy Policy URL**; Apple also requires a
 **Support URL**. Those URLs must stay live for the life of the app — both stores re-check
@@ -1613,21 +1650,8 @@ jwincorporated.com/4a/privacy  policy        -> Privacy Policy URL (required)
 jwincorporated.com/4a/support  contact + FAQ -> Support URL (Apple, required)
 ```
 
-> **NOTE ADDED 2026-08-25 — read this before buying anything, and the recommendation
-> above is deliberately left as written because the domain is your call.** The
-> illustrative domain names a company that does not exist: the legal entity is
-> **JW Labs LLC**, and nobody owns `jwincorporated.com`. Meanwhile **`jwlabs.dev` was
-> purchased 2026-08-24** and is already the basis of the app id `dev.jwlabs.foura`
-> (#15), so step 1 below may be done. That makes this a **choice between two domains**
-> rather than a purchase:
->
-> - **Use `jwlabs.dev`** — owned, $0 more, matches the app id and the entity name.
->   `.dev` is HSTS-preloaded, so the pages are HTTPS-only, which both stores want.
-> - **Buy a `.com`** — if you want a consumer-facing marketing domain, buy one that
->   matches the entity (`jwlabs.com` or similar), **not** `jwincorporated.com`.
->
-> Either way the path shape above is right: company root, per-app paths. Reply with
-> the domain you want and a session builds the site.
+> *(An earlier 2026-08-25 note offering a choice between two domains is superseded
+> by the resolution above: the choice was made and the site is live.)*
 
 **Why the order matters, and it is the whole reason this is filed.** The free alternative is a
 GitHub org Pages site (a repo named exactly `jw-incorporated.github.io`; there is none today —
