@@ -632,6 +632,18 @@ const FLOORS = {
      under-declaring. */
   "tools/transcribe/decode-compare.test.mjs": 31,
   "tools/transcribe/ad-inflation.test.mjs": 43,
+  /* The transcription work order. Zero slack, because what it guards is not
+     logic but a PROMISE MADE TO A MACHINE THAT IS ALREADY RUNNING: a worker box
+     consumes data/transcription-queue.json in rank order, so any change that
+     renumbers, reorders or deletes an entry silently re-points a log that has
+     already been written. Half these tests assert on the committed artefact
+     rather than on the producer, which is deliberate — data/ auto-merges with no
+     human read, so a hand-edit is the likelier corruption. 28 mutations killed,
+     each named in the test that kills it; one of them (the audio-hours estimate
+     relabelled `measured`) survived the first round because the assertion only
+     read the shipped file, and the producer assertion that kills it was added
+     for exactly that reason. */
+  "tools/transcribe/build-transcription-queue.test.mjs": 26,
   "tools/corpus/fetcher.test.mjs": 23,
   "tools/corpus/extract.test.mjs": 21,
   "tools/corpus/db.test.mjs": 20,
