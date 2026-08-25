@@ -71,9 +71,31 @@ From <https://developer.apple.com/help/account/membership/D-U-N-S/>:
 > the Apple Developer Program or the Apple Developer Enterprise Program.
 
 Also required, per the enrollment page: **a work email address associated with
-your organization's domain name.** That is `help@jwlabs.dev`, and it is the same
-domain as this site, which is one of the associations Apple can check without
-asking anybody.
+your organization's domain name.** That address is **`help@jwlabs.ai`**. It is on
+`jwlabs.ai`, which is the domain of the live site — the same domain — and that match
+is one of the associations Apple can check without asking anybody.
+
+**Do not type `help@jwlabs.dev` into that field.** It still accepts mail, and that
+is exactly what makes it dangerous: it looks like a correct answer. But the website
+on the enrollment record must read `https://jwlabs.ai`, and a `@jwlabs.dev` work
+email beside a `jwlabs.ai` website weakens the one association this field exists to
+prove — that the contact route and the site are the same organisation's. Be precise
+about why, because this document's credibility rests on it: the stated ground for
+rejecting `DVNC3U5GMU` was minimal content, and the association failure §2a
+identifies was the **wrong company name** in the footer, not a TLD difference. Both
+domains do belong to JW Labs LLC, so a `.dev` work email is not by itself the defect
+that sank the first attempt. It is, however, a gratuitous discrepancy on exactly the
+axis the reviewer already declined this enrollment on — free to avoid, and awkward
+to explain. So:
+
+| enrollment field | what to enter |
+|---|---|
+| Website | `https://jwlabs.ai` |
+| Work email | `help@jwlabs.ai` |
+
+**Set both in the same sitting.** The website field has to be `jwlabs.ai` regardless
+— that is the site a reviewer will open — so the only question is whether the work
+email matches it, and there is no reason to leave it not matching.
 
 ## 2a. What the rejection probably actually meant
 
@@ -128,7 +150,7 @@ And from <https://developer.apple.com/help/account/membership/D-U-N-S/>:
 > entities on a **location-specific** basis.
 
 So the address check runs against the Dun & Bradstreet record, not against
-`jwlabs.dev`. **The founder's decision not to publish a postal address does not
+`jwlabs.ai`. **The founder's decision not to publish a postal address does not
 put the enrollment at risk**, and it removes a whole class of failure — a
 hand-typed address on a web page that does not match the D&B record character for
 character is a discrepancy; an absent one is not a discrepancy at all. Publishing
@@ -172,16 +194,16 @@ in order to tick those boxes.
 
 | # | Requirement | Source | Where it is satisfied now |
 |---|---|---|---|
-| 1 | Publicly reachable over HTTPS, no login wall, no interstitial, no registrar parking page | [stated] | Apex `jwlabs.dev` serves 200 over TLS. GitHub Pages origin, Cloudflare terminating TLS. No auth anywhere on the site. |
+| 1 | Publicly reachable over HTTPS, no login wall, no interstitial, no registrar parking page | [stated] | Apex `jwlabs.ai` serves 200 over TLS — all 26 built pages verified 2026-08-25. GitHub Pages origin, Cloudflare terminating TLS. No auth anywhere on the site. (`jwlabs.dev` now 301s here, so verify against `jwlabs.ai` or you are measuring the redirect. Note `http://jwlabs.ai/` also serves 200 in cleartext — see §5.) |
 | 2 | Functional: every internal link resolves, nothing 404s, renders on a phone | [stated] | `node build.mjs` writes every page and asserts link shape; a link check walks every `href` and confirms each target exists. Single-column responsive layout, no fixed widths. |
 | 3 | The domain names the **legal entity on the D-U-N-S record** | [stated] | `JW Labs LLC` appears in the masthead of **every** page, in the first line of text on the page, and again in every footer. It has exactly one definition in the codebase (`ORG` in `build-md.mjs`) so it cannot drift. |
 | 4 | The legal entity name appears exactly as Apple will see it at D&B | [derived] | "JW Labs LLC" throughout — never "JW Labs, LLC.", never "JW Labs Inc". **Confirm the exact D&B string; see §4.1.** |
 | 5 | No second, contradictory company name anywhere on the site | [stated, by the DBA exclusion] | "JW Incorporated" is gone from every page. `/about/` states that JW Labs and JW Labs LLC are one company. **One residual, see §5.** |
-| 6 | Machine-readable organization/domain association | [derived] | schema.org `Organization` microdata in the site footer: `name` = JW Labs LLC, `alternateName` = JW Labs, `url` = jwlabs.dev, `email` = the contact address. No script tag involved. |
+| 6 | Machine-readable organization/domain association | [derived] | schema.org `Organization` microdata in the site footer: `name` = JW Labs LLC, `alternateName` = JW Labs, `url` = jwlabs.ai, `email` = the contact address. No script tag involved. |
 | 7 | Not a placeholder: several real pages of substantive prose, reachable through real navigation | [stated, by exclusion] | 15 pages. Persistent primary nav on every page. ~11,000 words, none of it padding. |
 | 8 | The site says what the company **does**, not only that it exists | [derived] | Home page and `/about/` describe the business and what the two products have in common. `/4a/` and `/longlive/` describe each product. |
 | 9 | Technical substance that a placeholder could not fake | [derived] | `/engineering/` — five long notes on real, documented problems in the shipped codebase, with measured numbers and named limits. |
-| 10 | A working contact route on the organization's own domain, visible without JavaScript | [stated] (work email) + [derived] (visible) | `help@jwlabs.dev`, rendered as a real `mailto:` in static HTML on every page, plus a dedicated `/contact/`. |
+| 10 | A working contact route on the organization's own domain, visible without JavaScript | [stated] (work email) + [derived] (visible) | `help@jwlabs.ai` — on the site's own domain — rendered as a real `mailto:` in static HTML on every page, plus a dedicated `/contact/`. Verified 2026-08-25: every mailto-bearing live page emits `help@jwlabs.ai` and no other address. |
 | 11 | Legal pages a real company has: privacy and terms | [derived] | `/privacy/` (this website), `/terms/` (website and 4a), `/4a/privacy/` (the app's policy, published from the app's own repository). |
 | 12 | Content hosted **on this domain**, not a redirect to social media or another host | [stated] | Nothing on any page is fetched from another origin — the build fails if it is. Off-site URLs exist only as links a reader chooses to follow. |
 | 13 | Nothing that reads as under construction | [derived] | No "coming soon", no placeholder copy, no empty section, no dead nav item. Where something is unfinished the page says what is and is not built, in prose, which reads as candour rather than as a stub. |
@@ -225,10 +247,16 @@ None of these blocked the rebuild. All of them would strengthen items 3 and 4.
    publishing a person's name is the founder's call, not ours.
 3. **Whether a phone number may be published.** Not invented; `/contact/` says
    plainly that email is the only channel.
-4. **Whether `jwlabs.dev` is registered to JW Labs LLC** rather than to an
-   individual. This is an association test we cannot see the result of from here,
-   and it is the one remaining place the domain and the entity could fail to line
-   up. Worth a WHOIS check.
+4. **Whether `jwlabs.ai` — and then `jwlabs.dev` — is registered to JW Labs LLC**
+   rather than to an individual. `jwlabs.ai` first: it is the live site and the
+   domain that belongs on the enrollment record, so it is the one Apple reviews.
+   `jwlabs.dev` still matters, because documents already in the wild name it. This
+   is an association test we cannot see the result of from here, and it is the one
+   remaining place the domain and the entity could fail to line up. A WHOIS check is
+   **not** sufficient: both domains sit at Cloudflare Registrar, which redacts the
+   registrant in WHOIS and RDAP alike, so nobody outside can confirm it either way.
+   It has to be read in the Cloudflare dashboard, per domain, under Contact
+   information.
 5. **The California-specific privacy questions in §6.** Legal review, not facts.
 
 ### Settled, and recorded here so they are not reopened
@@ -260,9 +288,11 @@ None of these blocked the rebuild. All of them would strengthen items 3 and 4.
   away; the links are simply what they are.
 - **The domain registrant is unverified.** The domain and the company name now
   match, which is the main thing. The one association test we cannot see the
-  result of from here is WHOIS: if `jwlabs.dev` is registered to an individual
-  rather than to JW Labs LLC, that is a visible mismatch on a record Apple can
-  pull. §4.4.
+  result of from here is the registrant record: if `jwlabs.ai` — or `jwlabs.dev`,
+  which documents in the wild still name — is registered to an individual rather
+  than to JW Labs LLC, that is a mismatch on a record Apple can ask for. Not
+  settleable by WHOIS from outside, because Cloudflare Registrar redacts the
+  registrant on both domains. §4.4.
 - **`/longlive/` is the thinnest page on the site**, because longlive has its own
   domain and this repository holds few verified facts about it. It is now several
   paragraphs drawn from what longlivets.com itself publishes, rather than one
@@ -270,11 +300,23 @@ None of these blocked the rebuild. All of them would strengthen items 3 and 4.
   here without facts from the longlive side. Note also that longlivets.com does
   not name a company anywhere; if that domain is also on the D-U-N-S record's
   radar, it has the same association problem this site just fixed.
-- **The site's own source is served.** `https://jwlabs.dev/src/...` returns the
-  Markdown behind the pages, and `src/4a-privacy-policy.md` still carries the
-  upstream `Status: DRAFT` banner. See the README section on that trade. It is a
-  disclosure, not a contradiction, but a reviewer who found it could read it as
-  an unfinished site.
+- **The site's own source was served — FIXED 2026-08-25, do not re-fix.** The
+  Markdown behind the pages used to be readable at `/src/...`, including
+  `src/4a-privacy-policy.md` with its upstream `Status: DRAFT` banner. Pages now
+  serves the website repository's `docs/` directory only, so the repo root is not
+  public (website PR #4). Verified: `https://jwlabs.ai/src/4a-privacy-policy.md`
+  and `https://jwlabs.ai/README.md` both return **404**. Kept on this list rather
+  than deleted, because it is the reason the site is served from `docs/`.
+- **The site answers over plain `http`, and nothing upgrades the visitor.**
+  Measured 2026-08-25: `http://jwlabs.ai/` returns **200 in cleartext**, and the
+  HTTPS response carries no `Strict-Transport-Security` header. On `.dev` this was
+  impossible — that TLD is HSTS-preloaded — but **`.ai` is not**, so the protection
+  was lost at the cutover rather than by any change to this site. Item 1 says
+  "publicly reachable over HTTPS" and it is; a reviewer arriving over `https://`
+  sees nothing wrong. The exposure is a store or a reviewer following an `http`
+  link to the privacy policy. Fixable with one Cloudflare toggle (Always Use
+  HTTPS), plus GitHub Pages' Enforce HTTPS, which the website repository currently
+  reports as `https_enforced: false`.
 - **Nothing is in any app store yet.** The site says so. That is a fact about the
   company, not a defect in the website, and hiding it would violate item 15.
 
@@ -313,19 +355,33 @@ repository and have rewritten this site's HTML before. Run these against the
 **served** pages, not the built ones:
 
 ```
-for p in / /about/ /contact/ /engineering/ /engineering/segment-anchoring/ \
-         /engineering/transcripts/ /engineering/curation/ \
-         /engineering/measurement/ /engineering/privacy-by-construction/ \
-         /terms/ /privacy/ /4a/ /4a/privacy/ /4a/support/ /longlive/; do
+for p in / /about/ /contact/ /services/ /services/what-we-build/ \
+         /services/how-we-work/ /4a/ /4a/features/ /4a/getting-started/ \
+         /4a/sample/ /4a/sample/barbecue/ /4a/sample/startup-capital/ \
+         /4a/sample/plate-tectonics/ /4a/library/ /4a/your-data/ /4a/faq/ \
+         /4a/support/ /4a/for-podcasters/ /4a/privacy/ /longlive/ /status/ \
+         /glossary/ /security/ /accessibility/ /terms/ /privacy/; do
   printf '%s ' "$p"
-  curl -sS "https://jwlabs.dev$p" |
+  curl -sS "https://jwlabs.ai$p" |
     awk '{n+=gsub(/<script/,"&"); c+=gsub(/cdn-cgi/,"&")} END {print "scripts="n" cdn-cgi="c}'
 done
 
-curl -sS https://jwlabs.dev/ | grep -o 'mailto:[^"]*'      # must be the real address
-curl -sS https://jwlabs.dev/ | grep -c 'JW Incorporated'   # must be 0
+curl -sS https://jwlabs.ai/ | grep -o 'mailto:[^"]*'      # must be the real address
+curl -sS https://jwlabs.ai/ | grep -c 'JW Incorporated'   # must be 0
 ```
 
 `scripts=0 cdn-cgi=0` on every line, a real `mailto:`, and zero occurrences of
 the wrong company name. Anything else means Email Address Obfuscation or Rocket
 Loader came back on in the Cloudflare zone, or that a page regressed.
+
+**Every host above must be `jwlabs.ai`.** Aimed at `jwlabs.dev`, these checks stop
+measuring the site and start measuring a 301: the redirect's body is empty, so the
+per-page assertions report a total regression on a site that is in fact fine, and
+`grep -c 'JW Incorporated'` returns 0 unconditionally — a guard that cannot fail,
+on the exact defect this enrollment was rejected over.
+
+**The path list is the site's real page set** — all 26 built pages, checked
+2026-08-25. It previously named six `/engineering/…` notes that the site no longer
+has; every one of them now returns 404, so the loop reported a catastrophe on a
+healthy site. If pages are added or removed, update this list, or the recipe goes
+back to measuring the wrong thing.

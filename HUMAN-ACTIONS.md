@@ -1592,14 +1592,27 @@ transcripts are usable — and one download of The Secret To Success would settl
 **Tag:** `[DONE 2026-08-25]` · **Owner:** nobody · **Cost:** $0 more
 
 > **RESOLVED, AND THE ANSWER IS "DO NOT BUY ANYTHING".** `jwlabs.dev` was purchased
-> 2026-08-24 and the site is built, deployed and verified live. The three URLs a
-> store listing needs already exist, in exactly the path shape this item specified:
+> 2026-08-24 — a historical fact, and the reason nothing further needs buying.
+> **The live site, though, is `jwlabs.ai`**, bought 2026-08-25 and now the primary
+> domain: it is built, deployed and verified live, and `jwlabs.dev` 301-redirects to
+> it, path and query preserved. The three URLs a store listing needs already exist,
+> in exactly the path shape this item specified, and they are the `jwlabs.ai` ones:
 >
 > | store field | URL | verified |
 > |---|---|---|
-> | Privacy Policy URL (both stores, required) | `https://jwlabs.dev/4a/privacy/` | HTTP 200 |
-> | Support URL (Apple, required) | `https://jwlabs.dev/4a/support/` | HTTP 200 |
-> | Marketing URL (optional) | `https://jwlabs.dev/4a/` | HTTP 200 |
+> | Privacy Policy URL (both stores, required) | `https://jwlabs.ai/4a/privacy/` | HTTP 200, re-checked 2026-08-25 |
+> | Support URL (Apple, required) | `https://jwlabs.ai/4a/support/` | HTTP 200, re-checked 2026-08-25 |
+> | Marketing URL (optional) | `https://jwlabs.ai/4a/` | HTTP 200, re-checked 2026-08-25 |
+>
+> **Copy those exact URLs into a listing. Never the `jwlabs.dev` spellings.**
+> Measured again from this machine on 2026-08-25: each `jwlabs.ai` URL above returns
+> **200**, and each `jwlabs.dev` equivalent returns **301** to it. A `.dev` URL in a
+> published listing therefore resolves only for as long as one Cloudflare redirect
+> rule survives on a zone kept alive for that redirect alone — and both stores
+> re-check these URLs for the life of the app, which makes that a compliance failure
+> rather than a broken link. (This table first read `jwlabs.dev` … `HTTP 200`, which
+> was **true when it was written**: `jwlabs.ai` was not registered until later the
+> same day. It went stale at the cutover; it was never wrong.)
 >
 > **`jwincorporated.com` must NOT be bought**, and the illustrative block below is
 > left as written only as the record of what was proposed. Three reasons, and they
@@ -1615,9 +1628,11 @@ transcripts are usable — and one download of The Secret To Success would settl
 >    became the primary domain and `jwlabs.dev` became a redirect. **That does not
 >    reopen this item.** The store fields want a URL that resolves and a domain
 >    associated with the organisation, not a domain that spells the bundle id; both
->    domains are JW Labs LLC's. Whether the three URLs above should be re-pointed at
->    `jwlabs.ai` before a listing is written is a site decision for whoever writes the
->    listing, and a 301 satisfies both stores either way.
+>    domains are JW Labs LLC's. The three URLs above **have** now been re-pointed at
+>    `jwlabs.ai`, so there is no decision left for whoever writes the listing: use the
+>    table as written. A 301 would satisfy both stores on the day, but it is a
+>    dependency on a redirect rule rather than an address, which is why the table no
+>    longer offers the choice.
 > 3. **It would manufacture the exact defect Apple rejected us for.** Apple declined
 >    enrollment `DVNC3U5GMU` in part because the website's domain was not associated
 >    with the organisation. Buying a domain whose name does not match the entity
@@ -1625,15 +1640,31 @@ transcripts are usable — and one download of The Secret To Success would settl
 >
 > A consumer-facing `.com` remains a reasonable *marketing* purchase some day — but
 > then `jwlabs.com` or similar, matching the entity. It blocks nothing and no store
-> requires it. `.dev` is HSTS-preloaded, so these pages are HTTPS-only, which is what
-> both stores want anyway.
+> requires it. Every URL above is `https://` and HTTPS works, which is what both
+> stores want — but **that is now a convention, not an enforcement, and it used to be
+> an enforcement.** While these pages were on `.dev` they were HTTPS-only for free,
+> because `.dev` is HSTS-preloaded. **`.ai` is not preloaded**, and measured
+> 2026-08-25 `http://jwlabs.ai/` returns **200 in cleartext** — no redirect to HTTPS,
+> and no `Strict-Transport-Security` header on the HTTPS response. So Cloudflare's
+> "Always Use HTTPS" is off and nothing upgrades a plaintext visitor. Worth a
+> founder's click before a listing points a store at a privacy policy over `http`;
+> tracked separately as the website repo's `https_enforced: false`.
 >
-> **One live dependency, recorded because it is invisible from this repo:** the site
-> is served by GitHub Pages *through Cloudflare*, and the proxy is load-bearing —
-> GitHub never issued a certificate for `jwlabs.dev`, so the origin still presents
-> `CN=*.github.io`. Turning the DNS records grey brings back a certificate error that,
-> because `.dev` is HSTS-preloaded, users cannot click through. Details in that repo's
-> README, "How this is served".
+> **Two live dependencies, recorded because both are invisible from this repo:**
+>
+> 1. **`jwlabs.ai` is served by GitHub Pages *through Cloudflare*, and the proxy is
+>    load-bearing.** Cloudflare terminates TLS; the Pages origin behind it presents
+>    `CN=*.github.io`, because GitHub issued no certificate for the custom domain —
+>    verified 2026-08-25, `gh api repos/JW-Incorporated/jwlabs.dev/pages` reports
+>    `https_certificate: null` and `https_enforced: false`. Turning the `jwlabs.ai`
+>    DNS records grey brings back a certificate error on the live company site.
+>    Details in that repo's README, "How this is served".
+> 2. **The `jwlabs.dev` zone must keep resolving to Cloudflare.** Pages spends its one
+>    custom domain on `jwlabs.ai`, so `jwlabs.dev` is no longer served by Pages at
+>    all. The only things answering on it are the Cloudflare 301 rule — which is what
+>    keeps every stale `.dev` URL in the wild alive, including the one on the Apple
+>    enrollment record — and the still-working `help@jwlabs.dev` alias. Deleting the
+>    zone, or greying its records, takes out both at once.
 
 **Why it matters.** Both stores require a **Privacy Policy URL**; Apple also requires a
 **Support URL**. Those URLs must stay live for the life of the app — both stores re-check
