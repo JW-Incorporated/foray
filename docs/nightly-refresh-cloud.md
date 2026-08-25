@@ -14,7 +14,7 @@ split by whether they need credentials or judgment (the Swift2 two-tier model).
                                                  │ (credential-free digest)
 ┌────────────────────────── Claude Cloud scheduled agent (judgment) ───────────────────────────┐
 │  foray-nightly runner  @ ~11:40 UTC                                                            │
-│    read resolved.json from refresh-digest → author edits.json (hooks + tags)                   │
+│    read resolved.json from refresh-digest → author edits.json (hooks/tags/topics)              │
 │    → merge.mjs → copy-rule + pool-integrity tests → open PR to main                            │
 └───────────────────────────────────────────────┬───────────────────────────────────────────────┘
                                                  │

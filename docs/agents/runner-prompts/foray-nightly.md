@@ -13,7 +13,8 @@ Read `CLAUDE.md` first; the copy rules and product principles there are binding.
 The Action already did the deterministic half (scan feeds, resolve Apple
 trackIds, dedup) and published two files to the **`refresh-digest`** branch:
 `resolved.json` (the episodes to publish) and `refresh-state.json` (ignore it).
-You produce `edits.json` (hooks + tags) and run the committed merge. See
+You produce `edits.json` (hooks, tags, and `topics` where an episode differs
+from its show's label) and run the committed merge. See
 `tools/refresh/README.md` for the full contract.
 
 ## Steps (follow exactly)
@@ -77,9 +78,9 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
    open a PR, do not commit.
 
 4. **Author `data-local/edits.json`** — a JSON object `{ "<id>": { "hook",
-   "tags" } }` with one entry per resolved item you intend to publish. For each
-   item in `resolved.json` (each carries `_description`, the episode's real
-   blurb, plus `show`/`title`/`topics`):
+   "tags", "topics"? } }` with one entry per resolved item you intend to
+   publish. For each item in `resolved.json` (each carries `_description`, the
+   episode's real blurb, plus `show`/`title`/`topics`):
    - **hook**: ≤ 16 words, grounded in the real description. Banned:
      `fascinating`, `deep dive`, `delve`, `explores`, clickbait withholding,
      any commute-length framing. If the description is *itself* clickbait
@@ -87,6 +88,25 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
      episode's title/subject instead — never quote the tease.
    - **tags**: 5–10, lowercase-hyphenated (`^[a-z0-9]+(-[a-z0-9]+)*$`). Reuse
      the existing vocabulary in `data/item-tags.json` wherever it applies.
+   - **topics** (OPTIONAL, #292): the resolved item's `topics` field is its
+     **show's** label, not this episode's. **Omit `topics` and that label
+     stands** — which is right for a single-subject show, and is the normal
+     case. Supply it *only when this episode is about something else*, and it
+     replaces the show label for that one episode. Rules:
+     - every id must exist in `data/taxonomy.json`. A bad id **fails the whole
+       merge** in preflight — it is never quietly ignored;
+     - `[]` is **refused**. An episode with no topic is dropped by the
+       pipeline, and the product rule is *label, never exclude*. Omit the field
+       instead;
+     - put the **primary** subject first: `topics[0]` is the item's branch for
+       discovery diversity;
+     - 1–3 ids is the normal shape. `node tools/refresh/topic-uniformity.mjs
+       --show "<title>"` shows how that show is currently labelled.
+
+     This exists because topics used to be assigned per show and could not be
+     appealed: 77 of the 99 shows with ≥ 8 episodes carried one identical topic
+     set on **every** episode. Authoring `topics` when an episode genuinely
+     differs is how that stays fixed; skipping it is how it comes back.
    - **To drop an item**, simply omit it from `edits.json` — `merge.mjs` skips
      resolved items with no edit and reports them. Prefer dropping over forcing
      a weak hook. Drop, at minimum:
@@ -106,8 +126,13 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
    node tools/refresh/merge.mjs
    ```
    It enforces the copy rules before writing; if it exits non-zero, fix the
-   offending hook/tags in `edits.json` (or drop the item) and re-run. It writes
-   `data/discover.json` + `data/item-tags.json`.
+   offending **hook, tags or `topics`** in `edits.json` (or drop the item) and
+   re-run. A `not taxonomy node ids: "…"` failure is a `topics` typo — correct
+   the id against `data/taxonomy.json`, or delete the `topics` key to fall back
+   to the show's label. **Nothing was written**: merge validates every item
+   before it writes anything, so a failed run leaves the data files untouched
+   and re-running after the fix is safe. It writes `data/discover.json` +
+   `data/item-tags.json`.
 
 6. **Validate.** Never open a red PR:
    ```sh
@@ -132,7 +157,9 @@ You produce `edits.json` (hooks + tags) and run the committed merge. See
 
 - Touch ONLY `data/discover.json`, `data/item-tags.json` (both via `merge.mjs`),
   and `data-local/edits.json`. No schema changes, no dependency changes, no edits
-  to `tools/refresh/*`.
+  to `tools/refresh/*`. **`topics` in `edits.json` is not a schema change** — it
+  is an established optional field of that contract (step 4), and authoring it
+  is in scope.
 - Never push to `main`; never force-push; never merge your own PR without the
   governance gate.
 - If anything looks structurally wrong (merge conflicts, corrupted digest,

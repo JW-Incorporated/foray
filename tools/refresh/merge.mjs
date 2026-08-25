@@ -15,14 +15,26 @@
    Writes data/discover.json + data/item-tags.json in place.
 
    Contract for edits.json:
-     { "<item-id>": { "hook": "<=16 words", "tags": ["5-12","lowercase-hyphenated"] }, ... }
+     { "<item-id>": { "hook": "<=16 words", "tags": ["5-12","lowercase-hyphenated"],
+                      "topics": ["<taxonomy node id>", ...]   // OPTIONAL, see below
+                    }, ... }
    Resolved items with no matching edit are SKIPPED and reported (the agent may
    deliberately omit a cross-promo/trailer it caught). Items already present in
-   discover.json are skipped (idempotent — safe to re-run).                     */
+   discover.json are skipped (idempotent — safe to re-run).
+
+   `topics` IS OPTIONAL AND IS THE ONLY PER-EPISODE TOPIC SEAM IN THE PIPELINE
+   (#292). Omit it and the episode keeps the show-level label `scan.mjs` /
+   `backfill-show.mjs` seeded from `catalog.json`'s `taxonomy_node_ids` — correct
+   for a single-subject show, and the default that must stay cheap to express.
+   Supply it and it replaces that label outright, for a show that ranges. It is
+   applied HERE, at the one point both the nightly and the backfill converge, so
+   the two pipelines cannot disagree about it. Rules and rationale live in
+   `tools/refresh/topics.mjs`.                                                  */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import copyRules from "../../backend/src/copy/rules.js";
+import { episodeTopics } from "./topics.mjs";
 
 const root = new URL("../../", import.meta.url);
 const p = (rel) => new URL(rel, root);
@@ -32,11 +44,18 @@ const envPath = (name, def) => (process.env[name] ? resolvePath(process.cwd(), p
 
 const RESOLVED_PATH = envPath("RESOLVED_PATH", "data-local/resolved.json");
 const EDITS_PATH = envPath("EDITS_PATH", "data-local/edits.json");
+/* The two OUTPUT files are overridable for the same reason the inputs are: this
+   script had no test at all before #292, because the only way to run it was to
+   let it write the real catalogue. Defaults are unchanged, so the nightly and the
+   README recipe are untouched. */
+const MERGE_DISCOVER_PATH = envPath("MERGE_DISCOVER_PATH", "data/discover.json");
+const MERGE_TAGS_PATH = envPath("MERGE_TAGS_PATH", "data/item-tags.json");
 
 const { resolved } = JSON.parse(readFileSync(RESOLVED_PATH, "utf8"));
 const edits = JSON.parse(readFileSync(EDITS_PATH, "utf8"));
-const discover = JSON.parse(readFileSync(p("data/discover.json"), "utf8"));
-const tagsDoc = JSON.parse(readFileSync(p("data/item-tags.json"), "utf8"));
+const discover = JSON.parse(readFileSync(MERGE_DISCOVER_PATH, "utf8"));
+const tagsDoc = JSON.parse(readFileSync(MERGE_TAGS_PATH, "utf8"));
+const nodeIds = new Set(JSON.parse(readFileSync(p("data/taxonomy.json"), "utf8")).nodes.map((n) => n.id));
 
 // DAI status is a per-SHOW property (issue #22), so a new episode inherits its
 // show's existing verdict for free — no network call in the nightly path. A
@@ -65,6 +84,18 @@ for (const [id, e] of Object.entries(edits)) {
     copyErrors.push(`${id}: ${e.tags?.length} tags (need 5-12)`);
   for (const t of e.tags || [])
     if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(t)) copyErrors.push(`${id}: bad tag "${t}"`);
+  /* Topic overrides are validated in the SAME preflight as the copy rules, and
+     for the same reason: this loop runs before a single byte is written, so a bad
+     override aborts the run instead of half-writing the catalogue. It must never
+     become a filter — see topics.mjs on why a dropped bad id restores the very
+     defect #292 is about. */
+  if (e.topics !== undefined) {
+    try {
+      episodeTopics({ showTopics: [], editTopics: e.topics, nodeIds, id });
+    } catch (err) {
+      copyErrors.push(err.message);
+    }
+  }
 }
 if (copyErrors.length) {
   console.error("COPY RULE FAILURES:\n" + copyErrors.join("\n"));
@@ -101,7 +132,10 @@ for (const ep of resolved) {
     audio_bytes: ep.audio_bytes ?? null,
     ...(ep.audio_url ? { dai_suspected: daiFor(ep.apple_collection_id) } : {}),
     artwork_url: ep.artwork_url,
-    topics: ep.topics,
+    /* The show-level seed unless the agent judged this episode differently
+       (#292). Already validated in the preflight above; this call is the one that
+       chooses. */
+    topics: episodeTopics({ showTopics: ep.topics, editTopics: edit.topics, nodeIds, id: ep.id }),
     hook: edit.hook,
     explicit: ep.explicit,
   };
@@ -120,8 +154,8 @@ if (added === 0) {
 
 discover.built_at = now;
 tagsDoc.built_at = now;
-writeFileSync(p("data/discover.json"), JSON.stringify(discover, null, 2) + "\n");
-writeFileSync(p("data/item-tags.json"), JSON.stringify(tagsDoc, null, 2) + "\n");
+writeFileSync(MERGE_DISCOVER_PATH, JSON.stringify(discover, null, 2) + "\n");
+writeFileSync(MERGE_TAGS_PATH, JSON.stringify(tagsDoc, null, 2) + "\n");
 
 const uniqShows = [...new Set(shows)];
 console.log(`ADDED ${added} items. built_at=${now}`);
