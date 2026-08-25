@@ -824,7 +824,7 @@ to a module with an open issue on it (#224), so it is named here rather than don
 | Audio focus | **Still not requested**, deliberately. §4.3 |
 | Both APKs | **Built.** §6 |
 | Anything observed on a device or an emulator | **No.** §8 |
-| An Android CI job | **Not added** — `.github/` is governed. The shape is in `docs/android-shell-build.md` §3.3 |
+| An Android CI job | **ADDED SINCE, and never run.** `.github/workflows/android-build.yml` (#245) — `ubuntu-latest`, both APKs, no emulator. It asserts that `cap sync` still wires `foray-audio` in and that this plugin's library manifest still merges, which are exactly the two ways the lock screen can leave the APK while every build stays green. See `docs/android-shell-build.md` §3. *(This row said "Not added" and pointed at a "§3.3" that has never existed; corrected 2026-08-19.)* |
 | The bundle's size headroom | **Resolved, and the prediction here was right.** This row said 2.97 MB of the 3.00 MB cap, that "the next `discover.json` growth is what breaks it, not this", and that it was worth a decision before it became a surprise. Three nightlies later the bundle was **2.98 MB — 16 KB of headroom** against a file growing ~35 KB a night. The decision taken: the bundle carries a **bounded slice** of the catalogue rather than the catalogue, which is **35 files, 1.96 MB**, and a year of nightlies now adds nothing to that file. The cap stayed at 3 MB. `docs/mobile-shell.md` §3 has the measurement and the arithmetic; the artwork map this change depends on is asserted identical between the slice and the full document, through `player/foray-sources.js` itself |
 
 ### 10.1 One thing to notice about the release APK

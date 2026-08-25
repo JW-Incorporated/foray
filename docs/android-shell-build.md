@@ -27,6 +27,8 @@ it means "read" is the failure mode this repo keeps paying for.
 | `navigator.mediaSession` is absent in Android WebView | **INFERRED** (source-derived). MP1 §5.4 claimed "confirmed live" and its own §6 says the spike never ran; corrected there by this change. §4 |
 | Whether #227's seam prefetch removes the need for a foreground service | **NEITHER.** Reasoning only, and it cannot be settled without a device. §5 |
 | Android's origin is `https://localhost` | **Executed-adjacent**: read from `CapConfig.java`'s defaults in the installed package. §2.1 |
+| The toolchain-rebuild recipe | **Mixed, and §1.2b says which is which line by line.** Package names executed; download URLs fetched; the archives were NOT re-installed from scratch. §1.2b |
+| **That the CI job in `.github/workflows/android-build.yml` works** | **UNPROVEN AT THE TIME OF WRITING.** A workflow cannot be run locally. Every shell assertion in it was executed against this machine's real build output, and the whole job has never run on a runner. §3 |
 
 **No emulator was attempted.** MP1 §6.2 spent ~75 minutes across three cold
 API-36 x86_64 boots without ever reaching a usable framework, and §6.4 explains
@@ -197,8 +199,142 @@ worth watching for its own reasons.
 **What this does NOT fix.** The toolchain is still one directory on one machine,
 undeclared by anything in the repo, so a wipe of `%LOCALAPPDATA%` costs the same
 archaeology `%TEMP%` used to — it is merely now a directory the OS does not clean on
-its own schedule. The durable answer is #245's option 3, an Android CI job, and it
-is `.github/` — governed, so it is described in §3.3 and deliberately not added.
+its own schedule. **Both halves of that are now answered, and by the two things
+that answer it rather than by a third copy of the argument:** §1.2b is the recipe
+that turns the archaeology into a rebuild, and §3's Android CI job is what makes
+the local toolchain non-load-bearing in the first place.
+
+*(This paragraph pointed at "§3.3" until #245, and so did `docs/android-lock-screen.md`
+§10 and `docs/android-native-code.md` §6.1 — **three files, one phantom section**.
+There has never been a §3.3; the CI job is item 3 of §3's numbered list. All three
+are corrected, and all three also claimed the job was "not added", which stopped
+being true in the same change. Fixing one and leaving two is how a repo ends up with
+six files asserting that `mobile/` auto-merges — see `mobile/.gitignore`.)*
+
+### 1.2b Rebuilding the toolchain from nothing — #245
+
+**§1.2a moved the toolchain; this is what to do when it is gone anyway.** A
+`%LOCALAPPDATA%` wipe, a new machine, or a founder who wants to build the APK
+themselves all need the same thing, and until #245 it did not exist: the versions
+were recorded (§1.2) and the *install* was not, so a wipe cost an archaeology
+session rather than a download.
+
+**READ §3 FIRST IF YOU ARE HERE BECAUSE THE BUILD BROKE.** The Android CI job
+builds both APKs on a Linux runner and uploads them, so the fastest path to an
+installable APK is now a workflow run and a downloaded artifact — no local
+toolchain at all. The recipe below is for wanting to build *here*.
+
+| | How this section was obtained |
+|---|---|
+| The `sdkmanager` package names and versions | **Executed** — read out of `sdkmanager --list_installed` on the working copy, so they are the set this project actually builds against, not a guess |
+| The two download URLs | **Executed** — each fetched (HTTP 200, following redirects) on 2026-08-19. Neither archive was re-downloaded and re-installed: the toolchain being described is present and working, and §1.2a's rule was *do not destroy the thing you are protecting to prove you could rebuild it* |
+| Everything else | **Read** off the working install (paths, layout, `cmdline-tools` revision) |
+
+**1. The JDK.** Capacitor 8 requires **21** — JDK 17 dies at
+`:capacitor-android:compileDebugJavaWithJavac` with `invalid source release: 21`
+(§1.2). This machine has Microsoft OpenJDK **21.0.12+8**:
+
+```powershell
+# Either the package manager, which is the one that keeps working as versions move:
+winget install Microsoft.OpenJDK.21
+
+# …or the exact archive this machine has. `aka.ms/download-jdk/` redirects to
+# download.visualstudio.microsoft.com; both were verified to return 200.
+curl -L -o "$env:TEMP\jdk21.zip" https://aka.ms/download-jdk/microsoft-jdk-21.0.12-windows-x64.zip
+Expand-Archive "$env:TEMP\jdk21.zip" -DestinationPath "$env:LOCALAPPDATA\android-build\jdk21"
+```
+
+That produces `%LOCALAPPDATA%\android-build\jdk21\jdk-21.0.12+8`, which is the
+path §1.2a records — **the nesting is the archive's own top-level directory, not
+something to create by hand.** Any JDK 21 works; the patch version is not
+load-bearing, and the Android CI job deliberately pins only the major for that
+reason.
+
+**2. The SDK, via `cmdline-tools`.** The command-line tools are the *installer*, so
+their revision is not load-bearing (this machine has `cmdline-tools;12.0`; the
+`_latest` archive is whatever Google currently ships). **The layout is:** unzip so
+that `sdkmanager` ends up at `<sdk>\cmdline-tools\latest\bin\sdkmanager.bat` — the
+archive unpacks to a bare `cmdline-tools\` and `sdkmanager` refuses to run from
+anywhere but a versioned or `latest` subdirectory.
+
+```powershell
+$SDK = "$env:LOCALAPPDATA\android-build\sdk"
+curl -L -o "$env:TEMP\cmdline-tools.zip" https://dl.google.com/android/repository/commandlinetools-win-13114758_latest.zip
+Expand-Archive "$env:TEMP\cmdline-tools.zip" -DestinationPath "$env:TEMP\clt"
+New-Item -ItemType Directory -Force "$SDK\cmdline-tools" | Out-Null
+Move-Item "$env:TEMP\clt\cmdline-tools" "$SDK\cmdline-tools\latest"
+```
+
+**3. The packages, pinned.** Exactly the set the working copy has, minus the two
+things §1.2a deliberately left behind. `android-34` and `build-tools` 34/35 are
+**not needed by this project** — `variables.gradle` says 36 — and are listed only
+because they are what is installed; a fresh install can stop at 36:
+
+```powershell
+$env:JAVA_HOME = "$env:LOCALAPPDATA\android-build\jdk21\jdk-21.0.12+8"
+$SDKMGR = "$SDK\cmdline-tools\latest\bin\sdkmanager.bat"
+
+# LICENCES FIRST. Without them every Gradle build stops, and it stops with a
+# message about licences rather than about this step. §1.2a had to copy the
+# `licenses` directory for the same reason.
+& $SDKMGR --sdk_root=$SDK --licenses
+
+& $SDKMGR --sdk_root=$SDK "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+& $SDKMGR --sdk_root=$SDK --list_installed
+```
+
+**DO NOT install `emulator` or `system-images`.** They are 9.6 GB of the 10.4 GB
+the old `%TEMP%` toolchain occupied, nothing in this repo has ever used them, and
+MP1 §6.2 already paid ~75 minutes to establish that an emulator produces nothing
+here. §5's open questions need a device, not an emulator.
+
+**4. Point the build at it.** Neither line is committed — `local.properties`
+carries a machine-absolute path and is gitignored, so every machine writes its own:
+
+```sh
+# FORWARD SLASHES. `local.properties` is a Java properties file, so
+# `sdk.dir=C:\Users\…` silently loses its backslashes — §1.2's second trap.
+echo 'sdk.dir=C:/Users/<you>/AppData/Local/android-build/sdk' > mobile/android/local.properties
+export JAVA_HOME="C:/Users/<you>/AppData/Local/android-build/jdk21/jdk-21.0.12+8"
+```
+
+**What a rebuild costs.** **327 MB of JDK and 770 MB of SDK** — both measured, in
+§1.2a, as the size of the copy that was made, and the SDK figure is a *superset* of
+what this recipe installs because that copy also carries `android-34` and
+build-tools 34/35, which step 3 says to skip. Download sizes are smaller again
+(these are unpacked). Then the first `assembleDebug` is a cold Gradle cache:
+**15 m 48 s** here (§1.2b below), **18 m 03 s** in §1.1, and **9 m 38 s** in §1.2a
+on a warm dependency cache — so budget 15 to 20 minutes from truly cold. That is
+the number this section exists to replace: an afternoon of working out what MP1 had
+downloaded.
+
+#### The durable toolchain re-verified, 2026-08-19
+
+**Both APKs, built again from the `%LOCALAPPDATA%` copy on a branch that changes no
+app code**, because #245's CI job is a claim about reproducibility and the local
+half of that claim should be re-checked rather than assumed to still hold:
+
+| | Result |
+|---|---|
+| `./gradlew assembleDebug --no-daemon --console=plain` | **BUILD SUCCESSFUL in 15 m 48 s**, 243 actionable tasks, 243 executed |
+| `app-debug.apk` | **7,100,682 bytes** |
+| `./gradlew assembleRelease --no-daemon --console=plain` | **BUILD SUCCESSFUL in 24 m 38 s**, 323 actionable tasks, 316 executed |
+| `app-release-unsigned.apk` | **5,578,480 bytes** |
+| `:app:lintVitalRelease` | **Ran and passed** — and so did `:foray-audio:lintVitalAnalyzeRelease` |
+
+**Both APKs are SMALLER than `docs/android-lock-screen.md` §6.1's figures**
+(7,345,746 and 5,788,240) by 245,064 and 209,760 bytes, and the cause is not this
+branch: **#274 trimmed the bundled catalogue slice.** `prepare-webdir` now reports
+**2.00 MB of the 3.00 MB cap**, against 2.92 MB when the lock-screen figures were
+taken. ~0.92 MB less JSON going in for ~0.24 MB less APK coming out is what a
+compressed archive of highly compressible text should do, so the two numbers
+corroborate each other. **Nothing in #245 changes an APK by one byte** — no app
+code is touched — and both figures are recorded here only as evidence that the
+toolchain the CI job exists to make optional does still work.
+
+**This was NOT a before/after of a toolchain move.** #245's move happened in the
+change that wrote §1.2a and is not repeated here; §1.2a's own before/after is the
+one that matters. Nothing was moved, copied or deleted to produce this table.
 
 ### 1.3 The lockfile, and a claim in §0 of `docs/mobile-shell.md` that was never true
 
@@ -428,16 +564,42 @@ a founder label).
 2. **`adb logcat` alone**, if `chrome://inspect` is inconvenient. A blocked
    inline script logs a console message that WebView forwards to logcat, and the
    absence of one across a launch is weak but real evidence.
-3. **A CI job.** Not added here, on purpose: `.github/` is a governed path
-   needing a founder label, and the build should be proven locally first — it now
-   is. If someone wants it, the shape is `ubuntu-latest`, no emulator:
-   `npm install` → `npm run add:android` → `./gradlew assembleDebug` +
-   `assembleRelease`, with `actions/setup-java` at **21** and
-   `android-actions/setup-android`, on `workflow_dispatch` plus a path filter over
-   `mobile/**`, `tools/mobile/**`, `index.html`, `app.js` and `player/**`. It
-   proves §1 keeps holding and it **cannot** prove §2 — a build is not a launch,
-   and MP1 §6.2/§6.4 are the reason not to reach for an emulator to close that
-   gap. It must not become a required check.
+3. **A CI job — ADDED by #245, as `.github/workflows/android-build.yml`.** This
+   paragraph used to describe it as deliberately not added; it is now the durable
+   answer to §1.2a, because a build that runs on a runner is a build the one
+   Windows machine no longer owns. The shape is the one sketched here —
+   `ubuntu-latest`, no emulator, `npm install` → `npm run add:android` →
+   `assembleDebug` + `assembleRelease`, `actions/setup-java` at **21**,
+   `workflow_dispatch` plus the same narrow path filter — with **two deliberate
+   departures from the sketch:**
+
+   - **No `android-actions/setup-android`.** Every action in the job is `actions/*`
+     — GitHub's own. A third-party action runs arbitrary code with the job's token
+     on every run, and all that one buys is a wrapper around three `sdkmanager`
+     lines, which the job spells out instead.
+   - **It asserts three things a build alone would not.** That `cap sync` still
+     wires `foray-audio` in (`capacitor.settings.gradle` *and*
+     `app/capacitor.build.gradle`), that the plugin's library manifest still
+     merges its `<service>` and both `FOREGROUND_SERVICE*` permissions, and that
+     `:app:lintVitalRelease` actually **ran** rather than being skipped. Each is a
+     failure that is invisible in a green build: `mobile/android/` is not
+     committed, so if `cap sync` stops deriving the plugin's include lines from
+     `mobile/package.json`, the foreground service and the Media3 lock-screen
+     session leave the APK and both builds still succeed. No unit test can see it —
+     there is no committed file to read. `tools/mobile/android-workflow.test.mjs`
+     pins the assertions themselves.
+
+   It also **uploads both APKs**, which makes a workflow run the shortest path to
+   an installable Foray for anyone without this machine.
+
+   **It proves §1 keeps holding and it CANNOT prove §2.** A build is not a launch:
+   nothing in the job executes the app, so §2's CSP verdict, §4's
+   `navigator.mediaSession` claim and the foreground service's runtime behaviour
+   are exactly as unproven after a green run as before it. The job's own step
+   summary says so, in the run, next to the green tick. MP1 §6.2/§6.4 are the
+   reason not to reach for an emulator to close that gap; option 1 above is.
+   **It is not a required check**, and the job name is chosen so it cannot become
+   one by accident.
 
 ## 4. `navigator.mediaSession` — still inferred, and MP1 §5.4 overstates it
 
@@ -635,6 +797,9 @@ things the question is made of.
 | Foreground service | **BUILT SINCE, and still never executed** — `docs/android-native-code.md`. §5's reasoning is unchanged and its conclusion is not: the FGS was built because §5.2's OS-level arguments were never weakened, and because §4 means #27 needs native code on Android regardless. A `mediaPlayback` service starts on the first `play()`; both APKs still build |
 | Lock-screen metadata and transport controls | **BUILT SINCE, 2026-08-18, and never rendered** — `docs/android-lock-screen.md`. A Media3 `MediaSession` in that service, fed by a `navigator.mediaSession` polyfill so `player/media-session.js` drives it unmodified; play, pause, next/previous segment, ±30/−15, scrub and stop, all routed back to the page. Both APKs still build. **Nothing has been executed on a device or an emulator** |
 | Signed release / Play upload | **Not attempted.** No keystore, no Play account |
+| The toolchain lives somewhere durable | **Yes** — `%LOCALAPPDATA%\android-build\`, §1.2a. Verified by a build, and the `%TEMP%` copy was left in place rather than moved |
+| A wipe of it is recoverable from the repo | **Yes** — §1.2b, the exact download and `sdkmanager` commands. Package names and URLs verified; the archives were not re-installed from scratch |
+| The build is reproducible off this machine | **CI JOB ADDED, NEVER RUN.** `.github/workflows/android-build.yml` (#245, §3). Every shell assertion in it was executed against this machine's real `assembleDebug`/`assembleRelease` output — the BUILD line grep, the `find` for the merged manifest and all four of its needles, both `cap sync` wiring greps, the two APK-content greps and the `lintVitalRelease` task line — and **the workflow itself has never executed on a runner**, because a workflow cannot be run locally. Treat the first real run as a debugging session |
 
 Unchanged and still blocking a store submission, from #36: **bundled data is
 frozen at build time** (`docs/mobile-shell.md` §3), which is #40's remaining half.
