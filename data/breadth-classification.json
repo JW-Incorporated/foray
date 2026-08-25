@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-24T16:26:34.791Z",
+  "built_at": "2026-08-25T00:19:35.462Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-24-f1dcec42",
+    "last_batch_id": "fresh-2026-08-25-f6880485",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -40953,11 +40953,39 @@
     },
     "1211025769": {
       "topics": [
-        "sports/wrestling"
+        "sports/wrestling",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Professional wrestling analysis and interviews.",
+      "display_title": "The Ringer Wrestling Show",
+      "blurb": "Coverage of wrestling matches, storylines, and fighter interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1211183700": {
       "topics": [
@@ -41059,11 +41087,43 @@
     },
     "1212068497": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "2 Pros and a Cup of Joe",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1212071266": {
       "topics": [
@@ -41118,8 +41178,31 @@
         "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical profiles and stories of notable women.",
+      "display_title": "Queens Podcast",
+      "blurb": "Historical storytelling featuring women leaders and figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:35.462Z"
     },
     "1212165069": {
       "topics": [
@@ -41172,11 +41255,34 @@
     },
     "1212380212": {
       "topics": [
-        "news/politics"
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and current events coverage.",
+      "display_title": "The Five",
+      "blurb": "Daily news briefing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 3,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1212468465": {
       "topics": [
@@ -41416,11 +41522,34 @@
     },
     "1215386938": {
       "topics": [
-        "music/classical"
+        "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and artist discussions.",
+      "display_title": "Sticky Notes: The Classical Music Podcast",
+      "blurb": "Music news and artist interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1215420422": {
       "topics": [
@@ -41490,12 +41619,42 @@
     },
     "1215810743": {
       "topics": [
-        "kids-family/parenting",
-        "sports/tennis"
+        "sports/tennis",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Tennis tournament coverage and analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1215885562": {
       "topics": [
@@ -41579,9 +41738,36 @@
       "topics": [
         "tv-film/after-shows"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": "Bad TV | A Reality TV Recap Program",
+      "blurb": "Breaking down Below Deck, Real Housewives, Love is Blind and all that's good about Bad T.V....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1216879060": {
       "topics": [
@@ -41741,11 +41927,43 @@
     },
     "1220546899": {
       "topics": [
-        "comedy"
+        "sports/football",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "The Bobby Bones Show",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1220563942": {
       "topics": [
@@ -41778,11 +41996,34 @@
     },
     "1221085548": {
       "topics": [
-        "nature"
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science news and research discussion.",
+      "display_title": "The Beet: A Podcast For Plant Lovers",
+      "blurb": "Scientific discovery and research coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1221256195": {
       "topics": [
@@ -41991,11 +42232,43 @@
     },
     "1224239045": {
       "topics": [
-        "comedy"
+        "news/politics",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news and analysis.",
+      "display_title": "Decisions, Decisions",
+      "blurb": "Politics and government coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1224373139": {
       "topics": [
@@ -42418,11 +42691,38 @@
     },
     "1231455072": {
       "topics": [
-        "comedy/casual-hangs"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humorous discussion.",
+      "display_title": "Run That Prank",
+      "blurb": "Comedy and entertaining conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1231472946": {
       "topics": [
@@ -42552,11 +42852,34 @@
     },
     "1233834541": {
       "topics": [
-        "kids-family/education"
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business news and entrepreneurship.",
+      "display_title": "Wow in the World",
+      "blurb": "Business strategy and corporate news.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1233966392": {
       "topics": [
@@ -42862,11 +43185,39 @@
     },
     "1237931798": {
       "topics": [
-        "society"
+        "sports/football",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "Where Should We Begin? with Esther Perel",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1238355247": {
       "topics": [
@@ -43172,11 +43523,39 @@
     },
     "1244644906": {
       "topics": [
-        "religion/spirituality"
+        "engineering/ai-robotics",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and machine learning technology.",
+      "display_title": "Highest Self Podcast®",
+      "blurb": "Artificial intelligence and robotics developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1244649384": {
       "topics": [
@@ -43613,11 +43992,43 @@
     },
     "1251213764": {
       "topics": [
-        "economics/markets"
+        "sports/football",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "Petros And Money",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1251371805": {
       "topics": [
@@ -43900,9 +44311,36 @@
       "topics": [
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": "Elliot In The Morning",
+      "blurb": "Listen to Elliot In The Morning weekday...mornings 📻 bit.ly/eitmlisten ☎️ 866-2-ELLIOT | 866-235-54...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1253597385": {
       "topics": [
@@ -44117,11 +44555,34 @@
     },
     "1256857855": {
       "topics": [
-        "hobbies"
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software discussion.",
+      "display_title": "Constructed Criticism",
+      "blurb": "Tech industry news and software development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1257126028": {
       "topics": [
@@ -44160,11 +44621,37 @@
     },
     "1257356393": {
       "topics": [
-        "religion"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business news and entrepreneurship.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 16w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1257396927": {
       "topics": [
@@ -44215,19 +44702,75 @@
     },
     "1257913963": {
       "topics": [
-        "sports/football"
+        "sports/football",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "Cover 3 College Football",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1257957660": {
       "topics": [
-        "sports/baseball"
+        "sports/baseball",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Major League Baseball coverage.",
+      "display_title": "Talkin' Yanks (Yankees Podcast)",
+      "blurb": "Baseball news and game analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1258146382": {
       "topics": [
@@ -44247,11 +44790,34 @@
     },
     "1258388821": {
       "topics": [
-        "relationships"
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and current events coverage.",
+      "display_title": "For The Love With Jen Hatmaker Podcast",
+      "blurb": "Daily news briefing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1258525394": {
       "topics": [
@@ -44277,11 +44843,43 @@
     },
     "1259438987": {
       "topics": [
-        "news/daily"
+        "sports/basketball",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA basketball coverage and analysis.",
+      "display_title": "Armstrong & Getty On Demand",
+      "blurb": "Basketball news, player rankings, and game recaps.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1259520237": {
       "topics": [
@@ -44472,11 +45070,39 @@
     },
     "1261400624": {
       "topics": [
-        "relationships"
+        "sports/football",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "Journey Beyond Divorce Podcast",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1261486723": {
       "topics": [
@@ -44487,12 +45113,34 @@
     },
     "1261515078": {
       "topics": [
-        "religion/christianity",
-        "kids-family/stories"
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and current events coverage.",
+      "display_title": "Kids Bible Stories",
+      "blurb": "Daily news briefing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1261679921": {
       "topics": [
@@ -45134,11 +45782,39 @@
     },
     "1270581396": {
       "topics": [
-        "nature"
+        "economics/markets",
+        "economics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment and stock market discussion.",
+      "display_title": "Grassfed Life",
+      "blurb": "Financial markets and investment analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1270681468": {
       "topics": [
@@ -45591,11 +46267,39 @@
     },
     "1274217512": {
       "topics": [
-        "business/careers"
+        "economics/markets",
+        "economics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment and stock market discussion.",
+      "display_title": "Front Row Seat with Ken Coleman",
+      "blurb": "Financial markets and investment analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1274228164": {
       "topics": [
@@ -45970,11 +46674,38 @@
     },
     "1279955329": {
       "topics": [
-        "tv-film"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and artist discussions.",
+      "display_title": "Scrubbing In with Becca Tilley & Tanya Rad",
+      "blurb": "Music news and artist interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1280468643": {
       "topics": [
@@ -46052,11 +46783,39 @@
     },
     "1280961263": {
       "topics": [
-        "news/commentary"
+        "true-crime",
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime storytelling and analysis.",
+      "display_title": "Pat Gray Unleashed",
+      "blurb": "Criminal cases and investigations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1281181784": {
       "topics": [
@@ -46254,11 +47013,34 @@
     },
     "1282526804": {
       "topics": [
-        "hobbies"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and humorous discussion.",
+      "display_title": "This Game Is Broken",
+      "blurb": "Comedy and entertaining conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1282619020": {
       "topics": [
@@ -46397,11 +47179,34 @@
     },
     "1286906615": {
       "topics": [
-        "espionage"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical storytelling and education.",
+      "display_title": "Intelligence Matters",
+      "blurb": "Historical events and narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1286915333": {
       "topics": [
@@ -46415,9 +47220,35 @@
       "topics": [
         "education/self-improvement"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1287368511": {
       "topics": [
@@ -46941,11 +47772,34 @@
     },
     "1294131221": {
       "topics": [
-        "nature"
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cybersecurity and digital security discussion.",
+      "display_title": "Off-Nominal",
+      "blurb": "Technology security and hacking topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:35.462Z"
     },
     "1294461271": {
       "topics": [
@@ -46956,11 +47810,39 @@
     },
     "1294505998": {
       "topics": [
-        "religion"
+        "true-crime",
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime storytelling and analysis.",
+      "display_title": "The How-To Heretic",
+      "blurb": "Criminal cases and investigations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1294529191": {
       "topics": [
@@ -47112,11 +47994,37 @@
     },
     "1297439270": {
       "topics": [
-        "religion/christianity"
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Historical storytelling and education.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1297791208": {
       "topics": [
@@ -47149,11 +48057,39 @@
     },
     "1298314174": {
       "topics": [
-        "history"
+        "true-crime",
+        "true-crime"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime storytelling and analysis.",
+      "display_title": "Southern Mysteries Podcast",
+      "blurb": "Criminal cases and investigations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1298703768": {
       "topics": [
@@ -47420,9 +48356,34 @@
       "topics": [
         "education/self-improvement"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": "Weekly Motivation by Ben Lionel Scott",
+      "blurb": "Here you'll find weekly motivation from some of the most successful and high achieving people in the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 3,
+        "episodes_with_timed_transcript": 3,
+        "transcript_tags": 3,
+        "transcript_types": {
+          "application/x-subrip": 3
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1305878240": {
       "topics": [
@@ -48097,11 +49058,41 @@
     },
     "1316200856": {
       "topics": [
-        "psychology"
+        "sports/football",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "The Medical Mind",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "application/x-subrip": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1316290447": {
       "topics": [
@@ -48459,11 +49450,39 @@
     },
     "1321060753": {
       "topics": [
-        "computing"
+        "sports/football",
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "Endless Thread",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1321118314": {
       "topics": [
@@ -48554,11 +49573,39 @@
     },
     "1324606666": {
       "topics": [
-        "society"
+        "true-crime",
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime storytelling and analysis.",
+      "display_title": "Keep It!",
+      "blurb": "Criminal cases and investigations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1324781499": {
       "topics": [
@@ -48887,11 +49934,39 @@
     },
     "1330225136": {
       "topics": [
-        "economics/markets"
+        "true-crime",
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime storytelling and analysis.",
+      "display_title": "BiggerPockets Money Podcast",
+      "blurb": "Criminal cases and investigations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1330279268": {
       "topics": [
@@ -49119,11 +50194,39 @@
     },
     "1332402254": {
       "topics": [
-        "education/self-improvement"
+        "sports/basketball",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA basketball coverage and analysis.",
+      "display_title": "Slay Girl Slay",
+      "blurb": "Basketball news, player rankings, and game recaps.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1332572879": {
       "topics": [
@@ -49230,19 +50333,78 @@
     },
     "1333552422": {
       "topics": [
-        "health/alternative"
+        "sports/football",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "Feel Better, Live More with Dr Rangan Chatterjee",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1333559272": {
       "topics": [
-        "society"
+        "true-crime",
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True crime storytelling and analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1333861284": {
       "topics": [
@@ -49467,11 +50629,39 @@
     },
     "1335846794": {
       "topics": [
-        "business/marketing"
+        "economics/markets",
+        "economics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Investment and stock market discussion.",
+      "display_title": "Thriving Stylist Podcast",
+      "blurb": "Financial markets and investment analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1335892956": {
       "topics": [
@@ -49507,9 +50697,32 @@
       "topics": [
         "automotive"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": "The Fast Life Podcast",
+      "blurb": "Hosted By Jace Hudson owner of The Fast Life Garage brings you real conversations with the men and w...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1336795988": {
       "topics": [
@@ -49747,9 +50960,37 @@
       "topics": [
         "education/self-improvement"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": "The Astrology Lounge",
+      "blurb": "The Astrology Lounge is a podcast hosted by Stephanie Powers with the intention of teaching listener...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1339976762": {
       "topics": [
@@ -49829,11 +51070,39 @@
     },
     "1341478446": {
       "topics": [
-        "business/management"
+        "business/founders",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Founder stories and startup interviews.",
+      "display_title": "The Home Service Expert Podcast",
+      "blurb": "Interviews with entrepreneurs and startup founders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1341481060": {
       "topics": [
@@ -50017,12 +51286,39 @@
     },
     "1343850006": {
       "topics": [
-        "craft",
-        "culture/design"
+        "engineering/ai-robotics",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "AI and machine learning technology.",
+      "display_title": "Threads Magazine Podcast: \"Sewing With Threads\"",
+      "blurb": "Artificial intelligence and robotics developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1344003690": {
       "topics": [
@@ -50087,17 +51383,63 @@
       "topics": [
         "education/self-improvement"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": "The Divorce Survival Guide Podcast",
+      "blurb": "On the Divorce Survival Guide Podcast we have open and honest conversations about co-parenting, sepa...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1345084979": {
       "topics": [
-        "education/self-improvement"
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "News and current events coverage.",
+      "display_title": "Always Connected",
+      "blurb": "Daily news briefing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1345104153": {
       "topics": [
@@ -50197,9 +51539,32 @@
       "topics": [
         "personal-journals"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": "Mike Drop",
+      "blurb": "Mike Drop, hosted by former Navy SEAL and bestselling author Mike Ritland, is a no-holds-barred plat...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1346314086": {
       "topics": [
@@ -50226,11 +51591,34 @@
     },
     "1346852560": {
       "topics": [
-        "psychology"
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science news and research discussion.",
+      "display_title": "The John Howard Show",
+      "blurb": "Scientific discovery and research coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1346866422": {
       "topics": [
@@ -50299,11 +51687,34 @@
     },
     "1347286418": {
       "topics": [
-        "education/how-to"
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Coverage of cold cases and missing persons.",
+      "display_title": "Sari Swears",
+      "blurb": "Examination of unsolved cases and disappearances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:35.462Z"
     },
     "1347293924": {
       "topics": [
@@ -50396,11 +51807,39 @@
     },
     "1347973549": {
       "topics": [
-        "society"
+        "news/politics",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news and analysis.",
+      "display_title": "Modern Wisdom",
+      "blurb": "Politics and government coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1348062794": {
       "topics": [
@@ -50782,9 +52221,35 @@
       "topics": [
         "tv-film/animation"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Unable to confidently classify from available signal.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1351402351": {
       "topics": [
@@ -51030,11 +52495,39 @@
     },
     "1352875216": {
       "topics": [
-        "society"
+        "sports/football",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL football analysis and interviews.",
+      "display_title": "Shameless",
+      "blurb": "Football news, draft coverage, and player analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1352951413": {
       "topics": [
@@ -51295,11 +52788,38 @@
     },
     "1356670998": {
       "topics": [
-        "personal-journals"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and artist discussions.",
+      "display_title": "Good Moms Bad Choices",
+      "blurb": "Music news and artist interviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1356739458": {
       "topics": [
@@ -51434,11 +52954,39 @@
     },
     "1358187061": {
       "topics": [
-        "sports/basketball"
+        "sports/basketball",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/basketball",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NBA basketball coverage and analysis.",
+      "display_title": "The Athletic NBA Daily",
+      "blurb": "Basketball news, player rankings, and game recaps.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-f6880485",
+      "classified_at": "2026-08-25T00:19:15.337Z"
     },
     "1358251505": {
       "topics": [
