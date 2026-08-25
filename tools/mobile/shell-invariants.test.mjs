@@ -212,7 +212,7 @@ test("the app id is pinned, because it is permanent once published", () => {
      install base. This assertion is not doing engineering work — it is making
      the change impossible to do by accident. If a founder rules differently,
      edit this line in the same PR. */
-  assert.equal(capConfig.appId, "com.jwincorporated.foray");
+  assert.equal(capConfig.appId, "dev.jwlabs.foura");
   /* `appName` is NOT in the same class and this test used to imply it was. The
      bundle id is permanent once published; the display name is just the label
      under the icon and can change any time. The app was renamed to **4a** on

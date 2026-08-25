@@ -786,3 +786,26 @@ its reasoning.
   Android emulator will not boot here — so committing a few hundred unverifiable
   generated native files was rejected in favour of one command a founder runs on a
   Mac (`HUMAN-ACTIONS.md` #16).
+
+## 2026-08-24 (the permanent bundle id)
+
+- **The app id is `dev.jwlabs.foura`** (founder ruling, HUMAN-ACTIONS #15). This supersedes
+  the 2026-08-18 entry below for the id's *value* only; that entry stays as the record of what
+  was pinned then, and the pinning mechanism it describes is unchanged.
+- **Why the prefix moved.** `com.jwincorporated` is reverse-DNS of a domain the company does
+  not own. `jwlabs.dev` was purchased 2026-08-24, so `dev.jwlabs` is a prefix we can actually
+  demonstrate control of, and it gives the second app an obvious sibling.
+- **Why `foura` and not `4a`.** Capacitor uses one `appId` for the iOS bundle id **and** the
+  Android `applicationId`, and Android package segments must begin with a letter (Java
+  identifier rules). A `4a` segment does not build. iOS would have accepted it; Android is the
+  binding constraint.
+- **What moved with it.** `mobile/capacitor.config.json`, the pinned assertion in
+  `tools/mobile/shell-invariants.test.mjs`, `APP_ID` in `.github/workflows/ios-build.yml`
+  (functional — it drives `simctl launch`/`terminate`/`get_app_container`, so a mismatch breaks
+  the iOS probes), and #19's registration step, which had been telling a founder to type the
+  old value into Apple's App ID form.
+- **What deliberately did NOT move.** The plugin's Java package and Gradle namespace
+  `com.jwincorporated.foray.audio`. Android permits a library namespace to differ from the
+  app's `applicationId`; renaming it is a large mechanical refactor with no functional benefit.
+- **Timing.** Nothing is published, so this cost two edits and a CI variable. After a store
+  release it would have cost a new listing and every install.
