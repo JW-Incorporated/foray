@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-25T08:18:56.447Z",
+  "built_at": "2026-08-25T08:19:46.708Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
@@ -54072,9 +54072,9 @@
       ],
       "needs_review": true,
       "rationale": "Primarily Startups & deep tech; related content in Tech News, Psychology, Science.",
-      "display_title": null,
+      "display_title": "Young and Profiting",
       "blurb": null,
-      "display_copy_ok": false,
+      "display_copy_ok": true,
       "display_copy_notes": [
         "display_title: 9w > 8"
       ],
@@ -54090,7 +54090,7 @@
       },
       "tier": 1,
       "batch_id": "fresh-2026-08-25-08776412",
-      "classified_at": "2026-08-25T08:18:56.447Z"
+      "classified_at": "2026-08-25T08:20:02.619Z"
     },
     "1369133152": {
       "topics": [
@@ -59417,7 +59417,7 @@
       "rationale": "Primarily Startups & deep tech; related content in Physics, Sports, Founders.",
       "display_title": null,
       "blurb": null,
-      "display_copy_ok": false,
+      "display_copy_ok": true,
       "display_copy_notes": [
         "blurb: banned /\\bexplores?\\b/i"
       ],
@@ -59433,7 +59433,7 @@
       },
       "tier": 1,
       "batch_id": "fresh-2026-08-25-08776412",
-      "classified_at": "2026-08-25T08:18:56.447Z"
+      "classified_at": "2026-08-25T08:20:02.620Z"
     },
     "1434244995": {
       "topics": [
@@ -67307,9 +67307,9 @@
       ],
       "needs_review": true,
       "rationale": "Primarily Music; related content in Computing.",
-      "display_title": null,
+      "display_title": "Locked On Tigers",
       "blurb": null,
-      "display_copy_ok": false,
+      "display_copy_ok": true,
       "display_copy_notes": [
         "display_title: 10w > 8"
       ],
@@ -67325,7 +67325,7 @@
       },
       "tier": 1,
       "batch_id": "fresh-2026-08-25-08776412",
-      "classified_at": "2026-08-25T08:18:56.447Z"
+      "classified_at": "2026-08-25T08:20:02.620Z"
     },
     "1455645619": {
       "topics": [
