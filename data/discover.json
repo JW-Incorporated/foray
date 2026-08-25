@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-24T11:43:35.595Z",
+  "built_at": "2026-08-25T11:52:54.173Z",
   "items": [
     {
       "id": "lex-fridman-podcast--don-lincoln-physics",
@@ -35898,6 +35898,579 @@
         "food/drinks"
       ],
       "hook": "Three retired Austin tech execs bet on light whiskey, an obscure high-proof style from the 1960s.",
+      "explicit": false
+    },
+    {
+      "id": "my-brother-my-brother-and-me--mbmbam-828-unless-i-m-pissin",
+      "show": "My Brother, My Brother and Me",
+      "title": "MBMBaM 828: *Unless I’m Pissin’ Pants",
+      "apple_collection_id": 367330921,
+      "apple_track_id": 1000785574686,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/mbmbam-828-unless-im-pissin-pants/id367330921?i=1000785574686&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 55,
+      "duration_sec": 3286,
+      "audio_url": "https://claritaspod.com/measure/prfx.byspotify.com/e/pscrb.fm/rss/p/mgln.ai/e/31/afp-9384.calisto.simplecastaudio.com/dbf86dbd-6a9d-4db2-a354-45de08471376/episodes/c1cafd1d-6501-4a3d-b5b9-dc416e6606c4/audio/128/default.mp3?aid=rss_feed&awCollectionId=dbf86dbd-6a9d-4db2-a354-45de08471376&awEpisodeId=c1cafd1d-6501-4a3d-b5b9-dc416e6606c4&feed=wjQvYtdl",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 59487486,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/6e/a7/35/6ea7353b-0692-99b1-12a0-7b33fa475aa8/mza_13316954681377313409.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "The brothers open a fake Halloween store selling exorcism gear and shoe-socks.",
+      "explicit": true
+    },
+    {
+      "id": "making-chips--why-your-shop-s-website-traffic",
+      "show": "Making Chips Podcast for Manufacturing Leaders",
+      "title": "Why Your Shop's Website Traffic Is Down, But Your Leads Aren't | Ep. 537",
+      "apple_collection_id": 953541032,
+      "apple_track_id": 1000785512461,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/why-your-shops-website-traffic-is-down-but-your-leads-arent/id953541032?i=1000785512461&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 54,
+      "duration_sec": 3217,
+      "audio_url": "https://pscrb.fm/rss/p/pscrb.fm/rss/p/dts.podtrac.com/redirect.mp3/traffic.libsyn.com/secure/makingchips/MC537.mp3?dest-id=237805",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 38603232,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/3d/14/ae/3d14aee2-cf0c-2ac9-24b5-798e78820153/mza_1466453196835194745.jpg/600x600bb.jpg",
+      "topics": [
+        "engineering/precision-mfg"
+      ],
+      "hook": "AI search summaries are cutting manufacturers' website traffic while serious buyer leads hold steady.",
+      "explicit": false
+    },
+    {
+      "id": "this-week-in-startups--china-wants-you-to-cheer-for",
+      "show": "This Week in Startups",
+      "title": "China wants you to cheer for the robots taking your job | E2329",
+      "apple_collection_id": 315114957,
+      "apple_track_id": 1000785662200,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/china-wants-you-to-cheer-for-the-robots-taking-your-job-e2329/id315114957?i=1000785662200&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 80,
+      "duration_sec": 4822,
+      "audio_url": "https://pscrb.fm/rss/p/traffic.libsyn.com/secure/4a885955-6823-4b22-a3e1-a526c25516a5/AUDIO.mp3?dest-id=5500155",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 79078816,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/bf/ce/23/bfce2354-2548-00f0-d795-a34404946a6b/mza_10222213905677371023.jpg/600x600bb.jpg",
+      "topics": [
+        "business/startups"
+      ],
+      "hook": "Jason Calacanis examines China's push to make robots replacing jobs feel aspirational.",
+      "explicit": true
+    },
+    {
+      "id": "this-podcast-will-kill-you--special-episode-clayton-page-aldern-the",
+      "show": "This Podcast Will Kill You",
+      "title": "Special Episode: Clayton Page Aldern & The Weight of Nature",
+      "apple_collection_id": 1299915173,
+      "apple_track_id": 1000785698526,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/special-episode-clayton-page-aldern-the-weight-of-nature/id1299915173?i=1000785698526&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 45,
+      "duration_sec": 2682,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/e0709a39-232b-4483-8e4f-b24c0111ae2c/9f8ac509-a005-4b30-83b4-b4a90178b201/audio.mp3?utm_source=Podcast&in_playlist=64b4c224-562e-4b2f-9f31-b24c0111ae53",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 42955704,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/31/fc/17/31fc17a4-78dc-a4ec-ed10-909b8aa0a67b/mza_1082798024989117655.jpg/600x600bb.jpg",
+      "topics": [
+        "medicine/biology"
+      ],
+      "hook": "Climate chaos is reshaping health risks, from heatwaves and floods to wildfires and drought.",
+      "explicit": false
+    },
+    {
+      "id": "switched-on-pop--phoebe-bridgers-opens-her-moleskine",
+      "show": "Switched on Pop",
+      "title": "Phoebe Bridgers opens her Moleskine",
+      "apple_collection_id": 934552872,
+      "apple_track_id": 1000785698038,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/phoebe-bridgers-opens-her-moleskine/id934552872?i=1000785698038&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 36,
+      "duration_sec": 2187,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP1349538119.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/4a/87/8c/4a878cc7-0b12-dc80-93b0-c2ce08d5dd0c/mza_8267236680144001404.jpeg/600x600bb.jpg",
+      "topics": [
+        "music/theory-production"
+      ],
+      "hook": "Switched on Pop unpacks the sprawling, genre-crossing songwriting on Phoebe Bridgers' new album Lost Weekend.",
+      "explicit": false
+    },
+    {
+      "id": "odd-lots--the-nigerian-industrial-behemoth-that-could",
+      "show": "Odd Lots",
+      "title": "The Nigerian Industrial Behemoth That Could Reshape the African Economy",
+      "apple_collection_id": 1056200096,
+      "apple_track_id": 1000785439544,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-nigerian-industrial-behemoth-that-could-reshape/id1056200096?i=1000785439544&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 58,
+      "duration_sec": 3499,
+      "audio_url": "https://podtrac.com/pts/redirect.mp3/tracking.swap.fm/track/UVBrz8bN8aM2Xe47PEPu/traffic.omny.fm/d/clips/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/568c6e3c-2159-45c2-8e4d-b4ad011d7c22/audio.mp3?utm_source=Podcast&in_playlist=982f5071-765c-403d-969d-ae27003a8d83",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 56036034,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f3/99/6a/f3996a52-e4a4-bf0d-b7d6-e376c4058568/mza_15550359494736224565.jpg/600x600bb.jpg",
+      "topics": [
+        "economics/markets"
+      ],
+      "hook": "Dangote Refinery's $1B IPO underwriting signals a shift in Nigeria's industrial ambitions.",
+      "explicit": false
+    },
+    {
+      "id": "hidden-brain--what-art-does-for-your-brain",
+      "show": "Hidden Brain",
+      "title": "What Art Does For Your Brain",
+      "apple_collection_id": 1028908750,
+      "apple_track_id": 1000785600703,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/what-art-does-for-your-brain/id1028908750?i=1000785600703&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 49,
+      "duration_sec": 2958,
+      "audio_url": "https://mgln.ai/e/2/dts.podtrac.com/redirect.mp3/stitcher.simplecastaudio.com/df179a36-a022-41e3-bf7c-b7a4efc6f51e/episodes/bd1b99ba-0c18-4759-b45f-50af4dd90781/audio/128/default.mp3?aid=rss_feed&awCollectionId=df179a36-a022-41e3-bf7c-b7a4efc6f51e&awEpisodeId=bd1b99ba-0c18-4759-b45f-50af4dd90781&feed=kwWc0lhf",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 47333701,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e2/18/b8/e218b838-b790-3a33-441f-c3772d9abbbf/mza_6896085647855199484.jpg/600x600bb.jpg",
+      "topics": [
+        "psychology/decision-making"
+      ],
+      "hook": "Psychobiologist Daisy Fancourt explains how engaging with art builds emotional resilience and wellbeing.",
+      "explicit": false
+    },
+    {
+      "id": "choiceology--the-hardest-promises-to-break-peer",
+      "show": "Choiceology with Katy Milkman",
+      "title": "The Hardest Promises to Break: Peer Accountability (With Angela Duckworth)",
+      "apple_collection_id": 1337886873,
+      "apple_track_id": 1000785441129,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-hardest-promises-to-break-peer-accountability/id1337886873?i=1000785441129&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 37,
+      "duration_sec": 2220,
+      "audio_url": "https://mgln.ai/e/1388/afp-928686-injected.calisto.simplecastaudio.com/46d9ff78-39b5-4502-a5e9-0df217e1b3a7/episodes/daa73929-0530-4b93-b948-ffbce251a671/audio/128/default.mp3?aid=rss_feed&awCollectionId=46d9ff78-39b5-4502-a5e9-0df217e1b3a7&awEpisodeId=daa73929-0530-4b93-b948-ffbce251a671&feed=66QlUXEg",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 36651572,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d4/dd/1a/d4dd1a96-3d19-d117-049a-e7efb67e15cc/mza_5642620100423641543.jpg/600x600bb.jpg",
+      "topics": [
+        "psychology/decision-making"
+      ],
+      "hook": "Angela Duckworth and Katy Milkman examine how peer accountability keeps hard goals on track.",
+      "explicit": false
+    },
+    {
+      "id": "watt-it-takes--crux-co-founder-ceo-alfred-johnson",
+      "show": "Watt It Takes",
+      "title": "Crux Co-Founder & CEO Alfred Johnson",
+      "apple_collection_id": 1554962073,
+      "apple_track_id": 1000785669719,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/crux-co-founder-ceo-alfred-johnson/id1554962073?i=1000785669719&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 73,
+      "duration_sec": 4350,
+      "audio_url": "https://chrt.fm/track/89G73G/cdn.simplecast.com/media/audio/transcoded/ac55d7d1-55db-47aa-bfc0-79558d4802a9/3d0c57eb-9656-4971-94eb-a22b1cb055da/episodes/audio/group/2a47462f-6ae4-4a47-a664-917b6393fbbf/group-item/9b840b26-f59e-415c-a1e2-8a72433b79a9/128_default_tc.mp3?aid=rss_feed&feed=vP_9pXZm",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 69605785,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/27/e7/47/27e747dd-e8d3-d4c0-d470-44cd990b2f74/mza_13309759620403809513.jpg/600x600bb.jpg",
+      "topics": [
+        "engineering/energy-grid"
+      ],
+      "hook": "Crux's Alfred Johnson on how tax-credit transferability is unlocking clean energy financing.",
+      "explicit": false
+    },
+    {
+      "id": "unexplainable--the-idea-of-a-song",
+      "show": "Unexplainable",
+      "title": "The idea of a song",
+      "apple_collection_id": 1554578197,
+      "apple_track_id": 1000785441209,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/the-idea-of-a-song/id1554578197?i=1000785441209&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 44,
+      "duration_sec": 2659,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/mgln.ai/e/257/traffic.megaphone.fm/VMP9786163896.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/eb/87/4d/eb874d60-4424-62df-a136-d5b5f32c451b/mza_11680166435885601347.jpg/600x600bb.jpg",
+      "topics": [
+        "science/storytelling"
+      ],
+      "hook": "Switched on Pop's hosts explain why modern hits are ditching the classic song intro.",
+      "explicit": true
+    },
+    {
+      "id": "we-have-ways-of-making-you-talk--british-band-of-brothers-operation-bluecoat",
+      "show": "WW2 Pod: We Have Ways of Making You Talk",
+      "title": "British Band Of Brothers: Operation Bluecoat (Part 6)",
+      "apple_collection_id": 1457552694,
+      "apple_track_id": 1000784384823,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/british-band-of-brothers-operation-bluecoat-part-6/id1457552694?i=1000784384823&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 49,
+      "duration_sec": 2921,
+      "audio_url": "https://traffic.megaphone.fm/GLT9430871958.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/c5/22/e9/c522e983-ceb9-9337-d7b5-9b6f1e77e16b/mza_10534174726318393863.jpeg/600x600bb.jpg",
+      "topics": [
+        "history/military-modern"
+      ],
+      "hook": "Part six follows the Sherwood Rangers through the brutal Battle of Hottot in Normandy.",
+      "explicit": false
+    },
+    {
+      "id": "history-of-wwii-podcast--episode-648-chesty-puller-saves-his",
+      "show": "The History of WWII Podcast",
+      "title": "Episode 648-Chesty Puller Saves His Men",
+      "apple_collection_id": 493253759,
+      "apple_track_id": 1000785530947,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-648-chesty-puller-saves-his-men/id493253759?i=1000785530947&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 25,
+      "duration_sec": 1491,
+      "audio_url": "https://pdst.fm/e/chtbl.com/track/95538/swap.fm/track/JhoQDAATtO1l0y8tdKNa/rss.pdrl.fm/eb4bb2/tracking.swap.fm/track/YfZO4tERxneauNcW9Fgn/mgln.ai/e/211/traffic.megaphone.fm/ARML1230482078.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bb/fa/9a/bbfa9a3d-9cb1-a452-fc74-c8ebab7bac9a/mza_13831910833290623732.jpg/600x600bb.jpg",
+      "topics": [
+        "history/military-modern"
+      ],
+      "hook": "Chesty Puller leads a risky recon mission to the Matanikau River on Guadalcanal.",
+      "explicit": false
+    },
+    {
+      "id": "strong-towns-podcast--chuck-on-data-centers-yimbys-and",
+      "show": "The Strong Towns Podcast",
+      "title": "Chuck on Data Centers, YIMBYs and E-Bikes",
+      "apple_collection_id": 369032477,
+      "apple_track_id": 1000785510974,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/chuck-on-data-centers-yimbys-and-e-bikes/id369032477?i=1000785510974&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 63,
+      "duration_sec": 3761,
+      "audio_url": "https://mcdn.podbean.com/mf/web/jmqt3ghmwdwwvy6r/STP_8-24-26.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 90384098,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/63/63/8c/63638c2a-3e02-dc38-8a26-50a832d39a6f/mza_868145100848425715.jpg/600x600bb.jpg",
+      "topics": [
+        "cities/urbanism"
+      ],
+      "hook": "Chuck answers member questions on data centers, YIMBY politics, and e-bike backlash.",
+      "explicit": false
+    },
+    {
+      "id": "talking-headways--episode-197-mondays-at-the-overhead",
+      "show": "Talking Headways: A Streetsblog Podcast",
+      "title": "Episode 197: Mondays at The Overhead Wire - Change Orders!",
+      "apple_collection_id": 775143271,
+      "apple_track_id": 1000785676476,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/episode-197-mondays-at-the-overhead-wire-change-orders/id775143271?i=1000785676476&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 46,
+      "duration_sec": 2789,
+      "audio_url": "https://traffic.libsyn.com/secure/streetsblog/Mondays_197_Final.mp3?dest-id=170891",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 49900612,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/89/59/f1/8959f121-bfad-7597-127c-66ddafc642e2/mza_17751439431270750380.png/600x600bb.jpg",
+      "topics": [
+        "cities/urbanism"
+      ],
+      "hook": "This week: LA's people mover, an urbanism poll, and a West African coast trip.",
+      "explicit": false
+    },
+    {
+      "id": "huberman-lab--how-to-improve-motivation-overcome-procrastination",
+      "show": "Huberman Lab",
+      "title": "How to Improve Motivation & Overcome Procrastination | Dr. Masud Husain",
+      "apple_collection_id": 1545953110,
+      "apple_track_id": 1000785441408,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/how-to-improve-motivation-overcome-procrastination/id1545953110?i=1000785441408&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 140,
+      "duration_sec": 8421,
+      "audio_url": "https://traffic.megaphone.fm/SCIM3386045656.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9a/d3/19/9ad31912-0b5a-a16e-2d7c-9fd074698b9c/mza_8994222203629500925.jpg/600x600bb.jpg",
+      "topics": [
+        "medicine/neuroscience"
+      ],
+      "hook": "Dr. Masud Husain explains the brain circuits behind motivation, apathy, and procrastination.",
+      "explicit": false
+    },
+    {
+      "id": "mwa-woodworking--mwa621-mark-hicks-in-the-house",
+      "show": "MWA Podcast - Woodworking Conversations",
+      "title": "MWA621 - Mark Hicks in the House",
+      "apple_collection_id": 502349432,
+      "apple_track_id": 1000785670069,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/mwa621-mark-hicks-in-the-house/id502349432?i=1000785670069&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 52,
+      "duration_sec": 3140,
+      "audio_url": "https://www.buzzsprout.com/5339/episodes/19683660-mwa621-mark-hicks-in-the-house.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 37707497,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/5d/b8/f4/5db8f408-cb22-1835-9326-0ba4bca7e066/mza_15782888279691799407.jpg/600x600bb.jpg",
+      "topics": [
+        "craft/woodworking"
+      ],
+      "hook": "MWA reunites with former cohost Mark Hicks ahead of his Handworks exhibit appearance.",
+      "explicit": false
+    },
+    {
+      "id": "sigma-nutrition-radio--617-what-does-effective-athlete-support",
+      "show": "Sigma Nutrition Radio",
+      "title": "#617: What Does Effective Athlete Support Look Like in Practice? – Gemma McGuinness",
+      "apple_collection_id": 857888327,
+      "apple_track_id": 1000785684315,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/617-what-does-effective-athlete-support-look-like-in/id857888327?i=1000785684315&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 47,
+      "duration_sec": 2800,
+      "audio_url": "https://traffic.libsyn.com/secure/sigmanutrition/617_Gemma_McGuinness_public.mp3?dest-id=192888",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 46509726,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7d/ed/21/7ded21c8-f97e-982f-dcae-cff69d126da2/mza_7834073134319015021.png/600x600bb.jpg",
+      "topics": [
+        "health/nutrition"
+      ],
+      "hook": "Effective athlete support means understanding context, not just prescribing correct nutrition advice.",
+      "explicit": false
+    },
+    {
+      "id": "this-past-weekend-theo-von--677-gurudev-sri-sri-ravi-shankar",
+      "show": "This Past Weekend w/ Theo Von",
+      "title": "#677 - Gurudev Sri Sri Ravi Shankar",
+      "apple_collection_id": 1190981360,
+      "apple_track_id": 1000785701066,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/gurudev-sri-sri-ravi-shankar/id1190981360?i=1000785701066&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 98,
+      "duration_sec": 5860,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/mgln.ai/e/94/claritaspod.com/measure/verifi.podscribe.com/rss/p/pfx.vpixl.com/j0JIg/arttrk.com/p/MMN23/traffic.megaphone.fm/ROOSTER5762972570.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/9c/f6/5a/9cf65abb-f8db-fb7b-984f-b4276a1e8c85/mza_2107148709996282347.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/interviews"
+      ],
+      "hook": "Spiritual leader Gurudev Sri Sri Ravi Shankar joins Theo to discuss meditation and peacemaking.",
+      "explicit": true
+    },
+    {
+      "id": "2-bears-1-cave--stavvy-called-us-out-2-bears",
+      "show": "2 Bears, 1 Cave with Tom Segura & Bert Kreischer",
+      "title": "Stavvy Called Us Out | 2 Bears, 1 Cave",
+      "apple_collection_id": 1468013270,
+      "apple_track_id": 1000785541710,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/stavvy-called-us-out/id1468013270?i=1000785541710&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 86,
+      "duration_sec": 5141,
+      "audio_url": "https://pdst.fm/e/pscrb.fm/rss/p/pfx.vpixl.com/u8u9X/clrtpod.com/m/mgln.ai/e/1118/arttrk.com/p/YMH00/traffic.megaphone.fm/YMH9864506149.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/2a/6b/83/2a6b830c-da57-31f3-9bc6-eb34b56aaaa7/mza_2112252473885241390.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/casual-hangs"
+      ],
+      "hook": "Tom and Bert respond after comedian Stavvy called them out on air.",
+      "explicit": true
+    },
+    {
+      "id": "kill-tony--782-ron-white-jerron-horton",
+      "show": "KILL TONY",
+      "title": "#782 - RON WHITE + JERRON HORTON",
+      "apple_collection_id": 1042361179,
+      "apple_track_id": 1000785642369,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/782-ron-white-jerron-horton/id1042361179?i=1000785642369&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 131,
+      "duration_sec": 7834,
+      "audio_url": "https://clrtpod.com/m/pscrb.fm/rss/p/rsv.simplecastaudio.com/5c11d3b8-db1c-4d5c-86b2-2ac6921d6852/episodes/1be7b689-baa0-4aa9-8716-9bd9e5102c0a/audio/128/default.mp3?aid=rss_feed&awCollectionId=5c11d3b8-db1c-4d5c-86b2-2ac6921d6852&awEpisodeId=1be7b689-baa0-4aa9-8716-9bd9e5102c0a&feed=JZSQrle9",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 125346280,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a0/ad/df/a0addf99-adce-5a42-a138-81d9f8e4562e/mza_8301528492532104652.jpg/600x600bb.jpg",
+      "topics": [
+        "comedy/stand-up"
+      ],
+      "hook": "Ron White and Jerron Horton headline Kill Tony's live stand-up round table this week.",
+      "explicit": true
+    },
+    {
+      "id": "the-moth--live-from-johannesburg-the-moth-radio",
+      "show": "The Moth",
+      "title": "Live from Johannesburg: The Moth Radio Hour",
+      "apple_collection_id": 275699983,
+      "apple_track_id": 1000785668818,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/live-from-johannesburg-the-moth-radio-hour/id275699983?i=1000785668818&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 51,
+      "duration_sec": 3040,
+      "audio_url": "https://pdst.fm/e/tracking.swap.fm/track/v9Uiw3bGr54f6BVZKSyc/pscrb.fm/rss/p/serve.castfire.com/audio/8208774/8208774_2026-04-13-034414.192.mp3?rssID=6066",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 72976300,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/98/4c/da/984cdaf4-3cb2-a420-e841-2ebba8d41aa4/mza_12505169743730867715.jpg/600x600bb.jpg",
+      "topics": [
+        "science/storytelling",
+        "culture/performing-arts"
+      ],
+      "hook": "The Moth's live Johannesburg show features true stories of invention, pageants, and balance.",
+      "explicit": false
+    },
+    {
+      "id": "storycorps--annunciation",
+      "show": "StoryCorps",
+      "title": "Annunciation",
+      "apple_collection_id": 250500859,
+      "apple_track_id": 1000785698556,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/annunciation/id250500859?i=1000785698556&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 24,
+      "duration_sec": 1454,
+      "audio_url": "https://prfx.byspotify.com/e/play.podtrac.com/npr-510200/npr.simplecastaudio.com/45f02aa8-b834-4eb0-b44a-b3c9571849d3/episodes/12f6acb3-31c1-4893-94b1-8e6eefc431ec/audio/128/default.mp3?awCollectionId=45f02aa8-b834-4eb0-b44a-b3c9571849d3&awEpisodeId=12f6acb3-31c1-4893-94b1-8e6eefc431ec&feed=FsStDMbQ&t=podcast&e=nx-s1-5943166&p=510200&d=1454&size=23266620",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 23266620,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/df/5d/71/df5d7145-4225-beea-d86b-d2e1c933eadd/mza_17856018356545925555.jpg/600x600bb.jpg",
+      "topics": [
+        "personal-journals",
+        "society"
+      ],
+      "hook": "Survivors, teachers, and families share raw conversations after the Annunciation church shooting.",
+      "explicit": false
+    },
+    {
+      "id": "death-sex-money--humane-eldercare-has-become-a-luxury",
+      "show": "Death, Sex & Money",
+      "title": "'Humane Eldercare Has Become a Luxury Item’",
+      "apple_collection_id": 870688022,
+      "apple_track_id": 1000785615929,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/humane-eldercare-has-become-a-luxury-item/id870688022?i=1000785615929&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 45,
+      "duration_sec": 2682,
+      "audio_url": "https://sphinx.acast.com/p/open/s/69655a401f21449d6dda7edc/e/6a8cb32e6d62278f83ae68cb/media.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 42927491,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ab/25/c8/ab25c89d-f0ff-b241-4432-1ef06521b765/mza_16562465962407518091.jpg/600x600bb.jpg",
+      "topics": [
+        "personal-journals",
+        "relationships"
+      ],
+      "hook": "Families navigate costly, fragmented eldercare options as dementia strikes both aging parents.",
+      "explicit": false
+    },
+    {
+      "id": "we-can-do-hard-things--sara-bareilles-the-magic-of-grief",
+      "show": "We Can Do Hard Things",
+      "title": "Sara Bareilles: The Magic of Grief",
+      "apple_collection_id": 1564530722,
+      "apple_track_id": 1000785671601,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/sara-bareilles-the-magic-of-grief/id1564530722?i=1000785671601&uo=4",
+      "release_date": "2026-08-25",
+      "duration_min": 60,
+      "duration_sec": 3595,
+      "audio_url": "https://pdst.fm/e/pdrl.fm/097e32/pscrb.fm/rss/p/arttrk.com/p/30200/clrtpod.com/m/mgln.ai/e/p471541/traffic.megaphone.fm/ARWED2420935862.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c2/0a/dd/c20add2a-d83a-7a86-ffec-72b1f79f2f25/mza_12860019445014051429.jpeg/600x600bb.jpg",
+      "topics": [
+        "relationships",
+        "health/mental"
+      ],
+      "hook": "Sara Bareilles discusses grief, infertility, and loss behind her new album Good Grief.",
+      "explicit": false
+    },
+    {
+      "id": "twenty-thousand-hertz--listener-stories-2026-silver-keyboard-clicks",
+      "show": "Twenty Thousand Hertz",
+      "title": "Listener Stories 2026 (Silver): Keyboard Clicks & Singing Forests",
+      "apple_collection_id": 1171270672,
+      "apple_track_id": 1000784799257,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/listener-stories-2026-silver-keyboard-clicks-singing/id1171270672?i=1000784799257&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 26,
+      "duration_sec": 1572,
+      "audio_url": "https://www.podtrac.com/pts/redirect.mp3/pdst.fm/e/pscrb.fm/rss/p/dovetail.prxu.org/18144/d3a409ba-d859-4fb1-8bc1-787882344d66/0247_-_Listener_Stories_Silver_v5.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 62903270,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/90/5f/ea/905feaa8-6610-20e5-98c4-bfc3e9fdb323/mza_15310168679607539796.jpg/600x600bb.jpg",
+      "topics": [
+        "culture/design",
+        "music/theory-production"
+      ],
+      "hook": "Listener-made pieces cover mechanical keyboard sounds, Indian ragas, and language's sonic belonging.",
+      "explicit": false
+    },
+    {
+      "id": "design-matters--best-of-design-matters-suzanne-vega",
+      "show": "Design Matters with Debbie Millman",
+      "title": "Best of Design Matters: Suzanne Vega",
+      "apple_collection_id": 328074695,
+      "apple_track_id": 1000785450007,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/best-of-design-matters-suzanne-vega/id328074695?i=1000785450007&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 61,
+      "duration_sec": 3685,
+      "audio_url": "https://sphinx.acast.com/p/open/s/67572f5f7205a5bc68e9792a/e/6a8af49149367c27e28f5a70/media.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 58968098,
+      "dai_suspected": true,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/fe/99/20/fe99204e-4841-3a9d-518e-afccdbcb86bd/mza_5181077586341442387.jpeg/600x600bb.jpg",
+      "topics": [
+        "culture/design"
+      ],
+      "hook": "Suzanne Vega reflects on her career and new album Flying with Angels.",
+      "explicit": false
+    },
+    {
+      "id": "cider-chat--512-plant-the-damn-apple-tree",
+      "show": "Cider Chat",
+      "title": "512: Plant the Damn Apple Tree | Special Edition",
+      "apple_collection_id": 1054230417,
+      "apple_track_id": 1000785549940,
+      "apple_episode_url": "https://podcasts.apple.com/us/podcast/512-plant-the-damn-apple-tree-special-edition/id1054230417?i=1000785549940&uo=4",
+      "release_date": "2026-08-24",
+      "duration_min": 10,
+      "duration_sec": 610,
+      "audio_url": "https://traffic.libsyn.com/secure/ciderchat/512_Plant_the_damn_apple_tree.mp3?dest-id=320706",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 7835133,
+      "dai_suspected": false,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts125/v4/7d/5b/2a/7d5b2a5d-5439-2823-d1c4-8310c5b5a349/mza_15700147877021374767.png/600x600bb.jpg",
+      "topics": [
+        "food/fermentation",
+        "food/drinks"
+      ],
+      "hook": "Cider Chat's editor reflects on entrepreneurship, uncertainty, and lessons from planting apple trees.",
       "explicit": false
     }
   ]
