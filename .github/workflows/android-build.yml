@@ -373,7 +373,7 @@ jobs:
           # runs 45 to 90 minutes, so a timed-out type would not survive one
           # (docs/research/mp1-background-audio.md §5.3).
           for needle in \
-            'com.jwincorporated.foray.audio.PlaybackKeepAliveService' \
+            'dev.jwlabs.foura.audio.PlaybackKeepAliveService' \
             'android:foregroundServiceType="mediaPlayback"' \
             'android.permission.FOREGROUND_SERVICE' \
             'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'
@@ -387,7 +387,7 @@ jobs:
           grep -qF 'assets/public/foray-audio-shell.js' "$ART/apk-listing.txt" \
             || { echo "the plugin's WEB half is not in the APK"; exit 1; }
           unzip -p "$ART/app-debug.apk" assets/capacitor.plugins.json | tee "$ART/capacitor.plugins.json"
-          grep -qF 'com.jwincorporated.foray.audio.ForayAudioPlugin' "$ART/capacitor.plugins.json" \
+          grep -qF 'dev.jwlabs.foura.audio.ForayAudioPlugin' "$ART/capacitor.plugins.json" \
             || { echo "Capacitor did not register ForayAudioPlugin — the @CapacitorPlugin annotation was not found"; exit 1; }
 
       - name: assembleRelease, which is how lintVitalRelease gets run

@@ -22,9 +22,10 @@
  * disclosed as the former name (see FORMER_NAME_RE).
  * `data/forays.json`, `?foray=`, `playForay()`, `cp_foray:` keys,
  * `player/foray-*.js` and `tools/foray/` are the domain concept, not the app
- * name. The Capacitor `appId` (`com.jwincorporated.foray`) is pinned separately
- * in `tools/mobile/shell-invariants.test.mjs` and stays on `foray` on purpose --
- * a bundle id is permanent once published.
+ * name. The Capacitor `appId` (`dev.jwlabs.foura`, ruled 2026-08-24) is pinned
+ * separately in `tools/mobile/shell-invariants.test.mjs`; it no longer carries
+ * the word at all -- a bundle id is permanent once published, so it moved while
+ * moving was still free.
  */
 const { test } = require("node:test");
 const assert = require("node:assert");
@@ -678,11 +679,18 @@ test("no Android string capitalises the unit, and none of them says the old app 
    ON PURPOSE, FOREVER -- identifiers, verified byte-identical by this PR:
    `foray-v5`, `cp_foray:`, `cp_foray_feedback`, the IndexedDB database `foray`,
    the `foray_play` / `foray_restart` / `foray_progress_drift` event types, the
-   `?foray=` parameter, the Pages URL, `com.jwincorporated.foray`, both
+   `?foray=` parameter, the Pages URL, both
    User-Agents (`Foray/0.1`, the client's, and `ForayBot/0.1`, the audio
    fetcher's -- #302 named only the first), every `foray_*` Android resource
    NAME, and 56 file and directory paths. Renaming any of these breaks live user state or a
    published contract. See the header.
+
+   THE BUNDLE ID WAS ON THAT LIST AND IS NOT ANY MORE, which is the one thing
+   #302's "forever" got wrong: `com.jwincorporated.foray` was ruled
+   `dev.jwlabs.foura` on 2026-08-24 and the plugin's Java package followed on
+   2026-08-25 (`docs/DECISIONS.md`). "Permanent once published" is the whole
+   argument, and nothing is published -- so the window was open, not closed. It
+   is pinned in `tools/mobile/shell-invariants.test.mjs`, not here.
 
    NOT SHIPPED, so out of scope: `docs/ux/foray-m3-prototype.html` and
    `tools/mobile/probe/probe-{outpoint,seam}.html` each have a `<title>Foray`.

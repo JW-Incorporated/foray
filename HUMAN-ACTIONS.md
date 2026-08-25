@@ -1613,6 +1613,22 @@ jwincorporated.com/4a/privacy  policy        -> Privacy Policy URL (required)
 jwincorporated.com/4a/support  contact + FAQ -> Support URL (Apple, required)
 ```
 
+> **NOTE ADDED 2026-08-25 — read this before buying anything, and the recommendation
+> above is deliberately left as written because the domain is your call.** The
+> illustrative domain names a company that does not exist: the legal entity is
+> **JW Labs LLC**, and nobody owns `jwincorporated.com`. Meanwhile **`jwlabs.dev` was
+> purchased 2026-08-24** and is already the basis of the app id `dev.jwlabs.foura`
+> (#15), so step 1 below may be done. That makes this a **choice between two domains**
+> rather than a purchase:
+>
+> - **Use `jwlabs.dev`** — owned, $0 more, matches the app id and the entity name.
+>   `.dev` is HSTS-preloaded, so the pages are HTTPS-only, which both stores want.
+> - **Buy a `.com`** — if you want a consumer-facing marketing domain, buy one that
+>   matches the entity (`jwlabs.com` or similar), **not** `jwincorporated.com`.
+>
+> Either way the path shape above is right: company root, per-app paths. Reply with
+> the domain you want and a session builds the site.
+
 **Why the order matters, and it is the whole reason this is filed.** The free alternative is a
 GitHub org Pages site (a repo named exactly `jw-incorporated.github.io`; there is none today —
 `jw-incorporated.github.io/` returns **404**). That works, but if a real domain is added later,
