@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-25T00:19:35.462Z",
+  "built_at": "2026-08-25T08:18:56.447Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-25-f6880485",
+    "last_batch_id": "fresh-2026-08-25-08776412",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -54045,12 +54045,52 @@
     },
     "1368888880": {
       "topics": [
-        "economics/markets",
-        "business/startups"
+        "business/startups",
+        "news/tech",
+        "psychology",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Primarily Startups & deep tech; related content in Tech News, Psychology, Science.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1369133152": {
       "topics": [
@@ -54579,11 +54619,49 @@
     },
     "1377843908": {
       "topics": [
-        "science"
+        "history",
+        "music",
+        "science",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily History; related content in Music, Science, Computing.",
+      "display_title": "The Weirdest Thing I Learned This Week",
+      "blurb": "At Popular Science, we report and write dozens of science and tech stories every week",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1377869557": {
       "topics": [
@@ -54885,11 +54963,49 @@
     },
     "1381257272": {
       "topics": [
-        "health/alternative"
+        "history",
+        "psychology",
+        "music",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily History; related content in Psychology, Music, Science.",
+      "display_title": "Dhru Purohit Show",
+      "blurb": "Hi, I'm Dhru (like Drew), and every week, I interview the top experts in health, medicine, and mindset to provide you with in-depth, step-by...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1381271199": {
       "topics": [
@@ -55063,11 +55179,49 @@
     },
     "1383086982": {
       "topics": [
-        "medicine/biology"
+        "history",
+        "psychology",
+        "music",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily History; related content in Psychology, Music, Science.",
+      "display_title": "Sidenote by AsapSCIENCE",
+      "blurb": "Each week Greg and Mitch of AsapSCIENCE explain the science behind a controversial subject",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1383599078": {
       "topics": [
@@ -55079,11 +55233,49 @@
     },
     "1383789881": {
       "topics": [
-        "business/non-profit"
+        "religion",
+        "business/startups",
+        "business/non-profit",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.9
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Religion & Spirituality; related content in Startups & deep tech, Non-Profit, Science.",
+      "display_title": "Bambi Noelani Brock",
+      "blurb": "Clips of whispered, softly spoken/sung stories to help Soothe you 2 Sleep",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1383848680": {
       "topics": [
@@ -55466,11 +55658,49 @@
     },
     "1389764855": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/after-shows",
+        "comedy",
+        "computing",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/after-shows",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily After Shows; related content in Comedy, Computing, TV & Film.",
+      "display_title": "Love Island: The Debrief",
+      "blurb": "Love Island fans, welcome to The Debrief",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1389858029": {
       "topics": [
@@ -55598,11 +55828,49 @@
     },
     "1391483100": {
       "topics": [
-        "comedy"
+        "true-crime",
+        "comedy",
+        "science",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in Comedy, Science, Computing.",
+      "display_title": "Sinisterhood",
+      "blurb": "Sinisterhood is the comedy podcast about all things sinister, covering true crime, cults, cryptids, unsolved mysteries, and strange phenomen...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1391657450": {
       "topics": [
@@ -55614,12 +55882,49 @@
     },
     "1391915810": {
       "topics": [
-        "computing",
-        "news/tech"
+        "true-crime",
+        "news/tech",
+        "history",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in Tech News, History, Computing.",
+      "display_title": "Hacking Humans",
+      "blurb": "Deception, influence, and social engineering in the world of cyber crime",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1392545186": {
       "topics": [
@@ -55677,11 +55982,49 @@
     },
     "1393739959": {
       "topics": [
-        "food"
+        "business/startups",
+        "food",
+        "business/founders",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Food, Founders, History.",
+      "display_title": "This Is TASTE",
+      "blurb": "If you're a fan of smart and lively conversations about food, home cooking, and culture, this is the place",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1393845532": {
       "topics": [
@@ -56242,19 +56585,87 @@
     },
     "1400581452": {
       "topics": [
-        "education/courses"
+        "religion",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Religion & Spirituality; related content in Education.",
+      "display_title": "Counsel The Word",
+      "blurb": "Conversations about biblical counseling from the Center for Biblical Counseling and Discipleship",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1400686733": {
       "topics": [
-        "science/physics"
+        "science/physics",
+        "history",
+        "music",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Physics; related content in History, Music, Science.",
+      "display_title": "Physics World Weekly Podcast",
+      "blurb": "Physics World Weekly offers a unique insight into the latest news, breakthroughs and innovations from the global scientific community",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1400828889": {
       "topics": [
@@ -56424,11 +56835,49 @@
     },
     "1402378177": {
       "topics": [
-        "society"
+        "news/tech",
+        "history",
+        "psychology",
+        "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Tech News; related content in History, Psychology, Music.",
+      "display_title": "The Bulletproof Musician",
+      "blurb": "Ever wonder why you can practice for hours, sound great in the practice room, and still be frustratingly hit or miss on stage? Join performa...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1402620531": {
       "topics": [
@@ -56493,11 +56942,51 @@
     },
     "1402749634": {
       "topics": [
-        "hobbies"
+        "business/startups",
+        "history",
+        "hobbies",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in History, Hobbies & Leisure, Science.",
+      "display_title": "Beekeeping Today Podcast",
+      "blurb": "The weekly podcast bringing beekeepers the latest news, research, and insights on honey bees",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1402903701": {
       "topics": [
@@ -57248,11 +57737,34 @@
     },
     "1412116121": {
       "topics": [
-        "society"
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Culture; related content in .",
+      "display_title": "Radio Marz | پادکست فارسی رادیو مرز",
+      "blurb": "روایت آدم‌ها از فاصله‌ای که با دیگران احساس می‌کنند Hosted on Acast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1412142989": {
       "topics": [
@@ -57313,11 +57825,39 @@
     },
     "1412670166": {
       "topics": [
-        "hobbies"
+        "computing",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Computing; related content in Culture.",
+      "display_title": "头号玩家｜最燃生活攻略",
+      "blurb": "收听到这个节目的你，我们的相遇还真的挺不容易的。 这个专辑覆盖了生活、旅行、美食、文学、历史、军事、音乐、玩具、游戏、军事、历史、灵异、情感、职场",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1412679965": {
       "topics": [
@@ -57853,11 +58393,44 @@
     },
     "1422812354": {
       "topics": [
-        "sports"
+        "sports",
+        "computing",
+        "tv-film"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Sports; related content in Computing, TV & Film.",
+      "display_title": "Thunder & Lightning",
+      "blurb": "Brian Hadad of SportsTalk Mississippi and Carlo Barone, along with legendary Diamond Dawg Brooks Bryan, give you the best insight into Missi...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1422814215": {
       "topics": [
@@ -58264,12 +58837,44 @@
     },
     "1429317218": {
       "topics": [
-        "economics/markets",
-        "business/non-profit"
+        "business/startups",
+        "business/non-profit",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Non-Profit, Computing.",
+      "display_title": "The Fundraising Talent Podcast",
+      "blurb": "Asking Fundraising’s Difficult Questions fundraisingtalent",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1429808898": {
       "topics": [
@@ -58653,11 +59258,53 @@
     },
     "1433941876": {
       "topics": [
+        "business/startups",
+        "news/tech",
+        "history",
         "hobbies"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Tech News, History, Hobbies & Leisure.",
+      "display_title": "The Major Wrestling Figure Podcast",
+      "blurb": "Join Wrestling Superstar Matt Cardona (former WWE Superstar Zack Ryder) and IMPACT Wrestling star Brian Myers (former WWE Superstar Curt Haw...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1433961166": {
       "topics": [
@@ -58741,11 +59388,52 @@
     },
     "1434243584": {
       "topics": [
-        "computing"
+        "business/startups",
+        "science/physics",
+        "sports",
+        "business/founders"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Primarily Startups & deep tech; related content in Physics, Sports, Founders.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1434244995": {
       "topics": [
@@ -58783,12 +59471,49 @@
     },
     "1434282974": {
       "topics": [
-        "economics/markets",
-        "society"
+        "business/startups",
+        "food",
+        "music",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Food, Music, Science.",
+      "display_title": "VoxDev Development Economics",
+      "blurb": "Hear about the cutting edge of development economics from research to practice",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1434306168": {
       "topics": [
@@ -58880,11 +59605,49 @@
     },
     "1434465245": {
       "topics": [
-        "science"
+        "history",
+        "hobbies",
+        "science",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily History; related content in Hobbies & Leisure, Science, Computing.",
+      "display_title": "Wild Thing",
+      "blurb": "Wild Thing is a long-form, narrative podcast about the obsessions that capture our imaginations",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1434494214": {
       "topics": [
@@ -59238,11 +60001,49 @@
     },
     "1435183458": {
       "topics": [
-        "sports/football"
+        "food",
+        "sports",
+        "music",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Food; related content in Sports, Music, Computing.",
+      "display_title": "The Pat McAfee Show",
+      "blurb": "Join Pat McAfee, AJ Hawk, the Toxic Table, and Tone Digs Monday-Friday as they tackle the biggest news in sports",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1435212577": {
       "topics": [
@@ -59303,11 +60104,49 @@
     },
     "1435277410": {
       "topics": [
-        "health/sexuality"
+        "true-crime",
+        "history",
+        "computing",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in History, Computing, Education.",
+      "display_title": "The Unapologetic Man Podcast",
+      "blurb": "Learn exactly how to talk to girls, how to approach women, how to get a girlfriend, how to get out of the friend zone, how to get a girl's p...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1435335050": {
       "topics": [
@@ -59810,11 +60649,44 @@
     },
     "1436541194": {
       "topics": [
-        "nature"
+        "history",
+        "science",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily History; related content in Science, Computing.",
+      "display_title": "Constant Wonder",
+      "blurb": "Stay in tune with our phenomenal world",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1436616330": {
       "topics": [
@@ -60326,11 +61198,44 @@
     },
     "1437839593": {
       "topics": [
-        "culture/performing-arts"
+        "history",
+        "music",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily History; related content in Music, Computing.",
+      "display_title": "The Slowdown: Poetry & Reflection Daily",
+      "blurb": "Host Maggie Smith is your daily poetry companion",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1437868374": {
       "topics": [
@@ -60536,11 +61441,49 @@
     },
     "1438378439": {
       "topics": [
-        "computing"
+        "business/startups",
+        "history",
+        "computing",
+        "economics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in History, Computing, Economics.",
+      "display_title": "Eye On A.I.",
+      "blurb": "Eye on A",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1438435120": {
       "topics": [
@@ -61234,11 +62177,39 @@
     },
     "1440833267": {
       "topics": [
-        "religion/christianity"
+        "computing",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Computing; related content in Education.",
+      "display_title": "The Bible Recap",
+      "blurb": "Have you ever closed your Bible and thought, \"What did I just read?\" Maybe you've tried to read through the Bible but quit when it felt conf...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1440854210": {
       "topics": [
@@ -61264,11 +62235,49 @@
     },
     "1440949708": {
       "topics": [
+        "food",
+        "sports",
+        "history",
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Food; related content in Sports, History, Hobbies & Leisure.",
+      "display_title": "40 and 20: the WatchClicker Podcast",
+      "blurb": "The official podcast of watchclicker",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1441003615": {
       "topics": [
@@ -61509,11 +62518,49 @@
     },
     "1441573078": {
       "topics": [
-        "society/government"
+        "business/startups",
+        "true-crime",
+        "sports",
+        "news/tech"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in True Crime, Sports, Tech News.",
+      "display_title": "Into Africa",
+      "blurb": "Fearless music activists",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1441592240": {
       "topics": [
@@ -61946,11 +62993,49 @@
     },
     "1444227264": {
       "topics": [
-        "math"
+        "science/physics",
+        "history",
+        "music",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Physics; related content in History, Music, Science.",
+      "display_title": "Opinionated History of Mathematics",
+      "blurb": "History of mathematics research with iconoclastic madcap twists",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1444357023": {
       "topics": [
@@ -62005,12 +63090,49 @@
     },
     "1444464816": {
       "topics": [
-        "economics/markets",
-        "fiction/drama"
+        "true-crime",
+        "history",
+        "business/non-profit",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in History, Non-Profit, Computing.",
+      "display_title": "The Lovecraft Investigations",
+      "blurb": "Julian Simpson's mystery thriller/horror fiction series, based on several works by H",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1444490547": {
       "topics": [
@@ -62084,12 +63206,34 @@
     },
     "1444667419": {
       "topics": [
-        "food",
-        "craft"
+        "food"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Food; related content in .",
+      "display_title": "Craft Cook Read Repeat",
+      "blurb": "Bi-weekly conversation featuring crafty goodness, wonderful reads and tasty eats",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1444713323": {
       "topics": [
@@ -62493,11 +63637,44 @@
     },
     "1446321788": {
       "topics": [
-        "education/how-to"
+        "music",
+        "computing",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Music; related content in Computing, Education.",
+      "display_title": "Maintenant, vous savez",
+      "blurb": "Vous connaissez, mais est-ce que vous savez ? En moins de 3 minutes, nous vous donnons les clés essentielles pour savoir vraiment ce qui se ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1446333312": {
       "topics": [
@@ -62612,11 +63789,53 @@
     },
     "1446527874": {
       "topics": [
-        "comedy"
+        "comedy",
+        "music",
+        "computing",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Comedy; related content in Music, Computing, Culture.",
+      "display_title": "Here's The Thing",
+      "blurb": "Here's The Thing is podcast with @ThatChickAngel and @KevOnStage",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1446537332": {
       "topics": [
@@ -63224,11 +64443,49 @@
     },
     "1448532887": {
       "topics": [
-        "society"
+        "food",
+        "sports",
+        "music",
+        "computing"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Food; related content in Sports, Music, Computing.",
+      "display_title": "The Dog Walk",
+      "blurb": "Welcome to The Dog Walk hosted by Eddie from Barstool Sports",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1448539528": {
       "topics": [
@@ -63777,11 +65034,49 @@
     },
     "1449884495": {
       "topics": [
-        "history"
+        "history",
+        "hobbies",
+        "computing",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily History; related content in Hobbies & Leisure, Computing, Culture.",
+      "display_title": "Fall of Civilizations Podcast",
+      "blurb": "A history podcast looking at the collapse of a different civilization each episode",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1449924733": {
       "topics": [
@@ -63899,12 +65194,44 @@
     },
     "1450241676": {
       "topics": [
-        "gaming",
-        "comedy/casual-hangs"
+        "true-crime",
+        "computing",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in Computing, Education.",
+      "display_title": "Dungeons and Daddies",
+      "blurb": "A Dungeons and Dragons podcast about four dads from our world transported into a realm of high fantasy and magic and their quest to rescue t...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1450267467": {
       "topics": [
@@ -64422,11 +65749,49 @@
     },
     "1451609095": {
       "topics": [
-        "society/government"
+        "true-crime",
+        "history",
+        "science",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in History, Science, Computing.",
+      "display_title": "The Air Force Starts Here",
+      "blurb": "Air Education and Training Command experts discuss a wide variety&#13; of topics that directly impact total force Airmen, including force&#1...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1451618111": {
       "topics": [
@@ -65215,11 +66580,49 @@
     },
     "1454036760": {
       "topics": [
-        "education/how-to"
+        "business/startups",
+        "sports",
+        "business/founders",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Sports, Founders, History.",
+      "display_title": "K9s Talking Scents",
+      "blurb": "This podcast is all about Detection Dogs we talking training, working the dog in the real world, starting a new dog or have an experienced d...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1454042483": {
       "topics": [
@@ -65302,11 +66705,49 @@
     },
     "1454190031": {
       "topics": [
-        "education/how-to"
+        "business/startups",
+        "business/founders",
+        "news/tech",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Founders, Tech News, Science.",
+      "display_title": "Easy EdTech Podcast with Monica Burns",
+      "blurb": "Monica Burns from the popular EdTech blog ClassTechTips brings you teaching strategies, tips and activity ideas",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1454221849": {
       "topics": [
@@ -65575,11 +67016,44 @@
     },
     "1455067534": {
       "topics": [
-        "sports/tennis"
+        "music",
+        "computing",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Music; related content in Computing, TV & Film.",
+      "display_title": "The Mini-Break [Tennis Podcast]",
+      "blurb": "\"The Mini-Break\" is a daily podcast that brings you the latest news and analysis from the world of tennis",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1455127076": {
       "topics": [
@@ -65662,11 +67136,49 @@
     },
     "1455386910": {
       "topics": [
-        "nature/earth-science"
+        "science/physics",
+        "history",
+        "science",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/physics",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Physics; related content in History, Science, Computing.",
+      "display_title": "Ask MIT Climate",
+      "blurb": "Get smart quickly on climate change",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1455395163": {
       "topics": [
@@ -65778,11 +67290,42 @@
     },
     "1455589166": {
       "topics": [
-        "sports/baseball"
+        "music",
+        "computing"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Primarily Music; related content in Computing.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1455645619": {
       "topics": [
@@ -65891,11 +67434,39 @@
     },
     "1455894620": {
       "topics": [
-        "math"
+        "food",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Food; related content in History.",
+      "display_title": "Mathematical Objects",
+      "blurb": "Katie Steckles and Peter Rowlett chat about some aspect of mathematics using a mathematical object as inspiration",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1455909225": {
       "topics": [
@@ -65970,11 +67541,54 @@
     },
     "1456034719": {
       "topics": [
-        "education/courses"
+        "true-crime",
+        "psychology",
+        "music",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in Psychology, Music, Science.",
+      "display_title": "Exam Study Expert",
+      "blurb": "Don’t work harder, work smarter: how to study effectively and get the grades of your dreams with winning review strategies, killer memory te...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1456045551": {
       "topics": [
@@ -66187,11 +67801,49 @@
     },
     "1456467014": {
       "topics": [
-        "economics/markets"
+        "business/startups",
+        "education",
+        "economics",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "economics",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Education, Economics, TV & Film.",
+      "display_title": "The Compound and Friends",
+      "blurb": "Join Downtown Josh Brown, Michael Batnick, and a rotation of their friends every Tuesday and Friday for expert insight and hot takes on the ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1456479357": {
       "topics": [
@@ -66464,11 +68116,49 @@
     },
     "1457365096": {
       "topics": [
-        "society"
+        "business/startups",
+        "food",
+        "true-crime",
+        "business/founders"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Food, True Crime, Founders.",
+      "display_title": "Tales of Taboo",
+      "blurb": "Tales of Taboo investigates, and celebrates, the stories we’re taught to keep quiet",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1457379809": {
       "topics": [
@@ -66887,12 +68577,44 @@
     },
     "1458368225": {
       "topics": [
-        "nature",
+        "true-crime",
+        "history",
         "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in History, Science.",
+      "display_title": "Whale Tales Podcast",
+      "blurb": "A monthly podcast bringing you stories, news, fun facts, and more about whales, dolphins and porpoises",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1458389465": {
       "topics": [
@@ -67333,12 +69055,49 @@
     },
     "1459204304": {
       "topics": [
-        "economics/markets",
+        "business/startups",
+        "true-crime",
+        "comedy",
         "business/non-profit"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/non-profit",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in True Crime, Comedy, Non-Profit.",
+      "display_title": "Real Talk for Real Fundraisers",
+      "blurb": "Welcome to Real Talk for Real Fundraisers, the podcast where fundraisers, nonprofit leaders, and industry experts come together to vent, lau...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1459232606": {
       "topics": [
@@ -67935,20 +69694,94 @@
     },
     "1460805013": {
       "topics": [
-        "fiction",
-        "science"
+        "science",
+        "computing",
+        "tv-film"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Science; related content in Computing, TV & Film.",
+      "display_title": "Bigfoot and Beyond with Cliff and Bobo",
+      "blurb": "Beyond Bigfoot with Cliff and Bobo is your go-to podcast for everything cryptozoological, paranormal, and unexplained",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1460805372": {
       "topics": [
-        "education/self-improvement"
+        "psychology",
+        "science",
+        "computing",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Psychology; related content in Science, Computing, Education.",
+      "display_title": "Maximized Minimalist Podcast",
+      "blurb": "You've decluttered before…so why does the mess keep coming back? You've done the checklists, the bins, the late-night cleanouts—only to find...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1460834956": {
       "topics": [
@@ -68273,11 +70106,49 @@
     },
     "1462336009": {
       "topics": [
-        "education/courses"
+        "true-crime",
+        "science",
+        "education",
+        "tv-film"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily True Crime; related content in Science, Education, TV & Film.",
+      "display_title": "The SLP Now Podcast",
+      "blurb": "The SLP Now Podcast is your go-to resource for practical speech-language pathology tips",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1462338073": {
       "topics": [
@@ -68396,11 +70267,51 @@
     },
     "1462683950": {
       "topics": [
-        "society"
+        "business/startups",
+        "history",
+        "psychology",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in History, Psychology, Science.",
+      "display_title": "One in Ten",
+      "blurb": "The award-winning One in Ten podcast, now in its eighth season, is powered and produced by National Children’s Alliance (NCA)",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1462703434": {
       "topics": [
@@ -68617,11 +70528,49 @@
     },
     "1463629531": {
       "topics": [
-        "education/courses"
+        "business/startups",
+        "food",
+        "true-crime",
+        "business/founders"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Food, True Crime, Founders.",
+      "display_title": "Continuing Education for Mental Health Counselors",
+      "blurb": "Welcome to The Therapy Show with Lisa Mustard, the podcast where continuing education meets convenience",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1463641767": {
       "topics": [
@@ -68806,11 +70755,44 @@
     },
     "1464766741": {
       "topics": [
-        "comedy"
+        "comedy",
+        "news/tech",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Comedy; related content in Tech News, Computing.",
+      "display_title": "Best Friends with Nicole Byer and Sasheer Zamata",
+      "blurb": "Gayle & Oprah",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1464892377": {
       "topics": [
@@ -68887,11 +70869,53 @@
     },
     "1464954218": {
       "topics": [
-        "history"
+        "business/startups",
+        "business/founders",
+        "history",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/founders",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Startups & deep tech; related content in Founders, History, Computing.",
+      "display_title": "First America",
+      "blurb": "Native people have been written out of the American story, but without us you don&rsquo;t know what happened",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1464962252": {
       "topics": [
@@ -68964,11 +70988,49 @@
     },
     "1465273008": {
       "topics": [
-        "comedy"
+        "comedy",
+        "history",
+        "computing",
+        "tv-film"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Comedy; related content in History, Computing, TV & Film.",
+      "display_title": "Dumb Blonde",
+      "blurb": "Asking the questions others are afraid to",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1465291335": {
       "topics": [
@@ -69232,11 +71294,39 @@
     },
     "1466670293": {
       "topics": [
+        "sports",
         "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Primarily Sports; related content in Comedy.",
+      "display_title": "The BrilliantlyDumb Show",
+      "blurb": "A comedic view on sports and life's day to day, hosted by Instagram star Robby Berger",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-25-08776412",
+      "classified_at": "2026-08-25T08:18:56.447Z"
     },
     "1466686717": {
       "topics": [
