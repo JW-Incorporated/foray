@@ -466,12 +466,22 @@ test("`APP_ID` IS THE APP ID — the workflow's copy agrees with capacitor.confi
      correct asymmetry: the config is the decision, this is a copy of it. */
   const appId = JSON.parse(fs.readFileSync(path.join(ROOT, "mobile/capacitor.config.json"), "utf8")).appId;
   assert.ok(appId, "mobile/capacitor.config.json declares no appId");
-  const declared = /^\s*APP_ID:\s*(\S+)\s*$/m.exec(WF);
-  assert.ok(declared, "the workflow no longer sets APP_ID, but simctl is still given $APP_ID");
+  /* ALL assignments, not the first. A second `APP_ID:` at step or job scope would
+     SHADOW the one this test checked and the check would still pass — the same class
+     of hole as reading only the new package directory in `shell-invariants.test.mjs`.
+     Quotes optional, so `APP_ID: "…"` compares as the id rather than as `"…"`. */
+  const declarations = [...WF.matchAll(/^\s*APP_ID:\s*["']?([^"'\s#]+)["']?\s*$/gm)];
+  assert.ok(declarations.length > 0, "the workflow no longer sets APP_ID, but simctl is still given $APP_ID");
   assert.equal(
-    declared[1],
+    declarations.length,
+    1,
+    "APP_ID is assigned " + declarations.length + " times (" + declarations.map((m) => m[1]).join(", ") +
+      "); the narrower scope silently wins and pinning one of them proves nothing"
+  );
+  assert.equal(
+    declarations[0][1],
     appId,
-    "the iOS workflow's APP_ID is " + declared[1] + " but capacitor.config.json's appId is " + appId +
+    "the iOS workflow's APP_ID is " + declarations[0][1] + " but capacitor.config.json's appId is " + appId +
       "; simctl launch/terminate/get_app_container would address a bundle id the simulator has not installed"
   );
 });
