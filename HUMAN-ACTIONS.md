@@ -911,7 +911,9 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 > is the moment this stops being reversible.
 >
 > **One thing changed since this was written.** The app is now called **4a** (#302); the
-> proposed id read `com.jwincorporated.foray`. **Ruled 2026-08-24: `dev.jwlabs.foura`.** A bundle id is
+> proposed id read `com.jwincorporated.foray`. Ruled 2026-08-24 as `dev.jwlabs.foura`, and
+> **re-ruled 2026-08-25: `ai.jwlabs.foura`**, after `jwlabs.ai` was bought and made the
+> primary company domain with `jwlabs.dev` demoted to a redirect. A bundle id is
 > invisible to users, and this one names the org that owns the repo and pays the Actions bill —
 > but it should be a decision rather than an accident. The stitched-audio unit is still a
 > *foray*, so the word is not retired either way.
@@ -920,10 +922,13 @@ So after a deletion the account is an **empty shell**: no name, no email, no pho
 
 **Why it matters.** The bundle id is the app's identity in both stores and it is **permanent once published** — changing it after a release means a brand-new listing, a new URL, and zero installs carried over. It is now written into a file and into a test, so it will not drift by accident, but nobody has actually agreed to it.
 
-**RULED 2026-08-24: `dev.jwlabs.foura`.** Reverse-DNS of `jwlabs.dev`, which the company now owns
-— the old `com.jwincorporated` implied a domain it does not hold. `foura` rather than `4a` because
-Capacitor uses one `appId` for the iOS bundle id **and** the Android `applicationId`, and Android
-package segments must begin with a letter, so a `4a` segment will not build.
+**RULED 2026-08-25: `ai.jwlabs.foura`.** Reverse-DNS of **`jwlabs.ai`**, which the company bought
+and is making its primary domain; `jwlabs.dev` becomes a redirect. This replaces the 2026-08-24
+ruling of `dev.jwlabs.foura` — same reasoning, newer domain, and a bundle id outlives a domain, so
+it should name the one the company intends to keep. The old `com.jwincorporated` implied a domain
+it does not hold at all. `foura` rather than `4a` because Capacitor uses one `appId` for the iOS
+bundle id **and** the Android `applicationId`, and Android package segments must begin with a
+letter, so a `4a` segment will not build — `ai` does, because it starts with a letter.
 
 **The one thing to know before saying yes.** `ios/project.yml` — the old SwiftUI scaffold — says `com.wjduvall.foray`, which predates the org. That is a **different app** and it has never been published, so there is nothing to migrate. As of #36 that directory is reference material, not the shipping app (`docs/mobile-shell.md` §1); the shipping app is the Capacitor shell in `mobile/`. Leaving the two ids different is fine and is the current state.
 
@@ -932,11 +937,11 @@ package segments must begin with a letter, so a `4a` segment will not build.
 1. Open `mobile/capacitor.config.json`. Line 2 reads:
 
    ```json
-   "appId": "dev.jwlabs.foura",
+   "appId": "ai.jwlabs.foura",
    ```
 
 2. Reply either **"confirmed"**, or with the id you want instead.
-3. If you want a different one, a session changes it in exactly two places — that file and the pinned assertion in `tools/mobile/shell-invariants.test.mjs` ("the app id is pinned, because it is permanent once published"). Do not change one without the other; the test exists so that the change cannot be quiet.
+3. If you want a different one, a session changes the id itself in exactly two places — that file and the pinned assertion in `tools/mobile/shell-invariants.test.mjs` ("the app id is pinned, because it is permanent once published"). Do not change one without the other; the test exists so that the change cannot be quiet. **A change to the reverse-DNS *prefix* is bigger than two lines**, because the Android plugin's Java package shares it: the 2026-08-25 move to `ai.jwlabs` touched 19 files, including a `git mv` of the Java source tree, `APP_ID` in `.github/workflows/ios-build.yml` and two fully-qualified needles in `.github/workflows/android-build.yml`. Still cheap, still not two lines.
 
 **Worked if:** the status below says DONE and `mobile/capacitor.config.json`'s `appId` is the id you intend to publish under, forever.
 
@@ -1136,7 +1141,7 @@ One iOS finding that does bear on your step 6, though: `navigator.serviceWorker`
    - the **Issuer ID** (a UUID, shown above the key list)
    - the file `AuthKey_<KeyID>.p8`
 3. In the developer portal → **Certificates, Identifiers & Profiles**:
-   - **Identifiers → +** → App IDs → App → Bundle ID **`dev.jwlabs.foura`** exactly (this is #15's ruling, 2026-08-24). Tick **Background Modes** under Capabilities.
+   - **Identifiers → +** → App IDs → App → Bundle ID **`ai.jwlabs.foura`** exactly (this is #15's ruling, re-ruled 2026-08-25 when `jwlabs.ai` became the primary domain — it is **not** the `dev.jwlabs.foura` an older read of #15 would have given you). Tick **Background Modes** under Capabilities.
    - **Certificates → +** → **Apple Distribution**. Follow Apple's instructions to create the CSR, download the `.cer`, open it so it lands in your Keychain, then in **Keychain Access** right-click the certificate → **Export** → `.p12`, and set a password. Keep both the file and the password.
    - **Profiles → +** → **App Store Connect** distribution profile for that App ID and that certificate. Download the `.mobileprovision`.
    - Note your **Team ID** (10 characters, top right of the developer portal, or under Membership details).
@@ -1605,7 +1610,14 @@ transcripts are usable — and one download of The Secret To Success would settl
 >    error that propagated into this file, the website and — most seriously — the
 >    published privacy policy, which named it as the **data controller**.
 > 2. **The requirement is already met**, at no further cost, on a domain that matches
->    both the entity name and the app id `dev.jwlabs.foura` (#15).
+>    the entity name — and so does the app id, `ai.jwlabs.foura` (#15). The two are no
+>    longer the same TLD: the app id moved to `ai.jwlabs` on 2026-08-25 when `jwlabs.ai`
+>    became the primary domain and `jwlabs.dev` became a redirect. **That does not
+>    reopen this item.** The store fields want a URL that resolves and a domain
+>    associated with the organisation, not a domain that spells the bundle id; both
+>    domains are JW Labs LLC's. Whether the three URLs above should be re-pointed at
+>    `jwlabs.ai` before a listing is written is a site decision for whoever writes the
+>    listing, and a 301 satisfies both stores either way.
 > 3. **It would manufacture the exact defect Apple rejected us for.** Apple declined
 >    enrollment `DVNC3U5GMU` in part because the website's domain was not associated
 >    with the organisation. Buying a domain whose name does not match the entity

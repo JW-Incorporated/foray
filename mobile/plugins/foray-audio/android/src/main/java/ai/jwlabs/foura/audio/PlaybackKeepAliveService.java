@@ -1,4 +1,4 @@
-package dev.jwlabs.foura.audio;
+package ai.jwlabs.foura.audio;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -118,7 +118,7 @@ public class PlaybackKeepAliveService extends Service {
     /** The one {@code Intent} action this service answers besides a bare start. Its
      *  {@link #EXTRA_TRANSPORT} names an action from {@code ROUTABLE_ACTIONS} in
      *  {@code foray-media-session.js}. */
-    static final String ACTION_TRANSPORT = "dev.jwlabs.foura.audio.TRANSPORT";
+    static final String ACTION_TRANSPORT = "ai.jwlabs.foura.audio.TRANSPORT";
     static final String EXTRA_TRANSPORT = "action";
 
     /** Media3 requires a session id unique within the process. There is exactly one

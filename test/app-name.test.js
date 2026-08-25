@@ -22,7 +22,7 @@
  * disclosed as the former name (see FORMER_NAME_RE).
  * `data/forays.json`, `?foray=`, `playForay()`, `cp_foray:` keys,
  * `player/foray-*.js` and `tools/foray/` are the domain concept, not the app
- * name. The Capacitor `appId` (`dev.jwlabs.foura`, ruled 2026-08-24) is pinned
+ * name. The Capacitor `appId` (`ai.jwlabs.foura`, ruled 2026-08-25) is pinned
  * separately in `tools/mobile/shell-invariants.test.mjs`; it no longer carries
  * the word at all -- a bundle id is permanent once published, so it moved while
  * moving was still free.
@@ -687,10 +687,12 @@ test("no Android string capitalises the unit, and none of them says the old app 
 
    THE BUNDLE ID WAS ON THAT LIST AND IS NOT ANY MORE, which is the one thing
    #302's "forever" got wrong: `com.jwincorporated.foray` was ruled
-   `dev.jwlabs.foura` on 2026-08-24 and the plugin's Java package followed on
-   2026-08-25 (`docs/DECISIONS.md`). "Permanent once published" is the whole
-   argument, and nothing is published -- so the window was open, not closed. It
-   is pinned in `tools/mobile/shell-invariants.test.mjs`, not here.
+   `dev.jwlabs.foura` on 2026-08-24, the plugin's Java package followed on
+   2026-08-25, and both moved again the same day to `ai.jwlabs.foura` when
+   `jwlabs.ai` became the company's primary domain (`docs/DECISIONS.md`).
+   "Permanent once published" is the whole argument, and nothing is published --
+   so the window was open, not closed, all three times. It is pinned in
+   `tools/mobile/shell-invariants.test.mjs`, not here.
 
    NOT SHIPPED, so out of scope: `docs/ux/foray-m3-prototype.html` and
    `tools/mobile/probe/probe-{outpoint,seam}.html` each have a `<title>Foray`.

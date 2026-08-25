@@ -34,7 +34,7 @@
 >   explicitly and `tools/mobile/shell-invariants.test.mjs` fails if the two ever
 >   resolve to the same place.
 > - **`PRODUCT_BUNDLE_IDENTIFIER` here is `com.wjduvall.foray`**, which predates
->   the org. The shell uses `dev.jwlabs.foura`. They are different apps;
+>   the org. The shell uses `ai.jwlabs.foura`. They are different apps;
 >   this one has never been published.
 
 This was scaffolded on Windows, so **none of it has been compiled or run**.

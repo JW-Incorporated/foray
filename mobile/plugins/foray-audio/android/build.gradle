@@ -105,7 +105,7 @@ ext {
 apply plugin: 'com.android.library'
 
 android {
-    namespace = "dev.jwlabs.foura.audio"
+    namespace = "ai.jwlabs.foura.audio"
     compileSdk = project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
     defaultConfig {
         minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
