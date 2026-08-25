@@ -288,13 +288,13 @@ Two things were read out of build output rather than assumed, and they are the
 reason this is more than "it compiled":
 
 - **The manifest merge landed.** `app/build/intermediates/merged_manifest/debug/…/AndroidManifest.xml`
-  carries `<service android:name="com.jwincorporated.foray.audio.PlaybackKeepAliveService"
+  carries `<service android:name="dev.jwlabs.foura.audio.PlaybackKeepAliveService"
   android:exported="false" android:foregroundServiceType="mediaPlayback"
   android:stopWithTask="true" />` and both `FOREGROUND_SERVICE` and
   `FOREGROUND_SERVICE_MEDIA_PLAYBACK` permissions. A library manifest that failed to
   merge would build silently and throw at runtime.
 - **Both halves are in the APK.** `assets/capacitor.plugins.json` names
-  `com.jwincorporated.foray.audio.ForayAudioPlugin`, and
+  `dev.jwlabs.foura.audio.ForayAudioPlugin`, and
   `assets/public/foray-audio-shell.js` is present. Capacitor derived that classpath
   by finding the `@CapacitorPlugin` annotation itself.
 
@@ -584,7 +584,7 @@ change adds two instruments worth using —
 - `Capacitor.nativePromise("ForayAudio", "state", {})` asks native directly, so the two
   sides can be compared.
 
-— and one thing to watch for: `adb shell dumpsys activity services com.jwincorporated.foray`
+— and one thing to watch for: `adb shell dumpsys activity services dev.jwlabs.foura`
 should show the service with `foregroundServiceType=mediaPlayback`. `HUMAN-ACTIONS.md`'s
 Android device pass is the right home for that list.
 

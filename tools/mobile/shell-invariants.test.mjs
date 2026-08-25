@@ -27,7 +27,11 @@
  *      an over-broad ignore rule drops the .java files from the repo while the
  *      machine that built the APK still has them, and a plugin name that disagrees
  *      with the Java's annotation means the service is simply never started.
- *      Section 6, and docs/android-native-code.md.
+ *      Section 6, and docs/android-native-code.md. Since the 2026-08-25 package
+ *      rename that section ALSO pins the four places the Java package is named
+ *      (the `package` line, the source layout, the Gradle `namespace` and the
+ *      manifest's service class), because three of those four could previously be
+ *      read only by a real Gradle build on a machine with an Android SDK.
  *
  * ONE EXCEPTION TO THAT, since #37, and it is stated here so the header does not
  * over-promise: `KeepRunning`'s SECOND mechanism — parsing the generated Cordova
@@ -825,7 +829,7 @@ test("mobile/.gitignore ignores the GENERATED platform and not our own android/ 
     ["mobile/www/index.html", true, "the generated webDir must stay ignored"],
     [PLUGIN_REL + "/android/build.gradle", false, "our own plugin's Gradle module must be committable"],
     [
-      PLUGIN_REL + "/android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java",
+      PLUGIN_REL + "/android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java",
       false,
       "the foreground service's plugin class must be committable",
     ],
@@ -867,16 +871,16 @@ test("every file the Android plugin needs is TRACKED by git", () => {
     "android/build.gradle",
     "android/src/main/AndroidManifest.xml",
     "android/src/main/res/values/strings.xml",
-    "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java",
-    "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java",
+    "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java",
+    "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java",
     "web/foray-audio-shell.js",
     /* #27's Android half. Native code and its web half are useless separately: the
        polyfill with no Java answers "plugin not implemented" on every write, and the
        Java with no polyfill is a MediaSession nothing ever populates. */
     "web/foray-media-session.js",
-    "android/src/main/java/com/jwincorporated/foray/audio/NowPlaying.java",
-    "android/src/main/java/com/jwincorporated/foray/audio/NowPlayingHub.java",
-    "android/src/main/java/com/jwincorporated/foray/audio/WebViewPlayer.java",
+    "android/src/main/java/dev/jwlabs/foura/audio/NowPlaying.java",
+    "android/src/main/java/dev/jwlabs/foura/audio/NowPlayingHub.java",
+    "android/src/main/java/dev/jwlabs/foura/audio/WebViewPlayer.java",
   ];
   const res = git(["ls-files", "--", PLUGIN_REL]);
   assert.equal(res.status, 0, "could not read the git index; this invariant is about what is COMMITTED");
@@ -949,7 +953,7 @@ test("the plugin name the web half calls is the name the Java registers", () => 
      service is never started, and the app plays perfectly until the screen locks.
      No other check in the repo would notice. */
   const java = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java"),
     "utf8"
   );
   const annotated = /@CapacitorPlugin\s*\(\s*name\s*=\s*"([^"]+)"/.exec(java);
@@ -993,6 +997,136 @@ test("the plugin name the web half calls is the name the Java registers", () => 
   assert.equal(javaEvent[1], TRANSPORT_EVENT, "the Java's transport event name and the web half's disagree");
 });
 
+test("the Java package, the source layout, the Gradle namespace and the manifest's service all name the same thing", () => {
+  /* ADDED BY THE 2026-08-25 PACKAGE RENAME (`com.jwincorporated.foray.audio` ->
+     `dev.jwlabs.foura.audio`, docs/DECISIONS.md), because that refactor touches four
+     places that must agree and NOTHING IN THIS REPO COULD READ THREE OF THEM. The
+     only checks that would have noticed a half-finished rename live in
+     `.github/workflows/android-build.yml` and need a real Gradle build and an
+     Android SDK, so the feedback was a CI round trip away — and `mobile/android/` is
+     not committed, so no other suite can reach the generated project either.
+
+     THE COMPARISONS ARE DERIVED from the Java's own `package` line rather than from
+     a second literal, so the namespace and manifest checks below cannot be satisfied
+     by editing this file. BE HONEST ABOUT THE LIMIT, THOUGH: `serviceRel` IS a
+     pinned path, so the NEXT rename does have to edit this test — it just cannot
+     edit it into agreement with a half-finished rename, which is the property that
+     matters. A review pass caught the first version of this comment claiming
+     otherwise. The five things and what each one breaks:
+
+     1. `namespace` in build.gradle == the `package` declaration. This one is a
+        COMPILE invariant even though Android permits the two to differ in general:
+        PlaybackKeepAliveService references `R.string.foray_playback_channel_name`
+        and friends with NO `import <namespace>.R;`, so `R` resolves only while the
+        class sits in the namespace's own package. Diverge them and the module dies
+        with `cannot find symbol: R` — a failure that reads as a missing resource.
+     2. The source directory == the package, segment for segment. javac's own rule,
+        and the reason `git mv` of the tree and the `package` edit are one change.
+     3. The manifest's `<service android:name>` == the real FQCN. THE SILENT ONE:
+        AGP merges whatever string is there, the APK builds, and the service fails
+        to start at run time with a ClassNotFoundException nobody is watching for --
+        which on this app means background audio dies at the lock screen and the
+        foreground playback that came before it looked perfect.
+     4. NO TRACKED .java SURVIVES OUTSIDE THE PACKAGE DIRECTORY, and this one was
+        added by a review pass that broke the first version of this test. Checking
+        only the files INSIDE the new directory misses the failure an incomplete
+        `git mv` actually produces: the old tree still committed alongside the new
+        one. The reviewer re-added all five classes under
+        `com/jwincorporated/foray/audio/` with their old `package` lines and the
+        whole suite stayed green — two classes carrying
+        `@CapacitorPlugin(name = "ForayAudio")` in one APK, one of them silently
+        winning. Nothing else catches it: the "TRACKED by git" test above is a
+        subset allowlist whose only breadth check is `natives.length >= 5`, and
+        android-build.yml's `grep -qF` passes on one occurrence or two.
+     5. The plugin's registered NAME is not part of any of this and must not move
+        with it. That pair is the test above; it is asserted separately on purpose,
+        because the package and the name are different things and the bridge finds
+        the plugin by the name.
+
+     MUTATION (run each; the first three and the fifth fail on a named assertion,
+     and the fourth — moving the directory — fails as an ENOENT on `serviceRel`
+     rather than on an assertion, which is loud but is not the message the layout
+     check would print): change `namespace =` in
+     `mobile/plugins/foray-audio/android/build.gradle` to
+     `"dev.jwlabs.foura.audioo"`; or `android:name` in the library manifest to
+     `dev.jwlabs.foura.PlaybackKeepAliveService`; or the `package` line in any one of
+     the five .java files; or `git mv` the `audio/` directory one level up. */
+  const serviceRel = "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java";
+  const serviceSrc = fs.readFileSync(path.join(PLUGIN_DIR, serviceRel), "utf8");
+  const declared = /^package\s+([\w.]+)\s*;/m.exec(serviceSrc);
+  assert.ok(declared, "PlaybackKeepAliveService.java has no package declaration");
+  const pkg = declared[1];
+
+  /* 2. The layout. Compared as the path the package IMPLIES, so a directory that
+        drifts from the declaration fails here rather than at javac on a machine that
+        has an Android SDK. */
+  assert.equal(
+    path.dirname(serviceRel),
+    "android/src/main/java/" + pkg.split(".").join("/"),
+    "the source directory and the `package` declaration disagree; javac requires them to match"
+  );
+
+  /* And EVERY .java file in the package agrees, not just the service — a stray file
+     left on the old package compiles fine and is then invisible to the class the
+     manifest names. Read from disk rather than listed here so a sixth file is
+     covered the day it lands. */
+  const dir = path.join(PLUGIN_DIR, path.dirname(serviceRel));
+  const javaFiles = fs.readdirSync(dir).filter((f) => f.endsWith(".java"));
+  assert.ok(javaFiles.length >= 5, "expected at least five .java files in the package, found " + javaFiles.length);
+  for (const f of javaFiles) {
+    const m = /^package\s+([\w.]+)\s*;/m.exec(fs.readFileSync(path.join(dir, f), "utf8"));
+    assert.ok(m, f + " has no package declaration");
+    assert.equal(m[1], pkg, f + " declares package " + m[1] + ", but it sits in " + pkg);
+  }
+
+  /* 4. AND NOTHING IS LEFT BEHIND. Asserted on the INDEX and in the OUTWARD
+        direction — every tracked .java under the plugin must live in the package
+        directory — because the loop above reads only the new directory and so cannot
+        see the old one still being committed beside it. That is the actual shape of a
+        half-finished `git mv`, and it is the one this test shipped blind to until a
+        review pass re-added the old tree and watched the suite stay green.
+
+        The direction matters: this does NOT require a brand-new .java to be staged
+        before the suite passes (the "TRACKED by git" test above owns that question),
+        it only requires that no COMMITTED .java sits outside the package. */
+  const pkgDirRel = PLUGIN_REL + "/" + path.dirname(serviceRel);
+  const ls = git(["ls-files", "--", PLUGIN_REL]);
+  assert.equal(ls.status, 0, "could not read the git index; this half of the invariant is about what is COMMITTED");
+  const trackedJava = ls.stdout.split(/\r?\n/).map((l) => l.trim()).filter((f) => f.endsWith(".java"));
+  assert.ok(trackedJava.length >= 5, "expected at least five tracked .java files, found " + trackedJava.length);
+  for (const f of trackedJava) {
+    assert.ok(
+      f.startsWith(pkgDirRel + "/"),
+      f + " is tracked but sits outside " + pkgDirRel +
+        ". An incomplete package rename leaves the old tree committed beside the new one, which puts two classes " +
+        "annotated @CapacitorPlugin(name = \"ForayAudio\") in one APK and lets whichever Capacitor finds first win."
+    );
+  }
+
+  /* 1. The Gradle namespace. */
+  const gradle = fs.readFileSync(path.join(PLUGIN_DIR, "android/build.gradle"), "utf8");
+  const ns = /^\s*namespace\s*=?\s*["']([\w.]+)["']/m.exec(gradle);
+  assert.ok(ns, "the plugin's build.gradle no longer declares a namespace");
+  assert.equal(
+    ns[1],
+    pkg,
+    "build.gradle's namespace is " + ns[1] + " but the Java is in " + pkg +
+      "; `R` is generated into the namespace and the Java imports no R, so this will not compile"
+  );
+
+  /* 3. The manifest's service class. Scoped to the `<service` element with
+        `[^>]*` rather than a lazy `[\s\S]*?`, so the capture cannot wander into a
+        later element's `android:name` if the service ever loses its own. */
+  const manifest = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/AndroidManifest.xml"), "utf8");
+  const svc = /<service\b[^>]*android:name="([^"]+)"/.exec(manifest);
+  assert.ok(svc, "the library manifest no longer declares a <service> with an android:name");
+  assert.equal(
+    svc[1],
+    pkg + ".PlaybackKeepAliveService",
+    "the manifest names " + svc[1] + ", which is not the class that exists; the service would fail to start at run time"
+  );
+});
+
 /** Java source with its comments removed, so scanning for call sites cannot be fooled
  *  by a doc comment that names one. These files carry more prose than code and the
  *  prose quotes method names on purpose. */
@@ -1015,7 +1149,7 @@ test("EVERY TRANSPORT ACTION THE NATIVE SIDE CAN SEND IS ONE THE PAGE CAN ROUTE"
 
      DERIVED from the Java by scanning both senders rather than listed here, so a new
      action added natively without a web handler fails. */
-  const dir = path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio");
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio");
   const player = stripJavaComments(fs.readFileSync(path.join(dir, "WebViewPlayer.java"), "utf8"));
   const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
   /* THE WHOLE ARGUMENT LIST, not the first argument, and the first draft of this test
@@ -1057,7 +1191,7 @@ test("EACH NOTIFICATION BUTTON GETS ITS OWN PendingIntent REQUEST CODE", () => {
      Nothing about that fails a build, a lint or any other test in this repo, and on a
      device it looks like a mis-wired remote rather than a bug in a number. */
   const service = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
     "utf8"
   );
   const uses = [...stripJavaComments(service).matchAll(/transportIntent\(([^)]*?),\s*(\d+)\s*\)/g)]
@@ -1097,7 +1231,7 @@ test("the notification permission is declared, aliased, and asked for exactly on
     "POST_NOTIFICATIONS is not declared, so requesting it at runtime silently fails"
   );
   const java = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java"),
     "utf8"
   );
   const alias = /static final String NOTIFICATIONS = "(\w+)"/.exec(java);
@@ -1266,7 +1400,7 @@ test("start() and stop() do not claim to know whether the service is running", (
      Asserted as the SET of fields each method resolves with, derived from the Java, so
      a re-added `running` fails here rather than on a device. */
   const java = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java"),
     "utf8"
   );
   const bodyOf = (method) => {
@@ -1365,7 +1499,7 @@ test("THE STOP BUTTON IS NOT GATED ON acceptsTransport()", () => {
      closing the player. The whole trade in `docs/android-lock-screen.md` §5.1 rests on
      stop being the one-press exit, so it has to exist wherever a notification can. */
   const service = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
     "utf8"
   );
   /* `[^{]`, not `[^)]`: the guard contains a call — `np.isLoaded()` — so a
@@ -1395,7 +1529,7 @@ test("A NEW DOCUMENT IS ANNOUNCED FROM THE PAGE, NOT FROM A NATIVE PAGE HOOK", (
      is left for this test is the one line the suite cannot reach: the wiring in the
      auto-install block, which is guarded on `window` and so never executes in Node. */
   const plugin = stripJavaComments(fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/ForayAudioPlugin.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java"),
     "utf8"
   ));
   assert.ok(
@@ -1428,7 +1562,7 @@ test("the notification repaint is gated on what the notification SAYS", () => {
      notifications an hour — and `player/media-session.js`'s own header warns that
      writing at rate redraws the notification and visibly flickers on Android. */
   const service = stripJavaComments(fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
     "utf8"
   ));
   assert.match(service, /private static String visibleKey\(/, "there is no visible-state key to compare");
@@ -1452,7 +1586,7 @@ test("the session's owner is identity-checked, like the hub's listener and sink"
      the NEW one is live. `state()` would then lie during exactly the restart a device
      pass is trying to diagnose, on a field the documentation tells it to trust. */
   const service = stripJavaComments(fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/PlaybackKeepAliveService.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
     "utf8"
   ));
   assert.match(
@@ -1472,7 +1606,7 @@ test("a millisecond value is clamped at both ends before it reaches Media3", () 
      which `MediaItemData.Builder.setDurationUs` rejects by throwing on the main thread
      inside getState(), the exact crash class the clamps exist to prevent. */
   const now = stripJavaComments(fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/com/jwincorporated/foray/audio/NowPlaying.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/NowPlaying.java"),
     "utf8"
   ));
   assert.match(now, /private static long clampMs\(long ms\)/, "there is no magnitude clamp");

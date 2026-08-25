@@ -1,4 +1,4 @@
-package com.jwincorporated.foray.audio;
+package dev.jwlabs.foura.audio;
 
 import android.net.Uri;
 import android.os.Looper;

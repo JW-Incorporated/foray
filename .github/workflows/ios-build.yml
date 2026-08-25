@@ -394,7 +394,10 @@ jobs:
           # lines came from our process (~1.2%).
           #
           # MATCH ON THE PROCESS NAME, WHICH IS `App`. A first attempt at this fix
-          # used `processImagePath CONTAINS "com.jwincorporated.foray"` and would
+          # used `processImagePath CONTAINS` THE BUNDLE ID -- `$APP_ID`, set at the
+          # top of this job; named by reference rather than quoted as a literal so
+          # that the next id change cannot stale this paragraph, which is what
+          # happened on 2026-08-24 -- and it would
           # have matched NOTHING: for a simulator app `processImagePath` is the host
           # path to the executable inside the *Bundle* container
           # (.../Application/<UUID>/App.app/App), and the bundle id appears only in

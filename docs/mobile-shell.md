@@ -691,10 +691,12 @@ is written down here rather than guessed at.
 
 Filed as `HUMAN-ACTIONS.md` items with exact steps. In brief:
 
-1. **Rule on the app id** — `com.jwincorporated.foray` is pinned in the config and
-   in a test. Permanent once published; a change after a store release means a new
-   listing. Note `ios/project.yml` still says `com.wjduvall.foray`, which predates
-   the org and belongs to the reference scaffold, not to the shell.
+1. **The app id — RULED 2026-08-24: `dev.jwlabs.foura`** (`HUMAN-ACTIONS.md` #15),
+   pinned in the config and in a test. Permanent once published; a change after a
+   store release means a new listing. The plugin's Java package followed it on
+   2026-08-25 (`docs/DECISIONS.md`). Note `ios/project.yml` still says
+   `com.wjduvall.foray`, which predates the org and belongs to the reference
+   scaffold, not to the shell.
 2. **On a Mac: generate and build the iOS project**, and add the one background
    line to `mobile/ios/App/App/Info.plist`:
    `UIBackgroundModes` → `audio`. That is the whole iOS background-audio

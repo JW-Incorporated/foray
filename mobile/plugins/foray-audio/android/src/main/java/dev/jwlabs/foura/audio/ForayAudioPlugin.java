@@ -1,4 +1,4 @@
-package com.jwincorporated.foray.audio;
+package dev.jwlabs.foura.audio;
 
 import android.Manifest;
 import android.content.Context;

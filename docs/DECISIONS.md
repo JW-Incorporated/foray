@@ -825,8 +825,13 @@ its reasoning.
 ## 2026-08-24 (the permanent bundle id)
 
 - **The app id is `dev.jwlabs.foura`** (founder ruling, HUMAN-ACTIONS #15). This supersedes
-  the 2026-08-18 entry below for the id's *value* only; that entry stays as the record of what
+  the 2026-08-17 entry above for the id's *value* only; that entry stays as the record of what
   was pinned then, and the pinning mechanism it describes is unchanged.
+  <!-- Cross-reference corrected 2026-08-25: this said "the 2026-08-18 entry below". There is
+  no 2026-08-18 heading (the app-id pin is in the 2026-08-17 entry, whose bundle-cap bullet is
+  dated 2026-08-18 inline), and this file is ascending, so it is above, not below. The decision
+  is untouched; only the pointer was wrong, and a supersession chain that does not resolve is
+  the one thing this log exists to provide. -->
 - **Why the prefix moved.** `com.jwincorporated` is reverse-DNS of a domain the company does
   not own. `jwlabs.dev` was purchased 2026-08-24, so `dev.jwlabs` is a prefix we can actually
   demonstrate control of, and it gives the second app an obvious sibling.
@@ -844,3 +849,58 @@ its reasoning.
   app's `applicationId`; renaming it is a large mechanical refactor with no functional benefit.
 - **Timing.** Nothing is published, so this cost two edits and a CI variable. After a store
   release it would have cost a new listing and every install.
+
+## 2026-08-25 (the plugin's Java package moves after all)
+
+- **The `foray-audio` plugin's Java package and Gradle namespace are
+  `dev.jwlabs.foura.audio`** (founder instruction). **This supersedes the 2026-08-24
+  entry above** — specifically its "What deliberately did NOT move" bullet, which
+  recorded the opposite decision. That entry stays as written: it is the record of
+  what was decided then, and everything it says about the app *id* still holds.
+- **Why the reversal.** *That ship hasn't sailed yet.* Nothing is published, so
+  today this is a mechanical refactor; after a store release it is a question
+  nobody would ever open. The 2026-08-24 entry's own closing bullet made exactly
+  this argument for the app id — and then declined to apply it one bullet earlier.
+- **And the old name was never true.** The company is **JW Labs LLC**. There is no
+  "JW Incorporated", so `com.jwincorporated` was reverse-DNS of a domain nobody owns
+  naming a company that does not exist. "Android permits a library namespace to
+  differ from the app's `applicationId`" is correct, and was never the question.
+- **What moved.** The five Java files (`git mv`, so history follows their new
+  path), their `package` declarations, `PlaybackKeepAliveService.ACTION_TRANSPORT`,
+  `namespace` in the plugin's `build.gradle`, the `<service android:name>` FQCN in
+  its library manifest, both fully-qualified needles in
+  `.github/workflows/android-build.yml`, the two expectations in
+  `tools/mobile/android-workflow.test.mjs` that pin those needles, and the 16 source
+  paths in `tools/mobile/shell-invariants.test.mjs`.
+- **What deliberately did NOT move — the one that would have been silent.** The
+  Capacitor plugin's **registered name** is still `ForayAudio`: the
+  `@CapacitorPlugin(name = …)` annotation and `PLUGIN_NAME` in both web halves. The
+  Java package and the plugin name are different things, and the JS bridge finds the
+  plugin by *name*. Renaming it would have killed playback on a device with the whole
+  suite green. `shell-invariants.test.mjs`'s "the plugin name the web half calls is
+  the name the Java registers" is what pins that pair, and it never mentions the
+  package — which is why this refactor could not reach it.
+- **`APP_ID` in `.github/workflows/ios-build.yml` did not move, because it already
+  had** (2026-08-24) and it is the app id, not the plugin package. The lone
+  `jwincorporated` left in that file was a comment recording a rejected `log stream`
+  predicate; it now refers to `$APP_ID` rather than quoting a literal, so the next id
+  change cannot stale it again.
+- **Not every match was the package, and the two groups OVERLAP.** `git grep -Il
+  jwincorporated` found 18 tracked files. **13 carried the package**; 12 of those are
+  the rename and the 13th is this file, whose superseded 2026-08-24 entry quotes it
+  and keeps it. Separately, **five files carried a *stale app id*** the 2026-08-24
+  change had missed: two `adb shell dumpsys activity services` commands that would
+  have matched nothing on a device, `docs/mobile-shell.md`, `ios/README.md`, and two
+  comments in `test/app-name.test.js` whose "ON PURPOSE, FOREVER" list of identifiers
+  still named the old bundle id as permanent. Those five are corrected, not renamed.
+  **The groups are not a partition** — `docs/android-lock-screen.md` and
+  `docs/android-native-code.md` are in both, carrying an FQCN that had to gain
+  `.audio` and a `dumpsys` argument that had to not — which is exactly why **a blind
+  find-and-replace of all 18 would have been wrong in both directions**: it would
+  have appended `.audio` to prose about the app id, and rewritten the superseded
+  entries above that exist to say what was decided then.
+- **Left open on purpose.** `HUMAN-ACTIONS.md` #25 illustrates the required store
+  URLs with `jwincorporated.com/4a/privacy`. That is a domain for a company that
+  does not exist, and `jwlabs.dev` is already owned — but which domain hosts the
+  marketing site is a founder call and a spend decision, so #25 gets a note, not a
+  rewrite.
