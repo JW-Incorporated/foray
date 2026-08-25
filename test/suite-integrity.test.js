@@ -464,7 +464,7 @@ const FLOORS = {
      forgiving fixture there is. Raise this number when the suite grows; do not
      lower it. */
   "tools/mobile/android-workflow.test.mjs": 27,
-  "tools/refresh/dai.test.mjs": 8,
+
   "tools/refresh/enclosure.test.mjs": 18,
   /* The nightly watchdog (#290). ZERO SLACK, for the reason media-session and
      data-deletion are floored that way: what this suite holds down is a set of
@@ -586,6 +586,37 @@ const FLOORS = {
   "tools/corpus/search.test.mjs": 25,
   "tools/corpus/backfill.test.mjs": 26,
 };
+
+test("no suite is floored twice", () => {
+  /* THIS PR SHIPPED THAT BUG. `tools/refresh/dai.test.mjs` appeared twice in
+     FLOORS, at 20 and then at 8. A JavaScript object literal keeps the LAST
+     value, so the effective floor silently became 8, and the suite could have
+     shed twelve tests with every check green.
+
+     Nothing in the repo noticed, and nothing could: by the time any test reads
+     `FLOORS`, the duplicate is gone -- `Object.entries` returns one entry, with
+     the wrong number. The only place the truth survives is the source text, so
+     that is what this reads.
+
+     This is the file's own two-step-gutting failure mode, arriving through a
+     merge rather than through intent: raise the floor in PR 1, re-add the key
+     lower down in PR 2, and the guard quietly drops.
+
+     MUTATION: re-add a second `"tools/refresh/dai.test.mjs": 8,` line and this
+     fails with both values named. Run before trusting. */
+  const src = fs.readFileSync(path.join(ROOT, SELF), "utf8");
+  const body = src.slice(src.indexOf("const FLOORS = {"), src.indexOf("const BACKEND_FLOORS"));
+  const seen = new Map();
+  for (const m of body.matchAll(/^\s*"([^"]+)"\s*:\s*(\d+)/gm)) {
+    if (seen.has(m[1])) {
+      assert.fail(
+        `${m[1]} is floored twice, at ${seen.get(m[1])} and ${m[2]}. The object literal keeps the LAST one, so the effective floor is ${m[2]}.`
+      );
+    }
+    seen.set(m[1], m[2]);
+  }
+  assert.ok(seen.size > 0, "parsed no floors at all -- the regex or the block markers moved");
+});
 
 for (const [rel, floor] of Object.entries(FLOORS)) {
   test(`${rel} still exists and has >= ${floor} tests`, () => {
