@@ -943,6 +943,17 @@ its reasoning.
   the two expectations in `tools/mobile/android-workflow.test.mjs`; the app-id pin and
   the 16 source paths in `tools/mobile/shell-invariants.test.mjs`; two comments in
   `test/app-name.test.js`; `HUMAN-ACTIONS.md` #15 and #19; and four docs.
+- **ONE ASSERTION ADDED, because the third pass is enough evidence.** `APP_ID` in
+  `.github/workflows/ios-build.yml` had to be hand-synced with
+  `mobile/capacitor.config.json`'s `appId` in all three renames, and **nothing in the
+  repo compared them** — while `HUMAN-ACTIONS.md` #15 told a founder the id lived in
+  "exactly two places". `tools/mobile/ios-workflow.test.mjs` now derives the expected
+  value from the config rather than restating it, so it cannot be satisfied by editing
+  the test. The failure it closes is not a red build: `simctl launch` on a stale bundle
+  id collects no measurement, and the job then reports a missing out-point rather than
+  a stale string. #15 now says three places. Mutation-tested twice — reverting `APP_ID`
+  to `dev.jwlabs.foura`, and deleting the line — each failing on its own named
+  assertion.
 - **What deliberately did NOT move, for the third time.** The Capacitor plugin's
   **registered name** is still `ForayAudio` — the `@CapacitorPlugin(name = …)`
   annotation and `PLUGIN_NAME` in both web halves are byte-identical to `origin/main`.

@@ -438,6 +438,44 @@ test("the two measurements are actually invoked", () => {
   assert.match(WF, /simctl launch "\$UDID" com\.apple\./, "the app is never backgrounded");
 });
 
+test("`APP_ID` IS THE APP ID — the workflow's copy agrees with capacitor.config.json", () => {
+  /* ADDED BY THE 2026-08-25 `ai.jwlabs` MOVE, the THIRD rename of this string
+     (docs/DECISIONS.md), because all three had to keep these two files in sync BY
+     HAND and nothing in the repo would have noticed a miss. `APP_ID` is functional,
+     not documentation: `simctl launch`, `simctl terminate` and
+     `simctl get_app_container` are all given it, and `cap add ios` derives the
+     generated project's `PRODUCT_BUNDLE_IDENTIFIER` from `capacitor.config.json`'s
+     `appId`. Diverge them and every one of those three commands addresses a bundle
+     id no simulator has installed.
+
+     THE FAILURE IS NOT A RED BUILD, WHICH IS WHY THIS IS WORTH A TEST. `simctl
+     launch` on an unknown bundle id fails, the probe collects nothing, and what the
+     job reports is a missing measurement — a result that reads as "the out-point
+     probe regressed" rather than "a string is stale". Two renames in and
+     `HUMAN-ACTIONS.md` #15 still told a founder the id lived in "exactly two
+     places"; it lives in three, and this is the third.
+
+     DERIVED from the config, not a second literal, so this cannot be satisfied by
+     editing this file — the same reason the Gradle-namespace check in
+     `shell-invariants.test.mjs` reads the Java's own `package` line.
+
+     MUTATION: change `APP_ID:` in the workflow to `dev.jwlabs.foura` (its value
+     before this move, i.e. exactly the miss a partial rename produces) -> fails on
+     the named assertion. Changing `appId` in `mobile/capacitor.config.json` instead
+     fails here AND on the app-id pin in `shell-invariants.test.mjs`, which is the
+     correct asymmetry: the config is the decision, this is a copy of it. */
+  const appId = JSON.parse(fs.readFileSync(path.join(ROOT, "mobile/capacitor.config.json"), "utf8")).appId;
+  assert.ok(appId, "mobile/capacitor.config.json declares no appId");
+  const declared = /^\s*APP_ID:\s*(\S+)\s*$/m.exec(WF);
+  assert.ok(declared, "the workflow no longer sets APP_ID, but simctl is still given $APP_ID");
+  assert.equal(
+    declared[1],
+    appId,
+    "the iOS workflow's APP_ID is " + declared[1] + " but capacitor.config.json's appId is " + appId +
+      "; simctl launch/terminate/get_app_container would address a bundle id the simulator has not installed"
+  );
+});
+
 test("the plist injection goes through the tested script, not through sed or PlistBuddy alone", () => {
   /* A `sed -i` or a bare PlistBuddy write would be untestable from this machine,
      and a silent no-op there produces an app that builds, installs, and stops
