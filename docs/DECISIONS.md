@@ -904,3 +904,123 @@ its reasoning.
   does not exist, and `jwlabs.dev` is already owned — but which domain hosts the
   marketing site is a founder call and a spend decision, so #25 gets a note, not a
   rewrite.
+
+## 2026-08-25 (the same day, the same string, a third time: `ai.jwlabs`)
+
+- **The app id and the plugin's Java package are `ai.jwlabs.foura` and
+  `ai.jwlabs.foura.audio`** (founder instruction). **This supersedes both entries
+  above** — the 2026-08-24 ruling of `dev.jwlabs.foura` and the 2026-08-25 entry that
+  moved the plugin package to `dev.jwlabs.foura.audio`. Both stay exactly as written.
+  They are the record of what was decided then, and every argument in them for *why a
+  reverse-DNS prefix should name a domain the company actually holds* is the argument
+  that moved it again.
+- **Why.** The founder bought **`jwlabs.ai`** and is making it the primary company
+  domain; `jwlabs.dev` becomes a redirect. **A bundle id outlives a domain.** A
+  redirect-only domain can lapse, and a published bundle id cannot be changed at all,
+  so the id should name the domain the company intends to keep rather than the one it
+  intends to stop using.
+- **Why now, and why this was the last cheap pass — a harder deadline than the
+  previous two had.** Nothing is published; there is no Google Play app entry
+  (confirmed with the founder). **Play locks the `applicationId` permanently at app
+  creation and will not reuse it even after the entry is deleted**, and Capacitor uses
+  one `appId` for the iOS bundle id **and** the Android `applicationId`. The earlier
+  entries argued "a store release would make this expensive". For Android the truthful
+  version is stronger: after the Play entry exists this is not expensive, it is
+  impossible. The window was open three times and it closes once.
+- **`ai` builds, and the reason `foura` exists is the reason to say so.** Android
+  package segments must begin with a letter (Java identifier rules) — which is why the
+  app is `4a` to users and `foura` in its id. `ai` begins with a letter, so unlike a
+  `4a` segment it compiles. It is also not a Java reserved word. This is the one
+  question a reader of the two entries above would ask about this one, so: checked,
+  and confirmed by a real Gradle compile in `android-build.yml`, not by inspection.
+- **What moved.** 19 files. `appId` in `mobile/capacitor.config.json`; the five Java
+  files (`git mv` of the `dev/` source tree to `ai/`, so history follows) and their
+  `package` declarations; `PlaybackKeepAliveService.ACTION_TRANSPORT`; `namespace` in
+  the plugin's `build.gradle`; the `<service android:name>` FQCN in its library
+  manifest; both fully-qualified needles in `.github/workflows/android-build.yml`;
+  `APP_ID` in `.github/workflows/ios-build.yml` (**functional** — it drives `simctl
+  launch`/`terminate`/`get_app_container`, so a stale value breaks the iOS probes);
+  the two expectations in `tools/mobile/android-workflow.test.mjs`; the app-id pin and
+  17 path literals in `tools/mobile/shell-invariants.test.mjs` (16 naming a `.java`
+  file, plus the package *directory* the transport-action scan reads); two comments in
+  `test/app-name.test.js`; `HUMAN-ACTIONS.md` #15 and #19; and four docs.
+- **ONE ASSERTION ADDED, because the third pass is enough evidence.** `APP_ID` in
+  `.github/workflows/ios-build.yml` had to be hand-synced with
+  `mobile/capacitor.config.json`'s `appId` in all three renames, and **nothing in the
+  repo compared them** — while `HUMAN-ACTIONS.md` #15 told a founder the id lived in
+  "exactly two places". `tools/mobile/ios-workflow.test.mjs` now derives the expected
+  value from the config rather than restating it, so it cannot be satisfied by editing
+  the test. The failure it closes is not a red build: `simctl launch` on a stale bundle
+  id collects no measurement, and the job then reports a missing out-point rather than
+  a stale string. #15 now says three places. Mutation-tested four ways — reverting
+  `APP_ID` to `dev.jwlabs.foura`, deleting the line, adding a second shadowing
+  assignment, and hiding a shadowing assignment behind a trailing YAML comment — each
+  failing on its own named assertion.
+- **THE NEW ASSERTION HAD THE SHADOWING HOLE IT WAS WRITTEN TO CLOSE, and review found
+  it.** Its first draft excluded `#` from the value it captured and then anchored on
+  `\s*$`, so `APP_ID: dev.jwlabs.foura # oops` matched *nothing*: a second, wrong
+  assignment was neither counted nor compared as long as it carried a comment. The
+  check written to catch a shadowing declaration could be defeated by commenting one.
+  Fixed by tolerating a trailing comment, and the value comparison now runs over
+  **every** assignment rather than `declarations[0]`, so the property that matters — no
+  assignment anywhere names an id the simulator has not installed — survives any future
+  relaxing of the count. Worth recording because it is the same shape as the near-miss
+  in the entry above: a guard that reads only the place the author expected the defect
+  to be.
+- **What deliberately did NOT move, for the third time.** The Capacitor plugin's
+  **registered name** is still `ForayAudio` — the `@CapacitorPlugin(name = …)`
+  annotation and `PLUGIN_NAME` in both web halves are byte-identical to `origin/main`.
+  The Java package and the plugin name are different things and the JS bridge finds
+  the plugin by *name*; renaming it kills playback on a device with the whole suite
+  green. Verified four ways, ending in the artefact: the annotation and both
+  `PLUGIN_NAME` constants unchanged in `git diff` (the web halves are byte-identical
+  to `origin/main`, and the whole Java diff is six lines: five `package` declarations
+  and `ACTION_TRANSPORT`), the shell-invariant that pins that pair still green, and
+  then the artefact — `android-build.yml` unzips the APK's
+  `assets/capacitor.plugins.json` and `grep -qF`s it for
+  `ai.jwlabs.foura.audio.ForayAudioPlugin`, so a green Android job on this branch IS
+  the APK evidence. The class moved; the name did not.
+- **THE NEAR-MISS FROM 2026-08-25 REPRODUCED ITSELF EXACTLY, AND WAS CAUGHT.** That
+  entry warns that a `sed` pass silently stripped regex escaping in
+  `tools/mobile/android-workflow.test.mjs`, turning `com\.jwincorporated\.` into
+  `dev.jwlabs.` — literal dots into wildcards, a real weakening of a real test. This
+  pass ran two deliberately separate `sed` invocations for exactly that reason, one for
+  the plain string and one for the backslash-escaped form, **and the escaped one still
+  ate its own backslashes in the replacement**, producing
+  `/grep -qF 'ai.jwlabs.foura\.audio\.ForayAudioPlugin'/`. Two of the four dots
+  wildcarded. Restored by hand. **The lesson is not "be careful with sed": it is that
+  the one regex in the repo carrying this string has now been damaged by two of the
+  three passes over it, so the check is not optional.** There is exactly one such
+  regex, `tools/mobile/android-workflow.test.mjs:402`, and every dot in it is escaped.
+  To re-check it, grep for an escaped dot next to the name — `git grep -nE
+  'jwlabs\\\.'` — and read the hits rather than counting them: this sentence contains
+  the pattern it describes, so this file is itself one of them. **The way to verify the
+  escaping is load-bearing is not to look at it but to break the thing it reads**:
+  change the needle in `.github/workflows/android-build.yml` so its dots become other
+  characters (`aiXjwlabsXfouraXaudioXForayAudioPlugin`). With the escaping intact the
+  assertion fails; with the escaping stripped the *same* mutation passes, because the
+  bare dots match the `X`s. Both halves of that were run.
+- **The old-package-left-behind guard was re-verified, not assumed.** The 2026-08-25
+  entry above records a test that could not see a `.java` left on the old path —
+  the exact residue of a half-finished `git mv` — and that now asserts against the
+  **git index**. Re-checked by staging a copy of the five classes back under
+  `dev/jwlabs/foura/audio/` with their old `package` lines: the suite fails, naming the
+  stray files. The guard survived the prefix change, which is the property that
+  mattered, because a rename is precisely when it is load-bearing.
+- **Not every match was the package, and this time the two groups moved TOGETHER.**
+  The 2026-08-25 entry above had to warn that a blind find-and-replace would be wrong
+  in both directions, because the app id and the plugin package differed by more than
+  a prefix. Here they share the prefix being changed, so `dev.jwlabs.foura` ->
+  `ai.jwlabs.foura` is correct for the `adb shell dumpsys activity services` arguments
+  in `docs/android-lock-screen.md` and `docs/android-native-code.md` *and* for the
+  FQCNs beside them. **That made this pass easier and the next one no safer**: the
+  reason a blind replace was still wrong is `docs/DECISIONS.md` and `HUMAN-ACTIONS.md`,
+  whose superseded text quotes the old ids on purpose and must keep them.
+- **What is left holding an old value on purpose.** `ios/project.yml` still says
+  `com.wjduvall.foray`; that is the reference SwiftUI scaffold, a different app, never
+  published (`docs/mobile-shell.md` §1). The site's own URLs — `jwlabs.dev/4a/privacy`
+  and friends in `HUMAN-ACTIONS.md` #25, and all of
+  `docs/apple-enrollment-website.md` — are **not** the bundle id and are not touched:
+  they describe a live deployment, and re-pointing it at `jwlabs.ai` is a site change
+  in another repo. #25 gets a note saying why the TLDs now differ and why that reopens
+  nothing (a 301 satisfies both stores).

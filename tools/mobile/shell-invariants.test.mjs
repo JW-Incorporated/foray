@@ -216,7 +216,7 @@ test("the app id is pinned, because it is permanent once published", () => {
      install base. This assertion is not doing engineering work — it is making
      the change impossible to do by accident. If a founder rules differently,
      edit this line in the same PR. */
-  assert.equal(capConfig.appId, "dev.jwlabs.foura");
+  assert.equal(capConfig.appId, "ai.jwlabs.foura");
   /* `appName` is NOT in the same class and this test used to imply it was. The
      bundle id is permanent once published; the display name is just the label
      under the icon and can change any time. The app was renamed to **4a** on
@@ -829,7 +829,7 @@ test("mobile/.gitignore ignores the GENERATED platform and not our own android/ 
     ["mobile/www/index.html", true, "the generated webDir must stay ignored"],
     [PLUGIN_REL + "/android/build.gradle", false, "our own plugin's Gradle module must be committable"],
     [
-      PLUGIN_REL + "/android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java",
+      PLUGIN_REL + "/android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java",
       false,
       "the foreground service's plugin class must be committable",
     ],
@@ -871,16 +871,16 @@ test("every file the Android plugin needs is TRACKED by git", () => {
     "android/build.gradle",
     "android/src/main/AndroidManifest.xml",
     "android/src/main/res/values/strings.xml",
-    "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java",
-    "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java",
+    "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java",
+    "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java",
     "web/foray-audio-shell.js",
     /* #27's Android half. Native code and its web half are useless separately: the
        polyfill with no Java answers "plugin not implemented" on every write, and the
        Java with no polyfill is a MediaSession nothing ever populates. */
     "web/foray-media-session.js",
-    "android/src/main/java/dev/jwlabs/foura/audio/NowPlaying.java",
-    "android/src/main/java/dev/jwlabs/foura/audio/NowPlayingHub.java",
-    "android/src/main/java/dev/jwlabs/foura/audio/WebViewPlayer.java",
+    "android/src/main/java/ai/jwlabs/foura/audio/NowPlaying.java",
+    "android/src/main/java/ai/jwlabs/foura/audio/NowPlayingHub.java",
+    "android/src/main/java/ai/jwlabs/foura/audio/WebViewPlayer.java",
   ];
   const res = git(["ls-files", "--", PLUGIN_REL]);
   assert.equal(res.status, 0, "could not read the git index; this invariant is about what is COMMITTED");
@@ -953,7 +953,7 @@ test("the plugin name the web half calls is the name the Java registers", () => 
      service is never started, and the app plays perfectly until the screen locks.
      No other check in the repo would notice. */
   const java = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"),
     "utf8"
   );
   const annotated = /@CapacitorPlugin\s*\(\s*name\s*=\s*"([^"]+)"/.exec(java);
@@ -998,8 +998,10 @@ test("the plugin name the web half calls is the name the Java registers", () => 
 });
 
 test("the Java package, the source layout, the Gradle namespace and the manifest's service all name the same thing", () => {
-  /* ADDED BY THE 2026-08-25 PACKAGE RENAME (`com.jwincorporated.foray.audio` ->
-     `dev.jwlabs.foura.audio`, docs/DECISIONS.md), because that refactor touches four
+  /* ADDED BY THE FIRST 2026-08-25 PACKAGE RENAME (`com.jwincorporated.foray.audio`
+     -> `dev.jwlabs.foura.audio`) and EXERCISED FOR REAL BY THE SECOND THE SAME DAY
+     (-> `ai.jwlabs.foura.audio`, when `jwlabs.ai` became the company's primary
+     domain; both in docs/DECISIONS.md). It exists because that refactor touches four
      places that must agree and NOTHING IN THIS REPO COULD READ THREE OF THEM. The
      only checks that would have noticed a half-finished rename live in
      `.github/workflows/android-build.yml` and need a real Gradle build and an
@@ -1048,10 +1050,10 @@ test("the Java package, the source layout, the Gradle namespace and the manifest
      rather than on an assertion, which is loud but is not the message the layout
      check would print): change `namespace =` in
      `mobile/plugins/foray-audio/android/build.gradle` to
-     `"dev.jwlabs.foura.audioo"`; or `android:name` in the library manifest to
-     `dev.jwlabs.foura.PlaybackKeepAliveService`; or the `package` line in any one of
+     `"ai.jwlabs.foura.audioo"`; or `android:name` in the library manifest to
+     `ai.jwlabs.foura.PlaybackKeepAliveService`; or the `package` line in any one of
      the five .java files; or `git mv` the `audio/` directory one level up. */
-  const serviceRel = "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java";
+  const serviceRel = "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java";
   const serviceSrc = fs.readFileSync(path.join(PLUGIN_DIR, serviceRel), "utf8");
   const declared = /^package\s+([\w.]+)\s*;/m.exec(serviceSrc);
   assert.ok(declared, "PlaybackKeepAliveService.java has no package declaration");
@@ -1149,7 +1151,7 @@ test("EVERY TRANSPORT ACTION THE NATIVE SIDE CAN SEND IS ONE THE PAGE CAN ROUTE"
 
      DERIVED from the Java by scanning both senders rather than listed here, so a new
      action added natively without a web handler fails. */
-  const dir = path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio");
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
   const player = stripJavaComments(fs.readFileSync(path.join(dir, "WebViewPlayer.java"), "utf8"));
   const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
   /* THE WHOLE ARGUMENT LIST, not the first argument, and the first draft of this test
@@ -1191,7 +1193,7 @@ test("EACH NOTIFICATION BUTTON GETS ITS OWN PendingIntent REQUEST CODE", () => {
      Nothing about that fails a build, a lint or any other test in this repo, and on a
      device it looks like a mis-wired remote rather than a bug in a number. */
   const service = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
     "utf8"
   );
   const uses = [...stripJavaComments(service).matchAll(/transportIntent\(([^)]*?),\s*(\d+)\s*\)/g)]
@@ -1231,7 +1233,7 @@ test("the notification permission is declared, aliased, and asked for exactly on
     "POST_NOTIFICATIONS is not declared, so requesting it at runtime silently fails"
   );
   const java = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"),
     "utf8"
   );
   const alias = /static final String NOTIFICATIONS = "(\w+)"/.exec(java);
@@ -1400,7 +1402,7 @@ test("start() and stop() do not claim to know whether the service is running", (
      Asserted as the SET of fields each method resolves with, derived from the Java, so
      a re-added `running` fails here rather than on a device. */
   const java = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"),
     "utf8"
   );
   const bodyOf = (method) => {
@@ -1499,7 +1501,7 @@ test("THE STOP BUTTON IS NOT GATED ON acceptsTransport()", () => {
      closing the player. The whole trade in `docs/android-lock-screen.md` §5.1 rests on
      stop being the one-press exit, so it has to exist wherever a notification can. */
   const service = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
     "utf8"
   );
   /* `[^{]`, not `[^)]`: the guard contains a call — `np.isLoaded()` — so a
@@ -1529,7 +1531,7 @@ test("A NEW DOCUMENT IS ANNOUNCED FROM THE PAGE, NOT FROM A NATIVE PAGE HOOK", (
      is left for this test is the one line the suite cannot reach: the wiring in the
      auto-install block, which is guarded on `window` and so never executes in Node. */
   const plugin = stripJavaComments(fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/ForayAudioPlugin.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"),
     "utf8"
   ));
   assert.ok(
@@ -1562,7 +1564,7 @@ test("the notification repaint is gated on what the notification SAYS", () => {
      notifications an hour — and `player/media-session.js`'s own header warns that
      writing at rate redraws the notification and visibly flickers on Android. */
   const service = stripJavaComments(fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
     "utf8"
   ));
   assert.match(service, /private static String visibleKey\(/, "there is no visible-state key to compare");
@@ -1586,7 +1588,7 @@ test("the session's owner is identity-checked, like the hub's listener and sink"
      the NEW one is live. `state()` would then lie during exactly the restart a device
      pass is trying to diagnose, on a field the documentation tells it to trust. */
   const service = stripJavaComments(fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/PlaybackKeepAliveService.java"),
     "utf8"
   ));
   assert.match(
@@ -1606,7 +1608,7 @@ test("a millisecond value is clamped at both ends before it reaches Media3", () 
      which `MediaItemData.Builder.setDurationUs` rejects by throwing on the main thread
      inside getState(), the exact crash class the clamps exist to prevent. */
   const now = stripJavaComments(fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/dev/jwlabs/foura/audio/NowPlaying.java"),
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/NowPlaying.java"),
     "utf8"
   ));
   assert.match(now, /private static long clampMs\(long ms\)/, "there is no magnitude clamp");

@@ -385,7 +385,7 @@ test("the merged manifest is checked for the service, its type and both permissi
      checking a permission whose absence is a runtime crash. The workflow lists each
      needle in single quotes, so quoting the expectation makes the four distinct. */
   const needles = [
-    "'dev.jwlabs.foura.audio.PlaybackKeepAliveService'",
+    "'ai.jwlabs.foura.audio.PlaybackKeepAliveService'",
     "'android:foregroundServiceType=\"mediaPlayback\"'",
     "'android.permission.FOREGROUND_SERVICE'",
     "'android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK'",
@@ -399,7 +399,7 @@ test("the merged manifest is checked for the service, its type and both permissi
   assert.equal(listed, needles.length - 1, `expected ${needles.length - 1} continued needle lines, saw ${listed}`);
   /* And the two halves inside the APK itself, the same pair §4.2 read by hand. */
   assert.match(s, /grep -qF 'assets\/public\/foray-audio-shell\.js'/);
-  assert.match(s, /grep -qF 'dev\.jwlabs\.foura\.audio\.ForayAudioPlugin'/);
+  assert.match(s, /grep -qF 'ai\.jwlabs\.foura\.audio\.ForayAudioPlugin'/);
 });
 
 test("the merged manifest is FOUND, not path-assumed", () => {

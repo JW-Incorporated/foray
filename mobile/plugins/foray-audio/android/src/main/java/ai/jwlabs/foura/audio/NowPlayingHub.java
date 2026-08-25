@@ -1,4 +1,4 @@
-package dev.jwlabs.foura.audio;
+package ai.jwlabs.foura.audio;
 
 import android.os.Handler;
 import android.os.Looper;

@@ -594,7 +594,7 @@ in:
 
   ```xml
   <service
-      android:name="dev.jwlabs.foura.audio.PlaybackKeepAliveService"
+      android:name="ai.jwlabs.foura.audio.PlaybackKeepAliveService"
       android:description="@string/foray_playback_service_description"
       android:exported="false"
       android:foregroundServiceType="mediaPlayback"
@@ -608,7 +608,7 @@ in:
   `assets/public/foray-audio-shell.js` and `assets/public/foray-media-session.js`, with both
   `<script type="module">` tags in the bundle's `index.html`, and
   `assets/capacitor.plugins.json` naming
-  `dev.jwlabs.foura.audio.ForayAudioPlugin`.
+  `ai.jwlabs.foura.audio.ForayAudioPlugin`.
 - **`lintVitalRelease` passed**, including `:foray-audio:lintVitalAnalyzeRelease`, so
   the new module's sources were analysed rather than skipped — which matters more than
   usual here, because `SimpleBasePlayer` and `MediaStyleNotificationHelper` are
@@ -792,7 +792,7 @@ against fakes. #244 set that standard and it is the right one.
    while a Foray is playing means the recovery in §5.5 finding 2 fired, and the next
    seam should re-start it.
 5. `adb shell dumpsys media_session` → whether the platform sees our session at all,
-   and `adb shell dumpsys activity services dev.jwlabs.foura` → whether the
+   and `adb shell dumpsys activity services ai.jwlabs.foura` → whether the
    service is `foregroundServiceType=mediaPlayback`.
 6. Then the part no console answers: lock the phone, and press each button.
 

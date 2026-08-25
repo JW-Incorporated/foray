@@ -44,7 +44,7 @@
 
     <application>
         <service
-            android:name="dev.jwlabs.foura.audio.PlaybackKeepAliveService"
+            android:name="ai.jwlabs.foura.audio.PlaybackKeepAliveService"
             android:description="@string/foray_playback_service_description"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback"
