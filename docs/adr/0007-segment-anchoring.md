@@ -1,4 +1,4 @@
-# ADR 0007: Segment Anchoring — how a Foray segment boundary is represented
+# ADR 0007: Segment Anchoring — how a foray segment boundary is represented
 
 ## Status
 
