@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-26T00:21:45.193Z",
+  "built_at": "2026-08-26T08:22:28.256Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-26-ea2a5bea",
+    "last_batch_id": "fresh-2026-08-26-ac936f27",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -85920,11 +85920,34 @@
     },
     "1498170617": {
       "topics": [
-        "hobbies"
+        "psychology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal psychology and self-growth exploration.",
+      "display_title": "自我进化论",
+      "blurb": "Self-help podcast on personal development and emotional wellness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1498172564": {
       "topics": [
@@ -100221,9 +100244,32 @@
       "topics": [
         "health/fitness"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily walking fitness motivation and health benefits.",
+      "display_title": "Walking is Fitness",
+      "blurb": "Ten-minute walks combining fitness with wellness guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1525459182": {
       "topics": [
@@ -100430,12 +100476,37 @@
     },
     "1525689066": {
       "topics": [
-        "kids-family/parenting",
-        "psychology"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Expert parenting psychology for tweens and teens.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1525724630": {
       "topics": [
@@ -100854,9 +100925,32 @@
       "topics": [
         "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and supernatural storytelling.",
+      "display_title": "Relatos de la Noche",
+      "blurb": "Supernatural stories and paranormal narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1526553600": {
       "topics": [
@@ -101098,11 +101192,34 @@
     },
     "1526885135": {
       "topics": [
-        "nature"
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biblical theology and spiritual exploration.",
+      "display_title": "Blurry Creatures",
+      "blurb": "Biblical framework applied to spiritual topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:55.707Z"
     },
     "1526892024": {
       "topics": [
@@ -101404,9 +101521,35 @@
       "topics": [
         "business/non-profit"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Nonprofit leadership and social impact strategy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1527357862": {
       "topics": [
@@ -102003,19 +102146,68 @@
     },
     "1528568221": {
       "topics": [
-        "gaming"
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tabletop RPG gameplay with comedy and improvisation.",
+      "display_title": "Oxventure: A Dungeons & Dragons Podcast",
+      "blurb": "D&D campaigns with humor and storytelling.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1528591043": {
       "topics": [
-        "psychology"
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Celebrity memoir book club discussion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1528594034": {
       "topics": [
@@ -102037,8 +102229,34 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "NFL analysis and expert football commentary.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1528634304": {
       "topics": [
@@ -102107,19 +102325,69 @@
     "1528861092": {
       "topics": [
         "nature/earth-science",
-        "space"
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Geology and earth science exploration.",
+      "display_title": "PlanetGeo: The Geology Podcast",
+      "blurb": "Accessible geology and earth science lessons.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1528874993": {
       "topics": [
         "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality dating show recaps and analysis.",
+      "display_title": "Hot Dummies on Islands RHAPup",
+      "blurb": "Reality show recaps with episode analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1528877811": {
       "topics": [
@@ -102363,12 +102631,34 @@
     },
     "1529124116": {
       "topics": [
-        "comedy",
-        "history/military-modern"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and satirical entertainment.",
+      "display_title": "WAR MODE",
+      "blurb": "Comedy podcast with social commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1529174742": {
       "topics": [
@@ -103105,11 +103395,34 @@
     },
     "1530637261": {
       "topics": [
-        "tv-film"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Drag culture and entertainment conversation.",
+      "display_title": "VERY DELTA with Delta Work",
+      "blurb": "Talk show with drag icon and entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1530648964": {
       "topics": [
@@ -103179,12 +103492,34 @@
     },
     "1530700134": {
       "topics": [
-        "tv-film/animation",
-        "gaming"
+        "tv-film/animation"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Anime series discussion and critique.",
+      "display_title": "The Millennium Microphone - A Yu-Gi-Oh! Podcast",
+      "blurb": "Podcast dedicated to anime series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1530704458": {
       "topics": [
@@ -103737,9 +104072,32 @@
       "topics": [
         "sports/cricket"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket analysis and sports commentary.",
+      "display_title": "The BYC Podcast",
+      "blurb": "The BYC is New Zealand's most celebrated and feared specialty cricket podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1531650924": {
       "topics": [
@@ -103766,19 +104124,78 @@
     },
     "1531777489": {
       "topics": [
-        "culture/design"
+        "culture/design",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Graphic design career and creative business.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1531794491": {
       "topics": [
-        "health/sexuality"
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship coaching on infidelity.",
+      "display_title": "Your Secret Is Safe With Me",
+      "blurb": "Non-judgmental relationship coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1531798023": {
       "topics": [
@@ -103865,11 +104282,37 @@
     },
     "1532102239": {
       "topics": [
-        "society"
+        "kids-family/parenting"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Expert parenting psychology for tweens and teens.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1532116920": {
       "topics": [
@@ -104342,11 +104785,34 @@
     },
     "1532956108": {
       "topics": [
-        "education/self-improvement"
+        "kids-family/parenting"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert parenting psychology for tweens and teens.",
+      "display_title": "IMO with Michelle Obama and Craig Robinson",
+      "blurb": "Parenting guidance with clinical psychology insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1532976305": {
       "topics": [
@@ -104723,9 +105189,32 @@
       "topics": [
         "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity memoir book club discussion.",
+      "display_title": "Glamorous Trash: A Celebrity Memoir Podcast",
+      "blurb": "Celebrity memoirs, pop culture, and books! Join us as we book club female celebrity memoirs through a thoughtful lens",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1533736348": {
       "topics": [
@@ -104792,11 +105281,37 @@
     },
     "1533780254": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Reality dating show recaps and analysis.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1533813057": {
       "topics": [
@@ -104997,11 +105512,34 @@
     },
     "1534207145": {
       "topics": [
-        "aviation"
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Graphic design career and creative business.",
+      "display_title": "Behind the Prop",
+      "blurb": "Design podcast for creative professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1534217005": {
       "topics": [
@@ -105441,11 +105979,34 @@
     },
     "1534771206": {
       "topics": [
-        "religion"
+        "kids-family/parenting"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert parenting psychology for tweens and teens.",
+      "display_title": "Ensign College Devotionals",
+      "blurb": "Parenting guidance with clinical psychology insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1534780078": {
       "topics": [
@@ -105542,11 +106103,34 @@
     },
     "1534940129": {
       "topics": [
-        "business"
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity memoir book club discussion.",
+      "display_title": "HawkeTalk",
+      "blurb": "Book club discussing celebrity memoirs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1534944224": {
       "topics": [
@@ -105587,12 +106171,34 @@
     },
     "1534972612": {
       "topics": [
-        "nature/earth-science",
-        "engineering/disasters"
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology research applied to daily life.",
+      "display_title": "Breaking Down: Collapse",
+      "blurb": "Psychology insights and research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1535045689": {
       "topics": [
@@ -106284,11 +106890,37 @@
     },
     "1536365197": {
       "topics": [
-        "gaming"
+        "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and supernatural storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 17w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1536374746": {
       "topics": [
@@ -106471,11 +107103,38 @@
     },
     "1536972599": {
       "topics": [
-        "nature"
+        "religion/spirituality"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biblical theology and spiritual exploration.",
+      "display_title": "Viced Rhino: The Podcast",
+      "blurb": "Biblical framework applied to spiritual topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:55.707Z"
     },
     "1536978035": {
       "topics": [
@@ -106847,11 +107506,34 @@
     },
     "1537788786": {
       "topics": [
-        "history"
+        "sports/football"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL analysis and expert football commentary.",
+      "display_title": "The Rest Is History",
+      "blurb": "In-depth NFL coverage and strategic analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1537791756": {
       "topics": [
@@ -107217,12 +107899,34 @@
     },
     "1538679353": {
       "topics": [
-        "health/sexuality",
-        "medicine/biology"
+        "kids-family/parenting"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert parenting psychology for tweens and teens.",
+      "display_title": "Get Your Marriage On! with Dan Purcell",
+      "blurb": "Parenting guidance with clinical psychology insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1538684576": {
       "topics": [
@@ -107609,11 +108313,39 @@
     },
     "1540160436": {
       "topics": [
-        "sports/tennis"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity memoir book club discussion.",
+      "display_title": "Doubles Only Tennis Podcast",
+      "blurb": "Book club discussing celebrity memoirs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1540228676": {
       "topics": [
@@ -107996,13 +108728,36 @@
     },
     "1540683012": {
       "topics": [
-        "religion",
-        "history/military-ancient",
-        "culture/mythology"
+        "religion"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Based on genre prior classification.",
+      "display_title": "Garner's Greek Mythology",
+      "blurb": "A unique view of mythology ",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/html": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1540705227": {
       "topics": [
@@ -108210,13 +108965,34 @@
     },
     "1541476295": {
       "topics": [
-        "business/non-profit",
-        "cities/urbanism",
-        "religion/christianity"
+        "religion/spirituality"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Biblical theology and spiritual exploration.",
+      "display_title": "2 Cities Church Podcast",
+      "blurb": "Biblical framework applied to spiritual topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:55.707Z"
     },
     "1541500266": {
       "topics": [
@@ -108723,11 +109499,34 @@
     },
     "1542669779": {
       "topics": [
-        "nature"
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship coaching and infidelity.",
+      "display_title": "Headwaters",
+      "blurb": "Headwaters is a show about how Glacier National Park is connected to everything else",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1542676280": {
       "topics": [
@@ -108936,11 +109735,34 @@
     },
     "1543038352": {
       "topics": [
-        "culture/art"
+        "culture/design"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Graphic design career and creative business.",
+      "display_title": "The Quilter on Fire Podcast",
+      "blurb": "Design podcast for creative professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1543051153": {
       "topics": [
@@ -109821,11 +110643,34 @@
     },
     "1545536782": {
       "topics": [
-        "science"
+        "fiction/drama"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and supernatural storytelling.",
+      "display_title": "Completely Arbortrary",
+      "blurb": "Supernatural stories and paranormal narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1545551635": {
       "topics": [
@@ -109889,11 +110734,39 @@
     },
     "1545792830": {
       "topics": [
-        "health/sexuality"
+        "kids-family/parenting"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert parenting psychology for tweens and teens.",
+      "display_title": "Coffee and Cleavage",
+      "blurb": "Parenting guidance with clinical psychology insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1545802366": {
       "topics": [
@@ -109974,8 +110847,31 @@
         "sports/endurance"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Based on genre classification.",
+      "display_title": "Abcdefghijklmnopqrstuvwxyz",
+      "blurb": "Abcdefghijklmnopqrstuvwxyz",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 4,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1545953110": {
       "topics": [
@@ -110092,11 +110988,34 @@
     },
     "1546282862": {
       "topics": [
-        "sports/hockey"
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity memoir book club discussion.",
+      "display_title": "The Athletic Hockey Show",
+      "blurb": "Book club discussing celebrity memoirs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1546283709": {
       "topics": [
@@ -110166,11 +111085,34 @@
     },
     "1546393120": {
       "topics": [
-        "psychology"
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity memoir book club discussion.",
+      "display_title": "Finding Our Voice",
+      "blurb": "Book club discussing celebrity memoirs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1546456269": {
       "topics": [
@@ -110253,9 +111195,32 @@
       "topics": [
         "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Based on genre classification.",
+      "display_title": "Near Death Experiences And Supernatural Events",
+      "blurb": "NDE LAB is for people that love to examine and study Near Death Experiences and the Supernatural Realm",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1546539286": {
       "topics": [
@@ -110324,12 +111289,39 @@
     },
     "1546685351": {
       "topics": [
-        "society/government",
-        "medicine/biology"
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Relationship coaching on infidelity.",
+      "display_title": "The CopDoc Podcast: Aiming for Excellence in Leadership",
+      "blurb": "Non-judgmental relationship coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 29,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 7,
+          "application/x-subrip": 7,
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1546693714": {
       "topics": [
@@ -111377,11 +112369,34 @@
     },
     "1549568903": {
       "topics": [
-        "tv-film/reviews"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity advice podcast on life topics.",
+      "display_title": "The Bravo Docket",
+      "blurb": "Advice show with celebrity guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1549575586": {
       "topics": [
@@ -111553,12 +112568,34 @@
     },
     "1549943658": {
       "topics": [
-        "hobbies",
-        "transport/trains"
+        "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Based on genre classification.",
+      "display_title": "The Crossing Gate. Model railroad discussion.",
+      "blurb": "Discussion of model railroading and operations",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1550035505": {
       "topics": [
@@ -111988,12 +113025,34 @@
     },
     "1550859179": {
       "topics": [
-        "fiction",
-        "tv-film"
+        "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and supernatural storytelling.",
+      "display_title": "The HorrorBabble Podcast",
+      "blurb": "The HorrorBabble Podcast — classic horror and forgotten weird fiction",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1550868229": {
       "topics": [
@@ -112142,19 +113201,65 @@
     },
     "1551076579": {
       "topics": [
-        "music"
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity advice podcast on life topics.",
+      "display_title": "Garza Podcast",
+      "blurb": "Advice show with celebrity guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1551111133": {
       "topics": [
         "nature"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nature content based on genre.",
+      "display_title": "Get Birding",
+      "blurb": "The multi-award-winning podcast helping everyone, everywhere connect with nature by discovering more about the birds aro...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1551161613": {
       "topics": [
@@ -112434,8 +113539,31 @@
         "society/government"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Based on genre classification.",
+      "display_title": "The Overton Window",
+      "blurb": "Have you noticed that politicians struggle to enact the things they run on? They find themselves bound by what is popula...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1551661895": {
       "topics": [
@@ -112994,11 +114122,37 @@
     },
     "1552667574": {
       "topics": [
-        "society/government"
+        "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal and supernatural storytelling.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:22:28.256Z"
     },
     "1552673209": {
       "topics": [
@@ -113214,8 +114368,31 @@
         "tv-film/animation"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Based on genre classification.",
+      "display_title": "菠萝油子丨成年人听的动漫播客",
+      "blurb": "菠萝油子，是青岛80、90后最熟悉的一条小路，那里充斥着令人向往的市井气息，也是在那条小路上，有影响无数少年的漫画书摊位，可以说，我们一代的人动漫启蒙，就是由那里开启。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1553069673": {
       "topics": [
@@ -113309,11 +114486,34 @@
     },
     "1553199104": {
       "topics": [
-        "comedy"
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Celebrity memoir book club discussion.",
+      "display_title": "Two Hot Takes",
+      "blurb": "Book club discussing celebrity memoirs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1553221597": {
       "topics": [
@@ -113629,11 +114829,34 @@
     },
     "1553532583": {
       "topics": [
-        "business/non-profit"
+        "kids-family/parenting"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/parenting",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert parenting psychology for tweens and teens.",
+      "display_title": "The Autism & ADHD Diaries Podcast",
+      "blurb": "Parenting guidance with clinical psychology insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 6,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1553553004": {
       "topics": [
@@ -113644,19 +114867,65 @@
     },
     "1553576974": {
       "topics": [
-        "culture/art"
+        "psychology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology research applied to daily life.",
+      "display_title": "Yours Truly, Johnny Dollar | Old Time Radio",
+      "blurb": "Psychology insights and research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1553577047": {
       "topics": [
-        "culture/art"
+        "psychology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology research applied to daily life.",
+      "display_title": "The Great Gildersleeve | Old Time Radio",
+      "blurb": "Psychology insights and research.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1553624861": {
       "topics": [
@@ -113882,9 +115151,32 @@
       "topics": [
         "personal-journals"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Based on genre classification.",
+      "display_title": "Halfsies",
+      "blurb": "Two hosts, two topics, one split-down-the-middle show",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1554020681": {
       "topics": [
@@ -114068,11 +115360,38 @@
     },
     "1554535518": {
       "topics": [
-        "culture"
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Based on genre classification.",
+      "display_title": "The CRUX: True Survival Stories",
+      "blurb": "Are you drawn to thrilling survival stories where characters overcome impossible odds? The Crux: True Survival Stories i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ac936f27",
+      "classified_at": "2026-08-26T08:21:29.062Z"
     },
     "1554535631": {
       "topics": [
