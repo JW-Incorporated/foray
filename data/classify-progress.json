@@ -88,10 +88,6 @@
       "batch_id": "fresh-2026-08-25-41895f9c",
       "reserved_at": "2026-08-25T16:16:51.398Z"
     },
-    "1479594692": {
-      "batch_id": "fresh-2026-08-25-41895f9c",
-      "reserved_at": "2026-08-25T16:16:51.398Z"
-    },
     "1479606317": {
       "batch_id": "fresh-2026-08-25-41895f9c",
       "reserved_at": "2026-08-25T16:16:51.398Z"
@@ -294,11 +290,6 @@
       "attempts": 1,
       "last_error": "HTTP 403",
       "last_attempt_at": "2026-08-18T08:14:19.396Z"
-    },
-    "1468249055": {
-      "attempts": 1,
-      "last_error": "HTTP 503",
-      "last_attempt_at": "2026-08-25T16:16:51.398Z"
     },
     "1469394914": {
       "attempts": 1,

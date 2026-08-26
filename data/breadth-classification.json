@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-25T16:25:40.256Z",
+  "built_at": "2026-08-26T00:21:45.193Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-25-41895f9c",
+    "last_batch_id": "fresh-2026-08-26-ea2a5bea",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -71805,11 +71805,39 @@
     },
     "1468249055": {
       "topics": [
-        "hobbies"
+        "craft",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, Ai Robotics.",
+      "display_title": "发发大王",
+      "blurb": "一位声线低沉的百灵鸟，King of 主食，心力交瘁的母亲@发发大王 418期 - 老师们：有人发现你的天赋，有人让你开弱智证明",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1468305112": {
       "topics": [
@@ -76104,11 +76132,39 @@
     },
     "1479594692": {
       "topics": [
-        "business/non-profit"
+        "aviation",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Ai Robotics.",
+      "display_title": "张奥同学",
+      "blurb": "深度的国际新闻与财经资讯，不仅让你知其然，更知其所以然。每天15分钟，每一期节目都仔细倾听，不用担心时效性，因为国际政治、历史与财经知识才是硬核。 与特朗普如影随形的金发女孩",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1479600502": {
       "topics": [
@@ -83765,11 +83821,34 @@
     },
     "1494439019": {
       "topics": [
-        "culture"
+        "music"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music.",
+      "display_title": "پلی لیست | PlayList",
+      "blurb": "پلی‌لیست، برای وقتاییه که دلت یه انتخاب درست از موسیقی می‌خواد، نه یه لیست تصادفی. هر اپیزود حول یه محور مشخصه: یه خواننده، یه کشور، یه سبک، یا یه حس‌وحال....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1494490229": {
       "topics": [
@@ -83906,11 +83985,49 @@
     },
     "1494635006": {
       "topics": [
-        "medicine/biology"
+        "medicine",
+        "aviation",
+        "science",
+        "food"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, Aviation.",
+      "display_title": "Risky or Not?",
+      "blurb": "Risky or Not is a short podcast from Professor Ben Chapman from North Carolina State University, and Dr. Don Schaffner from Rutgers University. Dr. Don and Professor Chapman promise to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1494641162": {
       "topics": [
@@ -83950,11 +84067,49 @@
     },
     "1494711931": {
       "topics": [
-        "hobbies"
+        "craft",
+        "craft/woodworking",
+        "engineering/ai-robotics",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, Woodworking.",
+      "display_title": "ShopNotes Podcast",
+      "blurb": "Join us every week for woodworking inspiration and fun. Hosts John Doyle, Logan Wittmer, and Phil Huber from Woodsmith, Popular Woodworking, and ShopNotes Magazines share what they're working on, lessons...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1494719756": {
       "topics": [
@@ -84032,11 +84187,49 @@
     },
     "1494780335": {
       "topics": [
-        "science"
+        "medicine",
+        "engineering/ai-robotics",
+        "education",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, Ai Robotics.",
+      "display_title": "The Medbullets Step 2 & 3 Podcast",
+      "blurb": "A Daily High-Yield review podcast for USMLE Step 2 and Step 3 by Medbullets—the Free Learning & Collaboration Community for Medical Education. Endocrine | Familial Hypocalciuric Hypercalcemia",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1494789051": {
       "topics": [
@@ -84105,11 +84298,54 @@
     },
     "1494869058": {
       "topics": [
-        "health/sexuality"
+        "aviation",
+        "engineering/ai-robotics",
+        "religion",
+        "travel"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Ai Robotics.",
+      "display_title": "Porn, Betrayal, Sex and the Experts — PBSE",
+      "blurb": "Two sex addicts in long-term successful recovery are ALSO world-class Counselors who specialize in porn and sex addiction recovery. Drawing on 40 years of combined personal and professional experience, Mark...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1494880178": {
       "topics": [
@@ -84150,11 +84386,51 @@
     },
     "1494989268": {
       "topics": [
-        "business/careers"
+        "aviation",
+        "food",
+        "craft",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Food.",
+      "display_title": "Think Fast Talk Smart: Communication Techniques",
+      "blurb": "One of the most essential ingredients to success in business and life is effective communication. Join Matt Abrahams, best-selling author and Strategic Communication lecturer at Stanford Graduate School of Business,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1495047937": {
       "topics": [
@@ -84521,11 +84797,49 @@
     },
     "1496034764": {
       "topics": [
-        "education/self-improvement"
+        "comedy",
+        "engineering/ai-robotics",
+        "sports",
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Comedy, Ai Robotics.",
+      "display_title": "Let’s Get Vulnerable: Relationship and Dating Advice",
+      "blurb": "Are you ready to take the mystery out of having great relationships and to gain the knowledge you need to step confidently into the next level of your life? Welcome...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1496053077": {
       "topics": [
@@ -84610,11 +84924,52 @@
     },
     "1496346061": {
       "topics": [
-        "culture/design"
+        "music",
+        "comedy",
+        "food",
+        "craft"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers Music, Comedy.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1496412542": {
       "topics": [
@@ -84633,11 +84988,49 @@
     },
     "1496428378": {
       "topics": [
-        "aviation"
+        "music",
+        "aviation",
+        "craft",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music, Aviation.",
+      "display_title": "The Afterburn Podcast",
+      "blurb": "Strap in the cockpit as we dive into the stories of the men and women who defend the freedoms we love. From the cockpit of military jets to boots on...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1496431053": {
       "topics": [
@@ -84880,12 +85273,49 @@
     },
     "1496847791": {
       "topics": [
-        "space",
-        "science"
+        "medicine",
+        "aviation",
+        "science",
+        "craft"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, Aviation.",
+      "display_title": "The World, the Universe and Us",
+      "blurb": "From the evolution of intelligent life, to the mysteries of consciousness; from the threat of the climate crisis to the search for dark matter, The world, the universe and us...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1496866360": {
       "topics": [
@@ -84938,11 +85368,49 @@
     },
     "1497012295": {
       "topics": [
-        "tv-film"
+        "aviation",
+        "news/politics",
+        "engineering/ai-robotics",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Politics.",
+      "display_title": "Roddenberry Podcasts",
+      "blurb": "All Roddenberry Podcasts in one convenient feed! Mission Log Live: A Roddenberry Star Trek Podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1497024925": {
       "topics": [
@@ -85394,11 +85862,39 @@
     },
     "1498114990": {
       "topics": [
+        "aviation",
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Religion & Spirituality.",
+      "display_title": "Apóstol German Ponce",
+      "blurb": "Nuestro objetivo es que a través de la palabra de Dios, cada uno de los hogares de Honduras y a nivel mundial puedan ser llenos del Espíritu Santo y así...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1498116036": {
       "topics": [
@@ -85613,11 +86109,49 @@
     },
     "1498522890": {
       "topics": [
-        "comedy/stand-up"
+        "comedy",
+        "engineering/ai-robotics",
+        "computing",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Comedy, Ai Robotics.",
+      "display_title": "Netflix Is A Daily Joke",
+      "blurb": "It's simple: a joke a day featuring your favorite Netflix comedians. One joke. Every day. Simon Amstell: A Joke About Feeling Special",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1498541229": {
       "topics": [
@@ -85870,11 +86404,49 @@
     },
     "1499271317": {
       "topics": [
-        "society/government"
+        "science",
+        "craft",
+        "news/politics",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Science, Craft & making.",
+      "display_title": "Political Theory 101",
+      "blurb": "A podcast about political theory. Freely available to all, but we'd love your support on Patreon: https://www.patreon.com/politicaltheory101 Also available on iTunes, Spotify, and Google Play Kojève & the End of...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1499294498": {
       "topics": [
@@ -87163,11 +87735,49 @@
     },
     "1502178774": {
       "topics": [
-        "society"
+        "aviation",
+        "comedy",
+        "history",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Comedy.",
+      "display_title": "Blowback",
+      "blurb": "A podcast about the American Empire. \"No Daylight\" - Teaser",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1502193756": {
       "topics": [
@@ -87479,12 +88089,49 @@
     },
     "1502782720": {
       "topics": [
-        "computing",
-        "engineering/ai-robotics"
+        "news/politics",
+        "engineering/ai-robotics",
+        "news",
+        "culture/design"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Politics, Ai Robotics.",
+      "display_title": "Last Week in AI",
+      "blurb": "Weekly summaries of the AI news that matters! #254 - Rogue AI hacking, bio-weapons, Dean & Hassa",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1502796518": {
       "topics": [
@@ -87731,11 +88378,49 @@
     },
     "1503226625": {
       "topics": [
-        "news/daily"
+        "music",
+        "aviation",
+        "craft",
+        "news/politics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music, Aviation.",
+      "display_title": "Consider This from NPR",
+      "blurb": "The hosts of NPR's All Things Considered help you make sense of a major news story and what it means for you, in 15 minutes. New episodes six days a...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1503232531": {
       "topics": [
@@ -88071,11 +88756,51 @@
     },
     "1503897906": {
       "topics": [
-        "science"
+        "medicine",
+        "aviation",
+        "science",
+        "food"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, Aviation.",
+      "display_title": "Live Like a Girl with Dr. Mindy Pelz",
+      "blurb": "We were taught that doing anything \"like a girl\" was a weakness. Dr. Mindy Pelz is here to prove it's your greatest strength. A renowned advocate for women's health, Dr....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/plain": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1503902212": {
       "topics": [
@@ -88095,12 +88820,51 @@
     },
     "1503931590": {
       "topics": [
-        "education/how-to",
-        "craft/photography"
+        "craft",
+        "history",
+        "engineering/ai-robotics",
+        "nature"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, History.",
+      "display_title": "The Wild Photographer",
+      "blurb": "Learn techniques, tips, and tricks for improving your wildlife, travel, landscape, and general nature photography with Court Whelan. Whether you consider yourself a beginner, serious hobbyist, or advanced professional, this...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1503951481": {
       "topics": [
@@ -88361,11 +89125,49 @@
     },
     "1504562652": {
       "topics": [
-        "religion"
+        "craft",
+        "engineering/ai-robotics",
+        "nature",
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, Ai Robotics.",
+      "display_title": "Give Him 15 Plus | Insights with Dutch",
+      "blurb": "What would happen if 50 million people were praying the same prayer and declaring God’s promises together every day? Would it make a difference to God? His Word says it...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1504592760": {
       "topics": [
@@ -88421,11 +89223,49 @@
     },
     "1504732282": {
       "topics": [
-        "tv-film/history"
+        "medicine",
+        "aviation",
+        "craft",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, Aviation.",
+      "display_title": "The Plot Thickens",
+      "blurb": "Our seventh season is Stanley, an 11-episode exploration of Stanley Kubrick created in partnership with Criterion. Stanley traces Kubrick’s journey from a curious Bronx teenager, first inspired by a camera...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1504752194": {
       "topics": [
@@ -88586,12 +89426,49 @@
     },
     "1505099027": {
       "topics": [
-        "business/non-profit",
-        "philosophy"
+        "aviation",
+        "science",
+        "business",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Science.",
+      "display_title": "The Bioethics Podcast",
+      "blurb": "The Bioethics Podcast is an audio resource exploring the pressing bioethical challenges of our day featuring staff, fellows, and friends of The Center for Bioethics & Human Dignity. Bored in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1505116116": {
       "topics": [
@@ -88677,12 +89554,49 @@
     },
     "1505257676": {
       "topics": [
-        "education/self-improvement",
-        "medicine/biology"
+        "medicine",
+        "aviation",
+        "science",
+        "craft"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, Aviation.",
+      "display_title": "excellence, actually",
+      "blurb": "\"excellence, actually\" is a podcast from The Growth Equation, hosted by Steve Magness, Brad Stulberg, and Clay Skipper. Drawing on their years of working and corresponding with Olympians, coaches, executives,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1505260479": {
       "topics": [
@@ -88778,11 +89692,49 @@
     },
     "1505431645": {
       "topics": [
-        "tv-film/after-shows"
+        "business",
+        "engineering/ai-robotics",
+        "news",
+        "business/startups"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Business, Ai Robotics.",
+      "display_title": "Mention It All",
+      "blurb": "Betches Media presents Mention It All, a podcast dedicated to breaking down all things Bravo. Your host, certified Bravoholic Dylan Hafer, is covering everything Real Housewives and more, including weekly...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1505435378": {
       "topics": [
@@ -89353,11 +90305,56 @@
     },
     "1506395878": {
       "topics": [
-        "psychology"
+        "music",
+        "aviation",
+        "science",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers Music, Aviation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/json": 8,
+          "application/srt": 8,
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1506403751": {
       "topics": [
@@ -89369,11 +90366,49 @@
     },
     "1506413875": {
       "topics": [
-        "gaming"
+        "music",
+        "business",
+        "sports",
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music, Business.",
+      "display_title": "The Black Pants Legion Podcast",
+      "blurb": "PROUDLY PROBABLY THE NUMBER TWO BPL PODCAST. WANT TO FUND THIS DUMP ? https://www.patreon.com/BPLTEX BPL Intermission Episode no.10",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1506416879": {
       "topics": [
@@ -89655,11 +90690,34 @@
     },
     "1506721325": {
       "topics": [
-        "gaming"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers History.",
+      "display_title": "Throwback Trivia Takedown",
+      "blurb": "Throwback Trivia Takedown is a podcast that pits to contenders head-to-head in a nostalgic trivia match-up. Ep. 321: Josh Wennrich vs. Alix Claps",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1506748871": {
       "topics": [
@@ -90681,11 +91739,44 @@
     },
     "1508892492": {
       "topics": [
-        "space"
+        "engineering/ai-robotics",
+        "travel",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Ai Robotics, Travel & Places.",
+      "display_title": "The Actual Astronomy Podcast",
+      "blurb": "Join amateur astronomers, Chris and Shane, as they share their experiences of observing the night sky. #548 - Visual Astronomy in Draco",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1508898501": {
       "topics": [
@@ -91235,11 +92326,34 @@
     },
     "1510000265": {
       "topics": [
-        "education/self-improvement"
+        "food"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Food.",
+      "display_title": "owrsi | پادکست اورسی",
+      "blurb": "در پادکست اورسی به دنبال جوهر وجودی زندگی هستیم حمایت از پادکست: buymeacoffee.com/owrsii Hosted on Acast. See acast.com/privacy for more information. قسمت ۵۵ پادکست اورسی | همه‌چیز در جای خود",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1510021243": {
       "topics": [
@@ -91257,11 +92371,49 @@
     },
     "1510056899": {
       "topics": [
-        "society"
+        "music",
+        "aviation",
+        "science",
+        "craft"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music, Aviation.",
+      "display_title": "No Stupid Questions",
+      "blurb": "Research psychologist Angela Duckworth (author of \"Grit\") and tech and sports executive Mike Maughan really like to ask people questions, and they believe there’s no such thing as a stupid...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1510058141": {
       "topics": [
@@ -91374,11 +92526,49 @@
     },
     "1510264715": {
       "topics": [
-        "education/courses"
+        "aviation",
+        "science",
+        "engineering/ai-robotics",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Science.",
+      "display_title": "ABA Wizard",
+      "blurb": "The ABA Wizard podcast is your weekly dose of research. Keep up with current literature in the field of applied behavior analysis as Kylan Heiner, BCBA takes the mic and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1510277822": {
       "topics": [
@@ -91413,11 +92603,49 @@
     },
     "1510398641": {
       "topics": [
-        "society/government"
+        "aviation",
+        "science",
+        "craft",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Science.",
+      "display_title": "Sentencing Practice Talk",
+      "blurb": "Brought to you by the Office of Education & Sentencing Practice, Sentencing Practice Talk is a podcast series designed to inform those interested in federal sentencing on guideline application issues....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1510429128": {
       "topics": [
@@ -91518,11 +92746,49 @@
     },
     "1510623480": {
       "topics": [
-        "food"
+        "music",
+        "comedy",
+        "food",
+        "craft"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music, Comedy.",
+      "display_title": "Biscuits & Jam",
+      "blurb": "In the South, food and music go hand in hand. They define much of what we think of as Southern culture, and they say a lot about our past, our...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1510638084": {
       "topics": [
@@ -91614,11 +92880,49 @@
     },
     "1510853470": {
       "topics": [
-        "culture"
+        "history",
+        "engineering/ai-robotics",
+        "sports",
+        "culture/books"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers History, Ai Robotics.",
+      "display_title": "Chris Chan: A Comprehensive History",
+      "blurb": "A detailed look into the life of Christian/Christine Weston Chandler, one of the most curious figures in Internet subculture, and possibly the most documented person in history. This is the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1510861233": {
       "topics": [
@@ -91732,11 +93036,49 @@
     },
     "1511047964": {
       "topics": [
-        "sports/tennis"
+        "engineering/ai-robotics",
+        "sports",
+        "culture/books",
+        "sports/baseball"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports/baseball",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Ai Robotics, Sports.",
+      "display_title": "Control the Controllables",
+      "blurb": "Dan Kiernan, Director of SotoTennis Academy in Spain has created a podcast to entertain, educate and energise the tennis community. Hear Dan pick the brains of professional tennis players, coaches,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1511052873": {
       "topics": [
@@ -91937,11 +93279,46 @@
     },
     "1511456063": {
       "topics": [
-        "tv-film/reviews"
+        "culture/books",
+        "computing",
+        "culture/design"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Books, Computing.",
+      "display_title": "The Delta Flyers",
+      "blurb": "Check out ElevenReader and use my code PODCAST for a great deal: https://elevenreader.io Use promo code PODCAST to get your first two months for only $1 -- Check out Omaha...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1511457901": {
       "topics": [
@@ -92138,11 +93515,49 @@
     },
     "1511827218": {
       "topics": [
-        "culture/fashion"
+        "medicine",
+        "craft",
+        "business",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, Craft & making.",
+      "display_title": "The blondEST",
+      "blurb": "Savanna Boda, better known as The Dallas Aesthetician, is a Medical Aesthetician who focuses on ethical and results driven aesthetics. Savanna has trained under Dallas’ Top Plastic Surgeons and Dermatologists...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1511919057": {
       "topics": [
@@ -92207,12 +93622,49 @@
     },
     "1512016028": {
       "topics": [
-        "kids-family",
-        "health/mental"
+        "music",
+        "aviation",
+        "history",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music, Aviation.",
+      "display_title": "Deep Sleep Sounds",
+      "blurb": "Sleep, relax, and unwind with our original sleepy soundscapes. Featuring nature soundscapes, binaural sleep music, and calming white noise. Become a premium member for access to 8-hour episodes and ad-free...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1512032536": {
       "topics": [
@@ -92456,12 +93908,49 @@
     },
     "1513075859": {
       "topics": [
-        "hobbies",
-        "nature/ocean-science"
+        "craft",
+        "engineering/ai-robotics",
+        "sports",
+        "craft/filmmaking"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/filmmaking",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, Ai Robotics.",
+      "display_title": "Water Colors Aquarium Gallery",
+      "blurb": "Ben, owner of Water Colors Aquarium Gallery in Grand Rapids, MI is joined by his store managers Amy and Charles to discuss the aquarium hobby. 280. Water Colors Staff Ask...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1513102098": {
       "topics": [
@@ -92595,11 +94084,51 @@
     },
     "1513356620": {
       "topics": [
-        "education/self-improvement"
+        "aviation",
+        "craft",
+        "news/politics",
+        "engineering/ai-robotics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Craft & making.",
+      "display_title": "the UNCOMMODiFiED Podcast",
+      "blurb": "WE ARE ALL BORN WITH THE WONDROUS POTENTIAL TO STAND OUT FROM THE HERD AND LIVE A SIGNIFICANTLY IMPACTFUL LIFE- SO, LET’S START RIGHT NOW! the UNCOMMODiFiED Podcast … an...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 5,
+        "transcript_types": {
+          "text/html": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1513369812": {
       "topics": [
@@ -92693,11 +94222,49 @@
     },
     "1513602017": {
       "topics": [
-        "culture"
+        "medicine",
+        "news",
+        "psychology",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, News & Current Affairs.",
+      "display_title": "Un Periódico de Ayer",
+      "blurb": "El ciclo de vida de una noticia dura poco. Los titulares más escandalosos tarde o temprano quedan en el olvido. Pero sus consecuencias personales pueden seguir vigentes durante un largo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1513602865": {
       "topics": [
@@ -93439,11 +95006,51 @@
     },
     "1515385282": {
       "topics": [
-        "business/careers"
+        "craft",
+        "engineering/ai-robotics",
+        "sports",
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, Ai Robotics.",
+      "display_title": "A Bit of Optimism",
+      "blurb": "My career is an accident. It started when I set out to rediscover my passion and reignite a spark I’d lost — and that journey led me to the work...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1515399733": {
       "topics": [
@@ -93499,11 +95106,49 @@
     },
     "1515559267": {
       "topics": [
-        "psychology"
+        "aviation",
+        "science",
+        "engineering/ai-robotics",
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Science.",
+      "display_title": "Talks On Psychoanalysis",
+      "blurb": "Talks On Psychoanalysis shares topics published in the IPA Society Journals and Congress debates worldwide, brought to you in the voices of the original authors. This podcast is produced by...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1515585312": {
       "topics": [
@@ -93823,11 +95468,49 @@
     },
     "1516195837": {
       "topics": [
-        "kids-family"
+        "music",
+        "aviation",
+        "food",
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music, Aviation.",
+      "display_title": "Weird But True",
+      "blurb": "This is weird but true the podcast! On this show Matilda and Irma will share 2-3 facts from National Geographic’s weird but true books and dig deeper into the facts!...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1516219302": {
       "topics": [
@@ -94176,11 +95859,49 @@
     },
     "1517065166": {
       "topics": [
-        "gaming"
+        "craft",
+        "news/politics",
+        "engineering/ai-robotics",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, Politics.",
+      "display_title": "Meta Pod: A Pokemon TCG Podcast",
+      "blurb": "A Pokemon TCG Podcast featuring @gyrosean & @atrociousjake #295 The Best (& Worst) Plays for the 2026 Pokemon",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1517073114": {
       "topics": [
@@ -95101,11 +96822,49 @@
     },
     "1519539469": {
       "topics": [
-        "religion/hinduism"
+        "history",
+        "education",
+        "history/military-modern",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "history/military-modern",
+          "confidence": 0.8
+        },
+        {
+          "node": "computing",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers History, Education.",
+      "display_title": "Introduction to Vedanta Archives - Arsha Bodha Center",
+      "blurb": "Podcast series on Introduction to Vedanta by Swami Tadatmananda resident teacher of Arsha Bodha Center Introduction to Vedanta &#8211; Summary &#038; Mah",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1519549773": {
       "topics": [
@@ -96263,11 +98022,52 @@
     },
     "1521870190": {
       "topics": [
-        "history"
+        "medicine",
+        "aviation",
+        "science",
+        "food"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Covers Medicine, Aviation.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1521872795": {
       "topics": [
@@ -96278,12 +98078,49 @@
     },
     "1521874291": {
       "topics": [
-        "business",
-        "economics/markets"
+        "medicine",
+        "aviation",
+        "craft",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Medicine, Aviation.",
+      "display_title": "Grow Your Business and Grow Your Wealth",
+      "blurb": "The Grow Your Business and Grow Your Wealth Podcast with Gary Heldt is the go-to place to help plan for your future. Whether you’re a business owner looking to maximize...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1521914789": {
       "topics": [
@@ -96930,12 +98767,49 @@
     },
     "1523181124": {
       "topics": [
-        "religion",
-        "religion/christianity"
+        "music",
+        "aviation",
+        "history",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Music, Aviation.",
+      "display_title": "365 Christian Men",
+      "blurb": "365 Christian Men are inspirational stories of real men. These are both historic and modern day stories. These stories span more than 2000 years. From the abolitionist, to the actor,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1523196010": {
       "topics": [
@@ -97014,11 +98888,49 @@
     },
     "1523332645": {
       "topics": [
-        "hobbies"
+        "craft",
+        "business",
+        "engineering/ai-robotics",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, Business.",
+      "display_title": "The Hobby With Cage",
+      "blurb": "The Hobby With Cage brings you news from around the hobby, guest episodes and card discussions that you won't find anywhere else. Its the Hobby- with Cage! Instagram @TheHobbyWithCage Hosted...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1523341200": {
       "topics": [
@@ -97189,11 +99101,49 @@
     },
     "1523684874": {
       "topics": [
-        "economics/markets"
+        "business",
+        "history",
+        "engineering/ai-robotics",
+        "business/careers"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/careers",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Business, History.",
+      "display_title": "The Ramsey Show Highlights",
+      "blurb": "The Ramsey Show Highlights is a quick, daily dose of advice on life and money in under ten minutes. Hear from experts like Dave Ramsey, Ken Coleman, Rachel Cruze, Dr....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1523705334": {
       "topics": [
@@ -97635,11 +99585,49 @@
     },
     "1524487980": {
       "topics": [
-        "economics/markets"
+        "aviation",
+        "food",
+        "business",
+        "engineering/ai-robotics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "food",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Aviation, Food.",
+      "display_title": "Halftime Report",
+      "blurb": "Halftime Report is on the front lines of CNBC’s market coverage. CNBC’s Scott Wapner and the Street’s top investors get to the heart of the action as it’s happening and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1524503061": {
       "topics": [
@@ -97696,12 +99684,49 @@
     },
     "1524670753": {
       "topics": [
-        "education/how-to",
-        "religion/spirituality"
+        "craft",
+        "history",
+        "engineering/ai-robotics",
+        "culture/books"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering/ai-robotics",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, History.",
+      "display_title": "Accessible Yoga Podcast",
+      "blurb": "Accessible Yoga Podcast with Jivana Heyman Building Trust & Faith",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1524688425": {
       "topics": [
@@ -98048,11 +100073,49 @@
     },
     "1525283536": {
       "topics": [
-        "education/how-to"
+        "craft",
+        "craft/woodworking",
+        "business",
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/woodworking",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Covers Craft & making, Woodworking.",
+      "display_title": "The All In Podcast",
+      "blurb": "The All In Podcast is hosted by Rod Watson and features conversations with elite athletes, entrepreneurs, entertainers investors, and creators covering wealth, real estate, business, mindset, leadership and legacy. Don...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ea2a5bea",
+      "classified_at": "2026-08-26T00:21:45.193Z"
     },
     "1525311067": {
       "topics": [
