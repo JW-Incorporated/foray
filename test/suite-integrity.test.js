@@ -499,8 +499,51 @@ const FLOORS = {
      `stepCode()` header). That is the CLAUDE.md § "A green test is not evidence"
      failure in a file whose fixture is the thing it tests, which is the most
      forgiving fixture there is. Raise this number when the suite grows; do not
-     lower it. */
-  "tools/mobile/android-workflow.test.mjs": 27,
+     lower it.
+
+     27 -> 56 WHEN `android-release.yml` LANDED — the Play submission path. The 29
+     added assert a SECOND workflow from the same file, on purpose: the two are one
+     decision. `android-build.yml` must keep reading no secret and booting no
+     emulator so it stays runnable on any fork; `android-release.yml` is where the
+     signing key and the emulator live. Split across two suites, one half could be
+     deleted while the other stayed green and looked like it covered the topic.
+
+     THE THREE NOT TO LOSE, because a reader would not guess at them:
+       - "the decoded keystore is written OUTSIDE the directory that gets uploaded".
+         The artifact upload publishes `$RUNNER_TEMP/android-release` to anyone who
+         can see the repo. A keystore one directory deeper is the founder's upload
+         key on the internet, from a run that looks entirely routine. THE FIRST
+         VERSION OF THIS TEST WAS VACUOUS: it asserted the two paths were different
+         strings, which `…/android-release` and `…/android-release/keys` both are.
+       - "both signing outcomes are VERIFIED". The quiet failure is the KEYED one —
+         a key installed, the wiring silently not applied, a green run, and Play
+         rejecting the upload a fortnight later. Asserting the UNKEYED branch too is
+         what makes an inverted condition fail on whichever branch it takes.
+       - "the emulator job cannot gate the artefact". A cold emulator boot is the
+         only genuinely flaky thing in this repo (mp1-background-audio.md §6.2), and
+         the .aab is the critical path to a submission. One `needs:` would put the
+         flake in front of the artefact. */
+  "tools/mobile/android-workflow.test.mjs": 56,
+  /* Wiring the signing config into a project nobody commits. ZERO SLACK.
+     `mobile/android/` is regenerated on every build, so the only evidence the
+     release signing config ever reaches Gradle is that this script ran and its
+     `--check` pass agreed. If it silently does nothing, `bundleRelease` emits an
+     UNSIGNED bundle and prints BUILD SUCCESSFUL. The one not to lose is "a MENTION
+     of the include is not a wiring": the script writes a COMMENT naming
+     `foray-signing.gradle` directly above the apply line, so a substring check
+     would report a commented-out wiring as wired. */
+  "tools/mobile/wire-signing.test.mjs": 10,
+  /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
+     only thing in the repo that can judge a RUNNING Android app, and its risk is
+     entirely one-directional: a verdict too generous reports a launch for a page
+     that never loaded, with a green tick and a JSON report attached. The two not
+     to lose are "about:blank is a FAILURE" — a WebView exposes a DevTools target
+     BEFORE the page loads, so an incurious probe gets a healthy answer from a
+     blank page — and "the bridge must answer from OUR Java", where `platform:
+     "android"` is set in ForayAudioPlugin.java and nowhere else. That second one
+     is the closest relative in this repo of #269, where an Android fixture
+     answered `running: true` and the fake was the only place the code worked. */
+  "tools/mobile/webview-probe.test.mjs": 12,
 
   "tools/refresh/enclosure.test.mjs": 18,
   /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between

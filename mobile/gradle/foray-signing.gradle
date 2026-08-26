@@ -1,0 +1,174 @@
+/* Release signing and version stamping for the generated Android app.
+ *
+ * ── WHY THIS FILE EXISTS AT ALL ──────────────────────────────────────────────
+ *
+ * `mobile/android/` is NOT committed (`mobile/.gitignore`): `cap add android`
+ * regenerates `app/build.gradle` from Capacitor's template on every machine and
+ * every CI run, and that template has no `signingConfigs` block and hardcodes
+ * `versionCode 1`. Editing the generated file by hand is therefore not a fix —
+ * the next `cap add` throws the edit away without a word.
+ *
+ * So the decision lives HERE, in a tracked file, and `tools/mobile/wire-signing.mjs`
+ * copies it into the generated project and appends the one `apply from:` line that
+ * pulls it in. Same shape as `foray-audio`: the native decision is committed, the
+ * generated project is derived.
+ *
+ * IT LIVES UNDER `mobile/` AND NOT UNDER `tools/`, and that is a governance
+ * choice rather than a filing one. `tools/` is on `ALLOWED_PREFIXES` in
+ * `tools/ci/path-policy.mjs`, so a PR touching only `tools/` auto-merges the
+ * moment checks go green. `mobile/` is UNLISTED — never auto-merged, always
+ * waits for a human (CLAUDE.md § "A NOTE ON THE TWO WORDS"). A file that decides
+ * which key signs the app the founder ships should not be one green tick away
+ * from landing unread.
+ *
+ * ── NO KEY IS IN THIS FILE, AND NONE MAY EVER BE ─────────────────────────────
+ *
+ * There is no keystore in this repository, no password, and no example of
+ * either — not even a fake one, because a fake one is the thing a future session
+ * copies. Everything is read from the environment at configuration time:
+ *
+ *   FORAY_KEYSTORE_PATH      absolute path to the PKCS12 store on the build machine
+ *   FORAY_KEYSTORE_PASSWORD  the password
+ *   FORAY_KEY_ALIAS          the alias inside the store
+ *
+ * THREE, NOT FOUR, AND THE MISSING ONE IS THE POINT. The upload key is a PKCS12
+ * store, and PKCS12 has ONE password: Java's own `keytool` refuses to give a
+ * PKCS12 entry a key password different from the store password. So there is no
+ * `FORAY_KEY_PASSWORD`. Wiring a fourth variable would create a value that can
+ * disagree with a value it is not allowed to disagree with, and the symptom of
+ * that disagreement is an unhelpful `keystore password was incorrect`.
+ *
+ * `docs/android-release.md` is the founder-facing half: where the store lives,
+ * what must be backed up, and the three GitHub Secrets that feed these.
+ *
+ * ── ABSENT-SAFE, BUT NOT BROKEN-SAFE, AND THE DIFFERENCE IS THE WHOLE POINT ──
+ *
+ * ABSENT (no `FORAY_KEYSTORE_PATH`) is a supported, ordinary state: the release
+ * build runs and produces an UNSIGNED artefact. That is what keeps every fork,
+ * every contributor and every PR run working with no credentials at all —
+ * `android-build.yml` has never read a secret and must not start.
+ *
+ * PRESENT-BUT-UNUSABLE is a hard failure, and deliberately so. A build that is
+ * handed a keystore path it cannot use and quietly emits an unsigned bundle is
+ * the exact shape this repo keeps getting burned by: green, plausible, and
+ * silently not doing the job. The founder uploads a secret, the run goes green,
+ * Play rejects the upload, and the cause is two weeks upstream. So a set-but-
+ * unusable configuration throws at configuration time with a message that names
+ * which of the three inputs is missing.
+ *
+ * ── THE PASSWORD NEVER REACHES A COMMAND LINE ────────────────────────────────
+ *
+ * `System.getenv`, not `project.property`, and no `-P` on any gradlew
+ * invocation. A Gradle property passed as `-PkeystorePassword=…` is in the
+ * process's argv, which means it is in `ps`, in a Gradle daemon's own logging of
+ * the build invocation, and in any stack trace that prints the command. An
+ * environment variable read at configuration time and handed straight to
+ * `signingConfig` is not. `android-release.yml` also refuses to run
+ * `signingReport`, which prints signing configuration by design.
+ *
+ * ── WHAT `bundleRelease` DOES WITH THIS ──────────────────────────────────────
+ *
+ * Play requires an Android App Bundle. `bundleRelease` signs the .aab with this
+ * config using JAR signing, which is what Play's upload check verifies; the APK
+ * signature schemes (v2/v3) are applied later, by Play, to the APKs it generates
+ * from the bundle. So "is the .aab signed" is answered by `jarsigner -verify`,
+ * not by `apksigner`, and the workflow asks it that way.
+ */
+
+/* READ ONCE, AT CONFIGURATION TIME. `System.getenv` inside a task action would
+   be read on a Gradle daemon that may outlive the environment that started it. */
+def keystorePath = System.getenv("FORAY_KEYSTORE_PATH")
+def keystorePassword = System.getenv("FORAY_KEYSTORE_PASSWORD")
+def keystoreAlias = System.getenv("FORAY_KEY_ALIAS")
+
+/* An empty string is ABSENT, not present. `env: FORAY_KEYSTORE_PATH: ${{ secrets.X }}`
+   in a workflow evaluates to "" when the secret does not exist — GitHub does not omit
+   the variable — so a `!= null` test would take the present branch on every fork run
+   and fail every one of them. */
+def isSet = { String v -> v != null && !v.trim().isEmpty() }
+
+def keystoreFile = isSet(keystorePath) ? new File(keystorePath.trim()) : null
+def signingRequested = keystoreFile != null
+
+if (signingRequested) {
+    /* THE LOUD HALF. Each of these is a separate way to end up with an unsigned
+       artefact from a green build, so each gets its own message. */
+    if (!keystoreFile.isFile()) {
+        throw new GradleException(
+            "FORAY_KEYSTORE_PATH is set to '" + keystoreFile.getPath() + "' but no file is there. " +
+            "Refusing to emit a silently unsigned release. Unset the variable to build unsigned on purpose."
+        )
+    }
+    if (!isSet(keystorePassword)) {
+        throw new GradleException("FORAY_KEYSTORE_PATH is set but FORAY_KEYSTORE_PASSWORD is empty — see docs/android-release.md")
+    }
+    if (!isSet(keystoreAlias)) {
+        throw new GradleException("FORAY_KEYSTORE_PATH is set but FORAY_KEY_ALIAS is empty — see docs/android-release.md")
+    }
+}
+
+/* EVERY DECISION IS TAKEN OUT HERE, at script scope, and the `android { }` block
+   below only consumes plain values. Not style: a Gradle configuration closure
+   runs with DELEGATE_FIRST resolution, so calling a script-level helper from
+   inside one is the kind of thing that works until an AGP or Groovy change makes
+   it not, and it would fail as an unrelated-looking MissingMethodException. */
+def versionCodeEnv = System.getenv("FORAY_VERSION_CODE")
+def versionCodeOverride = isSet(versionCodeEnv) ? versionCodeEnv.trim().toInteger() : null
+def versionNameEnv = System.getenv("FORAY_VERSION_NAME")
+def versionNameOverride = isSet(versionNameEnv) ? versionNameEnv.trim() : null
+
+android {
+    defaultConfig {
+        /* PLAY REFUSES A versionCode IT HAS ALREADY SEEN, and Capacitor's template
+           hardcodes `versionCode 1` into a file that is regenerated on every build —
+           so without this, the second upload is rejected and the fix is not in the
+           repo. Absent-safe in the same way as the key: no variable, template value. */
+        if (versionCodeOverride != null) {
+            versionCode versionCodeOverride
+        }
+        if (versionNameOverride != null) {
+            versionName versionNameOverride
+        }
+    }
+
+    if (signingRequested) {
+        signingConfigs {
+            forayRelease {
+                storeFile keystoreFile
+                /* DECLARED, NOT INFERRED FROM THE EXTENSION. The upload key is a
+                   PKCS12 store. AGP will guess the type from the file when this is
+                   absent, and that guess has been wrong before — a `.p12` read as
+                   JKS fails with `Invalid keystore format`, and a store named
+                   `.jks` that is really PKCS12 is the same failure the other way
+                   round. Saying it costs one line and removes the guess. */
+                storeType "PKCS12"
+                storePassword keystorePassword
+                keyAlias keystoreAlias
+                /* THE SAME VALUE, DELIBERATELY, AND NOT A SECOND SECRET. A PKCS12
+                   entry cannot carry a key password that differs from the store
+                   password — keytool refuses to create one — so this is not a
+                   simplification, it is the only legal value. */
+                keyPassword keystorePassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (signingRequested) {
+                signingConfig signingConfigs.forayRelease
+            }
+        }
+    }
+}
+
+/* A MACHINE-READABLE ANSWER TO "DID THIS BUILD HAVE A KEY", printed on demand
+   rather than inferred from the absence of an error. The workflow runs this and
+   records the line, so a run's own log says which of the two supported states it
+   was in — and the artefact check that follows is chosen from it rather than
+   from a guess. */
+tasks.register("foraySigningStatus") {
+    doLast {
+        println "FORAY_SIGNING_STATUS=" + (signingRequested ? "keyed" : "unsigned")
+    }
+}
