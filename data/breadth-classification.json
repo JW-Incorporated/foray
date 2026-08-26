@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-24T16:15:24.347Z",
+  "built_at": "2026-08-26T08:13:16.717Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-24-88f03e96",
+    "last_batch_id": "fresh-2026-08-26-ffa2393d",
     "last_batch_tier": 1
   },
   "entries": {
@@ -8506,11 +8506,30 @@
     },
     "350159142": {
       "topics": [
-        "science"
+        "science",
+        "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.55
+        },
+        {
+          "node": "nature",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Technical science podcast; no signal available to assess specificity.",
+      "display_title": "omega tau",
+      "blurb": "Science and engineering topics in English.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "350181080": {
       "topics": [
@@ -14402,11 +14421,30 @@
     },
     "625271688": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "LSE public lectures and recorded courses.",
+      "display_title": "Latest 300",
+      "blurb": "Academic lectures and events from the London School of Economics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "625276860": {
       "topics": [
@@ -24386,10 +24424,30 @@
     },
     "1039178520": {
       "topics": [
+        "education",
         "kids-family/education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Research about early childhood; audience unclear from title alone.",
+      "display_title": "The Early Childhood Research Podcast",
+      "blurb": "Research and insights on early childhood development and education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1039511252": {
       "topics": [
@@ -47775,7 +47833,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic recitation by Egyptian radio broadcaster.",
+      "display_title": "المصحف المرتل",
+      "blurb": "Recitation of the Quran.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1387605972": {
       "topics": [
@@ -53310,10 +53383,30 @@
     },
     "1440133626": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news briefing podcast.",
+      "display_title": "Today in Focus",
+      "blurb": "Daily news and current affairs coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1440180592": {
       "topics": [
@@ -67116,7 +67209,26 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese language instruction by NHK.",
+      "display_title": "Easy Japanese",
+      "blurb": "Japanese conversation lessons from NHK World.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1482228061": {
       "topics": [
@@ -103310,8 +103422,23 @@
       "topics": [
         "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music podcast hosted by musician; format and focus unclear.",
+      "display_title": "SINPHONY Radio",
+      "blurb": "Music-focused radio program.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1555794731": {
       "topics": [
@@ -157145,7 +157272,22 @@
         "religion/judaism"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Judaism-focused podcast.",
+      "display_title": "Efraim Palvanov",
+      "blurb": "Jewish content and perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1729497779": {
       "topics": [
@@ -160353,11 +160495,25 @@
     },
     "1738666596": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sports radio station but title suggests swimming; unclear focus.",
+      "display_title": "KNTK 93.7 The Ticket",
+      "blurb": "Sports and entertainment radio.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1738706407": {
       "topics": [
@@ -162765,10 +162921,30 @@
     },
     "1746439164": {
       "topics": [
-        "comedy/stand-up"
+        "comedy",
+        "tv-film/animation"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.5
+        },
+        {
+          "node": "tv-film/animation",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese anime and comedy videos; language barrier on categorization.",
+      "display_title": "徒儿你无敌了",
+      "blurb": "Chinese anime and comedy video content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1746467044": {
       "topics": [
@@ -162997,10 +163173,30 @@
     },
     "1747595268": {
       "topics": [
-        "business/management"
+        "business/management",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/management",
+          "confidence": 0.6
+        },
+        {
+          "node": "computing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI and business intersect; specific focus unclear without signal.",
+      "display_title": "AI in Action",
+      "blurb": "Business and AI-related topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1747601532": {
       "topics": [
@@ -170180,10 +170376,30 @@
     },
     "1775699172": {
       "topics": [
-        "news/commentary"
+        "news/commentary",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/commentary",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "German political news commentary.",
+      "display_title": "DW Berlin Briefing",
+      "blurb": "Analysis of German politics and policy.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1775769511": {
       "topics": [
@@ -172612,11 +172828,30 @@
     },
     "1784944314": {
       "topics": [
-        "education/courses"
+        "psychology",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Introductory psychology course.",
+      "display_title": "Psychology 101",
+      "blurb": "Foundational concepts in psychology and human behavior.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1784946892": {
       "topics": [
@@ -174596,10 +174831,30 @@
     },
     "1791729306": {
       "topics": [
-        "math"
+        "math",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.6
+        },
+        {
+          "node": "computing",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "AI could relate to math or computing; title alone insufficient.",
+      "display_title": "AI Podcast",
+      "blurb": "Artificial intelligence and related topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1791784469": {
       "topics": [
@@ -189594,10 +189849,30 @@
     },
     "1836499650": {
       "topics": [
-        "culture/books"
+        "culture/books",
+        "education/self-improvement"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/books",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dave Ramsey book summary on personal finance.",
+      "display_title": "The Total Money Makeover",
+      "blurb": "Financial advice book summary and discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1836513283": {
       "topics": [
@@ -189675,10 +189950,30 @@
     },
     "1836803724": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film/reviews",
+        "tv-film"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.75
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment review and commentary podcast.",
+      "display_title": "Chills Thrills And A Podcast",
+      "blurb": "Film and entertainment reviews.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1836815799": {
       "topics": [
@@ -192060,7 +192355,22 @@
         "comedy/stand-up"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy podcast.",
+      "display_title": "Iowa Nice Guy",
+      "blurb": "Stand-up comedy content.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1844215628": {
       "topics": [
@@ -193389,10 +193699,29 @@
     "1848507588": {
       "topics": [
         "business/startups",
-        "business/founders"
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Entrepreneurship and income streams; founders/startups unclear.",
+      "display_title": "The Legacy Lounge Live",
+      "blurb": "Entrepreneurship and multiple income stream strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1848603903": {
       "topics": [
@@ -195710,10 +196039,30 @@
     },
     "1857136176": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political news and commentary network.",
+      "display_title": "SPN LIVE",
+      "blurb": "Political news and commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1857661651": {
       "topics": [
@@ -199004,7 +199353,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic crime fiction audiobook.",
+      "display_title": "Hercule Poirot",
+      "blurb": "Agatha Christie mystery fiction audiobook.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1873028393": {
       "topics": [
@@ -199174,10 +199538,30 @@
     },
     "1873774482": {
       "topics": [
-        "fiction/drama"
+        "education/self-improvement",
+        "culture/books"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture/books",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-help philosophy audiobook.",
+      "display_title": "The Four Agreements",
+      "blurb": "Self-help philosophy audiobook.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1873832019": {
       "topics": [
@@ -199241,7 +199625,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Classic fantasy fiction audiobook.",
+      "display_title": "The Hobbit",
+      "blurb": "J.R.R. Tolkien fantasy fiction audiobook.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1873986456": {
       "topics": [
@@ -205099,8 +205498,23 @@
       "topics": [
         "math"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Quantitative topics; domain unclear without signal.",
+      "display_title": "Quantitative",
+      "blurb": "Quantitative and mathematical topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1894552777": {
       "topics": [
@@ -207838,11 +208252,30 @@
     },
     "1896807264": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Self-help and personal development podcast by motivational speaker.",
+      "display_title": "The Mel Robbins Podcast",
+      "blurb": "Personal development and motivation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-ffa2393d",
+      "classified_at": "2026-08-26T08:13:16.717Z"
     },
     "1896807395": {
       "topics": [
