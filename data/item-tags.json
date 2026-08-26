@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-25T11:52:54.173Z",
+  "built_at": "2026-08-26T11:47:39.997Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -15129,6 +15129,305 @@
       "entrepreneurship",
       "orchard",
       "agriculture"
+    ],
+    "stuff-you-should-know--the-fall-of-the-ussr-pt": [
+      "history",
+      "cold-war",
+      "soviet-union",
+      "gorbachev",
+      "politics",
+      "russia",
+      "20th-century",
+      "empire"
+    ],
+    "mrs-bulletin-materials-news--automating-a-nanoindenter-for-a-self": [
+      "materials-science",
+      "robotics",
+      "automation",
+      "research",
+      "labs",
+      "nanotechnology",
+      "science",
+      "engineering"
+    ],
+    "engines-of-our-ingenuity--the-engines-of-our-ingenuity-2641": [
+      "history",
+      "engineering",
+      "hydroelectric-power",
+      "niagara-falls",
+      "energy",
+      "technology"
+    ],
+    "this-week-in-startups--you-can-t-fire-a-vc": [
+      "startups",
+      "venture-capital",
+      "board-of-directors",
+      "legal",
+      "law",
+      "founders",
+      "business",
+      "governance"
+    ],
+    "the-bbq-central-show--bbq-brawl-belongs-to-bbq-bob": [
+      "bbq",
+      "grilling",
+      "food",
+      "competition",
+      "food-network",
+      "interview",
+      "cooking"
+    ],
+    "the-allusionist--232-vega": [
+      "linguistics",
+      "language",
+      "etymology",
+      "vocabulary",
+      "mailbag",
+      "interview"
+    ],
+    "99-percent-invisible--spolia": [
+      "architecture",
+      "history",
+      "design",
+      "reuse",
+      "rome",
+      "culture"
+    ],
+    "spit-and-twitches-animal-cognition--episode-29-season-3-episode-2": [
+      "animal-cognition",
+      "biology",
+      "research",
+      "evolution",
+      "behavior",
+      "science",
+      "interview"
+    ],
+    "spycast--peter-ortiz-the-wwii-marine-who": [
+      "espionage",
+      "world-war-ii",
+      "special-forces",
+      "marines",
+      "history",
+      "interview",
+      "oss"
+    ],
+    "software-engineering-daily--the-gap-between-ai-spending-and": [
+      "ai",
+      "artificial-intelligence",
+      "business",
+      "technology",
+      "enterprise",
+      "software",
+      "engineering"
+    ],
+    "freakonomics-radio--i-trust-almost-anyone-more-than": [
+      "writing",
+      "novelist",
+      "creativity",
+      "interview",
+      "literature",
+      "culture"
+    ],
+    "f1-beyond-the-grid--sergio-perez-bouncing-back-with-cadillac": [
+      "formula-1",
+      "racing",
+      "motorsport",
+      "interview",
+      "cadillac",
+      "sports"
+    ],
+    "the-race-f1-podcast--dutch-gp-who-hit-a-new": [
+      "formula-1",
+      "racing",
+      "motorsport",
+      "dutch-grand-prix",
+      "sports"
+    ],
+    "energy-gang--built-to-last-why-insurers-are": [
+      "renewable-energy",
+      "insurance",
+      "climate",
+      "energy",
+      "engineering",
+      "infrastructure"
+    ],
+    "business-wars--the-sweetener-wars-attack-of-the": [
+      "business",
+      "food-history",
+      "industry",
+      "history",
+      "sweeteners"
+    ],
+    "masters-of-scale--ford-s-jim-farley-on-beating": [
+      "business",
+      "automotive",
+      "ford",
+      "china",
+      "interview",
+      "leadership"
+    ],
+    "unauthorized-history-pacific-war--the-bataan-death-march-episode-614": [
+      "world-war-ii",
+      "military-history",
+      "philippines",
+      "pow",
+      "history",
+      "pacific-war"
+    ],
+    "tiny-matters--bonus-dangerously-tiny-frequencies-endometriosis-tests": [
+      "science",
+      "chemistry",
+      "biology",
+      "research",
+      "energy",
+      "health"
+    ],
+    "weather-geeks--guiding-cruise-ships-through-the-storm": [
+      "weather",
+      "meteorology",
+      "maritime",
+      "forecasting",
+      "interview",
+      "ocean"
+    ],
+    "myths-and-legends--442-greek-myths-the-poseidon-adventures": [
+      "mythology",
+      "greek-mythology",
+      "poseidon",
+      "folklore",
+      "culture"
+    ],
+    "our-fake-history--episode-256-is-paul-bunyan-fakelore": [
+      "folklore",
+      "mythology",
+      "american-history",
+      "history",
+      "culture"
+    ],
+    "physiology-endurance-running--summer-q-a": [
+      "endurance",
+      "running",
+      "sports-science",
+      "training",
+      "q-and-a",
+      "sports"
+    ],
+    "shipwrecks-and-sea-dogs--bonus-the-fascinating-tale-of-the": [
+      "shipwrecks",
+      "maritime",
+      "history",
+      "lighthouses",
+      "storytelling"
+    ],
+    "the-roundhouse--169-the-everett-railroad-w-alan": [
+      "trains",
+      "railroads",
+      "transport",
+      "history",
+      "interview",
+      "tourism"
+    ],
+    "practical-ai--ai-proficiency-from-users-to-builders": [
+      "ai",
+      "artificial-intelligence",
+      "workforce",
+      "business",
+      "technology",
+      "interview"
+    ],
+    "twiml-ai--why-the-next-ai-breakthrough-may": [
+      "ai",
+      "artificial-intelligence",
+      "physics",
+      "robotics",
+      "materials-science",
+      "interview"
+    ],
+    "ten-percent-happier--how-to-handle-ai-anxiety-a": [
+      "ai",
+      "artificial-intelligence",
+      "mental-health",
+      "psychology",
+      "mindfulness",
+      "interview"
+    ],
+    "happier-gretchen-rubin--ep-601-try-do-spend-september": [
+      "self-improvement",
+      "habits",
+      "happiness",
+      "productivity",
+      "travel"
+    ],
+    "handsome--katie-couric-asks-about-drag-personas": [
+      "comedy",
+      "interview",
+      "celebrity",
+      "drag",
+      "podcasting"
+    ],
+    "criminal--what-happened-when-33-000-people": [
+      "true-crime",
+      "cybersecurity",
+      "privacy",
+      "ransom",
+      "finland",
+      "law"
+    ],
+    "astonishing-legends--s2-ep32-but-we-didn-t": [
+      "paranormal",
+      "ghost-stories",
+      "storytelling",
+      "mystery",
+      "supernatural"
+    ],
+    "dateline--simply-diabolical": [
+      "true-crime",
+      "cybercrime",
+      "law",
+      "investigation",
+      "justice"
+    ],
+    "circle-round--summer-camp-top-banana": [
+      "kids",
+      "family",
+      "folktale",
+      "storytelling",
+      "stories"
+    ],
+    "dissect--10-year-anniversary-mailbag": [
+      "music",
+      "podcasting",
+      "interview",
+      "mailbag",
+      "reflection"
+    ],
+    "broken-record--travis-barker": [
+      "music",
+      "drums",
+      "interview",
+      "punk",
+      "musician"
+    ],
+    "inside-winemaking--220-jen-williams-arrow-and-branch": [
+      "wine",
+      "winemaking",
+      "interview",
+      "business",
+      "vineyards"
+    ],
+    "cider-chat--513-still-cider-single-apples-and": [
+      "cider",
+      "fermentation",
+      "food",
+      "drinks",
+      "interview"
+    ],
+    "bourbon-pursuit--whiskey-quickie-heaven-hill-year-of": [
+      "bourbon",
+      "whiskey",
+      "tasting",
+      "food",
+      "drinks"
     ]
   }
 }
