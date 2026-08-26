@@ -179,6 +179,25 @@ test("--check FAILS when the apply line is there and the include is not", (t) =>
   assert.throws(() => wireSigning(dir, { check: true }), /MISSING/);
 });
 
+test("--check FAILS on a STALE copy of the include, not just a missing one", (t) => {
+  /* MUTATION: delete the `readFileSync(...) !== readFileSync(...)` comparison
+     from the `--check` branch -> fails.
+     `existsSync` ALONE ACCEPTS LAST WEEK'S SIGNING CONFIG. The generated tree
+     survives between `cap sync` runs — that is the whole reason `cap add` is
+     re-run rather than the directory rebuilt — so a copy left by an earlier run
+     against an older tracked include is a reachable state, and Gradle applies it
+     without complaint. The symptom is a build signed by rules nobody edited,
+     which is the same class of quiet wrongness as an unsigned bundle from a
+     green run, and harder to see. */
+  const dir = makeProject(t);
+  wireSigning(dir);
+  fs.writeFileSync(path.join(dir, SIGNING_GRADLE_NAME), "// an older version of this file\n");
+  assert.throws(() => wireSigning(dir, { check: true }), /stale copy/);
+  /* And re-wiring repairs it, rather than leaving the operator to delete it. */
+  wireSigning(dir);
+  assert.doesNotThrow(() => wireSigning(dir, { check: true }));
+});
+
 test("it refuses a directory that is not a generated Capacitor project", (t) => {
   /* MUTATION: delete the `missingMarkers` guard from `wireSigning` -> fails.
      THE ARGUMENT FOR A SCRIPT THAT EDITS BUILD FILES IS THAT IT ONLY EDITS BUILD

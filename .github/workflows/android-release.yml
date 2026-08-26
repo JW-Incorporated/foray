@@ -71,6 +71,32 @@
 # driven with `sdkmanager`, `avdmanager`, `emulator` and `adb` directly, which is
 # about thirty lines and is visible in this file.
 #
+# ── WHO CAN REACH THE KEY, SAID OUT LOUD RATHER THAN LEFT IMPLICIT ───────────
+#
+# GitHub makes secrets available to `pull_request` runs when the PR comes from a
+# branch in THIS repository (they are withheld only from forks). So a run of this
+# workflow on a same-repo PR can hold the upload key, and the workflow that run
+# executes is the one on the PR BRANCH — which means anyone with write access
+# here could, in principle, put a step in it that exfiltrates the key.
+#
+# THAT IS NOT A NEW HOLE THIS FILE OPENS; it is the property GitHub gives every
+# repository secret, and it is why the deliberate choice is stated rather than
+# discovered. It is accepted for two reasons: the alternative — materialising the
+# key only on `workflow_dispatch` — means the SIGNED path cannot be exercised
+# until after this file is on the default branch, and `workflow_dispatch` cannot
+# be triggered on a branch before then; and this repo's write list is two
+# founders plus agents operating under their authority, which is the same trust
+# boundary `path-policy` already describes as "a norm with a receipt, not a
+# wall".
+#
+# What follows from it, and is done: the key is decoded to a directory OUTSIDE
+# the uploaded artifact path, the password never reaches a command line, the
+# build log is scrubbed before anything reads it back, and a shred step runs on
+# failure as well as success. If the trust boundary ever widens — an outside
+# contributor with write access, a self-hosted runner — the right change is to
+# gate the key on `github.event_name != 'pull_request'` and accept that the
+# signed path is then only exercised post-merge.
+#
 # ── WHAT THIS STILL DOES NOT PROVE ───────────────────────────────────────────
 #
 # An emulator is not a phone, and `docs/research/mp1-background-audio.md` §6.4 is
@@ -240,10 +266,18 @@ jobs:
           # `--decode` (not `-d`) because GNU and BSD base64 disagree on the short
           # flag, and a wrong-flag failure here writes a zero-byte file that Gradle
           # would then reject with a message about keystore format.
-          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYDIR/upload.p12"
+          # `if !`, NOT A BARE PIPELINE. GNU base64 exits 1 on invalid input and
+          # `set -o pipefail` would abort the step there — so the message below,
+          # which names the secret and the fix, was unreachable for the commonest
+          # half of the case it was written for, and the founder would see
+          # `base64: invalid input` instead.
+          if ! printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYDIR/upload.p12"; then
+            echo "ANDROID_KEYSTORE_B64 is not valid base64 — re-run the gh secret set line in docs/android-release.md §2"
+            exit 1
+          fi
           chmod 600 "$KEYDIR/upload.p12"
           if [ ! -s "$KEYDIR/upload.p12" ]; then
-            echo "ANDROID_KEYSTORE_B64 decoded to an empty file — the secret is truncated or is not base64"
+            echo "ANDROID_KEYSTORE_B64 decoded to an empty file — the secret is truncated"
             exit 1
           fi
           echo "keyed=true" >> "$GITHUB_OUTPUT"
@@ -259,6 +293,7 @@ jobs:
         id: bundle
         working-directory: mobile/android
         env:
+          KEYED: ${{ steps.key.outputs.keyed }}
           # ENVIRONMENT, NEVER `-P`. A Gradle property is in the process's argv and
           # therefore in `ps`, in the daemon's record of the invocation, and in any
           # trace that echoes the command line. These are read by
@@ -271,11 +306,48 @@ jobs:
           FORAY_VERSION_NAME: ${{ inputs.version_name }}
         run: |
           set -euo pipefail
+          # ── THE LENGTH FLOOR COMES FIRST, BEFORE ANY BUILD ─────────────────
+          # The scan further down is a SUBSTRING search. A three-letter password
+          # occurs in an ordinary Gradle log by coincidence, so the scan would
+          # delete a clean log and report a leak that did not happen. The honest
+          # reading of that case is the other one: a password short enough to
+          # collide with build output is not a password.
+          #
+          # IT IS FIRST BECAUSE IT USED TO SIT AFTER THE BUILD, and two reviewers
+          # independently found the same hole: `exit 1` there left an UNSCANNED
+          # log in $ART, which `if: always()` then published — the exact vector
+          # the scan exists to close, reachable only through the one input that
+          # makes the scan unusable. Ordering it first also makes the message true.
+          if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] && [ "${#FORAY_KEYSTORE_PASSWORD}" -lt 12 ]; then
+            echo "the keystore password is under 12 characters. Refusing to build: it cannot be told apart"
+            echo "from ordinary log text, so the leak scan below would be meaningless. Rotate to a longer one."
+            exit 1
+          fi
+          # ── THE LOG IS WRITTEN OUTSIDE $ART AND COPIED IN ONLY ONCE CLEAN ──
+          # ORDERING ALONE WAS NOT ENOUGH. `timeout-minutes`, a cancelled
+          # concurrency group, or any future `exit` added between the build and
+          # the scan all leave whatever is on disk for the `if: always()` upload
+          # to publish — a scan that protects one code path of one step, against
+          # an upload that is unconditional, is a scan with a gap in it. So the
+          # log lives in $RUNNER_TEMP's root, which is NOT uploaded, until it has
+          # been read. Same structural argument that puts $KEYDIR beside $ART
+          # rather than inside it.
+          LOG="$RUNNER_TEMP/gradle-bundleRelease.log"
           ./gradlew foraySigningStatus --no-daemon --console=plain -q \
             | tee "$ART/signing-status.txt"
-          # THE EXIT CODE IS CAPTURED, NOT INFERRED FROM `$?` AFTER A PIPE, and the
-          # build's log is scrubbed BEFORE anything else happens to it — including
-          # before the failure path prints a tail of it.
+          # AND THE TWO ANSWERS MUST AGREE, BEFORE 25 MINUTES ARE SPENT ON THEM.
+          # The workflow decides `keyed` from the secret; the Gradle include
+          # decides `signingRequested` from the environment it was handed. If those
+          # disagree — a renamed variable, a `working-directory` that stops the
+          # include being applied — the signature step catches it at the end of the
+          # build. This catches it at the start, and names which half is wrong.
+          # Until now nothing read `signing-status.txt`, so the file was evidence
+          # for a human and a check for nobody.
+          if [ "${KEYED:-false}" = "true" ]; then
+            grep -q 'FORAY_SIGNING_STATUS=keyed' "$ART/signing-status.txt" \
+              || { echo "a keystore was supplied but Gradle configured an UNSIGNED build — the signing include is not being applied"; exit 1; }
+          fi
+          # THE EXIT CODE IS CAPTURED, NOT INFERRED FROM `$?` AFTER A PIPE.
           #
           # GITHUB MASKS SECRETS IN LOGS AND NOT IN ARTIFACTS. This log is uploaded
           # at the end of the run and is downloadable by anyone who can see the
@@ -284,17 +356,17 @@ jobs:
           # `--stacktrace` added in haste, or a keystore error that echoes its
           # inputs all could. The check never prints what it is looking for.
           set +e
-          ./gradlew bundleRelease --no-daemon --console=plain \
-            > "$ART/gradle-bundleRelease.log" 2>&1
+          ./gradlew bundleRelease --no-daemon --console=plain > "$LOG" 2>&1
           GRADLE_STATUS=$?
           set -e
-          if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] \
-             && grep -qF "$FORAY_KEYSTORE_PASSWORD" "$ART/gradle-bundleRelease.log"; then
-            rm -f "$ART/gradle-bundleRelease.log"
+          if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] && grep -qF "$FORAY_KEYSTORE_PASSWORD" "$LOG"; then
+            rm -f "$LOG"
             echo "the Gradle log contained the keystore password; it has been deleted rather than uploaded."
             echo "Find what printed it before running this again."
             exit 1
           fi
+          # ONLY NOW does the log enter the directory that gets published.
+          cp "$LOG" "$ART/gradle-bundleRelease.log"
           if [ "$GRADLE_STATUS" -ne 0 ]; then
             echo "::group::bundleRelease tail"; tail -300 "$ART/gradle-bundleRelease.log"; echo "::endgroup::"
             exit 1
@@ -412,8 +484,12 @@ jobs:
           AAB="$ART/foray-release.aab"
           SIGBLOCKS=$(grep -cE '^META-INF/.*\.(RSA|DSA|EC)$' "$ART/aab-entries.txt" || true)
           if [ "${KEYED:-false}" = "true" ]; then
-            if [ "$SIGBLOCKS" -eq 0 ]; then
-              echo "a keystore was supplied but the bundle carries no signature block — the signing config was not applied"
+            # EXACTLY ONE, not "at least one". Two signature blocks means two
+            # signers, and the fingerprint check below is a substring search over
+            # a certificate dump that would then contain both — so a bundle signed
+            # by the upload key AND something else would pass every check here.
+            if [ "$SIGBLOCKS" -ne 1 ]; then
+              echo "expected exactly one signature block in the bundle, found $SIGBLOCKS — the signing config was not applied, or something else signed it too"
               exit 1
             fi
             jarsigner -verify "$AAB" > "$ART/jarsigner.txt" 2>&1 || {
@@ -425,7 +501,8 @@ jobs:
             # than of the keystore we think we used. Colons and case are
             # normalised away so a formatting change in keytool's output cannot
             # make a matching fingerprint look like a mismatch.
-            keytool -printcert -jarfile "$AAB" > "$ART/signer-cert.txt" 2>&1
+            keytool -printcert -jarfile "$AAB" > "$ART/signer-cert.txt" 2>&1 || {
+              cat "$ART/signer-cert.txt"; echo "keytool could not read the bundle's certificate"; exit 1; }
             NORM=$(tr -d ':' < "$ART/signer-cert.txt" | tr 'a-f' 'A-F')
             WANT=$(printf '%s' "$EXPECTED_SIGNER_SHA256" | tr -d ':' | tr 'a-f' 'A-F')
             if ! printf '%s' "$NORM" | grep -qF "$WANT"; then
@@ -712,12 +789,17 @@ jobs:
         run: |
           set -euo pipefail
           adb logcat -c
-          adb install -r -g "$APK" | tee "$ART/adb-install.txt"
+          # `|| true` ON BOTH PIPELINES, for the same reason as the `pidof` lines
+          # below: `adb install` exits non-zero on failure and `adb shell`
+          # forwards `am start`'s status, so under `pipefail` the step would abort
+          # before the grep that carries the readable message. The greps are the
+          # verdict; the pipelines only have to deliver the text.
+          adb install -r -g "$APK" 2>&1 | tee "$ART/adb-install.txt" || true
           grep -q '^Success' "$ART/adb-install.txt" || { echo "the APK did not install"; exit 1; }
           # `-W` waits for the launch to complete and prints a Status line, so a
           # missing or non-exported activity is a failure HERE with a readable
           # message rather than a mystery further down.
-          adb shell am start -W -n "$PKG/.MainActivity" | tee "$ART/am-start.txt"
+          adb shell am start -W -n "$PKG/.MainActivity" 2>&1 | tee "$ART/am-start.txt" || true
           grep -q '^Status: ok' "$ART/am-start.txt" || { echo "am start did not report Status: ok"; exit 1; }
 
       - name: The WebView is running OUR app, and the native bridge answers
@@ -730,7 +812,14 @@ jobs:
         id: probe
         run: |
           set -euo pipefail
-          PID=$(adb shell pidof "$PKG" | tr -d '\r' | awk '{print $1}')
+          # `|| true` SO THE DIAGNOSTIC BELOW CAN ACTUALLY RUN. `pidof` exits 1
+          # when there is no such process, `adb shell` forwards that, and under
+          # `set -euo pipefail` the assignment would abort the step — which is
+          # precisely the crashed-app case this line exists to report. The useful
+          # message would have been dead code and the failure would have read as
+          # an adb problem. Same shape as android-build.yml's `find … || true`
+          # around the merged-manifest diagnostic.
+          PID=$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | awk '{print $1}' || true)
           [ -n "$PID" ] || { echo "the app process is already gone — it crashed during launch"; exit 1; }
           echo "PID=$PID" >> "$GITHUB_ENV"
           # FOUND, NOT NAME-ASSUMED, for the same reason the merged manifest is
@@ -756,12 +845,21 @@ jobs:
         run: |
           set -euo pipefail
           sleep 10
-          STILL=$(adb shell pidof "$PKG" | tr -d '\r' | awk '{print $1}')
+          # `|| true` for the same reason as the probe step: a dead process makes
+          # `pidof` exit 1, and that is the answer this step is asking for.
+          STILL=$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | awk '{print $1}' || true)
           [ -n "$STILL" ] || { echo "the app process died after the probe — it is not stable"; exit 1; }
           [ "$STILL" = "$PID" ] || { echo "the pid changed from $PID to $STILL — the app restarted, which means it crashed"; exit 1; }
           adb logcat -d > "$ART/logcat.txt"
           if grep -qE 'FATAL EXCEPTION|ANR in ai\.jwlabs\.foura' "$ART/logcat.txt"; then
-            echo "::group::crash"; grep -A 30 -E 'FATAL EXCEPTION|ANR in ai\.jwlabs\.foura' "$ART/logcat.txt" | head -80; echo "::endgroup::"
+            # BRACED AND `|| true`d BEFORE `head`. Three or more matches exceed
+            # 80 lines, `head` exits, `grep` takes SIGPIPE, and `pipefail` would
+            # abort the step right there — leaving `::endgroup::` unemitted (the
+            # log group then swallows the rest of the job) and the verdict line
+            # below unprinted, on the one run where it matters most.
+            echo "::group::crash"
+            { grep -A 30 -E 'FATAL EXCEPTION|ANR in ai\.jwlabs\.foura' "$ART/logcat.txt" || true; } | head -80
+            echo "::endgroup::"
             echo "the log carries a fatal exception or an ANR"
             exit 1
           fi

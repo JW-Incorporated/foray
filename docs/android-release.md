@@ -108,6 +108,13 @@ rm keystore.b64 password.txt
 decodes to a file Gradle rejects with a message about keystore format, twenty
 minutes into a build.
 
+**The password must be at least 12 characters**, and the build refuses to
+proceed if it is shorter — not as security theatre, but because the leak scan in
+§2.1 is a substring search over the Gradle log. A short password collides with
+ordinary build output by coincidence, and the check would then delete a clean
+log and report a leak that did not happen. A password that cannot be told apart
+from log text is not doing its job anyway.
+
 ### 2.1 What the workflow does with them
 
 - The base64 is decoded to `$RUNNER_TEMP/android-keys/upload.p12` — a **sibling**

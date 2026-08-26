@@ -24,6 +24,33 @@
  * § "A green test is not evidence until you have broken it". All of them were
  * run; a green suite on this file means the mutations were reverted, not that
  * they were skipped.
+ *
+ * ── IF YOU ARE ABOUT TO ASSERT THAT ONE THING COMES BEFORE ANOTHER, READ THIS
+ *
+ * USE `assertOrder`. Do not write `src.indexOf(a) < src.indexOf(b)`.
+ *
+ * `indexOf` RETURNS -1 FOR A MISSING NEEDLE, AND -1 IS LESS THAN EVERYTHING, so
+ * that predicate is TRUE when `a` is absent. The assertion therefore passes most
+ * loudly in the case it exists to forbid: `a` deleted entirely. It is not a
+ * hypothetical — it shipped in this file for about twenty minutes. The test
+ * "the password-length floor must run before any Gradle invocation" was written
+ * to pin the fix for a credential-leak vector two reviewers had just found, and a
+ * mutation that DELETED the floor left it green. The order was right; the
+ * existence was never checked.
+ *
+ * The general rule this is one instance of: an assertion about a RELATIONSHIP
+ * between two things must first assert that both things are there. Otherwise it
+ * degrades to a claim about the empty set, which every implementation satisfies.
+ * `assertOrder` does presence first, then position, and names which needle went
+ * missing.
+ *
+ * AND NOTE WHAT CAUGHT IT: a mutation run, not a review. This is the sixth
+ * guard-that-was-not-guarding found in this codebase in three days, and the
+ * distinction between them is worth carrying — most were caught by mutating the
+ * code and watching the suite stay green, but one (an R2 startup refusal that
+ * could never fire) was not, because its tests were coupled to the code and the
+ * CODE was wrong about the world. Mutation testing proves a test can see its
+ * subject; it cannot tell you the subject is the right one.
  */
 
 import test from "node:test";
@@ -107,6 +134,23 @@ function releaseStepCode(nameFragment) {
  *  matters: the count drops the moment a check stops being able to fail. */
 function failureClauses(stepSrc) {
   return (stepSrc.match(/exit 1/g) ?? []).length;
+}
+
+/** Assert that `first` appears BEFORE `second` in a step, with BOTH present.
+ *
+ *  `indexOf(a) < indexOf(b)` IS TRUE WHEN `a` IS ABSENT, because a missing
+ *  needle is -1 and -1 is less than everything. A round-2 mutation — moving the
+ *  password-length floor back to after the build, which is the defect two
+ *  reviewers had just found — SURVIVED for exactly that reason: the mutation
+ *  removed the marker, `indexOf` answered -1, and the ordering assertion
+ *  reported that the check it could no longer see came first. Ordering claims
+ *  have to assert presence before they assert position. */
+function assertOrder(stepSrc, first, second, why) {
+  const a = stepSrc.indexOf(first);
+  const b = stepSrc.indexOf(second);
+  assert.notEqual(a, -1, `${why} — but ${JSON.stringify(first)} is not in the step at all`);
+  assert.notEqual(b, -1, `${why} — but ${JSON.stringify(second)} is not in the step at all`);
+  assert.ok(a < b, why);
 }
 
 /* ────────────────────────── shape and trigger set ────────────────────────── */
@@ -945,18 +989,90 @@ test("a Gradle log that contains the password is destroyed rather than uploaded"
      today; a `--stacktrace` added in a hurry, or a keystore error that echoes
      its inputs, is one commit away. */
   const s = releaseStepCode("bundleRelease — the .aab");
-  assert.match(
-    s,
-    /grep -qF "\$FORAY_KEYSTORE_PASSWORD" "\$ART\/gradle-bundleRelease\.log"/,
-    "the log must be searched for the password"
-  );
-  assert.match(s, /rm -f "\$ART\/gradle-bundleRelease\.log"/, "and destroyed if it is in there");
+  assert.match(s, /grep -qF "\$FORAY_KEYSTORE_PASSWORD" "\$LOG"/, "the log must be searched for the password");
+  assert.match(s, /rm -f "\$LOG"/, "and destroyed if it is in there");
   /* ORDER, NOT JUST PRESENCE. Scrubbing after the failure branch has already
      tailed the file would be a check that runs too late to matter. */
-  assert.ok(
-    s.indexOf('grep -qF "$FORAY_KEYSTORE_PASSWORD"') < s.indexOf("bundleRelease tail"),
+  assertOrder(
+    s,
+    'grep -qF "$FORAY_KEYSTORE_PASSWORD"',
+    "bundleRelease tail",
     "the scrub must happen before anything reads the log back out"
   );
+});
+
+test("an unscanned build log cannot reach the uploaded directory by ANY path", () => {
+  /* MUTATION: change `LOG="$RUNNER_TEMP/gradle-bundleRelease.log"` to
+     `LOG="$ART/gradle-bundleRelease.log"` -> fails.
+     ORDERING THE SCRUB WAS NOT ENOUGH, AND TWO REVIEWERS FOUND THE SAME HOLE
+     INDEPENDENTLY. When the build wrote straight into $ART, every exit between
+     the build and the scrub left an unscanned log for the `if: always()` upload
+     to publish: the `timeout-minutes`, a cancelled concurrency group, and — as
+     shipped for about an hour — a password-length check that had been added
+     after the build and returned before the scrub, so the one input that makes
+     the scan unusable was also the one that skipped it.
+     A CHECK THAT PROTECTS ONE CODE PATH AGAINST AN UNCONDITIONAL UPLOAD IS A
+     CHECK WITH A GAP IN IT. The log now lives outside the uploaded directory
+     until it has been read, which is the same structural argument that puts
+     $KEYDIR beside $ART rather than inside it — and this test is the pair of the
+     keystore one above. */
+  const s = releaseStepCode("bundleRelease — the .aab");
+  assert.match(s, /LOG="\$RUNNER_TEMP\/gradle-bundleRelease\.log"/, "the build log must be written outside $ART");
+  assert.match(s, /gradlew bundleRelease [^\n]*> "\$LOG" 2>&1/, "and the build must write to it");
+  assert.match(s, /cp "\$LOG" "\$ART\/gradle-bundleRelease\.log"/, "it enters $ART by an explicit copy");
+  assertOrder(
+    s,
+    'grep -qF "$FORAY_KEYSTORE_PASSWORD"',
+    'cp "$LOG"',
+    "the copy into $ART must come AFTER the scan, or the scan is decoration"
+  );
+  /* THE LENGTH FLOOR IS BEFORE THE FIRST BUILD, which is what makes its own
+     message ("Refusing to build") true as well as what removes the gap. */
+  assertOrder(
+    s,
+    "${#FORAY_KEYSTORE_PASSWORD}",
+    "./gradlew",
+    "the password-length floor must run before any Gradle invocation"
+  );
+});
+
+test("Gradle's own view of whether it was keyed is READ, not merely recorded", () => {
+  /* MUTATION: delete the `grep -q 'FORAY_SIGNING_STATUS=keyed'` line -> fails.
+     `foraySigningStatus` was captured to a file that nothing opened — evidence
+     for a human and a check for nobody. The two halves can disagree: the
+     workflow decides `keyed` from the secret, the Gradle include decides
+     `signingRequested` from the environment it was handed, and a renamed
+     variable or an include that stops being applied separates them. The
+     signature step catches that after the build; this catches it before, which
+     on a 25-minute compile is the difference between a diagnosis and a wait. */
+  const s = releaseStepCode("bundleRelease — the .aab");
+  assert.match(s, /grep -q 'FORAY_SIGNING_STATUS=keyed' "\$ART\/signing-status\.txt"/);
+  assertOrder(
+    s,
+    "FORAY_SIGNING_STATUS=keyed",
+    "gradlew bundleRelease",
+    "the disagreement must be caught before the release compile, not after it"
+  );
+});
+
+test("every pipeline whose failure has a diagnostic can actually reach it", () => {
+  /* MUTATION: delete `|| true` from the `adb install` pipeline -> fails.
+     THE SAME DEFECT THREE TIMES, and a reviewer found all three: under
+     `set -o pipefail` a failing `adb install`, a failing `am start` (adb shell
+     forwards the remote status) or a failing `base64 --decode` aborts the step
+     BEFORE the `grep`/`if` written to explain it. The message is then dead code
+     and the operator gets the tool's own error instead — which is exactly the
+     shape android-build.yml's `find … || true` comment already records for the
+     merged-manifest diagnostic. */
+  const launch = releaseStepCode("Install the app and start it");
+  assert.match(launch, /adb install -r -g "\$APK"[^\n]*\|\| true/, "adb install exits non-zero on failure");
+  assert.match(launch, /am start -W -n "\$PKG\/\.MainActivity"[^\n]*\|\| true/, "adb shell forwards am's status");
+  const key = releaseStepCode("Materialise the upload key");
+  assert.match(key, /if ! printf '%s' "\$KEYSTORE_B64" \| base64 --decode/, "invalid base64 must reach its own message");
+  /* And the crash report, where SIGPIPE from `head` would otherwise abort the
+     step with the log group left open and the verdict line unprinted. */
+  const alive = releaseStepCode("Still alive, and nothing crashed");
+  assert.match(alive, /\{ grep -A 30 [^\n]*\|\| true; \} \| head -80/, "grep into head must survive SIGPIPE");
 });
 
 test("both signing outcomes are VERIFIED, and neither is assumed", () => {
@@ -980,12 +1096,16 @@ test("both signing outcomes are VERIFIED, and neither is assumed", () => {
     false,
     "apksigner reads APK signature schemes — on an .aab it answers the wrong question"
   );
-  assert.match(s, /"\$SIGBLOCKS" -eq 0/, "the keyed branch must require a signature block");
+  /* EXACTLY ONE, not "at least one" — a reviewer's point and a real hole. Two
+     signature blocks means two signers, and the fingerprint check below is a
+     substring search over a certificate dump that would then contain both, so a
+     bundle signed by the upload key AND something else passed every check. */
+  assert.match(s, /"\$SIGBLOCKS" -ne 1/, "the keyed branch must require exactly one signature block");
   assert.match(s, /"\$SIGBLOCKS" -ne 0/, "the unkeyed branch must require the ABSENCE of one");
   assert.equal(
     failureClauses(s),
-    5,
-    "five clauses — no block when keyed, jarsigner's exit, jarsigner's verdict, a wrong fingerprint, and a block when NOT keyed — must each be able to fail the job"
+    6,
+    "six clauses — wrong block count when keyed, jarsigner's exit, jarsigner's verdict, keytool's exit, a wrong fingerprint, and a block when NOT keyed — must each be able to fail the job"
   );
 });
 
@@ -1058,6 +1178,38 @@ test("nothing keylike is committed anywhere in the signing config", () => {
     false,
     "no keystore path as a value — the path arrives in FORAY_KEYSTORE_PATH at build time"
   );
+});
+
+test("the signing include fails loudly on every way it can be half-configured", () => {
+  /* MUTATION: delete the `isInteger()` guard from
+     `mobile/gradle/foray-signing.gradle` -> fails.
+     ABSENT-SAFE IS NOT THE SAME AS BROKEN-SAFE, and that distinction is the whole
+     design of that file: no `FORAY_KEYSTORE_PATH` is an ordinary state that
+     yields an unsigned bundle, while a path that is set and unusable must throw.
+     Four ways to be half-configured, four `GradleException`s — and the fourth was
+     found by a reviewer and had NO TEST until a round-2 mutation survived: a
+     founder who types the version NAME (`1.0.0`) into the version_code box gets
+     `NumberFormatException: For input string` out of a generated project,
+     twenty-five minutes in, naming neither the variable nor the box.
+     THE GRADLE FILE HAS NO OTHER COVERAGE AT ALL. Gradle cannot run in this
+     repo's test environment, so this suite reading its text is the only thing
+     standing between these guards and a silent deletion. */
+  const gradle = fs.readFileSync(path.join(ROOT, "mobile/gradle/foray-signing.gradle"), "utf8");
+  const throws = (gradle.match(/throw new GradleException/g) ?? []).length;
+  assert.equal(throws, 5, `expected five GradleException guards, found ${throws}`);
+  for (const [needle, why] of [
+    [/if \(!keystoreFile\.isFile\(\)\)/, "a keystore path pointing at nothing must throw, not build unsigned"],
+    [/if \(!isSet\(keystorePassword\)\)/, "a keystore with no password must throw"],
+    [/if \(!isSet\(keystoreAlias\)\)/, "a keystore with no alias must throw"],
+    [/!versionCodeEnv\.trim\(\)\.isInteger\(\)/, "a non-integer versionCode must be named, not thrown as a NumberFormatException"],
+    [/versionCodeOverride <= 0/, "Play requires a positive versionCode, so 0 must not reach the build"],
+  ]) {
+    assert.match(gradle, needle, why);
+  }
+  /* AND THE PKCS12 DECLARATION, which is not a guard but is the same class of
+     one-line-from-broken: AGP guesses the store type from the file when this is
+     absent, and a wrong guess fails as `Invalid keystore format`. */
+  assert.match(gradle, /storeType "PKCS12"/, "the store type must be declared, not inferred from the extension");
 });
 
 /* ───────────────────────────── the launch itself ───────────────────────────── */

@@ -137,11 +137,22 @@ export function wireSigning(androidDir, opts = {}) {
   const alreadyWired = hasApplyLine(before);
 
   if (opts.check) {
-    const copied = fs.existsSync(path.join(androidDir, SIGNING_GRADLE_NAME));
+    const copiedPath = path.join(androidDir, SIGNING_GRADLE_NAME);
+    const copied = fs.existsSync(copiedPath);
     if (!alreadyWired || !copied) {
       throw new WireSigningError(
         `not wired: apply line ${alreadyWired ? "present" : "MISSING"}, ` +
           `${SIGNING_GRADLE_NAME} ${copied ? "present" : "MISSING"}`
+      );
+    }
+    /* CURRENT, NOT MERELY PRESENT. `existsSync` alone accepts a copy left by an
+       earlier run against an older version of the tracked include — a stale
+       signing config that Gradle applies happily. The generated tree survives
+       between `cap sync` runs, so that is a reachable state, not a hypothetical,
+       and its symptom is a build that signs with rules nobody edited. */
+    if (fs.readFileSync(copiedPath, "utf8") !== fs.readFileSync(SIGNING_GRADLE_SOURCE, "utf8")) {
+      throw new WireSigningError(
+        `${copiedPath} is not the current ${SIGNING_GRADLE_NAME} — it is a stale copy from an earlier run`
       );
     }
     return { applied: false, alreadyWired: true, gradleFile: appGradlePath };

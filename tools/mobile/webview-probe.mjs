@@ -222,6 +222,16 @@ export async function evaluate(wsUrl, expression, timeoutMs = 30000) {
         clearTimeout(timer);
         reject(new Error(`websocket error talking to ${wsUrl}`));
       });
+      /* A CLEAN CLOSE IS AN ANSWER TOO, and without this it is a 30-second
+         silence. A WebView target that is destroyed mid-probe — the page
+         navigated, the activity recreated, `adb forward` dropped — closes the
+         socket without an `error` event, so the promise would sit on the timer
+         and the report would say "Runtime.evaluate timed out". That is the
+         wrong diagnosis of a real event, at the end of a forty-minute job. */
+      ws.addEventListener("close", (ev) => {
+        clearTimeout(timer);
+        reject(new Error(`the DevTools socket closed before answering (code ${ev?.code ?? "?"})`));
+      });
       ws.addEventListener("open", () => {
         ws.send(
           JSON.stringify({
@@ -281,14 +291,30 @@ async function probe({ endpoint, timeoutMs, title }) {
   return { ...last, attempts };
 }
 
-function parseArgs(argv) {
+/** ARGUMENTS ARE VALIDATED, AND THAT IS NOT TIDINESS. An unparseable
+ *  `--timeout-ms` becomes NaN, `Date.now() < NaN` is false on the first
+ *  evaluation, and the probe exits 1 with `attempts: 0` and "the probe never
+ *  reached the page" — which at the end of a forty-minute emulator job is
+ *  indistinguishable from an app that died on launch. Preserving that
+ *  distinction is the entire job of this file, so a bad flag has to fail as a
+ *  bad flag. Same for a flag given as the last argument, where `argv[++i]` is
+ *  `undefined` and `fetch(undefined + "/json/list")` fails much later. */
+export function parseArgs(argv) {
   const out = { endpoint: "http://127.0.0.1:9222", timeoutMs: 90000, out: null };
+  const value = (i, flag) => {
+    const v = argv[i];
+    if (v === undefined || v.startsWith("--")) throw new Error(`${flag} needs a value`);
+    return v;
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
-    if (a === "--endpoint") out.endpoint = argv[++i];
-    else if (a === "--out") out.out = argv[++i];
-    else if (a === "--timeout-ms") out.timeoutMs = Number(argv[++i]);
+    if (a === "--endpoint") out.endpoint = value(++i, a);
+    else if (a === "--out") out.out = value(++i, a);
+    else if (a === "--timeout-ms") out.timeoutMs = Number(value(++i, a));
     else throw new Error(`unknown argument ${a}`);
+  }
+  if (!Number.isFinite(out.timeoutMs) || out.timeoutMs <= 0) {
+    throw new Error(`--timeout-ms must be a positive number, got ${JSON.stringify(out.timeoutMs)}`);
   }
   return out;
 }
@@ -311,5 +337,15 @@ async function main(argv) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
-  main(process.argv.slice(2)).then((c) => process.exit(c));
+  main(process.argv.slice(2)).then(
+    (c) => process.exit(c),
+    (err) => {
+      /* WITHOUT THIS, a throw from `parseArgs` or a missing `index.html` is an
+         unhandled rejection: a stack trace where every other failure in this
+         file is a sentence, at the point a human is trying to tell "we could
+         not ask" from "the app did not answer". */
+      console.error(String(err?.message ?? err));
+      process.exit(2);
+    }
+  );
 }

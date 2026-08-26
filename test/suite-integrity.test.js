@@ -501,7 +501,7 @@ const FLOORS = {
      forgiving fixture there is. Raise this number when the suite grows; do not
      lower it.
 
-     27 -> 56 WHEN `android-release.yml` LANDED — the Play submission path. The 29
+     27 -> 59 WHEN `android-release.yml` LANDED — the Play submission path. The 32
      added assert a SECOND workflow from the same file, on purpose: the two are one
      decision. `android-build.yml` must keep reading no secret and booting no
      emulator so it stays runnable on any fork; `android-release.yml` is where the
@@ -523,7 +523,7 @@ const FLOORS = {
          only genuinely flaky thing in this repo (mp1-background-audio.md §6.2), and
          the .aab is the critical path to a submission. One `needs:` would put the
          flake in front of the artefact. */
-  "tools/mobile/android-workflow.test.mjs": 56,
+  "tools/mobile/android-workflow.test.mjs": 59,
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
      release signing config ever reaches Gradle is that this script ran and its
@@ -532,7 +532,7 @@ const FLOORS = {
      of the include is not a wiring": the script writes a COMMENT naming
      `foray-signing.gradle` directly above the apply line, so a substring check
      would report a commented-out wiring as wired. */
-  "tools/mobile/wire-signing.test.mjs": 10,
+  "tools/mobile/wire-signing.test.mjs": 11,
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
      entirely one-directional: a verdict too generous reports a launch for a page
@@ -543,7 +543,7 @@ const FLOORS = {
      "android"` is set in ForayAudioPlugin.java and nowhere else. That second one
      is the closest relative in this repo of #269, where an Android fixture
      answered `running: true` and the fake was the only place the code worked. */
-  "tools/mobile/webview-probe.test.mjs": 12,
+  "tools/mobile/webview-probe.test.mjs": 15,
 
   "tools/refresh/enclosure.test.mjs": 18,
   /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between

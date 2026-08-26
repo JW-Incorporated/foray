@@ -24,7 +24,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { EXPECTED_HOST, PROBE_EXPRESSION, expectedTitle, pickPage, titleOf, verdict } from "./webview-probe.mjs";
+import {
+  EXPECTED_HOST,
+  PROBE_EXPRESSION,
+  evaluate,
+  expectedTitle,
+  parseArgs,
+  pickPage,
+  titleOf,
+  verdict,
+} from "./webview-probe.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 
@@ -214,6 +223,83 @@ test("the injected expression still asks for everything the verdict judges", () 
      has to become a reported failure, not an exception that loses the other five
      fields — the report of a broken launch is the most valuable one there is. */
   assert.ok(PROBE_EXPRESSION.includes("catch"), "a rejecting bridge must be caught and reported");
+});
+
+test("a Node with no global WebSocket says so, instead of failing as a dead app", async (t) => {
+  /* MUTATION: delete the `typeof globalThis.WebSocket !== "function"` guard
+     -> fails (with a TypeError from `new undefined(...)` rather than a verdict).
+     THE ONE ENVIRONMENTAL ASSUMPTION IN THE WHOLE PROBE. Node has provided a
+     global `WebSocket` since 22, and `android-release.yml` asks for 22 — but a
+     runner image change, or a future workflow edit that drops the node version to
+     match something else, would take the evaluate path away. Without the guard
+     that surfaces at the end of a forty-minute emulator job as a stack trace,
+     which reads exactly like a crashed app: the difference between "we could not
+     ask" and "the app did not answer" is the entire value of the run.
+     THE REST OF `evaluate()` IS NOT COVERED and this is where that is said: the
+     socket handshake and the CDP message loop need a live DevTools endpoint, and
+     the honest place they are exercised is the smoke job itself. */
+  const saved = globalThis.WebSocket;
+  t.after(() => {
+    if (saved === undefined) delete globalThis.WebSocket;
+    else globalThis.WebSocket = saved;
+  });
+  delete globalThis.WebSocket;
+  await assert.rejects(() => evaluate("ws://127.0.0.1:9222/x", "1+1"), /no global WebSocket/);
+});
+
+test("a bad --timeout-ms is refused, instead of silently reporting a dead app", () => {
+  /* MUTATION: delete the `Number.isFinite(out.timeoutMs)` check -> fails.
+     THE SUBTLEST FAILURE IN THIS FILE, and a reviewer found it. `Number("soon")`
+     is NaN, `Date.now() < NaN` is false on the FIRST evaluation, so the probe
+     loop never runs once: it exits 1 with `attempts: 0` and "the probe never
+     reached the page". At the end of a forty-minute emulator job that is
+     indistinguishable from an app that died on launch — and preserving exactly
+     that distinction is what this whole module is for. A flag with no value has
+     the same shape: `--endpoint` last makes `endpoint` undefined, and the
+     failure arrives much later wearing a different face. */
+  assert.equal(parseArgs(["--timeout-ms", "1000"]).timeoutMs, 1000);
+  assert.throws(() => parseArgs(["--timeout-ms", "soon"]), /positive number/);
+  assert.throws(() => parseArgs(["--timeout-ms", "0"]), /positive number/);
+  assert.throws(() => parseArgs(["--timeout-ms", "-5"]), /positive number/);
+  assert.throws(() => parseArgs(["--endpoint"]), /--endpoint needs a value/);
+  assert.throws(() => parseArgs(["--out", "--timeout-ms", "10"]), /--out needs a value/);
+  assert.throws(() => parseArgs(["--wat"]), /unknown argument --wat/);
+  /* And the defaults are the ones the workflow relies on. */
+  const d = parseArgs([]);
+  assert.equal(d.endpoint, "http://127.0.0.1:9222");
+  assert.ok(d.timeoutMs > 0);
+});
+
+test("a socket that closes without answering fails immediately, not on the timer", async () => {
+  /* MUTATION: delete the `close` listener from `evaluate` -> this test times out
+     rather than resolving, which node:test reports as a failure.
+     A DESTROYED WEBVIEW TARGET CLOSES CLEANLY — no `error` event. The page
+     navigated, the activity was recreated, `adb forward` dropped: all of them
+     land here, and without the listener the promise sits until the 30 s timer
+     and the report says "Runtime.evaluate timed out", which is a wrong diagnosis
+     of a real event. The fake below is deliberately the HOSTILE shape — it opens
+     and then closes, answering nothing — because a fake that answers is the one
+     that makes this test vacuous. */
+  const saved = globalThis.WebSocket;
+  globalThis.WebSocket = class {
+    constructor() {
+      this.listeners = {};
+      queueMicrotask(() => {
+        this.listeners.open?.();
+        queueMicrotask(() => this.listeners.close?.({ code: 1006 }));
+      });
+    }
+    addEventListener(name, fn) {
+      this.listeners[name] = fn;
+    }
+    send() {}
+    close() {}
+  };
+  try {
+    await assert.rejects(() => evaluate("ws://127.0.0.1:9222/x", "1+1", 60000), /closed before answering/);
+  } finally {
+    globalThis.WebSocket = saved;
+  }
 });
 
 test("the expected host is the one Capacitor actually serves from on Android", () => {

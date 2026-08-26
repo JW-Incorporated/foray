@@ -112,8 +112,26 @@ if (signingRequested) {
    runs with DELEGATE_FIRST resolution, so calling a script-level helper from
    inside one is the kind of thing that works until an AGP or Groovy change makes
    it not, and it would fail as an unrelated-looking MissingMethodException. */
+/* VALIDATED, BECAUSE THE VALUE IS TYPED BY A HUMAN INTO A DISPATCH BOX. The
+   obvious mistake is entering the versionNAME there — `1.0.0` — and a bare
+   `.toInteger()` answers that with `NumberFormatException: For input string`
+   from a generated project, twenty-five minutes into a build, naming neither
+   the variable nor the box it came from. Every other misconfiguration in this
+   file gets a sentence; so does this one. `<= 0` is rejected too: Play's
+   versionCode is a positive integer, and `0` would be accepted here and
+   refused at the upload form. */
 def versionCodeEnv = System.getenv("FORAY_VERSION_CODE")
+if (isSet(versionCodeEnv) && !versionCodeEnv.trim().isInteger()) {
+    throw new GradleException(
+        "FORAY_VERSION_CODE is '" + versionCodeEnv.trim() + "', which is not a whole number. " +
+        "Play's versionCode is an integer that must increase on every upload (1, 2, 3...); " +
+        "the dotted version string goes in version_name."
+    )
+}
 def versionCodeOverride = isSet(versionCodeEnv) ? versionCodeEnv.trim().toInteger() : null
+if (versionCodeOverride != null && versionCodeOverride <= 0) {
+    throw new GradleException("FORAY_VERSION_CODE is " + versionCodeOverride + " — Play requires a positive versionCode")
+}
 def versionNameEnv = System.getenv("FORAY_VERSION_NAME")
 def versionNameOverride = isSet(versionNameEnv) ? versionNameEnv.trim() : null
 
@@ -156,7 +174,15 @@ android {
     buildTypes {
         release {
             if (signingRequested) {
-                signingConfig signingConfigs.forayRelease
+                /* `getByName`, NOT the bare `signingConfigs.forayRelease` idiom.
+                   Both work — the bare form resolves through the enclosing
+                   `android { }` closure's owner chain — but this file's own note
+                   above says it avoids relying on closure delegate/owner
+                   fallback, and a rule you follow in one place and not the other
+                   is not a rule. It also fails with "SigningConfig with name
+                   'forayRelease' not found" rather than a
+                   MissingPropertyException if the block above is ever skipped. */
+                signingConfig signingConfigs.getByName("forayRelease")
             }
         }
     }
