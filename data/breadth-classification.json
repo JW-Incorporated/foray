@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-26T00:54:59.796Z",
+  "built_at": "2026-08-26T16:56:40.012Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-26-f3eeaa63",
+    "last_batch_id": "fresh-2026-08-26-a85812d5",
     "last_batch_tier": 1
   },
   "entries": {
@@ -1026,10 +1026,29 @@
     },
     "78518945": {
       "topics": [
-        "news/daily"
+        "news/daily",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news program in German language.",
+      "display_title": "tagesschau: Die 20 Uhr Nachrichten (Audio)",
+      "blurb": "Evening news broadcast providing daily national and international coverage.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "78775671": {
       "topics": [
@@ -2739,9 +2758,22 @@
       "topics": [
         "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science genre show focused on scientific topics.",
+      "display_title": "Science Weekly",
+      "blurb": "Weekly science program covering contemporary research and discoveries.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "137002798": {
       "topics": [
@@ -3847,11 +3879,29 @@
     },
     "188674007": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-0"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Soccer/football commentary and analysis.",
+      "display_title": "Football Weekly",
+      "blurb": "Weekly soccer league coverage and match commentary.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "189219027": {
       "topics": [
@@ -6796,7 +6846,28 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "German language learning program with slowly-spoken news content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "282932005": {
       "topics": [
@@ -27584,10 +27655,29 @@
     },
     "1078665131": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish religious and cultural discussion program.",
+      "display_title": "Can We Talk?",
+      "blurb": "Conversations about Jewish faith, practice, and contemporary issues.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1078714736": {
       "topics": [
@@ -34407,7 +34497,25 @@
         "linguistics/language"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "linguistics/language",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Russian language instruction and learning program.",
+      "display_title": "Russian Made Easy: Learn Russian Quickly and Easily",
+      "blurb": "Russian language lessons designed for rapid acquisition and communication.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1186199709": {
       "topics": [
@@ -42355,10 +42463,32 @@
     },
     "1298103863": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Buddhist spiritual teachings and practice archives from established teacher.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1298224806": {
       "topics": [
@@ -74902,10 +75032,29 @@
     },
     "1498357469": {
       "topics": [
-        "sports/tennis"
+        "sports/tennis",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tennis-focused sport podcast.",
+      "display_title": "Kleines Tennis",
+      "blurb": "Tennis commentary, analysis, and discussion for players and enthusiasts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1498379262": {
       "topics": [
@@ -79424,7 +79573,25 @@
         "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Astronomy program in Persian language.",
+      "display_title": "شب آوا",
+      "blurb": "Astronomy and space science content in Persian.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1507781967": {
       "topics": [
@@ -110903,10 +111070,32 @@
     },
     "1580136569": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Quranic recitation from Islamic tradition.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 17w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1580146037": {
       "topics": [
@@ -116652,10 +116841,29 @@
     },
     "1599024857": {
       "topics": [
-        "sports/cricket"
+        "sports/cricket",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/cricket",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cricket match coverage, Ashes series.",
+      "display_title": "The Final Word Ashes Daily podcast",
+      "blurb": "Daily commentary on cricket's Ashes series between Australia and England.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1599044407": {
       "topics": [
@@ -151802,8 +152010,26 @@
         "sports/endurance",
         "health/fitness"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.7
+        },
+        {
+          "node": "health/fitness",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Biographical content about Olympic swimmer; genre-only signal limited.",
+      "display_title": "Michael Phelps - Biography Flash",
+      "blurb": "Short biographical pieces about Olympic swimmer Michael Phelps.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1719210703": {
       "topics": [
@@ -160649,10 +160875,29 @@
     },
     "1744467005": {
       "topics": [
-        "sports/golf"
+        "sports/golf",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/golf",
+          "confidence": 0.9
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf commentary and discussion program.",
+      "display_title": "Kostis & McCord - Off Their Rockers",
+      "blurb": "Golf commentary and analysis from professional broadcasters.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1744472026": {
       "topics": [
@@ -161770,7 +162015,25 @@
         "computing"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.85
+        },
+        {
+          "node": "computing",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology industry news and updates.",
+      "display_title": "Daily Charge Up",
+      "blurb": "Daily technology news and industry updates.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1748216524": {
       "topics": [
@@ -172826,10 +173089,29 @@
     },
     "1789989059": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/animal-cognition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature/animal-cognition",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nature curiosity program, likely animal or wildlife focused.",
+      "display_title": "InShanely Curious",
+      "blurb": "Nature and wildlife exploration driven by curiosity and discovery.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1790098095": {
       "topics": [
@@ -179627,10 +179909,29 @@
     },
     "1810902929": {
       "topics": [
+        "nature/ocean-science",
         "kids-family/education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/ocean-science",
+          "confidence": 0.8
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Octopus biology content; audience age unclear from title alone.",
+      "display_title": "P1_TheOctopus🐙 | Secrets of the Octopus 🌊✨ 🦑",
+      "blurb": "Exploration of octopus biology and behavior in ocean environments.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1810939144": {
       "topics": [
@@ -180767,11 +181068,29 @@
     },
     "1814318141": {
       "topics": [
-        "space",
-        "science"
+        "space/rockets",
+        "space"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space/rockets",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Space exploration and rocketry podcast in German.",
+      "display_title": "Ready for Liftoff! Der Raumfahrt-Podcast",
+      "blurb": "Space exploration, rocketry, and spaceflight in German.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1814419814": {
       "topics": [
@@ -192946,11 +193265,32 @@
     },
     "1855134731": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "health/nutrition"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "How-to guidance on eating behavior; health angle uncertain.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1855137874": {
       "topics": [
@@ -201226,10 +201566,29 @@
     },
     "1888136783": {
       "topics": [
-        "comedy/stand-up"
+        "comedy/stand-up",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy roast show.",
+      "display_title": "KILL TONY",
+      "blurb": "Live stand-up comedy roast show with guest performers.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1888138263": {
       "topics": [
@@ -201456,10 +201815,29 @@
     },
     "1888940171": {
       "topics": [
-        "comedy/stand-up"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual comedy discussion and hangout show.",
+      "display_title": "Bad Friends",
+      "blurb": "Casual comedy podcast with conversational banter between hosts.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1888986143": {
       "topics": [
@@ -202484,10 +202862,29 @@
     },
     "1893511175": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "religion"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic religious teachings and guidance.",
+      "display_title": "Dr Sh Haifaa Younis Islamic Podcasts",
+      "blurb": "Islamic teachings and spiritual guidance from Islamic scholar.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1893532399": {
       "topics": [
@@ -202827,10 +203224,29 @@
     },
     "1894955045": {
       "topics": [
+        "craft/diy-home",
         "craft"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Costume creation and crafting techniques.",
+      "display_title": "Costume Making",
+      "blurb": "Techniques and tips for designing and constructing costumes.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1894971109": {
       "topics": [
@@ -202894,10 +203310,32 @@
     },
     "1895090933": {
       "topics": [
-        "kids-family/stories"
+        "kids-family/stories",
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Bedtime stories and children's narrative content.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1895121394": {
       "topics": [
@@ -204095,7 +204533,25 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Music library content; historical angle unclear without episodes.",
+      "display_title": "Global English Songs Music Library",
+      "blurb": "Curated collection of English-language music from diverse sources.",
+      "display_copy_ok": true,
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-a85812d5",
+      "classified_at": "2026-08-26T16:56:40.012Z"
     },
     "1896520235": {
       "topics": [
