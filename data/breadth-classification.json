@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-25T16:56:05.328Z",
+  "built_at": "2026-08-26T00:54:59.796Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-25-b0d4e601",
+    "last_batch_id": "fresh-2026-08-26-f3eeaa63",
     "last_batch_tier": 1
   },
   "entries": {
@@ -7269,10 +7269,30 @@
     },
     "295833491": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction/sci-fi",
+        "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.85
+        },
+        {
+          "node": "fiction/drama",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Speculative fiction anthology; majority of stories lean science fiction.",
+      "display_title": "Beneath Ceaseless Skies Audio Fiction Podcasts",
+      "blurb": "Audio fiction anthology featuring short stories from Beneath Ceaseless Skies Online Magazine. Each episode is professionally narrated.",
+      "display_copy_ok": true,
+      "model": "claude-haiku-4-5 (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-26-f3eeaa63",
+      "classified_at": "2026-08-26T00:54:59.796Z"
     },
     "295908830": {
       "topics": [
