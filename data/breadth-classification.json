@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-26T16:22:01.222Z",
+  "built_at": "2026-08-27T00:19:26.859Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-26-38143326",
+    "last_batch_id": "fresh-2026-08-27-58e332df",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -121820,19 +121820,85 @@
     },
     "1567062090": {
       "topics": [
-        "psychology"
+        "psychology",
+        "society",
+        "education/self-improvement"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.75
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian podcast covering psychology, relationships, and modern life challenges.",
+      "display_title": "پادکست فارسی امروز فهمیدم",
+      "blurb": "Persian discussion on psychology, relationships, and life decisions with scientific grounding.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1567064098": {
       "topics": [
-        "history"
+        "history",
+        "history/military-ancient",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        },
+        {
+          "node": "history/military-ancient",
+          "confidence": 0.65
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Persian history podcast covering Iranian and world historical figures and events.",
+      "display_title": "پادکست راوکده",
+      "blurb": "Narrative histories of Iranian and world figures from ancient to modern times.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1567073183": {
       "topics": [
@@ -134218,11 +134284,39 @@
     },
     "1596801011": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.95
+        },
+        {
+          "node": "health",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pet care expert discusses natural dog health, wellness, and holistic veterinary approaches.",
+      "display_title": "Your Natural Dog",
+      "blurb": "Natural pet care advice with experts on dog wellness, nutrition, and holistic health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1596830041": {
       "topics": [
@@ -134415,11 +134509,39 @@
     },
     "1597761181": {
       "topics": [
-        "comedy"
+        "comedy",
+        "comedy/casual-hangs"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic gossip podcast with humorous stories about ordinary people submitted by readers.",
+      "display_title": "Normal Gossip",
+      "blurb": "Funny reader-submitted gossip stories about everyday strangers with comedic guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1597763712": {
       "topics": [
@@ -134602,12 +134724,41 @@
     },
     "1598395367": {
       "topics": [
-        "medicine/biology",
-        "personal-journals"
+        "personal-journals",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal stories from NPEs, adoptees, and donor-conceived people about DNA discoveries.",
+      "display_title": "DNA Surprises",
+      "blurb": "Stories from NPEs, adoptees, and donor-conceived people exploring unexpected parentage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 2,
+        "episodes_with_timed_transcript": 2,
+        "transcript_tags": 2,
+        "transcript_types": {
+          "application/x-subrip": 2
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1598400112": {
       "topics": [
@@ -135194,11 +135345,44 @@
     },
     "1601527327": {
       "topics": [
-        "nature"
+        "nature",
+        "nature/earth-science",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Local conservation education podcast discussing stewardship of natural resources.",
+      "display_title": "Conservation Starters",
+      "blurb": "Local conservation education exploring sustainable stewardship of natural resources.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1601531428": {
       "topics": [
@@ -135233,11 +135417,43 @@
     },
     "1601659576": {
       "topics": [
+        "comedy",
         "comedy/casual-hangs"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic phone prank show with absurd scenarios and unsuspecting victims.",
+      "display_title": "Jubal Phone Pranks",
+      "blurb": "Prank calls featuring absurd scenarios, witty improvisation, and comedic timing.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1601680150": {
       "topics": [
@@ -136011,11 +136227,44 @@
     },
     "1604696954": {
       "topics": [
-        "business/non-profit"
+        "news",
+        "news/commentary",
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.75
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.65
+        },
+        {
+          "node": "religion",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily news briefing at the intersection of faith and civic engagement.",
+      "display_title": "For the Good of the Public",
+      "blurb": "Daily news and faith-informed civic discussion for public life engagement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1604752610": {
       "topics": [
@@ -136302,11 +136551,39 @@
     },
     "1605869346": {
       "topics": [
-        "relationships"
+        "relationships",
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Couple discussing their relationship dynamics with humor and candor.",
+      "display_title": "Brooke and Connor Make A Podcast",
+      "blurb": "A couple discusses their relationship with humor and personal candor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1605877822": {
       "topics": [
@@ -136619,11 +136896,34 @@
     },
     "1606739611": {
       "topics": [
-        "education/courses"
+        "education/language-learning"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Japanese language instruction for learners at various levels.",
+      "display_title": "Learn Japanese with Masa sensei",
+      "blurb": "Japanese language instruction for learners seeking conversational and cultural knowledge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1606752441": {
       "topics": [
@@ -136700,11 +137000,39 @@
     },
     "1606808654": {
       "topics": [
-        "society"
+        "paranormal",
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.8
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Conspiracy theory discussion podcast exploring alternative narratives.",
+      "display_title": "The Rabbit Hole",
+      "blurb": "Conspiracy theory explorations diving into alternative historical narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1606809265": {
       "topics": [
@@ -137235,11 +137563,39 @@
     },
     "1608064632": {
       "topics": [
+        "science",
         "nature/earth-science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature/earth-science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Earth science podcast covering geological history and prehistoric Earth.",
+      "display_title": "Bedrock",
+      "blurb": "Earth science covering geological history and prehistoric planetary development.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1608107305": {
       "topics": [
@@ -137250,12 +137606,39 @@
     },
     "1608109038": {
       "topics": [
-        "craft/diy-home",
-        "education/how-to"
+        "education/how-to",
+        "craft/diy-home"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Homesteading and DIY education on self-sufficiency and sustainable living.",
+      "display_title": "Gubba Homestead Podcast",
+      "blurb": "Homesteading guidance on DIY projects, sustainability, and self-sufficiency.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1608110280": {
       "topics": [
@@ -137612,12 +137995,39 @@
     },
     "1609094267": {
       "topics": [
-        "relationships",
+        "society/law",
         "education/how-to"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legal guidance on navigating divorce and protecting financial interests.",
+      "display_title": "Women Winning Divorce",
+      "blurb": "Legal guidance for navigating divorce and protecting financial assets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1609103778": {
       "topics": [
@@ -138044,11 +138454,39 @@
     },
     "1610545976": {
       "topics": [
-        "society"
+        "personal-journals",
+        "culture/pop-culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal commentary and lifestyle observations from a social media personality.",
+      "display_title": "It's Me, Tinx",
+      "blurb": "Personal lifestyle commentary and cultural observations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1610567330": {
       "topics": [
@@ -138145,12 +138583,39 @@
     },
     "1610946388": {
       "topics": [
-        "culture/mythology",
-        "personal-journals"
+        "paranormal",
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.9
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paranormal and scary story podcast exploring unexplained phenomena.",
+      "display_title": "Scary | A Paranormal Podcast",
+      "blurb": "Paranormal stories exploring unexplained phenomena and supernatural accounts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1610950506": {
       "topics": [
@@ -138291,11 +138756,49 @@
     },
     "1611134496": {
       "topics": [
-        "nature"
+        "nature",
+        "science",
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sustainability and environmental science discussions.",
+      "display_title": "About Sustainability…",
+      "blurb": "Environmental sustainability and science for conscious living practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 3,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 6,
+        "transcript_types": {
+          "text/html": 3,
+          "application/json": 1,
+          "application/x-subrip": 1,
+          "text/vtt": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1611168630": {
       "topics": [
@@ -138630,12 +139133,39 @@
     },
     "1612090432": {
       "topics": [
-        "health/sexuality",
-        "history"
+        "history",
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical exploration of sexuality, scandal, and social change.",
+      "display_title": "Betwixt The Sheets",
+      "blurb": "Historical examination of sexuality, scandal, and social transformation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1612131897": {
       "topics": [
@@ -138861,19 +139391,70 @@
     },
     "1612725859": {
       "topics": [
-        "tv-film"
+        "comedy/stand-up"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy podcast from comedian Justin Martindale.",
+      "display_title": "JUST SAYIN'",
+      "blurb": "Stand-up comedy featuring topical humor and comedic observations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1612835635": {
       "topics": [
-        "religion/hinduism"
+        "religion/hinduism",
+        "philosophy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Hindu philosophy and wisdom teachings from ancient sources.",
+      "display_title": "Wisdom of the Sages",
+      "blurb": "Hindu philosophy and spiritual wisdom from classical teachings.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1612837149": {
       "topics": [
@@ -139228,11 +139809,39 @@
     },
     "1613618660": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "education/self-improvement"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal stories about life transitions and significant changes.",
+      "display_title": "The Life Shift",
+      "blurb": "Personal narratives about pivotal life changes and transformations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1613688775": {
       "topics": [
@@ -139283,12 +139892,34 @@
     },
     "1613810815": {
       "topics": [
-        "sports/soccer",
         "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Formula 1 racing coverage and analysis from sports media company.",
+      "display_title": "The Ringer F1 Show",
+      "blurb": "Formula 1 coverage with expert analysis and racing discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1613894378": {
       "topics": [
@@ -139387,11 +140018,34 @@
     },
     "1614154639": {
       "topics": [
-        "fiction"
+        "fiction/sci-fi"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction podcast with scripted narratives and world-building.",
+      "display_title": "Captains Quadrant",
+      "blurb": "Scripted science fiction with imaginative narratives and world-building.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1614157203": {
       "topics": [
@@ -139726,11 +140380,39 @@
     },
     "1614690223": {
       "topics": [
-        "nature"
+        "health/fitness",
+        "education/self-improvement"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.85
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morning fitness and wellness motivation podcast.",
+      "display_title": "The Hotshot Wake Up",
+      "blurb": "Morning fitness motivation and wellness guidance for daily health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1614847636": {
       "topics": [
@@ -140020,9 +140702,37 @@
       "topics": [
         "health/fitness"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/fitness",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fitness coaching and exercise science education with direct approach.",
+      "display_title": "The Unf*ck Your Fitness Podcast",
+      "blurb": "Fitness coaching and exercise science with practical health guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 28,
+        "transcript_types": {
+          "text/html": 7,
+          "application/json": 7,
+          "application/x-subrip": 7,
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1615791501": {
       "topics": [
@@ -140171,11 +140881,39 @@
     },
     "1616519878": {
       "topics": [
-        "health/mental"
+        "health/mental",
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mental health discussions and psychological exploration.",
+      "display_title": "We're All Insane",
+      "blurb": "Mental health and psychology discussions exploring human experience.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1616537711": {
       "topics": [
@@ -140751,11 +141489,39 @@
     },
     "1618691459": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "health/nutrition"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.9
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutrition education and dietetics instruction from a professional.",
+      "display_title": "Dietetics with Dana",
+      "blurb": "Nutrition science and dietetics education for healthier eating.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1618697621": {
       "topics": [
@@ -140774,12 +141540,39 @@
     },
     "1618854568": {
       "topics": [
-        "transport/trains",
-        "hobbies"
+        "hobbies",
+        "craft/diy-home"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.95
+        },
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Model railroad hobby discussions and community.",
+      "display_title": "Around The Layout",
+      "blurb": "Model railroad hobby community with enthusiast discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1618958655": {
       "topics": [
@@ -141023,8 +141816,31 @@
         "craft"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quilting craft with humor and community discussion.",
+      "display_title": "Inappropriate Quilters",
+      "blurb": "Quilting craft discussions with humor and community engagement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1619764487": {
       "topics": [
@@ -141035,11 +141851,39 @@
     },
     "1619774102": {
       "topics": [
+        "culture/pop-culture",
         "tv-film"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV commentary and pop culture discussion.",
+      "display_title": "Mess Magnets",
+      "blurb": "Reality TV and pop culture commentary with enthusiast hosts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1619792353": {
       "topics": [
@@ -141262,9 +142106,32 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sleep-friendly history stories combining education with relaxation.",
+      "display_title": "Calm History",
+      "blurb": "Sleep-friendly historical narratives for education and relaxation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1620281360": {
       "topics": [
@@ -141313,12 +142180,43 @@
     },
     "1620410114": {
       "topics": [
-        "space",
-        "society"
+        "fiction/drama",
+        "space"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        },
+        {
+          "node": "space",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Appears documentary-adjacent but title and description lack clarity.",
+      "display_title": "Cosmic Peach",
+      "blurb": "Documentary or narrative content exploring cosmic themes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1620471393": {
       "topics": [
@@ -141683,9 +142581,32 @@
       "topics": [
         "comedy/stand-up"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/stand-up",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stand-up comedy from comedian John Crist.",
+      "display_title": "Net Positive",
+      "blurb": "Stand-up comedy featuring performer John Crist.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1621750804": {
       "topics": [
@@ -142584,11 +143505,39 @@
     },
     "1625480927": {
       "topics": [
-        "personal-journals"
+        "personal-journals",
+        "comedy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "personal-journals",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal comedy and lifestyle podcast.",
+      "display_title": "Don't Be Sour",
+      "blurb": "Personal comedy and lifestyle observations with casual discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1625482291": {
       "topics": [
@@ -142750,11 +143699,41 @@
     },
     "1626525760": {
       "topics": [
-        "business/non-profit"
+        "business",
+        "business/management"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/management",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business analysis and commentary for non-profit organizations.",
+      "display_title": "Business Analysis Live!",
+      "blurb": "Business analysis and organizational guidance for non-profit sector.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 2,
+        "episodes_with_timed_transcript": 2,
+        "transcript_tags": 2,
+        "transcript_types": {
+          "application/x-subrip": 2
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1626527232": {
       "topics": [
@@ -142971,12 +143950,39 @@
     },
     "1627795524": {
       "topics": [
-        "religion/christianity",
-        "education/courses"
+        "education/courses",
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Theological education course on embodied spirituality and Catholic thought.",
+      "display_title": "Theology of the Body 101",
+      "blurb": "Theological education on embodied spirituality and faith foundations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 3,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1627813804": {
       "topics": [
@@ -143532,11 +144538,39 @@
     },
     "1630002174": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Commentary on the classic TV show People's Court.",
+      "display_title": "The People's Court Podcast",
+      "blurb": "Commentary and discussion of the classic TV court show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1630013929": {
       "topics": [
@@ -143896,11 +144930,36 @@
     },
     "1631431106": {
       "topics": [
-        "sports/wrestling"
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wrestling podcast featuring wrestler Kevin Nash.",
+      "display_title": "Kliq This",
+      "blurb": "Professional wrestling discussion with wrestling legend Kevin Nash.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "application/x-subrip": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1631451096": {
       "topics": [
@@ -144015,11 +145074,44 @@
     },
     "1631943614": {
       "topics": [
-        "education/how-to"
+        "education/how-to",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.9
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern wedding planning guidance and advice.",
+      "display_title": "Unbridely",
+      "blurb": "Wedding planning guidance for modern couples.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1631961565": {
       "topics": [
@@ -144160,11 +145252,39 @@
     },
     "1632499453": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "kids-family/education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.95
+        },
+        {
+          "node": "kids-family/education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Waldorf education methodology and teaching courses.",
+      "display_title": "Waldorf Essentials",
+      "blurb": "Waldorf education methodology and teaching practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1632703134": {
       "topics": [
@@ -144240,11 +145360,39 @@
     },
     "1633071049": {
       "topics": [
+        "nature/pets",
         "nature"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.9
+        },
+        {
+          "node": "nature",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Animal science and natural world education.",
+      "display_title": "Paws for a Moment",
+      "blurb": "Animal science and natural world exploration.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1633134223": {
       "topics": [
@@ -144308,11 +145456,41 @@
     },
     "1633233409": {
       "topics": [
-        "math"
+        "math",
+        "science/physics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.95
+        },
+        {
+          "node": "science/physics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mathematics research and academic discourse podcast.",
+      "display_title": "Living Proof",
+      "blurb": "Mathematics research and academic discourse from Newton Institute.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "text/html": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1633241370": {
       "topics": [
@@ -144323,11 +145501,39 @@
     },
     "1633264805": {
       "topics": [
-        "nature"
+        "paranormal",
+        "travel"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "paranormal",
+          "confidence": 0.85
+        },
+        {
+          "node": "travel",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spooky and paranormal locations across America.",
+      "display_title": "Most Terrifying Places in America",
+      "blurb": "Paranormal locations and terrifying places across America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1633265866": {
       "topics": [
@@ -144353,19 +145559,79 @@
     },
     "1633466636": {
       "topics": [
-        "music"
+        "music",
+        "culture/pop-culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music industry interviews and pop culture discussion.",
+      "display_title": "Angie Martinez IRL",
+      "blurb": "Music industry interviews and pop culture with host Angie Martinez.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1633502341": {
       "topics": [
+        "culture/pop-culture",
         "tv-film"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment and celebrity discussion podcast.",
+      "display_title": "Do We Know Them?",
+      "blurb": "Entertainment and celebrity culture discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1633504754": {
       "topics": [
@@ -144616,11 +145882,43 @@
     },
     "1634660275": {
       "topics": [
-        "tv-film"
+        "culture/pop-culture",
+        "paranormal"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/pop-culture",
+          "confidence": 0.8
+        },
+        {
+          "node": "paranormal",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Late-night entertainment and cultural commentary.",
+      "display_title": "Another Side of Midnight",
+      "blurb": "Late-night entertainment and cultural commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1634661439": {
       "topics": [
@@ -144634,9 +145932,32 @@
       "topics": [
         "fiction/sci-fi"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/sci-fi",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction audio drama or scripted podcast.",
+      "display_title": "Desert Skies",
+      "blurb": "Science fiction audio drama with original narrative.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1634744035": {
       "topics": [
@@ -144662,11 +145983,34 @@
     },
     "1634874522": {
       "topics": [
-        "education/courses"
+        "education/language-learning"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Korean language instruction and cultural learning.",
+      "display_title": "Talk To Me In Korean",
+      "blurb": "Korean language learning with cultural education.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1634897726": {
       "topics": [
@@ -144716,11 +146060,44 @@
     },
     "1635013492": {
       "topics": [
-        "society"
+        "society",
+        "psychology",
+        "philosophy"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Exploration of cults, consciousness, and psychological phenomena.",
+      "display_title": "Cults to Consciousness",
+      "blurb": "Psychology and society exploring cult dynamics and consciousness.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1635060285": {
       "topics": [
@@ -144797,11 +146174,39 @@
     },
     "1635080359": {
       "topics": [
-        "hobbies"
+        "hobbies",
+        "math"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.95
+        },
+        {
+          "node": "math",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Chess training and visualization techniques.",
+      "display_title": "Chess Visualization with Aiden Rayner",
+      "blurb": "Chess training and visualization techniques with instructor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1635088231": {
       "topics": [
@@ -144829,11 +146234,39 @@
     },
     "1635211340": {
       "topics": [
-        "music"
+        "music",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music history exploring 1990s cultural significance through songs.",
+      "display_title": "60 Songs That Explain the '90s",
+      "blurb": "Music history exploring 1990s culture through significant songs.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1635295907": {
       "topics": [
@@ -144852,12 +146285,39 @@
     },
     "1635354647": {
       "topics": [
-        "architecture",
-        "culture/design"
+        "architecture/infrastructure",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "architecture/infrastructure",
+          "confidence": 0.95
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Construction and design industry discussions and interviews.",
+      "display_title": "The World's Best Construction Podcast",
+      "blurb": "Construction and design industry with expert discussions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1635371540": {
       "topics": [
@@ -145511,11 +146971,39 @@
     },
     "1637217827": {
       "topics": [
-        "aviation"
+        "aviation",
+        "education/how-to"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Aviation training and pilot education content.",
+      "display_title": "Audio Ground School",
+      "blurb": "Aviation training for aspiring pilots and enthusiasts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1637246828": {
       "topics": [
@@ -145533,11 +147021,39 @@
     },
     "1637284186": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Personal transformation and self-improvement coaching podcast.",
+      "display_title": "Sad to Savage",
+      "blurb": "Personal transformation and self-improvement coaching.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1637295456": {
       "topics": [
@@ -145922,11 +147438,39 @@
     },
     "1638152136": {
       "topics": [
-        "society"
+        "society",
+        "education/self-improvement"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Social transformation and personal development discussions.",
+      "display_title": "Transformation Horizon",
+      "blurb": "Social transformation and personal development guidance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-58e332df",
+      "classified_at": "2026-08-27T00:19:26.859Z"
     },
     "1638199777": {
       "topics": [
