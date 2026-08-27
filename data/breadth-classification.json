@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-27T00:19:26.859Z",
+  "built_at": "2026-08-27T08:20:21.231Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-27-58e332df",
+    "last_batch_id": "fresh-2026-08-27-91f8e77c",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -147474,11 +147474,39 @@
     },
     "1638199777": {
       "topics": [
-        "education/courses"
+        "medicine/neuroscience",
+        "medicine"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/neuroscience",
+          "confidence": 0.85
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Medical education for critical care fundamentals and intensive treatment.",
+      "display_title": "ICUedu",
+      "blurb": "Medical education covering emergency critical care management, ventilation, and intensive care clinical decision-making.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1638238458": {
       "topics": [
@@ -147547,11 +147575,34 @@
     },
     "1638615408": {
       "topics": [
-        "personal-journals"
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily celebrity commentary and personal anecdotes without defined topical focus.",
+      "display_title": "The Rick and Kelly Show",
+      "blurb": "Daily news and celebrity commentary from Fox News and Bravo TV personalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1638624711": {
       "topics": [
@@ -147930,12 +147981,34 @@
     },
     "1639961270": {
       "topics": [
-        "medicine",
-        "education/courses"
+        "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio board review course for medical students on family medicine topics.",
+      "display_title": "High Yield Family Medicine",
+      "blurb": "Concise medical education for family medicine board exams with practice questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1639990844": {
       "topics": [
@@ -147968,11 +148041,39 @@
     },
     "1640142466": {
       "topics": [
-        "sports/endurance"
+        "sports/endurance",
+        "adventure"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Trail running stories and culture celebrating athletes, writers, and outdoor personalities.",
+      "display_title": "The Trailhead",
+      "blurb": "Trail running culture with interviews exploring the people, stories, and personalities of the sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1640156422": {
       "topics": [
@@ -148015,11 +148116,39 @@
     },
     "1640311112": {
       "topics": [
-        "news/politics"
+        "society/law",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.75
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Family discussion of politics using therapeutic approaches, politically partisan framing.",
+      "display_title": "The Necessary Conversation",
+      "blurb": "Family members discuss current political events and policy from differing perspectives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1640318521": {
       "topics": [
@@ -148291,11 +148420,39 @@
     },
     "1641383288": {
       "topics": [
+        "history/military-modern",
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history/military-modern",
+          "confidence": 0.9
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Deep military history of WWII Pacific campaigns with historian and military perspectives.",
+      "display_title": "The Unauthorized History of the Pacific War",
+      "blurb": "Detailed military history of WWII Pacific theater tactics, strategies, and historical analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1641390413": {
       "topics": [
@@ -148313,12 +148470,39 @@
     },
     "1641539908": {
       "topics": [
-        "religion/christianity",
-        "sports/golf"
+        "sports",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Golf entertainment and Christian faith discussion with PGA Tour professionals.",
+      "display_title": "Bible Caddie Podcast",
+      "blurb": "Golf banter and Bible study hosted by PGA Tour professionals exploring faith and sport.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1641568639": {
       "topics": [
@@ -148466,20 +148650,72 @@
     },
     "1642245118": {
       "topics": [
-        "religion/christianity",
-        "religion"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious education for LDS missionaries and returned missionaries on faith practice.",
+      "display_title": "Preach My Gospel Podcast",
+      "blurb": "Faith-based education for missionaries covering spiritual preparation and post-mission transition.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1642258990": {
       "topics": [
-        "space"
+        "space",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "space",
+          "confidence": 0.95
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily space news and astronomy discoveries with current missions and discoveries.",
+      "display_title": "Astronomy Daily",
+      "blurb": "Daily space news covering recent astronomy discoveries, missions, and cosmic events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1642278031": {
       "topics": [
@@ -148656,19 +148892,74 @@
     },
     "1643026594": {
       "topics": [
-        "science/physics"
+        "society"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Paranormal eyewitness accounts and conspiracy stories without scientific framework.",
+      "display_title": "Tinfoil Tales",
+      "blurb": "Eyewitness accounts of paranormal phenomena including cryptids, UFOs, and unexplained events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 3,
+        "episodes_with_timed_transcript": 3,
+        "transcript_tags": 9,
+        "transcript_types": {
+          "application/x-subrip": 3,
+          "text/plain": 3,
+          "text/vtt": 3
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1643053152": {
       "topics": [
+        "psychology",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Time management and productivity tools for adults with ADHD and stress reduction.",
+      "display_title": "The Motivation Mindset",
+      "blurb": "Practical time management and stress-reduction strategies for daily productivity and focus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1643061986": {
       "topics": [
@@ -148709,11 +149000,34 @@
     },
     "1643163707": {
       "topics": [
-        "society"
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Grief exploration through interviews with notable individuals about loss experiences.",
+      "display_title": "All There Is with Anderson Cooper",
+      "blurb": "Intimate conversations about grief, loss, and healing with prominent individuals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1643166616": {
       "topics": [
@@ -148753,11 +149067,39 @@
     },
     "1643307527": {
       "topics": [
-        "society"
+        "society",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form interviews with power players across tech, business, media, and politics.",
+      "display_title": "On with Kara Swisher",
+      "blurb": "In-depth interviews with business and technology leaders on industry and cultural trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1643318607": {
       "topics": [
@@ -149348,11 +149690,39 @@
     },
     "1645873147": {
       "topics": [
-        "education/courses"
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical classroom management strategies and teacher support for educators.",
+      "display_title": "The Unteachables Podcast",
+      "blurb": "Classroom management strategies and teacher support for secondary educators and leaders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1645885146": {
       "topics": [
@@ -149654,11 +150024,44 @@
     },
     "1646783869": {
       "topics": [
+        "culture",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.7
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Investigative documentary series examining spiritual influence and narcissism dynamics.",
+      "display_title": "WTF is on my Mind?!",
+      "blurb": "Investigative stories examining cult dynamics, narcissism, and high-control organizations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 25,
+        "transcript_types": {
+          "text/html": 7,
+          "application/json": 6,
+          "application/x-subrip": 6,
+          "text/vtt": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1646792525": {
       "topics": [
@@ -149905,11 +150308,39 @@
     },
     "1647637080": {
       "topics": [
-        "society"
+        "society",
+        "society/law"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "True crime and fertility industry ethics investigated through family impact stories.",
+      "display_title": "BioHacked: Family Secrets",
+      "blurb": "True crime and fertility industry ethics told through stories of donor-conceived families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1647682625": {
       "topics": [
@@ -150027,11 +150458,39 @@
     },
     "1648228034": {
       "topics": [
-        "business"
+        "business",
+        "space"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "space",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology trends and future impact with futurist entrepreneur and venture capitalist.",
+      "display_title": "Moonshots with Peter Diamandis",
+      "blurb": "Technology trends and exponential breakthroughs impacting business and society.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1648250425": {
       "topics": [
@@ -150071,11 +150530,39 @@
     },
     "1648315417": {
       "topics": [
-        "society"
+        "society",
+        "history"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Investigative journalism on war correspondent death with unclear circumstances.",
+      "display_title": "Pig Iron",
+      "blurb": "Investigative journalism investigating a war correspondent death and complex circumstances.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1648333559": {
       "topics": [
@@ -150842,9 +151329,32 @@
       "topics": [
         "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Rapid-fire trivia questions covering diverse topics without extended host commentary.",
+      "display_title": "No Chit Chat Trivia",
+      "blurb": "Fast-paced trivia questions across movies, television, music, sports, and general knowledge.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1650145162": {
       "topics": [
@@ -151498,9 +152008,32 @@
       "topics": [
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "UFO disclosure news and whistleblower interviews without scientific verification.",
+      "display_title": "It's a Very Exciting Time",
+      "blurb": "UFO disclosure discussions and UAP (unidentified aerial phenomena) news coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1652243697": {
       "topics": [
@@ -151624,11 +152157,34 @@
     },
     "1652494328": {
       "topics": [
-        "religion"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Stories of saints, mystics, and visionaries from religious and spiritual traditions.",
+      "display_title": "The Flowered Path",
+      "blurb": "Stories of saints, folk saints, mystics, and visionaries across spiritual traditions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1652554296": {
       "topics": [
@@ -151737,11 +152293,34 @@
     },
     "1652941051": {
       "topics": [
-        "tv-film"
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "In-depth investigative reporting on major celebrity scandals and controversial figures.",
+      "display_title": "Infamous",
+      "blurb": "Investigative journalism examining explosive celebrity scandals and powerful figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1653002766": {
       "topics": [
@@ -152539,12 +153118,34 @@
     },
     "1655062070": {
       "topics": [
-        "history/military-modern",
-        "society/government"
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-form conversations with veterans about military service and post-military careers.",
+      "display_title": "Military Retirement Podcast",
+      "blurb": "Conversations with military veterans about service, retirement, and life transitions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1655108265": {
       "topics": [
@@ -153045,11 +153646,34 @@
     },
     "1657299416": {
       "topics": [
-        "gaming"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Multimedia reviews and interviews without clear subject focus or coherent topic.",
+      "display_title": "Nostalgic Canuck",
+      "blurb": "Multimedia review show with occasional interviews on various cultural topics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1657304008": {
       "topics": [
@@ -153316,12 +153940,34 @@
     },
     "1658287076": {
       "topics": [
-        "craft/diy-home",
-        "education/how-to"
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Home organization and decluttering strategies rooted in Christian faith principles.",
+      "display_title": "Organized On Purpose",
+      "blurb": "Faith-based home organization and decluttering strategies for Christian families.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1658291173": {
       "topics": [
@@ -153333,11 +153979,34 @@
     },
     "1658397502": {
       "topics": [
-        "business/non-profit"
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Think-tank discussions on defense, deterrence, and strategic policy analysis.",
+      "display_title": "The NIDS View",
+      "blurb": "Defense and deterrence discussions from think-tank analysts and strategy professionals.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1658422381": {
       "topics": [
@@ -154086,11 +154755,39 @@
     },
     "1662104886": {
       "topics": [
-        "business/non-profit"
+        "business",
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit fundraising and marketing strategies for community organizations.",
+      "display_title": "Purpose & Profit Club",
+      "blurb": "Nonprofit fundraising and marketing tactics to double results and community engagement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1662151080": {
       "topics": [
@@ -154122,11 +154819,34 @@
     },
     "1662280027": {
       "topics": [
-        "education/how-to"
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Teacher support covering classroom management, burnout, and student engagement.",
+      "display_title": "Enjoy Teaching Again",
+      "blurb": "Classroom management and SEL strategies to reduce teacher burnout and engagement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1662282694": {
       "topics": [
@@ -154340,11 +155060,34 @@
     },
     "1663554880": {
       "topics": [
-        "tv-film/after-shows"
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily celebrity gossip and reality TV recap with unfiltered commentary.",
+      "display_title": "Daily Dose of Dana",
+      "blurb": "Daily celebrity drama and reality TV recap with entertaining cultural commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1663572766": {
       "topics": [
@@ -154395,11 +155138,34 @@
     },
     "1663649339": {
       "topics": [
-        "education/how-to"
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quick health and life tips from AARP for adults of all ages.",
+      "display_title": "Today's Tips from AARP",
+      "blurb": "Quick practical tips on health, finance, and happiness for adults at any age.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1663678721": {
       "topics": [
@@ -155028,11 +155794,39 @@
     },
     "1665823746": {
       "topics": [
-        "music"
+        "music",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Artist interviews on success stories, creative survival, and industry experience.",
+      "display_title": "Artist Friendly with Joel Madden",
+      "blurb": "Artist interviews exploring success stories, creative challenges, and industry insights.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1666050632": {
       "topics": [
@@ -155267,19 +156061,70 @@
     },
     "1666678354": {
       "topics": [
-        "business"
+        "business",
+        "economics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Economic analysis of everyday consumer products and business decisions.",
+      "display_title": "The Economics of Everyday Things",
+      "blurb": "Economic analysis of everyday consumer products revealing surprising business stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1666708976": {
       "topics": [
-        "health"
+        "sports/endurance"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/endurance",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Motivational stories of extraordinary achievement for inspiration and endurance.",
+      "display_title": "Keep Hammering Collective",
+      "blurb": "Motivational interviews with outliers and achievers inspiring daily perseverance.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1666742066": {
       "topics": [
@@ -155819,11 +156664,34 @@
     },
     "1668446687": {
       "topics": [
-        "nature/pets"
+        "nature"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Holistic pet health and wellness practices from a veterinary perspective.",
+      "display_title": "Naturally Healthy Pets Podcast",
+      "blurb": "Holistic pet health and wellness strategies from veterinary experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1668446854": {
       "topics": [
@@ -156581,11 +157449,34 @@
     },
     "1671039476": {
       "topics": [
-        "comedy"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy commentary on internet culture and personalities without consistent focus.",
+      "display_title": "Guys: With Bryan Quinby",
+      "blurb": "Comedy commentary investigating internet culture and various online personalities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1671045329": {
       "topics": [
@@ -156709,20 +157600,65 @@
     },
     "1671374807": {
       "topics": [
-        "religion/spirituality",
-        "religion"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Wellness and spirituality resources for individuals, families, and communities.",
+      "display_title": "Living Compass Spirituality",
+      "blurb": "Spirituality and wellness resources for personal relationships and community.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1671380024": {
       "topics": [
         "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Behind-the-scenes coverage of Milwaukee Brewers team and players.",
+      "display_title": "Brewers All Access",
+      "blurb": "Behind-the-scenes access to Milwaukee Brewers team, players, and staff coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1671383626": {
       "topics": [
@@ -156905,12 +157841,34 @@
     },
     "1671873182": {
       "topics": [
-        "health/sexuality",
-        "comedy"
+        "culture"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Comedy and personal stories about dating and intimate relationships.",
+      "display_title": "Intimacy Coordinator",
+      "blurb": "Comedy and candid stories about dating, relationships, and intimate experiences.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1671879661": {
       "topics": [
@@ -156977,11 +157935,34 @@
     },
     "1672092973": {
       "topics": [
-        "religion/hinduism"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Overview of Hinduism history, practices, and contemporary faith expressions.",
+      "display_title": "All About Hinduism",
+      "blurb": "Comprehensive overview of Hinduism history, practices, and contemporary expressions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1672097570": {
       "topics": [
@@ -157362,11 +158343,34 @@
     },
     "1673844450": {
       "topics": [
-        "business/non-profit"
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nonprofit endowment and foundation management for mission-driven organizations.",
+      "display_title": "Mission + Markets",
+      "blurb": "Nonprofit endowment strategies exploring investment, governance, and mission alignment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1673846089": {
       "topics": [
@@ -157818,11 +158822,39 @@
     },
     "1675312085": {
       "topics": [
-        "craft/diy-home"
+        "nature",
+        "craft"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Garden design and horticulture advice from leading gardening experts.",
+      "display_title": "Talking Gardens",
+      "blurb": "Garden design tips and expert interviews on plants and gardening practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1675319784": {
       "topics": [
@@ -157992,11 +159024,34 @@
     },
     "1676099257": {
       "topics": [
-        "society"
+        "economics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Chinese language personal finance podcast for women emphasizing money strategies.",
+      "display_title": "搞钱女孩",
+      "blurb": "Personal finance stories and wealth strategies from women pursuing financial independence.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1676100611": {
       "topics": [
@@ -158177,11 +159232,34 @@
     },
     "1676542133": {
       "topics": [
-        "tv-film"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bravo television show discussion and entertainment analysis.",
+      "display_title": "Turtle Time",
+      "blurb": "Relaxed Bravo television discussion and analysis with friends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1676634678": {
       "topics": [
@@ -158364,9 +159442,32 @@
       "topics": [
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly documentary stories of true crime, history, and mysteries.",
+      "display_title": "The Compendium",
+      "blurb": "Weekly true crime and historical stories told completely in single episodes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1676837303": {
       "topics": [
@@ -158385,11 +159486,34 @@
     },
     "1676849476": {
       "topics": [
-        "tv-film"
+        "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with people wrongfully portrayed in headlines seeking second chances.",
+      "display_title": "Miss Understood",
+      "blurb": "Interviews with people wrongly portrayed in media seeking to change their narrative.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1676944102": {
       "topics": [
@@ -158408,11 +159532,34 @@
     },
     "1676984700": {
       "topics": [
-        "travel"
+        "economics"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Credit card points optimization and travel rewards strategy for professionals.",
+      "display_title": "Point Me to First Class",
+      "blurb": "Credit card rewards and points strategies for professionals seeking travel opportunities.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1676999261": {
       "topics": [
@@ -158581,11 +159728,34 @@
     },
     "1677424942": {
       "topics": [
-        "society/government"
+        "society/law"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/law",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare policy and legislation analysis for real-world patient impacts.",
+      "display_title": "DC EKG",
+      "blurb": "Healthcare policy analysis and legislation impacts on patients and providers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1677426788": {
       "topics": [
@@ -158855,11 +160025,34 @@
     },
     "1678330734": {
       "topics": [
-        "tv-film"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV personality life events and entertainment industry commentary.",
+      "display_title": "When Reality Hits",
+      "blurb": "Reality TV personality discussing off-camera life, relationships, and entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1678331984": {
       "topics": [
@@ -159080,9 +160273,32 @@
       "topics": [
         "gaming"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Card game strategy and tips for Marvel Champions enthusiasts.",
+      "display_title": "Winning Hand",
+      "blurb": "Card game strategy, tips, and deck discussions for Marvel Champions players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1679466396": {
       "topics": [
@@ -159156,12 +160372,34 @@
     },
     "1679696860": {
       "topics": [
-        "culture/mythology",
-        "sports/fantasy"
+        "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Fantasy football analysis covering best ball, dynasty, and seasonal strategies.",
+      "display_title": "Legendary Upside",
+      "blurb": "Fantasy football analysis covering best ball, dynasty, and analytical strategies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1679701862": {
       "topics": [
@@ -159219,12 +160457,34 @@
     },
     "1679872468": {
       "topics": [
-        "religion/christianity",
-        "kids-family/education"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bible-based nature and science education for curious children and families.",
+      "display_title": "Nat Theo",
+      "blurb": "Bible-based nature science education for children exploring creation and faith.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1679875407": {
       "topics": [
@@ -159468,12 +160728,34 @@
     },
     "1680633614": {
       "topics": [
-        "engineering/ai-robotics",
         "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily artificial intelligence news covering ethics, business, and technology.",
+      "display_title": "The AI Daily Brief",
+      "blurb": "Daily artificial intelligence news covering tools, ethics, and technology trends.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1680644104": {
       "topics": [
@@ -159634,11 +160916,34 @@
     },
     "1681407595": {
       "topics": [
-        "tv-film/after-shows"
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reality TV recap with Gen X perspective and cultural analysis.",
+      "display_title": "Little Miss Recap",
+      "blurb": "Reality TV recaps with Gen X perspective on culture and life choices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1681417281": {
       "topics": [
@@ -159749,11 +161054,34 @@
     },
     "1681880668": {
       "topics": [
-        "nature/pets"
+        "nature"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pet health and environmental sustainability from holistic veterinary perspective.",
+      "display_title": "Better Humans, Better Planet",
+      "blurb": "Pet health and environmental sustainability approaches for healthier pets.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1681884284": {
       "topics": [
@@ -160014,12 +161342,34 @@
     },
     "1683302878": {
       "topics": [
-        "gaming",
-        "sports/football"
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Las Vegas Raiders insider analysis and football network podcast.",
+      "display_title": "Raiders Insider",
+      "blurb": "Las Vegas Raiders insider analysis and professional football news coverage.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-91f8e77c",
+      "classified_at": "2026-08-27T08:20:21.231Z"
     },
     "1683373814": {
       "topics": [
