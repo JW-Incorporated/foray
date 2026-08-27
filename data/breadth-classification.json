@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-27T08:20:21.231Z",
+  "built_at": "2026-08-27T16:20:55.780Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-27-91f8e77c",
+    "last_batch_id": "fresh-2026-08-27-397631a5",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -161381,12 +161381,52 @@
     },
     "1683401861": {
       "topics": [
-        "engineering/ai-robotics",
-        "computing"
+        "computing",
+        "hobbies",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-4"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Everyday AI Podcast – An AI an covers computing.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1683405079": {
       "topics": [
@@ -161569,11 +161609,39 @@
     },
     "1684174612": {
       "topics": [
-        "fiction/comedy"
+        "gaming",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Legends of Avantris covers gaming.",
+      "display_title": "Legends of Avantris",
+      "blurb": "seven chuckleheads goofing off, telling stories, and laughing way too loud, usually while playing d&d",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:55.780Z"
     },
     "1684178020": {
       "topics": [
@@ -161734,11 +161802,49 @@
     },
     "1684816356": {
       "topics": [
-        "business/careers"
+        "computing",
+        "tv-film/reviews",
+        "relationships",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Bright Method Podcast: Rea covers computing.",
+      "display_title": "The Bright Method Podcast: Realistic Time Management and",
+      "blurb": "ready for a time management approach that is actually designed for professional working women – ones that help you lighten the mental load, draw boundaries with more confidence,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1684883107": {
       "topics": [
@@ -161953,11 +162059,34 @@
     },
     "1685969266": {
       "topics": [
-        "fiction/comedy"
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Mario Bros. Show covers relationships.",
+      "display_title": "The Mario Bros. Show",
+      "blurb": "join mario and luigi as they go on all kinds of adventures",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1685998335": {
       "topics": [
@@ -162073,11 +162202,39 @@
     },
     "1686414242": {
       "topics": [
-        "culture/design"
+        "computing",
+        "culture/fashion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dive Club 🤿 covers computing.",
+      "display_title": "Dive Club 🤿",
+      "blurb": "where designers never stop learning 💪 dive club is an interview series hosted by ridd that is designed to unlock knowledge from today's most prolific designers",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1686453271": {
       "topics": [
@@ -162102,11 +162259,39 @@
     },
     "1686516436": {
       "topics": [
-        "business/management"
+        "computing",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Limitless Leadership Podca covers computing.",
+      "display_title": "The Limitless Leadership Podcast",
+      "blurb": "the limitless leadership podcast was created to help automotive repair shops learn how to lead, coach, train, and manage people better by sharing proven techniques and thought provoking.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1686577072": {
       "topics": [
@@ -162347,11 +162532,51 @@
     },
     "1687383822": {
       "topics": [
-        "culture/books"
+        "kids-family/stories",
+        "true-crime",
+        "music",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sherlock Holmes Bedtime Storie covers kids-family/stories.",
+      "display_title": "Sherlock Holmes Bedtime Stories",
+      "blurb": "fall asleep with your favorite comfort bedtime stories: the complete sherlock holmes in timeline order",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1687498245": {
       "topics": [
@@ -162497,11 +162722,39 @@
     },
     "1687637884": {
       "topics": [
-        "fiction/comedy"
+        "true-crime",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Mysteries Of Derlin County covers true-crime.",
+      "display_title": "The Mysteries Of Derlin County",
+      "blurb": "brandon returns home to derlin county to solve a mystery surrounding a girl who went missing from his high school",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1687655510": {
       "topics": [
@@ -163031,11 +163284,44 @@
     },
     "1689464000": {
       "topics": [
-        "society"
+        "kids-family/stories",
+        "kids-family",
+        "relationships"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "How To Destroy Everything covers kids-family/stories.",
+      "display_title": "How To Destroy Everything",
+      "blurb": "this is the true story of richard jacobs – a narcissist who destroyed a childhood, a marriage, a family, and a community",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1689470062": {
       "topics": [
@@ -163397,11 +163683,46 @@
     },
     "1690426042": {
       "topics": [
-        "engineering/ai-robotics"
+        "computing",
+        "science",
+        "religion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mystery AI Hype Theater 3000 covers computing.",
+      "display_title": "Mystery AI Hype Theater 3000",
+      "blurb": "artificial intelligence has too much hype",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/html": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1690430949": {
       "topics": [
@@ -163723,9 +164044,32 @@
       "topics": [
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Redeemed & Reformed covers religion.",
+      "display_title": "Redeemed & Reformed",
+      "blurb": "examining scripture and cultural issues through a reformed lens",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 7,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1691284824": {
       "topics": [
@@ -163818,11 +164162,44 @@
     },
     "1691800319": {
       "topics": [
-        "gaming"
+        "tv-film/reviews",
+        "news",
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spike Colony covers tv-film/reviews.",
+      "display_title": "Spike Colony",
+      "blurb": "michael j flores and lanny huang keep you up to date on the latest news, interviews, and theory around premodern, magic: the gathering's most balanced and fun format,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1691883576": {
       "topics": [
@@ -164259,11 +164636,38 @@
     },
     "1693322370": {
       "topics": [
-        "tv-film"
+        "comedy"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "I've Never Said This Before Wi covers comedy.",
+      "display_title": "I've Never Said This Before With Tommy DiDario",
+      "blurb": "i 've never said this before with tommy didario goes to places that will surprise and delight you",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1693323253": {
       "topics": [
@@ -164638,11 +165042,34 @@
     },
     "1694756842": {
       "topics": [
-        "gaming"
+        "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mystery Quest covers true-crime.",
+      "display_title": "Mystery Quest",
+      "blurb": "welcome to mystery quest",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1694843468": {
       "topics": [
@@ -165126,9 +165553,32 @@
       "topics": [
         "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Level Vibes Podcast covers music.",
+      "display_title": "Level Vibes Podcast",
+      "blurb": "emcee/dj from the island of barbados",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:55.780Z"
     },
     "1696519927": {
       "topics": [
@@ -165348,11 +165798,39 @@
     },
     "1697425543": {
       "topics": [
+        "music",
         "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Smosh Reads Reddit Stories covers music.",
+      "display_title": "Smosh Reads Reddit Stories",
+      "blurb": "tall tales from reddit are just the starting point for these popular hour-long reaction videos",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1697426090": {
       "topics": [
@@ -165453,11 +165931,39 @@
     },
     "1697772012": {
       "topics": [
-        "education/how-to"
+        "kids-family",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Elementary Math Chat covers kids-family.",
+      "display_title": "Elementary Math Chat",
+      "blurb": "elementary math chat is a podcast for upper elementary math teachers looking for ideas and resources beyond the book",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1697772657": {
       "topics": [
@@ -165628,11 +166134,34 @@
     },
     "1698051187": {
       "topics": [
-        "comedy"
+        "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The LOL Podcast covers tv-film/reviews.",
+      "display_title": "The LOL Podcast",
+      "blurb": "new episodes every wednesday & saturday",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1698065414": {
       "topics": [
@@ -165826,11 +166355,44 @@
     },
     "1699012712": {
       "topics": [
-        "personal-journals"
+        "religion",
+        "hobbies",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dear Alana, covers religion.",
+      "display_title": "Dear Alana,",
+      "blurb": "4x nominee ​and winner at the 2024 ambie awards​",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1699044011": {
       "topics": [
@@ -166179,11 +166741,34 @@
     },
     "1700518187": {
       "topics": [
-        "kids-family"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Cat In The Hat Podcast covers music.",
+      "display_title": "The Cat In The Hat Podcast",
+      "blurb": "hold on tight and prepare to be whisked away on a weekly adventure with dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1700557697": {
       "topics": [
@@ -166201,11 +166786,49 @@
     },
     "1700685838": {
       "topics": [
-        "tv-film"
+        "true-crime",
+        "religion",
+        "science",
+        "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film Theory covers true-crime.",
+      "display_title": "Film Theory",
+      "blurb": "join film theory host lee as he breaks down all the hidden lore, science, and stories from your favorite tv shows and movies",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1700689487": {
       "topics": [
@@ -166258,9 +166881,32 @@
       "topics": [
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Saint Gabriel Café | St Gabrie covers religion.",
+      "display_title": "Saint Gabriel Café | St Gabriel Catholic Radio",
+      "blurb": "st",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1700937264": {
       "topics": [
@@ -166412,11 +167058,34 @@
     },
     "1701273560": {
       "topics": [
-        "religion/hinduism"
+        "religion/spirituality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Santa Barbara Vedanta Temple:  covers religion/spirituality.",
+      "display_title": "Santa Barbara Vedanta Temple: Sunday Talks",
+      "blurb": "sunday talks given at the santa barbara vedanta temple",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1701276723": {
       "topics": [
@@ -166449,11 +167118,44 @@
     },
     "1701287435": {
       "topics": [
-        "science"
+        "science",
+        "kids-family"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Cráneo: Ciencia para niños cur covers science.",
+      "display_title": "Cráneo: Ciencia para niños curiosos",
+      "blurb": "ciencia explicada de forma sencilla para ayudar a los peques a entender mejor el mundo que los rodea",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1701300490": {
       "topics": [
@@ -166803,11 +167505,39 @@
     },
     "1702258458": {
       "topics": [
+        "news",
         "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Handsome covers news.",
+      "display_title": "Handsome",
+      "blurb": "\"handsome\" is a podcast from comedians tig notaro, fortune feimster, and mae martin",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1702344883": {
       "topics": [
@@ -166995,11 +167725,43 @@
     },
     "1703143313": {
       "topics": [
-        "science/physics"
+        "religion",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "science",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Easy Physics covers religion.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i",
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1703255582": {
       "topics": [
@@ -167103,19 +167865,90 @@
     },
     "1703321959": {
       "topics": [
-        "hobbies"
+        "religion",
+        "kids-family",
+        "relationships",
+        "nature"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Good Horses: Stories of the Am covers religion.",
+      "display_title": "Good Horses: Stories of the American Quarter Horse",
+      "blurb": "inspired by the spirit of every horseman’s “good horse,” \"good horses: stories of the american quarter horse\" celebrates the incredible stories of the american quarter horse",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 2,
+        "episodes_with_timed_transcript": 2,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 2,
+          "application/json": 2,
+          "application/x-subrip": 2,
+          "text/vtt": 2
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:55.780Z"
     },
     "1703420294": {
       "topics": [
-        "society"
+        "science",
+        "tv-film/reviews"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science of Justice covers science.",
+      "display_title": "Science of Justice",
+      "blurb": "our science, your art",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1703436641": {
       "topics": [
@@ -167230,11 +168063,44 @@
     },
     "1703635148": {
       "topics": [
-        "kids-family/stories"
+        "religion",
+        "kids-family",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tiny Theologians covers religion.",
+      "display_title": "Tiny Theologians",
+      "blurb": "this adventure podcast for kids is fun, upbeat, and rich with biblical theology",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1703653891": {
       "topics": [
@@ -167562,11 +168428,34 @@
     },
     "1704871055": {
       "topics": [
-        "tv-film"
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Strike Force Five covers comedy.",
+      "display_title": "Strike Force Five",
+      "blurb": "late night talk show hosts stephen colbert, jimmy fallon, jimmy kimmel, seth meyers and john oliver are teaming up for a new podcast to support their striking writers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1704910630": {
       "topics": [
@@ -168269,11 +169158,38 @@
     },
     "1706534198": {
       "topics": [
-        "sports/football"
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nightcap covers news.",
+      "display_title": "Nightcap",
+      "blurb": "no more waiting until morning",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 21,
+        "transcript_types": {
+          "application/srt": 7,
+          "text/vtt": 7,
+          "text/plain": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1706549815": {
       "topics": [
@@ -168292,11 +169208,34 @@
     },
     "1706699976": {
       "topics": [
-        "education/how-to"
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Children's Tradition covers kids-family.",
+      "display_title": "The Children's Tradition",
+      "blurb": "the children's tradition is a conversational show where we introduce families to the poetic life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1706731261": {
       "topics": [
@@ -168407,11 +169346,49 @@
     },
     "1706873419": {
       "topics": [
-        "sports/volleyball"
+        "sports/volleyball",
+        "sports",
+        "nature",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.95
+        },
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Volleyball State covers sports/volleyball.",
+      "display_title": "Volleyball State",
+      "blurb": "semi-pro volleyball junkies lincoln arneal and jeff sheldon take you through six rotations each week -- from the huskers, to the national college picture, recruiting and more",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:55.780Z"
     },
     "1706887053": {
       "topics": [
@@ -168567,8 +169544,33 @@
         "culture/fashion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/fashion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Handbag Designer 101: The Stor covers culture/fashion.",
+      "display_title": "Handbag Designer 101: The Stories Behind Handbag Designers,",
+      "blurb": "master the handbag trends , fashion retail , and brand building fashion strategies that define the luxury goods industry",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "text/vtt": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1707024151": {
       "topics": [
@@ -169026,11 +170028,34 @@
     },
     "1707905975": {
       "topics": [
-        "comedy/casual-hangs"
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Will & Rusty's Playdate covers music.",
+      "display_title": "Will & Rusty's Playdate",
+      "blurb": "rusty featherstone and willy donnellon change the world one episode at a time through groundbreaking innovation and mind-altering quips and whims",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1707920301": {
       "topics": [
@@ -169350,11 +170375,39 @@
     },
     "1708973083": {
       "topics": [
-        "business/non-profit"
+        "religion",
+        "comedy"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Church Ops 500: Doing the Impo covers religion.",
+      "display_title": "Church Ops 500: Doing the Impossible with Less",
+      "blurb": "the podcast has been created to help those tasked with managing operations for churches and non-profits with super-small budgets, and minimal staff",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1708993594": {
       "topics": [
@@ -169727,11 +170780,39 @@
     },
     "1709781511": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Motivational Positivity covers education/self-improvement.",
+      "display_title": "Daily Motivational Positivity",
+      "blurb": "become the best version of yourself as you kickstart your day with the right motivation and inspiration from &#34;the daily positivity podcast&#34; - where we bring you unwavering.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:55.780Z"
     },
     "1709833311": {
       "topics": [
@@ -170018,8 +171099,31 @@
         "sports/tennis"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/tennis",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Ground Pass: A Tennis Podcast covers sports/tennis.",
+      "display_title": "Ground Pass: A Tennis Podcast",
+      "blurb": "ground pass is a tennis podcast for curious newcomers and longtime followers alike",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1710393499": {
       "topics": [
@@ -170054,11 +171158,39 @@
     },
     "1710419203": {
       "topics": [
-        "kids-family"
+        "kids-family/stories",
+        "music"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "'Tis The Grinch Holiday Podcas covers kids-family/stories.",
+      "display_title": "'Tis The Grinch Holiday Podcast",
+      "blurb": "grinch is back and jollier than never",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1710429878": {
       "topics": [
@@ -170209,11 +171341,34 @@
     },
     "1710776108": {
       "topics": [
-        "personal-journals"
+        "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Journaling Guy Podcast covers hobbies.",
+      "display_title": "The Journaling Guy Podcast",
+      "blurb": "join me every monday morning for tips, techniques, suggestions, interviews, and much more from the journaling guy podcast",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1710787142": {
       "topics": [
@@ -170233,9 +171388,32 @@
       "topics": [
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Emerged covers religion.",
+      "display_title": "Emerged",
+      "blurb": "an oral history of the emergent church movement hosted by tripp fuller and tony jones",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1710885652": {
       "topics": [
@@ -170361,11 +171539,44 @@
     },
     "1711281052": {
       "topics": [
-        "kids-family/stories"
+        "music",
+        "kids-family",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Silly Stories for Kids covers music.",
+      "display_title": "Silly Stories for Kids",
+      "blurb": "so glad you have found us",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1711294699": {
       "topics": [
@@ -170404,11 +171615,44 @@
     },
     "1711332691": {
       "topics": [
-        "education/self-improvement"
+        "science",
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mindset Mastery Moments with D covers science.",
+      "display_title": "Mindset Mastery Moments with Dr. Alisa Whyte",
+      "blurb": "welcome to mindset mastery moments , the podcast that promises a transformative journey of personal and professional growth",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 4,
+        "transcript_types": {
+          "text/html": 1,
+          "application/json": 1,
+          "application/x-subrip": 1,
+          "text/vtt": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1711362652": {
       "topics": [
@@ -170427,11 +171671,34 @@
     },
     "1711453860": {
       "topics": [
-        "society"
+        "true-crime"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "true-crime",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jack Osbourne's The Most Haunt covers true-crime.",
+      "display_title": "Jack Osbourne's The Most Haunted",
+      "blurb": "real cases",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1711453890": {
       "topics": [
@@ -170936,11 +172203,42 @@
     },
     "1712903296": {
       "topics": [
-        "news/commentary"
+        "hobbies",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Iran: The Latest covers hobbies.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1712909951": {
       "topics": [
@@ -171010,11 +172308,44 @@
     },
     "1713108995": {
       "topics": [
-        "education/self-improvement"
+        "computing",
+        "kids-family",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.9
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.8
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Paring Down: Realistic minimal covers computing.",
+      "display_title": "Paring Down: Realistic minimalism, decluttering, & intentional living",
+      "blurb": "if staunch minimalism feels too extreme, but you want to declutter your house to alleviate some stress, this is the podcast for you",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1713122720": {
       "topics": [
@@ -171283,8 +172614,36 @@
         "health/sexuality"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Dom Sub Living BDSM and Ki covers health/sexuality.",
+      "display_title": "The Dom Sub Living BDSM and Kink Podcast",
+      "blurb": "welcome to the dom sub living podcast, your go-to kinky resource, so you can get out of the vanilla rut, become the best dominant or submissive you can.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1714198414": {
       "topics": [
@@ -171454,11 +172813,34 @@
     },
     "1714632130": {
       "topics": [
-        "science"
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Мослекторий covers education.",
+      "display_title": "Мослекторий",
+      "blurb": "мослекторий - просветительский проект для тех, кто любит думать",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:55.780Z"
     },
     "1714651817": {
       "topics": [
@@ -172358,11 +173740,44 @@
     },
     "1718287198": {
       "topics": [
-        "tv-film"
+        "music",
+        "tv-film/reviews",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Rest Is Entertainment covers music.",
+      "display_title": "The Rest Is Entertainment",
+      "blurb": "richard osman & marina hyde share insider knowledge on tv, movies, and pop culture",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1718387588": {
       "topics": [
@@ -172788,11 +174203,39 @@
     },
     "1719547118": {
       "topics": [
-        "tv-film/reviews"
+        "music",
+        "relationships"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "The Sister Wives Professor covers music.",
+      "display_title": "The Sister Wives Professor",
+      "blurb": "dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1719551675": {
       "topics": [
@@ -172940,11 +174383,34 @@
     },
     "1720044655": {
       "topics": [
-        "education/self-improvement"
+        "religion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "it's cringe, but it's true covers religion.",
+      "display_title": "it's cringe, but it's true",
+      "blurb": "a real, unfiltered podcast about becoming the best version of yourself",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1720050015": {
       "topics": [
@@ -173640,11 +175106,43 @@
     },
     "1721984466": {
       "topics": [
-        "personal-journals"
+        "gaming",
+        "comedy"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "ThreadTalk: The Reddit Review  covers gaming.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i",
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:55.780Z"
     },
     "1722148571": {
       "topics": [
@@ -174699,11 +176197,49 @@
     },
     "1724974482": {
       "topics": [
-        "music"
+        "religion",
+        "music",
+        "tv-film/reviews",
+        "relationships"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "God's Country covers religion.",
+      "display_title": "God's Country",
+      "blurb": "“god’s country” with the brothers hunt (brothers dan and reid isbell) is a rollicking weekly podcast that sits at the intersection of country music and the great outdoors",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-27-397631a5",
+      "classified_at": "2026-08-27T16:20:21.845Z"
     },
     "1724982131": {
       "topics": [
