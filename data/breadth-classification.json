@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-28T08:19:25.067Z",
+  "built_at": "2026-08-28T16:21:37.492Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-28-482aa3d9",
+    "last_batch_id": "fresh-2026-08-28-1b082ecd",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -208115,11 +208115,41 @@
     },
     "1819615339": {
       "topics": [
+        "culture",
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.9
+        },
+        {
+          "node": "society",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Exposing Deathcare",
+      "blurb": "Uncovering the Truth: Behind the Scenes of Exposing Deathcare Welcome to Exposing Deathcare, a podcast created to shine a light on the hidden, often dark realities within the funeral industry.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "text/vtt": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1819721217": {
       "topics": [
@@ -208297,8 +208327,31 @@
         "sports/wrestling"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/wrestling",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Six Feet Under with The Undertaker",
+      "blurb": "Join The Undertaker as he talks shop with wrestlers, legends and celebrities. He’ll also take you behind the scenes of his career with stories he’s never told before and share",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1820216414": {
       "topics": [
@@ -208420,11 +208473,41 @@
     },
     "1820616215": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "craft"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "craft",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Midlife Lady Leisure Pursuits",
+      "blurb": "The midlife years bring opportunities for pleasures big and small, and hosts Sarah Powers and Meagan Francis, fortysomething moms and longtime podcasters, are here to discuss them all. From asking",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1820648828": {
       "topics": [
@@ -208533,11 +208616,41 @@
     },
     "1821055332": {
       "topics": [
-        "news/tech"
+        "computing",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.6
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Cheeky Pint",
+      "blurb": "Stripe cofounder John Collison interviews founders, builders, and leaders over a pint.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:37.492Z"
     },
     "1821082665": {
       "topics": [
@@ -208692,9 +208805,37 @@
       "topics": [
         "medicine"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "The Popkin Method",
+      "blurb": "You’re not crazy. Your care is just fragmented. Most people bounce between specialists, apps, and online “biohacks” without ever getting real answers. The Popkin Method is here to change that",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1821715383": {
       "topics": [
@@ -208735,11 +208876,39 @@
     },
     "1821790998": {
       "topics": [
-        "society"
+        "society",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Mysteries at Bedtime",
+      "blurb": "From the creator of the chart topping Crime at Bedtime comes Mysteries at Bedtime - Step into the unknown with Mysteries at Bedtime — a podcast that takes you deep",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1821811140": {
       "topics": [
@@ -208830,8 +208999,31 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Shiv Puran with Abhijit Sharmaa \" शिव पुराण,",
+      "blurb": "Bharatvarsh has a great treasure of culture, knowledge and much more. let's share it.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1821815942": {
       "topics": [
@@ -209769,19 +209961,76 @@
     "1825826118": {
       "topics": [
         "health/sexuality",
-        "fiction"
+        "relationships"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.65
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "BDSM Bondage Erotica",
+      "blurb": "We're Audiodesires , where wellness meets your pleasure. We create erotic audio stories to bring your most intimate fantasies to life. Preview of some of our hottest BDSM and bondage",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1825829164": {
       "topics": [
-        "gaming"
+        "gaming",
+        "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "The History of 40k",
+      "blurb": "The History of 40K is a bi-weekly (every fortnight) show on the history of the game of Warhammer 40K. The show will focus both on the tabletop game as well",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1825878779": {
       "topics": [
@@ -210139,11 +210388,38 @@
     "1826960264": {
       "topics": [
         "health/sexuality",
-        "fiction"
+        "relationships"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.65
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Audio Smut",
+      "blurb": "We're Audiodesires , where wellness meets your pleasure. We create erotic porn audios to bring your most intimate fantasies to life. Join us to preview some of our dirty and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1826962100": {
       "topics": [
@@ -210329,11 +210605,39 @@
     },
     "1827749077": {
       "topics": [
-        "engineering/ai-robotics"
+        "computing",
+        "engineering"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.65
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Inside AsembleAI: DeepTech, AI & Science",
+      "blurb": "AsembleAI brings you thought-provoking conversations at the nexus of artificial intelligence, innovation, and leadership. In each episode, hosts Mac and Sam, veterans in data and tech world, sit do...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1827811306": {
       "topics": [
@@ -210479,8 +210783,34 @@
         "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1828491975": {
       "topics": [
@@ -210802,8 +211132,34 @@
         "sports/volleyball"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/volleyball",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1829721662": {
       "topics": [
@@ -211055,11 +211411,39 @@
     },
     "1830530855": {
       "topics": [
-        "society"
+        "society",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "On Assignment",
+      "blurb": "Dive into the stories behind the news with a new podcast from Reuters. We take you past the headlines right to the heart of the action. From the frontlines of",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1830563716": {
       "topics": [
@@ -211391,8 +211775,31 @@
         "health/alternative"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/alternative",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "The Health Continuum",
+      "blurb": "Are you a high-performer who feels like your physical durability is starting to slip? Welcome to The Health Continuum , the podcast for the professional tired of being tired and",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1831875614": {
       "topics": [
@@ -211619,8 +212026,31 @@
         "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Particles of Thought",
+      "blurb": "Ready to break your brain? Particles of Thought , the hit video podcast from the producers of NOVA is back with new mind-expanding conversations with scientists on the edge. Host",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1832627818": {
       "topics": [
@@ -211802,9 +212232,35 @@
       "topics": [
         "fiction/drama"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1833063933": {
       "topics": [
@@ -212183,8 +212639,31 @@
         "education/how-to"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "The Coop",
+      "blurb": "Educational and inspirational conversations with the homesteaders who are at the forefront of the modern homesteading movement.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1834191250": {
       "topics": [
@@ -212206,8 +212685,31 @@
         "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "アオイとキクチ。",
+      "blurb": "こんにちは。「アオイとキクチ。」へようこそ。 #蒼井優 と #菊池亜希子 がふだん着のままお届けする、まったりトークのポッドキャストです。更新は月に2回、水曜日ごろを予定。 番組HP：https://aoitokikuchi.com/",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1834325265": {
       "topics": [
@@ -212238,11 +212740,43 @@
     },
     "1834364630": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Wayne Dyer Podcast",
+      "blurb": "Discover the timeless wisdom and transformative teachings of Dr. Wayne Dyer, one of the most influential spiritual leaders of our time.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1834367191": {
       "topics": [
@@ -212399,11 +212933,41 @@
     "1834894038": {
       "topics": [
         "health/sexuality",
-        "fiction"
+        "relationships"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.65
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1834896651": {
       "topics": [
@@ -212441,11 +213005,39 @@
     },
     "1834964940": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Kinsey Schofield Unfiltered",
+      "blurb": "The Sussexes, Hollywood scandals and royal analysis - join US commentator Kinsey Schofield as she takes you through all things pop culture. A dedicated podcast to help you understand the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1834971759": {
       "topics": [
@@ -212660,11 +213252,44 @@
     },
     "1835461600": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Here's What Happened w/ Weston Emery",
+      "blurb": "The \"Here's What Happened\" Podcast is where real stories meet real conversations. Weston sits down with real people from all walks of life to hear the moments that shaped them.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 4,
+        "episodes_with_timed_transcript": 4,
+        "transcript_tags": 16,
+        "transcript_types": {
+          "text/html": 4,
+          "application/json": 4,
+          "application/x-subrip": 4,
+          "text/vtt": 4
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1835477433": {
       "topics": [
@@ -213209,8 +213834,33 @@
         "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Certified - AWS Certified Cloud Practitioner Audio Course",
+      "blurb": "Ready to earn your AWS Certified Cloud Practitioner credential? The AWS Cloud Practitioner Audio Course is your complete, audio-first companion for mastering the foundational knowledge required to ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1836797351": {
       "topics": [
@@ -213336,8 +213986,35 @@
         "tv-film"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Teen Beat",
+      "blurb": "This is the audio epicenter for all things Danielle Fishel! She is to podcasts what Costco is to food portions. Whether she&rsquo;s interviewing interesting people about their interesting childhood...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1837150363": {
       "topics": [
@@ -213713,8 +214390,31 @@
         "fiction"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Midnight Shadows",
+      "blurb": "Welcome to Midnight Shadows — where fear, mystery, and the unknown lurk in the darkness of the night. 👻 In each episode, you'll hear about spooky events, true mysteries, haunted",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1838234535": {
       "topics": [
@@ -214094,8 +214794,31 @@
         "tv-film"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Twisted Tales with Heidi Wong",
+      "blurb": "Every Monday, poet and paranormal obsessive Heidi Wong unearths the chilling true stories behind the world's most terrifying legends. From the real stories behind horror movies to the creepiest cor...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1839075146": {
       "topics": [
@@ -214296,8 +215019,31 @@
         "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Sports Card Clubhouse",
+      "blurb": "The Sports Card Clubhouse (SCC) Network is brought to you by Junk Wax Hero (Mike), MidLife Sports Cards (Graig), Splendid Sports (Adam) and Sports Cards Live (Jeremy).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1839781664": {
       "topics": [
@@ -214522,8 +215268,31 @@
         "education/how-to"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/how-to",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "School of Practice",
+      "blurb": "School of Practice, the first podcast from the team at Edutopia, brings you ready-to-use strategies to improve your teaching today. Join us for 15-minute episodes filled with smart, pedagogy-shifti...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1840522125": {
       "topics": [
@@ -214651,11 +215420,39 @@
     },
     "1840983742": {
       "topics": [
-        "news/tech"
+        "computing",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.65
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Version History",
+      "blurb": "Version History is a show about the best gadgets ever. And the worst ones. And the ones that might have changed the world, if they ever actually shipped. Every week,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1840992742": {
       "topics": [
@@ -215104,11 +215901,34 @@
     },
     "1842190360": {
       "topics": [
-        "culture/art"
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "ill-advised by Bill Nighy",
+      "blurb": "A podcast for people who don’t get out much and can’t handle it when they do. A refuge for the clumsy and the awkward. Join Bill Nighy to squander some",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1842355669": {
       "topics": [
@@ -215656,8 +216476,33 @@
         "culture/design"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/design",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Return on Design",
+      "blurb": "What if every design decision you made could also grow your net worth? Welcome to Return On Design, the show where beauty meets strategy and interiors become assets that perform.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1844447336": {
       "topics": [
@@ -215767,8 +216612,36 @@
         "sports/hockey"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Ice Guardians Pod",
+      "blurb": "Brett Hull and Kelly Chase—two St. Louis Blues legends whose friendship was forged through grit, loyalty, and love for the game—bring their unmistakable chemistry from the ice to the mic.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1844807568": {
       "topics": [
@@ -216353,11 +217226,43 @@
     },
     "1846859935": {
       "topics": [
-        "music"
+        "music",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "history",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Takin’ A Walk Nashville",
+      "blurb": "Takin' A Walk Nashville is a podcast dedicated to celebrating every genre of music born from the heart of Music City, and every band's journey that shaped it. Hosted by",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1846948974": {
       "topics": [
@@ -216806,8 +217711,31 @@
         "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "The Sailing Podcast",
+      "blurb": "From the team behind Practical Boat Owner, Yachting Monthly, and Yachting World comes a new sailing podcast, simply named: The Sailing Podcast Yachting Monthly's editor, Theo Stocker hosts an array",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1848365152": {
       "topics": [
@@ -216888,11 +217816,39 @@
     },
     "1848623945": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.65
+        },
+        {
+          "node": "news",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "SonnyFaz & Unc Reacts Podcast",
+      "blurb": "\"Unc Reacts\", with Sonny Faz & Bek Lover. What happens when a 43 year old man, teams up with a 22 year old to discuss life, the world we live",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1848629186": {
       "topics": [
@@ -217001,11 +217957,39 @@
     },
     "1848760192": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Playbook Canada",
+      "blurb": "Each week, POLITICO’s Nick Taylor-Vaisey and Mickey Djuric bring to life the stories that are driving the news in Ottawa and beyond — drawing on their deep reporting from Parliament",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1848845269": {
       "topics": [
@@ -217575,11 +218559,39 @@
     },
     "1850332619": {
       "topics": [
-        "gaming"
+        "gaming",
+        "hobbies"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.65
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Roblox Horror Stories",
+      "blurb": "This show is created by a human writer using AI tools for writing refinement and AI voice narration. Roblox Horror Stories about games like grow a garden, steal a brainrot",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1850386864": {
       "topics": [
@@ -217790,11 +218802,46 @@
     },
     "1850900612": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 21,
+        "transcript_types": {
+          "application/srt": 7,
+          "text/vtt": 7,
+          "text/plain": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1850901241": {
       "topics": [
@@ -217953,11 +219000,39 @@
     },
     "1851308086": {
       "topics": [
-        "religion/christianity"
+        "business/non-profit",
+        "society"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/non-profit",
+          "confidence": 0.65
+        },
+        {
+          "node": "society",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Overflow Church",
+      "blurb": "Overflow Church exists to help people overflow with love, joy, and hope through Jesus. More info at www.myoverflow.church.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1851315396": {
       "topics": [
@@ -218339,11 +219414,39 @@
     },
     "1852329925": {
       "topics": [
-        "education/self-improvement"
+        "education/self-improvement",
+        "psychology"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.65
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "RIDEOUT: The Other Side of Hard",
+      "blurb": "The Other Side of Hard, hosted by Ken Rideout — raw, gripping conversations with people who've pushed past the breaking point. Stories of resilience, redemption, and what's waiting on the",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1852331350": {
       "topics": [
@@ -218612,11 +219715,49 @@
     },
     "1853604575": {
       "topics": [
-        "medicine"
+        "psychology",
+        "society",
+        "economics"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        },
+        {
+          "node": "society",
+          "confidence": 0.6
+        },
+        {
+          "node": "economics",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Public Health is For Everyone",
+      "blurb": "Public health is a symphony, not a solo. The sibling podcast to Everything is Public Health podcast, housing all spinoff series. An Everything is Public Health Production Website: https://www.every...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:37.492Z"
     },
     "1853626039": {
       "topics": [
@@ -218954,8 +220095,31 @@
         "history"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Ask A Vet Podcast",
+      "blurb": "Ask A Vet Podcast is a long-form conversation where veterans share their service experiences in their own words, with respect and control over what they choose to talk about.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1854841689": {
       "topics": [
@@ -219179,11 +220343,39 @@
     },
     "1855648416": {
       "topics": [
-        "sports"
+        "sports",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Game Over with Max Kellerman and  Rich Paul",
+      "blurb": "Sports media veteran Max Kellerman and super-agent Rich Paul discuss the most pressing topics in sports and culture.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1855659068": {
       "topics": [
@@ -219773,11 +220965,39 @@
     },
     "1860906611": {
       "topics": [
-        "society/government"
+        "society/government",
+        "news/politics"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society/government",
+          "confidence": 0.65
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "The 351",
+      "blurb": "Leading Massachusetts into the future will take the talent, dedication, and hard work of leaders from all of our 351 cities and towns. Our mission at the Massachusetts Municipal Association",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1860935541": {
       "topics": [
@@ -220061,8 +221281,31 @@
         "kids-family/stories"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "kids-family/stories",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Stories From Now And Then",
+      "blurb": "Welcome to the Old Library, where real-life cousins Captain Blunderface and Nicola the Storyteller spin classic folk tales, bedtime stories, and true stories about real-life legends. Each episode r...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1863115534": {
       "topics": [
@@ -220456,8 +221699,31 @@
         "news/politics"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Real Baron Podcast",
+      "blurb": "Intellectually Honest. Philosophically Consistent. All Content Copyright ONE R, LLC.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1865865754": {
       "topics": [
@@ -220664,8 +221930,31 @@
         "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Insurance Exam Prep",
+      "blurb": "Insurance Exam Prep is a daily podcast designed to help future insurance professionals pass their licensing exams with clarity and confidence. Built and operated by OpenExamPrep, this podcast break...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1866761839": {
       "topics": [
@@ -221609,8 +222898,31 @@
         "education/courses"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Finance Exam Prep",
+      "blurb": "Finance Exam Prep is a daily podcast designed to help future tax and finance professionals pass their certification and licensing exams with clarity and confidence. Built and operated by OpenExamPrep,",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1869515072": {
       "topics": [
@@ -221880,8 +223192,35 @@
         "fiction"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "The Red Weather",
+      "blurb": "In THE RED WEATHER Rider Strong goes back to his hometown in Northern California to investigate the disappearance of his best friend&rsquo;s sister, Anna Trainor, who vanished from her commune",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1870845014": {
       "topics": [
@@ -221908,11 +223247,41 @@
     },
     "1871015834": {
       "topics": [
-        "society"
+        "society",
+        "culture"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "La Voz de la Generación Irrompible",
+      "blurb": "Como logia radial, somos un proyecto filantrópico y fraternal cuyo propósito es visibilizar la voz de aquellos que no la tienen. Trabajamos con el firme compromiso de rescatar y promover",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "application/x-subrip": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1871205904": {
       "topics": [
@@ -221956,8 +223325,33 @@
         "health"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Womb and Word Podcast",
+      "blurb": "A space created to empower Pregnant & Postpartum Mothers Through Maternal Health Education & Advocacy, Real Stories,Expert Guidance, & Faith To help them navigate pregnancy, birth & postpartum with...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "application/x-subrip": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1871513277": {
       "topics": [
@@ -222031,8 +223425,33 @@
         "religion/hinduism"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/hinduism",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": "Brihadaranyaka Upanishad | Swami Sarvapriyananda",
+      "blurb": "The Brihadaranyaka Upanishad (Sanskrit: बृहदारण्यकोपनिषद्, IAST: Bṛhadāraṇyakopaniṣad) is one of the Principal Upanishads and one of the first Upanishadic scriptures of Hinduism. A key scripture to...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 6,
+        "transcript_types": {
+          "text/vtt": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:26.996Z"
     },
     "1871936541": {
       "topics": [
@@ -222088,11 +223507,42 @@
     },
     "1872168845": {
       "topics": [
-        "espionage"
+        "society",
+        "culture"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.5
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content aligns with indicated topics based on show description and episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-1b082ecd",
+      "classified_at": "2026-08-28T16:21:37.492Z"
     },
     "1872197094": {
       "topics": [
