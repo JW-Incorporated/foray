@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-28T00:18:48.091Z",
+  "built_at": "2026-08-28T08:19:25.067Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-28-e45e73f4",
+    "last_batch_id": "fresh-2026-08-28-482aa3d9",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -192957,11 +192957,58 @@
     },
     "1776212282": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "music",
+        "society",
+        "news",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news show with celebrity gossip and pop culture commentary.",
+      "display_title": "Melissa Moore In The Morning",
+      "blurb": "Kool 105's morning show hos.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1776236328": {
       "topics": [
@@ -192988,11 +193035,34 @@
     },
     "1776258596": {
       "topics": [
-        "hobbies"
+        "travel"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comprehensive cruise travel planning and vacation optimization guide.",
+      "display_title": "Professor Melissa's Cruise Pod",
+      "blurb": "Welcome to Professor Meliss.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1776366798": {
       "topics": [
@@ -193165,11 +193235,54 @@
     },
     "1776743104": {
       "topics": [
-        "education/language-learning"
+        "education/language-learning",
+        "tv-film",
+        "health",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.9
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Spanish language learning podcast with beginner conversations on varied topics.",
+      "display_title": "Dreaming Spanish Podcast – Chats in Beginner Spanish",
+      "blurb": "Unlock your Spanish with re.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1776859269": {
       "topics": [
@@ -193395,9 +193508,32 @@
       "topics": [
         "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Career stories from technical professionals and engineers.",
+      "display_title": "The Peterman Pod",
+      "blurb": "Sharing the transparent car.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1777364618": {
       "topics": [
@@ -194342,11 +194478,44 @@
     },
     "1780996505": {
       "topics": [
+        "travel",
+        "business",
         "education/how-to"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "education/how-to",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Guide to starting and managing short-term rental properties.",
+      "display_title": "How to Start an Airbnb",
+      "blurb": "Want to learn how to Find, .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1781083727": {
       "topics": [
@@ -194401,27 +194570,148 @@
     },
     "1781537455": {
       "topics": [
-        "science/physics"
+        "science",
+        "aviation",
+        "society"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring science topics in depth.",
+      "display_title": "Quantum Foundations Podcast",
+      "blurb": "What does quantum physics t.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1781562695": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "health",
+        "relationships",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "Beyond Monogamy with Adam & Pris",
+      "blurb": "Welcome to the wild, honest.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "application/x-subrip": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1781636710": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "health/sexuality",
+        "relationships",
+        "society",
+        "education",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news show with celebrity gossip and pop culture commentary.",
+      "display_title": "Fame Under Fire",
+      "blurb": "Who killed Tupac Shakur? An.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1781687341": {
       "topics": [
@@ -194785,11 +195075,44 @@
     },
     "1782915630": {
       "topics": [
-        "education/courses"
+        "society",
+        "health",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring society topics in depth.",
+      "display_title": "American Law Cafe",
+      "blurb": "American Law Cafe: Explorin.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1782953598": {
       "topics": [
@@ -195185,11 +195508,39 @@
     },
     "1784599966": {
       "topics": [
-        "education/how-to"
+        "health",
+        "religion"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Natural birth preparation and pregnancy guidance with holistic health approaches.",
+      "display_title": "Faithful Labor | Natural Birth, Pregnancy, Holistic,",
+      "blurb": "Are you feeling overwhelmed.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1784600155": {
       "topics": [
@@ -195327,11 +195678,49 @@
     },
     "1785014400": {
       "topics": [
-        "religion"
+        "health/sexuality",
+        "relationships",
+        "health",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "Quiet In The Night",
+      "blurb": "Quiet In The Night is a pod.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1785059048": {
       "topics": [
@@ -195535,9 +195924,32 @@
       "topics": [
         "aviation"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pilot training combining aviation expertise with wellness.",
+      "display_title": "The Calm Cockpit Podcast",
+      "blurb": "Join John Niehaus, a profes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1785852489": {
       "topics": [
@@ -195905,11 +196317,39 @@
     },
     "1787211629": {
       "topics": [
-        "math"
+        "engineering",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Academic interviews on control theory and engineering.",
+      "display_title": "Coffee and Control",
+      "blurb": "Podcast in which I intervie.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1787323631": {
       "topics": [
@@ -196820,11 +197260,64 @@
     },
     "1789827802": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "society/law",
+        "health/mental",
+        "tv-film/interviews",
+        "society",
+        "news/commentary",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "society/law",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/interviews",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily talk show covering pop culture, sports and politics.",
+      "display_title": "Hot Mics with Billy Bush",
+      "blurb": "&#34;Hot Mics with Billy Bu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1789911793": {
       "topics": [
@@ -197241,11 +197734,44 @@
     },
     "1791537814": {
       "topics": [
-        "science"
+        "health/mental",
+        "sports"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Immersive audio podcast for neurodivergent minds and sleep.",
+      "display_title": "Flooba",
+      "blurb": "🎧 Welcome to Flooba, a sen.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 2,
+        "episodes_with_timed_transcript": 2,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 2,
+          "application/json": 2,
+          "application/x-subrip": 2,
+          "text/vtt": 2
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1791540993": {
       "topics": [
@@ -197486,11 +198012,39 @@
     },
     "1792074637": {
       "topics": [
-        "society"
+        "health/mental",
+        "psychology"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology and social science podcast exploring human behavior.",
+      "display_title": "Misguided: The Podcast",
+      "blurb": "Misguided: The Podcast expl.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1792078060": {
       "topics": [
@@ -197804,11 +198358,39 @@
     },
     "1793225942": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Study guide for nursing assistant certification exam.",
+      "display_title": "CNA Study Guide",
+      "blurb": "Welcome to the CNA Study Gu.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1793379248": {
       "topics": [
@@ -198055,11 +198637,49 @@
     },
     "1793999230": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film",
+        "society",
+        "education",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news show with celebrity gossip and pop culture commentary.",
+      "display_title": "How We Made Your Mother",
+      "blurb": "HOW I MET YOUR MOTHER, a gr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1794000426": {
       "topics": [
@@ -198277,11 +198897,49 @@
     },
     "1794454530": {
       "topics": [
-        "education/self-improvement"
+        "health",
+        "music",
+        "education",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "Start Your Day Positive",
+      "blurb": "Start Your Day Positive is .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1794511460": {
       "topics": [
@@ -198629,11 +199287,54 @@
     },
     "1795698096": {
       "topics": [
-        "business/careers"
+        "music",
+        "health",
+        "education",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morning radio show featuring music, local news, and entertainment content.",
+      "display_title": "How Much Can I Make? — Real",
+      "blurb": "How Much Can I Make? with M.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1795706178": {
       "topics": [
@@ -198653,11 +199354,48 @@
     },
     "1795734509": {
       "topics": [
-        "society/government"
+        "health",
+        "society",
+        "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "The Oath and The Office",
+      "blurb": "Mixing sharp wit and seriou.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1795750398": {
       "topics": [
@@ -198920,11 +199658,38 @@
     },
     "1796598706": {
       "topics": [
-        "math"
+        "education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "News and current events interim commentary.",
+      "display_title": "In the Interim...",
+      "blurb": "A podcast on statistical sc.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 15,
+        "transcript_types": {
+          "text/vtt": 7,
+          "application/json": 7,
+          "text/plain": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1796608349": {
       "topics": [
@@ -199616,11 +200381,49 @@
     },
     "1798267956": {
       "topics": [
-        "true-crime"
+        "tv-film",
+        "society",
+        "education",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news show with celebrity gossip and pop culture commentary.",
+      "display_title": "To Catch a Thief: North Korea On",
+      "blurb": "American companies are bein.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1798271005": {
       "topics": [
@@ -199835,11 +200638,39 @@
     },
     "1799078597": {
       "topics": [
-        "sports/rugby"
+        "society",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring society topics in depth.",
+      "display_title": "Zero Tackle NRL Podcast",
+      "blurb": "Get the latest NRL news, an.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1799170292": {
       "topics": [
@@ -199916,11 +200747,44 @@
     },
     "1799362003": {
       "topics": [
-        "music"
+        "music",
+        "health",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morning radio show featuring music, local news, and entertainment content.",
+      "display_title": "Shawn Stockman's On That Note",
+      "blurb": "Music is more than just sou.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1799445806": {
       "topics": [
@@ -199931,11 +200795,34 @@
     },
     "1799464086": {
       "topics": [
-        "society"
+        "health"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "Concrete Mama: The Podcast",
+      "blurb": "Concrete Mama is not just a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1799554290": {
       "topics": [
@@ -200026,11 +200913,34 @@
     },
     "1799793478": {
       "topics": [
-        "sports/wrestling"
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast providing guides and foundational knowledge on specialty topics.",
+      "display_title": "WWE Now",
+      "blurb": "WWE Now is your backstage p.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1799858188": {
       "topics": [
@@ -200056,11 +200966,34 @@
     },
     "1799868725": {
       "topics": [
-        "business"
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "Lemonade Stand",
+      "blurb": "Three guys with the experti.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1799881966": {
       "topics": [
@@ -200310,11 +201243,39 @@
     },
     "1800587742": {
       "topics": [
+        "travel",
         "true-crime"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "True crime podcast about travel scams and fraud.",
+      "display_title": "SCAMMERLAND",
+      "blurb": "Scams are no longer run by .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 7,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1800658994": {
       "topics": [
@@ -200356,11 +201317,34 @@
     },
     "1800771701": {
       "topics": [
-        "culture/books"
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "Off The Shelf with Morgann Book",
+      "blurb": "Welcome to Off The Shelf – .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1800936253": {
       "topics": [
@@ -200460,11 +201444,34 @@
     },
     "1801103628": {
       "topics": [
-        "sports"
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring society topics in depth.",
+      "display_title": "Press Box Chronicles",
+      "blurb": "Welcome to Press Box Chroni.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1801207070": {
       "topics": [
@@ -201028,11 +202035,39 @@
     },
     "1803000536": {
       "topics": [
+        "travel",
         "fiction"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment storytelling podcast with fiction narratives.",
+      "display_title": "It's Storytime with Wil Wheaton",
+      "blurb": "You may recognize Wil Wheat.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1803048567": {
       "topics": [
@@ -201298,11 +202333,54 @@
     },
     "1804015544": {
       "topics": [
-        "education/self-improvement"
+        "health/sexuality",
+        "psychology",
+        "relationships",
+        "health",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "The Let Them Theory",
+      "blurb": "The Let Them Theory: Reclai.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 1,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1804101083": {
       "topics": [
@@ -201636,11 +202714,39 @@
     },
     "1805000392": {
       "topics": [
-        "music"
+        "music",
+        "news"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morning radio show featuring music, local news, and entertainment content.",
+      "display_title": "Professor of Rock",
+      "blurb": "The ultimate rock music his.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1805036116": {
       "topics": [
@@ -201752,11 +202858,34 @@
     },
     "1805588878": {
       "topics": [
-        "sports/endurance"
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring society topics in depth.",
+      "display_title": "Wild Swimming Wangers",
+      "blurb": "Writers Marianne Levy and B.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1805617668": {
       "topics": [
@@ -201843,19 +202972,70 @@
     },
     "1805868343": {
       "topics": [
-        "sports/golf"
+        "education"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Educational podcast providing guides and foundational knowledge on specialty topics.",
+      "display_title": "The Second Cut | Golf Podcast",
+      "blurb": "The Second Cut gets you eve.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1805870502": {
       "topics": [
-        "food"
+        "education"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Educational podcast providing guides and foundational knowledge on specialty topics.",
+      "display_title": "Things Bakers Know: The King Arthur Baking Podcast",
+      "blurb": "Join King Arthur’s Jessica .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 28,
+        "transcript_types": {
+          "text/html": 7,
+          "application/json": 7,
+          "application/x-subrip": 7,
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1805898975": {
       "topics": [
@@ -201938,11 +203118,34 @@
     },
     "1805962115": {
       "topics": [
-        "history"
+        "society"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring society topics in depth.",
+      "display_title": "Easy Money: The Charles Ponzi Story",
+      "blurb": "In 1920, a broke immigrant .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1805979240": {
       "topics": [
@@ -202422,11 +203625,54 @@
     },
     "1807755678": {
       "topics": [
-        "medicine"
+        "relationships",
+        "health/sexuality",
+        "health",
+        "health/mental",
+        "health/nutrition"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health podcast on diabetes management and nutrition.",
+      "display_title": "Diabetes Nerd",
+      "blurb": "Seriously? Another diabetes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1807773760": {
       "topics": [
@@ -202632,11 +203878,54 @@
     },
     "1808684702": {
       "topics": [
-        "society"
+        "tv-film",
+        "health",
+        "music",
+        "society",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "health",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news show with celebrity gossip and pop culture commentary.",
+      "display_title": "The Nerve with Maureen Callahan",
+      "blurb": "From pop culture to true cr.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1808712989": {
       "topics": [
@@ -202656,11 +203945,34 @@
     },
     "1808738425": {
       "topics": [
-        "society"
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Educational podcast providing guides and foundational knowledge on specialty topics.",
+      "display_title": "eLIESabeth",
+      "blurb": "She said she had cancer. Mo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1808797073": {
       "topics": [
@@ -202763,11 +204075,39 @@
     },
     "1809157423": {
       "topics": [
-        "sports/wrestling"
+        "health",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "What's Your Story? with Steph McMahon",
+      "blurb": "Steph McMahon has always ha.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1809160531": {
       "topics": [
@@ -203081,11 +204421,44 @@
     },
     "1809992400": {
       "topics": [
-        "education/how-to"
+        "society",
+        "health",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring society topics in depth.",
+      "display_title": "How To Convince with Lawyer Vince",
+      "blurb": "Welcome to How to Convince .",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1810009498": {
       "topics": [
@@ -203276,11 +204649,34 @@
     },
     "1810538756": {
       "topics": [
-        "gaming"
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast providing guides and foundational knowledge on specialty topics.",
+      "display_title": "Mahjong & Mics",
+      "blurb": "Welcome to Mahjong and Mics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1810597101": {
       "topics": [
@@ -203624,11 +205020,44 @@
     },
     "1811906460": {
       "topics": [
-        "personal-journals"
+        "health/sexuality",
+        "relationships",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "TANGENT with Tanner Devore",
+      "blurb": "Every week join Tanner Devo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1811936515": {
       "topics": [
@@ -204855,11 +206284,44 @@
     },
     "1815723636": {
       "topics": [
-        "education/how-to"
+        "society",
+        "health",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring society topics in depth.",
+      "display_title": "HOA HELL",
+      "blurb": "HOA Hell with Michael Kushn.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1815725870": {
       "topics": [
@@ -204958,19 +206420,72 @@
     },
     "1815982422": {
       "topics": [
-        "science"
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Educational podcast providing guides and foundational knowledge on specialty topics.",
+      "display_title": "The 'Perfect' Specimen",
+      "blurb": "Does the perfect museum spe.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "/application/srt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1816031495": {
       "topics": [
-        "medicine"
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "What the Health is Happening? with Dr. V",
+      "blurb": "Every week, people call Dr..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1816042888": {
       "topics": [
@@ -205114,11 +206629,48 @@
     },
     "1816362029": {
       "topics": [
-        "society"
+        "society",
+        "health",
+        "religion"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "religion",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Podcast series exploring society topics in depth.",
+      "display_title": "Hidden Cults",
+      "blurb": "From silent compounds to su.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1816376195": {
       "topics": [
@@ -205439,11 +206991,34 @@
     },
     "1817225413": {
       "topics": [
-        "society"
+        "education"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast providing guides and foundational knowledge on specialty topics.",
+      "display_title": "The Best People with Nicolle Wallace",
+      "blurb": "Who are The Best People? Th.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1817228568": {
       "topics": [
@@ -205839,11 +207414,44 @@
     },
     "1818157896": {
       "topics": [
-        "business/non-profit"
+        "relationships",
+        "health/sexuality",
+        "health/mental"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and career discussion podcast.",
+      "display_title": "Sharpe Insights: Conversations With Your Planned Giving Experts",
+      "blurb": "Sharpe Insights: Conversati.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:19:25.067Z"
     },
     "1818164606": {
       "topics": [
@@ -205939,11 +207547,34 @@
     },
     "1818389132": {
       "topics": [
-        "society/government"
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and wellness podcast covering medical, psychological, and lifestyle topics.",
+      "display_title": "State of Play",
+      "blurb": "The world order has been di.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1818408505": {
       "topics": [
@@ -206309,11 +207940,34 @@
     },
     "1819481394": {
       "topics": [
-        "gaming"
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Educational podcast providing guides and foundational knowledge on specialty topics.",
+      "display_title": "Fireball the Gazebo",
+      "blurb": "Join the 8 Int Wizards as t.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1819488714": {
       "topics": [
@@ -206351,11 +208005,64 @@
     },
     "1819528921": {
       "topics": [
-        "tv-film"
+        "tv-film",
+        "health/sexuality",
+        "aviation",
+        "relationships",
+        "society",
+        "health",
+        "news"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "aviation",
+          "confidence": 0.85
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "society",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entertainment news show with celebrity gossip and pop culture commentary.",
+      "display_title": "Love, Lex P",
+      "blurb": "Lex P is a media personalit.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-482aa3d9",
+      "classified_at": "2026-08-28T08:18:22.706Z"
     },
     "1819566062": {
       "topics": [
