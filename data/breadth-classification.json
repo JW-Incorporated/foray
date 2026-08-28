@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-27T16:20:55.780Z",
+  "built_at": "2026-08-28T00:18:48.091Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-27-397631a5",
+    "last_batch_id": "fresh-2026-08-28-e45e73f4",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -161960,9 +161960,32 @@
       "topics": [
         "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and archival storytelling.",
+      "display_title": "My Grandma's Diaries",
+      "blurb": "Join us every Tuesday as we read Elisabeth Hartsell's diaries spanning from 1931-1942. She will come of age in the midst of the Great Depression and see the start of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1685691481": {
       "topics": [
@@ -175382,9 +175405,32 @@
       "topics": [
         "religion"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Religious study and spiritual guidance.",
+      "display_title": "Grounded",
+      "blurb": "A Come Follow Me supplementary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1722800993": {
       "topics": [
@@ -176953,11 +176999,49 @@
     },
     "1726084655": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "sports",
+        "engineering",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "Dolph's Parlor: Gay Erotica",
+      "blurb": "Join me and listen to the steamiest gay sex stories on the internet. Connect with me on X or Reddit. X: @dolphsparlor Reddit: r/dolphsparlor",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1726084797": {
       "topics": [
@@ -177005,11 +177089,34 @@
     },
     "1726147844": {
       "topics": [
-        "hobbies"
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Lazy Girls Writing Club",
+      "blurb": "An honest writing podcast hosted by Maddie and Ellen as we get inspired and struggle to finish (or start) our first novels ✍🏻✨",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 4,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1726191515": {
       "topics": [
@@ -177612,11 +177719,39 @@
     },
     "1727769913": {
       "topics": [
-        "society/government"
+        "business",
+        "science"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Law and Chaos",
+      "blurb": "Ignorance of the law is no excuse! That's true for a traffic stop, and it's true if you want to participate in whatever's left of American democracy. If the events.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1727777167": {
       "topics": [
@@ -177779,11 +177914,42 @@
     },
     "1728292519": {
       "topics": [
-        "religion"
+        "religion",
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Religious study and spiritual guidance.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1728311904": {
       "topics": [
@@ -178311,11 +178477,48 @@
     },
     "1729497779": {
       "topics": [
-        "sports/basketball"
+        "history",
+        "sports",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "Roommates Show with Jalen Brunson & Josh Hart",
+      "blurb": "The next big podcast just moved in! Join New York Knicks stars Jalen Brunson & Josh Hart and co-host Matt Hillman as they discuss basketball, current topics, and what it&rsquo;s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1729505286": {
       "topics": [
@@ -178327,11 +178530,34 @@
     },
     "1729552193": {
       "topics": [
-        "computing"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "十字路口Crossing",
+      "blurb": "AI 正在给各行各业带来改变，我们在「十字路口」关注变革与机会，寻找、访谈和凝聚 AI 时代的「积极行动者」，和他们一起，探索和拥抱新变化、新的可能性。 「十字路口」是乔布斯对苹果公司的一个比喻，形容它站在科技与人文的十字路口，伟大的产品往往诞生在这里。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1729575866": {
       "topics": [
@@ -178473,11 +178699,44 @@
     },
     "1730358737": {
       "topics": [
-        "news/politics"
+        "history",
+        "music",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical topics.",
+      "display_title": "Letters from an American",
+      "blurb": "Heather Cox Richardson's narrated newsletter about the history behind today's politics. heathercoxrichardson.substack.com",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1730369931": {
       "topics": [
@@ -179113,9 +179372,32 @@
       "topics": [
         "hobbies"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "hobbies",
+          "confidence": 0.3
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Personal podcast with storytelling and guest interviews.",
+      "display_title": "天真不天真",
+      "blurb": "杨天真播客 欢迎来到我的播客。 在这里，我会和大家分享那些或“天真”或“不天真”的故事。有时邀请好友，有时探寻人生，与世界碰撞，聊着聊着，聊出真相。",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:48.091Z"
     },
     "1731804320": {
       "topics": [
@@ -179967,11 +180249,39 @@
     },
     "1734318382": {
       "topics": [
-        "personal-journals"
+        "engineering",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical topics.",
+      "display_title": "MeSsy with Christina Applegate & Jamie Lynn Sigler",
+      "blurb": "On this podcast, Christina Applegate and Jamie Lynn Sigler get vulnerable about the curveballs that life can throw…theirs just happens to be MS. Join them each week as they self-reflect,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1734318570": {
       "topics": [
@@ -180140,11 +180450,48 @@
     },
     "1734696958": {
       "topics": [
-        "society/government"
+        "history",
+        "engineering",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "The KABC News Blitz",
+      "blurb": "The city council will only give you 60 seconds, but you get 60 minutes on the KABC News Blitz. Randy Wang takes your calls on hyper-local news that you actually.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1734698162": {
       "topics": [
@@ -180812,11 +181159,49 @@
     },
     "1736844371": {
       "topics": [
-        "sports"
+        "history",
+        "sports",
+        "engineering",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical topics.",
+      "display_title": "The Anthony Gargano Show",
+      "blurb": "Philly sports talk like only The Cuz can deliver. Hosted by legendary Philadelphia sports voice Anthony Gargano, The Anthony Gargano Show on PHLY Sports covers everything in the world of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1736971927": {
       "topics": [
@@ -181077,11 +181462,49 @@
     },
     "1737812524": {
       "topics": [
-        "society"
+        "history",
+        "engineering",
+        "health",
+        "business"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "Inconceivable Truth",
+      "blurb": "Investigative reporter Matt Katz has been searching for his biological father since he was a little kid. But it wasn't until his 40s that he realized he was on the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1737815102": {
       "topics": [
@@ -181922,11 +182345,52 @@
     },
     "1741285846": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "history",
+        "sports",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Technology and software development.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1741315774": {
       "topics": [
@@ -181991,11 +182455,44 @@
     },
     "1741574582": {
       "topics": [
-        "engineering/ai-robotics"
+        "sports",
+        "music",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "The TED AI Show",
+      "blurb": "Sure, some predictions about AI are just hype – but others suggest that everything we know is about to fundamentally change. Creative technologist Bilawal Sidhu talks with the world’s leading.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1741580549": {
       "topics": [
@@ -182014,11 +182511,34 @@
     },
     "1741593134": {
       "topics": [
-        "personal-journals"
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "Honey Jam Podcast",
+      "blurb": "Jump into the weekly adventures with Janice and Jessica as they tackle the wild ride of their 30s, swap hilarious stories, and dive into the joys and quirks of their.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1741605832": {
       "topics": [
@@ -182119,11 +182639,39 @@
     },
     "1741828067": {
       "topics": [
-        "education/courses"
+        "engineering",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical topics.",
+      "display_title": "Oregon Reporter Podcast",
+      "blurb": "The Oregon Reporter Podcast is your monthly review of the most important and interesting law updates in Oregon, including recent appellate decisions and legislation, and how those things might effect.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1741829042": {
       "topics": [
@@ -182142,11 +182690,57 @@
     },
     "1741984871": {
       "topics": [
-        "sports/endurance"
+        "history",
+        "music",
+        "engineering",
+        "health",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Scientific research and discovery.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /deep[\\s-]dive/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1742000812": {
       "topics": [
@@ -182383,11 +182977,48 @@
     },
     "1742864402": {
       "topics": [
-        "culture/fashion"
+        "music",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "It Girl with Bailey Taylor",
+      "blurb": "Through intimate, unfiltered conversations with fashion editors, celebrities, founders, and cultural leaders, It Girl with Bailey Taylor captures both the glamour and the reality of life in the public eye..",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1742885638": {
       "topics": [
@@ -182422,11 +183053,44 @@
     },
     "1742968315": {
       "topics": [
-        "society"
+        "music",
+        "engineering",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical topics.",
+      "display_title": "Wild Card with Rachel Martin",
+      "blurb": "Life’s too short for small talk. Rachel gets right to the questions that matter most. Once a week, famous guests pull questions from a deck of cards and open up.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1743030473": {
       "topics": [
@@ -182725,11 +183389,39 @@
     },
     "1743817782": {
       "topics": [
-        "business/non-profit"
+        "religion",
+        "sports"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports and athletic pursuits.",
+      "display_title": "The Grove | Evergreen Church",
+      "blurb": "Join Joy Gabbert and her team as they search out the work of God in the lives of the people of Evergreen Church in Tulsa, OK. These are real-life stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1743829932": {
       "topics": [
@@ -182934,11 +183626,62 @@
     },
     "1744485065": {
       "topics": [
-        "religion"
+        "religion",
+        "history",
+        "music",
+        "engineering",
+        "health",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Scientific research and discovery.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1744571281": {
       "topics": [
@@ -183314,11 +184057,49 @@
     },
     "1745786646": {
       "topics": [
-        "society"
+        "history",
+        "music",
+        "engineering",
+        "science"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Conspiracy Files with Paige Carter",
+      "blurb": "Conspiracy Files with Paige Carter is a conspiracy theories podcast exploring hidden history, government secrets, and declassified programs that challenge the official narrative. Each episode investigates hidden power structures, classified.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1745792666": {
       "topics": [
@@ -183756,11 +184537,34 @@
     },
     "1747222904": {
       "topics": [
-        "religion/islam"
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "BnB Edition",
+      "blurb": "Husband and Wife conversations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1747315251": {
       "topics": [
@@ -183867,11 +184671,41 @@
     },
     "1747587869": {
       "topics": [
-        "religion/islam"
+        "religion",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "Heartwork | Ustadh AbdelRahman Murphy",
+      "blurb": "Roots opened in early 2018 as a community space, dedicated to providing a warm environment, facilitating great conversations, being accessible in space and in faith, and giving each member of.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 1,
+        "episodes_with_timed_transcript": 1,
+        "transcript_tags": 1,
+        "transcript_types": {
+          "text/vtt": 1
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1747595268": {
       "topics": [
@@ -183998,11 +184832,47 @@
     },
     "1747970256": {
       "topics": [
-        "personal-journals"
+        "religion",
+        "engineering",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1747983061": {
       "topics": [
@@ -184547,11 +185417,44 @@
     },
     "1750132906": {
       "topics": [
-        "tv-film/history"
+        "music",
+        "engineering",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "Stars of the Golden Age: An Old Hollywood",
+      "blurb": "Welcome to Stars of the Golden Age, a podcast about Old Hollywood and the classic film era, where you can learn about the lives of legends from film, music, and.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1750133042": {
       "topics": [
@@ -184656,11 +185559,34 @@
     },
     "1750591415": {
       "topics": [
-        "news/politics"
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "Candace",
+      "blurb": "This time it's just Candace. Free and unfiltered.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1750730095": {
       "topics": [
@@ -184838,11 +185764,39 @@
     },
     "1751241474": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "engineering"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "All Out with Jon Dean",
+      "blurb": "All Out with Jon Dean is an award winning video interview and documentary show for gay men. A number 1 hit in the global sexuality charts and a British Podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1751276747": {
       "topics": [
@@ -184963,11 +185917,44 @@
     },
     "1751519210": {
       "topics": [
-        "tv-film"
+        "history",
+        "engineering",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "The Brooke Ashley",
+      "blurb": "Sit back, relax and pour a glass of champagne as we kii about our fave reality shows, celeb gossip and everything else under sun!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1751522312": {
       "topics": [
@@ -185119,11 +186106,44 @@
     },
     "1752138229": {
       "topics": [
-        "sports/soccer"
+        "sports",
+        "music",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "Soccerwise | World Cup, U.S. Soccer, MLS, NWSL",
+      "blurb": "Soccerwise is dedicated to covering the world of North American soccer with informed analysis on MLS, NWSL, the US National Teams, and everything else in between! Multiple times each week,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1752142877": {
       "topics": [
@@ -185450,11 +186470,39 @@
     },
     "1752980028": {
       "topics": [
-        "tv-film"
+        "engineering",
+        "health"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical topics.",
+      "display_title": "Free Castin'",
+      "blurb": "Where we talk about Hounds, Mules and Everything in Between!",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1753036033": {
       "topics": [
@@ -185481,11 +186529,39 @@
     },
     "1753141662": {
       "topics": [
-        "business/non-profit"
+        "science"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Registry Insider",
+      "blurb": "Registry Insider is the new vodcast from the National Registry of EMTs. Hosted by Chief Executive Officer Bill Seifarth, Registry Insider gives you insight, news, and in-depth conversations on a.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1753290951": {
       "topics": [
@@ -185740,11 +186816,49 @@
     },
     "1754424612": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "history",
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Pleasure Project: Sex and Relationships",
+      "blurb": "Exploration of all topics related to relationships and sexual pleasure: anatomy, psychology, toys, aging, communication, media, history. As a Marriage and Family Therapist specializing in couples and sexuality, I will.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1754452871": {
       "topics": [
@@ -185804,11 +186918,44 @@
     },
     "1754605114": {
       "topics": [
-        "education/courses"
+        "engineering",
+        "health",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "The Del Walmsley Radio Show",
+      "blurb": "After only 2 1⁄2 years of investing in real estate, Del Walmsley used the income from his Single Family rental houses to replace his earned income ­and quit his W2.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1754714080": {
       "topics": [
@@ -186076,11 +187223,39 @@
     },
     "1756014574": {
       "topics": [
-        "comedy/interviews"
+        "health",
+        "science"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Hasan Minhaj Doesn't Know",
+      "blurb": "Two-time Peabody Award–winning comedian Hasan Minhaj talks with politicians, public figures, and experts from finance to psychology to astrophysics. In a media culture dominated by certainty, Hasan leads with curiosity,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1756045818": {
       "topics": [
@@ -186858,11 +188033,39 @@
     },
     "1759570925": {
       "topics": [
-        "education/courses"
+        "engineering",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Behavior Unlocked",
+      "blurb": "The 1st Podcast to cover the entire BCBA TASK CONTENT 6! RBT/BCBA Exam Prep is a comprehensive study resource designed to help candidates prepare for the Board-Certified Behavior Analyst (BCBA).",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1759599442": {
       "topics": [
@@ -187188,11 +188391,39 @@
     },
     "1760612746": {
       "topics": [
-        "science"
+        "history",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "How Wild",
+      "blurb": "How Wild hits trails around the country, exploring the meaning of wilderness. A century ago, the U.S. set aside the first official wilderness. You'll hear stories from rangers, scientists, hikers,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1760825951": {
       "topics": [
@@ -187756,11 +188987,39 @@
     },
     "1762728526": {
       "topics": [
-        "comedy/interviews"
+        "sports",
+        "music"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music discussion and performance.",
+      "display_title": "Story Warz",
+      "blurb": "📖 📚Welcome to Story Warz: A Game of Deceptive Storytelling. Comedians Big Jay Oakerson & Luis J. Gomez face off with some of the biggest names in comedy and entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1762729066": {
       "topics": [
@@ -187929,11 +189188,39 @@
     },
     "1763461729": {
       "topics": [
-        "society"
+        "sports",
+        "engineering"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "Flightless Bird",
+      "blurb": "Flightless Bird follows journalist David Farrier as he learns about what makes America special from his unique perspective as a Kiwi accidentally marooned in the Land of the Free. Infinitely.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1763475643": {
       "topics": [
@@ -187999,11 +189286,44 @@
     },
     "1763643718": {
       "topics": [
-        "aviation"
+        "engineering",
+        "health",
+        "business"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "Jet Setting Wealth Advisory",
+      "blurb": "Welcome to Jet Setting Wealth Advisory, where your financial journey takes flight with David T. Yu. With over 20 years in financial services and as an active airline pilot, David,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1763656780": {
       "topics": [
@@ -188014,11 +189334,44 @@
     },
     "1763664287": {
       "topics": [
-        "business/non-profit"
+        "sports",
+        "engineering",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical topics.",
+      "display_title": "CareCast: The CLL Society Podcast",
+      "blurb": "Being told you have chronic lymphocytic leukemia (CLL) can come with feelings of worry, sadness, confusion, and perhaps most of all, uncertainty. From diagnosis, to watch and wait, starting treatment,.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1763681144": {
       "topics": [
@@ -188548,11 +189901,49 @@
     },
     "1765605600": {
       "topics": [
-        "business/management"
+        "sports",
+        "engineering",
+        "business",
+        "science"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "We Fixed It, You're Welcome",
+      "blurb": "Armchair quarterbacking isn’t just for sports anymore. We’re taking the same approach to companies: what would you do in their shoes? Each episode, our lively panel will debate a new.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1765625492": {
       "topics": [
@@ -188895,11 +190286,43 @@
     },
     "1767454006": {
       "topics": [
+        "history",
         "sports"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports and athletic pursuits.",
+      "display_title": "The Art Of Ward",
+      "blurb": "THE ART OF WARD is a series hosted by Boxing Hall of Famer and Chief Content Officer for ALL THE SMOKE FIGHT Andre Ward exploring the fight game from the.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1767472190": {
       "topics": [
@@ -189058,11 +190481,54 @@
     },
     "1767956371": {
       "topics": [
-        "fiction"
+        "history",
+        "sports",
+        "music",
+        "engineering",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "The Gentleman From Hell",
+      "blurb": "An entire town… gone. Without a trace. No signs, no warnings. Just silence. This is the story of Cold Sparrow. Twenty-four years ago, the peaceful town of Cold Sparrow became.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1767970971": {
       "topics": [
@@ -189168,11 +190634,41 @@
     },
     "1768354655": {
       "topics": [
-        "health/alternative"
+        "engineering",
+        "health"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Health and medical topics.",
+      "display_title": "Grounded Wellness by Primally Pure",
+      "blurb": "Welcome to Grounded Wellness: your go-to podcast for simple and trustworthy information on how to live a more holistic + non-toxic life. Each week you’ll find us here, on our.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 2,
+        "episodes_with_timed_transcript": 2,
+        "transcript_tags": 2,
+        "transcript_types": {
+          "application/x-subrip": 2
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1768380650": {
       "topics": [
@@ -189483,11 +190979,39 @@
     },
     "1769230901": {
       "topics": [
-        "society/government"
+        "history",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "Our Constitution",
+      "blurb": "Unlock the history and meaning of the Constitution. Tailored for non-lawyers, the official podcast of the Constitution Annotated website from the Library of Congress provides an objective look at America’s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1769244707": {
       "topics": [
@@ -190126,11 +191650,34 @@
     },
     "1771721464": {
       "topics": [
-        "comedy"
+        "history"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Historical narratives and archival storytelling.",
+      "display_title": "Las Alucines",
+      "blurb": "Somos Lupita Villalobos y Quesito (Kass Quezada), dos amigas alucines que hacen este podcast de comedia, nos reímos de situaciones y anécdotas de nuestra vida, unas son verdad y otras.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1771757364": {
       "topics": [
@@ -190212,11 +191759,44 @@
     },
     "1771917740": {
       "topics": [
-        "computing"
+        "music",
+        "engineering",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "American Alchemy with Jesse Michels",
+      "blurb": "Welcome to the American Alchemy hosted by Jesse Michels. Tune in for new videos WEEKLY highlighting the most heretical thinkers/ideas of our time. 👽 Grab Your Alchemy Merchandise! https://www.americanalchemymerch.com Instagram:.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1771928629": {
       "topics": [
@@ -190406,11 +191986,39 @@
     },
     "1772506189": {
       "topics": [
-        "hobbies"
+        "sports",
+        "engineering"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Technology and software development.",
+      "display_title": "The Imagination Brickshop’s LEGO Brickcast",
+      "blurb": "This is a LEGO centric podcast where we review sets, cover the latest Lego news & rumors and just talk all things Lego. If you love Lego, then you are.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1772528471": {
       "topics": [
@@ -190611,11 +192219,51 @@
     },
     "1773148427": {
       "topics": [
-        "society"
+        "history",
+        "engineering",
+        "business",
+        "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Influence Anyone",
+      "blurb": "The #1 podcast on applied influence psychology. Each episode, I sit down with the world&#39;s leading experts and practitioners to uncover the hidden psychology that helps you influence yourself (mastering.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1773167029": {
       "topics": [
@@ -190870,11 +192518,39 @@
     },
     "1774049804": {
       "topics": [
+        "engineering",
         "science"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "science",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Scientific research and discovery.",
+      "display_title": "Into The Paranormal, Podcast With Tony Brueski",
+      "blurb": "Step into the unknown with Into The Paranormal Podcast With Tony Brueski , where we bring you real-life stories of the unexplained that will send chills down your spine. From.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1774054706": {
       "topics": [
@@ -190907,11 +192583,49 @@
     },
     "1774126198": {
       "topics": [
-        "personal-journals"
+        "sports",
+        "music",
+        "engineering",
+        "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.8
+        },
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "engineering",
+          "confidence": 0.75
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business and entrepreneurship.",
+      "display_title": "Grit Branded",
+      "blurb": "Having GRIT means possessing a combination of passion and perseverance. It involves maintaining effort and driven passion over years despite failures, setbacks, and plateaus in progress. People with GRIT are.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-28-e45e73f4",
+      "classified_at": "2026-08-28T00:18:38.679Z"
     },
     "1774203959": {
       "topics": [
