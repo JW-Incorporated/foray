@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-25T08:34:35.542Z",
+  "built_at": "2026-08-29T08:34:39.884Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-25-c10d1e43",
+    "last_batch_id": "fresh-2026-08-29-e6ada16c",
     "last_batch_tier": 1
   },
   "entries": {
@@ -17716,7 +17716,25 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Quran recitation from Islamic scholar; title and genre unambiguous.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 10w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "838315493": {
       "topics": [
@@ -83855,7 +83873,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quran recitation; title directly describes content.",
+      "display_title": "Recitation Of The Holy Quran.",
+      "blurb": "Recitation of the Quran.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1521037671": {
       "topics": [
@@ -85055,7 +85088,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic podcast; title and prior align.",
+      "display_title": "Talk Ya Haqq",
+      "blurb": "Islamic podcast and discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1523210122": {
       "topics": [
@@ -85665,10 +85713,29 @@
     "1524074416": {
       "topics": [
         "education/language-learning",
-        "linguistics/language"
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/language-learning",
+          "confidence": 0.85
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "VOA English learning series; title and high-confidence prior strongly align.",
+      "display_title": "English in a Minute - VOA Learning English",
+      "blurb": "One-minute English lessons from Voice of America.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1524085408": {
       "topics": [
@@ -126160,7 +126227,26 @@
         "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.8
+        },
+        {
+          "node": "history",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Bob Dylan focused music history; title and prior align with music/history classification.",
+      "display_title": "Understanding Bob Dylan",
+      "blurb": "Music history and analysis focused on Bob Dylan.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:39.884Z"
     },
     "1630372322": {
       "topics": [
@@ -126684,7 +126770,22 @@
         "sports/soccer"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Women's football/soccer coverage; title and genre unambiguous.",
+      "display_title": "The Guardian's Women's Football Weekly",
+      "blurb": "Weekly women's soccer news and analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1632064544": {
       "topics": [
@@ -143337,11 +143438,30 @@
     },
     "1690170622": {
       "topics": [
+        "news",
         "tv-film"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.65
+        },
+        {
+          "node": "tv-film",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Entertainment news show; prior suggests media/TV mix but no feed available to confirm actual focus.",
+      "display_title": "KiddChris: The Radio Show",
+      "blurb": "Entertainment news and commentary show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1690214260": {
       "topics": [
@@ -156830,10 +156950,33 @@
     },
     "1729299964": {
       "topics": [
-        "nature/pets"
+        "nature/pets",
+        "health/nutrition"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature/pets",
+          "confidence": 0.8
+        },
+        {
+          "node": "health/nutrition",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Pet nutrition advice; title matches prior category with health angle.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1729331717": {
       "topics": [
@@ -157520,9 +157663,23 @@
       "topics": [
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Guardian investigative series; low prior confidence and no episodes to assess actual topics.",
+      "display_title": "Off Duty | The Guardian Investigates",
+      "blurb": "Investigative journalism series from The Guardian.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1731402504": {
       "topics": [
@@ -192875,7 +193032,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic podcast from Arabic channel; title indicates religious content.",
+      "display_title": "من قناة وراق Muhabira |  محبرة",
+      "blurb": "Islamic podcast and discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1847423282": {
       "topics": [
@@ -198526,9 +198698,23 @@
       "topics": [
         "society"
       ],
-      "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Known talk-show host; prior suggests society/culture but show format unclear without episodes.",
+      "display_title": "Shawn Ryan Show",
+      "blurb": "Talk and interview show.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1867880013": {
       "topics": [
@@ -203739,7 +203925,22 @@
         "fiction/drama"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction/drama",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Audio drama series; title and genre suggest fictional audio production.",
+      "display_title": "The Whisperer In Darkness",
+      "blurb": "Audio drama series.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1885179093": {
       "topics": [
@@ -206236,11 +206437,30 @@
     },
     "1894183900": {
       "topics": [
-        "math"
+        "math",
+        "education"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "math",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mathematics education podcast; high-confidence prior aligns with title and topic.",
+      "display_title": "Calculus",
+      "blurb": "Mathematics education podcast focused on calculus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1894259224": {
       "topics": [
@@ -208573,7 +208793,22 @@
         "religion/islam"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Islamic podcast from scholar; title clearly indicates religious focus.",
+      "display_title": "Dr. Haifaa Younis is Islamic Podcasts",
+      "blurb": "Islamic teachings and podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-e6ada16c",
+      "classified_at": "2026-08-29T08:34:23.830Z"
     },
     "1896766925": {
       "topics": [

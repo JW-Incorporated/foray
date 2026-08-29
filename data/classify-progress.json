@@ -1,62 +1,5 @@
 {
-  "in_flight": {
-    "836963170": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1521037564": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1523196010": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1524074416": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1630292974": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1632047182": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1690170622": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1729299964": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1731314182": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1847367406": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1867875556": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1885137658": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1894183900": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1896764548": {
-      "batch_id": "fresh-2026-08-25-c10d1e43",
-      "reserved_at": "2026-08-25T08:33:53.393Z"
-    }
-  },
+  "in_flight": {},
   "failed_fetch": {
     "94688506": {
       "attempts": 2,
@@ -98,80 +41,10 @@
       "last_error": "no <rss><channel> found",
       "last_attempt_at": "2026-07-25T05:07:28.864Z"
     },
-    "836963170": {
-      "attempts": 5,
-      "last_error": "no <rss><channel> found",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
     "1349523628": {
       "attempts": 2,
       "last_error": "HTTP 403",
       "last_attempt_at": "2026-08-19T16:33:18.388Z"
-    },
-    "1521037564": {
-      "attempts": 5,
-      "last_error": "feed has zero <item> entries",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1523196010": {
-      "attempts": 5,
-      "last_error": "feed has zero <item> entries",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1524074416": {
-      "attempts": 5,
-      "last_error": "no <rss><channel> found",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1630292974": {
-      "attempts": 5,
-      "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1632047182": {
-      "attempts": 5,
-      "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1690170622": {
-      "attempts": 5,
-      "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1729299964": {
-      "attempts": 5,
-      "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1731314182": {
-      "attempts": 5,
-      "last_error": "HTTP 403",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1847367406": {
-      "attempts": 5,
-      "last_error": "HTTP 400",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1867875556": {
-      "attempts": 5,
-      "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1885137658": {
-      "attempts": 5,
-      "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1894183900": {
-      "attempts": 5,
-      "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
-    },
-    "1896764548": {
-      "attempts": 5,
-      "last_error": "HTTP 404",
-      "last_attempt_at": "2026-08-25T08:33:53.393Z"
     }
   }
 }
