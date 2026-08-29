@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-29T08:26:59.737Z",
+  "built_at": "2026-08-29T16:18:48.972Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-29-4fa28a56",
+    "last_batch_id": "fresh-2026-08-29-76154e9f",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -12428,10 +12428,44 @@
     },
     "412457621": {
       "topics": [
-        "kids-family/parenting"
+        "relationships",
+        "psychology",
+        "kids-family"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "relationships",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.7
+        },
+        {
+          "node": "kids-family",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Intimate personal stories about family dynamics, parenting, and relationships.",
+      "display_title": "The Longest Shortest Time",
+      "blurb": "Personal narratives exploring the surprises, challenges, and humor of raising children and family life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "412684163": {
       "topics": [
@@ -12470,10 +12504,38 @@
     "413518068": {
       "topics": [
         "music",
-        "history"
+        "music/theory-production"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "music/theory-production",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Live DJ sets and mixes of tech house, techno, and underground electronic music.",
+      "display_title": "Doug Jackson",
+      "blurb": "Tech house and techno DJ sets featuring live performances and genre-focused electronic music mixes.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "413879919": {
       "topics": [
@@ -12855,10 +12917,39 @@
     },
     "425369034": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Academic discussions of Jewish history, culture, and religious studies through book interviews.",
+      "display_title": "New Books in Jewish Studies",
+      "blurb": "Scholarly interviews examining Jewish studies, history, and cultural topics through recent books.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "425400236": {
       "topics": [
@@ -12903,10 +12994,39 @@
     },
     "425659636": {
       "topics": [
-        "religion/christianity"
+        "religion/christianity",
+        "health"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/christianity",
+          "confidence": 0.9
+        },
+        {
+          "node": "health",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Christian teaching and inspirational messages on daily living from evangelical perspective.",
+      "display_title": "Joyce Meyer Enjoying Everyday Life® TV Podcast",
+      "blurb": "Christian inspirational teaching and guidance on applying faith to everyday life.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "425683368": {
       "topics": [
@@ -13081,10 +13201,39 @@
     },
     "427475874": {
       "topics": [
-        "culture/performing-arts"
+        "fiction",
+        "history"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "history",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dramatized Western fiction from 1950s radio, featuring period storytelling.",
+      "display_title": "The Six Shooter | OTRWesterns.com",
+      "blurb": "Classic serialized Western radio drama from the 1950s with folksy adventure stories.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "427476432": {
       "topics": [
@@ -13298,10 +13447,39 @@
     },
     "431321611": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.85
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical gardening advice, seasonal tips, and solutions from an expert horticultrualist.",
+      "display_title": "All Things Gardening Podcast",
+      "blurb": "Weekly gardening guidance covering seasonal tasks, plant care, and listener questions.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "433426711": {
       "topics": [
@@ -13342,10 +13520,42 @@
     },
     "435853369": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Analysis and discussion of Game of Thrones and House of the Dragon episodes.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "436133392": {
       "topics": [
@@ -13450,10 +13660,39 @@
     },
     "443236145": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation teachings and dharma instruction from Zen practice center.",
+      "display_title": "Austin Zen Center Dharma Talks",
+      "blurb": "Buddhist dharma teachings and Zen practice instruction from an active meditation center.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "444083093": {
       "topics": [
@@ -13659,10 +13898,44 @@
     },
     "454714085": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health",
+        "sports"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Clinical physiotherapy discussions with expert interviews on assessment and treatment.",
+      "display_title": "Physio Edge podcast with David Pope",
+      "blurb": "Expert physiotherapy interviews covering clinical assessment, treatment strategies, and rehabilitation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "454755642": {
       "topics": [
@@ -13747,10 +14020,39 @@
     },
     "458210899": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Academic exploration of Buddhist history, philosophy, and cultural studies through books.",
+      "display_title": "New Books in Buddhist Studies",
+      "blurb": "Scholarly interviews examining Buddhist studies and religious history through recent academic works.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "458574334": {
       "topics": [
@@ -13856,17 +14158,79 @@
     },
     "463196186": {
       "topics": [
-        "culture/performing-arts"
+        "fiction",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dramatic readings of adult fiction emphasizing sensuality and artistic storytelling.",
+      "display_title": "The Kiss Me Quick's Erotica",
+      "blurb": "Dramatic readings of erotic fiction and intimate stories celebrating sexuality and imagination.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "463290655": {
       "topics": [
-        "sports/wrestling"
+        "comedy",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.7
+        },
+        {
+          "node": "sports",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Casual comedy banter using wrestling as cultural reference, live Thursday episodes.",
+      "display_title": "WRESTLING SOUP",
+      "blurb": "Weekly comedy and conversation using wrestling culture and spectacle as cultural commentary.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "463700741": {
       "topics": [
@@ -13909,17 +14273,75 @@
     },
     "463855630": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Network of podcasts covering comics, pop culture, and entertainment media.",
+      "display_title": "The Fire and Water Podcast Network",
+      "blurb": "Multi-show network featuring discussions of comics, pop culture, and entertainment.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "464108542": {
       "topics": [
-        "gaming"
+        "gaming",
+        "gaming/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "gaming/design",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Video game club discussing retro and modern games with focus on design and mechanics.",
+      "display_title": "Watch Out for Fireballs!",
+      "blurb": "Video game club exploring games across eras, from classic to indie releases, with design focus.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "464156500": {
       "topics": [
@@ -13945,10 +14367,39 @@
     },
     "466278120": {
       "topics": [
-        "music"
+        "music",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Showcase of freestyle and hip-hop music with romantic themes and cultural narratives.",
+      "display_title": "CPR's Clubhouse Freestyle Universe",
+      "blurb": "Music show highlighting freestyle and hip-hop, emphasizing romantic themes and cultural narratives.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "466659176": {
       "topics": [
@@ -14085,10 +14536,39 @@
     },
     "471418144": {
       "topics": [
-        "philosophy"
+        "comedy/casual-hangs",
+        "philosophy/ideas"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        },
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Candid weekly phone conversation between comedian and musician exploring ideas and culture.",
+      "display_title": "Roderick on the Line",
+      "blurb": "Weekly candid conversations between musician John Roderick and comedian Merlin Mann.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "471896367": {
       "topics": [
@@ -14351,10 +14831,39 @@
     },
     "476955442": {
       "topics": [
+        "comedy",
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with improvisers discussing craft, career, and indie comedy scene.",
+      "display_title": "Improv Obsession - Conversations About Improvising Better",
+      "blurb": "Conversations with improvisers exploring improv craft, comedy careers, and scene dynamics.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "477154374": {
       "topics": [
@@ -14455,10 +14964,39 @@
     },
     "479820088": {
       "topics": [
+        "comedy",
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Improvisational comedy show with guest comedians and performers.",
+      "display_title": "improv4humans with Matt Besser",
+      "blurb": "Live improvisational comedy featuring frequent UCB performers and comedy guests.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "479961157": {
       "topics": [
@@ -14602,10 +15140,38 @@
     "489940415": {
       "topics": [
         "music",
-        "history"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Curated music mixes and DJ performances from Big Tigger emphasizing urban contemporary sounds.",
+      "display_title": "BT RADIO : MIXES & MORE",
+      "blurb": "DJ-curated music mixes and contemporary urban sound selections from Big Tigger.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "490027390": {
       "topics": [
@@ -14801,10 +15367,38 @@
     "496189056": {
       "topics": [
         "economics/markets",
-        "business"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily financial market news and business analysis from CNBC financial perspective.",
+      "display_title": "The Exchange",
+      "blurb": "Daily financial market updates, business news, and market-moving stories from CNBC.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "496797178": {
       "topics": [
@@ -15068,11 +15662,39 @@
     },
     "502334416": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly weight loss podcast covering sustainable nutrition, psychology, and lifestyle change.",
+      "display_title": "Half Size Me",
+      "blurb": "Weight loss podcast providing practical strategies for sustainable weight management and healthy living.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "502349432": {
       "topics": [
@@ -15447,10 +16069,38 @@
     "517676879": {
       "topics": [
         "music",
-        "history"
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Electronic and rave music showcase with focus on harder styles and club culture.",
+      "display_title": "Keeping The Rave Alive!",
+      "blurb": "Electronic and rave music selection featuring harder styles and underground dance music.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "518190148": {
       "topics": [
@@ -15995,10 +16645,39 @@
     },
     "545045867": {
       "topics": [
-        "news/politics"
+        "news/politics",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Political interviews and foreign policy analysis from antiwar libertarian perspective.",
+      "display_title": "Scott Horton Show - Just the Interviews",
+      "blurb": "Political interviews focusing on foreign policy, antiwar perspectives, and geopolitical analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "545367760": {
       "topics": [
@@ -16403,10 +17082,39 @@
     },
     "562793280": {
       "topics": [
-        "fiction/sci-fi"
+        "fiction",
+        "adventure"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.85
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science fiction audio drama about inherited shamanic legacy and environmental conflict.",
+      "display_title": "South Coast",
+      "blurb": "Serialized science fiction audio drama exploring environmental themes and personal inheritance conflict.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "563933198": {
       "topics": [
@@ -16471,11 +17179,39 @@
     },
     "569284114": {
       "topics": [
-        "tv-film/history",
-        "history"
+        "tv-film",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Reviews of public domain films, preserving and discussing forgotten cinema.",
+      "display_title": "Orphaned Entertainment",
+      "blurb": "Reviews and analysis of public domain films and forgotten cinema from cinema history.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "569489060": {
       "topics": [
@@ -16548,10 +17284,39 @@
     },
     "573731398": {
       "topics": [
-        "aviation"
+        "aviation",
+        "travel"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "aviation",
+          "confidence": 0.9
+        },
+        {
+          "node": "travel",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews by airline captain with people met through aviation career and travel.",
+      "display_title": "Talking Flight",
+      "blurb": "Interviews by Alaska Airlines captain with notable people met through aviation career.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "574192620": {
       "topics": [
@@ -16599,10 +17364,39 @@
     },
     "575912069": {
       "topics": [
-        "sports/soccer"
+        "sports",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Tottenham Hotspur fan discussion podcast with rotating host panels analyzing matches.",
+      "display_title": "The Fighting Cock (Tottenham Hotspur Podcast)",
+      "blurb": "Tottenham Hotspur fan discussion and analysis with rotating group of hosts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "577245086": {
       "topics": [
@@ -17103,10 +17897,40 @@
     "593369492": {
       "topics": [
         "news/tech",
-        "computing"
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/tech",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Latest technology news and product announcements from major tech companies.",
+      "display_title": "TWiT News (Video)",
+      "blurb": "Technology news and announcements covering major tech companies and industry developments.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "593432991": {
       "topics": [
@@ -18032,10 +18856,39 @@
     },
     "624693800": {
       "topics": [
-        "tv-film/reviews"
+        "tv-film",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Movie podcast with diverse hosts reviewing contemporary and classic films.",
+      "display_title": "Maximum Film!",
+      "blurb": "Film reviews and discussion with diverse perspectives on contemporary and classic movies.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "624753459": {
       "topics": [
@@ -18390,10 +19243,39 @@
     },
     "643216602": {
       "topics": [
-        "business/marketing"
+        "business",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Mobile app marketing strategy and growth hacking tips from successful publishers.",
+      "display_title": "App Marketing by App Masters",
+      "blurb": "Mobile app marketing strategies, growth tactics, and ASO best practices from industry experts.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "643885946": {
       "topics": [
@@ -18537,10 +19419,39 @@
     },
     "653314424": {
       "topics": [
-        "philosophy"
+        "philosophy/ideas",
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "philosophy/ideas",
+          "confidence": 0.6
+        },
+        {
+          "node": "culture",
+          "confidence": 0.55
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Casual conversations with fringe figures on esoteric, paranormal, and unconventional topics.",
+      "display_title": "The Grimerica Show",
+      "blurb": "Conversations with fringe thinkers, paranormal researchers, and unconventional figures.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "653415937": {
       "topics": [
@@ -18568,11 +19479,39 @@
     },
     "655135292": {
       "topics": [
-        "business/startups",
-        "business/founders"
+        "business",
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Entrepreneurship and side business stories with practical, actionable strategies.",
+      "display_title": "The Side Hustle Show",
+      "blurb": "Entrepreneurship and side business stories with practical strategies for creating income.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "655723905": {
       "topics": [
@@ -18669,10 +19608,39 @@
     },
     "658233306": {
       "topics": [
+        "comedy",
         "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.85
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedians improvising sketch comedy concepts in rapid-fire brainstorming format.",
+      "display_title": "Two In The Think Tank",
+      "blurb": "Comedians improvising and brainstorming sketch comedy concepts in rapid-fire format.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "659155419": {
       "topics": [
@@ -18978,11 +19946,44 @@
     },
     "668174671": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "psychology",
+        "health",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Expert Q&A on ADHD diagnosis, treatment, and management for adults and parents.",
+      "display_title": "ADHD Experts Podcast",
+      "blurb": "Expert question-and-answer on ADHD identification, treatment, and lifestyle management.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "668684643": {
       "topics": [
@@ -19121,17 +20122,75 @@
     },
     "672249013": {
       "topics": [
-        "comedy/interviews"
+        "comedy",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.8
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy podcast reading listener emails and answering questions on pop culture and humor.",
+      "display_title": "The JTrain Podcast",
+      "blurb": "Comedy podcast with hosts answering listener questions on pop culture, trends, and humor.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "672593303": {
       "topics": [
-        "sports/basketball"
+        "sports",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Utah Jazz fan discussion and NBA analysis covering team news and season developments.",
+      "display_title": "Salt City Hoops Utah Jazz Podcast",
+      "blurb": "Utah Jazz coverage and NBA analysis with team news, trades, and player updates.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "672857593": {
       "topics": [
@@ -19164,10 +20223,42 @@
     },
     "676876079": {
       "topics": [
-        "tv-film/after-shows"
+        "tv-film",
+        "fiction"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film",
+          "confidence": 0.9
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Episode-by-episode analysis and fan discussion of Game of Thrones and House of the Dragon.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "676930917": {
       "topics": [
@@ -19571,10 +20662,39 @@
     },
     "698819234": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buddhist meditation retreat teachings on shamatha practice and mind training from Alan Wallace.",
+      "display_title": "Fall 2013 Shamatha and the  Seven-Point Mind Training",
+      "blurb": "Buddhist meditation retreat teachings on shamatha practice from renowned Buddhist scholar.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "699024993": {
       "topics": [
@@ -19669,10 +20789,39 @@
     },
     "703719979": {
       "topics": [
-        "craft/diy-home"
+        "craft/diy-home",
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft/diy-home",
+          "confidence": 0.8
+        },
+        {
+          "node": "nature",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Practical vegetable gardening advice and seasonal growing tips from experienced gardener.",
+      "display_title": "The Veg Grower Podcast",
+      "blurb": "Vegetable gardening guidance covering seasonal tasks, pest management, and harvest techniques.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "703720000": {
       "topics": [
@@ -19824,10 +20973,39 @@
     },
     "708335534": {
       "topics": [
-        "music"
+        "music",
+        "comedy/casual-hangs"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.75
+        },
+        {
+          "node": "comedy/casual-hangs",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Morning radio show from Black Crowes drummer with music interviews and pop culture banter.",
+      "display_title": "Gorman in the Morning",
+      "blurb": "Morning radio show featuring music interviews, pop culture discussion, and comedy banter.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "708337036": {
       "topics": [
@@ -19944,10 +21122,39 @@
     },
     "720291560": {
       "topics": [
-        "music"
+        "music",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Billboard music industry analysis covering charts, trends, and major releases.",
+      "display_title": "Pop Shop Podcast",
+      "blurb": "Billboard music industry analysis covering charts, trends, and pop music releases.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "720832183": {
       "topics": [
@@ -19982,18 +21189,75 @@
     },
     "722310366": {
       "topics": [
-        "health/nutrition",
-        "food"
+        "health",
+        "medicine"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health",
+          "confidence": 0.8
+        },
+        {
+          "node": "medicine",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Nutritional medicine and back-to-basics health advice from functional medicine doctors.",
+      "display_title": "The Doctor Is In Podcast",
+      "blurb": "Nutritional and functional medicine advice on diet, supplementation, and natural health.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "724294998": {
       "topics": [
-        "culture/books"
+        "fiction",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "fiction",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Serialized audiobook reading of Jane Austens classic romantic novel.",
+      "display_title": "Pride and Prejudice by Jane Austen",
+      "blurb": "Serialized chapter-by-chapter reading of Jane Austens classic romantic novel.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "724955683": {
       "topics": [
@@ -20004,10 +21268,39 @@
     },
     "725506148": {
       "topics": [
-        "sports/fantasy"
+        "sports",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Long-running fantasy hockey analysis with data-driven insights and strategic advice.",
+      "display_title": "Keeping Karlsson Fantasy Hockey Podcast",
+      "blurb": "Fantasy hockey analysis with analytical and strategic insights for players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "730188152": {
       "topics": [
@@ -20079,10 +21372,39 @@
     },
     "734373360": {
       "topics": [
-        "culture/books"
+        "education",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.75
+        },
+        {
+          "node": "culture",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Literary events covering fiction, poetry, politics, music and cultural ideas.",
+      "display_title": "London Review Bookshop Podcast",
+      "blurb": "Literary events covering fiction, poetry, politics, music, and cultural discussion.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "738433869": {
       "topics": [
@@ -20251,10 +21573,39 @@
     },
     "768142013": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Israeli-focused discussion covering politics, culture, relationships to Israel and Zionism.",
+      "display_title": "The Promised Podcast",
+      "blurb": "Israeli politics, culture, and perspectives from hosts with deep connection to Israel.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "772127662": {
       "topics": [
@@ -20942,10 +22293,39 @@
     },
     "823602911": {
       "topics": [
-        "religion/islam"
+        "religion/islam",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.9
+        },
+        {
+          "node": "education",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Quranic recitation and Islamic teaching from renowned Saudi Arabian Quran reciter.",
+      "display_title": "Muhammad Al-Luhaidan",
+      "blurb": "Quranic recitation and religious teaching from renowned Islamic scholar.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "823604747": {
       "topics": [
@@ -21093,7 +22473,38 @@
         "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Financial education and investing advice from Rich Dad author Robert Kiyosaki.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 14w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "833706616": {
       "topics": [
@@ -21267,10 +22678,39 @@
     },
     "842419860": {
       "topics": [
-        "sports/fantasy"
+        "sports",
+        "hobbies"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "hobbies",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Australian Football League fantasy tips and strategic analysis from expert traders.",
+      "display_title": "AFL Fantasy with The Traders",
+      "blurb": "Fantasy sports analysis and tips for AFL fantasy competition from expert players.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "842818711": {
       "topics": [
@@ -21343,10 +22783,39 @@
     },
     "847236521": {
       "topics": [
-        "gaming"
+        "gaming",
+        "news/tech"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "gaming",
+          "confidence": 0.9
+        },
+        {
+          "node": "news/tech",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Xbox and Game Pass news, game discussion, and positive gaming community focus.",
+      "display_title": "XoneBros: Positive Xbox and Game Pass Community",
+      "blurb": "Xbox news, Game Pass coverage, and gaming discussion from community perspective.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "847883565": {
       "topics": [
@@ -21387,10 +22856,39 @@
     },
     "849772346": {
       "topics": [
-        "business/careers"
+        "business",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "education",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate agent training covering sales techniques, finance, and business operations.",
+      "display_title": "Real Estate Training & Coaching School",
+      "blurb": "Real estate agent training covering sales strategies, financing, and business practices.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "850054474": {
       "topics": [
@@ -21615,10 +23113,39 @@
     },
     "863338913": {
       "topics": [
+        "news/daily",
         "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily Texas news covering politics, lifestyle, environment, tech, and economics.",
+      "display_title": "Texas Standard",
+      "blurb": "Daily Texas news and analysis covering politics, culture, environment, and innovation.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "863481502": {
       "topics": [
@@ -21791,10 +23318,39 @@
     },
     "868740010": {
       "topics": [
-        "science/physics"
+        "science",
+        "science/chemistry"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science",
+          "confidence": 0.85
+        },
+        {
+          "node": "science/chemistry",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "French-language physics seminars on condensed matter science and quantum materials.",
+      "display_title": "Physique de la matière condensée - Antoine Georges",
+      "blurb": "French-language physics seminars examining condensed matter science and quantum phenomena.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "868740183": {
       "topics": [
@@ -21902,10 +23458,39 @@
     },
     "869539792": {
       "topics": [
+        "craft",
         "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.7
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Pottery-focused podcast interviewing ceramic artists and teaching potters.",
+      "display_title": "The Potters Cast",
+      "blurb": "Pottery and ceramic arts podcast featuring interviews with working potters and makers.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "870065983": {
       "topics": [
@@ -22106,10 +23691,39 @@
     },
     "877672766": {
       "topics": [
-        "music"
+        "music",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture",
+          "confidence": 0.65
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Artist interviews across music and creative fields with minimal moderation.",
+      "display_title": "Talkhouse Podcast",
+      "blurb": "Long-form artist conversations across music, film, and creative disciplines.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "878268013": {
       "topics": [
@@ -22513,10 +24127,42 @@
     "888420325": {
       "topics": [
         "economics/markets",
-        "business"
+        "business/startups"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics/markets",
+          "confidence": 0.85
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Interviews with world-class investors discussing trading philosophy and decision-making.",
+      "display_title": "Top Traders Unplugged",
+      "blurb": "Investor interviews exploring trading strategies, market thinking, and decision-making.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/json": 8,
+          "application/srt": 8,
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "889648725": {
       "topics": [
@@ -22555,10 +24201,46 @@
     },
     "892082003": {
       "topics": [
-        "medicine"
+        "medicine",
+        "health",
+        "news/commentary"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.8
+        },
+        {
+          "node": "health",
+          "confidence": 0.7
+        },
+        {
+          "node": "news/commentary",
+          "confidence": 0.6
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Healthcare industry criticism and reform strategies from insiders working in system.",
+      "display_title": "Relentless Health Value",
+      "blurb": "Healthcare industry analysis and reform advocacy from healthcare system insiders.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "892107837": {
       "topics": [
@@ -22762,10 +24444,39 @@
     },
     "897537010": {
       "topics": [
-        "sports/soccer"
+        "sports",
+        "culture"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture",
+          "confidence": 0.5
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Seattle Sounders soccer fan podcast discussing team news, matches, and signings.",
+      "display_title": "Nos Audietis",
+      "blurb": "Unofficial Seattle Sounders soccer podcast with fan commentary and match analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-76154e9f",
+      "classified_at": "2026-08-29T16:18:48.972Z"
     },
     "897720614": {
       "topics": [
