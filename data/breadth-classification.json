@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-29T00:16:18.388Z",
+  "built_at": "2026-08-29T08:26:59.737Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-29-88e39cd6",
+    "last_batch_id": "fresh-2026-08-29-4fa28a56",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -414,10 +414,34 @@
     },
     "73799410": {
       "topics": [
-        "comedy/stand-up"
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Computing",
+      "display_title": "Norm Augustinus",
+      "blurb": "Norm Augustinus Podcast.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "73801366": {
       "topics": [
@@ -1399,10 +1423,49 @@
     },
     "81415836": {
       "topics": [
-        "philosophy"
+        "computing",
+        "education/courses",
+        "education",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "music",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Computing and Courses",
+      "display_title": "Entitled Opinions (about Life and Literature)",
+      "blurb": "The narcotic of intelligent conversation",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "81501666": {
       "topics": [
@@ -1490,10 +1553,49 @@
     },
     "82014403": {
       "topics": [
-        "religion/christianity"
+        "news/daily",
+        "news",
+        "education/courses",
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.66
+        },
+        {
+          "node": "news",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News and News & Current Affairs",
+      "display_title": "The Village Church - Sermons",
+      "blurb": "The Village Church exists to bring glory to God by making disciples through gospel-centered worship, gospel-centered community, gospel-centered service and gospel-centered multiplication.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "82354094": {
       "topics": [
@@ -1820,10 +1922,49 @@
     },
     "94688506": {
       "topics": [
-        "relationships"
+        "travel",
+        "adventure",
+        "business/startups",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.84
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.84
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.66
+        },
+        {
+          "node": "business",
+          "confidence": 0.66
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel & Places and Adventure",
+      "display_title": "Conversations",
+      "blurb": "Conversations draws you deeper into the life story of someone you may have heard about, but never met. Journey into their world, joining them on epic adventures to unfamiliar places,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "94793843": {
       "topics": [
@@ -1885,10 +2026,44 @@
     },
     "100441369": {
       "topics": [
-        "religion/islam"
+        "news/daily",
+        "news",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.48
+        },
+        {
+          "node": "computing",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily News and News & Current Affairs",
+      "display_title": "Holy Quran Daily Podcast",
+      "blurb": "Quran Daily Podcast. You can subscribe and listen daily to the Holy Quran. The holy Quran is recited by Al-Haram Al-Shareef reciters. (Al-Shuraim and Al-Sudais)",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "105924375": {
       "topics": [
@@ -1936,11 +2111,54 @@
     },
     "107629726": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "education/courses",
+        "education",
+        "news/daily",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Computing and Courses",
+      "display_title": "The Context Machine",
+      "blurb": "The podcast where Bryan and Jeff talk about whatever they want.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "109522474": {
       "topics": [
@@ -2070,10 +2288,49 @@
     },
     "118334327": {
       "topics": [
-        "tv-film/interviews"
+        "music",
+        "education/courses",
+        "education",
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "science",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and Courses",
+      "display_title": "The Babylon Podcast",
+      "blurb": "Our Last, Best Hope for Babylon 5 discussions",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "118352548": {
       "topics": [
@@ -2794,10 +3051,49 @@
     },
     "138752347": {
       "topics": [
-        "culture/books"
+        "education/courses",
+        "education",
+        "business/startups",
+        "business"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "business/startups",
+          "confidence": 0.48
+        },
+        {
+          "node": "business",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": "Poetry Off the Shelf",
+      "blurb": "Producer Helena de Groot talks to poets about language, dreams, love and loss, identity, connection, anger, discomfort, the creative process, the state of the world and the world of the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "138767891": {
       "topics": [
@@ -2925,10 +3221,64 @@
     },
     "148759439": {
       "topics": [
-        "business/marketing"
+        "psychology",
+        "health/mental",
+        "fiction",
+        "education/courses",
+        "health",
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.66
+        },
+        {
+          "node": "health/mental",
+          "confidence": 0.66
+        },
+        {
+          "node": "fiction",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "health",
+          "confidence": 0.41000000000000003
+        },
+        {
+          "node": "education",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Psychology and Mental Health",
+      "display_title": "The Advanced Selling Podcast",
+      "blurb": "Bill Caskey and Bryan Neale deliver practical, no-nonsense sales training through their signature blend of humor, real-world insights, and actionable frameworks. Each episode tackles the challenges you face daily: prospecting,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 32,
+        "transcript_types": {
+          "text/html": 8,
+          "application/json": 8,
+          "application/x-subrip": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "150892556": {
       "topics": [
@@ -3635,10 +3985,39 @@
     },
     "182469910": {
       "topics": [
-        "fiction/drama"
+        "computing",
+        "true-crime"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.48
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Computing and True Crime",
+      "display_title": "Thrillers Old Time Radio",
+      "blurb": "Old Time Radio Network Thrillers, thrilling mystery, espionage, and political intrigue. Step into the world of action and Psychological twist that will keep you on the edge of your chair.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "182496736": {
       "topics": [
@@ -3882,11 +4261,49 @@
     },
     "191303933": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "culture",
+        "education/courses",
+        "education",
+        "science"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "science",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Culture and Courses",
+      "display_title": "Learn French with daily podcasts",
+      "blurb": "Learn French with free daily podcasts, brought to you by French teachers from Paris. Hberg par Acast. Visitez acast.comprivacy pour plus d'informations.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "191636169": {
       "topics": [
@@ -4533,10 +4950,49 @@
     },
     "211752923": {
       "topics": [
-        "religion/buddhism"
+        "culture",
+        "news/daily",
+        "news",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.66
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.48
+        },
+        {
+          "node": "history",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Culture and Daily News",
+      "display_title": "Buddhist Geeks",
+      "blurb": "Evolving Dharma in the Age of the Network www.buddhistgeeks.org",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "211872343": {
       "topics": [
@@ -4640,10 +5096,44 @@
     },
     "215510110": {
       "topics": [
-        "craft/diy-home"
+        "education/courses",
+        "education",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "computing",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": "KSL Greenhouse",
+      "blurb": "Welcome to the KSL Greenhouse show Join h osts Maria Shilaos and Taun Beddes as they talk about all things plants, tackle your toughest gardening questions, and offer tips that...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "215516451": {
       "topics": [
@@ -4792,10 +5282,49 @@
     },
     "217580108": {
       "topics": [
-        "tv-film/after-shows"
+        "education/courses",
+        "education",
+        "news/daily",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.66
+        },
+        {
+          "node": "education",
+          "confidence": 0.66
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.66
+        },
+        {
+          "node": "news",
+          "confidence": 0.66
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Courses and Education",
+      "display_title": "Doctor Who: Radio Free Skaro",
+      "blurb": "Radio Free Skaro is possibly the most popular, most prolific and charmingly irreverent (but never irrelevant) Doctor Who podcast around. Since August 2006, hosts Warren (in Vancouver, BC) and Steven...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "218143996": {
       "topics": [
@@ -5203,10 +5732,54 @@
     },
     "255329844": {
       "topics": [
-        "comedy/casual-hangs"
+        "music",
+        "history",
+        "culture",
+        "news/daily",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.84
+        },
+        {
+          "node": "history",
+          "confidence": 0.66
+        },
+        {
+          "node": "culture",
+          "confidence": 0.66
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and History",
+      "display_title": "Jim and Them",
+      "blurb": "Jim and Them dubbed the face of evil and disgusting filth pigs by washed up 80s child star Corey Feldman are a pop culture comedy show that consists of Jim,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "255620843": {
       "topics": [
@@ -5434,10 +6007,54 @@
     },
     "260843816": {
       "topics": [
-        "religion/christianity"
+        "news/daily",
+        "news",
+        "history",
+        "education/courses",
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.66
+        },
+        {
+          "node": "news",
+          "confidence": 0.66
+        },
+        {
+          "node": "history",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News and News & Current Affairs",
+      "display_title": "Wild at Heart",
+      "blurb": "This podcast is hosted by John Eldredge, an author, counselor, and president of Wild at Heart, a ministry that helps people find God's love and Kingdom. With his experience as...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "261059112": {
       "topics": [
@@ -5547,11 +6164,49 @@
     },
     "262223371": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "education/courses",
+        "education",
+        "news/daily",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.84
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.84
+        },
+        {
+          "node": "news",
+          "confidence": 0.84
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Courses and Education",
+      "display_title": "Learn Korean | KoreanClass101.com",
+      "blurb": "Learn Korean with Free Podcasts Whether you are student or a seasoned speaker, our lessons offer something for everyone. We incorporate culture and current issues into each episode to give...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "262361074": {
       "topics": [
@@ -5663,10 +6318,54 @@
     },
     "263456080": {
       "topics": [
-        "math"
+        "education",
+        "science",
+        "education/courses",
+        "news/daily",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.66
+        },
+        {
+          "node": "science",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Education and Science",
+      "display_title": "Maths on the Move",
+      "blurb": "Maths on the Move, is the podcast from plus.maths.org . We speak to researchers from the frontiers of mathematical science so you can connect with the maths that shapes and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "263585537": {
       "topics": [
@@ -6373,10 +7072,49 @@
     },
     "276157864": {
       "topics": [
-        "tv-film/interviews"
+        "history",
+        "news/daily",
+        "news",
+        "comedy"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.66
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.48
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History and Daily News",
+      "display_title": "Art of the Cut",
+      "blurb": "Conversations with Film, TV, and Documentary editors.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "276266378": {
       "topics": [
@@ -6523,10 +7261,49 @@
     },
     "278131039": {
       "topics": [
-        "sports/tennis"
+        "computing",
+        "education/courses",
+        "education",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "sports",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Computing and Courses",
+      "display_title": "Essential Tennis Podcast - Instruction, Lessons, Tips",
+      "blurb": "Improve your tennis with the Essential Tennis Podcast, the very first podcast dedicated to tennis lessons and instruction Tennis professional Ian Westermann answers listener questions about technique, strategy, mental toughness,...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "278170377": {
       "topics": [
@@ -7136,11 +7913,49 @@
     },
     "292546170": {
       "topics": [
-        "music",
-        "history"
+        "culture",
+        "education/courses",
+        "education",
+        "music"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "music",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Culture and Courses",
+      "display_title": "THEMIXLAB",
+      "blurb": "Founded by DJ Fresh Vince, THEMIXLAB is formulated to surpass the masses with dope mixtapes and musical creativity. This podcast supports a wide variety of music, but focuses heavily on...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "292651411": {
       "topics": [
@@ -7609,11 +8424,49 @@
     },
     "306454334": {
       "topics": [
-        "sports/endurance",
-        "health/fitness"
+        "sports",
+        "food/cooking-science",
+        "food",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.66
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.66
+        },
+        {
+          "node": "food",
+          "confidence": 0.66
+        },
+        {
+          "node": "computing",
+          "confidence": 0.66
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports and Cooking Science",
+      "display_title": "Tri Swim Coach Podcast",
+      "blurb": "Whether you're barely surviving your first triathlon swim or trying to shave seconds off your Ironman split, this podcast's got something for you. It's training tips, real talk, and occasional...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "307266753": {
       "topics": [
@@ -7639,10 +8492,49 @@
     },
     "307483087": {
       "topics": [
-        "sports/soccer"
+        "sports",
+        "education/courses",
+        "education",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "computing",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports and Courses",
+      "display_title": "Superscoreboard",
+      "blurb": "Tune in weeknights from 6-8pm plus Saturday and Sunday afternoons on Clyde 1 to have your say on Scottish Football AND for all the big match action. If you've missed...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "307580286": {
       "topics": [
@@ -7852,10 +8744,44 @@
     },
     "314020330": {
       "topics": [
-        "medicine"
+        "education/courses",
+        "education",
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "culture",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": "EMCrit FOAM Feed",
+      "blurb": "Help me fill in the blanks of the practice of ED Critical Care. In this podcast, we discuss all things related to the crashing, critically ill patient in the Emergency...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "314073213": {
       "topics": [
@@ -8396,10 +9322,52 @@
     },
     "327751771": {
       "topics": [
-        "sports/soccer"
+        "sports",
+        "culture",
+        "education/courses",
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.66
+        },
+        {
+          "node": "culture",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Sports and Culture",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "327760868": {
       "topics": [
@@ -8746,10 +9714,34 @@
     },
     "338529121": {
       "topics": [
-        "fiction/drama"
+        "culture"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Culture",
+      "display_title": "The Archers Omnibus",
+      "blurb": "The week's events in Ambridge",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "339001481": {
       "topics": [
@@ -8869,16 +9861,81 @@
       "topics": [
         "religion/judaism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Judaism",
+      "display_title": "Shnayim Mikra",
+      "blurb": "Shnayim Mikra provides a verse-by-verse review of the parsha in seven weekly installments, corresponding to the seven aliyos. Insights and commentary are provided by master educators familiar from the OU's...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "341813080": {
       "topics": [
-        "economics/markets",
-        "business"
+        "news/daily",
+        "news",
+        "education/courses",
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.66
+        },
+        {
+          "node": "news",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Daily News and News & Current Affairs",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "342735925": {
       "topics": [
@@ -8897,10 +9954,54 @@
     },
     "343172752": {
       "topics": [
-        "business/management"
+        "news/daily",
+        "news",
+        "health",
+        "education/courses",
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.66
+        },
+        {
+          "node": "news",
+          "confidence": 0.66
+        },
+        {
+          "node": "health",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News and News & Current Affairs",
+      "display_title": "The Chris Voss Show",
+      "blurb": "The OLDEST PODCAST STILL PUBLISHING 1-2 NEW DAILY EPISODES 8211; Nearly 20 years old The Chris Voss Show Podcast is in the top 1 of the most popular shows out...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "343580439": {
       "topics": [
@@ -8926,17 +10027,95 @@
     },
     "344499708": {
       "topics": [
-        "culture/performing-arts"
+        "education/courses",
+        "education",
+        "comedy",
+        "sports"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.48
+        },
+        {
+          "node": "sports",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": "Shannon Cason's Homemade",
+      "blurb": "Homemade is short stories and commentary for writerstoryteller, Shannon Cason. Shannon has appeared on countless podcasts and storytelling stages, including Snap Judgment, The Moth, TEDx, and RISK Shannon Cason's Homemade...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "346735400": {
       "topics": [
-        "gaming"
+        "education/courses",
+        "education",
+        "news/daily",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": "PUCL: A Pokemon Podcast",
+      "blurb": "One of the longest running Pokemon podcasts, PUCL covers the many facets of Pokemon. We talk about video games, battling, community news, anime and manga, trainer tips, and more Hosted...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "347832278": {
       "topics": [
@@ -8977,11 +10156,56 @@
     },
     "348650936": {
       "topics": [
-        "news/tech",
-        "computing"
+        "computing",
+        "education/courses",
+        "education",
+        "news/daily",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Computing and Courses",
+      "display_title": "TWiT News (Audio)",
+      "blurb": "When tech news breaks, we cover it. On this podcast, you'll get the latest product announcements from all the tech giants, plus breaking tech news as it happens. Join Leo...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "348852826": {
       "topics": [
@@ -9000,11 +10224,49 @@
     },
     "349344193": {
       "topics": [
-        "adventure/exploration",
-        "nature"
+        "business/startups",
+        "business",
+        "sports",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.66
+        },
+        {
+          "node": "business",
+          "confidence": 0.66
+        },
+        {
+          "node": "sports",
+          "confidence": 0.48
+        },
+        {
+          "node": "history",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups & deep tech and Business",
+      "display_title": "The Orvis Hunting and Shooting Podcast",
+      "blurb": "The Orvis Hunting and Shooting Podcast (formerly the Double Barrel Podcast) with host, Reid Bryant brings you hunting and shooting tips for more success and fun in the field.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "349470184": {
       "topics": [
@@ -9077,10 +10339,54 @@
     },
     "350181080": {
       "topics": [
-        "comedy/casual-hangs"
+        "music",
+        "education/courses",
+        "education",
+        "news/daily",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music and Courses",
+      "display_title": "Cliff and Kendall: Coast 2 Coast",
+      "blurb": "Cliff and Kendall are covering the topics others are too scared or possibly too busy to There are countdowns, scripted specials, freaky facts, weird news, bad jokes, perfect pitch, best...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "350359306": {
       "topics": [
@@ -9743,10 +11049,54 @@
     },
     "372985372": {
       "topics": [
-        "travel"
+        "history",
+        "culture",
+        "education/courses",
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.66
+        },
+        {
+          "node": "culture",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "History and Culture",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /fascinat/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 5,
+        "transcript_tags": 5,
+        "transcript_types": {
+          "application/x-subrip": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "373596600": {
       "topics": [
@@ -9781,8 +11131,32 @@
       "topics": [
         "religion/islam"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/islam",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Islam",
+      "display_title": "الشيخ سعد الغامدي",
+      "blurb": "الشيخ سعد الغامدي",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "375385132": {
       "topics": [
@@ -9972,10 +11346,44 @@
     },
     "383323406": {
       "topics": [
-        "religion/christianity"
+        "news/daily",
+        "news",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.66
+        },
+        {
+          "node": "news",
+          "confidence": 0.66
+        },
+        {
+          "node": "computing",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News and News & Current Affairs",
+      "display_title": "Our Daily Bread Podcast",
+      "blurb": "Helping you connect with God and experience His peace, daily. The audio version of Our Daily Bread is an effective resource for those who desire constant awareness of God's Word...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "383631335": {
       "topics": [
@@ -10074,10 +11482,34 @@
     },
     "385304252": {
       "topics": [
-        "religion/buddhism"
+        "computing"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Computing",
+      "display_title": "Yokoji Zen Dharma Talks",
+      "blurb": "Monthly Dharma talks by Tenshin Fletcher Roshi at Yokoji-Zen Mountain Center. Yokoji is a year-round Zen Buddhist Training Center in the Southern Californian mountains.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "385427377": {
       "topics": [
@@ -10200,10 +11632,49 @@
     },
     "389061788": {
       "topics": [
-        "religion/judaism"
+        "computing",
+        "news/daily",
+        "news",
+        "history"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "computing",
+          "confidence": 0.66
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.48
+        },
+        {
+          "node": "history",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Computing and Daily News",
+      "display_title": "Halacha",
+      "blurb": "Daily Halacha by Rabbi Eli J. Mansour according the Sephardic laws and customs of Aram Soba.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "389446869": {
       "topics": [
@@ -10355,10 +11826,54 @@
     },
     "393557569": {
       "topics": [
-        "gaming"
+        "sports",
+        "travel",
+        "adventure",
+        "education/courses",
+        "education"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.66
+        },
+        {
+          "node": "travel",
+          "confidence": 0.66
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports and Travel & Places",
+      "display_title": "8-4 Play",
+      "blurb": "Every other week, tune into 8-4 Play for talk about Japan, video games, and Japanese video games, straight from the 8-4 offices in beautiful downtown Tokyo.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "394242270": {
       "topics": [
@@ -10587,17 +12102,100 @@
     },
     "402266053": {
       "topics": [
-        "sports/rugby"
+        "sports",
+        "education/courses",
+        "education",
+        "news/daily",
+        "news"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Sports and Courses",
+      "display_title": "Green & Gold Rugby",
+      "blurb": "Podcast channel for THE Aussie Rugby Website: Green and Gold Rugby. We produce three podcasts - the Green and Gold Rugby Show, the Rugby Report Card and The Dropped Kick-Off....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "402306412": {
       "topics": [
-        "news/politics"
+        "news/daily",
+        "news",
+        "education/courses",
+        "education"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.95
+        },
+        {
+          "node": "news",
+          "confidence": 0.95
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily News and News & Current Affairs",
+      "display_title": "The Majority Report with Sam Seder",
+      "blurb": "Entertaining Daily Politics, Award Winning Long-Form Interviews and Irreverent, Independent Analysis. For more info see Majority.FM",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "404963432": {
       "topics": [
@@ -10710,8 +12308,32 @@
       "topics": [
         "religion/judaism"
       ],
-      "confidence": "high",
-      "source": "genre-map"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.4
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Judaism",
+      "display_title": "Mishna Yomit",
+      "blurb": "A Mishna Every Day",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "410937196": {
       "topics": [
@@ -27426,11 +29048,39 @@
     },
     "1034601476": {
       "topics": [
-        "health/sexuality"
+        "health/sexuality",
+        "relationships"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-1"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "health/sexuality",
+          "confidence": 0.35
+        },
+        {
+          "node": "relationships",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "health/sexuality",
+      "display_title": "Loving BDSM",
+      "blurb": "Loving BDSM (Sexuality)",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 0,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1035041995": {
       "topics": [
@@ -72343,9 +73993,32 @@
       "topics": [
         "news/daily"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/daily",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "news/daily",
+      "display_title": "The Journal.",
+      "blurb": "The Journal. (Daily News)",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 0,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1469463501": {
       "topics": [
@@ -85186,12 +86859,39 @@
     },
     "1496623191": {
       "topics": [
-        "culture/art",
-        "society"
+        "society",
+        "culture"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-2"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "society",
+          "confidence": 0.35
+        },
+        {
+          "node": "culture",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "society",
+      "display_title": "Art Bell Back in Time",
+      "blurb": "Art Bell Back in Time (Documentary)",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 0,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1496651303": {
       "topics": [
@@ -102476,11 +104176,41 @@
     "1528899170": {
       "topics": [
         "education/self-improvement",
-        "health/mental"
+        "psychology"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/self-improvement",
+          "confidence": 0.35
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "education/self-improvement",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 12w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 0,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1528900418": {
       "topics": [
@@ -110368,11 +112098,44 @@
     },
     "1544532602": {
       "topics": [
-        "psychology"
+        "psychology",
+        "society",
+        "economics"
       ],
       "confidence": "low",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-3"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "psychology",
+          "confidence": 0.35
+        },
+        {
+          "node": "society",
+          "confidence": 0.35
+        },
+        {
+          "node": "economics",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "psychology",
+      "display_title": "The Hidden Passage",
+      "blurb": "The Hidden Passage (Social Sciences)",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 0,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1544539869": {
       "topics": [
@@ -183865,9 +185628,35 @@
       "topics": [
         "business"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-5"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": true,
+      "rationale": "business",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 9w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 0,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1744982619": {
       "topics": [
@@ -223862,11 +225651,47 @@
     },
     "1873494833": {
       "topics": [
-        "education/courses"
+        "education/courses",
+        "education",
+        "computing"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-6"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.95
+        },
+        {
+          "node": "computing",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 11w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1873624058": {
       "topics": [
@@ -231219,11 +233044,52 @@
     },
     "1896460361": {
       "topics": [
-        "craft/diy-home"
+        "education/courses",
+        "education",
+        "culture",
+        "history"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.84
+        },
+        {
+          "node": "education",
+          "confidence": 0.84
+        },
+        {
+          "node": "culture",
+          "confidence": 0.66
+        },
+        {
+          "node": "history",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Courses and Education",
+      "display_title": "Own It with Angie Hicks",
+      "blurb": "Do you own your home, or does it own you If you've ever felt like your house is running your life instead of the other way around, you're not alone....",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 4,
+        "episodes_with_timed_transcript": 4,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "application/srt": 4,
+          "text/html": 4
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1896466787": {
       "topics": [
@@ -231980,11 +233846,49 @@
     },
     "1896743381": {
       "topics": [
-        "culture/performing-arts"
+        "business/startups",
+        "business",
+        "education/courses",
+        "education"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business/startups",
+          "confidence": 0.66
+        },
+        {
+          "node": "business",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Startups & deep tech and Business",
+      "display_title": "The Upstaging Gentlemen (Chasing Theatrical Dreams)",
+      "blurb": "Hey there Welcome to The Upstaging Gentlemen: Chasing Theatrical Dreams, hosted by Michael Tennant and Nathan Prince.We have a ton of experience in theater and business, but lookwe definitely dont...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1896753252": {
       "topics": [
@@ -232034,11 +233938,54 @@
     },
     "1896760409": {
       "topics": [
-        "history/military-modern"
+        "history",
+        "education/courses",
+        "education",
+        "news/daily",
+        "news"
       ],
       "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "news/daily",
+          "confidence": 0.48
+        },
+        {
+          "node": "news",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History and Courses",
+      "display_title": "World War II with Tom Hanks",
+      "blurb": "For eighty years, the Second World War has remained the most devastating and defining conflict in human history. World War II with Tom Hanks reexamines the war through the lens...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1896761271": {
       "topics": [
@@ -232118,12 +234065,56 @@
     },
     "1896768137": {
       "topics": [
-        "culture/art",
-        "health/mental"
+        "history",
+        "travel",
+        "adventure",
+        "education/courses",
+        "education"
       ],
-      "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "high",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "history",
+          "confidence": 0.84
+        },
+        {
+          "node": "travel",
+          "confidence": 0.66
+        },
+        {
+          "node": "adventure",
+          "confidence": 0.66
+        },
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.35
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History and Travel & Places",
+      "display_title": "OMMM: Our Museum Mindfulness Meditation",
+      "blurb": "Breathe deep, relaxand learn about art. Gettys first video podcast encourages you to engage with works of art mindfully, wherever you are. Part art history, part mindfulness meditation, each episode...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "application/x-subrip": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1896769077": {
       "topics": [
@@ -232353,11 +234344,49 @@
     },
     "1896789505": {
       "topics": [
-        "fiction/comedy"
+        "comedy",
+        "true-crime",
+        "science",
+        "education"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "medium",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.66
+        },
+        {
+          "node": "true-crime",
+          "confidence": 0.66
+        },
+        {
+          "node": "science",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedy and True Crime",
+      "display_title": "Jack Valentine, Vampire Detective",
+      "blurb": "If the murderer you're looking for is a vampire, then you want a vampire detective. Just maybe not this one. From their base at Solomon College, Oxford, Jack Valentine and...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1896789750": {
       "topics": [
@@ -232773,12 +234802,52 @@
     },
     "1896823979": {
       "topics": [
-        "religion/spirituality",
-        "culture/mythology"
+        "education/courses",
+        "education",
+        "sports",
+        "history"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "sports",
+          "confidence": 0.48
+        },
+        {
+          "node": "history",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "display_title: 13w > 8"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 4,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1896823990": {
       "topics": [
@@ -232866,11 +234935,52 @@
     },
     "1896832456": {
       "topics": [
-        "relationships"
+        "education/courses",
+        "education",
+        "history",
+        "computing"
       ],
-      "confidence": "high",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "confidence": "low",
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.48
+        },
+        {
+          "node": "education",
+          "confidence": 0.48
+        },
+        {
+          "node": "history",
+          "confidence": 0.48
+        },
+        {
+          "node": "computing",
+          "confidence": 0.48
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 6,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1896833307": {
       "topics": [
@@ -233693,11 +235803,55 @@
     },
     "1896879365": {
       "topics": [
+        "education/courses",
+        "education",
+        "food/cooking-science",
         "food"
       ],
       "confidence": "medium",
-      "source": "llm-title-genre",
-      "by": "breadth-refine-7"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education/courses",
+          "confidence": 0.66
+        },
+        {
+          "node": "education",
+          "confidence": 0.66
+        },
+        {
+          "node": "food/cooking-science",
+          "confidence": 0.66
+        },
+        {
+          "node": "food",
+          "confidence": 0.66
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Courses and Education",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: 31w > 30",
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 3,
+        "transcript_present": true,
+        "episodes_with_transcript": 3,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 3,
+        "transcript_types": {
+          "text/plain": 3
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-29-4fa28a56",
+      "classified_at": "2026-08-29T08:26:59.737Z"
     },
     "1896880262": {
       "topics": [
