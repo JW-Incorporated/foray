@@ -13,15 +13,31 @@
 
    MUTATIONS THESE KILL, all run:
      - flip one byte in the middle of icon-512.png   -> "pixels differ" (test 2)
-     - regenerate with SPAN = 0.70                   -> "pixels differ" (test 2)
-     - regenerate with SNAP = 30                     -> "pixels differ" (test 2)
+     - regenerate with SPAN = 0.70, PUT SPAN BACK    -> "pixels differ" (test 2)
+     - regenerate with SNAP = 30, PUT SNAP BACK      -> "pixels differ" (test 2)
      - encode({rgb:false}) so icons carry alpha      -> "colour type" (test 3)
      - drop "icon-512.png" from prepare-webdir       -> test 6
      - add "icon-1024.png" to prepare-dist           -> test 7
      - break decode()'s Paeth arm                    -> test 2 (the master
        decodes differently, so every icon stops matching)
 
-   ONE MUTATION IS DELIBERATELY NOT COVERED, because it is not a defect.
+   THE TWO "regenerate with" LINES ABOVE SAY "PUT IT BACK" FOR A REASON, and it
+   is a correction: they previously read "regenerate with SPAN = 0.70 -> pixels
+   differ", which is FALSE and was found false by re-running it during review of
+   the Play-listing suite (2026-08-25). Leave the constant changed and test 2 is
+   GREEN — it re-renders through `renderIcon`, so the committed icon and the
+   fresh render move together and agree at the new size. What test 2 catches is a
+   STALE icon: a file that no longer matches the generator as it stands. That is
+   the property this suite exists for and it is worth having; it is simply not
+   "you cannot change SPAN unnoticed". Nothing here pins SPAN or SNAP, and a
+   deliberate re-proportioning of the icons is a one-character edit no test sees.
+   `tools/store/play-listing.test.mjs` pins its own equivalents for that reason;
+   these are left unpinned because raising it here means arguing about the right
+   SPAN for three masks, which nobody has needed to do yet. Recorded rather than
+   quietly deleted, because a false evidence claim is worse than none: the next
+   reader stops checking.
+
+   ONE FURTHER MUTATION IS DELIBERATELY NOT COVERED, because it is not a defect.
    Collapsing encode()'s Paeth arm onto Sub (`v = cur[x] - a`) makes the two
    candidates score identically; the tie goes to Sub, filter 4 is never selected,
    and the PNG still decodes to exactly the right pixels. It costs 2.8 KB on the

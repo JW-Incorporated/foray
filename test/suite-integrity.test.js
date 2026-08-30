@@ -618,6 +618,18 @@ const FLOORS = {
      itself. That is ADR-0008's HEAD failure restated in a new unit, and it is
      the failure that would silently re-certify shows nothing has measured. */
   "tools/segments/regrid-clean.test.mjs": 25,
+  /* The Google Play submission package in `docs/store/play/` — the banner, the
+     four phone screenshots, the two descriptions and the README a founder
+     pastes out of. Floored because everything it guards fails LATE and
+     elsewhere: an off-size banner or an 81-character short description does not
+     break anything here, it bounces at the Console weeks later, and by then
+     nobody remembers which of these files is generated and which is hand-cut.
+     Three of its fourteen are the icon-suite guard applied to the banner (decode
+     the committed PNG, re-render from the brand master, compare pixels), and
+     two more are the ban on unverifiable scale claims and on company-size
+     signalling — both founder rulings, both previously enforced only by someone
+     remembering. */
+  "tools/store/play-listing.test.mjs": 14,
   "tools/transcribe/fetch-audio.test.mjs": 64,
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV
