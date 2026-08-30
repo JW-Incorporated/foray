@@ -119,6 +119,18 @@
  *       point: one test catches a README that has lost the asset, the other
  *       catches a README that still names it and describes it wrongly.
  *   - rename every app-icon-512.png in README.md       -> "README names every asset"
+ *   - bake a 12px white frame into the icon            -> "fills the square
+ *       instead of floating in a band". A GUARD THAT WAS NOT GUARDING, found by
+ *       running this mutation rather than by reading the test. The full-bleed
+ *       check originally compared the icon's four corner pixels to
+ *       `background(icon)`, which is computed from the pixels one step inside
+ *       them: a frame moves both sides together and the assertion passes. It
+ *       WAS green, and only the README byte count objected. The check now
+ *       compares the whole perimeter against `background(loadMaster())`, an
+ *       independent source of truth, and the frame fails.
+ *   - dirty a 100px run on the RIGHT edge only         -> same test. Recorded
+ *       separately because the fix could have been "check four corners against
+ *       the master" and that would still miss this; it sweeps all four edges.
  *   - resize one screenshot to 700x1280               -> "exactly 720x1280"
  *   - resize one screenshot to 360x640                -> "exactly 720x1280". Still
  *       exactly 9:16 and still legal for Play, so a ratio-only check passes it
@@ -434,14 +446,33 @@ test("the Play icon's mark fills the square instead of floating in a band", () =
     `the Play icon's mark (${box.h}px tall) is no taller than the shipped icon-512.png's (${shipped.box.h}px), which is the composition Play rejected`
   );
 
-  /* Full bleed: the ground reaches all four edges, so there is no baked-in
-     border for Play's 30% corner radius to eat unevenly. Corners are the
-     cheapest place to check it. */
+  /* Full bleed: the brand ground reaches all four edges, so there is no
+     baked-in border for Play's 30% corner radius to eat unevenly.
+
+     COMPARED AGAINST THE MASTER'S GROUND, NOT THE ICON'S OWN, and that is the
+     whole difference between a guard and a decoration. The first version of
+     this checked the four corner pixels against `background(icon)` -- which
+     reads (1,1), (w-2,1), (1,h-2), (w-2,h-2) of the same image. Bake a 12px
+     white frame into the generator and BOTH sides move to white together, so
+     the assertion passes and the icon ships with the border. That mutation was
+     run and it was green here; only the README's byte count noticed, and only
+     because the file got smaller. `loadMaster()` is an independent source of
+     truth for what the ground is supposed to be, so the frame now fails.
+
+     The whole perimeter, not four corners: a frame on one edge is as wrong as
+     a frame on all four, and 2044 pixels is free. */
+  const brand = background(loadMaster());
   const { img } = markBox(ICON_OUTPUT);
-  const bg = background(img);
-  for (const [x, y] of [[0, 0], [PLAY.ICON_PX - 1, 0], [0, PLAY.ICON_PX - 1], [PLAY.ICON_PX - 1, PLAY.ICON_PX - 1]]) {
-    const i = (y * PLAY.ICON_PX + x) * 4;
-    assert.deepEqual([img.data[i], img.data[i + 1], img.data[i + 2]], bg, `corner (${x},${y}) is not the brand ground`);
+  for (let k = 0; k < PLAY.ICON_PX; k++) {
+    for (const [x, y] of [[k, 0], [k, PLAY.ICON_PX - 1], [0, k], [PLAY.ICON_PX - 1, k]]) {
+      const i = (y * PLAY.ICON_PX + x) * 4;
+      if (img.data[i] !== brand[0] || img.data[i + 1] !== brand[1] || img.data[i + 2] !== brand[2]) {
+        assert.fail(
+          `edge pixel (${x},${y}) is [${img.data[i]},${img.data[i + 1]},${img.data[i + 2]}], not the master's ground ` +
+            `[${brand}]: the icon is not full-bleed, and Play's 30% corner radius would eat the border unevenly`
+        );
+      }
+    }
   }
 });
 
