@@ -561,15 +561,21 @@ week three.
 > You asked for one Foray to be taken across the line so the Play listing could
 > describe Forays without describing something no visitor can reach.
 > `capital-types-1` is that Foray — `data/forays.json` now says
-> `"status": "published"` and it is listed on the home screen. Why it was chosen
+> `"status": "published"`, so `listForays` returns it to a visitor who did not
+> ask for it by id. That was verified against the real documents through the real
+> `player/foray-resolve.js`, but **not observed in a browser** — see the cold-load
+> race in `foray2-capital.md` §11c. Why it was chosen
 > over the other three, on measurements rather than taste, is
 > `docs/curation/foray2-capital.md` §11a.
 >
 > **This item is therefore no longer blocking a publish; it is now a check on one
 > that has already happened.** That is a weaker position than the one it was
 > written for, and it is worth saying plainly: **the first Foray a stranger can
-> reach is one nobody has ever heard.** Every number in its write-up is a property
-> of timestamps. Step 1 below is unchanged and is now the highest-value hour
+> reach is one nobody has listened to end to end.** Not "never heard" — item #11
+> below records Wyatt playing this exact Foray on a phone on 2026-08-17, and that
+> run is where the #224 evidence comes from. What has never happened is the
+> sitting this item asks for. Every number in its write-up is a property of
+> timestamps. Step 1 below is unchanged and is now the highest-value hour
 > anybody can spend on this product. If it does not hold up, one word in
 > `data/forays.json` reverts it and `tools/foray/check-forays.test.mjs` will tell
 > you if you miss a step.

@@ -3,8 +3,12 @@
 > ## STATUS 2026-08-30 — this is the first `published` Foray. Read §11 before quoting anything here.
 >
 > `data/forays.json` now says `"status": "published"` on `capital-types-1`, so it
-> is listed on the home screen for an ordinary visitor rather than reachable only
-> by `?foray=capital-types-1`. Every checker output quoted further down this
+> is listed for an ordinary visitor rather than reachable only by
+> `?foray=capital-types-1`. Verified through the real `player/foray-resolve.js`
+> against the real documents: `listableForays` with no unlock returns exactly this
+> Foray, and it resolves to 22 of 22 playable, `totalSec` 3082.43 equal to
+> `runtime_sec`, every source https, eight slots contiguous in declared order.
+> **Not observed in a browser**; see §11c. Every checker output quoted further down this
 > document still prints `(draft)`, because those blocks are dated records of the
 > runs that produced them and are deliberately not rewritten. **§11 says why this
 > Foray was the one, and — more importantly — what is still not true of it.**
@@ -935,11 +939,16 @@ this change. The gate did not choose; these did.
 Three things decided it.
 
 1. **It is the only one of the four whose own assembly record describes it as
-   finished.** §0 above reports "Global rules missed: **None**". `grilling-history-2`'s
+   finished AND is not superseded.** §0 above reports "Global rules missed:
+   **None**". `grilling-foray.md` §0 reports "None outright" for
+   `grilling-history-1`, so the first clause alone would not separate them — what
+   separates them is that #1 is `superseded_by` and is the assembly the founder
+   reported as drifting. `grilling-history-2`'s
    record (`grilling-history-assembly.md` §1) says the opposite in as many words —
    34 of 40 spine beats are absent, Act IV is one segment out of fifteen beats, and
-   the honest description is "a playable fragment, useful for testing the player …
-   and not a draft of the product". `geology-plates-1`'s record (§0) says "the gate
+   the honest description is "a playable fragment, useful for testing the
+   player and for hearing whether the on-plot discipline sounds different, and not
+   a draft of the product". `geology-plates-1`'s record (§0) says "the gate
    is green and the rule that matters most to a listener is not met".
    `grilling-history-1` is `superseded_by` and is the fixture 103 tests need.
 2. **The seam argument does not favour the alternative once it is measured per
@@ -965,8 +974,9 @@ is **X2**, and so is **M6** wherever an elided span passes five minutes.
 This is not specific to the Foray that was chosen. It is unmeetable by *any*
 Foray in the repo today, and it cannot be fixed by re-ordering: a Foray drawing
 on N episodes has at least N−1 cross-episode seams however it is arranged, and
-this one is already close to that floor (10 against a floor of 7 for its eight
-episodes). What X1 needs is narration **audio**, and there is none — zero
+this one is 10 against a floor of 7 for its eight episodes — which is 43 % above
+its own floor, and worth stating that way rather than as "close to", because
+`grilling-history-2` sits exactly ON its floor at 5 of 5. What X1 needs is narration **audio**, and there is none — zero
 narration items exist in `data/forays.json`, `audio-cache/` is empty, and voicing
 a script is ElevenLabs spend, which is a founder decision (CLAUDE.md decision
 authority #3).

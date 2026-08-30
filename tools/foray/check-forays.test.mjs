@@ -174,6 +174,10 @@ test("exactly one committed Foray is published, and it is the one that was named
      zero errors" and by the CLI test above it, both of which reach
      `check-forays.mjs`'s own `status` enum. That is the better home for it: the
      enum is enforced by the shipping checker rather than by a loop in a test.
+     But it left the enum itself pinned by NOTHING — deleting that line kept the
+     suite green — so the test below this one now pins it directly. Do not delete
+     that test on the grounds that this one covers the same ground; it does not,
+     and that is the whole reason it exists.
 
      WHAT THIS TEST DOES NOT SAY: that anyone has listened to it. Nobody has
      (HUMAN-ACTIONS.md #8 is still open), and rule X1 — "a cross-episode seam
@@ -186,6 +190,39 @@ test("exactly one committed Foray is published, and it is the one that was named
     live.forays.forays.filter((f) => f.status === "published").map((f) => f.id),
     ["capital-types-1"]
   );
+});
+
+test("`status` is an enum of exactly two values, and a third is an error", () => {
+  /* THE MUTATION THIS KILLS: deleting `check-forays.mjs`'s `status` line
+     entirely. Until the test above was narrowed, the live loop
+     `assert.equal(f.status, "draft")` covered this by accident on the committed
+     data, and the enum in the checker had no proof of its own anywhere in the
+     repo — the line could be deleted and all 88 suites stayed green. That is the
+     "guard that was not guarding" shape, and narrowing the loop is what exposed
+     it, so it is closed here rather than left as a comment claiming the checker
+     handles it.
+
+     Run on the FIXTURE, not on the live data, for the reason stated at `fx()`: a
+     proof that needs a particular value is a proof that owns the data it needs.
+
+     Both legal values are asserted as well as the illegal one. A one-sided test
+     is satisfied by `E()` on every status, which would reject the very publish
+     this file now pins one line above. */
+  for (const status of ["draft", "published"]) {
+    const f = fx();
+    boundary(f).status = status;
+    assert.deepEqual(
+      errorsFor(f).filter((e) => /`status`/.test(e)),
+      [],
+      `"${status}" is a legal status and must not be reported`
+    );
+  }
+  for (const status of ["archived", "DRAFT", "", null, undefined]) {
+    const f = fx();
+    boundary(f).status = status;
+    const hits = errorsFor(f).filter((e) => /`status` must be "draft" or "published"/.test(e));
+    assert.equal(hits.length, 1, `${JSON.stringify(status)} must be rejected exactly once, got ${hits.length}`);
+  }
 });
 
 test("every committed Foray's report is consistent with the items it lists", () => {

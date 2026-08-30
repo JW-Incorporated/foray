@@ -1258,9 +1258,13 @@ function renderPlaylists() {
    surface: it renders what that returns and drives the transport.
 
    ── The draft rule ────────────────────────────────────────────────────────
-   Every Foray in data/forays.json is `status: "draft"` and only a founder may
-   publish one (HUMAN-ACTIONS.md #2). So none is listed for an ordinary visitor.
-   They are still reachable — by asking for one by id:
+   Only a founder may publish a Foray (HUMAN-ACTIONS.md #2). As of 2026-08-30
+   ONE is published — `capital-types-1` — so exactly one is listed for an
+   ordinary visitor and the other three are not. The rule has not changed; the
+   data has. (It used to read "every Foray is a draft, so none is listed", which
+   is the sentence this change falsified.)
+
+   A DRAFT is still reachable — by asking for one by id:
 
        https://jw-incorporated.github.io/foray/?foray=grilling-history-2
 
@@ -2353,14 +2357,23 @@ function paintForay(s) {
   }
 }
 
-/** The Forays this visitor may see on the home screen. Normally empty: nothing
-    is published yet, and a draft is reached by name, not by browsing.
+/** The Forays this visitor may see on the home screen. As of 2026-08-30 that is
+    ONE — `capital-types-1` is published — plus any draft reached by name. It
+    was empty for everyone before that.
 
     It reads the bridge synchronously rather than awaiting it, so on a cold load
     where the module has not evaluated yet the row is simply absent until the
-    next render. That is the right trade while the list is empty for everyone;
-    when the first Foray is published, this wants the same await renderForay
-    does. */
+    next render. That WAS the right trade while the list was empty for everyone.
+    It is not any more, and the trade has not been re-made: nothing re-renders
+    home on the `forayplayer:ready` event `player/client.js` already dispatches,
+    so a cold load that paints home before the module evaluates shows a home
+    screen with the published Foray missing from it until the visitor navigates.
+    In practice `init()` awaits eight JSON fetches before `route()` and the
+    module graph starts earlier, so the module almost always wins — "almost
+    always" is the defect. Fixing it wants the same await `renderForay` does, or
+    one re-render on that event; both need a harness that does not stub
+    `window.addEventListener` to a no-op, which is what the two suites that mount
+    this file do today. Recorded in docs/curation/foray2-capital.md §11c. */
 function forayCards() {
   if (!state.forays || !window.ForayPlayer) return [];
   return window.ForayPlayer.listForays(state.forays, { unlocked: unlockedForays() });

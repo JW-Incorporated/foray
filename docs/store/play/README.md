@@ -105,7 +105,10 @@ do not stop after §7 thinking you are done. Every answer already exists:
   `status: "draft"` … Nobody who installs from Play can browse to one.~~
   **THE PREMISE EXPIRED 2026-08-30.** `capital-types-1` is now
   `status: "published"`, so it is listed on the home screen for an ordinary
-  visitor and a Play installer **can** browse to it. The copy in this package
+  visitor and a Play installer **can** browse to it. (Verified against the real
+  data through `player/foray-resolve.js`, **not observed in a browser** —
+  `docs/curation/foray2-capital.md` §11c records a cold-load race in which the
+  row can be missing on first paint.) The copy in this package
   still says nothing about forays, so **the copy is now the thing that is out of
   date, and rewriting it is the highest-value edit available to this listing** —
   a foray is the most interesting thing 4a does.
