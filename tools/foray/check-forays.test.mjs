@@ -144,13 +144,39 @@ test("Foray #1 is labelled superseded, so nobody re-tests the drift by accident"
   assert.equal(forayBy(live, "grilling-history-2").superseded_by, undefined);
 });
 
-test("every committed Foray is still a draft, so no client may surface one", () => {
-  // Same safety valve as ladders (docs/curation/ladders-client-spec.md): nobody
-  // has listened to these end to end, and grilling-foray.md §9 says so. Written
-  // as a loop rather than about Foray #1, because the valve is not about one
-  // Foray and the day it stops being true should be a deliberate edit.
-  assert.ok(live.forays.forays.length > 0, "no Forays — this loop proved nothing");
-  for (const f of live.forays.forays) assert.equal(f.status, "draft", f.id);
+test("exactly one committed Foray is published, and it is the one that was named", () => {
+  /* THIS IS THE OLD "every committed Foray is still a draft" VALVE, NARROWED BY
+     ONE NAMED FORAY RATHER THAN REMOVED.
+
+     The valve is the same one ladders have (docs/curation/ladders-client-spec.md):
+     publishing is a founder action (HUMAN-ACTIONS.md #2), so a client that
+     surfaces a Foray has published it in the only sense a visitor experiences.
+     Its old comment said "the day it stops being true should be a deliberate
+     edit" — this is that edit. On 2026-08-30 the founder asked for one Foray to
+     be publishable so the Play listing could describe Forays without describing
+     something no visitor can reach, and `capital-types-1` is the one chosen:
+     it is the only candidate whose own assembly record reports no global rules
+     missed (docs/curation/foray2-capital.md §0), and it has the lowest
+     cross-episode seam rate per minute of the four.
+
+     PINNED AS AN EXACT SET, not as "at most one published" and not by deleting
+     the loop. The three Forays that stay draft are guarded exactly as hard as
+     before — a second one flipping fails here, and so does this one flipping
+     back. Publishing the next Foray costs one deliberate line in this array,
+     which is the price the old loop charged and the whole reason it was written
+     as a loop instead of about Foray #1.
+
+     WHAT THIS TEST DOES NOT SAY: that anyone has listened to it. Nobody has
+     (HUMAN-ACTIONS.md #8 is still open), and rule X1 — "a cross-episode seam
+     always carries narration" — is unmet at all 10 of its cross-episode seams,
+     because no narration audio exists anywhere in the repo. Neither fact is
+     checkable here; both are recorded so a reader of a green suite does not
+     infer them. */
+  assert.ok(live.forays.forays.length > 0, "no Forays — this proved nothing");
+  assert.deepEqual(
+    live.forays.forays.filter((f) => f.status === "published").map((f) => f.id),
+    ["capital-types-1"]
+  );
 });
 
 test("every committed Foray's report is consistent with the items it lists", () => {

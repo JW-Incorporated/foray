@@ -556,10 +556,34 @@ week three.
 
 ### 8. Listen to Foray #2, and rule on one number the cut budget cost us
 
-**[BLOCKING]** for publishing Foray #2 — **~55 min of listening plus one
-decision.** Foray #2 (`capital-types-1`, 22 segments, 51:22) is authored,
-green, and `status: "draft"`, so no client surfaces it. Write-up:
-`docs/curation/foray2-capital.md`.
+> ## CHANGED 2026-08-30 — Foray #2 was PUBLISHED before this item was done, on your instruction. The listening is still owed.
+>
+> You asked for one Foray to be taken across the line so the Play listing could
+> describe Forays without describing something no visitor can reach.
+> `capital-types-1` is that Foray — `data/forays.json` now says
+> `"status": "published"` and it is listed on the home screen. Why it was chosen
+> over the other three, on measurements rather than taste, is
+> `docs/curation/foray2-capital.md` §11a.
+>
+> **This item is therefore no longer blocking a publish; it is now a check on one
+> that has already happened.** That is a weaker position than the one it was
+> written for, and it is worth saying plainly: **the first Foray a stranger can
+> reach is one nobody has ever heard.** Every number in its write-up is a property
+> of timestamps. Step 1 below is unchanged and is now the highest-value hour
+> anybody can spend on this product. If it does not hold up, one word in
+> `data/forays.json` reverts it and `tools/foray/check-forays.test.mjs` will tell
+> you if you miss a step.
+>
+> **Two things to know before you listen**, both in `foray2-capital.md` §11b–c:
+> rule **X1** ("a cross-episode seam always carries narration") is unmet at all 10
+> of its cross-episode seams and **cannot** be met by any Foray in the repo without
+> ElevenLabs spend you have not authorised; and **#224** is open, so on a phone
+> with the screen off expect it to stop at a seam.
+
+**[BLOCKING]** ~~for publishing Foray #2~~ **for trusting the published Foray #2** —
+**~55 min of listening plus one decision.** Foray #2 (`capital-types-1`, 22
+segments, 51:22) is authored, green, and — as of 2026-08-30 —
+`status: "published"`. Write-up: `docs/curation/foray2-capital.md`.
 
 Two things, and they are best done in one sitting because the second is a
 judgement you can only make with the thing in your ears.
@@ -1766,15 +1790,28 @@ which of the two pages each one lives on. The literals, so they are also here:
   content-rating questionnaire, the ads declaration, target audience, and the
   privacy policy URL. README §8 covers it. This is the step that turns a
   40-minute job into an afternoon, so start it early.
-- **Nothing in the copy mentions forays**, and that is deliberate rather than an
+- ~~**Nothing in the copy mentions forays**, and that is deliberate rather than an
   oversight. Every Foray in `data/forays.json` is `status: "draft"` and reachable
   only by opening its id in the URL, so a Play visitor cannot get to one;
-  advertising it would be advertising a feature they cannot use. The same applies
-  to the thumbs-up/down voting and its reason chips, which are rendered only
-  inside a Foray. **Publish a Foray (#22 is upstream of that) and this listing is
-  worth rewriting** — it is the strongest thing there would be to say about the
-  app. The reasoning is recorded in README's "What is deliberately not in this
-  package".
+  advertising it would be advertising a feature they cannot use.~~
+  **CHANGED 2026-08-30 — the premise is gone, and the copy is now the thing that
+  is out of date.** `capital-types-1` is `status: "published"`, so it is listed on
+  the home screen for an ordinary visitor and a Play visitor **can** get to it.
+  The same now applies to the thumbs-up/down voting and its reason chips, which
+  are rendered only inside a Foray. **So this listing is now worth rewriting** —
+  a Foray is the strongest thing there is to say about the app, and the copy does
+  not say it.
+
+  **Three things the copy must not claim**, because they are not true:
+  *(a)* not "Forays", plural, as a browsable library — there is exactly **one**
+  published, 51 minutes, on how a startup raises money, and the other three are
+  still drafts; *(b)* nothing about narration, a host or a guide — a Foray is
+  edited tape with a 2.0 s beat between segments and **no narration audio exists
+  anywhere in the repo** (`foray2-capital.md` §11b); *(c)* nothing that promises
+  reliable background playback, because **#224** is open and item #11 below
+  records that on a phone with the screen off it is expected to stop at a seam.
+  The reasoning behind what is deliberately absent is in README's "What is
+  deliberately not in this package".
 
 **Do not retype any of the copy.** The character counts above are asserted
 against the files by `tools/store/play-listing.test.mjs`, so what is in the file

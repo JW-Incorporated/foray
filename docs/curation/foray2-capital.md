@@ -1,5 +1,14 @@
 # Foray #2 — THE TYPES OF CAPITAL AND FUNDING AVAILABLE TO STARTUPS
 
+> ## STATUS 2026-08-30 — this is the first `published` Foray. Read §11 before quoting anything here.
+>
+> `data/forays.json` now says `"status": "published"` on `capital-types-1`, so it
+> is listed on the home screen for an ordinary visitor rather than reachable only
+> by `?foray=capital-types-1`. Every checker output quoted further down this
+> document still prints `(draft)`, because those blocks are dated records of the
+> runs that produced them and are deliberately not rewritten. **§11 says why this
+> Foray was the one, and — more importantly — what is still not true of it.**
+
 The second complete Foray. **22 segments, 51 min 22 s of tape**, in listening
 order across eight arc slots, drawn from eight ad-free episodes of seven shows
 (The Bootstrapped Founder contributes two). Batch `seg-2026-08-16-foray2-capital-a` merged **26** segments;
@@ -893,3 +902,109 @@ correct by necessity.
 Re-running the same batch against the merged file writes nothing
 ("no change — segments file left untouched"), which is the idempotence property
 `merge-segments.mjs` promises; it was verified for this batch.
+
+---
+
+## 11. Published, 2026-08-30 — the choice, and the four things still not true
+
+The founder asked for one Foray to be brought across the line so that the Google
+Play listing could describe Forays without describing a feature no visitor can
+reach. Before this change all four were `draft`, and `player/foray-resolve.js`
+makes a draft reachable only by asking for it by id — so a listing that mentioned
+Forays would have been a misrepresentation. This is that change, and it is one
+word in `data/forays.json` plus the deliberate edit it forces in
+`tools/foray/check-forays.test.mjs`.
+
+### 11a. Why this Foray and not one of the other three
+
+All four pass `tools/foray/check-forays.mjs` with zero errors, and did so before
+this change. The gate did not choose; these did.
+
+| | `grilling-history-1` | `grilling-history-2` | **`capital-types-1`** | `geology-plates-1` |
+|---|---|---|---|---|
+| Runtime | 61.2 min | 21.9 min | **51.4 min** | 40.3 min |
+| Segments | 32 | 10 | **22** | 19 |
+| D1 | 6 of 6 — **on the line** | 6 of 8 | **5 of 6** | 6 of 8 |
+| D5 IQR (floor 45 s) | 57.81 s | 60.10 s | **71.75 s — the most headroom** | 57.53 s |
+| M4 worst episode | 21.9 % | 20.0 % | **23.8 %** | 18.4 % |
+| Cross-episode seams | 16 of 31 | 5 of 9 | **10 of 21** | 15 of 18 |
+| Cross-episode seams **per minute** | 0.261 | 0.228 | **0.195 — the lowest** | 0.372 |
+| Its own record's verdict | superseded, drifted off plot | *"a playable fragment … not a draft of the product"* | **"Global rules missed: None"** | *"the rule that matters most to a listener is not met"* |
+
+Three things decided it.
+
+1. **It is the only one of the four whose own assembly record describes it as
+   finished.** §0 above reports "Global rules missed: **None**". `grilling-history-2`'s
+   record (`grilling-history-assembly.md` §1) says the opposite in as many words —
+   34 of 40 spine beats are absent, Act IV is one segment out of fifteen beats, and
+   the honest description is "a playable fragment, useful for testing the player …
+   and not a draft of the product". `geology-plates-1`'s record (§0) says "the gate
+   is green and the rule that matters most to a listener is not met".
+   `grilling-history-1` is `superseded_by` and is the fixture 103 tests need.
+2. **The seam argument does not favour the alternative once it is measured per
+   minute.** `grilling-history-2` has fewer cross-episode seams in absolute terms
+   (5 against 10) because it is less than half as long. Per minute of listening
+   this Foray has the *fewest* of the four — 0.195 against 0.228 — and a listener
+   experiences a rate, not a total. A caveat in the other direction, stated because
+   it cuts against the choice: a cross-episode seam is where **#224** bites (see
+   11c), and 10 chances to stall in one sitting is more than 5.
+3. **It carries no editorial hazard.** `grilling-history-2`'s record names a
+   specific one: `MOSS-1` ships the harmony version of the civic barbecue, and
+   publishing it unbridged "ships the exact reading beat 23 exists to refute". That
+   defect is about who cooked American barbecue and who was credited for it, it can
+   only be fixed with narration that does not exist, and it is not what should be
+   the first thing a stranger hears.
+
+### 11b. Rule X1 is unmet, here and everywhere, and it needs money
+
+**`segment-length-rules.md` X1 — "a cross-episode seam always carries narration",
+tier A, gate "yes" — is unmet at all 10 of this Foray's cross-episode seams.** So
+is **X2**, and so is **M6** wherever an elided span passes five minutes.
+
+This is not specific to the Foray that was chosen. It is unmeetable by *any*
+Foray in the repo today, and it cannot be fixed by re-ordering: a Foray drawing
+on N episodes has at least N−1 cross-episode seams however it is arranged, and
+this one is already close to that floor (10 against a floor of 7 for its eight
+episodes). What X1 needs is narration **audio**, and there is none — zero
+narration items exist in `data/forays.json`, `audio-cache/` is empty, and voicing
+a script is ElevenLabs spend, which is a founder decision (CLAUDE.md decision
+authority #3).
+
+**Shipping unvoiced narration to satisfy X1 on paper was considered and
+rejected**, on the reasoning already recorded at `geology-foray-assembly.md` §4:
+`buildForayQueue` drops a narration item with no asset, but `resolveForay` still
+returns it, so `app.js` renders each one as a near-blank "Can't play: narration
+has no asset" row under a banner announcing the Foray is broken. That is a worse
+listener experience in exchange for a rule no gate checks. Nothing in this change
+authored a narration item.
+
+**What a listener gets instead** is `player/seam-gap.js`'s 2.0 s beat at every
+auto-advanced seam — an edit marked but not explained.
+
+### 11c. Three other things that are still not true
+
+- **Nobody has heard it.** `HUMAN-ACTIONS.md` #8 is still open, and it is the
+  item that asks a founder to listen end to end and then rule on the cut budget.
+  Publishing on the founder's instruction did not perform that listening, and §9
+  above still stands: every number in this document is a property of timestamps.
+  If it does not hold up in the ear, one word reverts it.
+- **#224 is open, and this Foray is where it was seen.** `HUMAN-ACTIONS.md` #11
+  records that on a real phone this Foray "stopped at a seam and then resumed to
+  the wrong place". The resume half was #263, fixed in #266. The stop half is
+  #224, the prefetch that would have fixed it never shipped, and that item says
+  in terms: **"expect the stop to still happen on a phone."** It fires at a seam
+  that pays a media load — which is a cross-episode seam, of which this Foray has
+  ten.
+- **The home-screen row has an unfixed cold-load race.** `app.js`'s `forayCards()`
+  reads `window.ForayPlayer` synchronously, and its own comment says that while
+  the list was empty for everyone that was the right trade but "when the first
+  Foray is published, this wants the same await `renderForay` does". Nothing
+  re-renders home on the `forayplayer:ready` event the module already dispatches,
+  so a cold load that paints home before `player/client.js` has evaluated shows a
+  home screen with this Foray missing, until the visitor navigates. In practice
+  `init()` awaits eight JSON fetches before `route()` and the module graph starts
+  earlier, so the module almost always wins — but "almost always" is the whole
+  defect. **Deliberately not fixed here**: the two harnesses that mount `app.js`
+  (`test/data-deletion.test.js`, `test/diagnostics-surface.test.js`) stub
+  `window.addEventListener` as a no-op, so covering an event-driven re-render
+  needs harness work that does not belong in a status flip.
