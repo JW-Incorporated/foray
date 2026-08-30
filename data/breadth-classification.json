@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "built_at": "2026-08-30T00:15:58.245Z",
+  "built_at": "2026-08-30T08:18:01.867Z",
   "provenance": {
     "produced_by": "tools/classify/merge-results.mjs",
     "method": "Claude Code classification agent (Max-plan cron routine) — see docs/adr/0006-podcast-classification-methodology.md",
-    "last_batch_id": "fresh-2026-08-30-0198c24b",
+    "last_batch_id": "fresh-2026-08-30-6e21b9d8",
     "last_batch_tier": 1,
     "transcript_labels": "descriptive cost label, never an eligibility test — see tools/classify/labels.mjs"
   },
@@ -30244,7 +30244,35 @@
         "sports/baseball"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Daily postgame analysis of Giants baseball games.",
+      "display_title": "Postgame Wrap Podcast",
+      "blurb": "Kruk, Kuip, Jon and Dave break down every Giants game on KNBR 680",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/srt": 8,
+          "text/vtt": 8,
+          "text/plain": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "993270804": {
       "topics": [
@@ -34398,10 +34426,44 @@
     },
     "1053981528": {
       "topics": [
-        "news/politics"
+        "economics",
+        "culture/art",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Critical economic analysis and systemic alternatives.",
+      "display_title": "Economic Update with Richard D. Wolff",
+      "blurb": "Economic Update with Richard D",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1054081827": {
       "topics": [
@@ -34643,10 +34705,54 @@
     },
     "1054764942": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "religion/buddhism",
+        "religion/spirituality",
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish spirituality, theology, and relationship guidance.",
+      "display_title": "Daily Jewish Thought",
+      "blurb": "Thoughts on spirituality, Kabbalah, Jewish thought, Judaism and Relationships",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "text/html": 6,
+          "application/json": 6,
+          "application/x-subrip": 6,
+          "text/vtt": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1054824418": {
       "topics": [
@@ -34963,11 +35069,44 @@
     },
     "1059870080": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "comedy",
+        "culture/art",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Comedic commentary on current events and politics.",
+      "display_title": "Radio Ronin",
+      "blurb": "CHUNGA IS ON RADIO RONIN! Radio Ronin is a slightly irrelevant & incorrect look at current events, pop culture and the hosts' own daily misadventur...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1059982941": {
       "topics": [
@@ -35165,19 +35304,85 @@
     },
     "1062532126": {
       "topics": [
-        "sports/soccer"
+        "sports/soccer",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/soccer",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Analysis of Premier League soccer matches.",
+      "display_title": "Sky Sports Premier League Podcast",
+      "blurb": "The best analysis of the biggest Premier League matches",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1062738845": {
       "topics": [
         "medicine/biology",
-        "science",
-        "nature"
+        "science/storytelling",
+        "culture/art",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine/biology",
+          "confidence": 0.9
+        },
+        {
+          "node": "science/storytelling",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Dental hygiene education and clinical practice.",
+      "display_title": "A Tale of Two Hygienists Podcast",
+      "blurb": "We created A Tale of Two Hygienists in 2015 because we are passionate about helping our fellow clinicians be the best version of themselves, both p...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1062997995": {
       "topics": [
@@ -35517,11 +35722,49 @@
     },
     "1068281273": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "religion/spirituality",
+        "psychology",
+        "culture/art",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Science-backed meditation and mindfulness practices.",
+      "display_title": "12 Minute Meditation",
+      "blurb": "The latest scientific research reveals that 12 minutes of meditation a day yields benefits like increased attention, focus, creativity, calm, resil...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1068329384": {
       "topics": [
@@ -35947,10 +36190,34 @@
     },
     "1072228536": {
       "topics": [
-        "health/alternative"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Alternative health and wellness perspectives.",
+      "display_title": "Grace & Grit Podcast",
+      "blurb": "The Grace and Grit Podcast takes the health fairy tale you've heard all your life and turns it upside down and inside out, helping women rebuild th...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1072469956": {
       "topics": [
@@ -36051,11 +36318,39 @@
     },
     "1073354021": {
       "topics": [
-        "music",
-        "history"
+        "culture/art",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "History and culture of rock and roll music.",
+      "display_title": "50 Years of Maximum Rock n' Roll",
+      "blurb": "50 Years of Maximum Rock & Roll is a podcast hosted by Dave Hines and features concert sound pioneer Bob Heil",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1073364619": {
       "topics": [
@@ -36082,11 +36377,44 @@
     },
     "1073522912": {
       "topics": [
-        "education/language-learning",
-        "linguistics/language"
+        "travel",
+        "economics",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "travel",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "早安英文",
+      "blurb": "外刊精讲 | 被罚没 51.79 亿，携程为何遭重罚？旅游巨头如何 “拿捏” 酒店？",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1073532756": {
       "topics": [
@@ -36738,11 +37066,49 @@
     },
     "1079172742": {
       "topics": [
-        "economics/markets",
-        "business"
+        "economics",
+        "culture/art",
+        "business",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Macro Voices",
+      "blurb": "Weekly market commentary by Hedge Fund Manager Erik Townsend and interviews with the brightest minds in the world of finance and macroeconomics",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1079251913": {
       "topics": [
@@ -37266,10 +37632,51 @@
     },
     "1084105171": {
       "topics": [
-        "relationships"
+        "economics",
+        "psychology",
+        "culture/art",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Modern dating culture and relationship dynamics.",
+      "display_title": "Dateable: Your insider's look into modern dating and",
+      "blurb": "Is monogamy dead? Are we expecting too much from dating apps? Do we even want to find love anymore? Get all the answers and more with Dateable, you...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 7,
+        "episodes_with_timed_transcript": 7,
+        "transcript_tags": 7,
+        "transcript_types": {
+          "text/vtt": 7
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1084185833": {
       "topics": [
@@ -37471,11 +37878,49 @@
     },
     "1086418369": {
       "topics": [
-        "health/mental",
-        "psychology"
+        "linguistics/language",
+        "music",
+        "culture/art",
+        "culture/performing-arts"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "linguistics/language",
+          "confidence": 0.85
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Win Today: Your Roadmap to Wholeness",
+      "blurb": "Life is complicated, and quick fixes won't address the deeper challenges you face in your mental, emotional, and spiritual health",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1086686885": {
       "topics": [
@@ -37516,10 +37961,44 @@
     },
     "1087180427": {
       "topics": [
-        "tv-film/reviews"
+        "religion/judaism",
+        "tv-film/reviews",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Film criticism and cinema analysis.",
+      "display_title": "Grindbin Podcast - Grindhouse and Exploitation Films",
+      "blurb": "Welcome to the Grindbin, a podcast where your hosts Mike Wood and Chris Mann dig through the exploitation films and grindhouse cinema of the 1970's...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1087370521": {
       "topics": [
@@ -37783,10 +38262,39 @@
     },
     "1090123738": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Makers & Mystics",
+      "blurb": "Makers & Mystics is the podcast for the art-driven, spiritually adventurous seekers of truth and lovers of life",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1090136163": {
       "topics": [
@@ -37831,10 +38339,39 @@
     },
     "1090433226": {
       "topics": [
-        "medicine"
+        "medicine",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "medicine",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Evidence-based emergency medicine education.",
+      "display_title": "The Resus Room",
+      "blurb": "Emergency Medicine podcasts based on evidence based medicine focussed on practice in and around the resus room",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1090500561": {
       "topics": [
@@ -38226,11 +38763,44 @@
     },
     "1093934861": {
       "topics": [
-        "sports",
-        "news"
+        "news",
+        "culture/art",
+        "news/politics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Scuderia F1: a Formula 1 podcast",
+      "blurb": "Scuderia Formula 1 is the podcast that’s always up to speed with the exciting world of Grand Prix racing! We keep Formula 1 fans up to date with al...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1094394003": {
       "topics": [
@@ -38269,10 +38839,39 @@
     },
     "1094870430": {
       "topics": [
-        "music"
+        "music/theory-production",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music/theory-production",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jazz education and performance techniques.",
+      "display_title": "Learn Jazz Standards Podcast",
+      "blurb": "The LJS Podcast is the podcast where you get weekly jazz tips, interviews, stories and advice for becoming a better jazz musician! Hosting the show...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1094885334": {
       "topics": [
@@ -38404,11 +39003,49 @@
     },
     "1097449598": {
       "topics": [
-        "economics/markets",
-        "business"
+        "business",
+        "economics",
+        "psychology",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "economics",
+          "confidence": 0.8
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Real estate investment and tax strategies.",
+      "display_title": "Lifetime Cash Flow Through Real Estate Investing",
+      "blurb": "The Lifetime Cash Flow Through Real Estate Investing Podcast grants you access to expert real estate investors, syndicators, lenders, property mana...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1097637934": {
       "topics": [
@@ -38449,10 +39086,49 @@
     },
     "1097989571": {
       "topics": [
-        "religion/spirituality"
+        "religion/spirituality",
+        "psychology",
+        "culture/art",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.85
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Yoga practice and spiritual development.",
+      "display_title": "The Uplifted Yoga Podcast",
+      "blurb": "Uplift your personal life and accelerate your yoga career leveraging yoga's ancient wisdom",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1098171670": {
       "topics": [
@@ -38495,11 +39171,49 @@
     },
     "1098802558": {
       "topics": [
-        "economics/markets",
-        "business"
+        "economics",
+        "comedy",
+        "business",
+        "automotive"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.95
+        },
+        {
+          "node": "comedy",
+          "confidence": 0.9
+        },
+        {
+          "node": "business",
+          "confidence": 0.85
+        },
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Financial planning for women.",
+      "display_title": "HerMoney with Jean Chatzky",
+      "blurb": "Anyone who tells you women don’t need financial advice specifically for them is wrong",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1098868019": {
       "topics": [
@@ -38526,10 +39240,34 @@
     },
     "1099304101": {
       "topics": [
-        "comedy/interviews"
+        "nature"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "The Fallen State TV",
+      "blurb": "The Fallen State TV is a weekly web series hosted by Jesse Lee Peterson",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1099510856": {
       "topics": [
@@ -38630,10 +39368,44 @@
     },
     "1101188156": {
       "topics": [
-        "tv-film/after-shows"
+        "craft",
+        "news/politics",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Come Thru Queen",
+      "blurb": "Dan and Brendan bringing you weekly reality show recaps including Real Housewives of Atlanta, Beverly Hills, New York, New Jersey, Salt Lake City, ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1101234896": {
       "topics": [
@@ -39086,10 +39858,44 @@
     },
     "1110785292": {
       "topics": [
-        "news/daily"
+        "news/politics",
+        "culture/art",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "news/politics",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "The WorldView in 5 Minutes",
+      "blurb": "Voiced by veteran talk show host Adam McManus and written by radio-host and pastor Kevin Swanson and a team of other staff writers, The World View ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1110804593": {
       "topics": [
@@ -39337,10 +40143,48 @@
     },
     "1113848918": {
       "topics": [
-        "sports/hockey"
+        "sports/hockey",
+        "culture/art",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/hockey",
+          "confidence": 0.9
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Expected Buffalo | The Podcast",
+      "blurb": "Official podcast of Expected Buffalo which is an analytics focused website covering the Buffalo Sabres, hosted by Chad DeDominicis and Anthony Scia...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 8,
+        "transcript_tags": 24,
+        "transcript_types": {
+          "application/x-subrip": 8,
+          "text/plain": 8,
+          "text/vtt": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1114062334": {
       "topics": [
@@ -39647,10 +40491,39 @@
     },
     "1117489326": {
       "topics": [
+        "culture/art",
         "culture/design"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Presentable",
+      "blurb": "Presentable focused on how we design and build the products that are shaping our digital future",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1117556964": {
       "topics": [
@@ -39816,10 +40689,44 @@
     },
     "1118781520": {
       "topics": [
-        "kids-family/education"
+        "education",
+        "news",
+        "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.9
+        },
+        {
+          "node": "news",
+          "confidence": 0.85
+        },
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Homeschooling strategies and family education.",
+      "display_title": "The Homeschool Sisters Podcast",
+      "blurb": "Homeschooling is easier when you have a sister by your side",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1118867383": {
       "topics": [
@@ -40264,10 +41171,51 @@
     },
     "1125522101": {
       "topics": [
-        "business/careers"
+        "automotive",
+        "psychology",
+        "culture/art",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "automotive",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Service Drive Revolution with Chris Collins",
+      "blurb": "Got a question for the show? Call us at 1-833-3-ASK-SDR! Chris Collins, the leading Automotive Service Manager Coach and Service Advisor Trainer in...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 6,
+        "transcript_types": {
+          "text/vtt": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1125752101": {
       "topics": [
@@ -40404,10 +41352,44 @@
     },
     "1128237763": {
       "topics": [
-        "culture/performing-arts"
+        "music",
+        "culture/performing-arts",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Conversations on Dance",
+      "blurb": "Conversations on Dance is an award winning podcast hosted by former Miami City Ballet dancers Rebecca King Ferraro and Michael Sean Breeden",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1128428812": {
       "topics": [
@@ -40636,10 +41618,39 @@
     },
     "1132586596": {
       "topics": [
-        "travel"
+        "sports/baseball",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Travel and exploration storytelling.",
+      "display_title": "Brave Little State",
+      "blurb": "What if you could decide what stories Vermont Public should be covering, before they're even assigned? That's the idea behind Brave Little State",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1132678060": {
       "topics": [
@@ -40703,10 +41714,39 @@
     },
     "1133068655": {
       "topics": [
-        "music"
+        "music",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "K-pop music trends and commentary.",
+      "display_title": "Kpopcast: for the best sounds & ideas in",
+      "blurb": "Bringing you the best sounds and ideas in K-pop each week",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1133194268": {
       "topics": [
@@ -40917,11 +41957,34 @@
     },
     "1135688404": {
       "topics": [
-        "fiction/comedy",
-        "comedy"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "All My Fantasy Children",
+      "blurb": "Each week, Aaron Catano-Saez and Jeff Stormer take a listener-submitted prompt and spin it into an original fantasy character",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1135851243": {
       "topics": [
@@ -41037,10 +42100,44 @@
     },
     "1137170219": {
       "topics": [
-        "sports/football"
+        "sports/baseball",
+        "culture/art",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL team news and analysis.",
+      "display_title": "Locked On Dolphins - Daily Podcast On The",
+      "blurb": "Locked On Dolphins podcast is your daily ticket to stay ahead of the game and the first to know the latest news, analysis, and insider info for the...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1137461409": {
       "topics": [
@@ -41097,10 +42194,39 @@
     },
     "1138381298": {
       "topics": [
-        "culture/art"
+        "culture/art",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "The Art Biz",
+      "blurb": "Looking for art career inspiration and ideas while you're working in the studio or schlepping your art across the country? Alyson Stanfield helps y...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1138657182": {
       "topics": [
@@ -41236,10 +42362,39 @@
     },
     "1139751780": {
       "topics": [
-        "sports/football"
+        "culture/art",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL team news and analysis.",
+      "display_title": "Locked On Raiders - Daily Podcast On The",
+      "blurb": "Locked On Raiders podcast is your daily ticket to stay ahead of the game and the first to know the latest news, analysis, and insider info for the ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1139967050": {
       "topics": [
@@ -41285,10 +42440,49 @@
     },
     "1140514879": {
       "topics": [
-        "sports/football"
+        "nature",
+        "culture/art",
+        "culture/design",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL team news and analysis.",
+      "display_title": "Locked On Lions - Daily Podcast On The",
+      "blurb": "Locked On Lions podcast is your daily ticket to stay ahead of the game and the first to know the latest news, analysis, and insider info for the De...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1140522532": {
       "topics": [
@@ -41526,10 +42720,44 @@
     },
     "1143167911": {
       "topics": [
-        "religion/buddhism"
+        "religion/buddhism",
+        "religion/spirituality",
+        "psychology"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/buddhism",
+          "confidence": 0.9
+        },
+        {
+          "node": "religion/spirituality",
+          "confidence": 0.85
+        },
+        {
+          "node": "psychology",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Lama Yeshe Wisdom Archive",
+      "blurb": "Listen to teachings from great Tibetan Buddhist masters Lama Thubten Yeshe and Lama Zopa Rinpoche",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1143172060": {
       "topics": [
@@ -41569,10 +42797,39 @@
     },
     "1143987607": {
       "topics": [
-        "culture/design"
+        "craft",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "craft",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Sew Much More",
+      "blurb": "An interview style podcast with people in the Custom Home Furnishings industry",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1144116574": {
       "topics": [
@@ -41736,10 +42993,44 @@
     },
     "1146588641": {
       "topics": [
-        "sports/football"
+        "culture/art",
+        "news/politics",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL team news and analysis.",
+      "display_title": "Locked On Broncos - Daily Podcast On The",
+      "blurb": "Locked On Broncos podcast is your daily ticket to stay ahead of the game and the first to know the latest news, analysis, and insider info for the ...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1146613549": {
       "topics": [
@@ -41810,10 +43101,49 @@
     },
     "1147257638": {
       "topics": [
-        "business/management"
+        "economics",
+        "culture/art",
+        "culture/design",
+        "economics/markets"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/design",
+          "confidence": 0.8
+        },
+        {
+          "node": "economics/markets",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Business management and industry trends.",
+      "display_title": "This Week in Business",
+      "blurb": "Bringing together top leaders, innovators and renowned faculty from the Wharton School of the University of Pennsylvania discussing topics that mat...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1147264526": {
       "topics": [
@@ -41923,10 +43253,46 @@
     },
     "1148570190": {
       "topics": [
-        "kids-family/parenting"
+        "religion/judaism",
+        "education",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Research-based parenting strategies.",
+      "display_title": "Your Parenting Mojo - Respectful, research-based parenting i",
+      "blurb": "Parenting is hard…but does it have to be this hard? Wouldn’t it be better if your kids would stop pressing your buttons quite as often, and if ther...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 8,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 8,
+        "transcript_types": {
+          "text/html": 8
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1148650883": {
       "topics": [
@@ -42014,10 +43380,49 @@
     },
     "1150241800": {
       "topics": [
-        "tv-film/reviews"
+        "sports/baseball",
+        "music",
+        "culture/performing-arts",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "music",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/performing-arts",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Buffy the Vampire Slayer episode analysis.",
+      "display_title": "Buffering the Vampire Slayer | A Buffy the",
+      "blurb": "Hosts Kristin Russo & Jenny Owen Youngs are heading back into the Buffyverse for Buffering the Vampire Slayer: Once More, With Spoilers! After a cr...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1150510297": {
       "topics": [
@@ -42117,10 +43522,39 @@
     },
     "1151634104": {
       "topics": [
-        "religion/judaism"
+        "religion/judaism",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "religion/judaism",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Jewish spirituality, theology, and relationship guidance.",
+      "display_title": "The Jewish History Podcast - With Rabbi Yaakov",
+      "blurb": "Rabbi Yaakov Wolbe started The Jewish History Podcast in 2016 with the goal of making Jewish History interesting and accessible",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1151856991": {
       "topics": [
@@ -42182,10 +43616,44 @@
     },
     "1151988852": {
       "topics": [
-        "sports/football"
+        "sports/baseball",
+        "culture/art",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL team news and analysis.",
+      "display_title": "Beltway Football",
+      "blurb": "Beltway Football is hosted by Monumental Sports Network's JP Finlay and Mitch Tischler , covering all things Washington Commanders",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1152146807": {
       "topics": [
@@ -42290,7 +43758,31 @@
         "sports/football"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/football",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": false,
+      "rationale": "NFL coverage and analysis of San Francisco 49ers.",
+      "display_title": "49ers Talk",
+      "blurb": "NBC Sports insider coverage of San Francisco 49ers players, roster decisions, and weekly NFL analysis.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:18:01.867Z"
     },
     "1153465996": {
       "topics": [
@@ -42323,10 +43815,34 @@
     },
     "1153737630": {
       "topics": [
-        "automotive"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Automotive enthusiast discussions.",
+      "display_title": "Danger Dan's Talk Shop",
+      "blurb": "Motorcycles and the community around them",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1153789570": {
       "topics": [
@@ -42428,7 +43944,36 @@
         "tv-film/reviews"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "tv-film/reviews",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Queens of NC-17",
+      "blurb": "Welcome to the sleepover with those girls your parents warned you about",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 5,
+        "episodes_with_timed_transcript": 5,
+        "transcript_tags": 20,
+        "transcript_types": {
+          "text/html": 5,
+          "application/json": 5,
+          "application/x-subrip": 5,
+          "text/vtt": 5
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1156258045": {
       "topics": [
@@ -42463,10 +44008,44 @@
     },
     "1156744457": {
       "topics": [
-        "news/daily"
+        "culture/art",
+        "news/politics",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "news/politics",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "The Propaganda Report",
+      "blurb": "The Propaganda Report with Brad Binkley offers amusing commentary on the news of the day as well as deep insights into the powers that be who revea...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1156763561": {
       "topics": [
@@ -43128,10 +44707,49 @@
     },
     "1166007425": {
       "topics": [
-        "nature"
+        "sports/baseball",
+        "nature",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports/baseball",
+          "confidence": 0.95
+        },
+        {
+          "node": "nature",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Nature documentary and wildlife stories.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /delve/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 6,
+        "episodes_with_timed_transcript": 6,
+        "transcript_tags": 6,
+        "transcript_types": {
+          "application/x-subrip": 6
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1166015603": {
       "topics": [
@@ -43159,10 +44777,44 @@
     },
     "1166647351": {
       "topics": [
-        "fiction/sci-fi"
+        "science/storytelling",
+        "culture/art",
+        "science"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "science/storytelling",
+          "confidence": 0.85
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "science",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "RELATIVITY",
+      "blurb": "RELATIVITY is a science-fiction serial about a man marooned in space and the woman on Earth who struggles to keep him alive",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1166682012": {
       "topics": [
@@ -43173,11 +44825,34 @@
     },
     "1166703514": {
       "topics": [
-        "music",
-        "history"
+        "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.9
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Weekly program of jazz and popular music from 1920s-30s vinyl records.",
+      "display_title": "Rapidly Rotating Records",
+      "blurb": "Hour-long radio program featuring music from rapidly rotating 78 RPM records of the 1920s and 30s.",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:18:01.867Z"
     },
     "1166726594": {
       "topics": [
@@ -43255,10 +44930,41 @@
     },
     "1168126157": {
       "topics": [
-        "kids-family/education"
+        "education",
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "education",
+          "confidence": 0.8
+        },
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Dream Big Podcast for Kids",
+      "blurb": "The Dream Big Podcast is a family-friendly kids podcast inspiring kids (and adults!) to pursue their passions in life and take action to make their...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": true,
+        "episodes_with_transcript": 3,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 3,
+        "transcript_types": {
+          "/application/vtt": 3
+        }
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1168154281": {
       "topics": [
@@ -43535,10 +45241,39 @@
     },
     "1171916912": {
       "topics": [
-        "sports/fantasy"
+        "sports",
+        "business"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "sports",
+          "confidence": 0.85
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "Fantasy NBA Today",
+      "blurb": "Our flagship NBA fantasy pod is hosted by FSWA Hall of Famer Steve (Dr",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1172101607": {
       "topics": [
@@ -43550,10 +45285,44 @@
     },
     "1172351002": {
       "topics": [
-        "sports/soccer"
+        "culture/art",
+        "business",
+        "news"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        },
+        {
+          "node": "business",
+          "confidence": 0.8
+        },
+        {
+          "node": "news",
+          "confidence": 0.75
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "The Blue Room - Everton FC Podcast",
+      "blurb": "Join The Blue Room for the latest Everton conversation and debate",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1172372010": {
       "topics": [
@@ -43572,10 +45341,37 @@
     },
     "1172546141": {
       "topics": [
-        "news/politics"
+        "economics"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "economics",
+          "confidence": 0.95
+        }
+      ],
+      "needs_review": true,
+      "rationale": "Content on identified topic areas.",
+      "display_title": null,
+      "blurb": null,
+      "display_copy_ok": false,
+      "display_copy_notes": [
+        "blurb: banned /\\bexplores?\\b/i"
+      ],
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1172855980": {
       "topics": [
@@ -43587,10 +45383,34 @@
     },
     "1172927131": {
       "topics": [
-        "music"
+        "culture/art"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "culture/art",
+          "confidence": 0.8
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Music history and record commentary.",
+      "display_title": "Permanent Record Podcast",
+      "blurb": "Brian and Sarah are your hosts for this look back at albums from the New Wave and Classic Rock genres-- albums which have earned a permanent spot i...",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1173814185": {
       "topics": [
@@ -43776,7 +45596,31 @@
         "music"
       ],
       "confidence": "high",
-      "source": "genre-map"
+      "source": "classify-agent-tier1",
+      "topic_confidences": [
+        {
+          "node": "music",
+          "confidence": 0.85
+        }
+      ],
+      "needs_review": false,
+      "rationale": "Content on identified topic areas.",
+      "display_title": "迷人瑾-车载劲爆DJ电音舞曲",
+      "blurb": "车载劲爆DJ电音舞曲 人有时候不能老是循规蹈矩，偶尔也需要释放自己，释放压力！请跟着这些精选的dj舞曲，大家一起嗨起来！高兴的心情能够释放自己的压力，愉快的乐趣能够传染他人！让生活更加美好，让你的人生更加积极向上！开车的时候听一听，",
+      "display_copy_ok": true,
+      "model": "claude-code-cron (tier 1)",
+      "transcript_labels": {
+        "label_schema_version": 1,
+        "episodes_sampled": 8,
+        "transcript_present": false,
+        "episodes_with_transcript": 0,
+        "episodes_with_timed_transcript": 0,
+        "transcript_tags": 0,
+        "transcript_types": {}
+      },
+      "tier": 1,
+      "batch_id": "fresh-2026-08-30-6e21b9d8",
+      "classified_at": "2026-08-30T08:17:38.415Z"
     },
     "1178572854": {
       "topics": [
