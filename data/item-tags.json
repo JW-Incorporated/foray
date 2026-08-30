@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "built_at": "2026-08-29T11:57:32.200Z",
+  "built_at": "2026-08-30T11:52:34.565Z",
   "tags": {
     "lex-fridman-podcast--don-lincoln-physics": [
       "physics",
@@ -16010,6 +16010,63 @@
       "business",
       "culture",
       "bourbon"
+    ],
+    "cbc-ideas--how-a-german-philosopher-predicted-our": [
+      "philosophy",
+      "art",
+      "art-history",
+      "media-criticism",
+      "criticism",
+      "walter-benjamin",
+      "technology"
+    ],
+    "cbc-ideas--how-the-principles-of-st-augustine": [
+      "religion",
+      "christianity",
+      "catholic",
+      "philosophy",
+      "theology",
+      "ancient-history"
+    ],
+    "around-the-house-eric-g--the-ultimate-guide-to-home-organization": [
+      "organization",
+      "parenting",
+      "home-improvement",
+      "family-life",
+      "back-to-school",
+      "decluttering"
+    ],
+    "around-the-house-eric-g--kitchen-remodeling-101-don-t-let": [
+      "home-improvement",
+      "kitchen-design",
+      "renovation",
+      "cabinetry",
+      "design",
+      "advice"
+    ],
+    "philosophize-this--episode-252-slaughterhouse-five-kurt-vonnegut": [
+      "philosophy",
+      "literature",
+      "kurt-vonnegut",
+      "book",
+      "war",
+      "trauma",
+      "identity"
+    ],
+    "masters-of-scale--pioneers-of-ai-designing-ai-for": [
+      "ai",
+      "artificial-intelligence",
+      "startups",
+      "technology",
+      "ai-safety",
+      "ethics"
+    ],
+    "common-descent--episode-251-the-sun": [
+      "astronomy",
+      "astrophysics",
+      "solar",
+      "science",
+      "space"
     ]
   }
 }
