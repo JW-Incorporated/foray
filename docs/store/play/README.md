@@ -21,9 +21,9 @@ Max 30 characters. Must match the app's own title (`index.html` says `4a`).
 ## 2. Short description
 
 Field: **Short description** (80 characters max).
-Paste the whole of **`short-description.txt`** — one line, 71 characters:
+Paste the whole of **`short-description.txt`** — one line, 73 characters:
 
-> Four podcast queues at a time, not an endless feed. No account, no ads.
+> Podcast playlists stitched across shows, plus new episodes picked for you
 
 ## 3. Full description
 
