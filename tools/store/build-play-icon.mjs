@@ -126,9 +126,11 @@ export const OUTPUT = "docs/store/play/app-icon-512.png";
  * It also interacts with SPAN through Play's 30% corner mask, and THAT
  * INTERACTION IS NOT MONOTONIC, which is worth stating because the obvious
  * mental model is wrong and a reader who assumes it will pick a bad number.
- * Measured, counting ink pixels that fall outside the mask on the finished 512
- * at SPAN 0.94: 1.10 clips 613, 1.20 clips 0, 1.25 clips 44, 1.30 clips 48,
- * 1.35 clips 18, 1.40 clips 0, 1.45 clips 0.
+ * Measured, counting ink pixels whose CENTRES fall outside the mask on the
+ * finished 512 at SPAN 0.94: 1.10 clips 654, 1.20 clips 0, 1.25 clips 52, 1.30
+ * clips 57, 1.35 clips 25, 1.40 clips 0, 1.45 clips 0. (Centres, not pixel
+ * origins -- the difference is half a pixel and it biases the count toward the
+ * bottom-right, which is the corner that matters here. See the mask test.)
  *
  * "Tighter crop, taller mark, more ink in the corners" predicts a curve that
  * only rises as the aspect falls. It is not what happens, and every clipped

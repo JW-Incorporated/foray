@@ -76,7 +76,7 @@
  *       two-icons tests all read garbage too. Recorded as five because it was
  *       run: the honest single-test claim is the SPAN mutation below.
  *   - encode the icon {rgb:true}, so it loses alpha   -> "32-bit RGBA", plus
- *       "a second file... untouched" and the README byte count. THE REJECTION
+ *       "opposite colour types" and the README byte count. THE REJECTION
  *       REPRODUCED, and the mutation worth reading twice: it is NOT caught by
  *       the pixel test, because decode() normalises colour type 2 and 6 to the
  *       same RGBA buffer and an opaque alpha channel compares equal to no alpha
@@ -87,12 +87,23 @@
  *       are pinned" AND "fills the square instead of floating in a band". Two
  *       tests, deliberately: the first pins today's number, the second pins what
  *       the number is for and survives a redraw that moves it legitimately. The
- *       icon comes back at 41.4% fill -- the exact composition Play rejected --
- *       with the pixel test green, for the SPAN_W reason above.
+ *       pixel test stays green, for the SPAN_W reason above.
+ *       THE FILL FIGURE HERE WAS WRONG AND IS CORRECTED: this said "comes back
+ *       at 41.4% -- the exact composition Play rejected", which conflated two
+ *       different mutants. 41.4% is the NO-CROP composition. With CROP_ASPECT
+ *       still 1.40, SPAN 0.78 gives 399x285 = 55.7%, so the fill test clears
+ *       its 0.60 floor by 4.3 points, not the ~19 the old sentence implied.
+ *       Worth knowing precisely, because it is the margin this test actually
+ *       has. Swept: 0.78 -> 55.7%, 0.80 -> 57.2%, 0.82 -> 58.6%, 0.84 -> 59.96%
+ *       (caught, by four ten-thousandths), 0.86 -> 61.5% (NOT caught -- run
+ *       with the constants test updated to match, and only the README byte
+ *       count objected). So the fill test catches a re-proportioning back
+ *       toward the launcher icon's 0.78 but not a small one, and the constants
+ *       test covers the rest. That is the division of labour between them.
  *   - regenerate with CROP_ASPECT = 1.89 (no crop)    -> "composition constants
  *       are pinned" AND "fills the square" (49.8%).
  *   - regenerate with CROP_ASPECT = 1.30, leaving it  -> "composition constants
- *       are pinned" AND "no ink falls outside the corner mask" (48 ink pixels
+ *       are pinned" AND "no ink falls outside the corner mask" (57 ink pixels
  *       clipped). The mask test is the one that still fires after a deliberate
  *       re-proportioning has updated the pinned constants, which is why it is a
  *       separate test and not another assertion inside that one.
@@ -103,21 +114,25 @@
  *       wrong number was reached by exactly the reasoning the next reader will
  *       use.
  *   - regenerate with SPAN = 0.98, leaving it 0.98    -> "composition constants
- *       are pinned" AND the mask test (189 clipped). The other half of the same
+ *       are pinned" AND the mask test (213 clipped). The other half of the same
  *       interaction, from the span side.
  *   - regenerate with SIZE = 1024                     -> "512x512 and 32-bit
  *       RGBA", plus the byte ceiling. Play's literals are written out as
  *       constants and asserted against the generator's exports rather than
  *       derived from them, for the reason the 1024x512 banner note gives above.
  *   - copy icon-512.png over app-icon-512.png          -> five tests, including
- *       "what the master renders to", "32-bit RGBA", "fills the square" and "a
- *       second file... untouched". Five, because this is the tempting "we have
+ *       "what the master renders to", "32-bit RGBA", "fills the square" and
+ *       "opposite colour types". Five, because this is the tempting "we have
  *       two 512x512 PNGs of the same logo" cleanup and it must not be quiet.
  *   - delete the byte count from README §4             -> "stated character
  *       counts and byte size". NOT "README names every asset", which stays green
- *       because the Regenerating section still names the file. The split is the
- *       point: one test catches a README that has lost the asset, the other
- *       catches a README that still names it and describes it wrongly.
+ *       because §4's two explanatory bullets still name `app-icon-512.png`.
+ *       (An earlier version of this line credited the Regenerating section for
+ *       that. It does not name the file -- it names `build-play-icon.mjs` and
+ *       `icon-512.png` -- so a reader trusting the old claim could delete §4's
+ *       Upload line expecting green and get red.) The split is the point: one
+ *       test catches a README that has lost the asset, the other catches a
+ *       README that still names it and describes it wrongly.
  *   - rename every app-icon-512.png in README.md       -> "README names every asset"
  *   - bake a 12px white frame into the icon            -> "fills the square
  *       instead of floating in a band". A GUARD THAT WAS NOT GUARDING, found by
@@ -160,16 +175,30 @@
  *
  *   - Anchoring the crop at the ink box's RIGHT edge instead of its left
  *     (`x0: box.x0 + box.w - cropW`), and regenerating: the icon becomes the
- *     bare waveform with no "4a" in it. Predicted green -- the fill fraction is
- *     identical and the pixel test re-renders through the mutant. It is caught,
- *     by "no ink falls outside the corner mask", because the oscillation's
- *     strokes reach the bottom corners where the ligature does not. THAT IS
- *     LUCK, specific to this master, and it is not a guard on which pixels
- *     survive the crop. A redraw could take it away without touching a test.
- *     Asserting the real property would mean re-deriving the crop in the test,
- *     which is a second copy of the generator; the honest position is that the
- *     anchor is guarded by the pixel test only as a STALE artefact -- mutate,
- *     regenerate, put the anchor back, and it fires.
+ *     bare waveform with no "4a" in it. It SURVIVES every test that checks a
+ *     property of the image; the only thing that objects is the README's byte
+ *     count, because the file shrinks to 74,936 bytes -- and anyone making this
+ *     change for real would update that line along with it, at which point the
+ *     suite is entirely green. Verified by neutralising that one check and
+ *     re-running: green. The route to this answer is worth recording, because
+ *     it was briefly recorded as killed.
+ *
+ *     Predicted green (the fill fraction is identical and the pixel test
+ *     re-renders through the mutant), then observed RED on the mask test, and
+ *     written up as "caught, by luck: the oscillation reaches the corners where
+ *     the ligature does not". Review re-measured it: the two clipped pixels
+ *     were at (16,84) and (16,85) -- the TOP-LEFT, not the bottom-right the
+ *     write-up claimed -- and they existed only because `outside()` sampled
+ *     pixel origins instead of centres, which biases the mask half a pixel up
+ *     and left. With the convention corrected the count is 0 and the mutation
+ *     survives, as first predicted. The lesson is not that the prediction was
+ *     right; it is that a red test was accepted as evidence without checking
+ *     WHICH pixels made it red.
+ *
+ *     Left uncovered deliberately. Asserting the real property means
+ *     re-deriving the crop inside the test, which is a second copy of the
+ *     generator. The anchor is guarded by the pixel test only as a STALE
+ *     artefact -- mutate, regenerate, put the anchor back, and it fires.
  *   - Removing the SNAP quantisation (`if (false)`) and regenerating: 81.6 KB
  *     becomes 99.9 KB. Predicted green, because that is comfortably under the
  *     112 KB ceiling, which is sized as a blow-up detector for the 105 KB
@@ -484,23 +513,36 @@ test("no ink falls outside the corner mask Play applies to the icon", () => {
      something after a deliberate re-proportioning updates those constants.
 
      THE SAFE COMBINATIONS ARE NOT AN INTERVAL, which is the reason this is
-     asserted and not reasoned about. Measured at SPAN 0.94: aspect 1.10 clips
-     613 ink pixels, 1.20 clips 0, 1.25 clips 44, 1.30 clips 48, 1.35 clips 18,
-     1.40 clips 0, 1.45 clips 0. Holding the aspect at 1.40 and raising SPAN:
-     0.96 clips 34, 0.98 clips 189. Every clipped pixel in all of those is in
-     the bottom-right corner, around (496, 428), because what reaches that
-     corner is whatever the crop's right edge cuts -- see build-play-icon.mjs,
-     which works through why the curve is not monotonic. A reader who assumes
-     "tighter crop, more clipping" and picks 1.20 gets a green mask test and a
-     bad icon; a reader who assumes it and picks 1.30 gets this failure. */
+     asserted and not reasoned about. Measured at SPAN 0.94, counting with the
+     pixel-centre convention below: aspect 1.10 clips 654 ink pixels, 1.20 clips
+     0, 1.25 clips 52, 1.30 clips 57, 1.35 clips 25, 1.40 clips 0, 1.45 clips 0.
+     Holding the aspect at 1.40 and raising SPAN: 0.96 clips 43, 0.98 clips 213.
+     Every clipped pixel in all of those is in the bottom-right corner, around
+     (496, 428), because what reaches that corner is whatever the crop's right
+     edge cuts -- see build-play-icon.mjs, which works through why the curve is
+     not monotonic. A reader who assumes "tighter crop, more clipping" and picks
+     1.20 gets a green mask test and a bad icon; a reader who assumes it and
+     picks 1.30 gets this failure. */
   const { img } = markBox(ICON_OUTPUT);
   const bg = background(img);
   const w = img.width, r = w * PLAY.ICON_MASK_RADIUS;
+  /* PIXEL CENTRES, not pixel origins. Treating pixel (x,y) as the point (x,y)
+     puts the sample half a pixel up and left of where the pixel actually is,
+     which makes the test strict along the top-left corner and lenient along the
+     bottom-right -- and bottom-right is exactly where this mark's ink
+     approaches the mask. The first version of this did that. It changed the
+     measured table (1.25 read 44 instead of 52, 1.30 read 48 instead of 57,
+     1.35 read 18 instead of 25) and, worse, it manufactured a two-pixel "clip"
+     at the TOP-LEFT for the right-anchored-crop mutation, which is what that
+     mutation's kill was being credited to. Under centres that mutation clips
+     nothing and genuinely survives, which is what the header now says. The
+     committed icon is 0 under either convention, so nothing shipped clipped. */
   const outside = (x, y) => {
-    const cx = x < r ? r : x > w - r ? w - r : null;
-    const cy = y < r ? r : y > w - r ? w - r : null;
+    const px = x + 0.5, py = y + 0.5;
+    const cx = px < r ? r : px > w - r ? w - r : null;
+    const cy = py < r ? r : py > w - r ? w - r : null;
     if (cx === null || cy === null) return false;      // edges, not corners
-    return (x - cx) ** 2 + (y - cy) ** 2 > r * r;
+    return (px - cx) ** 2 + (py - cy) ** 2 > r * r;
   };
   let clipped = 0;
   for (let y = 0; y < w; y++) {
@@ -513,7 +555,7 @@ test("no ink falls outside the corner mask Play applies to the icon", () => {
   assert.equal(clipped, 0, `${clipped} ink pixels fall outside Play's ${PLAY.ICON_MASK_RADIUS * 100}% corner mask and will be cut`);
 });
 
-test("the Play icon is a second file, and the shipped icon it does not replace is untouched", () => {
+test("the two 512px icons carry opposite colour types and different pixels", () => {
   /* The reason there are two 512px icons at all, guarded, because "we have two
      512x512 PNGs of the same logo" is a standing invitation to delete one.
 
@@ -524,7 +566,14 @@ test("the Play icon is a second file, and the shipped icon it does not replace i
      at the other, breaks one store or the other.
 
      `tools/brand/build-icons.test.mjs` owns icon-512.png's own guarantees; this
-     asserts only the relationship, from the side that would do the damage. */
+     asserts only the RELATIONSHIP, from the side that would do the damage.
+
+     THE NAME OF THIS TEST USED TO SAY "...and the shipped icon it does not
+     replace is untouched", which it does not check: a hand-edit to
+     icon-512.png that keeps colour type 2 passes here. That property IS
+     covered, by the pixel test in build-icons.test.mjs, but a name promising it
+     in this file is how a reader concludes it is guarded twice and deletes the
+     copy that is really doing it. Renamed to what it asserts. */
   assert.equal(pngHeader(read("icon-512.png")).colour, 2, "icon-512.png must stay RGB: the App Store rejects an icon with alpha");
   assert.equal(pngHeader(read(ICON_OUTPUT)).colour, 6, "the Play icon must stay RGBA");
   assert.ok(
@@ -692,11 +741,19 @@ test("README.md's stated character counts and byte size are the real ones", () =
   /* Same guard for the store icon, and it earns its place for a reason the
      banner's does not: §4 of the README is where a founder decides WHICH of the
      two 512x512 PNGs in this repo to upload. A stale byte count there is the
-     one cue that would tell them they are looking at the old instructions. */
+     one cue that would tell them they are looking at the old instructions.
+
+     PINNED AS §4's OWN PHRASING, not as a bare number loose in the file. The
+     first version asserted `readme.includes("83,547")`, which is satisfied by
+     the digits appearing anywhere -- move the Upload line out of §4, or state
+     the size over in the feature-graphic section, and the founder-facing cue
+     disappears with the test still green. Its two siblings above already pin
+     phrasing for exactly this reason; this one was the odd one out. */
   const iconBytes = read(ICON_OUTPUT).length;
+  const iconClaim = `(512 × 512, ${iconBytes.toLocaleString("en-US")} bytes)`;
   assert.ok(
-    readme.includes(iconBytes.toLocaleString("en-US")),
-    `README.md should give the Play icon's size as ${iconBytes.toLocaleString("en-US")} bytes`
+    readme.includes(iconClaim),
+    `README.md §4 should say the Play icon is "${iconClaim}"`
   );
 });
 
