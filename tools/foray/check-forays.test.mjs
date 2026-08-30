@@ -166,6 +166,15 @@ test("exactly one committed Foray is published, and it is the one that was named
      which is the price the old loop charged and the whole reason it was written
      as a loop instead of about Foray #1.
 
+     ONE THING THE OLD LOOP CAUGHT THAT THIS DOES NOT, checked rather than
+     assumed: a status that is neither "draft" nor "published". `assert.equal(f
+     .status, "draft")` rejected a third value directly; filtering on
+     `=== "published"` does not. Mutating `geology-plates-1` to `"archived"` was
+     run, and the suite still goes red — caught by "the committed data passes with
+     zero errors" and by the CLI test above it, both of which reach
+     `check-forays.mjs`'s own `status` enum. That is the better home for it: the
+     enum is enforced by the shipping checker rather than by a loop in a test.
+
      WHAT THIS TEST DOES NOT SAY: that anyone has listened to it. Nobody has
      (HUMAN-ACTIONS.md #8 is still open), and rule X1 — "a cross-episode seam
      always carries narration" — is unmet at all 10 of its cross-episode seams,
