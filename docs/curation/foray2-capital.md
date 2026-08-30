@@ -926,7 +926,8 @@ this change. The gate did not choose; these did.
 | Segments | 32 | 10 | **22** | 19 |
 | D1 | 6 of 6 — **on the line** | 6 of 8 | **5 of 6** | 6 of 8 |
 | D5 IQR (floor 45 s) | 57.81 s | 60.10 s | **71.75 s — the most headroom** | 57.53 s |
-| M4 worst episode | 21.9 % | 20.0 % | **23.8 %** | 18.4 % |
+| M4 worst episode, runtime (cap 25 %) | 21.1 % | 19.9 % | **23.8 %** | 18.4 % |
+| M4 worst episode, segments (cap 25 %) | 21.9 % | 20.0 % | **18.2 %** | 15.8 % |
 | Cross-episode seams | 16 of 31 | 5 of 9 | **10 of 21** | 15 of 18 |
 | Cross-episode seams **per minute** | 0.261 | 0.228 | **0.195 — the lowest** | 0.372 |
 | Its own record's verdict | superseded, drifted off plot | *"a playable fragment … not a draft of the product"* | **"Global rules missed: None"** | *"the rule that matters most to a listener is not met"* |
